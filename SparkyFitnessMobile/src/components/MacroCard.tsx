@@ -55,7 +55,7 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
   }, [barWidth]);
 
   return (
-    <View className="w-[48%] bg-section rounded-xl p-3 mb-3 shadow-sm">
+    <View className="w-[48%] bg-surface rounded-xl p-3 mb-3 shadow-sm">
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-sm font-medium text-text-primary">{label}</Text>
         <Text className="text-xs text-text-secondary">

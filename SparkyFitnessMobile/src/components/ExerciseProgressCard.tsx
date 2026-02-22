@@ -100,14 +100,14 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
   exerciseCaloriesGoal,
 }) => {
   const [exerciseColor, trackColor] = useCSSVariable([
-    '--color-exercise',
+    '--color-calories',
     '--color-progress-track',
   ]) as [string, string];
 
   const hasEntries = exerciseMinutes > 0 || exerciseCalories > 0;
 
   return (
-    <View className="bg-section rounded-xl p-4 mb-2 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm">
       <Text className="text-md font-bold text-text-primary mb-4">Exercise</Text>
       {hasEntries ? (
         <>
@@ -118,6 +118,7 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
             unit="min"
             color={exerciseColor}
             trackColor={trackColor}
+            opacity={0.8}
           />
           <View className="h-3" />
           <ProgressBar
@@ -127,7 +128,7 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
             unit="Cal"
             color={exerciseColor}
             trackColor={trackColor}
-            opacity={0.7}
+            opacity={0.5}
           />
         </>
       ) : (

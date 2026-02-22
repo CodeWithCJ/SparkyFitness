@@ -104,7 +104,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
-      icon: './assets/icons/appicon.icon'
+      icon: './assets/icons/appicon.icon',
+      config: {
+        usesNonExemptEncryption: false,
+      },
     },
     android: {
       package: isDev

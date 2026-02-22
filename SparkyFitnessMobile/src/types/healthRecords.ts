@@ -100,6 +100,18 @@ export interface AggregatedSleepSession {
   sleep_score?: number;
 }
 
+/** Exercise set within a session (matches server API spec) */
+export interface ExerciseSet {
+  set_number: number;
+  set_type?: string;
+  reps?: number;
+  weight?: number;
+  duration?: number;    // minutes
+  rest_time?: number;   // seconds
+  notes?: string;
+  rpe?: number;
+}
+
 /** Exercise session output (complex structure) */
 export interface TransformedExerciseSession {
   type: 'ExerciseSession';
@@ -116,6 +128,7 @@ export interface TransformedExerciseSession {
   distance?: number;
   notes?: string;
   raw_data?: unknown;
+  sets?: ExerciseSet[];
 }
 
 // ==========================================

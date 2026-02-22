@@ -340,6 +340,47 @@ describe('transformHealthRecords', () => {
       expect(exerciseResult.type).toBe('ExerciseSession');
       expect(exerciseResult.source).toBe('HealthKit');
     });
+
+    test('includes sets array with duration in minutes', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          activityType: 37,
+          duration: 3600,
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Workout', unit: '', type: 'workout' });
+
+      expect((result[0] as TransformedExerciseSession).sets).toEqual([{ set_number: 1, set_type: 'Working Set', duration: 60 }]);
+    });
+
+    test('rounds non-even duration to nearest minute in sets', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T08:01:30Z',
+          activityType: 37,
+          duration: 90,
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Workout', unit: '', type: 'workout' });
+
+      expect((result[0] as TransformedExerciseSession).sets).toEqual([{ set_number: 1, set_type: 'Working Set', duration: 2 }]);
+    });
+
+    test('sends set with duration 0 when duration is missing', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          activityType: 37,
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Workout', unit: '', type: 'workout' });
+
+      expect((result[0] as TransformedExerciseSession).sets).toEqual([{ set_number: 1, set_type: 'Working Set', duration: 0 }]);
+    });
   });
 
   describe('date extraction', () => {

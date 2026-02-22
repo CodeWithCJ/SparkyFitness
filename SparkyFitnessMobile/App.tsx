@@ -37,11 +37,11 @@ type TabIcons = {
 
 function AppContent() {
   const { theme } = useUniwind();
-  const [primary, navBar, navBarBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
+  const [primary, chrome, chromeBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
     '--color-accent-primary',
-    '--color-nav-bar',
-    '--color-nav-bar-border',
-    '--color-canvas',
+    '--color-chrome',
+    '--color-chrome-border',
+    '--color-background',
     '--color-text-primary',
     '--color-tab-active',
     '--color-tab-inactive',
@@ -57,9 +57,9 @@ function AppContent() {
     colors: {
       primary: primary,
       background: bgPrimary,
-      card: navBar,
+      card: chrome,
       text: textPrimary,
-      border: navBarBorder,
+      border: chromeBorder,
       notification: primary,
     },
     fonts: {
@@ -114,14 +114,14 @@ function AppContent() {
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Tabs">
+          <Stack.Screen name="Tabs" options={{ gestureEnabled: false }}>
             {() => (
               <Tab.Navigator
                 initialRouteName="Dashboard"
                 tabBarActiveTintColor={tabActive}
                 tabBarInactiveTintColor={tabInactive}
                 activeIndicatorColor={isDarkMode ? '#424242' : '#E7EAEC'}
-                tabBarStyle={Platform.OS !== 'ios' ? { backgroundColor: navBar } : undefined}
+                tabBarStyle={Platform.OS !== 'ios' ? { backgroundColor: chrome } : undefined}
                 labeled={true}
               >
                 <Tab.Screen
