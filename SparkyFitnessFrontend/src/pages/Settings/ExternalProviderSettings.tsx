@@ -11,9 +11,9 @@ import AddExternalProviderForm from './AddExternalProviderForm';
 import ExternalProviderList from './ExternalProviderList';
 import GarminConnectSettings from './GarminConnectSettings';
 import { syncHevyData } from '@/api/Integrations/integrations';
-import { exerciseEntryKeys } from '@/api/keys/exercises';
-import { dailyProgressKeys, foodEntryKeys } from '@/api/keys/diary';
-import { checkInKeys, sleepKeys } from '@/api/keys/checkin';
+import { useTranslation } from 'react-i18next';
+import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
+import { useSyncAll } from '@/hooks/Integrations/useSyncAll';
 import { useQueryClient } from '@tanstack/react-query';
 
 export interface ExternalDataProvider {
@@ -76,14 +76,7 @@ const ExternalProviderSettings = () => {
     useState<string | null>(null);
 
   const queryClient = useQueryClient();
-
-  const invalidateSyncData = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
-    queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-    queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
-    queryClient.invalidateQueries({ queryKey: checkInKeys.all });
-    queryClient.invalidateQueries({ queryKey: sleepKeys.all });
-  }, [queryClient]);
+  const invalidateSyncData = useDiaryInvalidation();
 
   const loadProviders = useCallback(async () => {
     if (!user) return;

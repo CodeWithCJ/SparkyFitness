@@ -11,8 +11,9 @@ import {
 } from '@/components/ui/tooltip';
 import { useQuery } from '@tanstack/react-query';
 import { getExternalDataProviders } from '@/services/externalProviderService';
-import { useSyncAll, type ExternalDataProvider } from '@/hooks/Integrations/useSyncAll';
+import { useSyncAll } from '@/hooks/Integrations/useSyncAll';
 import { cn } from '@/lib/utils';
+import { MANUAL_SYNC_PROVIDERS } from '@/constants/integrationConstants';
 
 const GlobalSyncButton: React.FC = () => {
   const { t } = useTranslation();
@@ -31,14 +32,14 @@ const GlobalSyncButton: React.FC = () => {
     setIsSyncing(true);
     try {
       // Cast to the type expected by useSyncAll
-      await syncAll(providers as unknown as ExternalDataProvider[]);
+      await syncAll(providers);
     } finally {
       setIsSyncing(false);
     }
   };
 
   const hasManualSyncProviders = providers?.some((p) =>
-    ['strava', 'fitbit', 'polar', 'withings', 'garmin', 'hevy'].includes(
+    (MANUAL_SYNC_PROVIDERS as readonly string[]).includes(
       p.provider_type
     ) && p.is_active
   );
@@ -65,7 +66,11 @@ const GlobalSyncButton: React.FC = () => {
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>{isSyncing ? t('sync.syncingAll', 'Syncing all providers...') : t('sync.syncAll', 'Sync all active providers')}</p>
+          <p>
+            {isSyncing
+              ? t('sync.syncingAll', 'Syncing all providers...')
+              : t('sync.syncAll', 'Sync all active providers')}
+          </p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

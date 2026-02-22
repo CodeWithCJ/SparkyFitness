@@ -4,26 +4,13 @@ import {
   linkWithingsAccount,
   linkStravaAccount,
 } from '@/api/Integrations/integrations';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { exerciseEntryKeys } from '@/api/keys/exercises';
-import { dailyProgressKeys, foodEntryKeys } from '@/api/keys/diary';
-import { checkInKeys, sleepKeys } from '@/api/keys/checkin';
-
-const useSyncInvalidation = () => {
-  const queryClient = useQueryClient();
-  return () => {
-    queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
-    queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-    queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
-    queryClient.invalidateQueries({ queryKey: checkInKeys.all });
-    queryClient.invalidateQueries({ queryKey: sleepKeys.all });
-  };
-};
+import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
 
 export const useLinkFitbitMutation = () => {
   const { t } = useTranslation();
-  const invalidate = useSyncInvalidation();
+  const invalidate = useDiaryInvalidation();
 
   return useMutation({
     mutationFn: linkFitbitAccount,
@@ -43,7 +30,7 @@ export const useLinkFitbitMutation = () => {
 
 export const useLinkWithingsMutation = () => {
   const { t } = useTranslation();
-  const invalidate = useSyncInvalidation();
+  const invalidate = useDiaryInvalidation();
 
   return useMutation({
     mutationFn: linkWithingsAccount,
@@ -63,7 +50,7 @@ export const useLinkWithingsMutation = () => {
 
 export const useLinkStravaMutation = () => {
   const { t } = useTranslation();
-  const invalidate = useSyncInvalidation();
+  const invalidate = useDiaryInvalidation();
 
   return useMutation({
     mutationFn: linkStravaAccount,
@@ -83,7 +70,7 @@ export const useLinkStravaMutation = () => {
 
 export const usePolarFlowMutation = () => {
   const { t } = useTranslation();
-  const invalidate = useSyncInvalidation();
+  const invalidate = useDiaryInvalidation();
 
   return useMutation({
     mutationFn: linkPolarFlowAccount,
