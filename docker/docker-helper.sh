@@ -125,20 +125,20 @@ case $ACTION in
         ;;
     "build")
         echo "Building services..."
-        docker compose -f "$COMPOSE_FILE" build
+        docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" build
         echo "✅ Services built successfully!"
         ;;
     "logs")
         echo "Showing logs..."
-        docker compose -f "$COMPOSE_FILE" logs -f
+        docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" logs -f
         ;;
     "ps")
         echo "Service status:"
-        docker compose -f "$COMPOSE_FILE" ps
+        docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" ps
         ;;
     "clean")
         echo "Cleaning up containers, networks, and images..."
-        docker compose -f "$COMPOSE_FILE" down --volumes --remove-orphans
+        docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" down --volumes --remove-orphans
         docker system prune -f
         echo "✅ Cleanup completed!"
         ;;
