@@ -6,11 +6,15 @@ import {
 } from '@/api/Integrations/integrations';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
 
 export const useLinkFitbitMutation = () => {
   const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
+
   return useMutation({
     mutationFn: linkFitbitAccount,
+    onSuccess: invalidate,
     meta: {
       errorMessage: t(
         'integrations.fitbitLinkError',
@@ -26,9 +30,11 @@ export const useLinkFitbitMutation = () => {
 
 export const useLinkWithingsMutation = () => {
   const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
 
   return useMutation({
     mutationFn: linkWithingsAccount,
+    onSuccess: invalidate,
     meta: {
       successMessage: t(
         'integrations.withingsSuccess',
@@ -44,9 +50,11 @@ export const useLinkWithingsMutation = () => {
 
 export const useLinkStravaMutation = () => {
   const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
 
   return useMutation({
     mutationFn: linkStravaAccount,
+    onSuccess: invalidate,
     meta: {
       successMessage: t(
         'integrations.stravaSuccess',
@@ -62,9 +70,11 @@ export const useLinkStravaMutation = () => {
 
 export const usePolarFlowMutation = () => {
   const { t } = useTranslation();
+  const invalidate = useDiaryInvalidation();
 
   return useMutation({
     mutationFn: linkPolarFlowAccount,
+    onSuccess: invalidate,
     meta: {
       successMessage: t(
         'integrations.polarSuccess',

@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:?Variable is required and must be set}
       POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
     volumes:
-      - ${DB_PATH:-../postgresql}:/var/lib/postgresql/data
+      - ${DB_PATH:-./postgresql}:/var/lib/postgresql/data
     networks:
       - sparkyfitness-network # Use the new named network
 

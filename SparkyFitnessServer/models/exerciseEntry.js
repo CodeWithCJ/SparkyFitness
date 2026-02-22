@@ -412,7 +412,7 @@ async function createExerciseEntry(
           userId,
           entryData.exercise_id,
           entryData.duration_minutes || 0, // Ensure duration_minutes is not null
-          entryData.calories_burned,
+          entryData.calories_burned || 0,
           entryData.entry_date,
           entryData.notes,
           entryData.workout_plan_assignment_id || null,

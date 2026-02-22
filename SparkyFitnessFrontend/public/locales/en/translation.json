@@ -420,6 +420,15 @@
     "scanBarcodeDescription": "Position the product barcode in front of your camera.",
     "importFromCSVDescription": "Import a CSV file to add multiple foods at once."
   },
+  "sync": {
+    "syncAll": "Sync all active providers",
+    "syncingAll": "Syncing all providers...",
+    "noActiveProviders": "No active providers found to sync.",
+    "syncCompleted_one": "Successfully synchronized {{count}} provider.",
+    "syncCompleted_other": "Successfully synchronized {{count}} providers.",
+    "syncFailed_one": "Failed to synchronize {{count}} provider.",
+    "syncFailed_other": "Failed to synchronize {{count}} providers."
+  },
   "settings": {
     "profileInformation": {
       "title": "Profile Information",

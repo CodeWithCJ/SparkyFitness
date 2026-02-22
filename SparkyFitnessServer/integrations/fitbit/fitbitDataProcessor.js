@@ -630,7 +630,7 @@ async function processFitbitActivities(
       exercise_id: exercise.id,
       entry_date: entryDate,
       duration_minutes: Math.round(activity.duration / 60000),
-      calories_burned: activity.calories,
+      calories_burned: activity.calories || 0,
       distance: distanceKm,
       avg_heart_rate: activity.averageHeartRate || null,
       notes: `Synced from Fitbit. Steps: ${activitySteps}${activity.duration ? `. Original duration: ${activity.duration}ms` : ""}`,
