@@ -388,12 +388,7 @@ async function getValidAccessToken(userId) {
 }
 
 // Function to fetch measures data (weight, blood pressure, etc.)
-async function fetchAndProcessMeasuresData(
-  userId,
-  createdByUserId,
-  startDate,
-  endDate,
-) {
+async function fetchMeasuresData(userId, startDate, endDate) {
   const accessToken = await getValidAccessToken(userId);
   const client = await getClient(userId);
   try {
@@ -425,19 +420,13 @@ async function fetchAndProcessMeasuresData(
         "warn",
         `Withings measures API returned no body for user ${userId}. Status: ${response.data?.status || "unknown"}`,
       );
-      return [];
+      return null;
     }
-    const measuregrps = response.data.body.measuregrps || [];
-    await withingsDataProcessor.processWithingsMeasures(
-      userId,
-      createdByUserId,
-      measuregrps,
-    );
-    return measuregrps;
+    return response.data.body.measuregrps || [];
   } catch (error) {
     log(
       "error",
-      `Error fetching and processing Withings measures data for user ${userId}: ${error.message}`,
+      `Error fetching Withings measures data for user ${userId}: ${error.message}`,
     );
     throw error;
   } finally {
@@ -445,13 +434,25 @@ async function fetchAndProcessMeasuresData(
   }
 }
 
-// Function to fetch heart data
-async function fetchAndProcessHeartData(
+async function fetchAndProcessMeasuresData(
   userId,
   createdByUserId,
   startDate,
   endDate,
 ) {
+  const measuregrps = await fetchMeasuresData(userId, startDate, endDate);
+  if (measuregrps && measuregrps.length > 0) {
+    await withingsDataProcessor.processWithingsMeasures(
+      userId,
+      createdByUserId,
+      measuregrps,
+    );
+  }
+  return measuregrps;
+}
+
+// Function to fetch heart data
+async function fetchHeartData(userId, startDate, endDate) {
   const accessToken = await getValidAccessToken(userId);
   const client = await getClient(userId);
   try {
@@ -483,19 +484,13 @@ async function fetchAndProcessHeartData(
         "warn",
         `Withings heart API returned no body for user ${userId}. Status: ${response.data?.status || "unknown"}`,
       );
-      return [];
+      return null;
     }
-    const heartSeries = response.data.body.series || [];
-    await withingsDataProcessor.processWithingsHeartData(
-      userId,
-      createdByUserId,
-      heartSeries,
-    );
-    return heartSeries;
+    return response.data.body.series || [];
   } catch (error) {
     log(
       "error",
-      `Error fetching and processing Withings heart data for user ${userId}: ${error.message}`,
+      `Error fetching Withings heart data for user ${userId}: ${error.message}`,
     );
     throw error;
   } finally {
@@ -503,13 +498,25 @@ async function fetchAndProcessHeartData(
   }
 }
 
-// Function to fetch sleep data
-async function fetchAndProcessSleepData(
+async function fetchAndProcessHeartData(
   userId,
   createdByUserId,
   startDate,
   endDate,
 ) {
+  const heartSeries = await fetchHeartData(userId, startDate, endDate);
+  if (heartSeries && heartSeries.length > 0) {
+    await withingsDataProcessor.processWithingsHeartData(
+      userId,
+      createdByUserId,
+      heartSeries,
+    );
+  }
+  return heartSeries;
+}
+
+// Function to fetch sleep data
+async function fetchSleepData(userId, startDate, endDate) {
   const accessToken = await getValidAccessToken(userId);
   const client = await getClient(userId);
   try {
@@ -541,19 +548,13 @@ async function fetchAndProcessSleepData(
         "warn",
         `Withings sleep API returned no body for user ${userId}. Status: ${response.data?.status || "unknown"}`,
       );
-      return [];
+      return null;
     }
-    const sleepSeries = response.data.body.series || [];
-    await withingsDataProcessor.processWithingsSleepData(
-      userId,
-      createdByUserId,
-      sleepSeries,
-    );
-    return sleepSeries;
+    return response.data.body.series || [];
   } catch (error) {
     log(
       "error",
-      `Error fetching and processing Withings sleep data for user ${userId}: ${error.message}`,
+      `Error fetching Withings sleep data for user ${userId}: ${error.message}`,
     );
     throw error;
   } finally {
@@ -561,13 +562,25 @@ async function fetchAndProcessSleepData(
   }
 }
 
-// Function to fetch and process workout data
-async function fetchAndProcessWorkoutsData(
+async function fetchAndProcessSleepData(
   userId,
   createdByUserId,
-  startDateYMD,
-  endDateYMD,
+  startDate,
+  endDate,
 ) {
+  const sleepSeries = await fetchSleepData(userId, startDate, endDate);
+  if (sleepSeries && sleepSeries.length > 0) {
+    await withingsDataProcessor.processWithingsSleepData(
+      userId,
+      createdByUserId,
+      sleepSeries,
+    );
+  }
+  return sleepSeries;
+}
+
+// Function to fetch workout data
+async function fetchWorkoutsData(userId, startDateYMD, endDateYMD) {
   const accessToken = await getValidAccessToken(userId);
   const client = await getClient(userId);
   try {
@@ -599,24 +612,35 @@ async function fetchAndProcessWorkoutsData(
         "warn",
         `Withings workouts API returned no body for user ${userId}. Status: ${response.data?.status || "unknown"}`,
       );
-      return [];
+      return null;
     }
-    const workouts = response.data.body.series || [];
-    await withingsDataProcessor.processWithingsWorkouts(
-      userId,
-      createdByUserId,
-      workouts,
-    );
-    return workouts;
+    return response.data.body.series || [];
   } catch (error) {
     log(
       "error",
-      `Error fetching and processing Withings workout data for user ${userId}: ${error.message}`,
+      `Error fetching Withings workout data for user ${userId}: ${error.message}`,
     );
     throw error;
   } finally {
     client.release();
   }
+}
+
+async function fetchAndProcessWorkoutsData(
+  userId,
+  createdByUserId,
+  startDateYMD,
+  endDateYMD,
+) {
+  const workouts = await fetchWorkoutsData(userId, startDateYMD, endDateYMD);
+  if (workouts && workouts.length > 0) {
+    await withingsDataProcessor.processWithingsWorkouts(
+      userId,
+      createdByUserId,
+      workouts,
+    );
+  }
+  return workouts;
 }
 
 // Function to disconnect Withings account
@@ -746,6 +770,10 @@ module.exports = {
   exchangeCodeForTokens,
   refreshAccessToken,
   getValidAccessToken,
+  fetchMeasuresData,
+  fetchHeartData,
+  fetchSleepData,
+  fetchWorkoutsData,
   fetchAndProcessMeasuresData,
   fetchAndProcessHeartData,
   fetchAndProcessSleepData,

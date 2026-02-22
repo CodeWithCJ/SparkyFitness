@@ -46,41 +46,73 @@ async function syncPolarData(userId, syncType = "manual", providerId) {
     const responses = bundle.responses;
 
     try {
-      // Process raw data from bundle
+      // Process physical info (collection and individual items)
+      const allPhysicalInfo = [];
       if (responses["raw_physical_info_list"]) {
+        allPhysicalInfo.push(...responses["raw_physical_info_list"].data);
+      }
+      Object.keys(responses).forEach((key) => {
+        if (key.startsWith("raw_physical_info_item_")) {
+          allPhysicalInfo.push(responses[key].data);
+        }
+      });
+      // Legacy support for older bundles
+      if (responses["raw_physical_info_item"] && allPhysicalInfo.length === 0) {
+        allPhysicalInfo.push(responses["raw_physical_info_item"].data);
+      }
+
+      if (allPhysicalInfo.length > 0) {
         await polarDataProcessor.processPolarPhysicalInfo(
           userId,
           userId,
-          responses["raw_physical_info_list"].data,
+          allPhysicalInfo,
         );
-      } else if (responses["raw_physical_info_item"]) {
-        await polarDataProcessor.processPolarPhysicalInfo(userId, userId, [
-          responses["raw_physical_info_item"].data,
-        ]);
       }
 
+      // Process exercises
+      const allExercises = [];
       if (responses["raw_exercises_recent"]) {
+        allExercises.push(...responses["raw_exercises_recent"].data);
+      }
+      Object.keys(responses).forEach((key) => {
+        if (key.startsWith("raw_exercise_item_")) {
+          allExercises.push(responses[key].data);
+        }
+      });
+      // Legacy support
+      if (responses["raw_exercise_item"] && allExercises.length === 0) {
+        allExercises.push(responses["raw_exercise_item"].data);
+      }
+
+      if (allExercises.length > 0) {
         await polarDataProcessor.processPolarExercises(
           userId,
           userId,
-          responses["raw_exercises_recent"].data,
+          allExercises,
         );
-      } else if (responses["raw_exercise_item"]) {
-        await polarDataProcessor.processPolarExercises(userId, userId, [
-          responses["raw_exercise_item"].data,
-        ]);
       }
 
+      // Process activities
+      const allActivities = [];
       if (responses["raw_activity_list"]) {
+        allActivities.push(...responses["raw_activity_list"].data);
+      }
+      Object.keys(responses).forEach((key) => {
+        if (key.startsWith("raw_activity_item_")) {
+          allActivities.push(responses[key].data);
+        }
+      });
+      // Legacy support
+      if (responses["raw_activity_item"] && allActivities.length === 0) {
+        allActivities.push(responses["raw_activity_item"].data);
+      }
+
+      if (allActivities.length > 0) {
         await polarDataProcessor.processPolarActivity(
           userId,
           userId,
-          responses["raw_activity_list"].data,
+          allActivities,
         );
-      } else if (responses["raw_activity_item"]) {
-        await polarDataProcessor.processPolarActivity(userId, userId, [
-          responses["raw_activity_item"].data,
-        ]);
       }
 
       if (responses["raw_sleep_list"]) {

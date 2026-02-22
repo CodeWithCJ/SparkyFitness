@@ -125,15 +125,10 @@ async function syncWithingsData(userId, syncType = "manual") {
       `[withingsService] Fetching live Withings data for user ${userId}`,
     );
 
-    // Helper to safely fetch and log raw data without stopping the whole sync
+    // Helper to safely fetch raw data (logging is handled inside the integration methods)
     async function safeFetch(dataType, fetchFn) {
       try {
-        const data = await fetchFn();
-        if (data) {
-          const { logRawResponse } = require("../utils/diagnosticLogger");
-          logRawResponse("withings", dataType, data);
-        }
-        return data;
+        return await fetchFn();
       } catch (error) {
         log(
           "warn",

@@ -488,7 +488,13 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
           },
         });
         const { logRawResponse } = require("../../utils/diagnosticLogger");
-        logRawResponse("polar", "raw_physical_info_item", response.data);
+        // Use a unique key based on the resource URL or a timestamp to avoid overwriting
+        const resourceId = url.split("/").pop();
+        logRawResponse(
+          "polar",
+          `raw_physical_info_item_${resourceId}`,
+          response.data,
+        );
         results.push(response.data);
       } catch (err) {
         log(
@@ -584,7 +590,12 @@ async function fetchExercises(userId, externalUserId, accessToken) {
           },
         });
         const { logRawResponse } = require("../../utils/diagnosticLogger");
-        logRawResponse("polar", "raw_exercise_item", response.data);
+        const exerciseId = response.data.id || url.split("/").pop();
+        logRawResponse(
+          "polar",
+          `raw_exercise_item_${exerciseId}`,
+          response.data,
+        );
         // Note: Can also fetch samples/zones here if needed, usually passed as query params?
         // The URL from transaction is the direct resource link.
         // Docs say: "Use samples and zones query parameters to return optional samples and zone information"
@@ -689,7 +700,12 @@ async function fetchDailyActivity(userId, externalUserId, accessToken) {
           },
         });
         const { logRawResponse } = require("../../utils/diagnosticLogger");
-        logRawResponse("polar", "raw_activity_item", response.data);
+        const activityId = url.split("/").pop();
+        logRawResponse(
+          "polar",
+          `raw_activity_item_${activityId}`,
+          response.data,
+        );
         results.push(response.data);
       } catch (err) {
         log(
