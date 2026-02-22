@@ -128,11 +128,19 @@ async function processStravaActivities(
         ? Math.round(activity.moving_time / 60)
         : 0;
 
+      // Strava SummaryActivity often lacks calories, but DetailedActivity (if available) has it.
+      // Default to 0 to satisfy the NOT NULL constraint in the database.
+      const detailedActivity = detailedActivities[activity.id];
+      const caloriesAuto =
+        (detailedActivity && detailedActivity.calories) ||
+        activity.calories ||
+        0;
+
       const entryData = {
         exercise_id: exercise.id,
         entry_date: entryDate,
         duration_minutes: durationMinutes,
-        calories_burned: activity.calories || null,
+        calories_burned: caloriesAuto,
         distance: distanceKm,
         avg_heart_rate: activity.average_heartrate || null,
         notes: `Synced from Strava. Type: ${sportType}${activity.moving_time ? `. Moving time: ${Math.round(activity.moving_time / 60)}min` : ""}${activity.total_elevation_gain ? `. Elevation: ${activity.total_elevation_gain}m` : ""}`,

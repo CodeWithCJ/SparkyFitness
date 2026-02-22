@@ -4,13 +4,30 @@ import {
   linkWithingsAccount,
   linkStravaAccount,
 } from '@/api/Integrations/integrations';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { exerciseEntryKeys } from '@/api/keys/exercises';
+import { dailyProgressKeys, foodEntryKeys } from '@/api/keys/diary';
+import { checkInKeys, sleepKeys } from '@/api/keys/checkin';
+
+const useSyncInvalidation = () => {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+    queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+    queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
+    queryClient.invalidateQueries({ queryKey: checkInKeys.all });
+    queryClient.invalidateQueries({ queryKey: sleepKeys.all });
+  };
+};
 
 export const useLinkFitbitMutation = () => {
   const { t } = useTranslation();
+  const invalidate = useSyncInvalidation();
+
   return useMutation({
     mutationFn: linkFitbitAccount,
+    onSuccess: invalidate,
     meta: {
       errorMessage: t(
         'integrations.fitbitLinkError',
@@ -26,9 +43,11 @@ export const useLinkFitbitMutation = () => {
 
 export const useLinkWithingsMutation = () => {
   const { t } = useTranslation();
+  const invalidate = useSyncInvalidation();
 
   return useMutation({
     mutationFn: linkWithingsAccount,
+    onSuccess: invalidate,
     meta: {
       successMessage: t(
         'integrations.withingsSuccess',
@@ -44,9 +63,11 @@ export const useLinkWithingsMutation = () => {
 
 export const useLinkStravaMutation = () => {
   const { t } = useTranslation();
+  const invalidate = useSyncInvalidation();
 
   return useMutation({
     mutationFn: linkStravaAccount,
+    onSuccess: invalidate,
     meta: {
       successMessage: t(
         'integrations.stravaSuccess',
@@ -62,9 +83,11 @@ export const useLinkStravaMutation = () => {
 
 export const usePolarFlowMutation = () => {
   const { t } = useTranslation();
+  const invalidate = useSyncInvalidation();
 
   return useMutation({
     mutationFn: linkPolarFlowAccount,
+    onSuccess: invalidate,
     meta: {
       successMessage: t(
         'integrations.polarSuccess',

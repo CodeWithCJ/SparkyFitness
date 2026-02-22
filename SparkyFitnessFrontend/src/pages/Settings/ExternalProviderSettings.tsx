@@ -12,6 +12,8 @@ import ExternalProviderList from './ExternalProviderList';
 import GarminConnectSettings from './GarminConnectSettings';
 import { syncHevyData } from '@/api/Integrations/integrations';
 import { exerciseEntryKeys } from '@/api/keys/exercises';
+import { dailyProgressKeys, foodEntryKeys } from '@/api/keys/diary';
+import { checkInKeys, sleepKeys } from '@/api/keys/checkin';
 import { useQueryClient } from '@tanstack/react-query';
 
 export interface ExternalDataProvider {
@@ -74,6 +76,15 @@ const ExternalProviderSettings = () => {
     useState<string | null>(null);
 
   const queryClient = useQueryClient();
+
+  const invalidateSyncData = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+    queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+    queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
+    queryClient.invalidateQueries({ queryKey: checkInKeys.all });
+    queryClient.invalidateQueries({ queryKey: sleepKeys.all });
+  }, [queryClient]);
+
   const loadProviders = useCallback(async () => {
     if (!user) return;
 
@@ -547,6 +558,7 @@ const ExternalProviderSettings = () => {
         description: 'Withings data synchronization initiated.',
       });
       loadProviders();
+      invalidateSyncData();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual sync:', error);
@@ -628,7 +640,7 @@ const ExternalProviderSettings = () => {
         description: 'Garmin data synchronization initiated.',
       });
       loadProviders();
-      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+      invalidateSyncData();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Garmin sync:', error);
@@ -708,7 +720,7 @@ const ExternalProviderSettings = () => {
         description: 'Fitbit data synchronization initiated.',
       });
       loadProviders();
-      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+      invalidateSyncData();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Fitbit sync:', error);
@@ -791,7 +803,7 @@ const ExternalProviderSettings = () => {
         description: 'Polar data synchronization initiated.',
       });
       loadProviders();
-      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+      invalidateSyncData();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Polar sync:', error);
@@ -817,7 +829,7 @@ const ExternalProviderSettings = () => {
         description: `Hevy data ${fullSync ? 'full history' : 'recent'} synchronization initiated.`,
       });
       loadProviders();
-      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+      invalidateSyncData();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Hevy sync:', error);
@@ -897,7 +909,7 @@ const ExternalProviderSettings = () => {
         description: 'Strava data synchronization initiated.',
       });
       loadProviders();
-      queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+      invalidateSyncData();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error initiating manual Strava sync:', error);
