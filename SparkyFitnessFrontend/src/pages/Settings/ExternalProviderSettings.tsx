@@ -11,9 +11,7 @@ import AddExternalProviderForm from './AddExternalProviderForm';
 import ExternalProviderList from './ExternalProviderList';
 import GarminConnectSettings from './GarminConnectSettings';
 import { syncHevyData } from '@/api/Integrations/integrations';
-import { useTranslation } from 'react-i18next';
 import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
-import { useSyncAll } from '@/hooks/Integrations/useSyncAll';
 import { useQueryClient } from '@tanstack/react-query';
 
 export interface ExternalDataProvider {
