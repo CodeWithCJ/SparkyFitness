@@ -317,7 +317,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       caloriesBurned: rec.totalEnergyBurned as number || 0,
       distance: rec.totalDistance as number || 0,
       notes: 'Source: HealthKit',
-      raw_data: record
+      raw_data: record,
+      sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }]
     };
     output.push(exerciseSession);
   },
