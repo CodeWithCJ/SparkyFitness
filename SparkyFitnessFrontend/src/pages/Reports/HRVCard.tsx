@@ -14,6 +14,7 @@ import {
 import { Activity } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
+import { calculateBaseline, getHRVStatus } from '@/utils/reportUtil';
 
 interface HRVDataPoint {
   date: string;
@@ -31,57 +32,10 @@ interface TransformedData {
 }
 
 // Get status based on HRV relative to baseline - returns translation key
-const getHRVStatus = (
-  hrv: number,
-  baselineLow: number,
-  baselineHigh: number
-): { statusKey: string; statusDefault: string; color: string } => {
-  if (hrv < baselineLow) {
-    return {
-      statusKey: 'reports.hrvLow',
-      statusDefault: 'Low',
-      color: '#f97316',
-    };
-  } else if (hrv > baselineHigh) {
-    return {
-      statusKey: 'reports.hrvElevated',
-      statusDefault: 'High',
-      color: '#3b82f6',
-    };
-  } else {
-    return {
-      statusKey: 'reports.hrvBalanced',
-      statusDefault: 'Balanced',
-      color: '#22c55e',
-    };
-  }
-};
 
 // Calculate baseline from historical data (mean ± 1 std dev)
-const calculateBaseline = (
-  values: number[]
-): { low: number; high: number; avg: number } => {
-  if (values.length === 0) return { low: 0, high: 100, avg: 50 };
 
-  const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
-
-  if (values.length < 2) {
-    return { low: avg * 0.8, high: avg * 1.2, avg };
-  }
-
-  const squaredDiffs = values.map((v) => (v - avg) ** 2);
-  const avgSquaredDiff =
-    squaredDiffs.reduce((sum, v) => sum + v, 0) / values.length;
-  const stdDev = Math.sqrt(avgSquaredDiff);
-
-  return {
-    low: Math.max(0, avg - stdDev),
-    high: avg + stdDev,
-    avg,
-  };
-};
-
-const HRVCard: React.FC<HRVCardProps> = ({ data }) => {
+const HRVCard = ({ data }: HRVCardProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);

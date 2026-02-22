@@ -366,6 +366,7 @@ const Diary = () => {
               .filter((meal) => meal.is_visible)
               .map((mealTypeObj) => (
                 <MealCard
+                  key={mealTypeObj.id}
                   meal={{
                     ...getMealData(
                       mealTypeObj.name,

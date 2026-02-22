@@ -5,14 +5,15 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth.tsx';
 import './i18n';
 import { Suspense } from 'react';
+import { PreferencesProvider } from './contexts/PreferencesContext.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <Suspense fallback="loading">
     <BrowserRouter>
       <AuthProvider>
-        {' '}
-        {/* Wrap App with AuthProvider */}
-        <App />
+        <PreferencesProvider>
+          <App />
+        </PreferencesProvider>
       </AuthProvider>
     </BrowserRouter>
   </Suspense>

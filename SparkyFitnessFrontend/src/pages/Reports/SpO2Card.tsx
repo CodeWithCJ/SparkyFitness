@@ -1,4 +1,3 @@
-import type React from 'react';
 import { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,9 +12,9 @@ import {
   Cell,
 } from 'recharts';
 import { Activity } from 'lucide-react';
-import { getSpO2Color } from './SpO2Gauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
+import { getSpO2Color, getSpO2Status } from '@/utils/reportUtil';
 
 interface SpO2DataPoint {
   date: string;
@@ -28,38 +27,7 @@ interface SpO2CardProps {
   data: SpO2DataPoint[];
 }
 
-// Get status based on SpO2 value - returns translation key
-const getSpO2Status = (
-  value: number
-): { statusKey: string; statusDefault: string; color: string } => {
-  if (value >= 95) {
-    return {
-      statusKey: 'reports.spo2Excellent',
-      statusDefault: 'Excellent',
-      color: '#22c55e',
-    };
-  } else if (value >= 90) {
-    return {
-      statusKey: 'reports.spo2Normal',
-      statusDefault: 'Normal',
-      color: '#22c55e',
-    };
-  } else if (value >= 80) {
-    return {
-      statusKey: 'reports.spo2Low',
-      statusDefault: 'Low',
-      color: '#eab308',
-    };
-  } else {
-    return {
-      statusKey: 'reports.spo2VeryLow',
-      statusDefault: 'Very Low',
-      color: '#ef4444',
-    };
-  }
-};
-
-const SpO2Card: React.FC<SpO2CardProps> = ({ data }) => {
+const SpO2Card = ({ data }: SpO2CardProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
   const [isMounted, setIsMounted] = useState(false);
