@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -36,6 +37,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     return next > today ? prev : next;
   });
   const goToToday = () => setSelectedDate(getTodayDate());
+
+  const swipeGesture = Gesture.Race(
+    Gesture.Fling().direction(Directions.RIGHT).onEnd(goToPreviousDay).runOnJS(true),
+    Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
+  );
+
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
 
@@ -123,22 +130,24 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      {!isConnectionLoading && isConnected && (
-        <DateNavigator
-          title="Diary"
-          selectedDate={selectedDate}
-          onPreviousDay={goToPreviousDay}
-          onNextDay={goToNextDay}
-          onToday={goToToday}
-          onDatePress={openCalendar}
-          hideChevrons
-          showDateAlways
-        />
-      )}
-      {renderContent()}
-      <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
-    </View>
+    <GestureDetector gesture={swipeGesture}>
+      <View className="flex-1 bg-background">
+        {!isConnectionLoading && isConnected && (
+          <DateNavigator
+            title="Diary"
+            selectedDate={selectedDate}
+            onPreviousDay={goToPreviousDay}
+            onNextDay={goToNextDay}
+            onToday={goToToday}
+            onDatePress={openCalendar}
+            hideChevrons
+            showDateAlways
+          />
+        )}
+        {renderContent()}
+        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+      </View>
+    </GestureDetector>
   );
 };
 

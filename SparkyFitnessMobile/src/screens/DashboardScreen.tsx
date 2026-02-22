@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { SvgXml } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
@@ -64,6 +65,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     return next > today ? prev : next;
   });
   const goToToday = () => setSelectedDate(getTodayDate());
+
+  const swipeGesture = Gesture.Race(
+    Gesture.Fling().direction(Directions.RIGHT).onEnd(goToPreviousDay).runOnJS(true),
+    Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
+  );
 
   // Check for onboarding on initial mount only
   useEffect(() => {
@@ -281,24 +287,26 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      {!isConnectionLoading && isConnected && (
-        <DateNavigator
-          title="Dashboard"
-          selectedDate={selectedDate}
-          onPreviousDay={goToPreviousDay}
-          onNextDay={goToNextDay}
-          onToday={goToToday}
-        />
-      )}
-      {renderContent()}
+    <GestureDetector gesture={swipeGesture}>
+      <View className="flex-1 bg-background">
+        {!isConnectionLoading && isConnected && (
+          <DateNavigator
+            title="Dashboard"
+            selectedDate={selectedDate}
+            onPreviousDay={goToPreviousDay}
+            onNextDay={goToNextDay}
+            onToday={goToToday}
+          />
+        )}
+        {renderContent()}
 
-      <OnboardingModal
-        visible={showOnboardingModal}
-        onGoToSettings={handleOnboardingGoToSettings}
-        onDismiss={handleOnboardingDismiss}
-      />
-    </View>
+        <OnboardingModal
+          visible={showOnboardingModal}
+          onGoToSettings={handleOnboardingGoToSettings}
+          onDismiss={handleOnboardingDismiss}
+        />
+      </View>
+    </GestureDetector>
   );
 };
 
