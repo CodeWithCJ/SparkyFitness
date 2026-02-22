@@ -38,10 +38,10 @@ const GlobalSyncButton: React.FC = () => {
     }
   };
 
-  const hasManualSyncProviders = providers?.some((p) =>
-    (MANUAL_SYNC_PROVIDERS as readonly string[]).includes(
-      p.provider_type
-    ) && p.is_active
+  const hasManualSyncProviders = providers?.some(
+    (p) =>
+      (MANUAL_SYNC_PROVIDERS as readonly string[]).includes(p.provider_type) &&
+      p.is_active
   );
 
   if (!hasManualSyncProviders) return null;
