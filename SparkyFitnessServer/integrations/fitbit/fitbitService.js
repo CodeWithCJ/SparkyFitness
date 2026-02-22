@@ -385,6 +385,10 @@ async function fetchHeartRate(
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_heart_rate", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -407,6 +411,10 @@ async function fetchSteps(userId, startDate, endDate, providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_steps", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -429,6 +437,10 @@ async function fetchWeight(userId, startDate, endDate, providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_weight", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -451,6 +463,10 @@ async function fetchSpO2(userId, startDate, endDate, providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_spo2", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -478,6 +494,10 @@ async function fetchTemperature(
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_temperature", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -500,6 +520,10 @@ async function fetchProfile(userId, providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_profile", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -521,6 +545,10 @@ async function fetchBodyFat(userId, startDate, endDate, providedToken = null) {
       },
     },
   );
+
+  const { logRawResponse } = require("../../utils/diagnosticLogger");
+  logRawResponse("fitbit", "raw_body_fat", response.data);
+
   return response.data;
 }
 
@@ -537,6 +565,10 @@ async function fetchActivities(userId, date = "today", providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_activities_list", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -559,6 +591,10 @@ async function fetchSleep(userId, startDate, endDate, providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_sleep", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -585,6 +621,10 @@ async function fetchRespiratoryRate(
       },
     },
   );
+
+  const { logRawResponse } = require("../../utils/diagnosticLogger");
+  logRawResponse("fitbit", "raw_respiratory_rate", response.data);
+
   return response.data;
 }
 
@@ -599,6 +639,10 @@ async function fetchHRV(userId, startDate, endDate, providedToken = null) {
       },
     },
   );
+
+  const { logRawResponse } = require("../../utils/diagnosticLogger");
+  logRawResponse("fitbit", "raw_hrv", response.data);
+
   return response.data;
 }
 
@@ -618,6 +662,10 @@ async function fetchActiveZoneMinutes(
       },
     },
   );
+
+  const { logRawResponse } = require("../../utils/diagnosticLogger");
+  logRawResponse("fitbit", "raw_active_zone_minutes", response.data);
+
   return response.data;
 }
 
@@ -633,6 +681,10 @@ async function fetchWater(userId, startDate, endDate, providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_water", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -669,6 +721,8 @@ async function fetchActivityMinutes(
         },
       },
     );
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", `raw_activity_metric_${metric}`, response.data);
     results[metric] = response.data[`activities-tracker-${metric}`];
   }
   return results;
@@ -691,6 +745,10 @@ async function fetchCardioFitnessScore(
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_cardio_fitness", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -718,6 +776,10 @@ async function fetchCoreTemperature(
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_core_temperature", response.data);
+
     return response.data;
   } catch (error) {
     log(

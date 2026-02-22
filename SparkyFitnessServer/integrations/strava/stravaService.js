@@ -372,6 +372,8 @@ async function fetchAthleteActivities(
         params,
       },
     );
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("strava", "raw_activities_list", response.data);
     return response.data;
   } catch (error) {
     log(
@@ -397,6 +399,12 @@ async function fetchActivityById(accessToken, activityId) {
         params: { include_all_efforts: true },
       },
     );
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse(
+      "strava",
+      `raw_activity_detail_${activityId}`,
+      response.data,
+    );
     return response.data;
   } catch (error) {
     log(
@@ -417,6 +425,8 @@ async function fetchAthlete(accessToken) {
     const response = await axios.get(`${STRAVA_API_BASE_URL}/athlete`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("strava", "raw_athlete", response.data);
     return response.data;
   } catch (error) {
     log(

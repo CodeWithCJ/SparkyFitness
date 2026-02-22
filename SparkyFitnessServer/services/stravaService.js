@@ -4,6 +4,7 @@ const { log } = require("../config/logging");
 const stravaIntegrationService = require("../integrations/strava/stravaService");
 const stravaDataProcessor = require("../integrations/strava/stravaDataProcessor");
 const { getSystemClient } = require("../db/poolManager");
+const { loadRawBundle } = require("../utils/diagnosticLogger");
 const moment = require("moment");
 const fs = require("fs");
 const path = require("path");
@@ -11,60 +12,10 @@ const path = require("path");
 // Configuration for data mocking/caching
 const STRAVA_DATA_SOURCE =
   process.env.SPARKY_FITNESS_STRAVA_DATA_SOURCE || "strava";
-const SAVE_MOCK_DATA = process.env.SPARKY_FITNESS_SAVE_MOCK_DATA === "true"; // Defaults to false
-const MOCK_DATA_DIR = path.join(__dirname, "..", "mock_data");
-
-// Ensure mock_data directory exists
-if (!fs.existsSync(MOCK_DATA_DIR)) {
-  fs.mkdirSync(MOCK_DATA_DIR, { recursive: true });
-  log(
-    "info",
-    `[stravaService] Created mock_data directory at ${MOCK_DATA_DIR}`,
-  );
-}
-
 log(
   "info",
   `[stravaService] Strava data source configured to: ${STRAVA_DATA_SOURCE}`,
 );
-
-/**
- * Load data from a local JSON file in the mock_data directory
- */
-function _loadFromLocalFile(filename) {
-  const filepath = path.join(MOCK_DATA_DIR, filename);
-  if (fs.existsSync(filepath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(filepath, "utf8"));
-      log("info", `[stravaService] Data loaded from local file: ${filepath}`);
-      return data;
-    } catch (error) {
-      log(
-        "error",
-        `[stravaService] Error reading mock data file ${filepath}: ${error.message}`,
-      );
-      return null;
-    }
-  }
-  log("warn", `[stravaService] Local file not found: ${filepath}`);
-  return null;
-}
-
-/**
- * Save data to a local JSON file in the mock_data directory
- */
-function _saveToLocalFile(filename, data) {
-  const filepath = path.join(MOCK_DATA_DIR, filename);
-  try {
-    fs.writeFileSync(filepath, JSON.stringify(data, null, 2), "utf8");
-    log("info", `[stravaService] Data saved to local file: ${filepath}`);
-  } catch (error) {
-    log(
-      "error",
-      `[stravaService] Error saving to mock data file ${filepath}: ${error.message}`,
-    );
-  }
-}
 
 /**
  * Orchestrate a full Strava data sync for a user
@@ -98,44 +49,51 @@ async function syncStravaData(userId, syncType = "manual") {
     `[stravaService] Starting Strava sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`,
   );
 
-  // Check if we should load from local mock data
   if (STRAVA_DATA_SOURCE === "local") {
     log(
       "info",
-      `[stravaService] Loading Strava data from local mock file for user ${userId}`,
+      `[stravaService] Replaying Strava sync from raw diagnostic bundle for user ${userId}`,
     );
-    const mockData = _loadFromLocalFile("strava_mock_data.json");
+    const bundle = loadRawBundle("strava");
 
-    if (!mockData) {
+    if (!bundle || !bundle.responses) {
       throw new Error(
-        'Local Strava mock data file not found. Please run a sync with SPARKY_FITNESS_STRAVA_DATA_SOURCE unset (or set to "strava") ' +
-          "to fetch from live Strava API and automatically save the data for future local use.",
+        'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_STRAVA_DATA_SOURCE unset (or set to "strava") ' +
+          "and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.",
       );
     }
 
-    log(
-      "info",
-      `[stravaService] Successfully loaded mock data for user ${userId}. Sync date: ${mockData.sync_date || "unknown"}`,
-    );
-
-    const cachedData = mockData.data || {};
+    const responses = bundle.responses;
 
     try {
-      log("debug", `[stravaService] Processing cached data for ${userId}...`);
-      if (cachedData.activities) {
-        await stravaDataProcessor.processStravaActivities(
-          userId,
-          userId,
-          cachedData.activities,
-          cachedData.detailedActivities || {},
-          startDate,
-        );
-      }
-      if (cachedData.athlete) {
+      log("debug", `[stravaService] Processing raw data for ${userId}...`);
+
+      // Athlete profile (for weight)
+      if (responses["raw_athlete"]) {
         await stravaDataProcessor.processStravaAthleteWeight(
           userId,
           userId,
-          cachedData.athlete,
+          responses["raw_athlete"].data,
+        );
+      }
+
+      // Activities
+      if (responses["raw_activities_list"]) {
+        // Collect detailed activities from bundle if any
+        const detailedActivities = {};
+        Object.keys(responses).forEach((key) => {
+          if (key.startsWith("raw_activity_detail_")) {
+            const activityId = key.replace("raw_activity_detail_", "");
+            detailedActivities[activityId] = responses[key].data;
+          }
+        });
+
+        await stravaDataProcessor.processStravaActivities(
+          userId,
+          userId,
+          responses["raw_activities_list"].data,
+          detailedActivities,
+          startDate,
         );
       }
 
@@ -152,17 +110,17 @@ async function syncStravaData(userId, syncType = "manual") {
 
       log(
         "info",
-        `[stravaService] Strava sync from local cache completed for user ${userId}.`,
+        `[stravaService] Strava sync from raw bundle completed for user ${userId}.`,
       );
       return {
         success: true,
-        source: "local_cache",
-        cached_date: mockData.sync_date,
+        source: "local_raw_replay",
+        bundle_updated: bundle.last_updated,
       };
     } catch (error) {
       log(
         "error",
-        `[stravaService] Error processing cached Strava data for user ${userId}:`,
+        `[stravaService] Error replaying Strava data from raw bundle for user ${userId}:`,
         error.message,
       );
       throw error;
@@ -180,56 +138,60 @@ async function syncStravaData(userId, syncType = "manual") {
       );
     }
 
-    // 2. Fetch athlete profile (for weight)
-    log("debug", `[stravaService] Fetching athlete profile for ${userId}...`);
-    let athleteData = null;
-    try {
-      athleteData = await stravaIntegrationService.fetchAthlete(accessToken);
-    } catch (error) {
-      log(
-        "warn",
-        `[stravaService] Failed to fetch athlete profile for user ${userId}: ${error.message}`,
-      );
-    }
-
-    // 3. Fetch all activities in date range
-    log(
-      "debug",
-      `[stravaService] Fetching activities for ${userId} (${startDate} to ${endDate})...`,
-    );
-    const activities = await stravaIntegrationService.fetchAllActivitiesInRange(
-      accessToken,
-      afterEpoch,
-      beforeEpoch,
-    );
-
-    log(
-      "info",
-      `[stravaService] Found ${activities.length} activities for user ${userId}.`,
-    );
-
-    // 4. Fetch detailed data for each activity (laps, GPS, splits)
-    const detailedActivities = {};
-    for (const activity of activities) {
+    // Helper to safely fetch raw data (logging is handled inside the integration methods)
+    async function safeFetch(dataType, fetchFn) {
       try {
-        // Small delay between requests to respect rate limits
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        const detailed = await stravaIntegrationService.fetchActivityById(
-          accessToken,
-          activity.id,
-        );
-        detailedActivities[activity.id] = detailed;
+        return await fetchFn();
       } catch (error) {
         log(
           "warn",
-          `[stravaService] Failed to fetch details for activity ${activity.id}: ${error.message}`,
+          `[stravaService] Failed to fetch ${dataType} for user ${userId}: ${error.message}`,
         );
-        // Continue with summary data for this activity
+        return null;
       }
     }
 
-    // 5. Process all data
-    log("debug", `[stravaService] Processing fetched data for ${userId}...`);
+    // 1. Fetch EVERYTHING first (The Safe Phase)
+    log("debug", `[stravaService] Phase 1: Capturing raw API responses...`);
+
+    const athleteData = await safeFetch("raw_athlete", () =>
+      stravaIntegrationService.fetchAthlete(accessToken),
+    );
+
+    const activities =
+      (await safeFetch("raw_activities_list", () =>
+        stravaIntegrationService.fetchAllActivitiesInRange(
+          accessToken,
+          afterEpoch,
+          beforeEpoch,
+        ),
+      )) || [];
+
+    const detailedActivities = {};
+    if (activities.length > 0) {
+      log(
+        "debug",
+        `[stravaService] Fetching details for ${activities.length} activities...`,
+      );
+      for (const activity of activities) {
+        const detail = await safeFetch(
+          `raw_activity_detail_${activity.id}`,
+          () =>
+            stravaIntegrationService.fetchActivityById(
+              accessToken,
+              activity.id,
+            ),
+        );
+        if (detail) {
+          detailedActivities[activity.id] = detail;
+        }
+        // Respect rate limits
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+
+    // 2. Process EVERYTHING second (The Action Phase)
+    log("debug", `[stravaService] Phase 2: Processing captured data...`);
 
     if (activities.length > 0) {
       await stravaDataProcessor.processStravaActivities(
@@ -258,24 +220,6 @@ async function syncStravaData(userId, syncType = "manual") {
       );
     } finally {
       client.release();
-    }
-
-    // 7. Save all fetched data to mock file for future local use
-    const mockDataPayload = {
-      user_id: userId,
-      sync_date: moment().format("YYYY-MM-DD HH:mm:ss"),
-      sync_type: syncType,
-      start_date: startDate,
-      end_date: endDate,
-      data: {
-        athlete: athleteData,
-        activities: activities,
-        detailedActivities: detailedActivities,
-      },
-    };
-
-    if (SAVE_MOCK_DATA) {
-      _saveToLocalFile("strava_mock_data.json", mockDataPayload);
     }
 
     log(
