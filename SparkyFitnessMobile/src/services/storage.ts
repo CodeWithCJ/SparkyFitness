@@ -112,9 +112,11 @@ export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
       }),
     );
 
-    // Strip migrated keys from AsyncStorage
+    // Strip migrated plaintext keys from AsyncStorage.
+    // Re-read to avoid overwriting configs saved by concurrent saveServerConfig calls.
     if (migrated) {
-      const cleaned = stored.map(({ id, url }) => ({ id, url }));
+      const current = await getRawStoredConfigs();
+      const cleaned = current.map(({ id, url }) => ({ id, url }));
       await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(cleaned));
     }
 

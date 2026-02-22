@@ -181,17 +181,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
       >
-                {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0) &&
-          (summary.exerciseMinutesGoal > 0 || summary.exerciseCaloriesGoal > 0 || summary.exerciseMinutes > 0 || summary.otherExerciseCalories > 0) && (
-
-        <CalorieRingCard
-          caloriesConsumed={summary.caloriesConsumed}
-          caloriesBurned={totalBurned}
-          calorieGoal={summary.calorieGoal}
-          remainingCalories={remainingCalories}
-          progressPercent={progressPercent}
-        />
-          )}
+        {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (
+          <CalorieRingCard
+            caloriesConsumed={summary.caloriesConsumed}
+            caloriesBurned={totalBurned}
+            calorieGoal={summary.calorieGoal}
+            remainingCalories={remainingCalories}
+            progressPercent={progressPercent}
+          />
+        )}
         {/* Macros Section - 2x2 grid */}
         {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 ? (
           <EmptyDayIllustration />
