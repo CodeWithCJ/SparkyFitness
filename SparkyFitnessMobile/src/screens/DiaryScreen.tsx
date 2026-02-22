@@ -8,6 +8,7 @@ import DateNavigator from '../components/DateNavigator';
 import FoodSummary from '../components/FoodSummary';
 import ExerciseSummary from '../components/ExerciseSummary';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import { useServerConnection, useDailySummary } from '../hooks';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 
@@ -123,8 +124,14 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
       >
-        <FoodSummary foodEntries={summary.foodEntries} />
-        <ExerciseSummary exerciseEntries={summary.exerciseEntries} />
+        {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 ? (
+          <EmptyDayIllustration />
+        ) : (
+          <>
+            <FoodSummary foodEntries={summary.foodEntries} />
+            <ExerciseSummary exerciseEntries={summary.exerciseEntries} />
+          </>
+        )}
       </ScrollView>
     );
   };

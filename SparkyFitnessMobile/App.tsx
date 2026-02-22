@@ -114,7 +114,7 @@ function AppContent() {
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Tabs">
+          <Stack.Screen name="Tabs" options={{ gestureEnabled: false }}>
             {() => (
               <Tab.Navigator
                 initialRouteName="Dashboard"
