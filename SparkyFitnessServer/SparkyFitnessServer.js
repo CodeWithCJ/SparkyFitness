@@ -122,9 +122,12 @@ app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
 
 // --- Better Auth Mounting ---
+let syncTrustedProviders;
 try {
   console.log("[AUTH] Starting Better Auth mounting phase...");
-  const { auth } = require("./auth");
+  const authModule = require("./auth");
+  const { auth } = authModule;
+  syncTrustedProviders = authModule.syncTrustedProviders;
   const { toNodeHandler } = require("better-auth/node");
   const betterAuthHandler = toNodeHandler(auth);
 
@@ -518,9 +521,15 @@ const schedulePolarSyncs = async () => {
 };
 
 applyMigrations()
-  .then(grantPermissions)
   .then(applyRlsPolicies)
   .then(async () => {
+    // Sync trusted SSO providers after database is ready
+    if (syncTrustedProviders) {
+      await syncTrustedProviders().catch((err) =>
+        console.error("[AUTH] Post-init SSO sync failed:", err),
+      );
+    }
+
     scheduleBackups();
     scheduleSessionCleanup();
     scheduleWithingsSyncs();
