@@ -10,15 +10,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useQuery } from '@tanstack/react-query';
-import { getExternalDataProviders } from '@/services/externalProviderService';
-import { useSyncAll } from '@/hooks/Integrations/useSyncAll';
+import { getExternalDataProviders } from '@/api/Settings/externalProviderService';
+import { useSyncAllMutation } from '@/hooks/Integrations/useSyncAll';
 import { cn } from '@/lib/utils';
 import { MANUAL_SYNC_PROVIDERS } from '@/constants/integrationConstants';
 
 const GlobalSyncButton: React.FC = () => {
   const { t } = useTranslation();
   const [isSyncing, setIsSyncing] = useState(false);
-  const { syncAll } = useSyncAll();
+  const { mutateAsync: syncAll } = useSyncAllMutation();
 
   const { data: providers } = useQuery({
     queryKey: ['externalProviders'],

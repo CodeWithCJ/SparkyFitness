@@ -2,7 +2,7 @@ import { foodKeys, foodVariantKeys } from '@/api/keys/meals';
 import {
   loadFoodVariants,
   saveFood,
-} from '@/services/enhancedCustomFoodFormService';
+} from '@/api/Foods/enhancedCustomFoodFormService';
 import { Food, FoodVariant } from '@/types/food';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 

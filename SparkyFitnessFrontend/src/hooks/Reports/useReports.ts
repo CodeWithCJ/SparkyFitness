@@ -4,7 +4,7 @@ import { reportKeys } from '@/api/keys/reports';
 import {
   getExerciseDashboardData,
   loadReportsData,
-} from '@/services/reportsService';
+} from '@/api/Reports/reportsService';
 import { parseStressMeasurement } from '@/utils/reportUtil';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';

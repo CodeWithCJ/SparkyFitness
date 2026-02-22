@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Separator } from '@/components/ui/separator';
-import type { AIService } from '@/services/aiServiceSettingsService';
+import type { AIService } from '@/api/Settings/aiServiceSettingsService';
 import { ServiceListItem } from './ServiceListItem';
 
 interface ServiceListProps {

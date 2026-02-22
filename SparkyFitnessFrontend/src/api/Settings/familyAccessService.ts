@@ -1,4 +1,4 @@
-import { apiCall } from './api';
+import { apiCall } from '@/services/api';
 
 export interface FamilyAccess {
   id: string;
@@ -21,7 +21,7 @@ export interface FamilyAccess {
   created_at: string;
 }
 
-interface FamilyAccessPayload {
+export interface FamilyAccessPayload {
   owner_user_id: string;
   family_user_id: string;
   family_email: string;
@@ -37,9 +37,7 @@ interface FamilyAccessPayload {
   status: string;
 }
 
-export const loadFamilyAccess = async (
-  currentUserId: string
-): Promise<FamilyAccess[]> => {
+export const loadFamilyAccess = async (): Promise<FamilyAccess[]> => {
   const data = await apiCall(`/identity/family-access`, {
     method: 'GET',
     suppress404Toast: true,
