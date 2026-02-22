@@ -120,7 +120,7 @@ case $ACTION in
         ;;
     "down")
         echo "Stopping services..."
-        docker compose -f "$COMPOSE_FILE" down
+        docker compose --env-file "$(pwd)/.env" -f "$COMPOSE_FILE" down
         echo "✅ Services stopped successfully!"
         ;;
     "build")
