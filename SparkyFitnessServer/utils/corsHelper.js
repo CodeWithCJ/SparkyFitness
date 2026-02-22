@@ -79,8 +79,8 @@ function createCorsOriginChecker(
   if (configuredFrontendUrl) {
     try {
       // Validate URL format
-      new URL(configuredFrontendUrl);
-      allowedOrigins.push(configuredFrontendUrl.replace(/\/$/, ""));
+      const url = new URL(configuredFrontendUrl);
+      allowedOrigins.push(url.origin);
     } catch (err) {
       console.warn(`Invalid configured frontend URL: ${configuredFrontendUrl}`);
     }
@@ -92,8 +92,8 @@ function createCorsOriginChecker(
       const origin = originStr.trim();
       if (!origin) return;
       try {
-        new URL(origin);
-        allowedOrigins.push(origin.replace(/\/$/, ""));
+        const url = new URL(origin);
+        allowedOrigins.push(url.origin);
       } catch (err) {
         console.warn(`Invalid extra trusted origin: ${origin}`);
       }
