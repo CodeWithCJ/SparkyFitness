@@ -129,6 +129,7 @@ const Settings = () => {
     []
   );
   const [localLoggingLevel, setLocalLoggingLevel] = useState(loggingLevel);
+  const [localWaterUnit, setLocalWaterUnit] = useState(water_display_unit);
   const [profileForm, setProfileForm] = useState({
     full_name: '',
     phone: '',
@@ -170,7 +171,8 @@ const Settings = () => {
 
   useEffect(() => {
     setLocalLoggingLevel(loggingLevel);
-  }, [loggingLevel]);
+    setLocalWaterUnit(water_display_unit);
+  }, [loggingLevel, water_display_unit]);
 
   const location = useLocation(); // Hook to get current location
 
@@ -431,12 +433,15 @@ const Settings = () => {
     if (!user) return;
     setLoading(true);
     try {
-      await saveAllPreferences({ loggingLevel: localLoggingLevel }); // Pass the new logging level directly
+      await saveAllPreferences({
+        loggingLevel: localLoggingLevel,
+        water_display_unit: localWaterUnit,
+      }); // Pass the new logging level directly
+      setWaterDisplayUnit(localWaterUnit);
       toast({
         title: 'Success',
         description: 'Preferences updated successfully',
       });
-      window.location.reload();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error updating preferences:', error);
@@ -1109,8 +1114,10 @@ const Settings = () => {
                 )}
               </Label>
               <Select
-                value={water_display_unit}
-                onValueChange={setWaterDisplayUnit}
+                value={localWaterUnit}
+                onValueChange={(unit: 'ml' | 'oz' | 'liter') =>
+                  setLocalWaterUnit(unit)
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -1128,8 +1135,8 @@ const Settings = () => {
                       'Fluid Ounces (oz)'
                     )}
                   </SelectItem>
-                  <SelectItem value="cup">
-                    {t('settings.waterTracking.cups', 'Cups')}
+                  <SelectItem value="liter">
+                    {t('settings.waterTracking.liters', 'Liters')}
                   </SelectItem>
                 </SelectContent>
               </Select>

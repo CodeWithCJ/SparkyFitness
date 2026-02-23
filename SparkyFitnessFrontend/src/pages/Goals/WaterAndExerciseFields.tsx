@@ -31,8 +31,13 @@ export const WaterAndExerciseFields = <T extends WaterExerciseBase>({
   setState: (newState: T) => void;
 }) => {
   const { t } = useTranslation();
-  const { water_display_unit, setWaterDisplayUnit, energyUnit, convertEnergy } =
-    usePreferences();
+  const {
+    water_display_unit,
+    setWaterDisplayUnit,
+    energyUnit,
+    convertEnergy,
+    saveAllPreferences,
+  } = usePreferences();
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -59,7 +64,10 @@ export const WaterAndExerciseFields = <T extends WaterExerciseBase>({
           />
           <Select
             value={water_display_unit}
-            onValueChange={(v: 'ml' | 'oz' | 'liter') => setWaterDisplayUnit(v)}
+            onValueChange={(v: 'ml' | 'oz' | 'liter') => {
+              saveAllPreferences({ water_display_unit: v });
+              setWaterDisplayUnit(v);
+            }}
           >
             <SelectTrigger className="w-[80px]">
               <SelectValue />
