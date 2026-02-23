@@ -50,12 +50,12 @@ export const aggregateStepsByDate = HealthConnectAggregation.aggregateStepsByDat
 export const aggregateTotalCaloriesByDate = HealthConnectAggregation.aggregateTotalCaloriesByDate;
 export const aggregateActiveCaloriesByDate = HealthConnectAggregation.aggregateActiveCaloriesByDate;
 
-// Deduplicated aggregation functions (use Health Connect's aggregation API)
+// Deduplicated aggregation functions (JS-side dedup via metadata.dataOrigin)
 export const getAggregatedStepsByDate = HealthConnect.getAggregatedStepsByDate;
 export const getAggregatedActiveCaloriesByDate = HealthConnect.getAggregatedActiveCaloriesByDate;
 
 // Android implementations for additional aggregation functions
-// These aggregate raw records by date since Android Health Connect doesn't have the same statistics API as HealthKit
+// These aggregate raw records by date with deduplication across data sources
 export const getAggregatedTotalCaloriesByDate = async (
   startDate: Date,
   endDate: Date
@@ -64,14 +64,16 @@ export const getAggregatedTotalCaloriesByDate = async (
     startTime?: string;
     time?: string;
     energy?: { inKilocalories?: number };
+    metadata?: { dataOrigin?: string };
   }[];
-  const byDate: Record<string, number> = {};
-  records.forEach(record => {
-    const timestamp = record.startTime || record.time || '';
-    if (!timestamp) return;
-    const date = HealthConnectAggregation.toLocalDateString(timestamp);
-    byDate[date] = (byDate[date] || 0) + (record.energy?.inKilocalories || 0);
-  });
+  const byDate = HealthConnect.deduplicateByOrigin(
+    records,
+    (record) => {
+      const timestamp = record.startTime || record.time || '';
+      return timestamp ? HealthConnectAggregation.toLocalDateString(timestamp) : '';
+    },
+    (record) => record.energy?.inKilocalories || 0,
+  );
   return Object.entries(byDate).map(([date, value]) => ({ date, value: Math.round(value), type: 'total_calories' }));
 };
 
@@ -83,14 +85,16 @@ export const getAggregatedDistanceByDate = async (
     startTime?: string;
     time?: string;
     distance?: { inMeters?: number };
+    metadata?: { dataOrigin?: string };
   }[];
-  const byDate: Record<string, number> = {};
-  records.forEach(record => {
-    const timestamp = record.startTime || record.time || '';
-    if (!timestamp) return;
-    const date = HealthConnectAggregation.toLocalDateString(timestamp);
-    byDate[date] = (byDate[date] || 0) + (record.distance?.inMeters || 0);
-  });
+  const byDate = HealthConnect.deduplicateByOrigin(
+    records,
+    (record) => {
+      const timestamp = record.startTime || record.time || '';
+      return timestamp ? HealthConnectAggregation.toLocalDateString(timestamp) : '';
+    },
+    (record) => record.distance?.inMeters || 0,
+  );
   return Object.entries(byDate).map(([date, value]) => ({ date, value: Math.round(value), type: 'distance' }));
 };
 
@@ -102,14 +106,16 @@ export const getAggregatedFloorsClimbedByDate = async (
     startTime?: string;
     time?: string;
     floors?: number;
+    metadata?: { dataOrigin?: string };
   }[];
-  const byDate: Record<string, number> = {};
-  records.forEach(record => {
-    const timestamp = record.startTime || record.time || '';
-    if (!timestamp) return;
-    const date = HealthConnectAggregation.toLocalDateString(timestamp);
-    byDate[date] = (byDate[date] || 0) + (record.floors || 0);
-  });
+  const byDate = HealthConnect.deduplicateByOrigin(
+    records,
+    (record) => {
+      const timestamp = record.startTime || record.time || '';
+      return timestamp ? HealthConnectAggregation.toLocalDateString(timestamp) : '';
+    },
+    (record) => record.floors || 0,
+  );
   return Object.entries(byDate).map(([date, value]) => ({ date, value: Math.round(value), type: 'floors_climbed' }));
 };
 
@@ -150,7 +156,7 @@ export const syncHealthData = async (
 
       let dataToTransform: unknown[] = [];
 
-      // For Steps and ActiveCaloriesBurned, use aggregation API directly (handles deduplication)
+      // For Steps and ActiveCaloriesBurned, use deduplicated aggregation functions
       if (type === 'Steps') {
         dataToTransform = await HealthConnect.getAggregatedStepsByDate(startDate, endDate);
       } else if (type === 'ActiveCaloriesBurned') {

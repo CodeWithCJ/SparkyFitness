@@ -57,6 +57,27 @@ const randomInt = (min: number, max: number): number =>
 const randomFloat = (min: number, max: number): number =>
   Math.random() * (max - min) + min;
 
+// Distribute a total into count random-ish parts, each at least ~10% of the average
+const splitIntoChunks = (total: number, count: number): number[] => {
+  if (count <= 1) return [total];
+
+  const minPerChunk = Math.max(1, Math.floor(total / count * 0.1));
+  const chunks: number[] = [];
+  let remaining = total;
+
+  for (let i = 0; i < count - 1; i++) {
+    const avgRemaining = remaining / (count - i);
+    const lower = Math.max(minPerChunk, avgRemaining * 0.5);
+    const upper = avgRemaining * 1.5;
+    const chunk = Math.min(Math.floor(randomFloat(lower, upper)), remaining - minPerChunk * (count - i - 1));
+    chunks.push(Math.max(minPerChunk, chunk));
+    remaining -= chunks[i];
+  }
+
+  chunks.push(Math.max(minPerChunk, remaining));
+  return chunks;
+};
+
 const isToday = (date: Date): boolean => {
   const today = new Date();
   return (
@@ -118,13 +139,13 @@ const requestWritePermissions = async (): Promise<boolean> => {
 
 const QUANTITY_CONFIGS: QuantitySeedConfig[] = [
   // Steps: 5000-12000 per day
-  { identifier: 'HKQuantityTypeIdentifierStepCount', unit: 'count', range: [5000, 12000] },
+  { identifier: 'HKQuantityTypeIdentifierStepCount', unit: 'count', range: [5000, 12000], samplesPerDay: 8 },
   // Active Calories: 200-600 kcal per day
-  { identifier: 'HKQuantityTypeIdentifierActiveEnergyBurned', unit: 'kcal', range: [200, 600] },
+  { identifier: 'HKQuantityTypeIdentifierActiveEnergyBurned', unit: 'kcal', range: [200, 600], samplesPerDay: 6 },
   // Basal Calories: 1400-1800 kcal per day
-  { identifier: 'HKQuantityTypeIdentifierBasalEnergyBurned', unit: 'kcal', range: [1400, 1800] },
+  { identifier: 'HKQuantityTypeIdentifierBasalEnergyBurned', unit: 'kcal', range: [1400, 1800], samplesPerDay: 4 },
   // Distance: 3000-8000 meters per day
-  { identifier: 'HKQuantityTypeIdentifierDistanceWalkingRunning', unit: 'm', range: [3000, 8000] },
+  { identifier: 'HKQuantityTypeIdentifierDistanceWalkingRunning', unit: 'm', range: [3000, 8000], samplesPerDay: 6 },
 ];
 
 const seedQuantitySamples = async (
@@ -132,41 +153,119 @@ const seedQuantitySamples = async (
   dates: Date[]
 ): Promise<number> => {
   let count = 0;
+  const numSamples = config.samplesPerDay ?? 1;
 
   for (const date of dates) {
     try {
-      const startTime = new Date(date);
-      const endTime = new Date(date);
+      if (numSamples <= 1) {
+        // Single record per day (original behavior)
+        const startTime = new Date(date);
+        const endTime = new Date(date);
 
-      if (isToday(date)) {
-        // For today, use midnight to current time
-        const now = new Date();
-        startTime.setHours(0, 0, 0, 0);
-        endTime.setTime(now.getTime() - 60000); // 1 minute ago
+        if (isToday(date)) {
+          const now = new Date();
+          startTime.setHours(0, 0, 0, 0);
+          endTime.setTime(now.getTime() - 60000);
 
-        // Need at least 1 minute between start and end
-        if (endTime <= startTime) {
-          continue;
+          if (endTime <= startTime) {
+            continue;
+          }
+        } else {
+          startTime.setHours(8, 0, 0, 0);
+          endTime.setHours(20, 0, 0, 0);
+        }
+
+        const value = randomInt(config.range[0], config.range[1]);
+
+        const success = await saveQuantitySample(
+          config.identifier as Parameters<typeof saveQuantitySample>[0],
+          config.unit,
+          value,
+          startTime,
+          endTime,
+          {}
+        );
+
+        if (success) {
+          count++;
         }
       } else {
-        // For past days, use 8 AM to 8 PM
-        startTime.setHours(8, 0, 0, 0);
-        endTime.setHours(20, 0, 0, 0);
-      }
+        // Multiple records per day to mimic real HealthKit data
+        const dailyTotal = randomInt(config.range[0], config.range[1]);
+        const todayDate = isToday(date);
+        const samplesForDay = todayDate ? Math.ceil(numSamples / 3) : numSamples;
+        const chunks = splitIntoChunks(dailyTotal, samplesForDay);
 
-      const value = randomInt(config.range[0], config.range[1]);
+        // Define the active window for the day
+        let windowStartHour: number;
+        let windowEndHour: number;
 
-      const success = await saveQuantitySample(
-        config.identifier as Parameters<typeof saveQuantitySample>[0],
-        config.unit,
-        value,
-        startTime,
-        endTime,
-        {}
-      );
+        if (todayDate) {
+          const now = new Date();
+          windowStartHour = 6;
+          // End window at current hour (or at least 7 AM to allow some room)
+          windowEndHour = Math.max(windowStartHour + 1, now.getHours());
 
-      if (success) {
-        count++;
+          // Skip if it's too early in the day
+          if (now.getHours() < windowStartHour) {
+            continue;
+          }
+        } else {
+          windowStartHour = 6;
+          windowEndHour = 22;
+        }
+
+        const totalWindowMinutes = (windowEndHour - windowStartHour) * 60;
+        const slotMinutes = Math.floor(totalWindowMinutes / samplesForDay);
+
+        for (let i = 0; i < samplesForDay; i++) {
+          try {
+            const slotStartMinutes = windowStartHour * 60 + i * slotMinutes;
+            // Offset within the slot, leaving room for duration
+            const maxOffset = Math.max(0, slotMinutes - 45);
+            const offsetMinutes = randomInt(0, maxOffset);
+            const durationMinutes = randomInt(15, 45);
+
+            const startTime = new Date(date);
+            startTime.setHours(0, 0, 0, 0);
+            startTime.setMinutes(slotStartMinutes + offsetMinutes);
+
+            const endTime = new Date(startTime);
+            endTime.setMinutes(endTime.getMinutes() + durationMinutes);
+
+            // Clamp end time to not exceed the slot boundary
+            const slotEnd = new Date(date);
+            slotEnd.setHours(0, 0, 0, 0);
+            slotEnd.setMinutes(slotStartMinutes + slotMinutes);
+            if (endTime > slotEnd) {
+              endTime.setTime(slotEnd.getTime());
+            }
+
+            // For today, ensure we don't write samples in the future
+            if (todayDate) {
+              const now = new Date();
+              if (startTime >= now || endTime >= now) {
+                continue;
+              }
+            }
+
+            const success = await saveQuantitySample(
+              config.identifier as Parameters<typeof saveQuantitySample>[0],
+              config.unit,
+              chunks[i],
+              startTime,
+              endTime,
+              {}
+            );
+
+            if (success) {
+              count++;
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'WARNING');
+          }
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

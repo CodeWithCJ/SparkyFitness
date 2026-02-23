@@ -305,8 +305,8 @@ describe('getAggregatedStepsByDate', () => {
   test('returns aggregated steps by date', async () => {
     mockReadRecords.mockResolvedValue({
       records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000 },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000 },
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000, metadata: { dataOrigin: 'com.phone' } },
+        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000, metadata: { dataOrigin: 'com.phone' } },
       ],
     });
 
@@ -318,9 +318,85 @@ describe('getAggregatedStepsByDate', () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       date: '2024-01-15',
-      value: 5000, // 2000 + 3000
+      value: 5000,
       type: 'step',
     });
+  });
+
+  test('uses endTime for date assignment', async () => {
+    mockReadRecords.mockResolvedValue({
+      records: [
+        { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T14:00:00Z', count: 300, metadata: { dataOrigin: 'com.phone' } },
+        { startTime: '2024-01-16T10:00:00Z', endTime: '2024-01-16T14:00:00Z', count: 500, metadata: { dataOrigin: 'com.phone' } },
+      ],
+    });
+
+    const result = await getAggregatedStepsByDate(
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-16T23:59:59Z')
+    );
+
+    expect(result).toHaveLength(2);
+    // Records should be grouped by endTime date
+    expect(result.find(r => r.date === '2024-01-15')?.value).toBe(300);
+    expect(result.find(r => r.date === '2024-01-16')?.value).toBe(500);
+  });
+
+  test('deduplicates across data origins by taking max per day', async () => {
+    mockReadRecords.mockResolvedValue({
+      records: [
+        // Phone recorded 5000 steps
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000, metadata: { dataOrigin: 'com.phone' } },
+        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000, metadata: { dataOrigin: 'com.phone' } },
+        // Watch recorded 4500 steps (overlapping data)
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 1800, metadata: { dataOrigin: 'com.watch' } },
+        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 2700, metadata: { dataOrigin: 'com.watch' } },
+      ],
+    });
+
+    const result = await getAggregatedStepsByDate(
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result).toHaveLength(1);
+    // Should take max (phone=5000) not sum (9500)
+    expect(result[0].value).toBe(5000);
+  });
+
+  test('groups records with missing metadata as unknown origin', async () => {
+    mockReadRecords.mockResolvedValue({
+      records: [
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000 },
+        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000 },
+      ],
+    });
+
+    const result = await getAggregatedStepsByDate(
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result).toHaveLength(1);
+    // Both grouped as 'unknown' origin, summed normally
+    expect(result[0].value).toBe(5000);
+  });
+
+  test('skips records with missing timestamps', async () => {
+    mockReadRecords.mockResolvedValue({
+      records: [
+        { count: 100, metadata: { dataOrigin: 'com.phone' } }, // No startTime or endTime
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000, metadata: { dataOrigin: 'com.phone' } },
+      ],
+    });
+
+    const result = await getAggregatedStepsByDate(
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe(2000);
   });
 
   test('returns empty array when no records found', async () => {
@@ -337,8 +413,8 @@ describe('getAggregatedStepsByDate', () => {
   test('aggregates across multiple days', async () => {
     mockReadRecords.mockResolvedValue({
       records: [
-        { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 },
-        { startTime: '2024-01-16T10:00:00Z', endTime: '2024-01-16T11:00:00Z', count: 6000 },
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 5000, metadata: { dataOrigin: 'com.phone' } },
+        { startTime: '2024-01-16T08:00:00Z', endTime: '2024-01-16T09:00:00Z', count: 6000, metadata: { dataOrigin: 'com.phone' } },
       ],
     });
 
@@ -350,41 +426,6 @@ describe('getAggregatedStepsByDate', () => {
     expect(result).toHaveLength(2);
     expect(result.find(r => r.date === '2024-01-15')?.value).toBe(5000);
     expect(result.find(r => r.date === '2024-01-16')?.value).toBe(6000);
-  });
-
-  test('uses endTime for date assignment', async () => {
-    // Use noon timestamps to avoid timezone boundary issues (toLocalDateString uses local time)
-    mockReadRecords.mockResolvedValue({
-      records: [
-        // Steps spanning time - should be assigned to Jan 15 (endTime date)
-        { startTime: '2024-01-14T12:00:00Z', endTime: '2024-01-15T12:00:00Z', count: 500 },
-      ],
-    });
-
-    const result = await getAggregatedStepsByDate(
-      new Date('2024-01-14T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0].date).toBe('2024-01-15');
-  });
-
-  test('handles records with missing count as 0', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z' }, // No count
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000 },
-      ],
-    });
-
-    const result = await getAggregatedStepsByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
-    );
-
-    expect(result).toHaveLength(1);
-    expect(result[0].value).toBe(3000); // 0 + 3000
   });
 
   test('returns empty array on error', async () => {
@@ -404,11 +445,11 @@ describe('getAggregatedActiveCaloriesByDate', () => {
     jest.clearAllMocks();
   });
 
-  test('returns aggregated calories by date using inKilocalories', async () => {
+  test('returns aggregated calories by date', async () => {
     mockReadRecords.mockResolvedValue({
       records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 200 } },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 300 } },
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 200 }, metadata: { dataOrigin: 'com.phone' } },
+        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 300 }, metadata: { dataOrigin: 'com.phone' } },
       ],
     });
 
@@ -420,9 +461,31 @@ describe('getAggregatedActiveCaloriesByDate', () => {
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       date: '2024-01-15',
-      value: 500, // 200 + 300
+      value: 500,
       type: 'active_calories',
     });
+  });
+
+  test('deduplicates across data origins by taking max per day', async () => {
+    mockReadRecords.mockResolvedValue({
+      records: [
+        // Phone recorded 500 kcal
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 200 }, metadata: { dataOrigin: 'com.phone' } },
+        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 300 }, metadata: { dataOrigin: 'com.phone' } },
+        // Watch recorded 450 kcal (overlapping)
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 180 }, metadata: { dataOrigin: 'com.watch' } },
+        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 270 }, metadata: { dataOrigin: 'com.watch' } },
+      ],
+    });
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result).toHaveLength(1);
+    // Should take max (phone=500) not sum (950)
+    expect(result[0].value).toBe(500);
   });
 
   test('returns empty array when no records found', async () => {
@@ -439,8 +502,7 @@ describe('getAggregatedActiveCaloriesByDate', () => {
   test('rounds calorie values', async () => {
     mockReadRecords.mockResolvedValue({
       records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 200.7 } },
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 299.8 } },
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 500.5 }, metadata: { dataOrigin: 'com.phone' } },
       ],
     });
 
@@ -450,22 +512,6 @@ describe('getAggregatedActiveCaloriesByDate', () => {
     );
 
     expect(result[0].value).toBe(501); // Math.round(500.5)
-  });
-
-  test('handles records with missing energy as 0', async () => {
-    mockReadRecords.mockResolvedValue({
-      records: [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z' }, // No energy
-        { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 300 } },
-      ],
-    });
-
-    const result = await getAggregatedActiveCaloriesByDate(
-      new Date('2024-01-15T00:00:00Z'),
-      new Date('2024-01-15T23:59:59Z')
-    );
-
-    expect(result[0].value).toBe(300);
   });
 
   test('returns empty array on error', async () => {

@@ -25,6 +25,37 @@ import { SyncDuration, getSyncStartDate } from '../../utils/syncUtils';
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
 
+/**
+ * Deduplicates cumulative records by taking the max total per data origin for each day.
+ * When multiple apps (phone, watch, Google Fit) write overlapping data, naive summation
+ * double-counts. This groups by origin and takes the highest source total per day.
+ *
+ * Note: aggregateGroupByPeriod would handle this natively, but react-native-health-connect
+ * v3.5.0 has a bug where it uses Instant instead of LocalDateTime (issues #174, #194).
+ */
+export const deduplicateByOrigin = (
+  records: Array<{ metadata?: { dataOrigin?: string }; [key: string]: unknown }>,
+  getDate: (record: any) => string,
+  getValue: (record: any) => number,
+): Record<string, number> => {
+  // Build: { date: { origin: total } }, skipping records with no valid date
+  const byDateAndOrigin: Record<string, Record<string, number>> = {};
+  for (const record of records) {
+    const date = getDate(record);
+    if (!date) continue;
+    const origin = record.metadata?.dataOrigin || 'unknown';
+    const value = getValue(record);
+    if (!byDateAndOrigin[date]) byDateAndOrigin[date] = {};
+    byDateAndOrigin[date][origin] = (byDateAndOrigin[date][origin] || 0) + value;
+  }
+  // For each date, take the max across origins
+  const result: Record<string, number> = {};
+  for (const [date, origins] of Object.entries(byDateAndOrigin)) {
+    result[date] = Math.max(...Object.values(origins));
+  }
+  return result;
+};
+
 export const initHealthConnect = async (): Promise<boolean> => {
   try {
     const isInitialized = await initialize();
@@ -93,58 +124,35 @@ export const readHealthRecords = async (
 };
 
 // Get daily aggregated steps for a date range
-// Note: Uses readRecords + manual aggregation since aggregateRecord API has issues
+// Uses readRecords + JS-side deduplication via metadata.dataOrigin
 export const getAggregatedStepsByDate = async (
   startDate: Date,
   endDate: Date
 ): Promise<AggregatedHealthRecord[]> => {
   try {
-    const rawRecords = await readRecords('Steps', {
-      timeRangeFilter: {
-        operator: 'between',
-        startTime: startDate.toISOString(),
-        endTime: endDate.toISOString(),
-      },
-    });
+    const rawRecords = await readHealthRecords('Steps', startDate, endDate);
 
-    const records = rawRecords.records || [];
-
-    if (records.length === 0) {
+    if (rawRecords.length === 0) {
       addLog(`[HealthConnectService] No step records found for date range`, 'DEBUG');
       return [];
     }
 
-    addLog(`[HealthConnectService] Processing ${records.length} step records`, 'DEBUG');
+    const byDate = deduplicateByOrigin(
+      rawRecords as Array<{ metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; count?: number }>,
+      (record) => {
+        const timestamp = record.endTime || record.startTime;
+        return timestamp ? toLocalDateString(timestamp) : '';
+      },
+      (record) => record.count || 0,
+    );
 
-    // Aggregate by date
-    let processedCount = 0;
-    let errorCount = 0;
-    const aggregatedData = records.reduce<Record<string, number>>((acc, record) => {
-      try {
-        const timeToUse = record.endTime || record.startTime;
-        const date = toLocalDateString(timeToUse);
-        const steps = record.count || 0;
-
-        if (!acc[date]) {
-          acc[date] = 0;
-        }
-        acc[date] += steps;
-        processedCount++;
-      } catch (error) {
-        errorCount++;
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(`[HealthConnectService] Error processing step record: ${message}`);
-      }
-      return acc;
-    }, {});
-
-    const results: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({
+    const results: AggregatedHealthRecord[] = Object.entries(byDate).map(([date, value]) => ({
       date,
-      value: aggregatedData[date],
+      value,
       type: 'step',
     }));
 
-    addLog(`[HealthConnectService] Steps aggregation: ${processedCount} records processed, ${results.length} days, ${errorCount} errors`, 'DEBUG');
+    addLog(`[HealthConnectService] Steps aggregation: ${results.length} days`, 'DEBUG');
 
     return results;
   } catch (error) {
@@ -155,58 +163,35 @@ export const getAggregatedStepsByDate = async (
 };
 
 // Get daily aggregated active calories for a date range
-// Note: Uses readRecords + manual aggregation since aggregateRecord API has issues
+// Uses readRecords + JS-side deduplication via metadata.dataOrigin
 export const getAggregatedActiveCaloriesByDate = async (
   startDate: Date,
   endDate: Date
 ): Promise<AggregatedHealthRecord[]> => {
   try {
-    const rawRecords = await readRecords('ActiveCaloriesBurned', {
-      timeRangeFilter: {
-        operator: 'between',
-        startTime: startDate.toISOString(),
-        endTime: endDate.toISOString(),
-      },
-    });
+    const rawRecords = await readHealthRecords('ActiveCaloriesBurned', startDate, endDate);
 
-    const records = rawRecords.records || [];
-
-    if (records.length === 0) {
+    if (rawRecords.length === 0) {
       addLog(`[HealthConnectService] No active calorie records found for date range`, 'DEBUG');
       return [];
     }
 
-    addLog(`[HealthConnectService] Processing ${records.length} active calorie records`, 'DEBUG');
+    const byDate = deduplicateByOrigin(
+      rawRecords as Array<{ metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; energy?: { inKilocalories?: number } }>,
+      (record) => {
+        const timestamp = record.endTime || record.startTime;
+        return timestamp ? toLocalDateString(timestamp) : '';
+      },
+      (record) => record.energy?.inKilocalories || 0,
+    );
 
-    // Aggregate by date
-    let processedCount = 0;
-    let errorCount = 0;
-    const aggregatedData = records.reduce<Record<string, number>>((acc, record) => {
-      try {
-        const timeToUse = record.endTime || record.startTime;
-        const date = toLocalDateString(timeToUse);
-        const calories = record.energy?.inKilocalories || 0;
-
-        if (!acc[date]) {
-          acc[date] = 0;
-        }
-        acc[date] += calories;
-        processedCount++;
-      } catch (error) {
-        errorCount++;
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(`[HealthConnectService] Error processing calorie record: ${message}`);
-      }
-      return acc;
-    }, {});
-
-    const results: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({
+    const results: AggregatedHealthRecord[] = Object.entries(byDate).map(([date, value]) => ({
       date,
-      value: Math.round(aggregatedData[date]),
+      value: Math.round(value),
       type: 'active_calories',
     }));
 
-    addLog(`[HealthConnectService] Active calories aggregation: ${processedCount} records processed, ${results.length} days, ${errorCount} errors`, 'DEBUG');
+    addLog(`[HealthConnectService] Active calories aggregation: ${results.length} days`, 'DEBUG');
 
     return results;
   } catch (error) {

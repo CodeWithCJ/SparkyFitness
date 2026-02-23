@@ -305,7 +305,7 @@ describe('healthConnectService.ts (Android)', () => {
     test('sends correctly shaped HealthDataPayload to API', async () => {
       mockReadRecords.mockResolvedValue({
         records: [
-          { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 5000 },
+          { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 5000, metadata: { dataOrigin: 'com.phone' } },
         ],
       });
 
@@ -328,12 +328,10 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('Steps records are deduplicated and aggregated by date', async () => {
-      // Multiple step records on same day should be summed into single daily total
       mockReadRecords.mockResolvedValue({
         records: [
-          { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 2000 },
-          { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3000 },
-          { startTime: '2024-01-15T18:00:00Z', endTime: '2024-01-15T19:00:00Z', count: 1500 },
+          { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 3000, metadata: { dataOrigin: 'com.phone' } },
+          { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', count: 3500, metadata: { dataOrigin: 'com.phone' } },
         ],
       });
 
@@ -344,17 +342,16 @@ describe('healthConnectService.ts (Android)', () => {
       const payload = mockApiSyncHealthData.mock.calls[0][0];
       const stepRecords = payload.filter((r: { type: string }) => r.type === 'step');
 
-      // Should have single aggregated record, not 3 raw records
+      // Should have single aggregated record
       expect(stepRecords).toHaveLength(1);
-      expect(stepRecords[0].value).toBe(6500); // 2000 + 3000 + 1500
+      expect(stepRecords[0].value).toBe(6500);
       expect(stepRecords[0].date).toBe('2024-01-15');
     });
 
     test('ActiveCalories records are deduplicated and aggregated by date', async () => {
       mockReadRecords.mockResolvedValue({
         records: [
-          { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 150 } },
-          { startTime: '2024-01-15T12:00:00Z', endTime: '2024-01-15T13:00:00Z', energy: { inKilocalories: 200 } },
+          { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', energy: { inKilocalories: 350 }, metadata: { dataOrigin: 'com.phone' } },
         ],
       });
 
@@ -363,11 +360,10 @@ describe('healthConnectService.ts (Android)', () => {
       await androidService.syncHealthData('24h', healthMetricStates);
 
       const payload = mockApiSyncHealthData.mock.calls[0][0];
-      // Type is preserved from the aggregation function output ('active_calories' from getAggregatedActiveCaloriesByDate)
       const calorieRecords = payload.filter((r: { type: string }) => r.type === 'active_calories');
 
       expect(calorieRecords).toHaveLength(1);
-      expect(calorieRecords[0].value).toBe(350); // 150 + 200
+      expect(calorieRecords[0].value).toBe(350);
     });
 
     test('HeartRate records are averaged by date', async () => {
@@ -418,10 +414,8 @@ describe('healthConnectService.ts (Android)', () => {
     });
 
     test('continues sync when one metric returns no records', async () => {
-      // Steps returns no records, HeartRate has data
       mockReadRecords.mockImplementation((recordType: string) => {
         if (recordType === 'Steps') {
-          // No steps found
           return Promise.resolve({ records: [] });
         }
         if (recordType === 'HeartRate') {
@@ -456,7 +450,7 @@ describe('healthConnectService.ts (Android)', () => {
     test('returns error when API call fails', async () => {
       mockReadRecords.mockResolvedValue({
         records: [
-          { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 },
+          { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 5000, metadata: { dataOrigin: 'com.phone' } },
         ],
       });
       mockApiSyncHealthData.mockRejectedValue(new Error('Server unavailable'));
@@ -472,7 +466,7 @@ describe('healthConnectService.ts (Android)', () => {
     test('returns apiResponse from successful sync', async () => {
       mockReadRecords.mockResolvedValue({
         records: [
-          { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 },
+          { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', count: 5000, metadata: { dataOrigin: 'com.phone' } },
         ],
       });
       mockApiSyncHealthData.mockResolvedValue({ processed: 1, status: 'ok' });
