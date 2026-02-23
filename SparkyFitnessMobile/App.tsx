@@ -20,6 +20,8 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import DiaryScreen from './src/screens/DiaryScreen';
 import LogScreen from './src/screens/LogScreen';
+import AddFoodEntryScreen from './src/screens/AddFoodEntryScreen';
+import FoodItemInfoScreen from './src/screens/FoodItemInfoScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { initializeTheme } from './src/services/themeService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -33,6 +35,7 @@ type TabIcons = {
   dashboard: ImageSourcePropType;
   book: ImageSourcePropType;
   settings: ImageSourcePropType;
+  add: ImageSourcePropType;
 };
 
 function AppContent() {
@@ -77,9 +80,10 @@ function AppContent() {
         Ionicons.getImageSource('grid', 24, '#999999'),
         Ionicons.getImageSource('book', 24, '#999999'),
         Ionicons.getImageSource('settings', 24, '#999999'),
-      ]).then(([sync, dashboard, book, settings]) => {
-        if (sync && dashboard && book && settings) {
-          setIcons({ sync, dashboard, book, settings });
+        Ionicons.getImageSource('add-circle', 24, '#999999'),
+      ]).then(([sync, dashboard, book, settings, add]) => {
+        if (sync && dashboard && book && settings && add) {
+          setIcons({ sync, dashboard, book, settings, add });
         }
       }).catch(error => {
         console.error('Failed to load tab icons:', error);
@@ -141,6 +145,20 @@ function AppContent() {
                   }}
                 />
                 <Tab.Screen
+                  name="Add"
+                  component={() => null}
+                  options={{
+                    preventsDefault: true,
+                    tabBarIcon: () =>
+                      Platform.OS === 'ios' ? { sfSymbol: 'plus.circle.fill' } : icons!.add,
+                  }}
+                  listeners={({ navigation }) => ({
+                    tabPress: () => {
+                      navigation.navigate('AddFoodEntry');
+                    },
+                  })}
+                />
+                <Tab.Screen
                   name="Sync"
                   component={SyncScreen}
                   options={{
@@ -159,6 +177,19 @@ function AppContent() {
               </Tab.Navigator>
             )}
           </Stack.Screen>
+          <Stack.Screen
+            name="AddFoodEntry"
+            component={AddFoodEntryScreen}
+            options={{
+              presentation: 'modal',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="FoodItemInfo"
+            component={FoodItemInfoScreen}
+            options={{ headerShown: false }}
+          />
           <Stack.Screen
             name="Logs"
             component={LogScreen}

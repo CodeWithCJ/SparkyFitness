@@ -3,21 +3,7 @@ import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { FoodEntry } from '../types/foodEntries';
 import Icon, { type IconName } from './Icon';
-
-const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
-
-interface MealConfig {
-  label: string;
-  icon: IconName;
-}
-
-const MEAL_CONFIG: Record<string, MealConfig> = {
-  breakfast: { label: 'Breakfast', icon: 'meal-breakfast' },
-  lunch: { label: 'Lunch', icon: 'meal-lunch' },
-  snack: { label: 'Snack', icon: 'meal-snack' },
-  dinner: { label: 'Dinner', icon: 'meal-dinner' },
-  other: { label: 'Other', icon: 'meal-snack' },
-};
+import { MEAL_TYPES, MEAL_CONFIG } from '../constants/meals';
 
 interface FoodSummaryProps {
   foodEntries: FoodEntry[];

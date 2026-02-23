@@ -22,6 +22,8 @@ const ICON_MAP = {
   'checkmark': { sf: 'checkmark', ion: 'checkmark' },
   'settings': { sf: 'gearshape', ion: 'settings-outline' },
   'add': { sf: 'plus', ion: 'add' },
+  'close': { sf: 'xmark', ion: 'close' },
+  'search': { sf: 'magnifyingglass', ion: 'search-outline' },
 
   // Status
   'shield-checkmark': { sf: 'checkmark.shield', ion: 'shield-checkmark-outline' },
