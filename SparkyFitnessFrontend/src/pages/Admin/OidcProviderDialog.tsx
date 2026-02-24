@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -132,11 +133,27 @@ export const ProviderDialog: React.FC<{
               {editedProvider.id
                 ? t('admin.oidcSettings.editProvider', 'Edit OIDC Provider')
                 : t('admin.oidcSettings.addProvider', 'Add OIDC Provider')}
+              {editedProvider.is_env_configured && (
+                <Badge
+                  variant="outline"
+                  className="ml-2 bg-blue-50 text-blue-700 border-blue-200"
+                >
+                  {t('admin.oidcSettings.envConfigured', 'Managed by Env')}
+                </Badge>
+              )}
             </DialogTitle>
             <DialogDescription>
               {t(
                 'admin.oidcSettings.fillDetails',
                 'Fill in the details for the OIDC provider.'
+              )}
+              {editedProvider.is_env_configured && (
+                <p className="text-blue-600 font-medium mt-1">
+                  {t(
+                    'admin.oidcSettings.envManagedNotice',
+                    'This provider is configured via environment variables. Some fields are read-only.'
+                  )}
+                </p>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -151,6 +168,7 @@ export const ProviderDialog: React.FC<{
                   value={editedProvider.provider_id || ''}
                   onChange={handleChange}
                   placeholder="e.g. authentik, google, keycloak"
+                  readOnly={editedProvider.is_env_configured}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   {t('admin.oidcSettings.providerIdInfo')}
@@ -164,6 +182,7 @@ export const ProviderDialog: React.FC<{
                   id="display_name"
                   value={editedProvider.display_name || ''}
                   onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
                 />
               </div>
               <div className="flex items-center justify-between pt-4">
@@ -172,6 +191,7 @@ export const ProviderDialog: React.FC<{
                     id="is_active"
                     checked={editedProvider.is_active}
                     onCheckedChange={(c) => handleSwitchChange('is_active', c)}
+                    disabled={editedProvider.is_env_configured}
                   />
                   <Label htmlFor="is_active">
                     {t('admin.oidcSettings.active', 'Active')}
@@ -184,6 +204,7 @@ export const ProviderDialog: React.FC<{
                     onCheckedChange={(c) =>
                       handleSwitchChange('auto_register', c)
                     }
+                    disabled={editedProvider.is_env_configured}
                   />
                   <Label htmlFor="auto_register">
                     {t('admin.oidcSettings.autoRegister', 'Auto Register')}
@@ -194,7 +215,12 @@ export const ProviderDialog: React.FC<{
                 <Label htmlFor="logo_file">
                   {t('admin.oidcSettings.logoFile', 'Logo File')}
                 </Label>
-                <Input id="logo_file" type="file" onChange={handleFileChange} />
+                <Input
+                  id="logo_file"
+                  type="file"
+                  onChange={handleFileChange}
+                  disabled={editedProvider.is_env_configured}
+                />
               </div>
               <div>
                 <Label htmlFor="logo_url">
@@ -219,6 +245,7 @@ export const ProviderDialog: React.FC<{
                   id="issuer_url"
                   value={editedProvider.issuer_url}
                   onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
                 />
               </div>
               <div>
@@ -230,6 +257,7 @@ export const ProviderDialog: React.FC<{
                   value={editedProvider.domain || ''}
                   onChange={handleChange}
                   placeholder="e.g. sparkyfitness.com"
+                  readOnly={editedProvider.is_env_configured}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   {t('admin.oidcSettings.domainInfo')}
@@ -244,6 +272,7 @@ export const ProviderDialog: React.FC<{
                   value={editedProvider.client_id}
                   onChange={handleChange}
                   autoComplete="off"
+                  readOnly={editedProvider.is_env_configured}
                 />
               </div>
               <div>
@@ -254,11 +283,19 @@ export const ProviderDialog: React.FC<{
                   id="client_secret"
                   type="password"
                   onChange={handleChange}
-                  placeholder={t(
-                    'admin.oidcSettings.leaveUnchanged',
-                    'Leave unchanged if *****'
-                  )}
+                  placeholder={
+                    editedProvider.is_env_configured
+                      ? t(
+                          'admin.oidcSettings.envManagedSecret',
+                          'Secret is managed by env'
+                        )
+                      : t(
+                          'admin.oidcSettings.leaveUnchanged',
+                          'Leave unchanged if *****'
+                        )
+                  }
                   autoComplete="new-password"
+                  readOnly={editedProvider.is_env_configured}
                 />
               </div>
               <div>
@@ -269,6 +306,7 @@ export const ProviderDialog: React.FC<{
                   id="scope"
                   value={editedProvider.scope}
                   onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
                 />
               </div>
               <div className="space-y-2">
@@ -380,6 +418,7 @@ export const ProviderDialog: React.FC<{
                   <SelectTrigger
                     id="token_endpoint_auth_method"
                     className="w-full p-2 border rounded"
+                    disabled={editedProvider.is_env_configured}
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -405,6 +444,7 @@ export const ProviderDialog: React.FC<{
                   id="signing_algorithm"
                   value={editedProvider.signing_algorithm || ''}
                   onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
                 />
               </div>
               <div>
@@ -418,6 +458,7 @@ export const ProviderDialog: React.FC<{
                   id="profile_signing_algorithm"
                   value={editedProvider.profile_signing_algorithm || ''}
                   onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
                 />
               </div>
               <div>
@@ -432,6 +473,7 @@ export const ProviderDialog: React.FC<{
                   type="number"
                   value={editedProvider.timeout || ''}
                   onChange={handleChange}
+                  readOnly={editedProvider.is_env_configured}
                 />
               </div>
             </div>

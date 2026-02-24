@@ -35,6 +35,7 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
 
 const OidcSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -298,7 +299,22 @@ const OidcSettings: React.FC = () => {
                           className="h-8 w-8 object-contain"
                         />
                       </TableCell>
-                      <TableCell>{provider.display_name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {provider.display_name}
+                          {provider.is_env_configured && (
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-50 text-blue-700 border-blue-200"
+                            >
+                              {t(
+                                'admin.oidcSettings.envConfigured',
+                                'Managed by Env'
+                              )}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Switch
                           checked={provider.is_active}
@@ -323,13 +339,15 @@ const OidcSettings: React.FC = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(provider.id!)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {!provider.is_env_configured && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(provider.id!)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
