@@ -12,6 +12,7 @@ export {
   externalProvidersQueryKey,
   externalFoodSearchQueryKey,
   mealTypesQueryKey,
+  foodVariantsQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useSyncHealthData } from './useSyncHealthData';

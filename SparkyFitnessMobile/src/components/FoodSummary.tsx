@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import type { FoodEntry } from '../types/foodEntries';
 import Icon, { type IconName } from './Icon';
@@ -117,6 +118,7 @@ interface MealSectionProps {
 }
 
 const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
+  const navigation = useNavigation<any>();
   const config = MEAL_CONFIG[mealType] || { label: mealType, icon: 'meal-snack' as IconName };
   const [textSecondary, proteinColor, carbsColor, fatColor] = useCSSVariable([
     '--color-text-secondary',
@@ -145,9 +147,11 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
             const nutrition = calculateEntryNutrition(entry);
             const name = entry.food_name || 'Unknown food';
             return (
-              <View
+              <TouchableOpacity
                 key={entry.id || index}
                 className="py-1.5 flex-row justify-between items-center"
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('FoodEntryView', { entry })}
               >
                 <Text className="text-base text-text-primary flex-1 mr-2" numberOfLines={1}>
                   {name}
@@ -158,7 +162,7 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
                 <Text className="text-sm text-text-primary">
                   {nutrition.calories} Cal
                 </Text>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </>

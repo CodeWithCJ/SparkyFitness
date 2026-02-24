@@ -33,3 +33,19 @@ export interface FoodSearchResponse {
   foods: FoodItem[];
   totalCount: number;
 }
+
+export interface FoodVariantDetail {
+  id: string;
+  food_id: string;
+  serving_size: number;
+  serving_unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  saturated_fat?: number;
+  sodium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  is_default?: boolean;
+}

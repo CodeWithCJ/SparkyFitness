@@ -1,5 +1,5 @@
 import { apiFetch } from './apiClient';
-import type { ExternalFoodItem } from '../../types/externalFoods';
+import type { ExternalFoodItem, ExternalFoodVariant } from '../../types/externalFoods';
 
 interface OpenFoodFactsProduct {
   product_name: string;
@@ -231,6 +231,26 @@ export async function searchFatSecret(query: string, providerId: string): Promis
     .map(transformFatSecretSearchItem);
 }
 
+export function hasMetricServing(serving: FatSecretServing): boolean {
+  return !!(serving.metric_serving_amount && serving.metric_serving_unit);
+}
+
+export function transformFatSecretServing(serving: FatSecretServing): ExternalFoodVariant {
+  return {
+    serving_size: Math.round(parseFloat(serving.metric_serving_amount!)),
+    serving_unit: serving.metric_serving_unit!,
+    serving_description: serving.serving_description,
+    calories: Math.round(parseFloat(serving.calories)),
+    protein: Math.round(parseFloat(serving.protein)),
+    carbs: Math.round(parseFloat(serving.carbohydrate)),
+    fat: Math.round(parseFloat(serving.fat)),
+    saturated_fat: Math.round(parseFloat(serving.saturated_fat ?? '0')),
+    sodium: Math.round(parseFloat(serving.sodium ?? '0')),
+    fiber: Math.round(parseFloat(serving.fiber ?? '0')),
+    sugars: Math.round(parseFloat(serving.sugar ?? '0')),
+  };
+}
+
 export async function fetchFatSecretNutrients(foodId: string, providerId: string): Promise<ExternalFoodItem> {
   const params = new URLSearchParams({ foodId });
   const response = await apiFetch<FatSecretNutrientsResponse>({
@@ -241,23 +261,46 @@ export async function fetchFatSecretNutrients(foodId: string, providerId: string
   });
 
   const rawServings = response.food.servings.serving;
-  const servings = Array.isArray(rawServings) ? rawServings : [rawServings];
-  const serving = selectFatSecretServing(servings);
+  const allServings = Array.isArray(rawServings) ? rawServings : [rawServings];
+  const metricServings = allServings.filter(hasMetricServing);
+  const servings = metricServings.length > 0 ? metricServings : allServings;
+  const preferred = selectFatSecretServing(servings);
+
+  // Order variants with preferred serving first, skip non-metric servings
+  const orderedServings = [preferred, ...servings.filter((s) => s !== preferred)];
+  const variants = orderedServings.filter(hasMetricServing).map(transformFatSecretServing);
+
+  // Primary fields from first variant, or fall back to preferred serving raw values
+  const primary = variants.length > 0
+    ? variants[0]
+    : {
+        serving_size: 1,
+        serving_unit: 'serving',
+        calories: Math.round(parseFloat(preferred.calories)),
+        protein: Math.round(parseFloat(preferred.protein)),
+        carbs: Math.round(parseFloat(preferred.carbohydrate)),
+        fat: Math.round(parseFloat(preferred.fat)),
+        saturated_fat: Math.round(parseFloat(preferred.saturated_fat ?? '0')),
+        sodium: Math.round(parseFloat(preferred.sodium ?? '0')),
+        fiber: Math.round(parseFloat(preferred.fiber ?? '0')),
+        sugars: Math.round(parseFloat(preferred.sugar ?? '0')),
+      };
 
   return {
     id: response.food.food_id,
     name: response.food.food_name,
     brand: null,
-    calories: Math.round(parseFloat(serving.calories)),
-    protein: Math.round(parseFloat(serving.protein)),
-    carbs: Math.round(parseFloat(serving.carbohydrate)),
-    fat: Math.round(parseFloat(serving.fat)),
-    saturated_fat: Math.round(parseFloat(serving.saturated_fat ?? '0')),
-    sodium: Math.round(parseFloat(serving.sodium ?? '0')),
-    fiber: Math.round(parseFloat(serving.fiber ?? '0')),
-    sugars: Math.round(parseFloat(serving.sugar ?? '0')),
-    serving_size: Math.round(parseFloat(serving.metric_serving_amount ?? '100')),
-    serving_unit: serving.metric_serving_unit ?? 'g',
+    calories: primary.calories,
+    protein: primary.protein,
+    carbs: primary.carbs,
+    fat: primary.fat,
+    saturated_fat: primary.saturated_fat,
+    sodium: primary.sodium,
+    fiber: primary.fiber,
+    sugars: primary.sugars,
+    serving_size: primary.serving_size,
+    serving_unit: primary.serving_unit,
     source: 'fatsecret',
+    variants: variants.length > 0 ? variants : undefined,
   };
 }

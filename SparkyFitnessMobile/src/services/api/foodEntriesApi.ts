@@ -40,6 +40,18 @@ export const createFoodEntry = async (payload: CreateFoodEntryPayload): Promise<
 };
 
 /**
+ * Deletes a food entry by ID.
+ */
+export const deleteFoodEntry = async (id: string): Promise<void> => {
+  await apiFetch<void>({
+    endpoint: `/api/food-entries/${id}`,
+    serviceName: 'Food Entries API',
+    operation: 'delete food entry',
+    method: 'DELETE',
+  });
+};
+
+/**
  * Fetches food entries for a given date.
  */
 export const fetchFoodEntries = async (date: string): Promise<FoodEntry[]> => {

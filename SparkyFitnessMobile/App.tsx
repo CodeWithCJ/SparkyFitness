@@ -20,8 +20,9 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import DiaryScreen from './src/screens/DiaryScreen';
 import LogScreen from './src/screens/LogScreen';
-import AddFoodEntryScreen from './src/screens/AddFoodEntryScreen';
-import FoodItemInfoScreen from './src/screens/FoodItemInfoScreen';
+import FoodSearchScreen from './src/screens/FoodSearchScreen';
+import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
+import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { initializeTheme } from './src/services/themeService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -162,7 +163,7 @@ function AppContent() {
                           ? (activeRoute.params as { selectedDate?: string } | undefined)
                           : undefined;
                       const date = diaryParams?.selectedDate;
-                      navigation.navigate('AddFoodEntry', { date });
+                      navigation.navigate('FoodSearch', { date });
                     },
                   })}
                 />
@@ -186,16 +187,21 @@ function AppContent() {
             )}
           </Stack.Screen>
           <Stack.Screen
-            name="AddFoodEntry"
-            component={AddFoodEntryScreen}
+            name="FoodSearch"
+            component={FoodSearchScreen}
             options={{
               presentation: 'modal',
               headerShown: false,
             }}
           />
           <Stack.Screen
-            name="FoodItemInfo"
-            component={FoodItemInfoScreen}
+            name="FoodEntryAdd"
+            component={FoodEntryAddScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="FoodEntryView"
+            component={FoodEntryViewScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

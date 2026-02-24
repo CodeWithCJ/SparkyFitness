@@ -21,7 +21,7 @@ import { Meal } from '../types/meals';
 import { foodItemToFoodInfo, externalFoodItemToFoodInfo, mealToFoodInfo } from '../types/foodInfo';
 import type { FoodInfoItem } from '../types/foodInfo';
 
-interface AddFoodEntryScreenProps {
+interface FoodSearchScreenProps {
   navigation: { goBack: () => void; navigate: (screen: string, params: any) => void };
   route?: { params?: { date?: string } };
 }
@@ -39,7 +39,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'meal', label: 'Meals' },
 ];
 
-const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation, route }) => {
+const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route?.params?.date;
   const insets = useSafeAreaInsets();
   const [accentColor, textMuted, textSecondary] = useCSSVariable([
@@ -105,7 +105,7 @@ const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation, rou
   }, [providers, selectedProvider]);
 
   const showFoodInfo = (item: FoodInfoItem) => {
-    navigation.navigate('FoodItemInfo', { item, date });
+    navigation.navigate('FoodEntryAdd', { item, date });
   };
 
   const handleExternalFoodTap = async (item: ExternalFoodItem) => {
@@ -665,4 +665,4 @@ const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation, rou
   );
 };
 
-export default AddFoodEntryScreen;
+export default FoodSearchScreen;

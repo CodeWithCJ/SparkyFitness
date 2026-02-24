@@ -1,5 +1,5 @@
 import { apiFetch } from './apiClient';
-import { FoodItem, FoodsResponse, FoodSearchResponse } from '../../types/foods';
+import { FoodItem, FoodsResponse, FoodSearchResponse, FoodVariantDetail } from '../../types/foods';
 
 /**
  * Fetches the list of recent and top foods.
@@ -26,6 +26,17 @@ export const searchFoods = async (searchTerm: string): Promise<FoodSearchRespons
     endpoint: `/api/foods/foods-paginated?${params.toString()}`,
     serviceName: 'Foods API',
     operation: 'search foods',
+  });
+};
+
+/**
+ * Fetches all variants for a given food item.
+ */
+export const fetchFoodVariants = async (foodId: string): Promise<FoodVariantDetail[]> => {
+  return apiFetch<FoodVariantDetail[]>({
+    endpoint: `/api/foods/food-variants?food_id=${foodId}`,
+    serviceName: 'Foods API',
+    operation: 'fetch food variants',
   });
 };
 
@@ -56,3 +67,4 @@ export const saveFood = async (food: SaveFoodPayload): Promise<FoodItem> => {
     body: food,
   });
 };
+

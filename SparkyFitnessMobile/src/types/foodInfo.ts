@@ -1,5 +1,5 @@
 import type { FoodItem, TopFoodItem } from './foods';
-import type { ExternalFoodItem } from './externalFoods';
+import type { ExternalFoodItem, ExternalFoodVariant } from './externalFoods';
 import type { Meal } from './meals';
 
 export interface FoodInfoItem {
@@ -17,6 +17,7 @@ export interface FoodInfoItem {
   sodium?: number;
   sugars?: number;
   variantId?: string;
+  externalVariants?: ExternalFoodVariant[];
   source: 'local' | 'external' | 'meal';
   originalItem: FoodItem | TopFoodItem | ExternalFoodItem | Meal;
 }
@@ -54,6 +55,7 @@ export const externalFoodItemToFoodInfo = (item: ExternalFoodItem): FoodInfoItem
   saturatedFat: item.saturated_fat,
   sodium: item.sodium,
   sugars: item.sugars,
+  externalVariants: item.variants,
   source: 'external',
   originalItem: item,
 });

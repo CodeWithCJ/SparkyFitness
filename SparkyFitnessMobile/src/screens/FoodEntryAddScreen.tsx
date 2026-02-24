@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Platform, ScrollView, TextInput, Alert } from 'react-native';
 import { StackActions, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,21 +7,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { fetchDailyGoals } from '../services/api/goalsApi';
-import { saveFood } from '../services/api/foodsApi';
+import { saveFood, fetchFoodVariants } from '../services/api/foodsApi';
 import { createFoodEntry, CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
-import { dailySummaryQueryKey, foodsQueryKey, goalsQueryKey } from '../hooks/queryKeys';
+import { dailySummaryQueryKey, foodsQueryKey, goalsQueryKey, foodVariantsQueryKey } from '../hooks/queryKeys';
 import { useMealTypes } from '../hooks';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import type { FoodInfoItem } from '../types/foodInfo';
 
-interface FoodItemInfoScreenProps {
+interface FoodEntryAddScreenProps {
   navigation?: { goBack: () => void };
   route?: { params: { item: FoodInfoItem; date?: string } };
 }
 
-const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, route }) => {
+const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, route }) => {
   const { item, date: initialDate } = route!.params;
   const nav = useNavigation();
   const [selectedDate, setSelectedDate] = useState(initialDate ?? getTodayDate());
@@ -30,6 +30,89 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
   const effectiveMealId = selectedMealId ?? defaultMealTypeId;
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
+
+  const isLocalFood = item.source === 'local';
+  const hasExternalVariants = !!(item.externalVariants && item.externalVariants.length > 1);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(
+    hasExternalVariants ? 'ext-0' : item.variantId,
+  );
+
+  const { data: variants } = useQuery({
+    queryKey: foodVariantsQueryKey(item.id),
+    queryFn: () => fetchFoodVariants(item.id),
+    enabled: isLocalFood,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const externalVariantOptions = useMemo(() => {
+    if (!item.externalVariants || item.externalVariants.length <= 1) return null;
+    return item.externalVariants.map((v, i) => ({
+      id: `ext-${i}`,
+      servingSize: v.serving_size,
+      servingUnit: v.serving_unit,
+      servingDescription: v.serving_description,
+      calories: v.calories,
+      protein: v.protein,
+      carbs: v.carbs,
+      fat: v.fat,
+      fiber: v.fiber,
+      saturatedFat: v.saturated_fat,
+      sodium: v.sodium,
+      sugars: v.sugars,
+    }));
+  }, [item.externalVariants]);
+
+  const activeVariant = useMemo(() => {
+    if (variants && selectedVariantId) {
+      const v = variants.find((v) => v.id === selectedVariantId);
+      if (v) {
+        return {
+          servingSize: v.serving_size,
+          servingUnit: v.serving_unit,
+          calories: v.calories,
+          protein: v.protein,
+          carbs: v.carbs,
+          fat: v.fat,
+          fiber: v.dietary_fiber,
+          saturatedFat: v.saturated_fat,
+          sodium: v.sodium,
+          sugars: v.sugars,
+        };
+      }
+    }
+    if (externalVariantOptions && selectedVariantId) {
+      const ev = externalVariantOptions.find((v) => v.id === selectedVariantId);
+      if (ev) return ev;
+    }
+    return {
+      servingSize: item.servingSize,
+      servingUnit: item.servingUnit,
+      calories: item.calories,
+      protein: item.protein,
+      carbs: item.carbs,
+      fat: item.fat,
+      fiber: item.fiber,
+      saturatedFat: item.saturatedFat,
+      sodium: item.sodium,
+      sugars: item.sugars,
+    };
+  }, [variants, externalVariantOptions, selectedVariantId, item]);
+
+  const variantPickerOptions = useMemo(() => {
+    if (variants && variants.length > 0) {
+      return variants.map((v) => ({
+        label: `${v.serving_size} ${v.serving_unit} (${v.calories} cal)`,
+        value: v.id,
+      }));
+    }
+    if (externalVariantOptions) {
+      return externalVariantOptions.map((v) => ({
+        label: `${v.servingDescription} (${v.calories} cal)`,
+        value: v.id,
+      }));
+    }
+    return [];
+  }, [variants, externalVariantOptions]);
 
   const [servingsText, setServingsText] = useState('1');
   const servings = parseFloat(servingsText) || 0;
@@ -66,16 +149,16 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
     mutationFn: () => saveFood({
       name: item.name,
       brand: item.brand,
-      serving_size: item.servingSize,
-      serving_unit: item.servingUnit,
-      calories: item.calories,
-      protein: item.protein,
-      carbs: item.carbs,
-      fat: item.fat,
-      dietary_fiber: item.fiber,
-      saturated_fat: item.saturatedFat,
-      sodium: item.sodium,
-      sugars: item.sugars,
+      serving_size: activeVariant.servingSize,
+      serving_unit: activeVariant.servingUnit,
+      calories: activeVariant.calories,
+      protein: activeVariant.protein,
+      carbs: activeVariant.carbs,
+      fat: activeVariant.fat,
+      dietary_fiber: activeVariant.fiber,
+      saturated_fat: activeVariant.saturatedFat,
+      sodium: activeVariant.sodium,
+      sugars: activeVariant.sugars,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
@@ -83,18 +166,18 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
   });
 
   const buildFoodEntryPayload = (savedFood?: { id: string; variantId: string }): CreateFoodEntryPayload => {
-    const quantity = item.servingSize * servings;
+    const quantity = activeVariant.servingSize * servings;
     const base = {
       meal_type_id: effectiveMealId!,
       quantity,
-      unit: item.servingUnit,
+      unit: activeVariant.servingUnit,
       entry_date: selectedDate,
     };
 
     switch (item.source) {
       case 'local':
-        if (!item.variantId) throw new Error('Missing variant ID for local food');
-        return { ...base, food_id: item.id, variant_id: item.variantId };
+        if (!selectedVariantId) throw new Error('Missing variant ID for local food');
+        return { ...base, food_id: item.id, variant_id: selectedVariantId };
       case 'external':
         if (!savedFood) throw new Error('External food must be saved before creating entry');
         return { ...base, food_id: savedFood.id, variant_id: savedFood.variantId };
@@ -121,16 +204,16 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
         const saved = await saveFood({
           name: item.name,
           brand: item.brand,
-          serving_size: item.servingSize,
-          serving_unit: item.servingUnit,
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-          dietary_fiber: item.fiber,
-          saturated_fat: item.saturatedFat,
-          sodium: item.sodium,
-          sugars: item.sugars,
+          serving_size: activeVariant.servingSize,
+          serving_unit: activeVariant.servingUnit,
+          calories: activeVariant.calories,
+          protein: activeVariant.protein,
+          carbs: activeVariant.carbs,
+          fat: activeVariant.fat,
+          dietary_fiber: activeVariant.fiber,
+          saturated_fat: activeVariant.saturatedFat,
+          sodium: activeVariant.sodium,
+          sugars: activeVariant.sugars,
         });
         return createFoodEntry(buildFoodEntryPayload({
           id: saved.id,
@@ -161,15 +244,15 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
     return Math.round((value / goalValue) * 100);
   };
 
-  const calorieGoalPct = goalPercent(scaled(item.calories), goals?.calories);
-  const proteinGoalPct = goalPercent(scaled(item.protein), goals?.protein);
-  const carbsGoalPct = goalPercent(scaled(item.carbs), goals?.carbs);
-  const fatGoalPct = goalPercent(scaled(item.fat), goals?.fat);
+  const calorieGoalPct = goalPercent(scaled(activeVariant.calories), goals?.calories);
+  const proteinGoalPct = goalPercent(scaled(activeVariant.protein), goals?.protein);
+  const carbsGoalPct = goalPercent(scaled(activeVariant.carbs), goals?.carbs);
+  const fatGoalPct = goalPercent(scaled(activeVariant.fat), goals?.fat);
 
   // Macro bar proportions by calorie contribution (ratios stay the same regardless of servings)
-  const proteinCals = item.protein * 4;
-  const carbsCals = item.carbs * 4;
-  const fatCals = item.fat * 9;
+  const proteinCals = activeVariant.protein * 4;
+  const carbsCals = activeVariant.carbs * 4;
+  const fatCals = activeVariant.fat * 9;
   const totalMacroCals = proteinCals + carbsCals + fatCals;
 
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
@@ -216,7 +299,7 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
           )}
 
           {/* Servings control */}
-          <View className="flex-row items-center justify-start gap-4 mt-3">
+          <View className="flex-row items-center justify-center gap-4 mt-4">
             <View className="flex-row items-center">
               <TouchableOpacity
                 onPress={() => adjustServings(-0.5)}
@@ -242,9 +325,30 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
                 <Icon name="add" size={18} color={accentColor} />
               </TouchableOpacity>
             </View>
-            <Text className="text-text-muted text-sm">
-              {item.servingSize} {item.servingUnit} per serving
-            </Text>
+            {variantPickerOptions.length > 1 ? (
+              <BottomSheetPicker
+                value={selectedVariantId!}
+                options={variantPickerOptions}
+                onSelect={setSelectedVariantId}
+                title="Select Serving"
+                renderTrigger={({ onPress }) => (
+                  <TouchableOpacity
+                    onPress={onPress}
+                    activeOpacity={0.7}
+                    className="flex-row items-center"
+                  >
+                    <Text className="text-text-secondary font-medium text-sm">
+                      {activeVariant.servingSize} {activeVariant.servingUnit} per serving
+                    </Text>
+                    <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <Text className="text-text-muted text-sm">
+                {activeVariant.servingSize} {activeVariant.servingUnit} per serving
+              </Text>
+            )}
           </View>
         </View>
 
@@ -252,7 +356,7 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
         <View className="bg-surface rounded-xl p-4 flex-row items-center">
           {/* Calories — left half */}
           <View className="flex-1 items-center pr-10">
-            <Text className="text-text-primary text-3xl font-medium">{Math.round(scaled(item.calories))}</Text>
+            <Text className="text-text-primary text-3xl font-medium">{Math.round(scaled(activeVariant.calories))}</Text>
             <Text className="text-text-secondary text-base mt-1">calories</Text>
             {isGoalsLoading ? (
               <ActivityIndicator size="small" color={accentColor} className="mt-2" />
@@ -266,9 +370,9 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
           {/* Macro bars — right half */}
           <View className="flex-1 gap-3">
             {[
-              { label: 'Protein', value: item.protein, color: proteinColor, pct: proteinGoalPct },
-              { label: 'Carbs', value: item.carbs, color: carbsColor, pct: carbsGoalPct },
-              { label: 'Fat', value: item.fat, color: fatColor, pct: fatGoalPct },
+              { label: 'Protein', value: activeVariant.protein, color: proteinColor, pct: proteinGoalPct },
+              { label: 'Carbs', value: activeVariant.carbs, color: carbsColor, pct: carbsGoalPct },
+              { label: 'Fat', value: activeVariant.fat, color: fatColor, pct: fatGoalPct },
             ].map((macro) => (
               <View key={macro.label}>
                 <View className="flex-row justify-between mb-1">
@@ -295,14 +399,14 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
         </View>
 
         {/* Additional nutrition details */}
-        {(item.fiber != null || item.saturatedFat != null || item.sodium != null || item.sugars != null) && (
+        {(activeVariant.fiber != null || activeVariant.saturatedFat != null || activeVariant.sodium != null || activeVariant.sugars != null) && (
           <View className="rounded-xl my-2 px-4">
             <Text className="text-text-secondary text-sm font-medium mb-2">Other Nutrients</Text>
             {[
-              { label: 'Fiber', value: item.fiber, unit: 'g' },
-              { label: 'Sugars', value: item.sugars, unit: 'g' },
-              { label: 'Saturated Fat', value: item.saturatedFat, unit: 'g' },
-              { label: 'Sodium', value: item.sodium, unit: 'mg' },
+              { label: 'Fiber', value: activeVariant.fiber, unit: 'g' },
+              { label: 'Sugars', value: activeVariant.sugars, unit: 'g' },
+              { label: 'Saturated Fat', value: activeVariant.saturatedFat, unit: 'g' },
+              { label: 'Sodium', value: activeVariant.sodium, unit: 'mg' },
             ]
               .filter((n) => n.value != null)
               .map((n, i, arr) => (
@@ -376,4 +480,4 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
   );
 };
 
-export default FoodItemInfoScreen;
+export default FoodEntryAddScreen;
