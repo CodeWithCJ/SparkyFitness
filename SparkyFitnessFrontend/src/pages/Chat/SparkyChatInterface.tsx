@@ -57,7 +57,6 @@ const SparkyChatInterface = () => {
 
   const invalidate = useDiaryInvalidation();
   const queryClient = useQueryClient();
-
   useEffect(() => {
     if (userPreferences?.auto_clear_history === 'all' && !hasAutoCleared) {
       clearChatHistory('all').catch(() => {});
