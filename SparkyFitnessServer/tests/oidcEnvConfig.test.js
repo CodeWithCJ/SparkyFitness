@@ -84,5 +84,15 @@ describe('oidcEnvConfig', () => {
                 timeout: 45000
             }));
         });
+        it('should fallback to 30000 if SPARKY_FITNESS_OIDC_TIMEOUT is invalid (NaN)', () => {
+            process.env.SPARKY_FITNESS_OIDC_ISSUER_URL = 'http://issuer.com';
+            process.env.SPARKY_FITNESS_OIDC_CLIENT_ID = 'test-client';
+            process.env.SPARKY_FITNESS_OIDC_CLIENT_SECRET = 'test-secret';
+            process.env.SPARKY_FITNESS_OIDC_PROVIDER_SLUG = 'test-slug';
+            process.env.SPARKY_FITNESS_OIDC_TIMEOUT = 'invalid-number';
+
+            const config = getEnvOidcConfig();
+            expect(config.timeout).toBe(30000);
+        });
     });
 });

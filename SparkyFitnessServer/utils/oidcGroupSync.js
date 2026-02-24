@@ -15,7 +15,7 @@ async function syncUserGroups(deps, userId, adminGroup) {
 
     try {
         const { rows: allAccounts } = await pool.query(
-            'SELECT provider_id, id_token FROM "account" WHERE user_id = $1',
+            'SELECT provider_id, id_token FROM "account" WHERE user_id = $1 ORDER BY updated_at DESC',
             [userId]
         );
 
@@ -29,7 +29,8 @@ async function syncUserGroups(deps, userId, adminGroup) {
         if (oidcAccount?.id_token) {
             try {
                 const payload = jwtDecode(oidcAccount.id_token);
-                const groups = payload.groups || [];
+                const groupsClaim = payload.groups || [];
+                const groups = Array.isArray(groupsClaim) ? groupsClaim : [groupsClaim];
 
                 const currentRole = await userRepository.getUserRole(userId);
 

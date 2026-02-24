@@ -80,4 +80,44 @@ describe('oidcGroupSync', () => {
 
         expect(mockUserRepository.updateUserRole).toHaveBeenCalledWith(userId, 'user');
     });
+
+    it('should use the first account with an id_token (most recent due to ORDER BY)', async () => {
+        const userId = 'user-1';
+        const adminGroup = 'Admins';
+        const olderIdToken = createIdToken({ groups: ['Users'] });
+        const newerIdToken = createIdToken({ groups: ['Admins'] });
+
+        // Mocks return from pool.query (ordered by updated_at DESC in the real query)
+        mockPool.query.mockResolvedValue({
+            rows: [
+                { provider_id: 'provider-new', id_token: newerIdToken },
+                { provider_id: 'provider-old', id_token: olderIdToken }
+            ]
+        });
+        mockUserRepository.getUserRole.mockResolvedValue('user');
+
+        await syncUserGroups({ pool: mockPool, userRepository: mockUserRepository }, userId, adminGroup);
+
+        expect(mockUserRepository.updateUserRole).toHaveBeenCalledWith(userId, 'admin');
+        expect(mockPool.query).toHaveBeenCalledWith(
+            expect.stringContaining('ORDER BY updated_at DESC'),
+            [userId]
+        );
+    });
+
+    it('should not allow substring matching if groups claim is a string', async () => {
+        const userId = 'user-1';
+        const adminGroup = 'admin';
+        // If it was treated as a string, "superadmin".includes("admin") would be true
+        const idToken = createIdToken({ groups: 'superadmin' });
+
+        mockPool.query.mockResolvedValue({
+            rows: [{ provider_id: 'authentik', id_token: idToken }]
+        });
+        mockUserRepository.getUserRole.mockResolvedValue('user');
+
+        await syncUserGroups({ pool: mockPool, userRepository: mockUserRepository }, userId, adminGroup);
+
+        expect(mockUserRepository.updateUserRole).not.toHaveBeenCalled();
+    });
 });

@@ -55,7 +55,7 @@ function getEnvOidcConfig() {
         token_endpoint_auth_method: tokenAuthMethod || 'client_secret_post',
         signing_algorithm: idTokenAlg || 'RS256',
         profile_signing_algorithm: userInfoAlg || 'none',
-        timeout: timeout ? parseInt(timeout, 10) : 30000,
+        timeout: Number.parseInt(timeout, 10) || 30000,
         is_active: true,
         auto_register: autoRegister !== undefined ? autoRegister === 'true' : true,
         is_env_configured: true,

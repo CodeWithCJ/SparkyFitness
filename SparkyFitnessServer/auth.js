@@ -53,8 +53,8 @@ const apiKeyPlugin = require("better-auth/plugins").apiKey({
     enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
     rateLimit: {
         enabled: true,
-        timeWindow: parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS, 10) || 60_000,    // 1 minute
-        maxRequests: parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS, 10) || 100,      // 100 req/min (Better Auth defaults to 10/day)
+        timeWindow: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS, 10) || 60_000,    // 1 minute
+        maxRequests: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS, 10) || 100,      // 100 req/min (Better Auth defaults to 10/day)
     },
     schema: {
         apikey: {
