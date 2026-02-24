@@ -6,7 +6,7 @@ FROM node:20-slim AS backend_builder
 WORKDIR /app/SparkyFitnessServer
 
 # Copy package.json and package-lock.json for dependency installation
-COPY SparkyFitnessServer/package.json SparkyFitnessServer/package-lock.json ./
+COPY package.json package-lock.json ./
 
 # Install backend dependencies
 RUN npm install
@@ -23,8 +23,8 @@ RUN apt-get update && apt-get install -y curl postgresql-client && rm -rf /var/l
 COPY --from=backend_builder /app/SparkyFitnessServer/node_modules ./node_modules
 
 # Copy the rest of the backend application code
-COPY SparkyFitnessServer .
-COPY SparkyFitnessServer/package.json /app/package.json
+COPY . .
+COPY package.json /app/package.json
 
 # Expose the port your backend server listens on
 EXPOSE 3010
