@@ -319,8 +319,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         </nav>
 
         {/* Mobile Navigation */}
-        <nav className="apple-safe-area sm:hidden fixed bottom-0 z-50 w-full bg-background border-t">
-          <div className={`h-14 grid grid-cols-4 items-center justify-items-center ${mobileGridClass}`}>
+        <nav className="apple-safe-area sm:hidden fixed bottom-0 left-0 right-0 z-50 w-full bg-background border-t">
+          <div className={`h-14 grid ${mobileGridClass} items-center justify-items-center`}>
             {availableMobileTabs.map(({ value, label, icon: Icon }) => (
               <Button
                 key={value}
