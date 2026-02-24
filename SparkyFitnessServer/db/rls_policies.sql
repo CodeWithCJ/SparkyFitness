@@ -62,7 +62,10 @@ BEGIN
     'sleep_entries',
     'sleep_entry_stages',
     'fasting_logs',
-        'user_custom_nutrients'
+        'user_custom_nutrients',
+        'sleep_need_calculations',
+        'daily_sleep_need',
+        'day_classification_cache'
       ]::text[]) AS table_name;
     END $$;
 
@@ -442,3 +445,8 @@ WITH CHECK (EXISTS (SELECT 1 FROM public.workout_presets wp WHERE wp.id = workou
 
 SELECT create_owner_policy('user_ignored_updates');
 SELECT create_owner_policy('fasting_logs');
+
+-- Sleep Science tables
+SELECT create_owner_policy('sleep_need_calculations');
+SELECT create_owner_policy('daily_sleep_need');
+SELECT create_owner_policy('day_classification_cache');

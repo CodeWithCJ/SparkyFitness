@@ -1,17 +1,17 @@
-import type React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { toast as sonnerToast } from 'sonner';
-import type {
-  SleepStageEvent,
-  SleepAnalyticsData,
-  CombinedSleepData,
-  SleepChartData,
-} from '@/types';
-import SleepAnalyticsTable from './SleepAnalyticsTable';
-import SleepAnalyticsCharts from './SleepAnalyticsCharts';
-import { useTranslation } from 'react-i18next';
 import { useSleepEntriesQuery } from '@/hooks/CheckIn/useSleep';
+import type {
+    CombinedSleepData,
+    SleepAnalyticsData,
+    SleepChartData,
+    SleepStageEvent,
+} from '@/types';
+import { useTranslation } from 'react-i18next';
+import { toast as sonnerToast } from 'sonner';
+import SleepAnalyticsCharts from './SleepAnalyticsCharts';
+import SleepAnalyticsTable from './SleepAnalyticsTable';
+import SleepScienceSection from './SleepScience/SleepScienceSection';
 
 interface SleepReportProps {
   startDate: string;
@@ -252,6 +252,9 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Sleep Science Advanced Insights */}
+      <SleepScienceSection />
     </div>
   );
 };
