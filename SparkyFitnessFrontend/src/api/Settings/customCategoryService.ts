@@ -71,7 +71,7 @@ export const updateCategory = async (
   const id = response && response.id ? String(response.id) : null;
   if (!id) {
     throw new Error(
-      'Failed to add category: Missing or invalid ID in response.'
+      'Failed to update category: Missing or invalid ID in response.'
     );
   }
   return { ...response, id: id };

@@ -13,7 +13,8 @@ export const fetchAvatarBlob = async (url: string): Promise<Blob> => {
     method: 'GET',
     responseType: 'blob',
   });
-  return new Blob([response as BlobPart], { type: 'image/jpeg' });
+  const blob = response as Blob;
+  return new Blob([blob], { type: blob.type });
 };
 
 export const updateProfileData = async (payload: UpdateProfilePayload) => {
