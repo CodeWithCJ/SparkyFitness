@@ -1,6 +1,6 @@
 // Utility to sync user roles based on OIDC groups found in the id_token.
 
-const { jwtDecode } = require('jwt-decode');
+const jose = require('jose');
 
 /**
  * Syncs user roles based on OIDC groups found in the id_token.
@@ -28,7 +28,12 @@ async function syncUserGroups(deps, userId, adminGroup) {
 
         if (oidcAccount?.id_token) {
             try {
-                const payload = jwtDecode(oidcAccount.id_token);
+                const payload = jose.decodeJwt(oidcAccount.id_token);
+                const now = Math.floor(Date.now() / 1000);
+                if (payload.exp && payload.exp < now) {
+                    console.log(`[AUTH] OIDC Sync: ID token for user ${userId} is expired. Skipping group sync.`);
+                    return;
+                }
                 const groupsClaim = payload.groups || [];
                 const groups = Array.isArray(groupsClaim) ? groupsClaim : [groupsClaim];
 

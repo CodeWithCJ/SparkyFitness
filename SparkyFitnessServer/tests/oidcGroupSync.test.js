@@ -1,3 +1,15 @@
+jest.mock('jose', () => ({
+    decodeJwt: jest.fn((token) => {
+        const parts = token.split('.');
+        if (parts.length < 2) return {};
+        try {
+            return JSON.parse(Buffer.from(parts[1], 'base64').toString());
+        } catch (e) {
+            return {};
+        }
+    })
+}));
+
 const { syncUserGroups } = require('../utils/oidcGroupSync');
 
 describe('oidcGroupSync', () => {
@@ -110,6 +122,26 @@ describe('oidcGroupSync', () => {
         const adminGroup = 'admin';
         // If it was treated as a string, "superadmin".includes("admin") would be true
         const idToken = createIdToken({ groups: 'superadmin' });
+
+        mockPool.query.mockResolvedValue({
+            rows: [{ provider_id: 'authentik', id_token: idToken }]
+        });
+        mockUserRepository.getUserRole.mockResolvedValue('user');
+
+        await syncUserGroups({ pool: mockPool, userRepository: mockUserRepository }, userId, adminGroup);
+
+        expect(mockUserRepository.updateUserRole).not.toHaveBeenCalled();
+    });
+
+    it('should skip group sync if the token is expired', async () => {
+        const userId = 'user-1';
+        const adminGroup = 'Admins';
+        const now = Math.floor(Date.now() / 1000);
+        // Expired 1 hour ago
+        const idToken = createIdToken({
+            groups: ['Admins'],
+            exp: now - 3600
+        });
 
         mockPool.query.mockResolvedValue({
             rows: [{ provider_id: 'authentik', id_token: idToken }]
