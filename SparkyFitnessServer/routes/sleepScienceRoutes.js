@@ -3,7 +3,7 @@ const router = express.Router();
 const sleepScienceService = require("../services/sleepScienceService");
 const { log } = require("../config/logging");
 const { authenticate } = require("../middleware/authMiddleware");
-const { checkPermissionMiddleware } = require("../middleware/permissionMiddleware");
+const checkPermissionMiddleware = require("../middleware/checkPermissionMiddleware");
 
 /**
  * @swagger
