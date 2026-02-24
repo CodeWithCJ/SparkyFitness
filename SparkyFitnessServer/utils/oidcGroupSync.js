@@ -1,6 +1,7 @@
 // Utility to sync user roles based on OIDC groups found in the id_token.
 
 const jose = require('jose');
+const { log } = require('../config/logging');
 
 /**
  * Syncs user roles based on OIDC groups found in the id_token.
@@ -22,7 +23,7 @@ async function syncUserGroups(deps, userId, adminGroup) {
         const oidcAccount = allAccounts.find(a => a.id_token);
 
         if (!oidcAccount) {
-            console.log(`[AUTH] OIDC Sync: No account with id_token found for user ${userId}. Skipping group sync.`);
+            log('info', `[AUTH] OIDC Sync: No account with id_token found for user ${userId}. Skipping group sync.`);
             return;
         }
 
@@ -31,7 +32,7 @@ async function syncUserGroups(deps, userId, adminGroup) {
                 const payload = jose.decodeJwt(oidcAccount.id_token);
                 const now = Math.floor(Date.now() / 1000);
                 if (payload.exp && payload.exp < now) {
-                    console.log(`[AUTH] OIDC Sync: ID token for user ${userId} is expired. Skipping group sync.`);
+                    log('info', `[AUTH] OIDC Sync: ID token for user ${userId} is expired. Skipping group sync.`);
                     return;
                 }
                 const groupsClaim = payload.groups || [];
@@ -41,21 +42,21 @@ async function syncUserGroups(deps, userId, adminGroup) {
 
                 if (groups.includes(adminGroup)) {
                     if (currentRole !== 'admin') {
-                        console.log(`[AUTH] OIDC Sync: Promoting user ${userId} to admin (Group: ${adminGroup})`);
+                        log('info', `[AUTH] OIDC Sync: Promoting user ${userId} to admin (Group: ${adminGroup})`);
                         await userRepository.updateUserRole(userId, 'admin');
                     }
                 } else {
                     if (currentRole === 'admin') {
-                        console.log(`[AUTH] OIDC Sync: Revoking admin from user ${userId} (Not in group: ${adminGroup})`);
+                        log('info', `[AUTH] OIDC Sync: Revoking admin from user ${userId} (Not in group: ${adminGroup})`);
                         await userRepository.updateUserRole(userId, 'user');
                     }
                 }
             } catch (e) {
-                console.error(`[AUTH] OIDC Sync: Failed to decode id_token for user ${userId}:`, e);
+                log('error', `[AUTH] OIDC Sync: Failed to decode id_token for user ${userId}:`, e);
             }
         }
     } catch (err) {
-        console.error(`[AUTH] OIDC Group Sync Error for user ${userId}:`, err);
+        log('error', `[AUTH] OIDC Group Sync Error for user ${userId}:`, err);
     }
 }
 

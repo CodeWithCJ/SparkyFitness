@@ -3,6 +3,12 @@ const { APIError } = require("better-auth/api");
 const { Pool } = require("pg");
 const { log } = require("./config/logging");
 console.log("[AUTH] auth.js module is being loaded...");
+const bcrypt = require("bcrypt");
+const { v4: uuidv4 } = require("uuid");
+const { syncUserGroups } = require('./utils/oidcGroupSync');
+const userRepository = require('./models/userRepository');
+const { sendPasswordResetEmail, sendMagicLinkEmail, sendEmailMfaCode } = require("./services/emailService");
+const { createDefaultNutrientPreferencesForUser } = require("./services/nutrientDisplayPreferenceService");
 
 // Create a dedicated pool for Better Auth
 /*
@@ -119,17 +125,14 @@ const auth = betterAuth({
         enabled: true,
         requireEmailVerification: false,
         sendResetPassword: async ({ user, url }, request) => {
-            const { sendPasswordResetEmail } = require("./services/emailService");
             await sendPasswordResetEmail(user.email, url);
         },
         password: {
             // Use bcrypt for compatibility with existing hashes
             hash: async (password) => {
-                const bcrypt = require("bcrypt");
                 return await bcrypt.hash(password, 10);
             },
             verify: async ({ password, hash }) => {
-                const bcrypt = require("bcrypt");
                 return await bcrypt.compare(password, hash);
             },
         },
@@ -153,7 +156,7 @@ const auth = betterAuth({
             enabled: false,
         },
         database: {
-            generateId: () => require("uuid").v4(),
+            generateId: () => uuidv4(),
         },
     },
 
@@ -321,12 +324,10 @@ const auth = betterAuth({
                 after: async (user) => {
                     console.log(`[AUTH] Hook: User created, initializing Sparky data for ${user.id}`);
                     try {
-                        const { ensureUserInitialization } = require("./models/userRepository");
                         // We use the user.name or email if name is missing for the profile
-                        await ensureUserInitialization(user.id, user.name || user.email.split('@')[0]);
+                        await userRepository.ensureUserInitialization(user.id, user.name || user.email.split('@')[0]);
 
                         // Also initialize default nutrient preferences
-                        const { createDefaultNutrientPreferencesForUser } = require("./services/nutrientDisplayPreferenceService");
                         await createDefaultNutrientPreferencesForUser(user.id);
 
                         console.log(`[AUTH] Hook: Initialization complete for ${user.id}`);
@@ -365,9 +366,6 @@ const auth = betterAuth({
                     const userId = session.userId;
                     const adminGroup = process.env.SPARKY_FITNESS_OIDC_ADMIN_GROUP;
 
-                    const { syncUserGroups } = require('./utils/oidcGroupSync');
-                    const userRepository = require('./models/userRepository');
-
                     await syncUserGroups({ pool: authPool, userRepository }, userId, adminGroup);
                 }
             }
@@ -378,7 +376,6 @@ const auth = betterAuth({
         require("better-auth/plugins").magicLink({
             expiresIn: 900, // 15 minutes (matches email template)
             sendMagicLink: async ({ email, url, token }, request) => {
-                const { sendMagicLinkEmail } = require("./services/emailService");
                 await sendMagicLinkEmail(email, url);
             },
         }),
@@ -400,7 +397,6 @@ const auth = betterAuth({
             },
             otpOptions: {
                 async sendOTP({ user, otp }, request) {
-                    const { sendEmailMfaCode } = require("./services/emailService");
                     await sendEmailMfaCode(user.email, otp);
                 }
             }

@@ -77,23 +77,7 @@ async function upsertEnvOidcProvider() {
     const existing = await oidcProviderRepository.getOidcProviderById(config.provider_id);
 
     if (existing) {
-        await oidcProviderRepository.updateOidcProvider(config.provider_id, {
-            issuer_url: config.issuer_url,
-            client_id: config.client_id,
-            client_secret: config.client_secret,
-            provider_id: config.provider_id,
-            display_name: config.display_name,
-            domain: config.domain,
-            logo_url: config.logo_url,
-            token_endpoint_auth_method: config.token_endpoint_auth_method,
-            signing_algorithm: config.signing_algorithm,
-            profile_signing_algorithm: config.profile_signing_algorithm,
-            timeout: config.timeout,
-            is_active: config.is_active,
-            auto_register: config.auto_register,
-            is_env_configured: config.is_env_configured,
-            scope: config.scope,
-        });
+        await oidcProviderRepository.updateOidcProvider(config.provider_id, config);
         log('info', `[OIDC ENV] Updated provider "${config.provider_id}" from environment.`);
     } else {
         await oidcProviderRepository.createOidcProvider(config);
