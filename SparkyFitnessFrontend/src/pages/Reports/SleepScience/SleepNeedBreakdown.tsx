@@ -78,7 +78,7 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
             <YAxis
               stroke={isDark ? '#888' : '#666'}
               fontSize={11}
-              domain={[-1, 'auto']}
+              domain={chartData.some((d) => d.value < 0) ? ['auto', 'auto'] : [0, 'auto']}
               tickFormatter={(v: number) => `${v}h`}
             />
             <Tooltip

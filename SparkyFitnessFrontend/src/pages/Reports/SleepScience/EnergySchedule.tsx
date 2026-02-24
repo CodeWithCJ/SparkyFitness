@@ -74,9 +74,19 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
             <defs>
-              <linearGradient id="energyGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#22c55e" stopOpacity={0.05} />
+              <linearGradient id="energyFillGradient" x1="0" y1="0" x2="1" y2="0">
+                {chartData.map((pt, index) => {
+                  const offset = `${(index / (chartData.length - 1)) * 100}%`;
+                  const color = ZONE_COLORS[pt.zone] || '#22c55e';
+                  return <stop key={`fill-${index}`} offset={offset} stopColor={color} stopOpacity={0.2} />;
+                })}
+              </linearGradient>
+              <linearGradient id="energyStrokeGradient" x1="0" y1="0" x2="1" y2="0">
+                {chartData.map((pt, index) => {
+                  const offset = `${(index / (chartData.length - 1)) * 100}%`;
+                  const color = ZONE_COLORS[pt.zone] || '#22c55e';
+                  return <stop key={`stroke-${index}`} offset={offset} stopColor={color} stopOpacity={1} />;
+                })}
               </linearGradient>
             </defs>
             <CartesianGrid
@@ -104,7 +114,11 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(value: number) => [`${value}%`, t('sleepScience.energy', 'Energy')]}
+              formatter={(value: number, name: string, props: any) => {
+                const pt = props?.payload;
+                const zoneName = pt?.zone ? t(`sleepScience.zone_${pt.zone}`, pt.zone) : '';
+                return [`${value}%`, `${t('sleepScience.energy', 'Energy')}${zoneName ? ` (${zoneName})` : ''}`];
+              }}
               labelFormatter={(hour: number) => formatHour(hour)}
             />
             {/* Melatonin window */}
@@ -131,11 +145,11 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
             <Area
               type="monotone"
               dataKey="energy"
-              stroke="#22c55e"
-              strokeWidth={2}
-              fill="url(#energyGradient)"
+              stroke="url(#energyStrokeGradient)"
+              strokeWidth={3}
+              fill="url(#energyFillGradient)"
               dot={false}
-              activeDot={{ r: 4, fill: '#22c55e' }}
+              activeDot={{ r: 5, fill: isDark ? '#fff' : '#000', stroke: isDark ? '#fff' : '#000' }}
             />
           </AreaChart>
         </ResponsiveContainer>

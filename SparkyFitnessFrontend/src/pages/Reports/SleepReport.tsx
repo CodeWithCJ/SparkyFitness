@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 import { toast as sonnerToast } from 'sonner';
 import SleepAnalyticsCharts from './SleepAnalyticsCharts';
 import SleepAnalyticsTable from './SleepAnalyticsTable';
-import SleepScienceSection from './SleepScience/SleepScienceSection';
 
 interface SleepReportProps {
   startDate: string;
@@ -214,7 +213,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
   }
 
   const combinedSleepData = processSleepData();
-
+  
   return (
     <div className="space-y-6">
       <Card>
@@ -252,9 +251,6 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           )}
         </CardContent>
       </Card>
-
-      {/* Sleep Science Advanced Insights */}
-      <SleepScienceSection />
     </div>
   );
 };

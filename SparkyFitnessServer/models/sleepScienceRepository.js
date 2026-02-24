@@ -17,16 +17,16 @@ async function getSleepHistory(userId, days = 90) {
         se.bedtime,
         se.wake_time,
         COALESCE(
-          (SELECT SUM(ss.duration_in_seconds) FROM sleep_entry_stages ss WHERE ss.sleep_entry_id = se.id AND ss.stage_type = 'deep'), 0
+          (SELECT SUM(ss.duration_in_seconds) FROM sleep_entry_stages ss WHERE ss.entry_id = se.id AND ss.stage_type = 'deep'), 0
         ) / 60.0 AS "deepSleepMinutes",
         COALESCE(
-          (SELECT SUM(ss.duration_in_seconds) FROM sleep_entry_stages ss WHERE ss.sleep_entry_id = se.id AND ss.stage_type = 'rem'), 0
+          (SELECT SUM(ss.duration_in_seconds) FROM sleep_entry_stages ss WHERE ss.entry_id = se.id AND ss.stage_type = 'rem'), 0
         ) / 60.0 AS "remSleepMinutes",
         COALESCE(
-          (SELECT SUM(ss.duration_in_seconds) FROM sleep_entry_stages ss WHERE ss.sleep_entry_id = se.id AND ss.stage_type = 'light'), 0
+          (SELECT SUM(ss.duration_in_seconds) FROM sleep_entry_stages ss WHERE ss.entry_id = se.id AND ss.stage_type = 'light'), 0
         ) / 60.0 AS "lightSleepMinutes",
         COALESCE(
-          (SELECT SUM(ss.duration_in_seconds) FROM sleep_entry_stages ss WHERE ss.sleep_entry_id = se.id AND ss.stage_type = 'awake'), 0
+          (SELECT SUM(ss.duration_in_seconds) FROM sleep_entry_stages ss WHERE ss.entry_id = se.id AND ss.stage_type = 'awake'), 0
         ) / 60.0 AS "awakeMinutes",
         se.duration_in_seconds / 3600.0 AS "sleepDurationHours",
         EXTRACT(EPOCH FROM se.bedtime) * 1000 AS "sleepStartTimestampGMT",

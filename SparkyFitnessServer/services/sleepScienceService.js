@@ -586,24 +586,39 @@ async function getEnergyCurve(userId) {
 
     // Energy calculation
     let energy = Math.round(processC * 100 - processS * 40);
-    energy = Math.max(0, Math.min(100, energy));
+    energy = Math.max(15, Math.min(100, energy));
 
     // Apply debt penalty
     energy = Math.round(energy * (1 - debtPenaltyPercent / 100));
 
     // Determine zone
+    const sleepH = (medianSleepHour + 24) % 24;
+    const wakeH = (medianWakeHour + 24) % 24;
+    const melatoninStart = (sleepH - 2 + 24) % 24;
+
+    let inSleepWindow;
+    if (sleepH < wakeH) {
+      inSleepWindow = hour >= sleepH && hour < wakeH;
+    } else {
+      inSleepWindow = hour >= sleepH || hour < wakeH;
+    }
+
+    const prevEnergy = i > 0 ? points[i - 1].energy : energy;
+    const isIncreasing = energy > prevEnergy;
+
     let zone;
-    const melatoninStart = medianSleepHour - 2;
-    if (hour >= medianSleepHour || hour < medianWakeHour) {
+    // Don't mark as sleep if already energy is climbing significantly (>30) or near wake time
+    if (inSleepWindow && energy < 30 && !isIncreasing) {
       zone = "sleep";
-    } else if (hour >= melatoninStart && hour < medianSleepHour) {
+    } else if (hour >= melatoninStart && hour < sleepH) {
       zone = "wind-down";
     } else if (energy >= 70) {
       zone = "peak";
-    } else if (energy <= 40) {
+    } else if (energy <= 45) {
       zone = "dip";
     } else {
-      zone = "rising";
+      // Intermediate energy: rising or falling?
+      zone = isIncreasing ? "rising" : "dip";
     }
 
     points.push({
