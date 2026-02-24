@@ -1,5 +1,7 @@
 // Utility to sync user roles based on OIDC groups found in the id_token.
 
+const { jwtDecode } = require('jwt-decode');
+
 /**
  * Syncs user roles based on OIDC groups found in the id_token.
  * @param {Object} deps Dependencies: { pool, userRepository }
@@ -24,15 +26,9 @@ async function syncUserGroups(deps, userId, adminGroup) {
             return;
         }
 
-        if (oidcAccount && oidcAccount.id_token) {
-            const idToken = oidcAccount.id_token;
-            const parts = idToken.split('.');
-            if (parts.length < 2) return;
-
-            const payloadBase64 = parts[1];
-            if (payloadBase64) {
-                // Use Buffer to decode base64url or base64
-                const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString());
+        if (oidcAccount?.id_token) {
+            try {
+                const payload = jwtDecode(oidcAccount.id_token);
                 const groups = payload.groups || [];
 
                 const currentRole = await userRepository.getUserRole(userId);
@@ -48,6 +44,8 @@ async function syncUserGroups(deps, userId, adminGroup) {
                         await userRepository.updateUserRole(userId, 'user');
                     }
                 }
+            } catch (e) {
+                console.error(`[AUTH] OIDC Sync: Failed to decode id_token for user ${userId}:`, e);
             }
         }
     } catch (err) {

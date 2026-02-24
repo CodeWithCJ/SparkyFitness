@@ -6,6 +6,16 @@ const NodeCache = require('node-cache');
 const discoveryCache = new NodeCache({ stdTTL: 3600 });
 
 /**
+ * Returns the frontend base URL with protocol and no trailing slash (for OIDC redirect URIs).
+ * @returns {string}
+ */
+function getBaseUrl() {
+    const frontendUrl = process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
+    const urlWithProtocol = frontendUrl.startsWith('http') ? frontendUrl : `https://${frontendUrl}`;
+    return urlWithProtocol.replace(/\/$/, '');
+}
+
+/**
  * Fetches OIDC endpoints from the discovery document
  * @param {string} discoveryEndpoint - The OIDC discovery endpoint URL
  * @returns {Promise<Object>} Object containing jwksEndpoint, tokenEndpoint, authorizationEndpoint, userInfoEndpoint
@@ -46,7 +56,7 @@ async function getOidcProviders() {
         );
         return result.rows.map(row => {
             const config = row.additional_config ? JSON.parse(row.additional_config) : {};
-            const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
+            const baseUrl = getBaseUrl();
             return {
                 id: row.id,
                 provider_id: row.provider_id,
@@ -83,7 +93,7 @@ async function getOidcProviderById(id) {
 
         const config = row.additional_config ? JSON.parse(row.additional_config) : {};
 
-        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
+        const baseUrl = getBaseUrl();
         const provider = {
             id: row.id,
             provider_id: row.provider_id,
@@ -157,7 +167,7 @@ async function createOidcProvider(providerData) {
         const endpoints = await fetchOidcEndpoints(discoveryEndpoint);
 
         // Construct native oidcConfig for Better Auth (object for JSONB column; same base as auth.baseURL)
-        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('http') ? process.env.SPARKY_FITNESS_FRONTEND_URL : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080'}`).replace(/\/$/, '');
+        const baseUrl = getBaseUrl();
         const callbackBase = `${baseUrl}/api/auth`;
         const oidcConfig = {
             issuer: endpoints.issuer || providerData.issuer_url,
@@ -193,7 +203,7 @@ async function createOidcProvider(providerData) {
                 endpoints.jwksEndpoint,
                 endpoints.userInfoEndpoint,
                 config,
-                JSON.stringify(oidcConfig)
+                oidcConfig
             ]
         );
         // Refresh Better Auth trusted providers after creation
@@ -237,7 +247,7 @@ async function updateOidcProvider(id, providerData) {
         const endpoints = await fetchOidcEndpoints(discoveryEndpoint);
 
         // Construct native oidcConfig for Better Auth (same base as auth.baseURL; JSONB)
-        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('http') ? process.env.SPARKY_FITNESS_FRONTEND_URL : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080'}`).replace(/\/$/, '');
+        const baseUrl = getBaseUrl();
         const callbackBase = `${baseUrl}/api/auth`;
         const providerIdToUse = providerData.provider_id || id;
         const oidcConfig = {
@@ -274,7 +284,7 @@ async function updateOidcProvider(id, providerData) {
             endpoints.jwksEndpoint,
             endpoints.userInfoEndpoint,
             config,
-            JSON.stringify(oidcConfig),
+            oidcConfig,
             providerIdToUse,
             id
         ]);
