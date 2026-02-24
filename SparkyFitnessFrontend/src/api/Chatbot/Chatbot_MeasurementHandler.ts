@@ -1,4 +1,4 @@
-import type { CoachResponse } from './Chatbot_types';
+import type { CoachResponse } from '../../types/Chatbot_types';
 import {
   debug,
   info,
@@ -6,7 +6,7 @@ import {
   error,
   type UserLoggingLevel,
 } from '@/utils/logging';
-import { apiCall } from '../api';
+import { apiCall } from '@/services/api';
 
 // Function to upsert check-in measurements
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

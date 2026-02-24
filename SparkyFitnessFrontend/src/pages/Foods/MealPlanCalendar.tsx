@@ -24,6 +24,7 @@ import {
   useMealPlanTemplates,
   useUpdateMealPlanMutation,
 } from '@/hooks/Foods/useMealplanTemplate';
+import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
 
 const MealPlanCalendar: React.FC = () => {
   const { t } = useTranslation();
@@ -34,6 +35,7 @@ const MealPlanCalendar: React.FC = () => {
     MealPlanTemplate | undefined
   >(undefined);
   const isMobile = useIsMobile();
+  const invalidate = useDiaryInvalidation();
   const { data: templates, isLoading } = useMealPlanTemplates(activeUserId);
   const { mutateAsync: createMealPlanTemplate } = useCreateMealPlanMutation();
   const { mutateAsync: updateMealPlanTemplate } = useUpdateMealPlanMutation();
@@ -78,7 +80,7 @@ const MealPlanCalendar: React.FC = () => {
         ); // Use debug
       }
       setIsFormOpen(false);
-      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
+      invalidate();
     } catch (error) {
       // The toast will be handled by the QueryClient's mutationCache
     }

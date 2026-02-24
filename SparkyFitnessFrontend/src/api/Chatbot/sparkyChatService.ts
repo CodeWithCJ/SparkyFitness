@@ -7,19 +7,16 @@ import {
   error,
   type UserLoggingLevel,
 } from '@/utils/logging';
-import type {
-  CoachResponse,
-  FoodOption,
-} from '@/services/Chatbot/Chatbot_types';
 import {
   processFoodInput,
   addFoodOption,
-} from '@/services/Chatbot/Chatbot_FoodHandler';
-import { processExerciseInput } from '@/services/Chatbot/Chatbot_ExerciseHandler';
-import { processMeasurementInput } from '@/services/Chatbot/Chatbot_MeasurementHandler';
-import { processWaterInput } from '@/services/Chatbot/Chatbot_WaterHandler';
-import { processChatInput } from '@/services/Chatbot/Chatbot_ChatHandler';
-import { AIService } from '../api/Settings/aiServiceSettingsService';
+} from '@/api/Chatbot/Chatbot_FoodHandler';
+import { processExerciseInput } from '@/api/Chatbot/Chatbot_ExerciseHandler';
+import { processMeasurementInput } from '@/api/Chatbot/Chatbot_MeasurementHandler';
+import { processWaterInput } from '@/api/Chatbot/Chatbot_WaterHandler';
+import { AIService } from '@/api/Settings/aiServiceSettingsService';
+import { CoachResponse, FoodOption } from '@/types/Chatbot_types';
+import { processChatInput } from '@/utils/Chatbot_utils';
 
 export interface Message {
   id: string;
@@ -324,8 +321,16 @@ export const processUserInput = async (
   }
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const getTodaysNutrition = async (date: string): Promise<any> => {
+interface ChatBotNutrition {
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
+  total_dietary_fiber: number;
+}
+export const getTodaysNutrition = async (
+  date: string
+): Promise<ChatBotNutrition> => {
   const params = new URLSearchParams({ date });
   return apiCall(`/food-entries/nutrition/today?${params.toString()}`, {
     method: 'GET',

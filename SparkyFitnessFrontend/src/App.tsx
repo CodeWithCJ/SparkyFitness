@@ -218,7 +218,7 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ReactQueryDevtools initialIsOpen={false} />
+      <ReactQueryDevtools buttonPosition="top-left" initialIsOpen={false} />
       <LanguageHandler />
       <ThemeProvider>
         <ChatbotVisibilityProvider>

@@ -1,5 +1,5 @@
 import { parseISO } from 'date-fns';
-import type { CoachResponse, FoodOption } from './Chatbot_types';
+import type { CoachResponse, FoodOption } from '../../types/Chatbot_types';
 import {
   debug,
   info,
@@ -7,11 +7,8 @@ import {
   error,
   type UserLoggingLevel,
 } from '@/utils/logging';
-import { apiCall } from '../api';
+import { apiCall } from '@/services/api';
 
-import SparkyAIService from '@/components/SparkyAIService';
-
-const sparkyAIService = new SparkyAIService(); // Create an instance of SparkyAIService
 // Function to process food input
 export const processFoodInput = async (
   data: {
@@ -58,7 +55,6 @@ export const processFoodInput = async (
       unit,
       meal_type: raw_meal_type,
       foodOptions,
-      ...nutritionData
     } = data; // Destructure, also check for foodOptions array
     // Standardize meal type: convert 'snack' to 'snacks' to match potential database constraint
     const meal_type =
@@ -124,7 +120,6 @@ export const processFoodInput = async (
     debug(userLoggingLevel, 'Exact search results:', exactFoods);
 
     let existingFoods = exactFoods;
-    const broadError = null;
 
     // If no exact match found, try a broader case-insensitive search
     if (!existingFoods || existingFoods.length === 0) {
@@ -190,7 +185,6 @@ export const processFoodInput = async (
 
       // If no unit mismatch, proceed with insertion
       info(userLoggingLevel, 'Inserting food entry...');
-      const insertError = null;
       try {
         await apiCall('/food-entries', {
           method: 'POST',
@@ -479,7 +473,6 @@ export const addFoodOption = async (
       entryDate: dateToUse,
       variantId,
     });
-    const entryError = null;
     try {
       await apiCall('/food-entries', {
         method: 'POST',

@@ -1,4 +1,3 @@
-import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, Trash2 } from 'lucide-react';
 import {
@@ -8,36 +7,28 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { useAuth } from '@/hooks/useAuth';
 import SparkyChatInterface from './SparkyChatInterface';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
-import { getAIServices } from '@/api/Settings/aiServiceSettingsService';
+import { useAIServices } from '@/hooks/AI/useAIServiceSettings';
+import { useState } from 'react';
+import { useClearChatHistoryMutation } from '@/hooks/AI/useSparkyChat';
 
 const SparkyChat = () => {
-  const { user, loading } = useAuth(); // Get loading state from useAuth
   const { isChatOpen, closeChat } = useChatbotVisibility();
-  const [hasEnabledServices, setHasEnabledServices] = useState(false); // Keep this state
+  const { data: services } = useAIServices();
+  const [resetKey, setResetKey] = useState(0);
+  const { mutate: clearHistory, isPending: isClearing } =
+    useClearChatHistoryMutation();
 
-  const checkEnabledServices = useCallback(async () => {
-    if (loading) {
-      // Do not proceed if authentication is still loading
-      setHasEnabledServices(false);
-      return;
-    }
-    try {
-      const services = await getAIServices();
-      const enabled = services.some((service) => service.is_active);
-      setHasEnabledServices(enabled);
-    } catch (error) {
-      console.error('Error fetching AI services:', error);
-      setHasEnabledServices(false);
-    }
-  }, [loading]); // Add loading to dependency array
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    checkEnabledServices();
-  }, [checkEnabledServices]);
+  const handleClearHistory = () => {
+    clearHistory('all', {
+      onSuccess: () => {
+        setResetKey((prev) => prev + 1);
+      },
+    });
+  };
+  const hasEnabledServices =
+    services?.some((service) => service.is_active) ?? false;
 
   if (!hasEnabledServices) {
     return null;
@@ -60,12 +51,8 @@ const SparkyChat = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => {
-                  // This will be handled by the SparkyChatInterface component
-                  // We just need to trigger the action
-                  const event = new CustomEvent('clearChatHistory');
-                  window.dispatchEvent(event);
-                }}
+                onClick={handleClearHistory}
+                disabled={isClearing}
                 aria-label="Clear chat history"
                 className="ml-auto" // Push button to the right
               >
@@ -76,7 +63,7 @@ const SparkyChat = () => {
           </SheetHeader>
 
           <div className="flex-1 overflow-hidden">
-            <SparkyChatInterface />
+            <SparkyChatInterface key={resetKey} />
           </div>
         </div>
       </SheetContent>
