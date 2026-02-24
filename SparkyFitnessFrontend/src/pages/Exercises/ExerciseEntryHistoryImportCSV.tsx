@@ -308,43 +308,43 @@ const ExerciseEntryHistoryImportCSV = ({
           exercise_source: row.exercise_source?.trim(),
           exercise_force: dropdownFields.has('exercise_force')
             ? dropdownOptions['exercise_force'].find(
-              (option) => option === row.exercise_force?.trim()?.toLowerCase()
-            ) || row.exercise_force?.trim()
+                (option) => option === row.exercise_force?.trim()?.toLowerCase()
+              ) || row.exercise_force?.trim()
             : row.exercise_force?.trim(),
           exercise_level: dropdownFields.has('exercise_level')
             ? dropdownOptions['exercise_level'].find(
-              (option) => option === row.exercise_level?.trim()?.toLowerCase()
-            ) || row.exercise_level?.trim()
+                (option) => option === row.exercise_level?.trim()?.toLowerCase()
+              ) || row.exercise_level?.trim()
             : row.exercise_level?.trim(),
           exercise_mechanic: dropdownFields.has('exercise_mechanic')
             ? dropdownOptions['exercise_mechanic'].find(
-              (option) =>
-                option === row.exercise_mechanic?.trim()?.toLowerCase()
-            ) || row.exercise_mechanic?.trim()
+                (option) =>
+                  option === row.exercise_mechanic?.trim()?.toLowerCase()
+              ) || row.exercise_mechanic?.trim()
             : row.exercise_mechanic?.trim(),
           exercise_equipment: row.exercise_equipment
             ? row.exercise_equipment
-              .split(',')
-              .map((s) => s.trim())
-              .filter((s) => s)
+                .split(',')
+                .map((s) => s.trim())
+                .filter((s) => s)
             : undefined,
           primary_muscles: row.primary_muscles
             ? row.primary_muscles
-              .split(',')
-              .map((s) => s.trim())
-              .filter((s) => s)
+                .split(',')
+                .map((s) => s.trim())
+                .filter((s) => s)
             : undefined,
           secondary_muscles: row.secondary_muscles
             ? row.secondary_muscles
-              .split(',')
-              .map((s) => s.trim())
-              .filter((s) => s)
+                .split(',')
+                .map((s) => s.trim())
+                .filter((s) => s)
             : undefined,
           instructions: row.instructions
             ? row.instructions
-              .split('\n')
-              .map((s) => s.trim())
-              .filter((s) => s)
+                .split('\n')
+                .map((s) => s.trim())
+                .filter((s) => s)
             : undefined,
           sets: [],
           activity_details: [],
@@ -428,20 +428,20 @@ const ExerciseEntryHistoryImportCSV = ({
     } catch (error: any) {
       const errorMessage = error.details?.failedEntries
         ? t(
-          'exercise.importHistoryCSV.partialImportError',
-          'Some entries failed to import: {{details}}',
-          {
-            details: error.details.failedEntries
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .map((e: any) => e.entry.exercise_name + ' - ' + e.reason)
-              .join(', '),
-          }
-        )
+            'exercise.importHistoryCSV.partialImportError',
+            'Some entries failed to import: {{details}}',
+            {
+              details: error.details.failedEntries
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .map((e: any) => e.entry.exercise_name + ' - ' + e.reason)
+                .join(', '),
+            }
+          )
         : error.message ||
-        t(
-          'exercise.importHistoryCSV.importError',
-          'Failed to import historical exercise entries. Please try again.'
-        );
+          t(
+            'exercise.importHistoryCSV.importError',
+            'Failed to import historical exercise entries. Please try again.'
+          );
       toast({
         title: t('common.error', 'Error'),
         description: errorMessage,
@@ -667,7 +667,8 @@ const ExerciseEntryHistoryImportCSV = ({
     return sets
       .map((set) => {
         const repsDisplay = set.reps ?? '-';
-        const weightDisplay = set.weight != null ? `${set.weight}${weightUnitLabel}` : '-';
+        const weightDisplay =
+          set.weight != null ? `${set.weight}${weightUnitLabel}` : '-';
         const setTypeDisplay = set.set_type || '-';
         return `${set.set_number}: ${repsDisplay} reps @ ${weightDisplay} (${setTypeDisplay})`;
       })
