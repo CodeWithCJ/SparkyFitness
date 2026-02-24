@@ -28,6 +28,7 @@ import axios from 'axios';
 import SparkyChat from '../pages/Chat/SparkyChat';
 import AddComp from '@/layouts/AddComp';
 import ThemeToggle from '@/components/ThemeToggle';
+import GlobalSyncButton from '@/components/GlobalSyncButton';
 import ProfileSwitcher from '@/components/ProfileSwitcher';
 import GitHubStarCounter from '@/components/GitHubStarCounter';
 import GitHubSponsorButton from '@/components/GitHubSponsorButton';
@@ -343,6 +344,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
             </span>
 
             <GlobalNotificationIcon />
+            <GlobalSyncButton />
             <ThemeToggle />
             <Button
               variant="outline"

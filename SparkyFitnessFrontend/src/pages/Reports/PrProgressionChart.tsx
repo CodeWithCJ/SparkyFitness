@@ -25,9 +25,7 @@ interface PrProgressionChartProps {
     | null;
 }
 
-const PrProgressionChart: React.FC<PrProgressionChartProps> = ({
-  prProgressionData,
-}) => {
+const PrProgressionChart = ({ prProgressionData }: PrProgressionChartProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);

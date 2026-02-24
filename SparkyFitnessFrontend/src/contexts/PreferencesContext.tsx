@@ -59,7 +59,7 @@ const upsertUserPreferences = async (payload: any) => {
   }
 };
 
-type EnergyUnit = 'kcal' | 'kJ';
+export type EnergyUnit = 'kcal' | 'kJ';
 
 // Conversion constant
 const KCAL_TO_KJ = 4.184;
@@ -69,14 +69,14 @@ interface NutrientPreference {
   platform: 'desktop' | 'mobile';
   visible_nutrients: string[];
 }
-
+export type LoggingLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT';
 interface PreferencesContextType {
   weightUnit: 'kg' | 'lbs';
   measurementUnit: 'cm' | 'inches';
   distanceUnit: 'km' | 'miles';
   dateFormat: string;
   autoClearHistory: string;
-  loggingLevel: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT';
+  loggingLevel: LoggingLevel;
   defaultFoodDataProviderId: string | null;
   timezone: string;
   foodDisplayLimit: number;

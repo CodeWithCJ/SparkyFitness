@@ -133,9 +133,6 @@ const DiaryTopControls = ({
 
                 const label = t(metadata.label, metadata.defaultLabel);
                 const colorClass = metadata.color;
-                const barColor = metadata.color
-                  .replace('text-', 'bg-')
-                  .split(' ')[0]; // Use first bg color
 
                 const percentage =
                   goal > 0 ? Math.min((total / goal) * 100, 100) : 0;
@@ -154,8 +151,11 @@ const DiaryTopControls = ({
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                       <div
-                        className={`${barColor} h-1.5 rounded-full`}
-                        style={{ width: `${percentage}%` }}
+                        className="h-1.5 rounded-full"
+                        style={{
+                          width: `${percentage}%`,
+                          backgroundColor: metadata.chartColor,
+                        }}
                       />
                     </div>
                   </div>

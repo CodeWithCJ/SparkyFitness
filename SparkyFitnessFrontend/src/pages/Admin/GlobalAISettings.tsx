@@ -298,7 +298,9 @@ const GlobalAISettings = () => {
             services={services}
             editingService={editingService}
             editData={editData}
-            onEditDataChange={setEditData}
+            onEditDataChange={(data) =>
+              setEditData((prev) => ({ ...prev, ...data }))
+            }
             onStartEdit={startEditing}
             onCancelEdit={cancelEditing}
             onUpdate={handleUpdateService}

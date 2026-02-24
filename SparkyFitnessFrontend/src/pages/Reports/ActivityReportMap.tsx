@@ -1,4 +1,3 @@
-import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, Polyline, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -15,9 +14,7 @@ interface ActivityReportMapProps {
   polylineData?: { lat: number; lon: number }[];
 }
 
-const ActivityReportMap: React.FC<ActivityReportMapProps> = ({
-  polylineData,
-}) => {
+const ActivityReportMap = ({ polylineData }: ActivityReportMapProps) => {
   const { t } = useTranslation();
   if (!polylineData || polylineData.length === 0) {
     return (

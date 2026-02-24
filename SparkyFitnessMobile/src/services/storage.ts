@@ -1,10 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { CATEGORY_ORDER } from '../HealthMetrics';
 
 export interface ServerConfig {
   id: string;
   url: string;
   apiKey: string;
+}
+
+/** Config shape stored in AsyncStorage (apiKey stripped out). */
+interface StoredServerConfig {
+  id: string;
+  url: string;
+  apiKey?: string; // Present only in legacy data before migration
 }
 
 export type TimeRange = 'today' | '24h' | '3d' | '7d' | '30d' | '90d';
@@ -15,24 +23,41 @@ const TIME_RANGE_KEY = 'timeRange';
 const LAST_SYNCED_TIME_KEY = 'lastSyncedTime';
 const BACKGROUND_SYNC_ENABLED_KEY = 'backgroundSyncEnabled';
 
+const secureStoreKey = (configId: string) => `apiKey_${configId}`;
+const secureStoreOptions = { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK };
+
+/** Read raw configs from AsyncStorage without hydrating keys from SecureStore. */
+const getRawStoredConfigs = async (): Promise<StoredServerConfig[]> => {
+  const jsonValue = await AsyncStorage.getItem(SERVER_CONFIGS_KEY);
+  if (jsonValue == null) return [];
+  try {
+    const parsed = JSON.parse(jsonValue);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
 /**
  * Saves a new server configuration or updates an existing one.
- * If a config with the same ID exists, it updates it. Otherwise, it adds a new one.
+ * The API key is stored in SecureStore; only id and url go to AsyncStorage.
  * Also sets the saved/updated config as the active one.
  */
 export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
   try {
-    const configs = await getAllServerConfigs();
-    const index = configs.findIndex(c => c.id === config.id);
+    const stored = await getRawStoredConfigs();
+    const stripped: StoredServerConfig = { id: config.id, url: config.url };
+    const index = stored.findIndex(c => c.id === config.id);
 
     if (index > -1) {
-      configs[index] = config; // Update existing
+      stored[index] = stripped;
     } else {
-      configs.push(config); // Add new
+      stored.push(stripped);
     }
 
-    await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(configs));
-    await setActiveServerConfig(config.id); // Set as active
+    await SecureStore.setItemAsync(secureStoreKey(config.id), config.apiKey, secureStoreOptions);
+    await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
+    await setActiveServerConfig(config.id);
   } catch (e) {
     console.error('Failed to save server config.', e);
     throw e;
@@ -46,10 +71,8 @@ export const getActiveServerConfig = async (): Promise<ServerConfig | null> => {
   try {
     const activeId = await AsyncStorage.getItem(ACTIVE_SERVER_CONFIG_ID_KEY);
     if (!activeId) {
-      // console.log('[storage.js] No active config ID found.');
       return null;
     }
-    // console.log(`[storage.js] Active config ID: ${activeId}`);
 
     const configs = await getAllServerConfigs();
     return configs.find(config => config.id === activeId) || null;
@@ -61,11 +84,43 @@ export const getActiveServerConfig = async (): Promise<ServerConfig | null> => {
 
 /**
  * Retrieves all saved server configurations.
+ * Hydrates API keys from SecureStore. Migrates legacy keys found in AsyncStorage.
  */
 export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
   try {
-    const jsonValue = await AsyncStorage.getItem(SERVER_CONFIGS_KEY);
-    return jsonValue != null ? (JSON.parse(jsonValue) as ServerConfig[]) : [];
+    const stored = await getRawStoredConfigs();
+    let migrated = false;
+
+    const configs: ServerConfig[] = await Promise.all(
+      stored.map(async (entry) => {
+        const secureKey = await SecureStore.getItemAsync(secureStoreKey(entry.id), secureStoreOptions);
+
+        if (secureKey != null) {
+          // Flag for cleanup if a stale plaintext key remains in AsyncStorage
+          if (entry.apiKey) migrated = true;
+          return { id: entry.id, url: entry.url, apiKey: secureKey };
+        }
+
+        // Legacy migration: key still in AsyncStorage
+        if (entry.apiKey) {
+          await SecureStore.setItemAsync(secureStoreKey(entry.id), entry.apiKey, secureStoreOptions);
+          migrated = true;
+          return { id: entry.id, url: entry.url, apiKey: entry.apiKey };
+        }
+
+        return { id: entry.id, url: entry.url, apiKey: '' };
+      }),
+    );
+
+    // Strip migrated plaintext keys from AsyncStorage.
+    // Re-read to avoid overwriting configs saved by concurrent saveServerConfig calls.
+    if (migrated) {
+      const current = await getRawStoredConfigs();
+      const cleaned = current.map(({ id, url }) => ({ id, url }));
+      await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(cleaned));
+    }
+
+    return configs;
   } catch (e) {
     console.error('Failed to retrieve all server configs.', e);
     return [];
@@ -85,14 +140,15 @@ export const setActiveServerConfig = async (configId: string): Promise<void> => 
 };
 
 /**
- * Deletes a specific server configuration.
+ * Deletes a specific server configuration and its SecureStore key.
  * If the deleted config was active, it clears the active config.
  */
 export const deleteServerConfig = async (configId: string): Promise<void> => {
   try {
-    let configs = await getAllServerConfigs();
-    configs = configs.filter(config => config.id !== configId);
-    await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(configs));
+    let stored = await getRawStoredConfigs();
+    stored = stored.filter(config => config.id !== configId);
+    await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
+    await SecureStore.deleteItemAsync(secureStoreKey(configId));
 
     const activeId = await AsyncStorage.getItem(ACTIVE_SERVER_CONFIG_ID_KEY);
     if (activeId === configId) {

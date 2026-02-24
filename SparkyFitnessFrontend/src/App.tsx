@@ -6,7 +6,7 @@ import {
   QueryClient,
   QueryClientProvider,
 } from '@tanstack/react-query';
-import { PreferencesProvider } from '@/contexts/PreferencesContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { ChatbotVisibilityProvider } from '@/contexts/ChatbotVisibilityContext';
 import LanguageHandler from '@/components/LanguageHandler';
 import { WaterContainerProvider } from '@/contexts/WaterContainerContext';
@@ -20,7 +20,6 @@ import axios from 'axios';
 import { Toaster } from '@/components/ui/toaster';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { FastingProvider } from '@/contexts/FastingContext';
 import OidcCallback from '@/components/OidcCallback';
 import { useActiveUser } from './contexts/ActiveUserContext';
 import { toast } from './hooks/use-toast';
@@ -54,6 +53,9 @@ const FitbitCallback = lazy(
   () => import('@/pages/Integrations/FitbitCallback')
 );
 const PolarCallback = lazy(() => import('@/pages/Integrations/PolarCallback'));
+const StravaCallback = lazy(
+  () => import('@/pages/Integrations/StravaCallback')
+);
 
 declare module '@tanstack/react-query' {
   interface Register {
@@ -134,11 +136,11 @@ const queryClient = new QueryClient({
   }),
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 30,
+      staleTime: 1000 * 60 * 5, // Reduced from 30m to 5m for better responsiveness
       gcTime: 1000 * 60 * 60,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      refetchOnMount: false,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      refetchOnMount: true,
       retry: 1,
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
     },
@@ -185,6 +187,7 @@ const App = () => {
   const [latestRelease, setLatestRelease] = useState(null);
   const [showNewReleaseDialog, setShowNewReleaseDialog] = useState(false);
   const [appVersion, setAppVersion] = useState('unknown');
+  const { timezone } = usePreferences();
 
   useEffect(() => {
     // Other useEffects like network intercept, reload detection, etc. can remain
@@ -216,127 +219,114 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ReactQueryDevtools initialIsOpen={false} />
-      <PreferencesProvider>
-        <LanguageHandler />
-        <ThemeProvider>
-          <ChatbotVisibilityProvider>
-            <ActiveUserProvider>
-              <WaterContainerProvider>
-                <AppSetup
-                  setLatestRelease={setLatestRelease}
-                  setShowNewReleaseDialog={setShowNewReleaseDialog}
-                />
-                <Suspense
-                  fallback={
-                    <div className="min-h-screen flex items-center justify-center">
-                      Loading Site...
-                    </div>
-                  }
-                >
-                  <Routes>
-                    <Route path="/login" element={<Auth />} />
+      <LanguageHandler />
+      <ThemeProvider>
+        <ChatbotVisibilityProvider>
+          <ActiveUserProvider>
+            <WaterContainerProvider>
+              <AppSetup
+                setLatestRelease={setLatestRelease}
+                setShowNewReleaseDialog={setShowNewReleaseDialog}
+              />
+              <Suspense
+                fallback={
+                  <div className="min-h-screen flex items-center justify-center">
+                    Loading Site...
+                  </div>
+                }
+              >
+                <Routes>
+                  <Route path="/login" element={<Auth />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/login/magic-link" element={<Auth />} />
+                  <Route path="/error" element={<Auth />} />
+                  <Route
+                    path="/withings/callback"
+                    element={<WithingsCallback />}
+                  />
+                  <Route path="/fitbit/callback" element={<FitbitCallback />} />
+                  <Route path="/polar/callback" element={<PolarCallback />} />
+                  <Route path="/strava/callback" element={<StravaCallback />} />
+                  <Route path="/oidc-callback" element={<OidcCallback />} />
+                  <Route
+                    path="/"
+                    element={
+                      <PrivateRoute>
+                        <Index
+                          onShowAboutDialog={() => setShowAboutDialog(true)}
+                        />
+                      </PrivateRoute>
+                    }
+                  >
+                    <Route index element={<Diary />} />
+                    <Route path="checkin" element={<CheckIn />} />
                     <Route
-                      path="/forgot-password"
-                      element={<ForgotPassword />}
-                    />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/login/magic-link" element={<Auth />} />
-                    <Route path="/error" element={<Auth />} />
-                    <Route
-                      path="/withings/callback"
-                      element={<WithingsCallback />}
-                    />
-                    <Route
-                      path="/fitbit/callback"
-                      element={<FitbitCallback />}
-                    />
-                    <Route path="/polar/callback" element={<PolarCallback />} />
-                    <Route path="/oidc-callback" element={<OidcCallback />} />
-                    <Route
-                      path="/"
+                      key={timezone}
+                      path="reports"
                       element={
-                        <PrivateRoute>
-                          <Index
-                            onShowAboutDialog={() => setShowAboutDialog(true)}
-                          />
-                        </PrivateRoute>
+                        <PermissionRoute permission="reports">
+                          <Reports />
+                        </PermissionRoute>
                       }
-                    >
-                      <Route index element={<Diary />} />
+                    />
+                    <Route path="foods" element={<FoodDatabaseManager />} />
+                    <Route
+                      path="exercises"
+                      element={<ExerciseDatabaseManager />}
+                    />
+                    <Route path="goals" element={<GoalsSettings />} />
+                    <Route path="settings" element={<Settings />} />
+                    <Route path="admin">
                       <Route
-                        path="checkin"
+                        index
                         element={
-                          <FastingProvider>
-                            <CheckIn />
-                          </FastingProvider>
-                        }
-                      />
-                      <Route
-                        path="reports"
-                        element={
-                          <PermissionRoute permission="reports">
-                            <Reports />
+                          <PermissionRoute permission="admin">
+                            <AdminPage />
                           </PermissionRoute>
                         }
                       />
-                      <Route path="foods" element={<FoodDatabaseManager />} />
                       <Route
-                        path="exercises"
-                        element={<ExerciseDatabaseManager />}
+                        path="oidc-settings"
+                        element={
+                          <PermissionRoute permission="admin">
+                            <AuthenticationSettings />
+                          </PermissionRoute>
+                        }
                       />
-                      <Route path="goals" element={<GoalsSettings />} />
-                      <Route path="settings" element={<Settings />} />
-                      <Route path="admin">
-                        <Route
-                          index
-                          element={
-                            <PermissionRoute permission="admin">
-                              <AdminPage />
-                            </PermissionRoute>
-                          }
-                        />
-                        <Route
-                          path="oidc-settings"
-                          element={
-                            <PermissionRoute permission="admin">
-                              <AuthenticationSettings />
-                            </PermissionRoute>
-                          }
-                        />
-                        <Route
-                          path="user-management"
-                          element={
-                            <PermissionRoute permission="admin">
-                              <UserManagement />
-                            </PermissionRoute>
-                          }
-                        />
-                      </Route>
+                      <Route
+                        path="user-management"
+                        element={
+                          <PermissionRoute permission="admin">
+                            <UserManagement />
+                          </PermissionRoute>
+                        }
+                      />
                     </Route>
+                  </Route>
 
-                    {/* Catch-all route */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
+                  {/* Catch-all route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
 
-                <DraggableChatbotButton />
-                <AboutDialog
-                  isOpen={showAboutDialog}
-                  onClose={() => setShowAboutDialog(false)}
-                  version={appVersion}
-                />
-                <NewReleaseDialog
-                  isOpen={showNewReleaseDialog}
-                  onClose={() => setShowNewReleaseDialog(false)}
-                  releaseInfo={latestRelease}
-                  onDismissForVersion={handleDismissRelease}
-                />
-                <Toaster />
-              </WaterContainerProvider>
-            </ActiveUserProvider>
-          </ChatbotVisibilityProvider>
-        </ThemeProvider>
-      </PreferencesProvider>
+              <DraggableChatbotButton />
+              <AboutDialog
+                isOpen={showAboutDialog}
+                onClose={() => setShowAboutDialog(false)}
+                version={appVersion}
+              />
+              <NewReleaseDialog
+                isOpen={showNewReleaseDialog}
+                onClose={() => setShowNewReleaseDialog(false)}
+                releaseInfo={latestRelease}
+                onDismissForVersion={handleDismissRelease}
+              />
+              <Toaster />
+            </WaterContainerProvider>
+          </ActiveUserProvider>
+        </ChatbotVisibilityProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };

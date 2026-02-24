@@ -449,7 +449,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       caloriesBurned: parseFloat(caloriesBurned.toFixed(2)),
       distance: parseFloat(distance.toFixed(2)),
       notes: rec.notes as string | undefined,
-      raw_data: record
+      raw_data: record,
+      sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }]
     };
     output.push(exerciseSession);
   },

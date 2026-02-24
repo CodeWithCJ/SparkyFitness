@@ -26,13 +26,13 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
     const isDarkMode = theme === 'dark' || theme === 'amoled';
 
     const [
-      sectionBg,
+      surfaceBg,
       textMuted,
       accentPrimary,
       textPrimary,
       textSecondary,
     ] = useCSSVariable([
-      '--color-section',
+      '--color-surface',
       '--color-text-muted',
       '--color-accent-primary',
       '--color-text-primary',
@@ -82,7 +82,7 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
         ref={bottomSheetRef}
         enableDynamicSizing
         backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: sectionBg }}
+        backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
         <BottomSheetView className="pb-5 px-2">

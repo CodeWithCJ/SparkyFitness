@@ -82,6 +82,19 @@ jest.mock('expo-background-task', () => ({
   BackgroundTaskResult: { Success: 1, Failed: 2 },
 }));
 
+// Mock expo-secure-store
+jest.mock('expo-secure-store', () => {
+  const store = {};
+  return {
+    AFTER_FIRST_UNLOCK: 'AFTER_FIRST_UNLOCK',
+    setItemAsync: jest.fn(async (key, value) => { store[key] = value; }),
+    getItemAsync: jest.fn(async (key) => store[key] ?? null),
+    deleteItemAsync: jest.fn(async (key) => { delete store[key]; }),
+    __store: store,
+    __clear: () => { Object.keys(store).forEach(k => delete store[k]); },
+  };
+});
+
 // Mock @react-native-async-storage/async-storage
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')

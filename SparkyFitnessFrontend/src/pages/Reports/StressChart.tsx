@@ -21,7 +21,7 @@ interface StressChartProps {
   title: string;
 }
 
-const StressChart: React.FC<StressChartProps> = ({ data, title }) => {
+const StressChart = ({ data, title }: StressChartProps) => {
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {

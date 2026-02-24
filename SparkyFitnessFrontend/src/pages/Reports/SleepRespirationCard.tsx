@@ -14,6 +14,7 @@ import {
 import { Wind } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
+import { getRespirationStatus } from '@/utils/reportUtil';
 
 interface RespirationDataPoint {
   date: string;
@@ -26,34 +27,7 @@ interface SleepRespirationCardProps {
   data: RespirationDataPoint[];
 }
 
-// Get status based on respiration rate - returns translation key
-const getRespirationStatus = (
-  value: number
-): { statusKey: string; statusDefault: string; color: string } => {
-  if (value < 12) {
-    return {
-      statusKey: 'reports.respirationLow',
-      statusDefault: 'Low',
-      color: '#f97316',
-    };
-  } else if (value <= 20) {
-    return {
-      statusKey: 'reports.respirationNormal',
-      statusDefault: 'Normal',
-      color: '#22c55e',
-    };
-  } else {
-    return {
-      statusKey: 'reports.respirationElevated',
-      statusDefault: 'Elevated',
-      color: '#f97316',
-    };
-  }
-};
-
-const SleepRespirationCard: React.FC<SleepRespirationCardProps> = ({
-  data,
-}) => {
+const SleepRespirationCard = ({ data }: SleepRespirationCardProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);

@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:?Variable is required and must be set}
       POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
     volumes:
-      - ./docker_volume/postgresql:/var/lib/postgresql/data
+      - ./docker_volume/postgresql:/var/lib/postgresql/data:z
     networks:
       - sparkyfitness-network
     ports:
@@ -51,10 +51,10 @@ services:
       SPARKY_FITNESS_EMAIL_FROM: ${SPARKY_FITNESS_EMAIL_FROM}
       GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:8000 # Add Garmin microservice URL
     volumes:
-      - ../SparkyFitnessServer:/app/SparkyFitnessServer
+      - ../SparkyFitnessServer:/app/SparkyFitnessServer:z
       - /app/SparkyFitnessServer/node_modules
-      - ./docker_volume/uploads:/app/SparkyFitnessServer/uploads
-      - ./docker_volume/backup:/app/SparkyFitnessServer/backup
+      - ./docker_volume/uploads:/app/SparkyFitnessServer/uploads:z
+      - ./docker_volume/backup:/app/SparkyFitnessServer/backup:z
     networks:
       - sparkyfitness-network
     ports:
@@ -75,7 +75,7 @@ services:
     ports:
       - "8080:8080" # Map host port 8080 to vite port 8080
     volumes:
-      - ../SparkyFitnessFrontend:/app # mount directory for auto refresh
+      - ../SparkyFitnessFrontend:/app:z # mount directory for auto refresh
       - /app/node_modules # prevent node modules override in container
     networks:
       - sparkyfitness-network

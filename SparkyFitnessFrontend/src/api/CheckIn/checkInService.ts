@@ -1,4 +1,4 @@
-import { apiCall } from './api';
+import { apiCall } from '@/services/api';
 
 export interface CustomCategory {
   id: string;
@@ -57,8 +57,15 @@ export interface CombinedMeasurement {
   calories_burned?: number;
 }
 
-export const loadCustomCategories = async (): Promise<CustomCategory[]> => {
-  return apiCall('/measurements/custom-categories');
+export const loadCustomCategories = async (
+  userId?: string
+): Promise<CustomCategory[]> => {
+  const url = userId
+    ? `/measurements/custom-categories?userId=${userId}`
+    : '/measurements/custom-categories';
+  return apiCall(url, {
+    method: 'GET',
+  });
 };
 
 export const fetchRecentCustomMeasurements = async (): Promise<
@@ -141,4 +148,16 @@ export const getMostRecentMeasurement = async (
   measurementType: string
 ): Promise<CheckInMeasurement | null> => {
   return apiCall(`/measurements/most-recent/${measurementType}`);
+};
+
+export const fetchCustomEntries = async (
+  categoryId: string,
+  userId?: string
+) => {
+  const params = new URLSearchParams({ category_id: categoryId });
+  if (userId) params.append('userId', userId);
+
+  return apiCall(`/measurements/custom-entries?${params.toString()}`, {
+    method: 'GET',
+  });
 };

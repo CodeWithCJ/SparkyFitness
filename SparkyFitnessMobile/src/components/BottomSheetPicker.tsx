@@ -41,10 +41,10 @@ function BottomSheetPicker<T extends string | number>({
 }: BottomSheetPickerProps<T>) {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useUniwind();
-  const [primary, textMuted, sectionBg] = useCSSVariable([
+  const [primary, textMuted, surfaceBg] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
-    '--color-section',
+    '--color-surface',
   ]) as [string, string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
 
@@ -115,7 +115,7 @@ function BottomSheetPicker<T extends string | number>({
   return (
     <>
       <TouchableOpacity
-        className="flex-row items-center justify-between px-3 py-2.5 rounded-lg border border-border-subtle bg-card min-h-11"
+        className="flex-row items-center justify-between px-3 py-2.5 rounded-lg border border-border-subtle bg-raised min-h-11"
         style={containerStyle}
         onPress={handleOpen}
         activeOpacity={0.7}
@@ -134,7 +134,7 @@ function BottomSheetPicker<T extends string | number>({
         snapPoints={snapPoints}
         enableDynamicSizing={enableDynamic}
         backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: sectionBg }}
+        backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
         {enableDynamic ? (

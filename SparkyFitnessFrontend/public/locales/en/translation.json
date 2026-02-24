@@ -420,6 +420,15 @@
     "scanBarcodeDescription": "Position the product barcode in front of your camera.",
     "importFromCSVDescription": "Import a CSV file to add multiple foods at once."
   },
+  "sync": {
+    "syncAll": "Sync all active providers",
+    "syncingAll": "Syncing all providers...",
+    "noActiveProviders": "No active providers found to sync.",
+    "syncCompleted_one": "Successfully synchronized {{count}} provider.",
+    "syncCompleted_other": "Successfully synchronized {{count}} providers.",
+    "syncFailed_one": "Failed to synchronize {{count}} provider.",
+    "syncFailed_other": "Failed to synchronize {{count}} providers."
+  },
   "settings": {
     "profileInformation": {
       "title": "Profile Information",
@@ -628,6 +637,7 @@
         "serviceActivated": "AI service activated",
         "serviceDeactivated": "AI service deactivated",
         "errorOriginalNotFound": "Original service not found.",
+        "enterNewApiKey": "Enter new API key to update",
         "errorOriginalNotFoundStatus": "Original service not found for status update.",
         "errorNoGlobalSetting": "No active global setting found to override",
         "successOverriding": "Global settings overridden. You can now customize your own settings.",
@@ -646,6 +656,7 @@
         "mistral": "Mistral AI",
         "groq": "Groq",
         "ollama": "Ollama",
+        "openrouter": "OpenRouter",
         "custom": "Custom"
       }
     },

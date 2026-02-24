@@ -7,7 +7,7 @@ import { ChevronLeft, Check, Utensils, CalendarIcon } from 'lucide-react';
 import {
   saveCheckInMeasurements,
   getMostRecentMeasurement,
-} from '@/services/checkInService';
+} from '@/api/CheckIn/checkInService';
 import { apiCall } from '@/services/api';
 import { DEFAULT_GOALS } from '@/constants/goals';
 import { format, parseISO } from 'date-fns';

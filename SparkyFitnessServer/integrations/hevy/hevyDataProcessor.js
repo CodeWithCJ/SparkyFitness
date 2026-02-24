@@ -107,6 +107,7 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
       exercise_id: exercise.id,
       entry_date: startTime.toISOString().split("T")[0],
       duration_minutes: durationMinutes, // Note: Hevy provides total workout duration, not per-exercise
+      calories_burned: 0, // Hevy typically doesn't provide per-exercise calories
       notes:
         hevyExercise.notes ||
         workout.description ||

@@ -30,11 +30,6 @@ const CheckInPreferences = ({
   });
   const date = parseDateInUserTimezone(selectedDate); // Use parseDateInUserTimezone
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    debug(loggingLevel, 'Handling date change from input:', e.target.value);
-    onDateChange(e.target.value);
-  };
-
   const handleDateSelect = (newDate: Date | undefined) => {
     debug(loggingLevel, 'Handling date select from calendar:', newDate);
     if (newDate) {
@@ -101,7 +96,6 @@ const CheckInPreferences = ({
                     mode="single"
                     selected={date} // Use the date object parsed in user's timezone
                     onSelect={handleDateSelect}
-                    initialFocus
                     yearsRange={10} // Default to 10 years for general date selection
                   />
                 </PopoverContent>

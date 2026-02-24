@@ -368,11 +368,16 @@ async function disconnectFitbit(userId) {
  * API Fetching Functions
  */
 
-async function fetchHeartRate(userId, date = "today", providedToken = null) {
+async function fetchHeartRate(
+  userId,
+  startDate,
+  endDate,
+  providedToken = null,
+) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/activities/heart/date/${date}/1d.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/activities/heart/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -380,6 +385,10 @@ async function fetchHeartRate(userId, date = "today", providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_heart_rate", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -390,11 +399,11 @@ async function fetchHeartRate(userId, date = "today", providedToken = null) {
   }
 }
 
-async function fetchSteps(userId, date = "today", providedToken = null) {
+async function fetchSteps(userId, startDate, endDate, providedToken = null) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/activities/steps/date/${date}/1d.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/activities/steps/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -402,6 +411,10 @@ async function fetchSteps(userId, date = "today", providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_steps", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -424,6 +437,10 @@ async function fetchWeight(userId, startDate, endDate, providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_weight", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -434,11 +451,11 @@ async function fetchWeight(userId, startDate, endDate, providedToken = null) {
   }
 }
 
-async function fetchSpO2(userId, date = "today", providedToken = null) {
+async function fetchSpO2(userId, startDate, endDate, providedToken = null) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/spo2/date/${date}.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/spo2/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -446,6 +463,10 @@ async function fetchSpO2(userId, date = "today", providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_spo2", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -456,11 +477,16 @@ async function fetchSpO2(userId, date = "today", providedToken = null) {
   }
 }
 
-async function fetchTemperature(userId, date = "today", providedToken = null) {
+async function fetchTemperature(
+  userId,
+  startDate,
+  endDate,
+  providedToken = null,
+) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/temp/skin/date/${date}.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/temp/skin/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -468,6 +494,10 @@ async function fetchTemperature(userId, date = "today", providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_temperature", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -490,6 +520,10 @@ async function fetchProfile(userId, providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_profile", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -511,6 +545,10 @@ async function fetchBodyFat(userId, startDate, endDate, providedToken = null) {
       },
     },
   );
+
+  const { logRawResponse } = require("../../utils/diagnosticLogger");
+  logRawResponse("fitbit", "raw_body_fat", response.data);
+
   return response.data;
 }
 
@@ -527,6 +565,10 @@ async function fetchActivities(userId, date = "today", providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_activities_list", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -549,6 +591,10 @@ async function fetchSleep(userId, startDate, endDate, providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_sleep", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -561,12 +607,13 @@ async function fetchSleep(userId, startDate, endDate, providedToken = null) {
 
 async function fetchRespiratoryRate(
   userId,
-  date = "today",
+  startDate,
+  endDate,
   providedToken = null,
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   const response = await axios.get(
-    `${FITBIT_API_BASE_URL}/1/user/-/br/date/${date}.json`,
+    `${FITBIT_API_BASE_URL}/1/user/-/br/date/${startDate}/${endDate}.json`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -574,13 +621,17 @@ async function fetchRespiratoryRate(
       },
     },
   );
+
+  const { logRawResponse } = require("../../utils/diagnosticLogger");
+  logRawResponse("fitbit", "raw_respiratory_rate", response.data);
+
   return response.data;
 }
 
-async function fetchHRV(userId, date = "today", providedToken = null) {
+async function fetchHRV(userId, startDate, endDate, providedToken = null) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   const response = await axios.get(
-    `${FITBIT_API_BASE_URL}/1/user/-/hrv/date/${date}.json`,
+    `${FITBIT_API_BASE_URL}/1/user/-/hrv/date/${startDate}/${endDate}.json`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -588,17 +639,22 @@ async function fetchHRV(userId, date = "today", providedToken = null) {
       },
     },
   );
+
+  const { logRawResponse } = require("../../utils/diagnosticLogger");
+  logRawResponse("fitbit", "raw_hrv", response.data);
+
   return response.data;
 }
 
 async function fetchActiveZoneMinutes(
   userId,
-  date = "today",
+  startDate,
+  endDate,
   providedToken = null,
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   const response = await axios.get(
-    `${FITBIT_API_BASE_URL}/1/user/-/activities/active-zone-minutes/date/${date}/1d.json`,
+    `${FITBIT_API_BASE_URL}/1/user/-/activities/active-zone-minutes/date/${startDate}/${endDate}.json`,
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -606,14 +662,18 @@ async function fetchActiveZoneMinutes(
       },
     },
   );
+
+  const { logRawResponse } = require("../../utils/diagnosticLogger");
+  logRawResponse("fitbit", "raw_active_zone_minutes", response.data);
+
   return response.data;
 }
 
-async function fetchWater(userId, date = "today", providedToken = null) {
+async function fetchWater(userId, startDate, endDate, providedToken = null) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/foods/log/water/date/${date}.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/foods/log/water/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -621,6 +681,10 @@ async function fetchWater(userId, date = "today", providedToken = null) {
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_water", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -633,7 +697,8 @@ async function fetchWater(userId, date = "today", providedToken = null) {
 
 async function fetchActivityMinutes(
   userId,
-  date = "today",
+  startDate,
+  endDate,
   providedToken = null,
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
@@ -648,7 +713,7 @@ async function fetchActivityMinutes(
     // Add a 500ms delay between individual metric fetches to avoid 429
     await new Promise((resolve) => setTimeout(resolve, 500));
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/activities/tracker/${metric}/date/${date}/1d.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/activities/tracker/${metric}/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -656,6 +721,8 @@ async function fetchActivityMinutes(
         },
       },
     );
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", `raw_activity_metric_${metric}`, response.data);
     results[metric] = response.data[`activities-tracker-${metric}`];
   }
   return results;
@@ -663,13 +730,14 @@ async function fetchActivityMinutes(
 
 async function fetchCardioFitnessScore(
   userId,
-  date = "today",
+  startDate,
+  endDate,
   providedToken = null,
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/cardio-fitness-score.json?date=${date}`,
+      `${FITBIT_API_BASE_URL}/1/user/-/cardioscore/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -677,6 +745,10 @@ async function fetchCardioFitnessScore(
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_cardio_fitness", response.data);
+
     return response.data;
   } catch (error) {
     log(
@@ -689,13 +761,14 @@ async function fetchCardioFitnessScore(
 
 async function fetchCoreTemperature(
   userId,
-  date = "today",
+  startDate,
+  endDate,
   providedToken = null,
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     const response = await axios.get(
-      `${FITBIT_API_BASE_URL}/1/user/-/temp/core/date/${date}.json`,
+      `${FITBIT_API_BASE_URL}/1/user/-/temp/core/date/${startDate}/${endDate}.json`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -703,6 +776,10 @@ async function fetchCoreTemperature(
         },
       },
     );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("fitbit", "raw_core_temperature", response.data);
+
     return response.data;
   } catch (error) {
     log(

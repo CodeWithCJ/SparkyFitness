@@ -8,20 +8,20 @@ interface SyncFrequencyProps {
 }
 
 const SyncFrequency: React.FC<SyncFrequencyProps> = ({ isEnabled, onToggle }) => {
-  const [switchTrack, primary] = useCSSVariable([
-    '--color-progress-track',
-    '--color-accent-primary',
+  const [formEnabled, formDisabled] = useCSSVariable([
+    '--color-form-enabled',
+    '--color-form-disabled',
   ]) as [string, string];
 
   return (
-    <View className="bg-section rounded-xl p-4 mb-4 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
       <Text className="text-lg font-bold mb-3 text-text-primary">Background Sync</Text>
       <View className="flex-row justify-between items-center">
         <Text className="text-base text-text-primary">Enable Background Sync</Text>
         <Switch
           onValueChange={onToggle}
           value={isEnabled}
-          trackColor={{ false: switchTrack, true: primary }}
+          trackColor={{ false: formDisabled, true: formEnabled }}
           thumbColor="#FFFFFF"
         />
       </View>

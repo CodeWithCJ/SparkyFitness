@@ -194,18 +194,13 @@ async function processFitbitBodyFat(userId, createdByUserId, data) {
   }
 }
 
-/**
- * Process Fitbit SpO2 data
- */
 async function processFitbitSpO2(userId, createdByUserId, data) {
-  if (!data || (Array.isArray(data) && data.length === 0)) {
-    log("info", `No Fitbit SpO2 data to process for user ${userId}.`);
-    return;
-  }
+  if (!data) return;
 
-  const dataList = Array.isArray(data) ? data : [data];
+  // Range responses return data in "spo2" array
+  const entries = data.spo2 || (Array.isArray(data) ? data : [data]);
 
-  for (const entry of dataList) {
+  for (const entry of entries) {
     if (!entry || !entry.value) continue;
     const entryDate = entry.dateTime;
     const spo2 = entry.value.avg;
@@ -272,13 +267,19 @@ async function processFitbitTemperature(
  * Process Fitbit HRV data
  */
 async function processFitbitHRV(userId, createdByUserId, data) {
-  if (!data || !data.hrv || data.hrv.length === 0) return;
-  for (const entry of data.hrv) {
+  if (!data) return;
+
+  // Range responses return data in "hrv" array
+  const entries = data.hrv || (Array.isArray(data) ? data : []);
+  if (entries.length === 0) return;
+
+  for (const entry of entries) {
+    if (!entry || !entry.value) continue;
     const entryDate = entry.dateTime;
     const dailyRmssd = entry.value.dailyRmssd;
     if (dailyRmssd) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
-        categoryName: "HRV (dailyRmssd)",
+        categoryName: "HRV",
         value: dailyRmssd,
         unit: "ms",
         entryDate: entryDate,
@@ -286,6 +287,7 @@ async function processFitbitHRV(userId, createdByUserId, data) {
         entryTimestamp: new Date(entryDate).toISOString(),
         frequency: "Daily",
       });
+      log("info", `Upserted Fitbit HRV for user ${userId} on ${entryDate}.`);
     }
   }
 }
@@ -294,8 +296,14 @@ async function processFitbitHRV(userId, createdByUserId, data) {
  * Process Fitbit Respiratory Rate data
  */
 async function processFitbitRespiratoryRate(userId, createdByUserId, data) {
-  if (!data || !data.br || data.br.length === 0) return;
-  for (const entry of data.br) {
+  if (!data) return;
+
+  // Range responses return data in "br" array
+  const entries = data.br || (Array.isArray(data) ? data : []);
+  if (entries.length === 0) return;
+
+  for (const entry of entries) {
+    if (!entry || !entry.value) continue;
     const entryDate = entry.dateTime;
     // Check both common locations for breathingRate in Fitbit JSON responses
     const br =
@@ -311,6 +319,10 @@ async function processFitbitRespiratoryRate(userId, createdByUserId, data) {
         entryTimestamp: new Date(entryDate).toISOString(),
         frequency: "Daily",
       });
+      log(
+        "info",
+        `Upserted Fitbit Respiratory Rate for user ${userId} on ${entryDate}.`,
+      );
     }
   }
 }
@@ -319,25 +331,30 @@ async function processFitbitRespiratoryRate(userId, createdByUserId, data) {
  * Process Fitbit Active Zone Minutes data
  */
 async function processFitbitActiveZoneMinutes(userId, createdByUserId, data) {
-  if (
-    !data ||
-    !data["activities-active-zone-minutes"] ||
-    data["activities-active-zone-minutes"].length === 0
-  )
-    return;
-  for (const entry of data["activities-active-zone-minutes"]) {
+  if (!data) return;
+
+  // Range responses return data in "activities-active-zone-minutes" array
+  const entries = data["activities-active-zone-minutes"] || [];
+  if (entries.length === 0) return;
+
+  for (const entry of entries) {
+    if (!entry || !entry.value) continue;
     const entryDate = entry.dateTime;
     const azm = entry.value.activeZoneMinutes;
     if (azm) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
         categoryName: "Active Zone Minutes",
         value: azm,
-        unit: "minutes",
+        unit: "min",
         entryDate: entryDate,
         entryHour: 0,
         entryTimestamp: new Date(entryDate).toISOString(),
         frequency: "Daily",
       });
+      log(
+        "info",
+        `Upserted Fitbit Active Zone Minutes for user ${userId} on ${entryDate}.`,
+      );
     }
   }
 }
@@ -346,15 +363,16 @@ async function processFitbitActiveZoneMinutes(userId, createdByUserId, data) {
  * Process Fitbit Cardio Fitness Scor (VO2 Max) data
  */
 async function processFitbitCardioFitness(userId, createdByUserId, data) {
-  if (
-    !data ||
-    !data["cardioFitnessScore"] ||
-    data["cardioFitnessScore"].length === 0
-  )
-    return;
-  for (const entry of data["cardioFitnessScore"]) {
+  if (!data) return;
+
+  // Range responses return data in "cardioFitnessScore" array
+  const entries = data["cardioFitnessScore"] || [];
+  if (entries.length === 0) return;
+
+  for (const entry of entries) {
+    if (!entry || !entry.value) continue;
     const entryDate = entry.dateTime;
-    const score = entry.value?.vo2Max;
+    const score = entry.value.vo2Max;
     if (score) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
         categoryName: "VO2 Max",
@@ -449,13 +467,22 @@ async function processFitbitSleep(
       bedtime: parseFitbitTime(entry.startTime, timezoneOffset),
       wake_time: parseFitbitTime(entry.endTime, timezoneOffset),
       duration_in_seconds: Math.round(entry.duration / 1000),
+      // Fitbit's minutesAsleep is often the most accurate representation of "Time Asleep"
       time_asleep_in_seconds: entry.minutesAsleep * 60,
-      sleep_score: entry.efficiency, // Fitbit's efficiency (0-100) as a proxy if score not found
+      sleep_score: entry.efficiency, // Fitbit's efficiency (0-100) as a proxy
       source: "Fitbit",
       deep_sleep_seconds: entry.levels.summary?.deep?.minutes * 60 || 0,
-      light_sleep_seconds: entry.levels.summary?.light?.minutes * 60 || 0,
+      light_sleep_seconds:
+        (entry.levels.summary?.light?.minutes ||
+          entry.levels.summary?.asleep?.minutes ||
+          0) * 60,
       rem_sleep_seconds: entry.levels.summary?.rem?.minutes * 60 || 0,
-      awake_sleep_seconds: entry.levels.summary?.wake?.minutes * 60 || 0,
+      // Total awake time = summary wake + summary restless + summary awake (classic)
+      awake_sleep_seconds:
+        ((entry.levels.summary?.wake?.minutes || 0) +
+          (entry.levels.summary?.restless?.minutes || 0) +
+          (entry.levels.summary?.awake?.minutes || 0)) *
+        60,
     };
 
     const result = await sleepRepository.upsertSleepEntry(
@@ -463,17 +490,24 @@ async function processFitbitSleep(
       createdByUserId,
       sleepEntryData,
     );
-    if (result && result.id && entry.levels && entry.levels.data) {
+    if (result && result.id && entry.levels) {
       // First, delete existing sleep stages for this entry to prevent duplication
-      // This aligns with how other providers (Apple/Android) handle sleep stage updates
       await sleepRepository.deleteSleepStageEventsByEntryId(userId, result.id);
 
-      for (const stage of entry.levels.data) {
+      // Map Fitbit levels to SparkyFitness supported stages
+      // Note: 'awake' is required by SparkyFitness analytics to correctly exclude from 'time asleep'
+      for (const stage of entry.levels.data || []) {
         const startIso = parseFitbitTime(stage.dateTime, timezoneOffset);
         const startTime = new Date(startIso);
         const endTime = new Date(startTime.getTime() + stage.seconds * 1000);
+
+        let stageType = stage.level;
+        if (stageType === "wake" || stageType === "restless")
+          stageType = "awake";
+        if (stageType === "asleep") stageType = "light";
+
         await sleepRepository.upsertSleepStageEvent(userId, result.id, {
-          stage_type: stage.level,
+          stage_type: stageType,
           start_time: startIso,
           end_time: endTime.toISOString(),
           duration_in_seconds: stage.seconds,
@@ -492,31 +526,48 @@ async function processFitbitWater(
   data,
   waterUnit = "METRIC",
 ) {
-  if (!data || !data.summary || data.summary.water === undefined) return;
+  if (!data) return;
 
-  let water = data.summary.water;
-  // waterUnit: 'en_US' (fluid ounces), 'METRIC' (milliliters)
-  if (waterUnit === "en_US") {
-    water = Math.round(water * 29.5735); // fl oz to ml
+  // Range responses return data in "foods-log-water" array
+  const entries = data["foods-log-water"] || [];
+
+  // Fallback to single day summary if range array is empty but summary exists
+  if (
+    entries.length === 0 &&
+    data.summary &&
+    data.summary.water !== undefined
+  ) {
+    const entryDate =
+      data.water && data.water.length > 0
+        ? data.water[0].date
+        : new Date().toISOString().split("T")[0];
+
+    entries.push({
+      dateTime: entryDate,
+      value: data.summary.water,
+    });
   }
 
-  // Water intake is a daily summary, so if data.water exists, use the date from the first log
-  const entryDate =
-    data.water && data.water.length > 0
-      ? data.water[0].date
-      : new Date().toISOString().split("T")[0];
+  for (const entry of entries) {
+    let water = parseFloat(entry.value || 0);
+    const entryDate = entry.dateTime;
 
-  // Reuse existing repository function
-  await measurementRepository.upsertWaterData(
-    userId,
-    createdByUserId,
-    water,
-    entryDate,
-  );
-  log(
-    "info",
-    `Upserted Fitbit water for user ${userId} on ${entryDate}: ${water} ml.`,
-  );
+    // waterUnit: 'en_US' (fluid ounces), 'METRIC' (milliliters)
+    if (waterUnit === "en_US") {
+      water = Math.round(water * 29.5735); // fl oz to ml
+    }
+
+    await measurementRepository.upsertWaterData(
+      userId,
+      createdByUserId,
+      Math.round(water),
+      entryDate,
+    );
+    log(
+      "info",
+      `Upserted Fitbit water for user ${userId} on ${entryDate}: ${water} ml.`,
+    );
+  }
 }
 
 /**
@@ -579,7 +630,7 @@ async function processFitbitActivities(
       exercise_id: exercise.id,
       entry_date: entryDate,
       duration_minutes: Math.round(activity.duration / 60000),
-      calories_burned: activity.calories,
+      calories_burned: activity.calories || 0,
       distance: distanceKm,
       avg_heart_rate: activity.averageHeartRate || null,
       notes: `Synced from Fitbit. Steps: ${activitySteps}${activity.duration ? `. Original duration: ${activity.duration}ms` : ""}`,
@@ -632,7 +683,14 @@ async function processFitbitActivities(
     const measurementsByDate = {};
     if (existingMeasurements && Array.isArray(existingMeasurements)) {
       existingMeasurements.forEach((m) => {
-        measurementsByDate[m.entry_date.toISOString().split("T")[0]] = m;
+        let dateKey = m.entry_date;
+        // Handle different possible types for entry_date (Date object or string)
+        if (dateKey instanceof Date) {
+          dateKey = dateKey.toISOString().split("T")[0];
+        } else if (typeof dateKey === "string" && dateKey.includes("T")) {
+          dateKey = dateKey.split("T")[0];
+        }
+        measurementsByDate[dateKey] = m;
       });
     }
 
@@ -650,7 +708,7 @@ async function processFitbitActivities(
       if (totalActivitySteps > currentSteps) {
         log(
           "info",
-          `[fitbitDataProcessor] Fallback: Activity steps (${totalActivitySteps}) > recorded daily total (${currentSteps}) for ${date}. Updating.`,
+          `[fitbitDataProcessor] Fallback: Activity log sum (${totalActivitySteps}) > recorded daily total (${currentSteps}) for ${date}. Prioritizing granular activity data.`,
         );
         await measurementRepository.upsertStepData(
           userId,

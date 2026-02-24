@@ -41,7 +41,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
         className="flex-1 justify-center items-center p-6"
         style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       >
-        <View className="w-full max-w-90 rounded-2xl p-6 bg-section shadow-sm">
+        <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm">
           {/* Header */}
           <View className="items-center mb-5">
             <Icon name="shield-checkmark" size={48} color={primary} />

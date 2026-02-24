@@ -27,6 +27,7 @@ interface AddExternalProviderFormProps {
   handleConnectWithings: (providerId: string) => Promise<void>;
   handleConnectFitbit: (providerId: string) => Promise<void>;
   handleConnectPolar: (providerId: string) => Promise<void>;
+  handleConnectStrava: (providerId: string) => Promise<void>;
   onGarminMfaRequired: (clientState: string) => void; // New prop for MFA handling
 }
 
@@ -39,6 +40,7 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
   handleConnectWithings,
   handleConnectFitbit,
   handleConnectPolar,
+  handleConnectStrava,
   onGarminMfaRequired,
 }) => {
   const { user } = useAuth();
@@ -143,8 +145,25 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
         variant: 'destructive',
       });
       return;
+    } else if (newProvider.provider_type === 'polar') {
+      if (!newProvider.app_id || !newProvider.app_key) {
+        toast({
+          title: 'Error',
+          description: `Please provide Client ID and Client Secret for ${newProvider.provider_type}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else if (newProvider.provider_type === 'strava') {
+      if (!newProvider.app_id || !newProvider.app_key) {
+        toast({
+          title: 'Error',
+          description: `Please provide Client ID and Client Secret for ${newProvider.provider_type}`,
+          variant: 'destructive',
+        });
+        return;
+      }
     }
-
     try {
       let data;
       if (newProvider.provider_type === 'garmin') {
@@ -201,9 +220,13 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
               newProvider.provider_type === 'free-exercise-db'
                 ? newProvider.base_url || null
                 : null,
-            sync_frequency: ['withings', 'garmin', 'fitbit'].includes(
-              newProvider.provider_type
-            )
+            sync_frequency: [
+              'withings',
+              'garmin',
+              'fitbit',
+              'strava',
+              'polar',
+            ].includes(newProvider.provider_type)
               ? newProvider.sync_frequency
               : null,
           }),
@@ -252,6 +275,9 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
       }
       if (data && data.is_active && data.provider_type === 'polar') {
         handleConnectPolar(data.id);
+      }
+      if (data && data.is_active && data.provider_type === 'strava') {
+        handleConnectStrava(data.id);
       }
       // For Garmin, the connection is handled during the addProvider call itself,
       // so no separate handleConnectGarmin call is needed here.
@@ -653,6 +679,96 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
             </>
           )}
 
+          {newProvider.provider_type === 'strava' && (
+            <>
+              <div>
+                <Label htmlFor="new_app_id">Client ID</Label>
+                <Input
+                  id="new_app_id"
+                  type="text"
+                  value={newProvider.app_id}
+                  onChange={(e) =>
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      app_id: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter Strava Client ID"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label htmlFor="new_app_key">Client Secret</Label>
+                <Input
+                  id="new_app_key"
+                  type="password"
+                  value={newProvider.app_key}
+                  onChange={(e) =>
+                    setNewProvider((prev) => ({
+                      ...prev,
+                      app_key: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter Strava Client Secret"
+                  autoComplete="off"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground col-span-2">
+                Strava integration uses OAuth2. You will be redirected to Strava
+                to authorize access.
+                <br />
+                In your{' '}
+                <a
+                  href="https://www.strava.com/settings/api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 underline"
+                >
+                  Strava API Dashboard
+                </a>
+                , you must set your "Authorization Callback Domain" to:
+                <strong className="flex items-center">
+                  {window.location.hostname}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-2 h-5 w-5"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigator.clipboard.writeText(window.location.hostname);
+                      toast({
+                        title: 'Copied!',
+                        description: 'Domain copied to clipboard.',
+                      });
+                    }}
+                  >
+                    <Clipboard className="h-4 w-4" />
+                  </Button>
+                </strong>
+                and set your callback URL to:
+                <strong className="flex items-center">
+                  {`${window.location.origin}/strava/callback`}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-2 h-5 w-5"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigator.clipboard.writeText(
+                        `${window.location.origin}/strava/callback`
+                      );
+                      toast({
+                        title: 'Copied!',
+                        description: 'Callback URL copied to clipboard.',
+                      });
+                    }}
+                  >
+                    <Clipboard className="h-4 w-4" />
+                  </Button>
+                </strong>
+              </p>
+            </>
+          )}
           {newProvider.provider_type === 'polar' && (
             <>
               <div>
@@ -724,6 +840,16 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
                   </Button>
                 </strong>
               </p>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="full_sync_on_connect"
+                  checked={fullSyncOnConnect}
+                  onCheckedChange={setFullSyncOnConnect}
+                />
+                <Label htmlFor="full_sync_on_connect">
+                  Sync entire history on connect
+                </Label>
+              </div>
             </>
           )}
 
@@ -809,6 +935,7 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
           {(newProvider.provider_type === 'withings' ||
             newProvider.provider_type === 'garmin' ||
             newProvider.provider_type === 'fitbit' ||
+            newProvider.provider_type === 'strava' ||
             newProvider.provider_type === 'polar' ||
             newProvider.provider_type === 'hevy') && (
             <div>

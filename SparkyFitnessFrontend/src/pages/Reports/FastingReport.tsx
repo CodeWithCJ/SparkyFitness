@@ -15,7 +15,7 @@ import {
   Line,
   CartesianGrid,
 } from 'recharts';
-import type { FastingLog } from '@/services/fastingService';
+import type { FastingLog } from '@/api/Fasting/fastingService';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import ZoomableChart from '@/components/ZoomableChart';
@@ -28,9 +28,7 @@ interface FastingReportProps {
 
 const COLORS = ['#6366f1', '#06b6d4', '#f59e0b', '#ef4444'];
 
-export const FastingReport: React.FC<FastingReportProps> = ({
-  fastingData,
-}) => {
+export const FastingReport = ({ fastingData }: FastingReportProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
   const [isMounted, setIsMounted] = useState(false);

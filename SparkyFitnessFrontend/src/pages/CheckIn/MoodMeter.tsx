@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,36 +5,19 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface MoodMeterProps {
-  onMoodChange: (mood: number | null, notes: string) => void;
-  initialMood?: number | null;
-  initialNotes?: string;
+  mood: number;
+  notes: string;
+  onMoodChange: (value: number) => void;
+  onNotesChange: (value: string) => void;
 }
 
-const MoodMeter: React.FC<MoodMeterProps> = ({
+const MoodMeter = ({
+  mood,
+  notes,
   onMoodChange,
-  initialMood = null,
-  initialNotes = '',
-}) => {
+  onNotesChange,
+}: MoodMeterProps) => {
   const { t } = useTranslation();
-  const [mood, setMood] = React.useState<number | null>(initialMood);
-  const [notes, setNotes] = React.useState<string>(initialNotes);
-
-  React.useEffect(() => {
-    setMood(initialMood);
-    setNotes(initialNotes);
-  }, [initialMood, initialNotes]);
-
-  const handleMoodChange = (value: number[]) => {
-    const newMood = value[0];
-    setMood(newMood);
-    onMoodChange(newMood, notes);
-  };
-
-  const handleNotesChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newNotes = event.target.value;
-    setNotes(newNotes);
-    onMoodChange(mood, newNotes);
-  };
 
   const getMoodDisplay = (value: number | null) => {
     if (value === null)
@@ -74,7 +56,7 @@ const MoodMeter: React.FC<MoodMeterProps> = ({
             min={10}
             max={100}
             step={10}
-            onValueChange={handleMoodChange}
+            onValueChange={(vals) => onMoodChange(vals[0])}
             className="w-full"
           />
         </div>
@@ -92,7 +74,7 @@ const MoodMeter: React.FC<MoodMeterProps> = ({
               "Any thoughts or feelings you'd like to add?"
             )}
             value={notes}
-            onChange={handleNotesChange}
+            onChange={(e) => onNotesChange(e.target.value)}
             className="mt-2"
           />
         </div>

@@ -505,7 +505,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 80 }}>
         {/* Header */}
         <View className="flex-row justify-between items-center mb-4">
@@ -561,7 +561,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         </View>
 
         {/* Sync Range */}
-        <View className="bg-section rounded-xl p-4 py-3 mb-4 shadow-sm">
+        <View className="bg-surface rounded-xl p-4 py-3 mb-4 shadow-sm">
           <View className="flex-row items-center justify-between">
             <Text className="text-base font-semibold text-text-primary">Sync Range</Text>
             <BottomSheetPicker
@@ -580,14 +580,14 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         </View>
 
         {/* Health Overview */}
-        <View className="bg-section rounded-xl p-4 mb-4 shadow-sm">
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <Text className="text-lg font-bold text-text-primary">Data to Sync</Text>
           <Text className="text-text-secondary text-xs mb-3">Based on data currently on this device</Text>
           <View className="flex-row flex-wrap justify-between">
             {HEALTH_METRICS.map(metric => healthMetricStates[metric.stateKey] && (
               <View
                 key={metric.id}
-                className="w-[48%] bg-card rounded-lg p-2 mb-2 items-start flex-row shadow-sm"
+                className="w-[48%] bg-raised rounded-lg p-2 mb-2 items-start flex-row border border-border"
               >
                 <Image source={metric.icon} className="w-6 h-6 mr-2" />
                 <View>
