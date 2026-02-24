@@ -53,8 +53,8 @@ async function importExerciseEntriesFromCsv(authenticatedUserId, actingUserId, e
       // 3. Lookup or Create Workout Preset (if preset_name is provided)
       // 3. Convert Distance and Weight based on user preferences and process sets
       const preferences = await preferenceRepository.getUserPreferences(authenticatedUserId);
-      const distanceUnit = preferences?.distance_unit || 'km'; // Default to km
-      const weightUnit = preferences?.weight_unit || 'kg';     // Default to kg
+      const distanceUnit = preferences?.default_distance_unit || 'km'; // Default to km
+      const weightUnit = preferences?.default_weight_unit || 'kg'; // Default to kg
 
       let distanceInKm = entryGroup.distance;
       if (distanceInKm !== undefined && distanceInKm !== null) {
