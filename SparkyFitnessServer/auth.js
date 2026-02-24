@@ -259,7 +259,7 @@ const auth = betterAuth({
         const finalOrigins = [...new Set(origins)] // Remove duplicates
             .filter(Boolean)
             .map(url => url.replace(/\/$/, ''));
-        
+
         log('info', '[AUTH] Trusted origins:', finalOrigins);
         return finalOrigins;
     })(),
@@ -359,6 +359,19 @@ const auth = betterAuth({
                 }
             }
         },
+        session: {
+            create: {
+                after: async (session) => {
+                    const userId = session.userId;
+                    const adminGroup = process.env.SPARKY_FITNESS_OIDC_ADMIN_GROUP;
+
+                    const { syncUserGroups } = require('./utils/oidcGroupSync');
+                    const userRepository = require('./models/userRepository');
+
+                    await syncUserGroups({ pool: authPool, userRepository }, userId, adminGroup);
+                }
+            }
+        }
     },
 
     plugins: [
