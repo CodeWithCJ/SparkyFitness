@@ -465,6 +465,14 @@ applyMigrations()
   .then(grantPermissions)
   .then(applyRlsPolicies)
   .then(async () => {
+    // Upsert OIDC provider from env when SPARKY_FITNESS_OIDC_ISSUER_URL + CLIENT_ID + SECRET + PROVIDER_SLUG are set
+    try {
+      const { upsertEnvOidcProvider } = require('./utils/oidcEnvConfig');
+      await upsertEnvOidcProvider();
+    } catch (err) {
+      log('error', 'OIDC env provider upsert failed:', err);
+    }
+
     scheduleBackups();
     scheduleSessionCleanup();
     scheduleWithingsSyncs();
