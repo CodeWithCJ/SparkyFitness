@@ -1,31 +1,159 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Platform, ScrollView } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform, ScrollView, TextInput, Alert } from 'react-native';
+import { StackActions, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
+import BottomSheetPicker from '../components/BottomSheetPicker';
 import { fetchDailyGoals } from '../services/api/goalsApi';
-import { getTodayDate } from '../utils/dateUtils';
+import { saveFood } from '../services/api/foodsApi';
+import { createFoodEntry, CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
+import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
+import { getMealTypeLabel } from '../constants/meals';
+import { dailySummaryQueryKey, foodsQueryKey, goalsQueryKey } from '../hooks/queryKeys';
+import { useMealTypes } from '../hooks';
+import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import type { FoodInfoItem } from '../types/foodInfo';
 
 interface FoodItemInfoScreenProps {
-  navigation: { goBack: () => void };
-  route: { params: { item: FoodInfoItem; mealTypeLabel: string } };
+  navigation?: { goBack: () => void };
+  route?: { params: { item: FoodInfoItem; date?: string } };
 }
 
 const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, route }) => {
-  const { item, mealTypeLabel } = route.params;
+  const { item, date: initialDate } = route!.params;
+  const nav = useNavigation();
+  const [selectedDate, setSelectedDate] = useState(initialDate ?? getTodayDate());
+  const calendarRef = useRef<CalendarSheetRef>(null);
+  const { mealTypes, defaultMealTypeId } = useMealTypes();
+  const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
+  const effectiveMealId = selectedMealId ?? defaultMealTypeId;
+  const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
+
+  const [servingsText, setServingsText] = useState('1');
+  const servings = parseFloat(servingsText) || 0;
+
+  const updateServingsText = (text: string) => {
+    if (/^\d*\.?\d*$/.test(text)) {
+      setServingsText(text);
+    }
+  };
+
+  const clampServings = () => {
+    const clamped = Math.max(0.5, servings);
+    setServingsText(String(clamped));
+  };
+
+  const adjustServings = (delta: number) => {
+    const next = Math.max(0.5, servings + delta);
+    setServingsText(String(next));
+  };
+
+  const scaled = (value: number) => value * servings;
+
   const insets = useSafeAreaInsets();
-  const [accentColor, proteinColor, carbsColor, fatColor] = useCSSVariable([
+  const queryClient = useQueryClient();
+  const [accentColor, textPrimary, proteinColor, carbsColor, fatColor] = useCSSVariable([
     '--color-accent-primary',
+    '--color-text-primary',
     '--color-macro-protein',
     '--color-macro-carbs',
     '--color-macro-fat',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string, string, string];
+
+  const saveFoodMutation = useMutation({
+    mutationFn: () => saveFood({
+      name: item.name,
+      brand: item.brand,
+      serving_size: item.servingSize,
+      serving_unit: item.servingUnit,
+      calories: item.calories,
+      protein: item.protein,
+      carbs: item.carbs,
+      fat: item.fat,
+      dietary_fiber: item.fiber,
+      saturated_fat: item.saturatedFat,
+      sodium: item.sodium,
+      sugars: item.sugars,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
+    },
+  });
+
+  const buildFoodEntryPayload = (savedFood?: { id: string; variantId: string }): CreateFoodEntryPayload => {
+    const quantity = item.servingSize * servings;
+    const base = {
+      meal_type_id: effectiveMealId!,
+      quantity,
+      unit: item.servingUnit,
+      entry_date: selectedDate,
+    };
+
+    switch (item.source) {
+      case 'local':
+        if (!item.variantId) throw new Error('Missing variant ID for local food');
+        return { ...base, food_id: item.id, variant_id: item.variantId };
+      case 'external':
+        if (!savedFood) throw new Error('External food must be saved before creating entry');
+        return { ...base, food_id: savedFood.id, variant_id: savedFood.variantId };
+      case 'meal':
+        return {
+          ...base,
+          meal_id: item.id,
+          food_name: item.name,
+          serving_size: item.servingSize,
+          serving_unit: item.servingUnit,
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+        };
+    }
+  };
+
+  const addFoodEntryMutation = useMutation({
+    mutationFn: async () => {
+      if (!effectiveMealId) throw new Error('No meal type selected');
+
+      if (item.source === 'external') {
+        const saved = await saveFood({
+          name: item.name,
+          brand: item.brand,
+          serving_size: item.servingSize,
+          serving_unit: item.servingUnit,
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          dietary_fiber: item.fiber,
+          saturated_fat: item.saturatedFat,
+          sodium: item.sodium,
+          sugars: item.sugars,
+        });
+        return createFoodEntry(buildFoodEntryPayload({
+          id: saved.id,
+          variantId: saved.default_variant.id!,
+        }));
+      }
+
+      return createFoodEntry(buildFoodEntryPayload());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(selectedDate) });
+      queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
+      nav.dispatch(StackActions.popToTop());
+    },
+    onError: () => {
+      Alert.alert('Failed to add food', 'Please try again.');
+    },
+  });
 
   const { data: goals, isLoading: isGoalsLoading } = useQuery({
-    queryKey: ['goals', getTodayDate()],
-    queryFn: () => fetchDailyGoals(getTodayDate()),
+    queryKey: goalsQueryKey(selectedDate),
+    queryFn: () => fetchDailyGoals(selectedDate),
+    staleTime: 1000 * 60 * 5,
   });
 
   const goalPercent = (value: number, goalValue: number | undefined) => {
@@ -33,122 +161,217 @@ const FoodItemInfoScreen: React.FC<FoodItemInfoScreenProps> = ({ navigation, rou
     return Math.round((value / goalValue) * 100);
   };
 
-  const calorieGoalPct = goalPercent(item.calories, goals?.calories);
-  const proteinGoalPct = goalPercent(item.protein, goals?.protein);
-  const carbsGoalPct = goalPercent(item.carbs, goals?.carbs);
-  const fatGoalPct = goalPercent(item.fat, goals?.fat);
+  const calorieGoalPct = goalPercent(scaled(item.calories), goals?.calories);
+  const proteinGoalPct = goalPercent(scaled(item.protein), goals?.protein);
+  const carbsGoalPct = goalPercent(scaled(item.carbs), goals?.carbs);
+  const fatGoalPct = goalPercent(scaled(item.fat), goals?.fat);
 
-  // Macro bar proportions by calorie contribution
+  // Macro bar proportions by calorie contribution (ratios stay the same regardless of servings)
   const proteinCals = item.protein * 4;
   const carbsCals = item.carbs * 4;
   const fatCals = item.fat * 9;
   const totalMacroCals = proteinCals + carbsCals + fatCals;
+
+  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation!.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
-        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Food Info
-        </Text>
+        
+        {item.source === 'external' && (
+          <TouchableOpacity
+            onPress={() => saveFoodMutation.mutate()}
+            disabled={saveFoodMutation.isPending || saveFoodMutation.isSuccess}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            className="ml-auto z-10"
+            activeOpacity={0.7}
+          >
+            {saveFoodMutation.isPending ? (
+              <ActivityIndicator size="small" color={accentColor} />
+            ) : (
+              <Icon
+                name={saveFoodMutation.isSuccess ? 'bookmark-filled' : 'bookmark'}
+                size={22}
+                color={accentColor}
+              />
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
         {/* Food name & brand */}
-        <View className="bg-surface rounded-xl p-4">
-          <Text className="text-text-primary text-xl font-semibold">{item.name}</Text>
+        <View className="p-4">
+          <Text className="text-text-primary text-3xl font-bold">{item.name}</Text>
           {item.brand && (
             <Text className="text-text-secondary text-base mt-1">{item.brand}</Text>
           )}
-          <Text className="text-text-muted text-sm mt-1">
-            {item.servingSize} {item.servingUnit}
-          </Text>
-        </View>
 
-        {/* Calories */}
-        <View className="bg-surface rounded-xl p-4 items-center">
-          <Text className="text-text-primary text-4xl font-bold">{item.calories}</Text>
-          <Text className="text-text-secondary text-base mt-1">calories</Text>
-          {isGoalsLoading ? (
-            <ActivityIndicator size="small" color={accentColor} className="mt-2" />
-          ) : calorieGoalPct !== null ? (
-            <Text className="text-text-muted text-sm mt-1">
-              {calorieGoalPct}% of daily goal
+          {/* Servings control */}
+          <View className="flex-row items-center justify-start gap-4 mt-3">
+            <View className="flex-row items-center">
+              <TouchableOpacity
+                onPress={() => adjustServings(-0.5)}
+                className="w-7 h-7 rounded-full bg-raised border border-border-subtle items-center justify-center"
+                activeOpacity={0.7}
+              >
+                <Icon name="remove" size={18} color={accentColor} />
+              </TouchableOpacity>
+              <TextInput
+                value={servingsText}
+                onChangeText={updateServingsText}
+                onBlur={clampServings}
+                keyboardType="decimal-pad"
+                selectTextOnFocus
+                className="text-text-primary text-lg font-semibold text-center mx-2 w-14 bg-raised border border-border-subtle rounded-lg py-1"
+                style={{ fontSize: 18, lineHeight: 22 }}
+              />
+              <TouchableOpacity
+                onPress={() => adjustServings(0.5)}
+                className="w-7 h-7 rounded-full bg-raised border border-border-subtle items-center justify-center"
+                activeOpacity={0.7}
+              >
+                <Icon name="add" size={18} color={accentColor} />
+              </TouchableOpacity>
+            </View>
+            <Text className="text-text-muted text-sm">
+              {item.servingSize} {item.servingUnit} per serving
             </Text>
-          ) : null}
-        </View>
-
-        {/* Macro bar + grid */}
-        <View className="bg-surface rounded-xl p-4">
-          {/* Proportional macro bar */}
-          {totalMacroCals > 0 && (
-            <View className="flex-row h-2.5 rounded-full overflow-hidden mb-4">
-              <View style={{ flex: proteinCals, backgroundColor: proteinColor }} />
-              <View style={{ flex: carbsCals, backgroundColor: carbsColor }} />
-              <View style={{ flex: fatCals, backgroundColor: fatColor }} />
-            </View>
-          )}
-
-          {/* Macro grid */}
-          <View className="flex-row">
-            <View className="flex-1 items-center">
-              <View className="w-3 h-3 rounded-full mb-1" style={{ backgroundColor: proteinColor }} />
-              <Text className="text-text-primary text-lg font-semibold">{item.protein}g</Text>
-              <Text className="text-text-secondary text-sm">Protein</Text>
-              {proteinGoalPct !== null && (
-                <Text className="text-text-muted text-xs mt-0.5">{proteinGoalPct}% of goal</Text>
-              )}
-            </View>
-            <View className="flex-1 items-center">
-              <View className="w-3 h-3 rounded-full mb-1" style={{ backgroundColor: carbsColor }} />
-              <Text className="text-text-primary text-lg font-semibold">{item.carbs}g</Text>
-              <Text className="text-text-secondary text-sm">Carbs</Text>
-              {carbsGoalPct !== null && (
-                <Text className="text-text-muted text-xs mt-0.5">{carbsGoalPct}% of goal</Text>
-              )}
-            </View>
-            <View className="flex-1 items-center">
-              <View className="w-3 h-3 rounded-full mb-1" style={{ backgroundColor: fatColor }} />
-              <Text className="text-text-primary text-lg font-semibold">{item.fat}g</Text>
-              <Text className="text-text-secondary text-sm">Fat</Text>
-              {fatGoalPct !== null && (
-                <Text className="text-text-muted text-xs mt-0.5">{fatGoalPct}% of goal</Text>
-              )}
-            </View>
           </View>
         </View>
 
-        {/* Action buttons */}
-        <View className="flex-row gap-3 mt-2">
-          <TouchableOpacity
-            className="flex-1 border-2 border-border-subtle rounded-[10px] py-3.5 items-center"
-            activeOpacity={0.6}
-            onPress={() => {
-              // TODO: Implement edit flow
-              console.log('TODO: Edit food item');
-            }}
-          >
-            <Text className="text-accent-primary text-base font-semibold">Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="flex-1 bg-accent-primary rounded-[10px] py-3.5 items-center"
-            activeOpacity={0.8}
-            onPress={() => {
-              // TODO: Implement add flow
-              console.log('TODO: Add food entry');
-            }}
-          >
-            <Text className="text-white text-base font-semibold">Add to {mealTypeLabel}</Text>
-          </TouchableOpacity>
+        {/* Calories & Macros */}
+        <View className="bg-surface rounded-xl p-4 flex-row items-center">
+          {/* Calories — left half */}
+          <View className="flex-1 items-center pr-10">
+            <Text className="text-text-primary text-3xl font-medium">{Math.round(scaled(item.calories))}</Text>
+            <Text className="text-text-secondary text-base mt-1">calories</Text>
+            {isGoalsLoading ? (
+              <ActivityIndicator size="small" color={accentColor} className="mt-2" />
+            ) : calorieGoalPct !== null ? (
+              <Text className="text-text-muted text-sm mt-1">
+                {calorieGoalPct}% of goal
+              </Text>
+            ) : null}
+          </View>
+
+          {/* Macro bars — right half */}
+          <View className="flex-1 gap-3">
+            {[
+              { label: 'Protein', value: item.protein, color: proteinColor, pct: proteinGoalPct },
+              { label: 'Carbs', value: item.carbs, color: carbsColor, pct: carbsGoalPct },
+              { label: 'Fat', value: item.fat, color: fatColor, pct: fatGoalPct },
+            ].map((macro) => (
+              <View key={macro.label}>
+                <View className="flex-row justify-between mb-1">
+                  <Text className="text-text-secondary text-sm">{macro.label}</Text>
+                  <Text className="text-text-primary text-sm font-medium">
+                    {Math.round(scaled(macro.value))}g
+                    
+                  </Text>
+                </View>
+                <View className="h-2 rounded-full bg-progress-track overflow-hidden">
+                  {totalMacroCals > 0 && (
+                    <View
+                      className="h-full rounded-full"
+                      style={{
+                        backgroundColor: macro.color,
+                        width: `${Math.round((macro.value * (macro.label === 'Fat' ? 9 : 4) / totalMacroCals) * 100)}%`,
+                      }}
+                    />
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
+
+        {/* Additional nutrition details */}
+        {(item.fiber != null || item.saturatedFat != null || item.sodium != null || item.sugars != null) && (
+          <View className="rounded-xl my-2 px-4">
+            <Text className="text-text-secondary text-sm font-medium mb-2">Other Nutrients</Text>
+            {[
+              { label: 'Fiber', value: item.fiber, unit: 'g' },
+              { label: 'Sugars', value: item.sugars, unit: 'g' },
+              { label: 'Saturated Fat', value: item.saturatedFat, unit: 'g' },
+              { label: 'Sodium', value: item.sodium, unit: 'mg' },
+            ]
+              .filter((n) => n.value != null)
+              .map((n, i, arr) => (
+                <View key={n.label} className={`flex-row justify-between py-1 ${i < arr.length - 1 ? 'border-b border-border-subtle' : ''}`}>
+                  <Text className="text-text-secondary text-sm">{n.label}</Text>
+                  <Text className="text-text-primary text-sm">
+                    {Math.round(scaled(n.value!))}{n.unit}
+                  </Text>
+                </View>
+              ))}
+          </View>
+        )}
+
+        {/* Date selector */}
+        <TouchableOpacity
+          onPress={() => calendarRef.current?.present()}
+          activeOpacity={0.7}
+          className="flex-row items-center mt-2 mx-4"
+        >
+          <Text className="text-text-secondary text-sm">Date</Text>
+          <Text className="text-text-primary text-sm font-medium mx-1.5">
+            {formatDateLabel(selectedDate)}
+          </Text>
+          <Icon name="chevron-down" size={12} color={textPrimary} />
+        </TouchableOpacity>
+
+        {/* Meal type selector */}
+        {selectedMealType && (
+          <View className="flex-row items-center mt-2 mx-4">
+            <Text className="text-text-secondary text-sm">Meal</Text>
+            <BottomSheetPicker
+              value={effectiveMealId!}
+              options={mealPickerOptions}
+              onSelect={setSelectedMealId}
+              title="Select Meal"
+              renderTrigger={({ onPress }) => (
+                <TouchableOpacity
+                  onPress={onPress}
+                  activeOpacity={0.7}
+                  className="flex-row items-center"
+                >
+                  {/* <Icon name={getMealTypeIcon(selectedMealType.name)} size={16} color={accentColor} /> */}
+                  <Text className="text-text-primary text-sm font-medium mx-1.5">
+                    {getMealTypeLabel(selectedMealType.name)}
+                  </Text>
+                  <Icon name="chevron-down" size={12} color={textPrimary} />
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        )}
+
+
+        {/* Action buttons */}
+        <TouchableOpacity
+          className="bg-accent-primary rounded-[10px] py-3.5 items-center mt-2 mx-4"
+          activeOpacity={0.8}
+          disabled={addFoodEntryMutation.isPending || !effectiveMealId || servings < 0.5}
+          style={(!effectiveMealId || servings < 0.5) ? { opacity: 0.5 } : undefined}
+          onPress={() => addFoodEntryMutation.mutate()}
+        >
+          {addFoodEntryMutation.isPending ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text className="text-white text-base font-semibold">Add Food</Text>
+          )}
+        </TouchableOpacity>
       </ScrollView>
+      <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
     </View>
   );
 };

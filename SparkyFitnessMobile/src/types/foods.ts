@@ -1,10 +1,15 @@
 export interface FoodDefaultVariant {
+  id?: string;
   serving_size: number;
   serving_unit: string;
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
+  fiber?: number;
+  saturated_fat?: number;
+  sodium?: number;
+  sugars?: number;
 }
 
 export interface FoodItem {

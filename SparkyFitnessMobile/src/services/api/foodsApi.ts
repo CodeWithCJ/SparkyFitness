@@ -1,5 +1,5 @@
 import { apiFetch } from './apiClient';
-import { FoodsResponse, FoodSearchResponse } from '../../types/foods';
+import { FoodItem, FoodsResponse, FoodSearchResponse } from '../../types/foods';
 
 /**
  * Fetches the list of recent and top foods.
@@ -26,5 +26,33 @@ export const searchFoods = async (searchTerm: string): Promise<FoodSearchRespons
     endpoint: `/api/foods/foods-paginated?${params.toString()}`,
     serviceName: 'Foods API',
     operation: 'search foods',
+  });
+};
+
+interface SaveFoodPayload {
+  name: string;
+  brand: string | null;
+  serving_size: number;
+  serving_unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  dietary_fiber?: number;
+  saturated_fat?: number;
+  sodium?: number;
+  sugars?: number;
+}
+
+/**
+ * Saves a food item to the database.
+ */
+export const saveFood = async (food: SaveFoodPayload): Promise<FoodItem> => {
+  return apiFetch<FoodItem>({
+    endpoint: '/api/foods',
+    serviceName: 'Foods API',
+    operation: 'save food',
+    method: 'POST',
+    body: food,
   });
 };

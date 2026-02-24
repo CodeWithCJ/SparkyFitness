@@ -7,8 +7,6 @@ import {
   SectionList,
   FlatList,
   TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,12 +18,12 @@ import { fetchFatSecretNutrients } from '../services/api/externalFoodSearchApi';
 import { FoodItem, TopFoodItem } from '../types/foods';
 import { ExternalFoodItem } from '../types/externalFoods';
 import { Meal } from '../types/meals';
-import { MEAL_TYPES, MEAL_CONFIG, getDefaultMealType } from '../constants/meals';
 import { foodItemToFoodInfo, externalFoodItemToFoodInfo, mealToFoodInfo } from '../types/foodInfo';
 import type { FoodInfoItem } from '../types/foodInfo';
 
 interface AddFoodEntryScreenProps {
   navigation: { goBack: () => void; navigate: (screen: string, params: any) => void };
+  route?: { params?: { date?: string } };
 }
 
 type FoodSection = {
@@ -33,21 +31,16 @@ type FoodSection = {
   data: (FoodItem | TopFoodItem)[];
 };
 
-type TabKey = 'search' | 'online' | 'meal' | 'manual';
-
-const MEAL_OPTIONS: PickerOption<string>[] = MEAL_TYPES.map((key) => ({
-  label: MEAL_CONFIG[key].label,
-  value: key,
-}));
+type TabKey = 'search' | 'online' | 'meal';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'search', label: 'Search' },
   { key: 'online', label: 'Online' },
   { key: 'meal', label: 'Meals' },
-  { key: 'manual', label: 'Manual' },
 ];
 
-const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation }) => {
+const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation, route }) => {
+  const date = route?.params?.date;
   const insets = useSafeAreaInsets();
   const [accentColor, textMuted, textSecondary] = useCSSVariable([
     '--color-accent-primary',
@@ -57,7 +50,6 @@ const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation }) =
   const { isConnected } = useServerConnection();
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({ enabled: isConnected });
 
-  const [selectedMeal, setSelectedMeal] = useState<string>(() => getDefaultMealType());
   const [activeTab, setActiveTab] = useState<TabKey>('search');
   const [searchText, setSearchText] = useState('');
 
@@ -112,10 +104,8 @@ const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation }) =
     }
   }, [providers, selectedProvider]);
 
-  const mealConfig = MEAL_CONFIG[selectedMeal];
-
   const showFoodInfo = (item: FoodInfoItem) => {
-    navigation.navigate('FoodItemInfo', { item, mealTypeLabel: mealConfig.label });
+    navigation.navigate('FoodItemInfo', { item, date });
   };
 
   const handleExternalFoodTap = async (item: ExternalFoodItem) => {
@@ -304,15 +294,12 @@ const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation }) =
   };
 
   const renderMealItem = ({ item }: { item: Meal }) => {
-    const totalCalories = item.foods.reduce(
-      (sum, food) => sum + food.calories * (food.quantity / food.serving_size),
-      0,
-    );
+    const foodInfo = mealToFoodInfo(item);
     return (
       <TouchableOpacity
         className="px-4 py-3 border-b border-border-subtle"
         activeOpacity={0.7}
-        onPress={() => showFoodInfo(mealToFoodInfo(item))}
+        onPress={() => showFoodInfo(foodInfo)}
       >
         <View className="flex-row justify-between items-center">
           <View className="flex-1 mr-3">
@@ -328,7 +315,7 @@ const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation }) =
           </View>
           <View className="items-end">
             <Text className="text-text-primary text-base font-semibold">
-              {Math.round(totalCalories)} cal
+              {foodInfo.calories} cal
             </Text>
           </View>
         </View>
@@ -618,96 +605,6 @@ const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation }) =
     );
   };
 
-  const renderManualTab = () => (
-    <KeyboardAvoidingView
-      className="flex-1"
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={insets.top + 140}
-    >
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-4 py-4 gap-4"
-        keyboardShouldPersistTaps="handled"
-      >
-        <View>
-          <Text className="text-sm text-text-secondary mb-1">Food Name</Text>
-          <TextInput
-            className="border border-border-subtle rounded-lg bg-raised p-2.5 text-base text-text-primary"
-            placeholder="e.g. Chicken Breast"
-            placeholderTextColor={textMuted}
-          />
-        </View>
-
-        <View>
-          <Text className="text-sm text-text-secondary mb-1">Calories</Text>
-          <TextInput
-            className="border border-border-subtle rounded-lg bg-raised p-2.5 text-base text-text-primary"
-            placeholder="0"
-            placeholderTextColor={textMuted}
-            keyboardType="numeric"
-          />
-        </View>
-
-        <View className="flex-row gap-3">
-          <View className="flex-1">
-            <Text className="text-sm text-text-secondary mb-1">Protein (g)</Text>
-            <TextInput
-              className="border border-border-subtle rounded-lg bg-raised p-2.5 text-base text-text-primary"
-              placeholder="0"
-              placeholderTextColor={textMuted}
-              keyboardType="numeric"
-            />
-          </View>
-          <View className="flex-1">
-            <Text className="text-sm text-text-secondary mb-1">Carbs (g)</Text>
-            <TextInput
-              className="border border-border-subtle rounded-lg bg-raised p-2.5 text-base text-text-primary"
-              placeholder="0"
-              placeholderTextColor={textMuted}
-              keyboardType="numeric"
-            />
-          </View>
-          <View className="flex-1">
-            <Text className="text-sm text-text-secondary mb-1">Fat (g)</Text>
-            <TextInput
-              className="border border-border-subtle rounded-lg bg-raised p-2.5 text-base text-text-primary"
-              placeholder="0"
-              placeholderTextColor={textMuted}
-              keyboardType="numeric"
-            />
-          </View>
-        </View>
-
-        <View className="flex-row gap-3">
-          <View className="flex-1">
-            <Text className="text-sm text-text-secondary mb-1">Serving Size</Text>
-            <TextInput
-              className="border border-border-subtle rounded-lg bg-raised p-2.5 text-base text-text-primary"
-              placeholder="100"
-              placeholderTextColor={textMuted}
-              keyboardType="numeric"
-            />
-          </View>
-          <View className="flex-1">
-            <Text className="text-sm text-text-secondary mb-1">Unit</Text>
-            <TextInput
-              className="border border-border-subtle rounded-lg bg-raised p-2.5 text-base text-text-primary"
-              placeholder="g"
-              placeholderTextColor={textMuted}
-            />
-          </View>
-        </View>
-
-        <TouchableOpacity
-          className="bg-accent-primary rounded-[10px] py-3.5 items-center mt-2"
-          activeOpacity={0.8}
-        >
-          <Text className="text-white text-base font-semibold">Add Entry</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-
   const renderTabContent = () => {
     switch (activeTab) {
       case 'search':
@@ -716,44 +613,23 @@ const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation }) =
         return renderOnlineTab();
       case 'meal':
         return renderMealTab();
-      case 'manual':
-        return renderManualTab();
     }
   };
 
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
-      {/* Header with meal chip */}
+      {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <BottomSheetPicker
-          value={selectedMeal}
-          options={MEAL_OPTIONS}
-          onSelect={setSelectedMeal}
-          title="Select Meal"
-          renderTrigger={({ onPress }) => (
-            <TouchableOpacity
-              onPress={onPress}
-              activeOpacity={0.7}
-              className="flex-row items-center bg-raised rounded-full px-3 py-1.5 border border-border-subtle z-10"
-            >
-              <Icon name={mealConfig.icon} size={16} color={accentColor} />
-              <Text className="text-text-primary text-sm font-medium mx-1.5">
-                {mealConfig.label}
-              </Text>
-              <Icon name="chevron-down" size={12} color={textMuted} />
-            </TouchableOpacity>
-          )}
-        />
-        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Add
-        </Text>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="ml-auto z-10"
+          className="z-10"
         >
           <Icon name="close" size={22} color={accentColor} />
         </TouchableOpacity>
+        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
+          Add
+        </Text>
       </View>
 
       {/* Segmented control */}
@@ -780,8 +656,8 @@ const AddFoodEntryScreen: React.FC<AddFoodEntryScreenProps> = ({ navigation }) =
         </View>
       </View>
 
-      {/* Search bar (visible on Recent and Search tabs) */}
-      {activeTab !== 'manual' && renderSearchBar()}
+      {/* Search bar */}
+      {renderSearchBar()}
 
       {/* Tab content */}
       {renderTabContent()}

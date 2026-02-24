@@ -154,7 +154,15 @@ function AppContent() {
                   }}
                   listeners={({ navigation }) => ({
                     tabPress: () => {
-                      navigation.navigate('AddFoodEntry');
+                      // preventsDefault skips the tab switch, so state.index still points to the previously active tab
+                      const state = navigation.getState();
+                      const activeRoute = state.routes[state.index];
+                      const diaryParams =
+                        activeRoute.name === 'Diary'
+                          ? (activeRoute.params as { selectedDate?: string } | undefined)
+                          : undefined;
+                      const date = diaryParams?.selectedDate;
+                      navigation.navigate('AddFoodEntry', { date });
                     },
                   })}
                 />

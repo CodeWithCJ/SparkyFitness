@@ -22,3 +22,7 @@ export const externalProvidersQueryKey = ['externalProviders'] as const;
 
 export const externalFoodSearchQueryKey = (providerType: string, searchTerm: string, providerId?: string) =>
   ['externalFoodSearch', providerType, searchTerm, providerId] as const;
+
+export const mealTypesQueryKey = ['mealTypes'] as const;
+
+export const goalsQueryKey = (date: string) => ['goals', date] as const;

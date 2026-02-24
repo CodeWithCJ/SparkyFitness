@@ -12,6 +12,11 @@ export interface FoodInfoItem {
   protein: number;
   carbs: number;
   fat: number;
+  fiber?: number;
+  saturatedFat?: number;
+  sodium?: number;
+  sugars?: number;
+  variantId?: string;
   source: 'local' | 'external' | 'meal';
   originalItem: FoodItem | TopFoodItem | ExternalFoodItem | Meal;
 }
@@ -26,6 +31,11 @@ export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem): FoodInfoItem =
   protein: item.default_variant.protein,
   carbs: item.default_variant.carbs,
   fat: item.default_variant.fat,
+  fiber: item.default_variant.fiber,
+  saturatedFat: item.default_variant.saturated_fat,
+  sodium: item.default_variant.sodium,
+  sugars: item.default_variant.sugars,
+  variantId: item.default_variant.id,
   source: 'local',
   originalItem: item,
 });
@@ -40,12 +50,17 @@ export const externalFoodItemToFoodInfo = (item: ExternalFoodItem): FoodInfoItem
   protein: item.protein,
   carbs: item.carbs,
   fat: item.fat,
+  fiber: item.fiber,
+  saturatedFat: item.saturated_fat,
+  sodium: item.sodium,
+  sugars: item.sugars,
   source: 'external',
   originalItem: item,
 });
 
 export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
-  const scale = (food: Meal['foods'][number]) => food.quantity / food.serving_size;
+  const scale = (food: Meal['foods'][number]) =>
+    food.serving_size === 0 ? 0 : food.quantity / food.serving_size;
 
   const calories = meal.foods.reduce((sum, f) => sum + f.calories * scale(f), 0);
   const protein = meal.foods.reduce((sum, f) => sum + f.protein * scale(f), 0);

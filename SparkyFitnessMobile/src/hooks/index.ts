@@ -11,6 +11,7 @@ export {
   mealSearchQueryKey,
   externalProvidersQueryKey,
   externalFoodSearchQueryKey,
+  mealTypesQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useSyncHealthData } from './useSyncHealthData';
@@ -26,3 +27,4 @@ export { useMeals } from './useMeals';
 export { useMealSearch } from './useMealSearch';
 export { useExternalProviders } from './useExternalProviders';
 export { useExternalFoodSearch } from './useExternalFoodSearch';
+export { useMealTypes } from './useMealTypes';

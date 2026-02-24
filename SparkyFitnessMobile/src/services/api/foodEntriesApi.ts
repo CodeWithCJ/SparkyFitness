@@ -1,6 +1,44 @@
 import { apiFetch } from './apiClient';
 import type { FoodEntry } from '../../types/foodEntries';
 
+export interface CreateFoodEntryPayload {
+  meal_type_id: string;
+  quantity: number;
+  unit: string;
+  entry_date: string;
+  // Linked food entry
+  food_id?: string;
+  variant_id?: string;
+  // Standalone entry
+  food_name?: string;
+  brand_name?: string;
+  serving_size?: number;
+  serving_unit?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  saturated_fat?: number;
+  sodium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  // Meal entry
+  meal_id?: string;
+}
+
+/**
+ * Creates a food entry.
+ */
+export const createFoodEntry = async (payload: CreateFoodEntryPayload): Promise<FoodEntry> => {
+  return apiFetch<FoodEntry>({
+    endpoint: '/api/food-entries/',
+    serviceName: 'Food Entries API',
+    operation: 'create food entry',
+    method: 'POST',
+    body: payload,
+  });
+};
+
 /**
  * Fetches food entries for a given date.
  */

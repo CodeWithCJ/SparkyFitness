@@ -32,19 +32,4 @@ describe('meals constants', () => {
     });
   });
 
-  describe('MEAL_TYPES', () => {
-    it('contains the four standard meal types', () => {
-      expect(MEAL_TYPES).toEqual(['breakfast', 'lunch', 'dinner', 'snack']);
-    });
-  });
-
-  describe('MEAL_CONFIG', () => {
-    it('has config for all meal types plus other', () => {
-      for (const type of [...MEAL_TYPES, 'other']) {
-        expect(MEAL_CONFIG[type]).toBeDefined();
-        expect(MEAL_CONFIG[type].label).toBeTruthy();
-        expect(MEAL_CONFIG[type].icon).toBeTruthy();
-      }
-    });
-  });
 });
