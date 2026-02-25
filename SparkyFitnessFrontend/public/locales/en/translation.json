@@ -1015,6 +1015,7 @@
     "entryAddError": "Error adding food entry:",
     "entryRemoved": "Food entry removed successfully",
     "entryRemoveError": "Error removing food entry:",
+    "selectMealType": "Select meal type",
     "waterIntake": {
       "title": "Water Intake",
       "updated": "Water intake updated",

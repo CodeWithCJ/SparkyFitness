@@ -12,7 +12,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, Lock, Eye, EyeOff } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Edit,
+  Lock,
+  Eye,
+  EyeOff,
+  Zap,
+  ZapOff,
+} from 'lucide-react';
 import { type MealTypeDefinition } from '@/api/Diary/mealTypeService';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -76,6 +85,14 @@ const MealTypeManager = () => {
       data: { is_visible: !item.is_visible },
     });
   };
+
+  const toggleQuickLog = async (item: MealTypeDefinition) => {
+    await updateMealType({
+      id: item.id,
+      data: { show_in_quick_log: !item.show_in_quick_log },
+    });
+  };
+
   const openEditDialog = (item: MealTypeDefinition) => {
     setEditingMealType(item);
     setNewName(item.name);
@@ -197,6 +214,22 @@ const MealTypeManager = () => {
                       <Eye className="w-4 h-4" />
                     ) : (
                       <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleQuickLog(item)}
+                    title={
+                      item.show_in_quick_log
+                        ? 'Hide from Quick Food Log'
+                        : 'Show in Quick Food Log'
+                    }
+                  >
+                    {item.show_in_quick_log !== false ? (
+                      <Zap className="w-4 h-4 text-yellow-500" />
+                    ) : (
+                      <ZapOff className="w-4 h-4 text-muted-foreground" />
                     )}
                   </Button>
                   {isSystem ? (

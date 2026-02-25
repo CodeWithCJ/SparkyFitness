@@ -15,6 +15,11 @@ import {
   Shield,
   Plus,
   X,
+  Coffee, // Used for Breakfast
+  Sandwich, // Used for Lunch
+  Cookie, // Used for Snacks
+  UtensilsCrossed, // Used for Dinner
+  Salad, // Used for Food Log
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -33,11 +38,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 
 interface AddCompItem {
   value: string;
   label: string;
   icon: LucideIcon;
+  fullWidth?: boolean;
 }
 
 interface MainLayoutProps {
@@ -60,6 +67,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
 
   const [appVersion, setAppVersion] = useState('Loading...');
   const [isAddCompOpen, setIsAddCompOpen] = useState(false);
+  const [isMealTypeSelectOpen, setIsMealTypeSelectOpen] = useState(false);
+
+  // Fetch meal types for quick log menu
+  const { data: mealTypes } = useMealTypes();
 
   useEffect(() => {
     const fetchVersion = async () => {
@@ -104,15 +115,80 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
           label: t('exercise.title', 'Exercises'),
           icon: Dumbbell,
         },
-        { value: 'goals', label: 'Goals', icon: Target }
+        { value: 'goals', label: 'Goals', icon: Target },
+        {
+          value: 'foodlog',
+          label: t('nav.foodLog', 'Food Log'),
+          icon: Salad,
+          fullWidth: true,
+        }
       );
     } else {
       if (hasWritePermission('checkin')) {
         items.push({ value: 'checkin', label: 'Check-In', icon: Activity });
       }
+      if (hasWritePermission('diary')) {
+        items.push({
+          value: 'foodlog',
+          label: t('nav.foodLog', 'Food Log'),
+          icon: Salad,
+          fullWidth: true,
+        });
+      }
     }
     return items;
   }, [isActingOnBehalf, hasWritePermission, t]);
+
+  // Map meal type names to icons
+  const getMealTypeIcon = useCallback((name: string): LucideIcon => {
+    const lowerName = name.toLowerCase();
+    switch (lowerName) {
+      case 'breakfast':
+        return Coffee;
+      case 'lunch':
+        return Sandwich;
+      case 'dinner':
+        return UtensilsCrossed;
+      case 'snacks':
+        return Cookie;
+      default:
+        return UtensilsCrossed; // Default icon for custom meal types
+    }
+  }, []);
+
+  // Get display name for meal type
+  const getMealTypeLabel = useCallback(
+    (name: string): string => {
+      const lowerName = name.toLowerCase();
+      switch (lowerName) {
+        case 'breakfast':
+          return t('common.breakfast', 'Breakfast');
+        case 'lunch':
+          return t('common.lunch', 'Lunch');
+        case 'dinner':
+          return t('common.dinner', 'Dinner');
+        case 'snacks':
+          return t('common.snacks', 'Snacks');
+        default:
+          return name; // Custom meal types use their own name
+      }
+    },
+    [t]
+  );
+
+  // Generate meal type items from API
+  const mealTypeItems: AddCompItem[] = useMemo(() => {
+    if (!mealTypes) return [];
+
+    return mealTypes
+      .filter((mt) => mt.show_in_quick_log !== false)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((mt) => ({
+        value: mt.name.toLowerCase(),
+        label: getMealTypeLabel(mt.name),
+        icon: getMealTypeIcon(mt.name),
+      }));
+  }, [mealTypes, getMealTypeLabel, getMealTypeIcon]);
 
   const availableTabs = useMemo(() => {
     debug(loggingLevel, 'MainLayout: Calculating available tabs (desktop).', {
@@ -222,8 +298,29 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
   const handleNavigateFromAddComp = useCallback(
     (value: string) => {
       info(loggingLevel, `MainLayout: Navigating to ${value} from AddComp.`);
-      navigate(value);
-      setIsAddCompOpen(false);
+      if (value === 'foodlog') {
+        setIsAddCompOpen(false);
+        setIsMealTypeSelectOpen(true);
+      } else {
+        navigate(value);
+        setIsAddCompOpen(false);
+      }
+    },
+    [loggingLevel, navigate]
+  );
+
+  const handleMealTypeSelect = useCallback(
+    (mealType: string) => {
+      info(
+        loggingLevel,
+        `MainLayout: Meal type ${mealType} selected, navigating to diary.`
+      );
+      debug(
+        loggingLevel,
+        `[MainLayout] Navigating to diary with meal type: ${mealType}`
+      );
+      setIsMealTypeSelectOpen(false);
+      navigate('/', { state: { openFoodSearchForMeal: mealType } });
     },
     [loggingLevel, navigate]
   );
@@ -359,6 +456,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         onClose={() => setIsAddCompOpen(false)}
         items={addCompItems}
         onNavigate={handleNavigateFromAddComp}
+      />
+
+      <AddComp
+        isVisible={isMealTypeSelectOpen}
+        onClose={() => setIsMealTypeSelectOpen(false)}
+        items={mealTypeItems}
+        onNavigate={handleMealTypeSelect}
+        title={t('foodDiary.selectMealType', 'Select Meal Type')}
       />
 
       <footer className="text-center text-muted-foreground text-sm py-4">

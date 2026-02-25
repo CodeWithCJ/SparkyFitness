@@ -82,6 +82,8 @@ interface MealCardProps {
     toUnit: 'kcal' | 'kJ'
   ) => number;
   customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
+  shouldOpenFoodSearch?: boolean;
+  onFoodSearchClose?: () => void;
 }
 
 const MealCard = ({
@@ -95,6 +97,8 @@ const MealCard = ({
   onConvertToMealClick,
   energyUnit,
   convertEnergy,
+  shouldOpenFoodSearch,
+  onFoodSearchClose,
   selectedDate,
   customNutrients = [], // Default to empty array
 }: MealCardProps) => {
@@ -102,6 +106,18 @@ const MealCard = ({
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
+
+  const [internalFoodSearchOpen, setInternalFoodSearchOpen] = useState(false);
+
+  // Check if food search is open to handle state changes
+  const isFoodSearchOpen = shouldOpenFoodSearch || internalFoodSearchOpen;
+
+  const handleFoodSearchOpenChange = (open: boolean) => {
+    setInternalFoodSearchOpen(open);
+    if (!open && onFoodSearchClose) {
+      onFoodSearchClose();
+    }
+  };
 
   const { mutate: copyFoodEntriesFromYesterday } =
     useCopyFoodEntriesFromYesterdayMutation();
@@ -209,7 +225,10 @@ const MealCard = ({
               </span>
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-4 justify-end">
-              <Dialog>
+              <Dialog
+                open={isFoodSearchOpen}
+                onOpenChange={handleFoodSearchOpenChange}
+              >
                 <DialogTrigger asChild>
                   <Button
                     size="default"

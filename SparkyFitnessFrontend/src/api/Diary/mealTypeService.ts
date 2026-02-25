@@ -6,12 +6,14 @@ export interface MealTypeDefinition {
   sort_order: number;
   user_id: string | null;
   is_visible?: boolean;
+  show_in_quick_log?: boolean;
 }
 
 export interface MealTypeUpdate {
   name?: string;
   sort_order?: number;
   is_visible?: boolean;
+  show_in_quick_log?: boolean;
 }
 
 export const getMealTypes = async (): Promise<MealTypeDefinition[]> => {
