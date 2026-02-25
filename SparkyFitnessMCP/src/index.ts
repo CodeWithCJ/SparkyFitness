@@ -18,7 +18,7 @@ import {
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import express from "express";
 import cors from "cors";
-import { nutritionTools, handleNutritionTool } from "./tools/nutrition.js";
+import { nutritionTools, handleNutritionTool } from "./tools/food/index.js";
 import { fitnessTools, handleFitnessTool } from "./tools/fitness.js";
 import { biometricTools, handleBiometricTool } from "./tools/biometrics.js";
 import { coachTools, handleCoachTool } from "./tools/coach.js";

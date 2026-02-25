@@ -55,7 +55,7 @@ export const handleDevTool = async (name: string, args: any) => {
       return { content: [{ type: "text", text: JSON.stringify(res.rows, null, 2) }] };
 
     case "get_user_info":
-      const userRes = await query("SELECT id, email FROM public.users WHERE id = $1", [MOCK_USER_ID]);
+      const userRes = await query('SELECT id, email FROM public."user" WHERE id = $1', [MOCK_USER_ID]);
       return {
         content: [{
           type: "text",
