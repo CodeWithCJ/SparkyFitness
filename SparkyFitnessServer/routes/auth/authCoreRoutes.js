@@ -21,8 +21,11 @@ router.get('/settings', async (req, res) => {
             oidcProviderRepository.getOidcProviders()
         ]);
 
-        // Check for environment variable override for email/password login
-        const forceEmailLogin = process.env.SPARKY_FITNESS_FORCE_EMAIL_LOGIN === 'true';
+        // Environment overrides are now handled within globalSettingsRepository.getGlobalSettings()
+        const oidcAutoRedirectEnv = process.env.SPARKY_FITNESS_OIDC_AUTO_REDIRECT === 'true';
+
+        const emailEnabled = globalSettings.enable_email_password_login;
+        const oidcEnabled = globalSettings.is_oidc_active;
 
         const activeProviders = providers
             .filter(p => p.is_active)
@@ -35,20 +38,22 @@ router.get('/settings', async (req, res) => {
 
         res.json({
             email: {
-                enabled: forceEmailLogin || (globalSettings ? globalSettings.enable_email_password_login : true)
+                enabled: emailEnabled
             },
             oidc: {
-                enabled: globalSettings ? globalSettings.is_oidc_active : false,
-                providers: activeProviders
+                enabled: oidcEnabled,
+                providers: activeProviders,
+                auto_redirect: oidcAutoRedirectEnv
             }
         });
     } catch (error) {
         log('error', `[AUTH CORE] Settings Error: ${error.message}`);
         // Fallback safety, considering potential env override
         const forceEmailLogin = process.env.SPARKY_FITNESS_FORCE_EMAIL_LOGIN === 'true';
+        const disableEmailLogin = process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN === 'true';
         res.json({
-            email: { enabled: forceEmailLogin || true },
-            oidc: { enabled: false, providers: [] }
+            email: { enabled: forceEmailLogin || !disableEmailLogin },
+            oidc: { enabled: process.env.SPARKY_FITNESS_OIDC_AUTH_ENABLED === 'true', providers: [], auto_redirect: false }
         });
     }
 });

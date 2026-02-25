@@ -6,6 +6,16 @@ const NodeCache = require('node-cache');
 const discoveryCache = new NodeCache({ stdTTL: 3600 });
 
 /**
+ * Returns the frontend base URL with protocol and no trailing slash (for OIDC redirect URIs).
+ * @returns {string}
+ */
+function getBaseUrl() {
+    const frontendUrl = process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
+    const urlWithProtocol = frontendUrl.startsWith('http') ? frontendUrl : `https://${frontendUrl}`;
+    return urlWithProtocol.replace(/\/$/, '');
+}
+
+/**
  * Fetches OIDC endpoints from the discovery document
  * @param {string} discoveryEndpoint - The OIDC discovery endpoint URL
  * @returns {Promise<Object>} Object containing jwksEndpoint, tokenEndpoint, authorizationEndpoint, userInfoEndpoint
@@ -30,6 +40,7 @@ async function fetchOidcEndpoints(discoveryEndpoint) {
     }
 
     return {
+        issuer: discoveryDocument.issuer,
         jwksEndpoint: discoveryDocument.jwks_uri,
         tokenEndpoint: discoveryDocument.token_endpoint,
         authorizationEndpoint: discoveryDocument.authorization_endpoint,
@@ -45,7 +56,7 @@ async function getOidcProviders() {
         );
         return result.rows.map(row => {
             const config = row.additional_config ? JSON.parse(row.additional_config) : {};
-            const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
+            const baseUrl = getBaseUrl();
             return {
                 id: row.id,
                 provider_id: row.provider_id,
@@ -82,7 +93,7 @@ async function getOidcProviderById(id) {
 
         const config = row.additional_config ? JSON.parse(row.additional_config) : {};
 
-        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
+        const baseUrl = getBaseUrl();
         const provider = {
             id: row.id,
             provider_id: row.provider_id,
@@ -105,7 +116,7 @@ async function getOidcProviderById(id) {
 
         let endSessionEndpoint = null;
         if (provider.issuer_url) {
-            const discoveryUrl = `${provider.issuer_url}/.well-known/openid-configuration`;
+            const discoveryUrl = `${provider.issuer_url.replace(/\/$/, '')}/.well-known/openid-configuration`;
             let discoveryDocument = discoveryCache.get(discoveryUrl);
             if (!discoveryDocument) {
                 try {
@@ -145,42 +156,43 @@ async function createOidcProvider(providerData) {
             token_endpoint_auth_method: providerData.token_endpoint_auth_method || 'client_secret_post',
             signing_algorithm: providerData.signing_algorithm || 'RS256',
             profile_signing_algorithm: providerData.profile_signing_algorithm || 'none',
-            timeout: providerData.timeout || 30000
+            timeout: providerData.timeout || 30000,
+            is_env_configured: providerData.is_env_configured || false
         });
 
         const providerId = providerData.provider_id || `oidc-${Date.now()}`;
-        const discoveryEndpoint = providerData.issuer_url + '/.well-known/openid-configuration';
+        const discoveryEndpoint = providerData.issuer_url.replace(/\/$/, '') + '/.well-known/openid-configuration';
 
         // Fetch OIDC endpoints from discovery document
         const endpoints = await fetchOidcEndpoints(discoveryEndpoint);
 
-        // Construct native oidcConfig for Better Auth
-        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
-        const oidcConfig = JSON.stringify({
-            issuer: providerData.issuer_url,
+        // Construct native oidcConfig for Better Auth (object for JSONB column; same base as auth.baseURL)
+        const baseUrl = getBaseUrl();
+        const callbackBase = `${baseUrl}/api/auth`;
+        const oidcConfig = {
+            issuer: endpoints.issuer || providerData.issuer_url,
             clientId: providerData.client_id,
             clientSecret: providerData.client_secret,
             scopes: (providerData.scope || 'openid email profile').split(' ').filter(Boolean),
             discoveryEndpoint: discoveryEndpoint,
             pkce: true,
-            redirectURI: `${baseUrl}/api/auth/sso/callback/${providerId}`,
-            // Add endpoints from discovery
+            redirectURI: `${callbackBase}/sso/callback/${providerId}`,
             jwksEndpoint: endpoints.jwksEndpoint,
             tokenEndpoint: endpoints.tokenEndpoint,
             authorizationEndpoint: endpoints.authorizationEndpoint,
             userInfoEndpoint: endpoints.userInfoEndpoint,
-        });
+        };
 
         const result = await client.query(
             `INSERT INTO "sso_provider" 
             (provider_id, issuer, domain, client_id, client_secret, scopes, discovery_endpoint, 
              authorization_endpoint, token_endpoint, jwks_endpoint, userinfo_endpoint, 
              additional_config, oidc_config)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb)
             RETURNING id`,
             [
                 providerId,
-                providerData.issuer_url,
+                endpoints.issuer || providerData.issuer_url,
                 providerData.domain || `${providerId}.internal`,
                 providerData.client_id,
                 providerData.client_secret,
@@ -222,10 +234,11 @@ async function updateOidcProvider(id, providerData) {
             token_endpoint_auth_method: providerData.token_endpoint_auth_method || 'client_secret_post',
             signing_algorithm: providerData.signing_algorithm || 'RS256',
             profile_signing_algorithm: providerData.profile_signing_algorithm || 'none',
-            timeout: providerData.timeout || 30000
+            timeout: providerData.timeout || 30000,
+            is_env_configured: providerData.is_env_configured || false
         });
 
-        const discoveryEndpoint = providerData.issuer_url + '/.well-known/openid-configuration';
+        const discoveryEndpoint = providerData.issuer_url.replace(/\/$/, '') + '/.well-known/openid-configuration';
         const clientSecret = (providerData.client_secret && providerData.client_secret !== '*****')
             ? providerData.client_secret
             : existing.client_secret;
@@ -233,34 +246,34 @@ async function updateOidcProvider(id, providerData) {
         // Fetch OIDC endpoints from discovery document
         const endpoints = await fetchOidcEndpoints(discoveryEndpoint);
 
-        // Construct native oidcConfig for Better Auth
-        const baseUrl = (process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080");
+        // Construct native oidcConfig for Better Auth (same base as auth.baseURL; JSONB)
+        const baseUrl = getBaseUrl();
+        const callbackBase = `${baseUrl}/api/auth`;
         const providerIdToUse = providerData.provider_id || id;
-        const oidcConfig = JSON.stringify({
-            issuer: providerData.issuer_url,
+        const oidcConfig = {
+            issuer: endpoints.issuer || providerData.issuer_url,
             clientId: providerData.client_id,
             clientSecret: clientSecret,
             scopes: (providerData.scope || 'openid email profile').split(' ').filter(Boolean),
             discoveryEndpoint: discoveryEndpoint,
             pkce: true,
-            redirectURI: `${baseUrl}/api/auth/sso/callback/${providerIdToUse}`,
-            // Add endpoints from discovery
+            redirectURI: `${callbackBase}/sso/callback/${providerIdToUse}`,
             jwksEndpoint: endpoints.jwksEndpoint,
             tokenEndpoint: endpoints.tokenEndpoint,
             authorizationEndpoint: endpoints.authorizationEndpoint,
             userInfoEndpoint: endpoints.userInfoEndpoint,
-        });
+        };
 
         const query = `
             UPDATE "sso_provider" 
             SET issuer=$1, domain=$2, client_id=$3, client_secret=$4, scopes=$5, discovery_endpoint=$6, 
                 authorization_endpoint=$7, token_endpoint=$8, jwks_endpoint=$9, userinfo_endpoint=$10,
-                additional_config=$11, oidc_config=$12, provider_id=$13, updated_at=NOW() 
+                additional_config=$11, oidc_config=$12::jsonb, provider_id=$13, updated_at=NOW() 
             WHERE id::text=$14 OR provider_id=$14
             RETURNING id`;
 
         const result = await client.query(query, [
-            providerData.issuer_url,
+            endpoints.issuer || providerData.issuer_url,
             providerData.domain,
             providerData.client_id,
             clientSecret,

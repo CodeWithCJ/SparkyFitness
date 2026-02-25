@@ -18,6 +18,7 @@ export interface OidcProvider {
   timeout?: number;
   domain?: string;
   provider_id?: string;
+  is_env_configured?: boolean;
 }
 
 export interface CreateOidcProvider {

@@ -5,6 +5,8 @@ export interface GlobalSettings {
   is_oidc_active: boolean;
   is_mfa_mandatory: boolean;
   allow_user_ai_config?: boolean;
+  is_email_login_env_configured?: boolean;
+  is_oidc_active_env_configured?: boolean;
 }
 
 const globalSettingsService = {

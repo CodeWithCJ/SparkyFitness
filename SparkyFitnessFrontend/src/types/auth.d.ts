@@ -27,6 +27,8 @@ export interface LoginSettings {
   oidc: {
     enabled: boolean;
     providers: OidcProvider[];
+    /** When true (e.g. SPARKY_FITNESS_OIDC_AUTO_REDIRECT), allow auto-redirect to single provider when email login is disabled. */
+    auto_redirect?: boolean;
   };
   warning?: string | null;
 }

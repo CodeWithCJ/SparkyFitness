@@ -3,6 +3,12 @@ const { APIError } = require("better-auth/api");
 const { Pool } = require("pg");
 const { log } = require("./config/logging");
 console.log("[AUTH] auth.js module is being loaded...");
+const bcrypt = require("bcrypt");
+const { v4: uuidv4 } = require("uuid");
+const { syncUserGroups } = require('./utils/oidcGroupSync');
+const userRepository = require('./models/userRepository');
+const { sendPasswordResetEmail, sendMagicLinkEmail, sendEmailMfaCode } = require("./services/emailService");
+const { createDefaultNutrientPreferencesForUser } = require("./services/nutrientDisplayPreferenceService");
 
 // Create a dedicated pool for Better Auth
 /*
@@ -56,12 +62,8 @@ const apiKeyPlugin = require("better-auth/plugins").apiKey({
   enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
   rateLimit: {
     enabled: true,
-    timeWindow:
-      parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS, 10) ||
-      60_000, // 1 minute
-    maxRequests:
-      parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS, 10) ||
-      100, // 100 req/min (Better Auth defaults to 10/day)
+    timeWindow: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS, 10) || 60_000, // 1 minute
+    maxRequests: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS, 10) || 100, // 100 req/min (Better Auth defaults to 10/day)
   },
   schema: {
     apikey: {
@@ -142,11 +144,9 @@ const auth = betterAuth({
     password: {
       // Use bcrypt for compatibility with existing hashes
       hash: async (password) => {
-        const bcrypt = require("bcrypt");
         return await bcrypt.hash(password, 10);
       },
       verify: async ({ password, hash }) => {
-        const bcrypt = require("bcrypt");
         return await bcrypt.compare(password, hash);
       },
     },
@@ -481,6 +481,7 @@ const auth = betterAuth({
             backedUp: "backed_up",
             transports: "transports",
             createdAt: "created_at",
+            updatedAt: "updated_at",
             aaguid: "aaguid",
           },
         },

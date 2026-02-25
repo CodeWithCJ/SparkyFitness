@@ -81,8 +81,13 @@ const Auth = () => {
         ) {
           const provider = loginSettings.oidc.providers[0];
 
-          // AUTO-REDIRECT LOGIC: Only when email is disabled and exactly 1 OIDC provider is active
-          if (!loginSettings.email.enabled && !authUser && !authLoading) {
+          // AUTO-REDIRECT LOGIC: Only when email is disabled, auto_redirect is enabled (e.g. SPARKY_FITNESS_OIDC_AUTO_REDIRECT), and exactly 1 OIDC provider is active
+          if (
+            loginSettings.oidc.auto_redirect &&
+            !loginSettings.email.enabled &&
+            !authUser &&
+            !authLoading
+          ) {
             console.log(
               'Auth Page: Auto-redirecting to OIDC provider:',
               provider.id

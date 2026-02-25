@@ -524,7 +524,15 @@ const schedulePolarSyncs = async () => {
 applyMigrations()
   .then(applyRlsPolicies)
   .then(async () => {
-    // Sync trusted SSO providers after database is ready
+    // Upsert OIDC provider from env when SPARKY_FITNESS_OIDC_ISSUER_URL + CLIENT_ID + SECRET + PROVIDER_SLUG are set
+    try {
+      const { upsertEnvOidcProvider } = require("./utils/oidcEnvConfig");
+      await upsertEnvOidcProvider();
+    } catch (err) {
+      log("error", "OIDC env provider upsert failed:", err);
+    }
+    // Sync trusted SSO providers after database is ready (so Better Auth sees env-upserted and DB providers)
+    const { syncTrustedProviders } = require("./auth");
     if (syncTrustedProviders) {
       await syncTrustedProviders().catch((err) =>
         console.error("[AUTH] Post-init SSO sync failed:", err),
