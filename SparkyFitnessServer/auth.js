@@ -238,207 +238,219 @@ const auth = betterAuth({
             expiresAt: "expires_at",
             createdAt: "created_at",
             updatedAt: "updated_at",
-        }
+        },
     },
 
-    // Trust proxy (for Docker/Nginx deployments)
-    trustedOrigins: (() => {
-        const origins = [process.env.SPARKY_FITNESS_FRONTEND_URL];
+  // Trust proxy (for Docker/Nginx deployments)
+  trustedOrigins: (() => {
+    const origins = [process.env.SPARKY_FITNESS_FRONTEND_URL];
 
-        // If private network CORS is allowed, we automatically trust localhost
-        if (process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true') {
-            origins.push("http://localhost:8080");
-            origins.push("http://127.0.0.1:8080");
+    // If private network CORS is allowed, we automatically trust localhost
+    if (process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true') {
+      origins.push("http://localhost:8080");
+      origins.push("http://127.0.0.1:8080");
 
-            // Add any extra origins manually configured (comma-separated list)
-            if (process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS) {
-                const extras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS
-                    .split(',')
-                    .map(o => o.trim());
-                origins.push(...extras);
+      // Add any extra origins manually configured (comma-separated list)
+      if (process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS) {
+        const extras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS
+          .split(',')
+          .map(o => o.trim());
+        origins.push(...extras);
+      }
+    }
+
+    const finalOrigins = [...new Set(origins)] // Remove duplicates
+      .filter(Boolean)
+      .map(url => url.replace(/\/$/, ''));
+
+    log('info', '[AUTH] Trusted origins:', finalOrigins);
+    return finalOrigins;
+  })(),
+
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user, ctx) => {
+          console.log(`[AUTH DEBUG] user.create.before hook triggered. Path: ${ctx.path}`);
+
+          // 1. MASTER TOGGLE: Global signup blockade
+          if (process.env.SPARKY_FITNESS_DISABLE_SIGNUP === 'true') {
+            console.log("[AUTH] Blocking signup: SPARKY_FITNESS_DISABLE_SIGNUP is true");
+            throw new APIError("BAD_REQUEST", {
+              message: "Signups are currently disabled by the administrator.",
+            });
+          }
+
+          // 2. PER-PROVIDER TOGGLE: SSO auto_register check
+          // SSO callback paths are /sso/callback/[providerId]
+          if (ctx.path.includes("/sso/callback/")) {
+            // Better Auth might use :providerId in ctx.path, so we check ctx.params or the request URL
+            let providerId = ctx.params?.providerId;
+
+            // Fallback: Extract from the actual request URL if template is used in ctx.path
+            if (!providerId || providerId === ":providerId") {
+              const url = new URL(ctx.request.url, "http://localhost");
+              const pathParts = url.pathname.split("/");
+              providerId = pathParts[pathParts.length - 1];
             }
-        }
 
-        const finalOrigins = [...new Set(origins)] // Remove duplicates
-            .filter(Boolean)
-            .map(url => url.replace(/\/$/, ''));
+            console.log(`[AUTH] Verifying auto-register for SSO provider: ${providerId} (Original Path: ${ctx.path})`);
 
-        log('info', '[AUTH] Trusted origins:', finalOrigins);
-        return finalOrigins;
-    })(),
+            try {
+              const oidcProviderRepository = require("./models/oidcProviderRepository");
+              const provider = await oidcProviderRepository.getOidcProviderById(providerId);
 
-    databaseHooks: {
-        user: {
-            create: {
-                before: async (user, ctx) => {
-                    console.log(`[AUTH DEBUG] user.create.before hook triggered. Path: ${ctx.path}`);
+              if (provider) {
+                console.log(`[AUTH DEBUG] Provider found: ${provider.provider_id}. auto_register: ${provider.auto_register} (Type: ${typeof provider.auto_register})`);
+              } else {
+                console.log(`[AUTH DEBUG] No provider found in DB for ID: ${providerId}`);
+              }
 
-                    // 1. MASTER TOGGLE: Global signup blockade
-                    if (process.env.SPARKY_FITNESS_DISABLE_SIGNUP === 'true') {
-                        console.log("[AUTH] Blocking signup: SPARKY_FITNESS_DISABLE_SIGNUP is true");
-                        throw new APIError("BAD_REQUEST", {
-                            message: "Signups are currently disabled by the administrator.",
-                        });
-                    }
-
-                    // 2. PER-PROVIDER TOGGLE: SSO auto_register check
-                    // SSO callback paths are /sso/callback/[providerId]
-                    if (ctx.path.includes("/sso/callback/")) {
-                        // Better Auth might use :providerId in ctx.path, so we check ctx.params or the request URL
-                        let providerId = ctx.params?.providerId;
-
-                        // Fallback: Extract from the actual request URL if template is used in ctx.path
-                        if (!providerId || providerId === ":providerId") {
-                            const url = new URL(ctx.request.url, "http://localhost");
-                            const pathParts = url.pathname.split("/");
-                            providerId = pathParts[pathParts.length - 1];
-                        }
-
-                        console.log(`[AUTH] Verifying auto-register for SSO provider: ${providerId} (Original Path: ${ctx.path})`);
-
-                        try {
-                            const oidcProviderRepository = require("./models/oidcProviderRepository");
-                            const provider = await oidcProviderRepository.getOidcProviderById(providerId);
-
-                            if (provider) {
-                                console.log(`[AUTH DEBUG] Provider found: ${provider.provider_id}. auto_register: ${provider.auto_register} (Type: ${typeof provider.auto_register})`);
-                            } else {
-                                console.log(`[AUTH DEBUG] No provider found in DB for ID: ${providerId}`);
-                            }
-
-                            if (provider && provider.auto_register === false) {
-                                console.log(`[AUTH] Blocking SSO registration: auto_register is disabled for ${providerId}`);
-                                throw new APIError("BAD_REQUEST", {
-                                    message: "New account registration is disabled for this login provider.",
-                                });
-                            }
-                        } catch (error) {
-                            // Re-throw APIErrors, log others
-                            if (error instanceof APIError) throw error;
-                            console.error("[AUTH] Error during auto_register check:", error);
-                        }
-                    }
-
-                    return { data: user };
-                },
-                after: async (user) => {
-                    console.log(`[AUTH] Hook: User created, initializing Sparky data for ${user.id}`);
-                    try {
-                        // We use the user.name or email if name is missing for the profile
-                        await userRepository.ensureUserInitialization(user.id, user.name || user.email.split('@')[0]);
-
-                        // Also initialize default nutrient preferences
-                        await createDefaultNutrientPreferencesForUser(user.id);
-
-                        console.log(`[AUTH] Hook: Initialization complete for ${user.id}`);
-                    } catch (error) {
-                        console.error(`[AUTH] Hook Error: Failed to initialize user ${user.id}:`, error);
-                        // We don't throw here to avoid blocking the signup, but we log the failure
-                    }
-                }
+              if (provider && provider.auto_register === false) {
+                console.log(`[AUTH] Blocking SSO registration: auto_register is disabled for ${providerId}`);
+                throw new APIError("BAD_REQUEST", {
+                  message: "New account registration is disabled for this login provider.",
+                });
+              }
+            } catch (error) {
+              // Re-throw APIErrors, log others
+              if (error instanceof APIError) throw error;
+              console.error("[AUTH] Error during auto_register check:", error);
             }
+          }
+
+          return { data: user };
         },
-        account: {
-            create: {
-                before: async (account, ctx) => {
-                    console.log(`[AUTH DEBUG] account.create.before hook triggered`);
-                    console.log(`[AUTH DEBUG] Account data:`, JSON.stringify({
-                        providerId: account.providerId,
-                        accountId: account.accountId,
-                        userId: account.userId,
-                        path: ctx.path
-                    }));
-                    return { data: account };
-                },
-                after: async (account) => {
-                    console.log(`[AUTH DEBUG] account.create.after hook - Account link created successfully`);
-                    console.log(`[AUTH DEBUG] Created account:`, JSON.stringify({
-                        id: account.id,
-                        providerId: account.providerId,
-                        userId: account.userId
-                    }));
-                }
-            }
-        },
-        session: {
-            create: {
-                after: async (session) => {
-                    const userId = session.userId;
-                    const adminGroup = process.env.SPARKY_FITNESS_OIDC_ADMIN_GROUP;
+        after: async (user) => {
+          console.log(`[AUTH] Hook: User created, initializing Sparky data for ${user.id}`);
+          try {
+            // We use the user.name or email if name is missing for the profile
+            await userRepository.ensureUserInitialization(user.id, user.name || user.email.split('@')[0]);
 
-                    await syncUserGroups({ pool: authPool, userRepository }, userId, adminGroup);
-                }
-            }
+            // Also initialize default nutrient preferences
+            await createDefaultNutrientPreferencesForUser(user.id);
+
+            console.log(`[AUTH] Hook: Initialization complete for ${user.id}`);
+          } catch (error) {
+            console.error(`[AUTH] Hook Error: Failed to initialize user ${user.id}:`, error);
+            // We don't throw here to avoid blocking the signup, but we log the failure
+          }
         }
+      }
     },
+    account: {
+      create: {
+        before: async (account, ctx) => {
+          console.log(`[AUTH DEBUG] account.create.before hook triggered`);
+          console.log(
+            `[AUTH DEBUG] Account data:`, 
+            JSON.stringify({
+              providerId: account.providerId,
+              accountId: account.accountId,
+              userId: account.userId,
+              path: ctx.path
+            }),
+          );
+          return { data: account };
+        },
+        after: async (account) => {
+          console.log(
+            `[AUTH DEBUG] account.create.after hook - Account link created successfully`
+          );
+          console.log(
+            `[AUTH DEBUG] Created account:`, 
+            JSON.stringify({
+              id: account.id,
+              providerId: account.providerId,
+              userId: account.userId
+            }),
+          );
+        },
+      },
+    },
+    session: {
+      create: {
+        after: async (session) => {
+          const userId = session.userId;
+          const adminGroup = process.env.SPARKY_FITNESS_OIDC_ADMIN_GROUP;
 
-    plugins: [
-        require("better-auth/plugins").magicLink({
-            expiresIn: 900, // 15 minutes (matches email template)
-            sendMagicLink: async ({ email, url, token }, request) => {
-                await sendMagicLinkEmail(email, url);
-            },
-        }),
-        require("better-auth/plugins").admin(),
-        require("better-auth/plugins").twoFactor({
-            issuer: process.env.NODE_ENV === 'production' ? 'SparkyFitness' : 'SparkyFitnessDev',
-            schema: {
-                twoFactor: {
-                    modelName: "two_factor",
-                    fields: {
-                        id: "id",
-                        userId: "user_id",
-                        secret: "secret",
-                        backupCodes: "backup_codes",
-                        createdAt: "created_at",
-                        updatedAt: "updated_at",
-                    }
-                }
-            },
-            otpOptions: {
-                async sendOTP({ user, otp }, request) {
-                    await sendEmailMfaCode(user.email, otp);
-                }
-            }
-        }),
-        require("@better-auth/sso").sso({
-            modelName: "sso_provider", // Map to my snake_case table
-            trustEmailVerified: true, // Trust that OIDC provider emails are verified
-            disableImplicitSignUp: false, // Allow implicit sign-up for OIDC users
+          await syncUserGroups({ pool: authPool, userRepository }, userId, adminGroup);
+        }
+      }
+    }
+  },
+
+  plugins: [
+    require("better-auth/plugins").magicLink({
+      expiresIn: 900, // 15 minutes (matches email template)
+      sendMagicLink: async ({ email, url, token }, request) => {
+        await sendMagicLinkEmail(email, url);
+      },
+    }),
+    require("better-auth/plugins").admin(),
+    require("better-auth/plugins").twoFactor({
+        issuer:
+        process.env.NODE_ENV === "production"
+            ? "SparkyFitness"
+            : "SparkyFitnessDev",
+        schema: {
+        twoFactor: {
+            modelName: "two_factor",
             fields: {
-                id: "id",
-                providerId: "provider_id",
-                issuer: "issuer",
-                oidcConfig: "oidc_config", // Added this mapping
-                samlConfig: "saml_config", // Added this mapping
-                domain: "domain",
-                additionalConfig: "additional_config",
-                createdAt: "created_at",
-                updatedAt: "updated_at",
-            }
-        }),
-        require("@better-auth/passkey").passkey({
-            schema: {
-                passkey: {
-                    modelName: "passkey",
-                    fields: {
-                        id: "id",
-                        name: "name",
-                        publicKey: "public_key",
-                        userId: "user_id",
-                        credentialID: "credential_id",
-                        counter: "counter",
-                        deviceType: "device_type",
-                        backedUp: "backed_up",
-                        transports: "transports",
-                        createdAt: "created_at",
-                        aaguid: "aaguid",
-                    },
-                },
+            id: "id",
+            userId: "user_id",
+            secret: "secret",
+            backupCodes: "backup_codes",
+            createdAt: "created_at",
+            updatedAt: "updated_at",
             },
-        }),
-        apiKeyPlugin,
-    ],
+        },
+        },
+        otpOptions: {
+        async sendOTP({ user, otp }, request) {
+            const { sendEmailMfaCode } = require("./services/emailService");
+            await sendEmailMfaCode(user.email, otp);
+        },
+        },
+    }),
+    require("@better-auth/sso").sso({
+      modelName: "sso_provider", // Map to my snake_case table
+      trustEmailVerified: true, // Trust that OIDC provider emails are verified
+      disableImplicitSignUp: false, // Allow implicit sign-up for OIDC users
+      fields: {
+        id: "id",
+        providerId: "provider_id",
+        issuer: "issuer",
+        oidcConfig: "oidc_config", // Added this mapping
+        samlConfig: "saml_config", // Added this mapping
+        domain: "domain",
+        additionalConfig: "additional_config",
+        createdAt: "created_at",
+        updatedAt: "updated_at",
+      },
+    }),
+    require("@better-auth/passkey").passkey({
+      schema: {
+        passkey: {
+          modelName: "passkey",
+          fields: {
+            id: "id",
+            name: "name",
+            publicKey: "public_key",
+            userId: "user_id",
+            credentialID: "credential_id",
+            counter: "counter",
+            deviceType: "device_type",
+            backedUp: "backed_up",
+            transports: "transports",
+            createdAt: "created_at",
+            aaguid: "aaguid",
+          },
+        },
+      },
+    }),
+    apiKeyPlugin,
+  ],
 });
 
 /**
