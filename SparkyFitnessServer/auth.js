@@ -22,11 +22,11 @@ console.log("DEBUG: Initializing Better Auth Pool with:", {
 */
 
 const authPool = new Pool({
-    user: process.env.SPARKY_FITNESS_DB_USER,
-    host: process.env.SPARKY_FITNESS_DB_HOST,
-    database: process.env.SPARKY_FITNESS_DB_NAME,
-    password: process.env.SPARKY_FITNESS_DB_PASSWORD,
-    port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
+  user: process.env.SPARKY_FITNESS_DB_USER,
+  host: process.env.SPARKY_FITNESS_DB_HOST,
+  database: process.env.SPARKY_FITNESS_DB_NAME,
+  password: process.env.SPARKY_FITNESS_DB_PASSWORD,
+  port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
 });
 
 // Persistent array reference for trusted providers
@@ -35,32 +35,35 @@ const dynamicTrustedProviders = [];
 
 // Function to sync trusted providers from database
 async function syncTrustedProviders() {
-    try {
-        // Use lazy require to avoid circular dependency with oidcProviderRepository
-        const oidcProviderRepository = require('./models/oidcProviderRepository');
-        const providers = await oidcProviderRepository.getActiveOidcProviderIds();
+  try {
+    // Use lazy require to avoid circular dependency with oidcProviderRepository
+    const oidcProviderRepository = require("./models/oidcProviderRepository");
+    const providers = await oidcProviderRepository.getActiveOidcProviderIds();
 
-        // Update the array without changing the reference
-        dynamicTrustedProviders.length = 0;
-        dynamicTrustedProviders.push(...providers);
+    // Update the array without changing the reference
+    dynamicTrustedProviders.length = 0;
+    dynamicTrustedProviders.push(...providers);
 
-        console.log('[AUTH] Synced trusted SSO providers for auto-linking:', dynamicTrustedProviders);
-        return dynamicTrustedProviders;
-    } catch (error) {
-        console.error('[AUTH] Error syncing trusted providers:', error);
-        return dynamicTrustedProviders;
-    }
+    console.log(
+      "[AUTH] Synced trusted SSO providers for auto-linking:",
+      dynamicTrustedProviders,
+    );
+    return dynamicTrustedProviders;
+  } catch (error) {
+    console.error("[AUTH] Error syncing trusted providers:", error);
+    return dynamicTrustedProviders;
+  }
 }
 
-// Initial sync on startup
-syncTrustedProviders().catch(err => console.error('[AUTH] Startup sync failed:', err));
+// Initial sync on startup - deferred to SparkyFitnessServer.js after migrations
+// syncTrustedProviders().catch(err => console.error('[AUTH] Startup sync failed:', err));
 
 const apiKeyPlugin = require("better-auth/plugins").apiKey({
   enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
   rateLimit: {
     enabled: true,
-    timeWindow: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS, 10) || 60_000,    // 1 minute
-    maxRequests: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS, 10) || 100,      // 100 req/min (Better Auth defaults to 10/day)
+    timeWindow: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS, 10) || 60_000, // 1 minute
+    maxRequests: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS, 10) || 100, // 100 req/min (Better Auth defaults to 10/day)
   },
   schema: {
     apikey: {
@@ -96,174 +99,189 @@ const apiKeyPlugin = require("better-auth/plugins").apiKey({
 // FIX: Better Auth v1.4.17 is missing paths for these endpoints in the library definition.
 // We patch the plugin instance BEFORE passing it to betterAuth so the internal router picks it up.
 if (apiKeyPlugin.endpoints) {
-    if (apiKeyPlugin.endpoints.deleteAllExpiredApiKeys) {
-        apiKeyPlugin.endpoints.deleteAllExpiredApiKeys.path = "/api-key/delete-all-expired-api-keys";
-        apiKeyPlugin.endpoints.deleteAllExpiredApiKeys.method = "POST";
-    }
-    if (apiKeyPlugin.endpoints.verifyApiKey) {
-        apiKeyPlugin.endpoints.verifyApiKey.path = "/api-key/verify";
-        apiKeyPlugin.endpoints.verifyApiKey.method = "POST";
-    }
+  if (apiKeyPlugin.endpoints.deleteAllExpiredApiKeys) {
+    apiKeyPlugin.endpoints.deleteAllExpiredApiKeys.path =
+      "/api-key/delete-all-expired-api-keys";
+    apiKeyPlugin.endpoints.deleteAllExpiredApiKeys.method = "POST";
+  }
+  if (apiKeyPlugin.endpoints.verifyApiKey) {
+    apiKeyPlugin.endpoints.verifyApiKey.path = "/api-key/verify";
+    apiKeyPlugin.endpoints.verifyApiKey.method = "POST";
+  }
 }
 
 const auth = betterAuth({
-    database: authPool,
-    secret: Buffer.from(process.env.BETTER_AUTH_SECRET, 'base64'),
+  database: authPool,
+  secret: Buffer.from(process.env.BETTER_AUTH_SECRET, "base64"),
 
+  // Base URL configuration - MUST use public frontend URL for OIDC to work
+  baseURL:
+    (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("http")
+      ? process.env.SPARKY_FITNESS_FRONTEND_URL
+      : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`
+    )?.replace(/\/$/, "") + "/api/auth",
 
-    // Base URL configuration - MUST use public frontend URL for OIDC to work
-    baseURL: (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("http") ? process.env.SPARKY_FITNESS_FRONTEND_URL : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`)?.replace(/\/$/, '') + "/api/auth",
+  onAPIError: {
+    errorURL: new URL(
+      "/error",
+      (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("http")
+        ? process.env.SPARKY_FITNESS_FRONTEND_URL
+        : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`
+      )?.replace(/\/$/, "") + "/",
+    ).toString(),
+  },
 
-    onAPIError: {
-        errorURL: new URL('/error', (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("http") ? process.env.SPARKY_FITNESS_FRONTEND_URL : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`)?.replace(/\/$/, '') + '/').toString(),
+  basePath: "/api/auth",
+
+  // Email/Password authentication
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false,
+    sendResetPassword: async ({ user, url }, request) => {
+      const { sendPasswordResetEmail } = require("./services/emailService");
+      await sendPasswordResetEmail(user.email, url);
     },
+    password: {
+      // Use bcrypt for compatibility with existing hashes
+      hash: async (password) => {
+        return await bcrypt.hash(password, 10);
+      },
+      verify: async ({ password, hash }) => {
+        return await bcrypt.compare(password, hash);
+      },
+    },
+  },
 
-    basePath: "/api/auth",
+  // Session configuration
+  session: {
+    expiresIn: 60 * 60 * 24 * 30, // 30 days
+    updateAge: 60 * 60 * 24, // Update session every 24 hours
+    cookieCache: {
+      enabled: false, // Disabled to prevent stale data after manual DB updates
+    },
+    fields: {
+      id: "id",
+      userId: "user_id",
+      expiresAt: "expires_at",
+      ipAddress: "ip_address",
+      userAgent: "user_agent",
+      createdAt: "created_at",
+      updatedAt: "updated_at",
+    },
+  },
 
-    // Email/Password authentication
-    emailAndPassword: {
-        enabled: true,
-        requireEmailVerification: false,
-        sendResetPassword: async ({ user, url }, request) => {
-            await sendPasswordResetEmail(user.email, url);
-        },
-        password: {
-            // Use bcrypt for compatibility with existing hashes
-            hash: async (password) => {
-                return await bcrypt.hash(password, 10);
-            },
-            verify: async ({ password, hash }) => {
-                return await bcrypt.compare(password, hash);
-            },
-        },
+  // Advanced session options
+  advanced: {
+    cookiePrefix: "sparky",
+    // DROP SECURE FLAG if private network access is enabled (typically for local IP access over HTTP)
+    useSecureCookies:
+      process.env.ALLOW_PRIVATE_NETWORK_CORS === "true"
+        ? false
+        : process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("https"),
+    trustProxy: true,
+    crossSubDomainCookies: {
+      enabled: false,
     },
+    database: {
+      generateId: () => require("uuid").v4(),
+    },
+  },
 
-    // Session configuration
-    session: {
-        expiresIn: 60 * 60 * 24 * 30, // 30 days 
-        updateAge: 60 * 60 * 24, // Update session every 24 hours
-        cookieCache: {
-            enabled: false, // Disabled to prevent stale data after manual DB updates
-        },
+  user: {
+    fields: {
+      id: "id",
+      emailVerified: "email_verified",
+      twoFactorEnabled: "two_factor_enabled",
+      banned: "banned",
+      banReason: "ban_reason",
+      banExpires: "ban_expires",
+      createdAt: "created_at",
+      updatedAt: "updated_at",
     },
-
-    // Advanced session options
-    advanced: {
-        cookiePrefix: "sparky",
-        useSecureCookies: process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith("https"),
-        trustProxy: true,
-        crossSubDomainCookies: {
-            enabled: false,
-        },
-        database: {
-            generateId: () => uuidv4(),
-        },
+    additionalFields: {
+      mfaTotpEnabled: {
+        type: "boolean",
+        fieldName: "mfa_totp_enabled",
+        required: false,
+        defaultValue: false,
+        returned: true,
+      },
+      mfaEmailEnabled: {
+        type: "boolean",
+        fieldName: "mfa_email_enabled",
+        required: false,
+        defaultValue: false,
+        returned: true,
+      },
+      twoFactorEnabled: {
+        type: "boolean",
+        fieldName: "two_factor_enabled",
+        required: false,
+        defaultValue: false,
+        returned: true,
+      },
     },
-
-
-    user: {
-        fields: {
-            id: "id",
-            emailVerified: "email_verified",
-            twoFactorEnabled: "two_factor_enabled",
-            banned: "banned",
-            banReason: "ban_reason",
-            banExpires: "ban_expires",
-            createdAt: "created_at",
-            updatedAt: "updated_at",
-        },
-        additionalFields: {
-            mfaTotpEnabled: {
-                type: "boolean",
-                fieldName: "mfa_totp_enabled",
-                required: false,
-                defaultValue: false,
-                returned: true
-            },
-            mfaEmailEnabled: {
-                type: "boolean",
-                fieldName: "mfa_email_enabled",
-                required: false,
-                defaultValue: false,
-                returned: true
-            },
-            twoFactorEnabled: {
-                type: "boolean",
-                fieldName: "two_factor_enabled",
-                required: false,
-                defaultValue: false,
-                returned: true
-            }
-        }
+  },
+  account: {
+    accountLinking: {
+      enabled: true,
+      // Use a getter to ensure Better Auth always checks the current state of our dynamic list
+      get trustedProviders() {
+        console.log(
+          `[AUTH DEBUG] Better Auth is checking trustedProviders. Current list:`,
+          dynamicTrustedProviders,
+        );
+        return dynamicTrustedProviders;
+      },
     },
-    session: {
-        fields: {
-            id: "id",
-            userId: "user_id",
-            expiresAt: "expires_at",
-            ipAddress: "ip_address",
-            userAgent: "user_agent",
-            createdAt: "created_at",
-            updatedAt: "updated_at",
-        }
+    fields: {
+      id: "id",
+      userId: "user_id",
+      accountId: "account_id",
+      providerId: "provider_id",
+      accessToken: "access_token",
+      refreshToken: "refresh_token",
+      idToken: "id_token",
+      accessTokenExpiresAt: "access_token_expires_at",
+      refreshTokenExpiresAt: "refresh_token_expires_at",
+      scope: "scope",
+      password: "password",
+      createdAt: "created_at",
+      updatedAt: "updated_at",
     },
-    account: {
-        accountLinking: {
-            enabled: true,
-            // Use a getter to ensure Better Auth always checks the current state of our dynamic list
-            get trustedProviders() {
-                console.log(`[AUTH DEBUG] Better Auth is checking trustedProviders. Current list:`, dynamicTrustedProviders);
-                return dynamicTrustedProviders;
-            }
-        },
-        fields: {
-            id: "id",
-            userId: "user_id",
-            accountId: "account_id",
-            providerId: "provider_id",
-            accessToken: "access_token",
-            refreshToken: "refresh_token",
-            idToken: "id_token",
-            accessTokenExpiresAt: "access_token_expires_at",
-            refreshTokenExpiresAt: "refresh_token_expires_at",
-            scope: "scope",
-            password: "password",
-            createdAt: "created_at",
-            updatedAt: "updated_at",
-        }
+  },
+  verification: {
+    fields: {
+      id: "id",
+      expiresAt: "expires_at",
+      createdAt: "created_at",
+      updatedAt: "updated_at",
     },
-    verification: {
-        fields: {
-            id: "id",
-            expiresAt: "expires_at",
-            createdAt: "created_at",
-            updatedAt: "updated_at",
-        },
-    },
+  },
 
   // Trust proxy (for Docker/Nginx deployments)
   trustedOrigins: (() => {
     const origins = [process.env.SPARKY_FITNESS_FRONTEND_URL];
 
     // If private network CORS is allowed, we automatically trust localhost
-    if (process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true') {
+    if (process.env.ALLOW_PRIVATE_NETWORK_CORS === "true") {
       origins.push("http://localhost:8080");
       origins.push("http://127.0.0.1:8080");
 
       // Add any extra origins manually configured (comma-separated list)
       if (process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS) {
-        const extras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS
-          .split(',')
-          .map(o => o.trim());
+        const extras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS.split(
+          ",",
+        ).map((o) => o.trim());
         origins.push(...extras);
       }
     }
 
     const finalOrigins = [...new Set(origins)] // Remove duplicates
       .filter(Boolean)
-      .map(url => url.replace(/\/$/, ''));
+      .map((url) => url.replace(/\/$/, ""));
 
-    log('info', '[AUTH] Trusted origins:', finalOrigins);
+    log("info", "[AUTH] Trusted origins:", finalOrigins);
     return finalOrigins;
   })(),
 
@@ -271,11 +289,15 @@ const auth = betterAuth({
     user: {
       create: {
         before: async (user, ctx) => {
-          console.log(`[AUTH DEBUG] user.create.before hook triggered. Path: ${ctx.path}`);
+          console.log(
+            `[AUTH DEBUG] user.create.before hook triggered. Path: ${ctx.path}`,
+          );
 
           // 1. MASTER TOGGLE: Global signup blockade
-          if (process.env.SPARKY_FITNESS_DISABLE_SIGNUP === 'true') {
-            console.log("[AUTH] Blocking signup: SPARKY_FITNESS_DISABLE_SIGNUP is true");
+          if (process.env.SPARKY_FITNESS_DISABLE_SIGNUP === "true") {
+            console.log(
+              "[AUTH] Blocking signup: SPARKY_FITNESS_DISABLE_SIGNUP is true",
+            );
             throw new APIError("BAD_REQUEST", {
               message: "Signups are currently disabled by the administrator.",
             });
@@ -294,22 +316,32 @@ const auth = betterAuth({
               providerId = pathParts[pathParts.length - 1];
             }
 
-            console.log(`[AUTH] Verifying auto-register for SSO provider: ${providerId} (Original Path: ${ctx.path})`);
+            console.log(
+              `[AUTH] Verifying auto-register for SSO provider: ${providerId} (Original Path: ${ctx.path})`,
+            );
 
             try {
               const oidcProviderRepository = require("./models/oidcProviderRepository");
-              const provider = await oidcProviderRepository.getOidcProviderById(providerId);
+              const provider =
+                await oidcProviderRepository.getOidcProviderById(providerId);
 
               if (provider) {
-                console.log(`[AUTH DEBUG] Provider found: ${provider.provider_id}. auto_register: ${provider.auto_register} (Type: ${typeof provider.auto_register})`);
+                console.log(
+                  `[AUTH DEBUG] Provider found: ${provider.provider_id}. auto_register: ${provider.auto_register} (Type: ${typeof provider.auto_register})`,
+                );
               } else {
-                console.log(`[AUTH DEBUG] No provider found in DB for ID: ${providerId}`);
+                console.log(
+                  `[AUTH DEBUG] No provider found in DB for ID: ${providerId}`,
+                );
               }
 
               if (provider && provider.auto_register === false) {
-                console.log(`[AUTH] Blocking SSO registration: auto_register is disabled for ${providerId}`);
+                console.log(
+                  `[AUTH] Blocking SSO registration: auto_register is disabled for ${providerId}`,
+                );
                 throw new APIError("BAD_REQUEST", {
-                  message: "New account registration is disabled for this login provider.",
+                  message:
+                    "New account registration is disabled for this login provider.",
                 });
               }
             } catch (error) {
@@ -322,96 +354,101 @@ const auth = betterAuth({
           return { data: user };
         },
         after: async (user) => {
-          console.log(`[AUTH] Hook: User created, initializing Sparky data for ${user.id}`);
+          console.log(
+            `[AUTH] Hook: User created, initializing Sparky data for ${user.id}`,
+          );
           try {
+            const {
+              ensureUserInitialization,
+            } = require("./models/userRepository");
             // We use the user.name or email if name is missing for the profile
-            await userRepository.ensureUserInitialization(user.id, user.name || user.email.split('@')[0]);
+            await ensureUserInitialization(
+              user.id,
+              user.name || user.email.split("@")[0],
+            );
 
             // Also initialize default nutrient preferences
+            const {
+              createDefaultNutrientPreferencesForUser,
+            } = require("./services/nutrientDisplayPreferenceService");
             await createDefaultNutrientPreferencesForUser(user.id);
 
             console.log(`[AUTH] Hook: Initialization complete for ${user.id}`);
           } catch (error) {
-            console.error(`[AUTH] Hook Error: Failed to initialize user ${user.id}:`, error);
+            console.error(
+              `[AUTH] Hook Error: Failed to initialize user ${user.id}:`,
+              error,
+            );
             // We don't throw here to avoid blocking the signup, but we log the failure
           }
-        }
-      }
+        },
+      },
     },
     account: {
       create: {
         before: async (account, ctx) => {
           console.log(`[AUTH DEBUG] account.create.before hook triggered`);
           console.log(
-            `[AUTH DEBUG] Account data:`, 
+            `[AUTH DEBUG] Account data:`,
             JSON.stringify({
               providerId: account.providerId,
               accountId: account.accountId,
               userId: account.userId,
-              path: ctx.path
+              path: ctx.path,
             }),
           );
           return { data: account };
         },
         after: async (account) => {
           console.log(
-            `[AUTH DEBUG] account.create.after hook - Account link created successfully`
+            `[AUTH DEBUG] account.create.after hook - Account link created successfully`,
           );
           console.log(
-            `[AUTH DEBUG] Created account:`, 
+            `[AUTH DEBUG] Created account:`,
             JSON.stringify({
               id: account.id,
               providerId: account.providerId,
-              userId: account.userId
+              userId: account.userId,
             }),
           );
         },
       },
     },
-    session: {
-      create: {
-        after: async (session) => {
-          const userId = session.userId;
-          const adminGroup = process.env.SPARKY_FITNESS_OIDC_ADMIN_GROUP;
-
-          await syncUserGroups({ pool: authPool, userRepository }, userId, adminGroup);
-        }
-      }
-    }
   },
 
   plugins: [
     require("better-auth/plugins").magicLink({
       expiresIn: 900, // 15 minutes (matches email template)
       sendMagicLink: async ({ email, url, token }, request) => {
+        const { sendMagicLinkEmail } = require("./services/emailService");
         await sendMagicLinkEmail(email, url);
       },
     }),
     require("better-auth/plugins").admin(),
     require("better-auth/plugins").twoFactor({
-        issuer:
+      issuer:
         process.env.NODE_ENV === "production"
-            ? "SparkyFitness"
-            : "SparkyFitnessDev",
-        schema: {
+          ? "SparkyFitness"
+          : "SparkyFitnessDev",
+      schema: {
         twoFactor: {
-            modelName: "two_factor",
-            fields: {
+          modelName: "two_factor",
+          fields: {
             id: "id",
             userId: "user_id",
             secret: "secret",
             backupCodes: "backup_codes",
             createdAt: "created_at",
             updatedAt: "updated_at",
-            },
+          },
         },
-        },
-        otpOptions: {
+      },
+      otpOptions: {
         async sendOTP({ user, otp }, request) {
-            const { sendEmailMfaCode } = require("./services/emailService");
-            await sendEmailMfaCode(user.email, otp);
+          const { sendEmailMfaCode } = require("./services/emailService");
+          await sendEmailMfaCode(user.email, otp);
         },
-        },
+      },
     }),
     require("@better-auth/sso").sso({
       modelName: "sso_provider", // Map to my snake_case table
@@ -444,6 +481,7 @@ const auth = betterAuth({
             backedUp: "backed_up",
             transports: "transports",
             createdAt: "created_at",
+            updatedAt: "updated_at",
             aaguid: "aaguid",
           },
         },
@@ -459,18 +497,22 @@ const auth = betterAuth({
  * Better Auth doesn't do this automatically on every request for performance reasons.
  */
 async function cleanupSessions() {
-    console.log("[AUTH] Running proactive session cleanup...");
-    const client = await authPool.connect();
-    try {
-        const result = await client.query('DELETE FROM "session" WHERE expires_at < NOW()');
-        console.log(`[AUTH] Cleanup complete. Removed ${result.rowCount} expired sessions.`);
-        return result.rowCount;
-    } catch (error) {
-        console.error("[AUTH] Session cleanup failed:", error);
-        throw error;
-    } finally {
-        client.release();
-    }
+  console.log("[AUTH] Running proactive session cleanup...");
+  const client = await authPool.connect();
+  try {
+    const result = await client.query(
+      'DELETE FROM "session" WHERE expires_at < NOW()',
+    );
+    console.log(
+      `[AUTH] Cleanup complete. Removed ${result.rowCount} expired sessions.`,
+    );
+    return result.rowCount;
+  } catch (error) {
+    console.error("[AUTH] Session cleanup failed:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 module.exports = { auth, syncTrustedProviders, cleanupSessions };

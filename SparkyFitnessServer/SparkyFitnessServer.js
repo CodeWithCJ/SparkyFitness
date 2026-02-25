@@ -46,6 +46,7 @@ const withingsRoutes = require("./routes/withingsRoutes"); // Import Withings ro
 const withingsDataRoutes = require("./routes/withingsDataRoutes"); // Import Withings Data routes
 const fitbitRoutes = require("./routes/fitbitRoutes"); // Import Fitbit routes
 const polarRoutes = require("./routes/polarRoutes"); // Import Polar routes
+const stravaRoutes = require("./routes/stravaRoutes"); // Import Strava routes
 const hevyRoutes = require("./routes/hevyRoutes"); // Import Hevy routes
 const moodRoutes = require("./routes/moodRoutes"); // Import Mood routes
 const fastingRoutes = require("./routes/fastingRoutes"); // Import Fasting routes
@@ -72,6 +73,8 @@ const withingsService = require("./integrations/withings/withingsService"); // I
 const garminConnectService = require("./integrations/garminconnect/garminConnectService"); // Import garminConnectService
 const garminService = require("./services/garminService"); // Import garminService
 const fitbitService = require("./services/fitbitService"); // Import fitbitService
+const polarService = require("./services/polarService"); // Import polarService
+const stravaService = require("./services/stravaService"); // Import stravaService
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const mealTypeRoutes = require("./routes/mealTypeRoutes");
 const swaggerUi = require("swagger-ui-express");
@@ -101,6 +104,7 @@ app.use(
     origin: createCorsOriginChecker(
       process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080",
       allowPrivateNetworks,
+      process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS,
     ),
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
@@ -119,9 +123,12 @@ app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
 
 // --- Better Auth Mounting ---
+let syncTrustedProviders;
 try {
   console.log("[AUTH] Starting Better Auth mounting phase...");
-  const { auth } = require("./auth");
+  const authModule = require("./auth");
+  const { auth } = authModule;
+  syncTrustedProviders = authModule.syncTrustedProviders;
   const { toNodeHandler } = require("better-auth/node");
   const betterAuthHandler = toNodeHandler(auth);
 
@@ -350,6 +357,7 @@ app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/integrations/withings/data", withingsDataRoutes);
 app.use("/api/integrations/fitbit", fitbitRoutes);
 app.use("/api/integrations/polar", polarRoutes);
+app.use("/api/integrations/strava", stravaRoutes);
 app.use("/api/integrations/hevy", hevyRoutes);
 app.use("/api/mood", moodRoutes);
 app.use("/api/fasting", fastingRoutes);
@@ -461,22 +469,73 @@ const scheduleFitbitSyncs = async () => {
   });
 };
 
+// Strava sync
+const scheduleStravaSyncs = async () => {
+  cron.schedule("0 * * * *", async () => {
+    const stravaProviders =
+      await externalProviderRepository.getProvidersByType("strava");
+    for (const provider of stravaProviders) {
+      if (provider.is_active && provider.sync_frequency !== "manual") {
+        try {
+          await stravaService.syncStravaData(provider.user_id, "scheduled");
+          await externalProviderRepository.updateProviderLastSync(
+            provider.id,
+            new Date(),
+          );
+        } catch (error) {
+          console.error(
+            `[CRON] Strava sync failed for user ${provider.user_id}:`,
+            error,
+          );
+        }
+      }
+    }
+  });
+};
+
+// Polar sync
+const schedulePolarSyncs = async () => {
+  cron.schedule("0 * * * *", async () => {
+    const polarProviders =
+      await externalProviderRepository.getProvidersByType("polar");
+    for (const provider of polarProviders) {
+      if (provider.is_active && provider.sync_frequency !== "manual") {
+        try {
+          await polarService.syncPolarData(
+            provider.user_id,
+            "scheduled",
+            provider.id,
+          );
+          await externalProviderRepository.updateProviderLastSync(
+            provider.id,
+            new Date(),
+          );
+        } catch (error) {
+          console.error(
+            `[CRON] Polar sync failed for user ${provider.user_id}:`,
+            error,
+          );
+        }
+      }
+    }
+  });
+};
+
 applyMigrations()
-  .then(grantPermissions)
   .then(applyRlsPolicies)
   .then(async () => {
     // Upsert OIDC provider from env when SPARKY_FITNESS_OIDC_ISSUER_URL + CLIENT_ID + SECRET + PROVIDER_SLUG are set
     try {
-      const { upsertEnvOidcProvider } = require('./utils/oidcEnvConfig');
+      const { upsertEnvOidcProvider } = require("./utils/oidcEnvConfig");
       await upsertEnvOidcProvider();
     } catch (err) {
-      log('error', 'OIDC env provider upsert failed:', err);
+      log("error", "OIDC env provider upsert failed:", err);
     }
     // Sync trusted SSO providers after database is ready (so Better Auth sees env-upserted and DB providers)
-    const { syncTrustedProviders } = require('./auth');
+    const { syncTrustedProviders } = require("./auth");
     if (syncTrustedProviders) {
       await syncTrustedProviders().catch((err) =>
-        console.error('[AUTH] Post-init SSO sync failed:', err),
+        console.error("[AUTH] Post-init SSO sync failed:", err),
       );
     }
 
@@ -485,6 +544,8 @@ applyMigrations()
     scheduleWithingsSyncs();
     scheduleGarminSyncs();
     scheduleFitbitSyncs();
+    schedulePolarSyncs();
+    scheduleStravaSyncs();
 
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       const userRepository = require("./models/userRepository");
