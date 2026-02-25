@@ -38,6 +38,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 
 interface AddCompItem {
   value: string;
@@ -67,6 +68,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
   const [appVersion, setAppVersion] = useState('Loading...');
   const [isAddCompOpen, setIsAddCompOpen] = useState(false);
   const [isMealTypeSelectOpen, setIsMealTypeSelectOpen] = useState(false);
+
+  // Fetch meal types for quick log menu
+  const { data: mealTypes } = useMealTypes();
 
   useEffect(() => {
     const fetchVersion = async () => {
@@ -135,23 +139,56 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
     return items;
   }, [isActingOnBehalf, hasWritePermission, t]);
 
-  const mealTypeItems: AddCompItem[] = useMemo(
-    () => [
-      {
-        value: 'breakfast',
-        label: t('common.breakfast', 'Breakfast'),
-        icon: Coffee,
-      },
-      { value: 'lunch', label: t('common.lunch', 'Lunch'), icon: Sandwich },
-      {
-        value: 'dinner',
-        label: t('common.dinner', 'Dinner'),
-        icon: UtensilsCrossed,
-      },
-      { value: 'snacks', label: t('common.snacks', 'Snacks'), icon: Cookie },
-    ],
+  // Map meal type names to icons
+  const getMealTypeIcon = useCallback((name: string): LucideIcon => {
+    const lowerName = name.toLowerCase();
+    switch (lowerName) {
+      case 'breakfast':
+        return Coffee;
+      case 'lunch':
+        return Sandwich;
+      case 'dinner':
+        return UtensilsCrossed;
+      case 'snacks':
+        return Cookie;
+      default:
+        return UtensilsCrossed; // Default icon for custom meal types
+    }
+  }, []);
+
+  // Get display name for meal type
+  const getMealTypeLabel = useCallback(
+    (name: string): string => {
+      const lowerName = name.toLowerCase();
+      switch (lowerName) {
+        case 'breakfast':
+          return t('common.breakfast', 'Breakfast');
+        case 'lunch':
+          return t('common.lunch', 'Lunch');
+        case 'dinner':
+          return t('common.dinner', 'Dinner');
+        case 'snacks':
+          return t('common.snacks', 'Snacks');
+        default:
+          return name; // Custom meal types use their own name
+      }
+    },
     [t]
   );
+
+  // Generate meal type items from API
+  const mealTypeItems: AddCompItem[] = useMemo(() => {
+    if (!mealTypes) return [];
+
+    return mealTypes
+      .filter((mt) => mt.show_in_quick_log !== false)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((mt) => ({
+        value: mt.name.toLowerCase(),
+        label: getMealTypeLabel(mt.name),
+        icon: getMealTypeIcon(mt.name),
+      }));
+  }, [mealTypes, getMealTypeLabel, getMealTypeIcon]);
 
   const availableTabs = useMemo(() => {
     debug(loggingLevel, 'MainLayout: Calculating available tabs (desktop).', {

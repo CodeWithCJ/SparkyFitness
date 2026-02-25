@@ -199,6 +199,12 @@ router.post("/", async (req, res) => {
  *                 type: integer
  *                 description: The new sort order for the meal type.
  *                 nullable: true
+ *               is_visible:
+ *                 type: boolean
+ *                 description: Whether this meal type is visible in the diary view.
+ *               show_in_quick_log:
+ *                 type: boolean
+ *                 description: Whether this meal type appears in the quick food log menu.
  *     responses:
  *       200:
  *         description: The meal type was updated successfully.
@@ -219,11 +225,11 @@ router.put("/:id", async (req, res) => {
   try {
     const userId = req.userId;
     const { id } = req.params;
-    const { name, sort_order, is_visible } = req.body;
+    const { name, sort_order, is_visible, show_in_quick_log } = req.body;
 
     const updatedMealType = await updateMealType(
       id,
-      { name, sort_order, is_visible },
+      { name, sort_order, is_visible, show_in_quick_log },
       userId
     );
 

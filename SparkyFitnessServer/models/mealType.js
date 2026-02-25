@@ -48,7 +48,8 @@ async function getAllMealTypes(userId) {
          mt.sort_order,
          mt.user_id,
          mt.created_at,
-         COALESCE(umv.is_visible, mt.is_visible) AS is_visible
+         COALESCE(umv.is_visible, mt.is_visible) AS is_visible,
+         COALESCE(umv.show_in_quick_log, mt.show_in_quick_log, true) AS show_in_quick_log
        FROM meal_types mt
        LEFT JOIN user_meal_visibilities umv 
          ON mt.id = umv.meal_type_id AND umv.user_id = $1
@@ -72,7 +73,8 @@ async function getMealTypeById(mealTypeId, userId) {
     const result = await client.query(
       `SELECT 
          mt.*,
-         COALESCE(umv.is_visible, mt.is_visible) AS is_visible
+         COALESCE(umv.is_visible, mt.is_visible) AS is_visible,
+         COALESCE(umv.show_in_quick_log, mt.show_in_quick_log, true) AS show_in_quick_log
        FROM meal_types mt
        LEFT JOIN user_meal_visibilities umv 
          ON mt.id = umv.meal_type_id AND umv.user_id = $2
@@ -98,13 +100,15 @@ async function updateMealType(mealTypeId, data, userId) {
     await client.query("BEGIN");
     //console.log(data);
     //console.log(data.is_visible);
-    if (data.is_visible !== undefined) {
+    if (data.is_visible !== undefined || data.show_in_quick_log !== undefined) {
       await client.query(
-        `INSERT INTO user_meal_visibilities (user_id, meal_type_id, is_visible)
-         VALUES ($1, $2, $3)
+        `INSERT INTO user_meal_visibilities (user_id, meal_type_id, is_visible, show_in_quick_log)
+         VALUES ($1, $2, COALESCE($3, true), COALESCE($4, true))
          ON CONFLICT (user_id, meal_type_id) 
-         DO UPDATE SET is_visible = EXCLUDED.is_visible`,
-        [userId, mealTypeId, data.is_visible]
+         DO UPDATE SET 
+           is_visible = COALESCE($3, user_meal_visibilities.is_visible),
+           show_in_quick_log = COALESCE($4, user_meal_visibilities.show_in_quick_log)`,
+        [userId, mealTypeId, data.is_visible, data.show_in_quick_log]
       );
     }
 

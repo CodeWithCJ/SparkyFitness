@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +13,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit, Lock, Eye, EyeOff } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Edit,
+  Lock,
+  Eye,
+  EyeOff,
+  Zap,
+  ZapOff,
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -24,11 +34,13 @@ import {
   type MealTypeDefinition,
 } from '@/api/Diary/mealTypeService';
 import { Badge } from '@/components/ui/badge';
+import { mealTypeKeys } from '@/api/keys/diary';
 
 const MealTypeManager = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { loggingLevel } = usePreferences();
+  const queryClient = useQueryClient();
 
   const [mealTypes, setMealTypes] = useState<MealTypeDefinition[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -82,6 +94,7 @@ const MealTypeManager = () => {
       setNewSortOrder(100);
       setIsAddDialogOpen(false);
       fetchMealTypes();
+      queryClient.invalidateQueries({ queryKey: mealTypeKeys.all });
       window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -114,6 +127,7 @@ const MealTypeManager = () => {
       setIsEditDialogOpen(false);
       setEditingMealType(null);
       fetchMealTypes();
+      queryClient.invalidateQueries({ queryKey: mealTypeKeys.all });
       window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -137,6 +151,7 @@ const MealTypeManager = () => {
         ),
       });
       fetchMealTypes();
+      queryClient.invalidateQueries({ queryKey: mealTypeKeys.all });
       window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
@@ -155,7 +170,29 @@ const MealTypeManager = () => {
 
       fetchMealTypes();
 
+      // Invalidate React Query cache so other components update
+      queryClient.invalidateQueries({ queryKey: mealTypeKeys.all });
       window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const toggleQuickLog = async (item: MealTypeDefinition) => {
+    try {
+      await updateMealType(item.id, {
+        show_in_quick_log: !item.show_in_quick_log,
+      });
+
+      fetchMealTypes();
+
+      // Invalidate React Query cache so MainLayout updates
+      queryClient.invalidateQueries({ queryKey: mealTypeKeys.all });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
@@ -286,6 +323,22 @@ const MealTypeManager = () => {
                       <Eye className="w-4 h-4" />
                     ) : (
                       <EyeOff className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleQuickLog(item)}
+                    title={
+                      item.show_in_quick_log
+                        ? 'Hide from Quick Food Log'
+                        : 'Show in Quick Food Log'
+                    }
+                  >
+                    {item.show_in_quick_log !== false ? (
+                      <Zap className="w-4 h-4 text-yellow-500" />
+                    ) : (
+                      <ZapOff className="w-4 h-4 text-muted-foreground" />
                     )}
                   </Button>
                   {isSystem ? (
