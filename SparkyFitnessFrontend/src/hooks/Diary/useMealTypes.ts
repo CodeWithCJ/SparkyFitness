@@ -49,7 +49,12 @@ export const useUpdateMealTypeMutation = () => {
       data,
     }: {
       id: string;
-      data: { name?: string; sort_order?: number; is_visible?: boolean };
+      data: {
+        name?: string;
+        sort_order?: number;
+        is_visible?: boolean;
+        show_in_quick_log?: boolean;
+      };
     }) => updateMealType(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mealTypeKeys.lists() });
