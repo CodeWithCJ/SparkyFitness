@@ -88,9 +88,9 @@ const apiKeyPlugin = require("better-auth/plugins").apiKey({
                 remaining: "remaining",
                 lastRequest: "last_request",
                 permissions: "permissions",
-            }
-        }
-    }
+            },
+        },
+    },
 });
 
 // FIX: Better Auth v1.4.17 is missing paths for these endpoints in the library definition.
@@ -433,12 +433,12 @@ const auth = betterAuth({
                         transports: "transports",
                         createdAt: "created_at",
                         aaguid: "aaguid",
-                    }
-                }
-            }
+                    },
+                },
+            },
         }),
-        apiKeyPlugin
-    ]
+        apiKeyPlugin,
+    ],
 });
 
 /**

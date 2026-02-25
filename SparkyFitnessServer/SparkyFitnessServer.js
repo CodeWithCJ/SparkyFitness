@@ -472,6 +472,11 @@ applyMigrations()
     } catch (err) {
       log('error', 'OIDC env provider upsert failed:', err);
     }
+    // Sync trusted SSO providers after database is ready (so Better Auth sees env-upserted and DB providers)
+    const { syncTrustedProviders } = require('./auth');
+    await syncTrustedProviders().catch((err) =>
+      console.error('[AUTH] Post-init SSO sync failed:', err),
+    );
 
     scheduleBackups();
     scheduleSessionCleanup();
