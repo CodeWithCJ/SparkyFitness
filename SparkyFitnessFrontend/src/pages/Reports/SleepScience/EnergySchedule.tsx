@@ -59,7 +59,8 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
             <span
               className="text-sm font-normal px-2 py-0.5 rounded-full"
               style={{
-                backgroundColor: ZONE_COLORS[data.currentZone || 'rising'] + '20',
+                backgroundColor:
+                  ZONE_COLORS[data.currentZone || 'rising'] + '20',
                 color: ZONE_COLORS[data.currentZone || 'rising'],
               }}
             >
@@ -72,20 +73,49 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+          <AreaChart
+            data={chartData}
+            margin={{ top: 5, right: 5, left: -10, bottom: 0 }}
+          >
             <defs>
-              <linearGradient id="energyFillGradient" x1="0" y1="0" x2="1" y2="0">
+              <linearGradient
+                id="energyFillGradient"
+                x1="0"
+                y1="0"
+                x2="1"
+                y2="0"
+              >
                 {chartData.map((pt, index) => {
                   const offset = `${(index / (chartData.length - 1)) * 100}%`;
                   const color = ZONE_COLORS[pt.zone] || '#22c55e';
-                  return <stop key={`fill-${index}`} offset={offset} stopColor={color} stopOpacity={0.2} />;
+                  return (
+                    <stop
+                      key={`fill-${index}`}
+                      offset={offset}
+                      stopColor={color}
+                      stopOpacity={0.2}
+                    />
+                  );
                 })}
               </linearGradient>
-              <linearGradient id="energyStrokeGradient" x1="0" y1="0" x2="1" y2="0">
+              <linearGradient
+                id="energyStrokeGradient"
+                x1="0"
+                y1="0"
+                x2="1"
+                y2="0"
+              >
                 {chartData.map((pt, index) => {
                   const offset = `${(index / (chartData.length - 1)) * 100}%`;
                   const color = ZONE_COLORS[pt.zone] || '#22c55e';
-                  return <stop key={`stroke-${index}`} offset={offset} stopColor={color} stopOpacity={1} />;
+                  return (
+                    <stop
+                      key={`stroke-${index}`}
+                      offset={offset}
+                      stopColor={color}
+                      stopOpacity={1}
+                    />
+                  );
                 })}
               </linearGradient>
             </defs>
@@ -114,10 +144,15 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(value: number, name: string, props: any) => {
+              formatter={(value: number, _name: string, props: { payload?: { zone?: string } }) => {
                 const pt = props?.payload;
-                const zoneName = pt?.zone ? t(`sleepScience.zone_${pt.zone}`, pt.zone) : '';
-                return [`${value}%`, `${t('sleepScience.energy', 'Energy')}${zoneName ? ` (${zoneName})` : ''}`];
+                const zoneName = pt?.zone
+                  ? t(`sleepScience.zone_${pt.zone}`, pt.zone)
+                  : '';
+                return [
+                  `${value}%`,
+                  `${t('sleepScience.energy', 'Energy')}${zoneName ? ` (${zoneName})` : ''}`,
+                ];
               }}
               labelFormatter={(hour: number) => formatHour(hour)}
             />
@@ -149,7 +184,11 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
               strokeWidth={3}
               fill="url(#energyFillGradient)"
               dot={false}
-              activeDot={{ r: 5, fill: isDark ? '#fff' : '#000', stroke: isDark ? '#fff' : '#000' }}
+              activeDot={{
+                r: 5,
+                fill: isDark ? '#fff' : '#000',
+                stroke: isDark ? '#fff' : '#000',
+              }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -157,9 +196,18 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
         {/* Zone legend */}
         <div className="flex flex-wrap gap-3 mt-3 justify-center">
           {Object.entries(ZONE_COLORS).map(([zone, color]) => (
-            <div key={zone} className="flex items-center gap-1 text-xs text-muted-foreground">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-              {t(`sleepScience.zone_${zone}`, zone.charAt(0).toUpperCase() + zone.slice(1))}
+            <div
+              key={zone}
+              className="flex items-center gap-1 text-xs text-muted-foreground"
+            >
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: color }}
+              />
+              {t(
+                `sleepScience.zone_${zone}`,
+                zone.charAt(0).toUpperCase() + zone.slice(1)
+              )}
             </div>
           ))}
         </div>

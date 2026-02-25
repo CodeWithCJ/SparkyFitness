@@ -1,12 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-    useCalculateBaselineMutation,
-    useChronotypeQuery,
-    useDailyNeedQuery,
-    useDataSufficiencyQuery,
-    useEnergyCurveQuery,
-    useSleepDebtQuery,
+  useCalculateBaselineMutation,
+  useChronotypeQuery,
+  useDailyNeedQuery,
+  useDataSufficiencyQuery,
+  useEnergyCurveQuery,
+  useSleepDebtQuery,
 } from '@/hooks/SleepScience/useSleepScience';
 import { AlertTriangle, Brain, RefreshCw } from 'lucide-react';
 import type React from 'react';
@@ -35,8 +35,10 @@ const SleepScienceSection: React.FC<SleepScienceSectionProps> = ({
     useEnergyCurveQuery(targetUserId);
   const { data: chronotype, isLoading: chronoLoading } =
     useChronotypeQuery(targetUserId);
-  const { data: dailyNeed, isLoading: needLoading } =
-    useDailyNeedQuery(undefined, targetUserId);
+  const { data: dailyNeed, isLoading: needLoading } = useDailyNeedQuery(
+    undefined,
+    targetUserId
+  );
 
   const baselineMutation = useCalculateBaselineMutation();
 
@@ -90,10 +92,12 @@ const SleepScienceSection: React.FC<SleepScienceSectionProps> = ({
                 </p>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
                   <span>
-                    {t('sleepScience.workdays', 'Workdays')}: {sufficiency.workdaysAvailable}/{sufficiency.workdaysNeeded}
+                    {t('sleepScience.workdays', 'Workdays')}:{' '}
+                    {sufficiency.workdaysAvailable}/{sufficiency.workdaysNeeded}
                   </span>
                   <span>
-                    {t('sleepScience.freedays', 'Free days')}: {sufficiency.freedaysAvailable}/{sufficiency.freedaysNeeded}
+                    {t('sleepScience.freedays', 'Free days')}:{' '}
+                    {sufficiency.freedaysAvailable}/{sufficiency.freedaysNeeded}
                   </span>
                 </div>
               </div>

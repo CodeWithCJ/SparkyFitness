@@ -1,9 +1,9 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const sleepScienceService = require("../services/sleepScienceService");
-const { log } = require("../config/logging");
-const { authenticate } = require("../middleware/authMiddleware");
-const checkPermissionMiddleware = require("../middleware/checkPermissionMiddleware");
+const sleepScienceService = require('../services/sleepScienceService');
+const { log } = require('../config/logging');
+const { authenticate } = require('../middleware/authMiddleware');
+const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 
 /**
  * @swagger
@@ -31,16 +31,16 @@ const checkPermissionMiddleware = require("../middleware/checkPermissionMiddlewa
  *         description: Sleep debt data
  */
 router.get(
-  "/sleep-debt",
+  '/sleep-debt',
   authenticate,
-  checkPermissionMiddleware("reports"),
+  checkPermissionMiddleware('reports'),
   async (req, res, next) => {
     try {
       const targetUserId = (req.query.targetUserId && req.query.targetUserId !== 'undefined') ? req.query.targetUserId : req.userId;
       const data = await sleepScienceService.calculateSleepDebt(targetUserId);
       res.status(200).json(data);
     } catch (error) {
-      log("error", "Error calculating sleep debt:", error);
+      log('error', 'Error calculating sleep debt:', error);
       next(error);
     }
   }
@@ -68,9 +68,9 @@ router.get(
  *         description: MCTQ calculation result
  */
 router.post(
-  "/calculate-baseline",
+  '/calculate-baseline',
   authenticate,
-  checkPermissionMiddleware("reports"),
+  checkPermissionMiddleware('reports'),
   async (req, res, next) => {
     try {
       const userId = req.userId;
@@ -78,7 +78,7 @@ router.post(
       const result = await sleepScienceService.calculateBaseline(userId, windowDays);
       res.status(200).json(result);
     } catch (error) {
-      log("error", "Error calculating baseline:", error);
+      log('error', 'Error calculating baseline:', error);
       next(error);
     }
   }
@@ -102,16 +102,16 @@ router.post(
  *         description: MCTQ stats
  */
 router.get(
-  "/mctq-stats",
+  '/mctq-stats',
   authenticate,
-  checkPermissionMiddleware("reports"),
+  checkPermissionMiddleware('reports'),
   async (req, res, next) => {
     try {
       const targetUserId = (req.query.targetUserId && req.query.targetUserId !== 'undefined') ? req.query.targetUserId : req.userId;
       const data = await sleepScienceService.getMCTQStats(targetUserId);
       res.status(200).json(data);
     } catch (error) {
-      log("error", "Error getting MCTQ stats:", error);
+      log('error', 'Error getting MCTQ stats:', error);
       next(error);
     }
   }
@@ -141,9 +141,9 @@ router.get(
  *         description: Daily sleep need breakdown
  */
 router.get(
-  "/daily-need",
+  '/daily-need',
   authenticate,
-  checkPermissionMiddleware("reports"),
+  checkPermissionMiddleware('reports'),
   async (req, res, next) => {
     try {
       const targetUserId = (req.query.targetUserId && req.query.targetUserId !== 'undefined') ? req.query.targetUserId : req.userId;
@@ -152,7 +152,7 @@ router.get(
       const data = await sleepScienceService.getDailyNeed(targetUserId, date);
       res.status(200).json(data);
     } catch (error) {
-      log("error", "Error getting daily need:", error);
+      log('error', 'Error getting daily need:', error);
       next(error);
     }
   }
@@ -176,16 +176,16 @@ router.get(
  *         description: 96-point energy curve with zones
  */
 router.get(
-  "/energy-curve",
+  '/energy-curve',
   authenticate,
-  checkPermissionMiddleware("reports"),
+  checkPermissionMiddleware('reports'),
   async (req, res, next) => {
     try {
       const targetUserId = (req.query.targetUserId && req.query.targetUserId !== 'undefined') ? req.query.targetUserId : req.userId;
       const data = await sleepScienceService.getEnergyCurve(targetUserId);
       res.status(200).json(data);
     } catch (error) {
-      log("error", "Error generating energy curve:", error);
+      log('error', 'Error generating energy curve:', error);
       next(error);
     }
   }
@@ -209,16 +209,16 @@ router.get(
  *         description: Chronotype classification and circadian markers
  */
 router.get(
-  "/chronotype",
+  '/chronotype',
   authenticate,
-  checkPermissionMiddleware("reports"),
+  checkPermissionMiddleware('reports'),
   async (req, res, next) => {
     try {
       const targetUserId = (req.query.targetUserId && req.query.targetUserId !== 'undefined') ? req.query.targetUserId : req.userId;
       const data = await sleepScienceService.getChronotype(targetUserId);
       res.status(200).json(data);
     } catch (error) {
-      log("error", "Error getting chronotype:", error);
+      log('error', 'Error getting chronotype:', error);
       next(error);
     }
   }
@@ -242,16 +242,16 @@ router.get(
  *         description: Data sufficiency assessment
  */
 router.get(
-  "/data-sufficiency",
+  '/data-sufficiency',
   authenticate,
-  checkPermissionMiddleware("reports"),
+  checkPermissionMiddleware('reports'),
   async (req, res, next) => {
     try {
       const targetUserId = (req.query.targetUserId && req.query.targetUserId !== 'undefined') ? req.query.targetUserId : req.userId;
       const data = await sleepScienceService.checkDataSufficiency(targetUserId);
       res.status(200).json(data);
     } catch (error) {
-      log("error", "Error checking data sufficiency:", error);
+      log('error', 'Error checking data sufficiency:', error);
       next(error);
     }
   }

@@ -4,31 +4,31 @@ import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
-    SLEEP_STAGE_COLORS,
-    type SleepAnalyticsData,
-    type SleepChartData,
-    type SleepEntry,
+  SLEEP_STAGE_COLORS,
+  type SleepAnalyticsData,
+  type SleepChartData,
+  type SleepEntry,
 } from '@/types';
 import {
-    Activity,
-    ChevronDown,
-    ChevronUp,
-    Moon,
-    TrendingUp,
+  Activity,
+  ChevronDown,
+  ChevronUp,
+  Moon,
+  TrendingUp,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Legend,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import HRVCard from './HRVCard';
 import SleepHeartRateCard from './SleepHeartRateCard';

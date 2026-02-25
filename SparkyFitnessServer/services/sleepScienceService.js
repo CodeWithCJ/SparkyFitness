@@ -1,5 +1,5 @@
-const sleepScienceRepository = require("../models/sleepScienceRepository");
-const { log } = require("../config/logging");
+const sleepScienceRepository = require('../models/sleepScienceRepository');
+const { log } = require('../config/logging');
 
 const {
   DECAY_LAMBDA,
@@ -8,17 +8,17 @@ const {
   DEBT_THRESHOLDS,
   MCTQ_CONFIG,
   CHRONOTYPE_BOUNDARIES,
-} = require("../constants/sleepScienceConstants");
+} = require('../constants/sleepScienceConstants');
 
 // ==========================================
 // UTILITY FUNCTIONS
 // ==========================================
 
 function getDebtCategory(debtHours) {
-  if (debtHours <= DEBT_THRESHOLDS.low.max) return "low";
-  if (debtHours <= DEBT_THRESHOLDS.moderate.max) return "moderate";
-  if (debtHours <= DEBT_THRESHOLDS.high.max) return "high";
-  return "critical";
+  if (debtHours <= DEBT_THRESHOLDS.low.max) return 'low';
+  if (debtHours <= DEBT_THRESHOLDS.moderate.max) return 'moderate';
+  if (debtHours <= DEBT_THRESHOLDS.high.max) return 'high';
+  return 'critical';
 }
 
 function calculateDayWeight(dayIndex) {
@@ -81,7 +81,7 @@ function getTST(entry) {
 // ==========================================
 
 async function calculateSleepDebt(userId) {
-  log("info", `Calculating sleep debt for user ${userId}`);
+  log('info', `Calculating sleep debt for user ${userId}`);
 
   const profile = await sleepScienceRepository.getSleepProfile(userId);
   const sleepNeed = profile?.baseline_sleep_need
@@ -93,10 +93,10 @@ async function calculateSleepDebt(userId) {
   if (history.length === 0) {
     return {
       currentDebt: 0,
-      debtCategory: "low",
+      debtCategory: 'low',
       sleepNeed,
       last14Days: [],
-      trend: { direction: "stable", change7d: 0 },
+      trend: { direction: 'stable', change7d: 0 },
       paybackTime: 0,
     };
   }
@@ -143,7 +143,7 @@ async function calculateSleepDebt(userId) {
       ? older7.reduce((s, d) => s + Math.max(0, d.deviation), 0) / older7.length
       : 0;
   const change7d = Math.round((recentAvgDebt - olderAvgDebt) * 100) / 100;
-  const direction = change7d < -0.25 ? "improving" : change7d > 0.25 ? "worsening" : "stable";
+  const direction = change7d < -0.25 ? 'improving' : change7d > 0.25 ? 'worsening' : 'stable';
 
   return {
     currentDebt,
@@ -166,7 +166,7 @@ function classifyDaysAutomatically(history) {
     const wakeHour = getWakeHour(entry);
     if (wakeHour === null) continue;
 
-    const dateStr = typeof entry.date === "string" ? entry.date : entry.date.toISOString().slice(0, 10);
+    const dateStr = typeof entry.date === 'string' ? entry.date : entry.date.toISOString().slice(0, 10);
     const dow = new Date(dateStr).getDay();
 
     if (!dayBuckets.has(dow)) dayBuckets.set(dow, []);
@@ -177,20 +177,20 @@ function classifyDaysAutomatically(history) {
   for (const [dow, wakeHours] of dayBuckets) {
     if (wakeHours.length < 3) {
       // Default: Mon-Fri = workday, Sat-Sun = freeday
-      classification.set(dow, dow === 0 || dow === 6 ? "freeday" : "workday");
+      classification.set(dow, dow === 0 || dow === 6 ? 'freeday' : 'workday');
       continue;
     }
     const variance = standardDeviation(wakeHours) * 60; // to minutes
     classification.set(
       dow,
-      variance > MCTQ_CONFIG.freedayWakeVarianceThreshold ? "freeday" : "workday"
+      variance > MCTQ_CONFIG.freedayWakeVarianceThreshold ? 'freeday' : 'workday'
     );
   }
 
   // Fill missing days with defaults
   for (let i = 0; i < 7; i++) {
     if (!classification.has(i)) {
-      classification.set(i, i === 0 || i === 6 ? "freeday" : "workday");
+      classification.set(i, i === 0 || i === 6 ? 'freeday' : 'workday');
     }
   }
 
@@ -198,14 +198,14 @@ function classifyDaysAutomatically(history) {
 }
 
 async function calculateBaseline(userId, windowDays = 90) {
-  log("info", `Calculating MCTQ baseline for user ${userId}, window=${windowDays} days`);
+  log('info', `Calculating MCTQ baseline for user ${userId}, window=${windowDays} days`);
 
   const history = await sleepScienceRepository.getSleepHistory(userId, windowDays);
 
   if (history.length < 14) {
     return {
       success: false,
-      error: "Insufficient data",
+      error: 'Insufficient data',
       message: `Only ${history.length} days available, need at least 14`,
     };
   }
@@ -221,11 +221,11 @@ async function calculateBaseline(userId, windowDays = 90) {
     const tst = getTST(entry);
     if (tst === null || tst < 3 || tst > 14) continue;
 
-    const dateStr = typeof entry.date === "string" ? entry.date : entry.date.toISOString().slice(0, 10);
+    const dateStr = typeof entry.date === 'string' ? entry.date : entry.date.toISOString().slice(0, 10);
     const dow = new Date(dateStr).getDay();
-    const dayType = dayClassification.get(dow) || "workday";
+    const dayType = dayClassification.get(dow) || 'workday';
 
-    if (dayType === "workday") {
+    if (dayType === 'workday') {
       workdayEntries.push({ ...entry, tst });
     } else {
       freedayEntries.push({ ...entry, tst });
@@ -243,7 +243,7 @@ async function calculateBaseline(userId, windowDays = 90) {
 
     await sleepScienceRepository.updateBaselineSleepNeed(userId, {
       baselineNeed: fallbackNeed,
-      confidence: "low",
+      confidence: 'low',
       basedOnDays: allTSTs.length,
       sdWorkday: null,
       sdFreeday: null,
@@ -253,8 +253,8 @@ async function calculateBaseline(userId, windowDays = 90) {
     return {
       success: true,
       sleepNeedIdeal: fallbackNeed,
-      confidence: "low",
-      method: "median_fallback",
+      confidence: 'low',
+      method: 'median_fallback',
       basedOnDays: allTSTs.length,
     };
   }
@@ -303,16 +303,16 @@ async function calculateBaseline(userId, windowDays = 90) {
     mswHour !== null && msfHour !== null ? Math.abs(msfHour - mswHour) : null;
 
   // Confidence
-  let confidence = "low";
+  let confidence = 'low';
   if (workdayEntries.length >= 40 && freedayEntries.length >= 16) {
-    confidence = "high";
+    confidence = 'high';
   } else if (workdayEntries.length >= 20 && freedayEntries.length >= 8) {
-    confidence = "medium";
+    confidence = 'medium';
   }
 
   // Determine data range
   const dates = history
-    .map((e) => (typeof e.date === "string" ? e.date : e.date.toISOString().slice(0, 10)))
+    .map((e) => (typeof e.date === 'string' ? e.date : e.date.toISOString().slice(0, 10)))
     .sort();
   const dataStartDate = dates[0] || null;
   const dataEndDate = dates[dates.length - 1] || null;
@@ -332,11 +332,11 @@ async function calculateBaseline(userId, windowDays = 90) {
     if (h === null) return null;
     const hours = Math.floor(h);
     const minutes = Math.round((h - hours) * 60);
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
   };
 
   await sleepScienceRepository.saveCalculation(userId, {
-    method: "mctq_corrected",
+    method: 'mctq_corrected',
     calculatedNeed: Math.round(sleepNeedIdeal * 100) / 100,
     confidence,
     basedOnDays: history.length,
@@ -375,7 +375,7 @@ async function calculateBaseline(userId, windowDays = 90) {
     basedOnDays: history.length,
     workdaysCount: workdayEntries.length,
     freedaysCount: freedayEntries.length,
-    method: "mctq_corrected",
+    method: 'mctq_corrected',
     dataStartDate,
     dataEndDate,
   };
@@ -388,7 +388,7 @@ function getDayOfWeekStats(history, classification) {
     const wakeHour = getWakeHour(entry);
     if (wakeHour === null) continue;
 
-    const dateStr = typeof entry.date === "string" ? entry.date : entry.date.toISOString().slice(0, 10);
+    const dateStr = typeof entry.date === 'string' ? entry.date : entry.date.toISOString().slice(0, 10);
     const dow = new Date(dateStr).getDay();
 
     if (!buckets.has(dow)) buckets.set(dow, []);
@@ -398,7 +398,7 @@ function getDayOfWeekStats(history, classification) {
   const stats = [];
   for (let dow = 0; dow < 7; dow++) {
     const wakeHours = buckets.get(dow) || [];
-    const dayType = classification ? classification.get(dow) : (dow === 0 || dow === 6 ? "freeday" : "workday");
+    const dayType = classification ? classification.get(dow) : (dow === 0 || dow === 6 ? 'freeday' : 'workday');
 
     stats.push({
       dayOfWeek: dow,
@@ -420,7 +420,7 @@ function getDayOfWeekStats(history, classification) {
 // ==========================================
 
 async function getMCTQStats(userId) {
-  log("info", `Getting MCTQ stats for user ${userId}`);
+  log('info', `Getting MCTQ stats for user ${userId}`);
 
   const profile = await sleepScienceRepository.getSleepProfile(userId);
   const latestCalc = await sleepScienceRepository.getLatestCalculation(userId);
@@ -430,8 +430,8 @@ async function getMCTQStats(userId) {
     profile: profile
       ? {
           baselineSleepNeed: Number(profile.baseline_sleep_need) || DEFAULT_SLEEP_NEED_HOURS,
-          method: profile.sleep_need_method || "default",
-          confidence: profile.sleep_need_confidence || "low",
+          method: profile.sleep_need_method || 'default',
+          confidence: profile.sleep_need_confidence || 'low',
           basedOnDays: profile.sleep_need_based_on_days || 0,
           lastCalculated: profile.sleep_need_last_calculated,
           sdWorkday: profile.sd_workday_hours ? Number(profile.sd_workday_hours) : null,
@@ -455,7 +455,7 @@ async function getMCTQStats(userId) {
 // ==========================================
 
 async function getDailyNeed(userId, targetDate) {
-  log("info", `Getting daily sleep need for user ${userId}, date=${targetDate}`);
+  log('info', `Getting daily sleep need for user ${userId}, date=${targetDate}`);
 
   const profile = await sleepScienceRepository.getSleepProfile(userId);
   const baselineNeed = profile?.baseline_sleep_need
@@ -481,8 +481,8 @@ async function getDailyNeed(userId, targetDate) {
     debtAddition: Math.round(debtAddition * 100) / 100,
     napSubtraction: Math.round(napSubtraction * 100) / 100,
     totalNeed: Math.round(totalNeed * 100) / 100,
-    method: profile?.sleep_need_method || "default",
-    confidence: profile?.sleep_need_confidence || "low",
+    method: profile?.sleep_need_method || 'default',
+    confidence: profile?.sleep_need_confidence || 'low',
     trainingLoadScore: null,
     currentDebtHours: debtData.currentDebt,
     napMinutes: 0,
@@ -500,15 +500,15 @@ async function getDailyNeed(userId, targetDate) {
 // ==========================================
 
 async function getEnergyCurve(userId) {
-  log("info", `Generating energy curve for user ${userId}`);
+  log('info', `Generating energy curve for user ${userId}`);
 
   const history = await sleepScienceRepository.getSleepHistory(userId, 14);
 
   if (history.length < 3) {
     return {
       success: false,
-      error: "Insufficient data",
-      message: "Need at least 3 days of sleep data for energy curve",
+      error: 'Insufficient data',
+      message: 'Need at least 3 days of sleep data for energy curve',
     };
   }
 
@@ -525,8 +525,8 @@ async function getEnergyCurve(userId) {
   if (wakeTimes.length < 3) {
     return {
       success: false,
-      error: "Insufficient timestamp data",
-      message: "Need at least 3 days with wake/sleep timestamps",
+      error: 'Insufficient timestamp data',
+      message: 'Need at least 3 days with wake/sleep timestamps',
     };
   }
 
@@ -609,16 +609,16 @@ async function getEnergyCurve(userId) {
     let zone;
     // Don't mark as sleep if already energy is climbing significantly (>30) or near wake time
     if (inSleepWindow && energy < 30 && !isIncreasing) {
-      zone = "sleep";
+      zone = 'sleep';
     } else if (hour >= melatoninStart && hour < sleepH) {
-      zone = "wind-down";
+      zone = 'wind-down';
     } else if (energy >= 70) {
-      zone = "peak";
+      zone = 'peak';
     } else if (energy <= 45) {
-      zone = "dip";
+      zone = 'dip';
     } else {
       // Intermediate energy: rising or falling?
-      zone = isIncreasing ? "rising" : "dip";
+      zone = isIncreasing ? 'rising' : 'dip';
     }
 
     points.push({
@@ -653,7 +653,7 @@ async function getEnergyCurve(userId) {
     success: true,
     points,
     currentEnergy: currentPoint?.energy || 0,
-    currentZone: currentPoint?.zone || "rising",
+    currentZone: currentPoint?.zone || 'rising',
     nextPeak,
     nextDip,
     melatoninWindow: {
@@ -670,14 +670,14 @@ async function getEnergyCurve(userId) {
 // ==========================================
 
 async function getChronotype(userId) {
-  log("info", `Getting chronotype for user ${userId}`);
+  log('info', `Getting chronotype for user ${userId}`);
 
   const history = await sleepScienceRepository.getSleepHistory(userId, 30);
 
   if (history.length < 7) {
     return {
       success: false,
-      error: "Insufficient data",
+      error: 'Insufficient data',
       message: `Only ${history.length} days available, need at least 7`,
     };
   }
@@ -695,8 +695,8 @@ async function getChronotype(userId) {
   if (wakeTimes.length < 7) {
     return {
       success: false,
-      error: "Insufficient timestamp data",
-      message: "Need at least 7 days with wake timestamps",
+      error: 'Insufficient timestamp data',
+      message: 'Need at least 7 days with wake timestamps',
     };
   }
 
@@ -706,11 +706,11 @@ async function getChronotype(userId) {
   // Classify
   let chronotype;
   if (medianWakeHour < CHRONOTYPE_BOUNDARIES.EARLY_BEFORE) {
-    chronotype = "early";
+    chronotype = 'early';
   } else if (medianWakeHour > CHRONOTYPE_BOUNDARIES.LATE_AFTER) {
-    chronotype = "late";
+    chronotype = 'late';
   } else {
-    chronotype = "intermediate";
+    chronotype = 'intermediate';
   }
 
   // Circadian markers
@@ -721,11 +721,11 @@ async function getChronotype(userId) {
   // Confidence
   let confidence;
   if (wakeTimes.length >= 14) {
-    confidence = "high";
+    confidence = 'high';
   } else if (wakeTimes.length >= 10) {
-    confidence = "medium";
+    confidence = 'medium';
   } else {
-    confidence = "low";
+    confidence = 'low';
   }
 
   // Format helpers
@@ -734,7 +734,7 @@ async function getChronotype(userId) {
     const normalizedH = ((h % 24) + 24) % 24;
     const hours = Math.floor(normalizedH);
     const minutes = Math.round((normalizedH - hours) * 60);
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   };
 
   return {
@@ -756,7 +756,7 @@ async function getChronotype(userId) {
 // ==========================================
 
 async function checkDataSufficiency(userId) {
-  log("info", `Checking data sufficiency for user ${userId}`);
+  log('info', `Checking data sufficiency for user ${userId}`);
 
   const history = await sleepScienceRepository.getSleepHistory(userId, 90);
 
@@ -768,7 +768,7 @@ async function checkDataSufficiency(userId) {
   let workdayCount = 0;
   let freedayCount = 0;
   for (const entry of entriesWithTimestamps) {
-    const dateStr = typeof entry.date === "string" ? entry.date : entry.date.toISOString().slice(0, 10);
+    const dateStr = typeof entry.date === 'string' ? entry.date : entry.date.toISOString().slice(0, 10);
     const dow = new Date(dateStr).getDay();
     if (dow === 0 || dow === 6) {
       freedayCount++;
@@ -781,16 +781,16 @@ async function checkDataSufficiency(userId) {
     workdayCount >= MCTQ_CONFIG.minWorkdaysForCalculation &&
     freedayCount >= MCTQ_CONFIG.minFreedaysForCalculation;
 
-  let projectedConfidence = "low";
+  let projectedConfidence = 'low';
   if (workdayCount >= 40 && freedayCount >= 16) {
-    projectedConfidence = "high";
+    projectedConfidence = 'high';
   } else if (workdayCount >= 20 && freedayCount >= 8) {
-    projectedConfidence = "medium";
+    projectedConfidence = 'medium';
   }
 
   let recommendation;
   if (sufficient) {
-    recommendation = "Sufficient data available for MCTQ calculation.";
+    recommendation = 'Sufficient data available for MCTQ calculation.';
   } else {
     const workdaysNeeded = Math.max(0, MCTQ_CONFIG.minWorkdaysForCalculation - workdayCount);
     const freedaysNeeded = Math.max(0, MCTQ_CONFIG.minFreedaysForCalculation - freedayCount);

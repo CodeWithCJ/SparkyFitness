@@ -137,7 +137,9 @@ export const getSleepDebt = async (
 export const calculateBaseline = async (
   windowDays: number = 90
 ): Promise<BaselineResult> => {
-  return api.post('/sleep-science/calculate-baseline', { body: { windowDays } });
+  return api.post('/sleep-science/calculate-baseline', {
+    body: { windowDays },
+  });
 };
 
 export const getMCTQStats = async (

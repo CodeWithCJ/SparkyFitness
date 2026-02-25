@@ -11,13 +11,13 @@
 export const WHOOP_COLORS = {
   // === BACKGROUND (Gradiente Vertical) ===
   background: {
-    start: '#283339',     // Topo do gradiente
-    end: '#101518',       // Base do gradiente
+    start: '#283339', // Topo do gradiente
+    end: '#101518', // Base do gradiente
     gradient: 'linear-gradient(to bottom, #283339, #101518)',
     // Aliases para compatibilidade com código existente
-    primary: '#101518',   // Mesmo que 'end'
+    primary: '#101518', // Mesmo que 'end'
     secondary: '#283339', // Mesmo que 'start' (tom mais claro para cards)
-    tertiary: '#1A1A1A',  // Tom intermediário para cards elevados
+    tertiary: '#1A1A1A', // Tom intermediário para cards elevados
   },
 
   // === TEXT ===
@@ -27,31 +27,31 @@ export const WHOOP_COLORS = {
   // NOTA: text.secondary é intencionalmente a mesma cor que metrics.sleep!
   // O Whoop reutiliza esse azul dessaturado como cor "muted" para eficiência de paleta.
   text: {
-    primary: '#FFFFFF',   // Texto principal, ícones ativos
+    primary: '#FFFFFF', // Texto principal, ícones ativos
     secondary: '#7BA1BB', // Texto secundário, ícones inativos (= metrics.sleep)
   },
 
   // === BRAND / CTA ===
   brand: {
-    cta: '#00F19F',       // Botões de ação, destaques, abas ativas
+    cta: '#00F19F', // Botões de ação, destaques, abas ativas
   },
 
   // === RECOVERY STATUS (Sistema de Semáforo) ===
   recovery: {
     high: {
-      bg: '#16EC06',      // Verde (67-100%)
+      bg: '#16EC06', // Verde (67-100%)
       text: '#FFFFFF',
       glow: 'rgba(22, 236, 6, 0.3)',
       range: [67, 100],
     },
     medium: {
-      bg: '#FFDE00',      // Amarelo (34-66%)
-      text: '#000000',    // Texto preto para contraste
+      bg: '#FFDE00', // Amarelo (34-66%)
+      text: '#000000', // Texto preto para contraste
       glow: 'rgba(255, 222, 0, 0.3)',
       range: [34, 66],
     },
     low: {
-      bg: '#FF0026',      // Vermelho (0-33%)
+      bg: '#FF0026', // Vermelho (0-33%)
       text: '#FFFFFF',
       glow: 'rgba(255, 0, 38, 0.3)',
       range: [0, 33],
@@ -76,12 +76,12 @@ export const WHOOP_COLORS = {
 
   // === METRICS (Pilares Whoop) ===
   metrics: {
-    strain: '#0093E7',           // Azul vibrante - Atividades
-    sleep: '#7BA1BB',            // Azul-acinzentado - Sono
-    recoveryGeneral: '#67AEE6',  // Azul claro - Gráficos de recuperação
-    hrv: '#67AEE6',              // Mesma cor de recoveryGeneral
-    rhr: '#FF0026',              // Vermelho (recovery low)
-    weight: '#00F19F',           // Teal (CTA)
+    strain: '#0093E7', // Azul vibrante - Atividades
+    sleep: '#7BA1BB', // Azul-acinzentado - Sono
+    recoveryGeneral: '#67AEE6', // Azul claro - Gráficos de recuperação
+    hrv: '#67AEE6', // Mesma cor de recoveryGeneral
+    rhr: '#FF0026', // Vermelho (recovery low)
+    weight: '#00F19F', // Teal (CTA)
   },
 
   // === SLEEP STAGES (Breakdown de Sono) ===
@@ -91,22 +91,22 @@ export const WHOOP_COLORS = {
   // - Deep: Tom mais escuro da cor base do Sono (#5A778A)
   // - Awake: Cor de atenção/médio do sistema de semáforo (#FFDE00)
   sleep: {
-    deep: '#5A778A',     // Tom mais escuro de data-sleep (Sono Profundo)
-    rem: '#67AEE6',      // data-recovery-general (Sono REM)
-    light: '#7BA1BB',    // data-sleep oficial (Sono Leve)
-    awake: '#FFDE00',    // data-recovery-medium (Acordado - atenção)
+    deep: '#5A778A', // Tom mais escuro de data-sleep (Sono Profundo)
+    rem: '#67AEE6', // data-recovery-general (Sono REM)
+    light: '#7BA1BB', // data-sleep oficial (Sono Leve)
+    awake: '#FFDE00', // data-recovery-medium (Acordado - atenção)
   },
 
   // === CIRCADIAN / ENERGY SCHEDULE ===
   // Cores para o modelo circadiano e agenda de energia
   circadian: {
-    melatonin: '#9B59B6',    // Roxo para janela de melatonina
-    energyPeak: '#00F19F',   // Teal para pico de energia
-    energyDip: '#FFDE00',    // Amarelo para mergulho de energia
-    processS: '#FF6B6B',     // Vermelho suave para pressão homeostática
-    processC: '#4ECDC4',     // Teal claro para ritmo circadiano
-    windDown: '#8E44AD',     // Roxo escuro para fase de wind-down
-    rising: '#67AEE6',       // Azul para energia subindo
+    melatonin: '#9B59B6', // Roxo para janela de melatonina
+    energyPeak: '#00F19F', // Teal para pico de energia
+    energyDip: '#FFDE00', // Amarelo para mergulho de energia
+    processS: '#FF6B6B', // Vermelho suave para pressão homeostática
+    processC: '#4ECDC4', // Teal claro para ritmo circadiano
+    windDown: '#8E44AD', // Roxo escuro para fase de wind-down
+    rising: '#67AEE6', // Azul para energia subindo
   },
 
   // === ENERGY ZONES ===
@@ -215,19 +215,19 @@ export function getRecoveryLabel(score: number): string {
  */
 export const whoopCSSVariables: Record<string, string> = {
   // Background
-  '--background': '195 26% 8%',        // #101518
-  '--foreground': '0 0% 100%',         // #FFFFFF
+  '--background': '195 26% 8%', // #101518
+  '--foreground': '0 0% 100%', // #FFFFFF
   // Card
-  '--card': '195 15% 18%',             // #283339
+  '--card': '195 15% 18%', // #283339
   '--card-foreground': '0 0% 100%',
   // Popover
   '--popover': '195 15% 18%',
   '--popover-foreground': '0 0% 100%',
   // Primary (CTA teal)
-  '--primary': '159 100% 47%',         // #00F19F
+  '--primary': '159 100% 47%', // #00F19F
   '--primary-foreground': '195 26% 8%',
   // Secondary
-  '--secondary': '200 22% 61%',        // #7BA1BB
+  '--secondary': '200 22% 61%', // #7BA1BB
   '--secondary-foreground': '0 0% 100%',
   // Muted
   '--muted': '195 15% 18%',
@@ -236,12 +236,12 @@ export const whoopCSSVariables: Record<string, string> = {
   '--accent': '195 20% 15%',
   '--accent-foreground': '0 0% 100%',
   // Destructive
-  '--destructive': '349 100% 50%',     // #FF0026
+  '--destructive': '349 100% 50%', // #FF0026
   '--destructive-foreground': '0 0% 100%',
   // Border
   '--border': '0 0% 100% / 0.1',
   '--input': '0 0% 100% / 0.1',
-  '--ring': '159 100% 47%',            // #00F19F
+  '--ring': '159 100% 47%', // #00F19F
   // Radius (keep app default)
   '--radius': '0.5rem',
 };

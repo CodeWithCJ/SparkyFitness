@@ -95,9 +95,16 @@ const ChronotypeCard: React.FC<ChronotypeCardProps> = ({ data }) => {
           {markers.map(
             (marker) =>
               marker.value && (
-                <div key={marker.label} className="text-center p-2 rounded-lg bg-muted/50">
-                  <p className="text-xs text-muted-foreground">{marker.label}</p>
-                  <p className="font-mono font-medium text-sm">{marker.value}</p>
+                <div
+                  key={marker.label}
+                  className="text-center p-2 rounded-lg bg-muted/50"
+                >
+                  <p className="text-xs text-muted-foreground">
+                    {marker.label}
+                  </p>
+                  <p className="font-mono font-medium text-sm">
+                    {marker.value}
+                  </p>
                 </div>
               )
           )}

@@ -1,12 +1,12 @@
 import { sleepScienceKeys } from '@/api/keys/sleepScience';
 import {
-    calculateBaseline,
-    getChronotype,
-    getDailyNeed,
-    getDataSufficiency,
-    getEnergyCurve,
-    getMCTQStats,
-    getSleepDebt,
+  calculateBaseline,
+  getChronotype,
+  getDailyNeed,
+  getDataSufficiency,
+  getEnergyCurve,
+  getMCTQStats,
+  getSleepDebt,
 } from '@/api/SleepScience/sleepScience';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';

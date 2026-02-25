@@ -2,10 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useSleepEntriesQuery } from '@/hooks/CheckIn/useSleep';
 import type {
-    CombinedSleepData,
-    SleepAnalyticsData,
-    SleepChartData,
-    SleepStageEvent,
+  CombinedSleepData,
+  SleepAnalyticsData,
+  SleepChartData,
+  SleepStageEvent,
 } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { toast as sonnerToast } from 'sonner';
@@ -213,7 +213,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
   }
 
   const combinedSleepData = processSleepData();
-  
+
   return (
     <div className="space-y-6">
       <Card>

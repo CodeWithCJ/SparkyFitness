@@ -1,5 +1,5 @@
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
 
 /**
  * Get sleep history for calculations
@@ -209,7 +209,7 @@ async function getMCTQStats(userId) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT * FROM v_mctq_stats WHERE user_id = $1`,
+      'SELECT * FROM v_mctq_stats WHERE user_id = $1',
       [userId]
     );
     return result.rows[0] || null;

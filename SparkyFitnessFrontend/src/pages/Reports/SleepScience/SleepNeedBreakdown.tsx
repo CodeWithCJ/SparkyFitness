@@ -4,14 +4,14 @@ import { useTheme } from '@/contexts/ThemeContext';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 interface SleepNeedBreakdownProps {
@@ -78,7 +78,11 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
             <YAxis
               stroke={isDark ? '#888' : '#666'}
               fontSize={11}
-              domain={chartData.some((d) => d.value < 0) ? ['auto', 'auto'] : [0, 'auto']}
+              domain={
+                chartData.some((d) => d.value < 0)
+                  ? ['auto', 'auto']
+                  : [0, 'auto']
+              }
               tickFormatter={(v: number) => `${v}h`}
             />
             <Tooltip

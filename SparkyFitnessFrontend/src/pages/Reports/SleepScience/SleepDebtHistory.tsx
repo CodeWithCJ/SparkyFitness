@@ -6,15 +6,15 @@ import type React from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    ReferenceLine,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 interface SleepDebtHistoryProps {
@@ -69,9 +69,7 @@ const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center justify-between">
-          <span>
-            {t('sleepScience.debtHistory', '14-Day Sleep Debt')}
-          </span>
+          <span>{t('sleepScience.debtHistory', '14-Day Sleep Debt')}</span>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <TrendIcon direction={data.trend.direction} />
             <span className="capitalize">{data.trend.direction}</span>
@@ -80,7 +78,10 @@ const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+          <BarChart
+            data={chartData}
+            margin={{ top: 5, right: 5, left: -15, bottom: 0 }}
+          >
             <CartesianGrid
               strokeDasharray="3 3"
               stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}
@@ -105,16 +106,20 @@ const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
                 fontSize: '12px',
               }}
               formatter={(value: number, name: string) => {
-                const label = name === 'deviation'
-                  ? t('sleepScience.debt', 'Debt')
-                  : t('sleepScience.surplus', 'Surplus');
+                const label =
+                  name === 'deviation'
+                    ? t('sleepScience.debt', 'Debt')
+                    : t('sleepScience.surplus', 'Surplus');
                 return [`${Math.abs(value).toFixed(1)}h`, label];
               }}
             />
             <ReferenceLine y={0} stroke={isDark ? '#555' : '#ccc'} />
             <Bar dataKey="deviation" radius={[2, 2, 0, 0]}>
               {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={getBarColor(entry.rawDeviation)} />
+                <Cell
+                  key={`cell-${index}`}
+                  fill={getBarColor(entry.rawDeviation)}
+                />
               ))}
             </Bar>
           </BarChart>
