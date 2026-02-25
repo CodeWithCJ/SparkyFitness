@@ -448,7 +448,6 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
                   activeOpacity={0.7}
                   className="flex-row items-center"
                 >
-                  {/* <Icon name={getMealTypeIcon(selectedMealType.name)} size={16} color={accentColor} /> */}
                   <Text className="text-text-primary text-sm font-medium mx-1.5">
                     {getMealTypeLabel(selectedMealType.name)}
                   </Text>
