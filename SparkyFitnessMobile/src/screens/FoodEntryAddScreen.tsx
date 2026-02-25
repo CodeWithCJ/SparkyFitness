@@ -292,21 +292,21 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
         {/* Food name & brand */}
-        <View className="p-4">
+        <View className="px-4">
           <Text className="text-text-primary text-3xl font-bold">{item.name}</Text>
           {item.brand && (
             <Text className="text-text-secondary text-base mt-1">{item.brand}</Text>
           )}
 
           {/* Servings control */}
-          <View className="flex-row items-center justify-center gap-4 mt-4">
-            <View className="flex-row items-center">
+          <View className="mt-4 items-start">
+            <View className="flex-row items-center bg-raised border border-border-subtle rounded-xl overflow-hidden">
               <TouchableOpacity
                 onPress={() => adjustServings(-0.5)}
-                className="w-7 h-7 rounded-full bg-raised border border-border-subtle items-center justify-center"
+                className="w-9 h-10 items-center justify-center border-r border-border-subtle"
                 activeOpacity={0.7}
               >
-                <Icon name="remove" size={18} color={accentColor} />
+                <Icon name="remove" size={20} color={accentColor} />
               </TouchableOpacity>
               <TextInput
                 value={servingsText}
@@ -314,15 +314,15 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
                 onBlur={clampServings}
                 keyboardType="decimal-pad"
                 selectTextOnFocus
-                className="text-text-primary text-lg font-semibold text-center mx-2 w-14 bg-raised border border-border-subtle rounded-lg py-1"
-                style={{ fontSize: 18, lineHeight: 22 }}
+                className="text-text-primary text-base text-center w-14 h-10"
+                style={{ fontSize: 20, lineHeight: 24 }}
               />
               <TouchableOpacity
                 onPress={() => adjustServings(0.5)}
-                className="w-7 h-7 rounded-full bg-raised border border-border-subtle items-center justify-center"
+                className="w-9 h-10 items-center justify-center border-l border-border-subtle"
                 activeOpacity={0.7}
               >
-                <Icon name="add" size={18} color={accentColor} />
+                <Icon name="add" size={20} color={accentColor} />
               </TouchableOpacity>
             </View>
             {variantPickerOptions.length > 1 ? (
@@ -335,17 +335,17 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
                   <TouchableOpacity
                     onPress={onPress}
                     activeOpacity={0.7}
-                    className="flex-row items-center"
+                    className="flex-row items-center mt-1"
                   >
-                    <Text className="text-text-secondary font-medium text-sm">
+                    <Text className="text-text-secondary text-base">
                       {activeVariant.servingSize} {activeVariant.servingUnit} per serving
                     </Text>
-                    <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 4 }} />
+                    <Icon name="chevron-down" size={14} color={textPrimary} style={{ marginLeft: 4 }} />
                   </TouchableOpacity>
                 )}
               />
             ) : (
-              <Text className="text-text-muted text-sm">
+              <Text className="text-text-secondary text-base mt-2">
                 {activeVariant.servingSize} {activeVariant.servingUnit} per serving
               </Text>
             )}
@@ -357,7 +357,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
           {/* Calories — left half */}
           <View className="flex-1 items-center pr-10">
             <Text className="text-text-primary text-3xl font-medium">{Math.round(scaled(activeVariant.calories))}</Text>
-            <Text className="text-text-secondary text-base mt-1">calories</Text>
+            <Text className="text-text-secondary text-base mt-2">calories</Text>
             {isGoalsLoading ? (
               <ActivityIndicator size="small" color={accentColor} className="mt-2" />
             ) : calorieGoalPct !== null ? (
