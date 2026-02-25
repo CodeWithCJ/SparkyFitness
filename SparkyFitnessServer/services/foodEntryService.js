@@ -568,6 +568,7 @@ async function createFoodEntryMeal(
       {
         user_id: mealData.user_id || authenticatedUserId, // Use target user ID
         meal_template_id: mealData.meal_template_id || null,
+        meal_type_id: mealData.meal_type_id || null,
         meal_type: mealData.meal_type,
         entry_date: mealData.entry_date,
         name: mealData.name,
