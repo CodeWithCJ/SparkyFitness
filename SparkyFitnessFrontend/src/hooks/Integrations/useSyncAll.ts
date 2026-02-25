@@ -1,19 +1,25 @@
-import { useCallback } from 'react';
-import { apiCall } from '@/services/api';
+import { useMutation } from '@tanstack/react-query';
 import { syncHevyData } from '@/api/Integrations/integrations';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
 import { MANUAL_SYNC_PROVIDERS } from '@/constants/integrationConstants';
-import type { DataProvider } from '@/services/externalProviderService';
+import {
+  handleManualSyncFitbit,
+  handleManualSyncGarmin,
+  handleManualSyncPolar,
+  handleManualSyncStrava,
+  handleManualSync,
+  type DataProvider,
+} from '@/api/Settings/externalProviderService';
 
-export const useSyncAll = () => {
+export const useSyncAllMutation = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const invalidateSyncData = useDiaryInvalidation();
 
-  const syncAll = useCallback(
-    async (providers: DataProvider[]) => {
+  return useMutation({
+    mutationFn: async (providers: DataProvider[]) => {
       const activeSyncProviders = providers.filter(
         (p) =>
           p.is_active &&
@@ -24,14 +30,7 @@ export const useSyncAll = () => {
       );
 
       if (activeSyncProviders.length === 0) {
-        toast({
-          title: t('common.info', 'Info'),
-          description: t(
-            'sync.noActiveProviders',
-            'No active providers found to sync.'
-          ),
-        });
-        return;
+        throw new Error('NO_PROVIDERS');
       }
 
       let successCount = 0;
@@ -41,22 +40,19 @@ export const useSyncAll = () => {
         try {
           switch (provider.provider_type) {
             case 'strava':
-              await apiCall('/integrations/strava/sync', { method: 'POST' });
+              await handleManualSyncStrava();
               break;
             case 'fitbit':
-              await apiCall('/integrations/fitbit/sync', { method: 'POST' });
+              await handleManualSyncFitbit();
               break;
             case 'polar':
-              await apiCall('/integrations/polar/sync', {
-                method: 'POST',
-                body: JSON.stringify({ providerId: provider.id }),
-              });
+              await handleManualSyncPolar(provider.id);
               break;
             case 'withings':
-              await apiCall('/withings/sync', { method: 'POST' });
+              await handleManualSync();
               break;
             case 'garmin':
-              await apiCall('/integrations/garmin/sync', { method: 'POST' });
+              await handleManualSyncGarmin();
               break;
             case 'hevy':
               await syncHevyData(false, provider.id);
@@ -64,36 +60,47 @@ export const useSyncAll = () => {
           }
           successCount++;
         } catch (err) {
-          console.error(`Failed to sync ${provider.provider_name}:`, err);
+          console.error(err);
           failCount++;
         }
       }
 
+      return { successCount, failCount };
+    },
+    onSuccess: (data) => {
       invalidateSyncData();
 
-      if (successCount > 0) {
+      if (data.successCount > 0) {
         toast({
           title: t('common.success', 'Success'),
           description: t('sync.syncCompleted', {
-            count: successCount,
-            defaultValue: `Successfully synchronized ${successCount} provider(s).`,
+            count: data.successCount,
+            defaultValue: `Successfully synchronized ${data.successCount} provider(s).`,
           }),
         });
       }
 
-      if (failCount > 0) {
+      if (data.failCount > 0) {
         toast({
           title: t('common.error', 'Error'),
           description: t('sync.syncFailed', {
-            count: failCount,
-            defaultValue: `Failed to synchronize ${failCount} provider(s).`,
+            count: data.failCount,
+            defaultValue: `Failed to synchronize ${data.failCount} provider(s).`,
           }),
           variant: 'destructive',
         });
       }
     },
-    [invalidateSyncData, toast, t]
-  );
-
-  return { syncAll, invalidateSyncData };
+    onError: (error) => {
+      if (error instanceof Error && error.message === 'NO_PROVIDERS') {
+        toast({
+          title: t('common.info', 'Info'),
+          description: t(
+            'sync.noActiveProviders',
+            'No active providers found to sync.'
+          ),
+        });
+      }
+    },
+  });
 };

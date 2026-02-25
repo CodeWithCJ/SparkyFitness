@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BmrAlgorithm } from '@/services/bmrService';
 import { BodyFatAlgorithm } from '@/services/bodyCompositionService';
 import {
@@ -34,9 +34,12 @@ import {
   VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
+import { useQueryClient } from '@tanstack/react-query';
+import { dailyProgressKeys } from '@/api/keys/diary';
 
 const CalculationSettings = () => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const {
     energyUnit,
     setEnergyUnit,
@@ -49,6 +52,8 @@ const CalculationSettings = () => {
     sugarCalculationAlgorithm: contextSugarCalculationAlgorithm,
     saveAllPreferences,
     calorieGoalAdjustmentMode: contextCalorieGoalAdjustmentMode,
+    setCalorieGoalAdjustmentMode: setCalorieGoalAdjustmentModeContext,
+
     loggingLevel,
   } = usePreferences();
 
@@ -142,6 +147,8 @@ const CalculationSettings = () => {
         sugarCalculationAlgorithm: sugarCalculationAlgorithm,
         calorieGoalAdjustmentMode: calorieGoalAdjustmentMode,
       });
+      setCalorieGoalAdjustmentModeContext(calorieGoalAdjustmentMode);
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
       toast({
         title: t('calculationSettings.saveSuccess', 'Success'),
         description: t(
@@ -166,7 +173,7 @@ const CalculationSettings = () => {
 
   const handleEnergyUnitChange = async (unit: 'kcal' | 'kJ') => {
     try {
-      await setEnergyUnit(unit);
+      setEnergyUnit(unit);
       toast({
         title: t('calculationSettings.energyUnitSaveSuccess', 'Success'),
         description: t(

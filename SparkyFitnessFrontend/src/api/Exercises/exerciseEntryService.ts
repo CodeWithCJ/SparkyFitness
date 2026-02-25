@@ -2,7 +2,7 @@ import { apiCall } from '@/services/api';
 import { getExerciseEntriesForDate as getDailyExerciseEntries } from '@/api/Diary/dailyProgressService';
 import type { Exercise } from './exerciseSearchService';
 import { parseJsonArray } from './exerciseService';
-import type { ExerciseProgressData } from '@/services/reportsService';
+import type { ExerciseProgressData } from '@/api/Reports/reportsService';
 import type { WorkoutPresetSet } from '@/types/workout';
 import type { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor';
 import { debug } from '@/utils/logging';

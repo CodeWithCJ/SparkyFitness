@@ -15,7 +15,7 @@ import { Battery } from 'lucide-react';
 import type {
   CustomCategory,
   CustomMeasurementData,
-} from '@/services/reportsService';
+} from '@/api/Reports/reportsService';
 import BodyBatteryGauge from './BodyBatteryGauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';

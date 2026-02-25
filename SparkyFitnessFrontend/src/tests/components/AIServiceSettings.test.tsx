@@ -2,7 +2,7 @@ import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AIServiceSettings from '@/pages/Settings/AIServiceSettings';
 import { renderWithClient } from '../test-utils';
-import * as aiServiceSettingsService from '@/services/aiServiceSettingsService';
+import * as aiServiceSettingsService from '@/api/Settings/aiServiceSettingsService';
 
 // Mock react-i18next
 const translations: Record<string, string> = {
@@ -133,7 +133,7 @@ const mockDeleteAIService = jest.fn();
 const mockUpdateUserPreferences = jest.fn();
 const mockIsUserAiConfigAllowed = jest.fn();
 
-jest.mock('@/services/aiServiceSettingsService', () => ({
+jest.mock('@/api/Settings/aiServiceSettingsService', () => ({
   getAIServices: (...args: unknown[]) => mockGetAIServices(...args),
   getPreferences: (...args: unknown[]) => mockGetPreferences(...args),
   addAIService: (...args: unknown[]) => mockAddAIService(...args),

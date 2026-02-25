@@ -23,7 +23,7 @@ import {
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
 import { formatNutrientValue } from '@/utils/nutrientUtils';
-import { NutritionData } from '@/services/reportsService';
+import { NutritionData } from '@/api/Reports/reportsService';
 
 interface NutritionChartsGridProps {
   nutritionData: NutritionData[];

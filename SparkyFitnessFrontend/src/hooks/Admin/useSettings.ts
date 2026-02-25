@@ -5,6 +5,7 @@ import {
   globalSettingsService,
 } from '@/api/Admin/globalSettingsService';
 import { settingsKeys } from '@/api/keys/admin';
+import { authClient } from '@/lib/auth-client';
 
 export const useSettings = () => {
   const { t } = useTranslation();
@@ -28,11 +29,13 @@ export const useSettings = () => {
 export const useUpdateSettings = () => {
   const queryClient = useQueryClient();
 
+  const { refetch } = authClient.useSession();
   return useMutation({
     mutationFn: (settings: GlobalSettings) =>
       globalSettingsService.saveSettings(settings),
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: settingsKeys.all });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all });
     },
   });
 };

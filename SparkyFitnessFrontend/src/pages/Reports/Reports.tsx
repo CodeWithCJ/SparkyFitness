@@ -25,7 +25,7 @@ import RespirationCard from '@/pages/Reports/RespirationCard';
 import StressChart from '@/pages/Reports/StressChart';
 import { debug, info } from '@/utils/logging';
 
-import { type CustomCategory } from '@/services/reportsService';
+import { type CustomCategory } from '@/api/Reports/reportsService';
 import MoodChart from '@/pages/Reports/MoodChart';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { useMoodEntries } from '@/hooks/CheckIn/useMood';

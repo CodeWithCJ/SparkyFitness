@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getActiveAiServiceSetting } from '@/services/aiServiceSettingsService';
+import { getActiveAiServiceSetting } from '@/api/Settings/aiServiceSettingsService';
 import { useAuth } from '@/hooks/useAuth';
 
 const BUTTON_SIZE = 56; // 14 * 4 = 56px (w-14)

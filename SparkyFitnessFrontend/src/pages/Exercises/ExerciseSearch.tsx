@@ -22,7 +22,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { type DataProvider } from '@/services/externalProviderService';
+import { type DataProvider } from '@/api/Settings/externalProviderService';
 import { Badge } from '@/components/ui/badge';
 import { Share2, Users } from 'lucide-react';
 import BodyMapFilter from './BodyMapFilter';
