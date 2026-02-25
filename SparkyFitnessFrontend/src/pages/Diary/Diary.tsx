@@ -133,7 +133,10 @@ const Diary = () => {
         loggingLevel,
         `Diary: Opening food search for meal type: ${mealType}`
       );
-      debug(loggingLevel, `[Diary] Setting openFoodSearchForMealType to: ${mealType}`);
+      debug(
+        loggingLevel,
+        `[Diary] Setting openFoodSearchForMealType to: ${mealType}`
+      );
 
       // Set which meal dialog should open
       setOpenFoodSearchForMealType(mealType);
