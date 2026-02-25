@@ -5,15 +5,15 @@ import type React from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Area,
-    AreaChart,
-    CartesianGrid,
-    ReferenceArea,
-    ReferenceLine,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceArea,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 interface EnergyScheduleProps {
@@ -144,7 +144,11 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(value: number, _name: string, props: { payload?: { zone?: string } }) => {
+              formatter={(
+                value: number,
+                _name: string,
+                props: { payload?: { zone?: string } }
+              ) => {
                 const pt = props?.payload;
                 const zoneName = pt?.zone
                   ? t(`sleepScience.zone_${pt.zone}`, pt.zone)
