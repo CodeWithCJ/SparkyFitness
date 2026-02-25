@@ -1,4 +1,4 @@
-import * as aiServiceSettingsService from '@/services/aiServiceSettingsService';
+import * as aiServiceSettingsService from '@/api/Settings/aiServiceSettingsService';
 
 // Mock the api module
 const mockApiCall = jest.fn();

@@ -1,5 +1,4 @@
-import type React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -26,73 +25,22 @@ import PrProgressionChart from './PrProgressionChart';
 import ExerciseVarietyScore from './ExerciseVarietyScore';
 import SetPerformanceAnalysisChart from './SetPerformanceAnalysisChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { toast } from '@/hooks/use-toast';
-import { info, error } from '@/utils/logging';
 import ActivityReportVisualizer from './ActivityReportVisualizer';
 import type {
   ExerciseDashboardData,
   ExerciseProgressData,
-} from '@/services/reportsService';
-import {
-  getAvailableEquipment,
-  getAvailableMuscleGroups,
-  getAvailableExercises,
-} from '@/api/Exercises/exerciseSearchService';
-import { subDays, subYears, parseISO } from 'date-fns';
+} from '@/api/Reports/reportsService';
+import { parseISO } from 'date-fns';
 
 import { formatNumber, formatWeight } from '@/utils/numberFormatting';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { exerciseProgressOptions } from '@/hooks/Exercises/useExercises';
-
-// Utility function to calculate total tonnage
-const calculateTotalTonnage = (
-  entries: { sets: { weight: number | string; reps: number | string }[] }[]
-) => {
-  return entries.reduce((totalTonnage, entry) => {
-    return (
-      totalTonnage +
-      entry.sets.reduce((entryTonnage, set) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const weight = parseFloat(set.weight as any) || 0;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const reps = parseInt(set.reps as any) || 0;
-        return entryTonnage + weight * reps;
-      }, 0)
-    );
-  }, 0);
-};
-
-// Utility function to get comparison dates
-const getComparisonDates = (
-  startDate: string,
-  endDate: string,
-  comparisonPeriod: string
-): [string, string] => {
-  const start = parseISO(startDate);
-  const end = parseISO(endDate);
-  const diffDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
-
-  let compStartDate: Date;
-  let compEndDate: Date;
-
-  switch (comparisonPeriod) {
-    case 'previous-period':
-      compStartDate = subDays(start, diffDays + 1);
-      compEndDate = subDays(end, diffDays + 1);
-      break;
-    case 'last-year':
-      compStartDate = subYears(start, 1);
-      compEndDate = subYears(end, 1);
-      break;
-    default:
-      return [startDate, endDate]; // Should not happen
-  }
-
-  return [
-    compStartDate.toISOString().split('T')[0],
-    compEndDate.toISOString().split('T')[0],
-  ];
-};
+import {
+  useAvailableEquipment,
+  useAvailableExercises,
+  useAvailableMuscleGroups,
+} from '@/hooks/Exercises/useExerciseSearch';
+import { calculateTotalTonnage, getComparisonDates } from '@/utils/reportUtil';
 
 interface ExerciseReportsDashboardProps {
   exerciseDashboardData: ExerciseDashboardData | null;
@@ -101,31 +49,19 @@ interface ExerciseReportsDashboardProps {
   onDrilldown: (date: string) => void;
 }
 
-const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
+const ExerciseReportsDashboard = ({
   exerciseDashboardData,
   startDate,
   endDate,
   onDrilldown,
-}) => {
+}: ExerciseReportsDashboardProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, formatDateInUserTimezone, weightUnit, convertWeight } =
+  const { formatDateInUserTimezone, weightUnit, convertWeight } =
     usePreferences();
   const [selectedExercisesForChart, setSelectedExercisesForChart] = useState<
     string[]
   >([]);
-  const [exerciseProgressData, setExerciseProgressData] = useState<
-    Record<string, ExerciseProgressData[]>
-  >({}); // Store data for multiple exercises
-  const [comparisonExerciseProgressData, setComparisonExerciseProgressData] =
-    useState<Record<string, ExerciseProgressData[]>>({}); // New state for comparison data
   const [widgetLayout, setWidgetLayout] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [availableEquipment, setAvailableEquipment] = useState<string[]>([]);
-  const [availableMuscles, setAvailableMuscles] = useState<string[]>([]);
-  const [availableExercises, setAvailableExercises] = useState<
-    { id: string; name: string }[]
-  >([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(
     null
   );
@@ -134,12 +70,18 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
   const [aggregationLevel, setAggregationLevel] = useState<string>('daily'); // New state for aggregation level
   const [comparisonPeriod, setComparisonPeriod] = useState<string | null>(null); // New state for comparison period
   const [isMounted, setIsMounted] = useState(false);
-  const queryClient = useQueryClient();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+  const { data: availableEquipment = [], isLoading: equipmentLoading } =
+    useAvailableEquipment();
+  const { data: availableMuscles = [], isLoading: musclesLoading } =
+    useAvailableMuscleGroups();
+  const { data: availableExercises = [], isLoading: exercisesLoading } =
+    useAvailableExercises(selectedMuscle, selectedEquipment);
 
+  const loading = equipmentLoading || musclesLoading || exercisesLoading;
   // Default layout for widgets
   const defaultLayout = [
     'keyStats',
@@ -180,128 +122,92 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
     }
   }, [selectedExercise, availableExercises]);
 
-  useEffect(() => {
-    const fetchFilterOptions = async () => {
-      try {
-        const [equipment, muscles, exercises] = await Promise.all([
-          getAvailableEquipment(),
-          getAvailableMuscleGroups(),
-          getAvailableExercises(selectedMuscle, selectedEquipment),
-        ]);
-        setAvailableEquipment(equipment);
-        setAvailableMuscles(muscles);
-        setAvailableExercises(exercises);
-      } catch (error) {
-        console.error('Failed to fetch filter options:', error);
-      }
-    };
+  const mainQueries = useQueries({
+    queries: selectedExercisesForChart.map((exerciseId) => ({
+      ...exerciseProgressOptions(
+        exerciseId,
+        startDate ?? '',
+        endDate ?? '',
+        aggregationLevel
+      ),
+      enabled: Boolean(startDate && endDate),
+      meta: {
+        errorMessage: t(
+          'exerciseReportsDashboard.failedToLoadExerciseProgressData',
+          'Failed to load exercise progress data.'
+        ),
+      },
+    })),
+  });
 
-    fetchFilterOptions();
-  }, [selectedMuscle, selectedEquipment]);
+  const compDates =
+    comparisonPeriod && startDate && endDate
+      ? getComparisonDates(startDate, endDate, comparisonPeriod)
+      : null;
 
-  const fetchExerciseChartData = useCallback(async () => {
-    if (selectedExercisesForChart.length === 0 || !startDate || !endDate) {
-      setExerciseProgressData({});
-      setComparisonExerciseProgressData({});
-      return;
-    }
+  const comparisonQueries = useQueries({
+    queries: selectedExercisesForChart.map((exerciseId) => ({
+      ...exerciseProgressOptions(
+        exerciseId,
+        compDates?.[0] ?? '',
+        compDates?.[1] ?? '',
+        aggregationLevel
+      ),
+      enabled: Boolean(compDates),
+      meta: {
+        errorMessage: t(
+          'exerciseReportsDashboard.failedToLoadComparisonData',
+          'Failed to load comparison data.'
+        ),
+      },
+    })),
+  });
 
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      const allFetchedExerciseData: Record<string, ExerciseProgressData[]> = {};
-      const allFetchedComparisonData: Record<string, ExerciseProgressData[]> =
-        {};
-
-      for (const exerciseId of selectedExercisesForChart) {
+  const exerciseProgressData = selectedExercisesForChart.reduce(
+    (acc, exerciseId, index) => {
+      const queryData = mainQueries[index]?.data;
+      if (queryData) {
         const exerciseName =
           availableExercises.find((ex) => ex.id === exerciseId)?.name ||
           t(
             'exercise.editExerciseEntryDialog.unknownExercise',
             'Unknown Exercise'
           );
-        const data = await queryClient.fetchQuery(
-          exerciseProgressOptions(
-            exerciseId,
-            startDate,
-            endDate,
-            aggregationLevel
-          )
-        );
-        allFetchedExerciseData[exerciseId] = data.map((entry) => ({
+        acc[exerciseId] = queryData.map((entry) => ({
           ...entry,
           exercise_name: exerciseName,
         }));
-        info(
-          loggingLevel,
-          `ExerciseReportsDashboard: Fetched exercise progress data for ${exerciseName} (${exerciseId}) with aggregation ${aggregationLevel}:`,
-          allFetchedExerciseData[exerciseId]
-        );
-
-        if (comparisonPeriod) {
-          const [compStartDate, compEndDate] = getComparisonDates(
-            startDate,
-            endDate,
-            comparisonPeriod
-          );
-          const compData = await queryClient.fetchQuery(
-            exerciseProgressOptions(
-              exerciseId,
-              compStartDate,
-              compEndDate,
-              aggregationLevel
-            )
-          );
-          allFetchedComparisonData[exerciseId] = compData.map((entry) => ({
-            ...entry,
-            exercise_name: exerciseName,
-          }));
-          info(
-            loggingLevel,
-            `ExerciseReportsDashboard: Fetched comparison exercise progress data for ${exerciseName} (${exerciseId}) with aggregation ${aggregationLevel} and period ${comparisonPeriod}:`,
-            allFetchedComparisonData[exerciseId]
-          );
-        }
       }
-      setExerciseProgressData(allFetchedExerciseData);
-      setComparisonExerciseProgressData(allFetchedComparisonData);
-    } catch (err) {
-      const message = t(
-        'exerciseReportsDashboard.failedToLoadExerciseProgressData',
-        'Failed to load exercise progress data.'
-      );
-      setErrorMessage(message);
-      error(
-        loggingLevel,
-        `ExerciseReportsDashboard: Error fetching exercise progress data:`,
-        err
-      );
-      toast({
-        title: t('reports.errorToastTitle', 'Error'),
-        description: message,
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedExercisesForChart,
-    startDate,
-    endDate,
-    aggregationLevel,
-    comparisonPeriod,
-    loggingLevel,
-    toast,
-    selectedExercise,
-    t,
-  ]);
+      return acc;
+    },
+    {} as Record<string, ExerciseProgressData[]>
+  );
 
-  useEffect(() => {
-    fetchExerciseChartData();
-  }, [fetchExerciseChartData]);
+  const comparisonExerciseProgressData = selectedExercisesForChart.reduce(
+    (acc, exerciseId, index) => {
+      const queryData = comparisonQueries[index]?.data;
+      if (queryData) {
+        const exerciseName =
+          availableExercises.find((ex) => ex.id === exerciseId)?.name ||
+          t(
+            'exercise.editExerciseEntryDialog.unknownExercise',
+            'Unknown Exercise'
+          );
+        acc[exerciseId] = queryData.map((entry) => ({
+          ...entry,
+          exercise_name: exerciseName,
+        }));
+      }
+      return acc;
+    },
+    {} as Record<string, ExerciseProgressData[]>
+  );
 
-  if (!exerciseDashboardData) {
+  const isFetchingCharts =
+    mainQueries.some((q) => q.isFetching) ||
+    comparisonQueries.some((q) => q.isFetching);
+
+  if (!exerciseDashboardData || loading || isFetchingCharts) {
     return (
       <div>
         {t(
@@ -1659,14 +1565,10 @@ const ExerciseReportsDashboard: React.FC<ExerciseReportsDashboardProps> = ({
             {t('exerciseReportsDashboard.loadingCharts', 'Loading charts...')}
           </p>
         )}
-        {errorMessage && <p className="text-red-500">{errorMessage}</p>}
-        {!loading &&
-          !errorMessage &&
-          widgetLayout.map((widgetId) => renderWidget(widgetId))}
+        {!loading && widgetLayout.map((widgetId) => renderWidget(widgetId))}
       </div>
 
       {!loading &&
-        !errorMessage &&
         selectedExercisesForChart.length > 0 &&
         Object.keys(exerciseProgressData).length === 0 && (
           <p className="text-center text-muted-foreground">

@@ -132,6 +132,7 @@ const ExerciseEntryHistoryImportCSV = ({
   const { mutateAsync: importAsCsv } = useImportExerciseHistoryMutation();
   const [selectedDateFormat, setSelectedDateFormat] =
     useState<string>(dateFormat);
+  const weightUnitLabel = weightUnit === 'lbs' ? 'lbs' : 'kg';
 
   const dropdownFields = new Set([
     'exercise_force',
@@ -664,10 +665,13 @@ const ExerciseEntryHistoryImportCSV = ({
 
   const getSetDisplay = (sets: GroupedExerciseEntry['sets']) => {
     return sets
-      .map(
-        (set) =>
-          `${set.set_number}: ${set.reps || '-'} reps @ ${set.weight || '-'}kg (${set.set_type})`
-      )
+      .map((set) => {
+        const repsDisplay = set.reps ?? '-';
+        const weightDisplay =
+          set.weight != null ? `${set.weight}${weightUnitLabel}` : '-';
+        const setTypeDisplay = set.set_type || '-';
+        return `${set.set_number}: ${repsDisplay} reps @ ${weightDisplay} (${setTypeDisplay})`;
+      })
       .join('; ');
   };
 
@@ -901,7 +905,7 @@ const ExerciseEntryHistoryImportCSV = ({
                   {groupedEntries.map((entry) => (
                     <TableRow key={entry.id}>
                       <TableCell>
-                        {format(entry.entry_date, 'yyyy-MM-dd')}
+                        {format(entry.entry_date, dateFormat)}
                       </TableCell>
                       <TableCell>{entry.exercise_name}</TableCell>
                       <TableCell>{entry.preset_name || '-'}</TableCell>

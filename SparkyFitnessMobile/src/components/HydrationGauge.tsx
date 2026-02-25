@@ -107,7 +107,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
   const showButtons = !!onIncrement || !!onDecrement;
 
   return (
-    <View className="bg-section rounded-xl p-4 my-2 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       {/* <Text className="text-md font-bold text-text-primary mb-3">Water</Text> */}
       <View className="flex-row items-center">
         <View className="flex-row items-center mr-4">

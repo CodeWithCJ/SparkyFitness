@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Droplet } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
-import { apiCall } from '@/services/api';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { convertMlToSelectedUnit } from '@/utils/nutritionCalculations';
-import { debug } from '@/utils/logging';
 import { useWaterContainer } from '@/contexts/WaterContainerContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
+import {
+  useWaterGoalQuery,
+  useWaterIntakeQuery,
+  useUpdateWaterIntakeMutation,
+} from '@/hooks/Diary/useWaterIntake';
 
 interface WaterIntakeProps {
   selectedDate: string;
@@ -20,115 +21,31 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser(); // Get activeUserId
-  const [waterMl, setWaterMl] = useState(0);
-  const [waterGoalMl, setWaterGoalMl] = useState(1920);
-  const [loading, setLoading] = useState(false);
   const { activeContainer } = useWaterContainer(); // Use activeContainer from context
-  const { water_display_unit, loggingLevel } = usePreferences();
+  const { water_display_unit } = usePreferences();
+  const userId = activeUserId || user.id;
+  const { data: waterGoalMl = 1920 } = useWaterGoalQuery(
+    selectedDate,
+    activeUserId
+  );
+  const { data: waterMl = 0 } = useWaterIntakeQuery(selectedDate, activeUserId);
+  const { mutate: updateWaterIntake, isPending: loading } =
+    useUpdateWaterIntakeMutation();
 
-  useEffect(() => {
-    if (user) {
-      loadWaterData();
-    }
-
-    const handleRefresh = () => {
-      loadWaterData();
-    };
-
-    window.addEventListener('measurementsRefresh', handleRefresh);
-    window.addEventListener('foodDiaryRefresh', handleRefresh);
-
-    return () => {
-      window.removeEventListener('measurementsRefresh', handleRefresh);
-      window.removeEventListener('foodDiaryRefresh', handleRefresh);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, activeUserId, selectedDate]); // Add activeUserId dependency
-
-  const loadWaterData = async () => {
-    try {
-      const currentUserId = activeUserId || user?.id;
-      if (!currentUserId) return;
-
-      const goalData = await apiCall(
-        `/goals/for-date?date=${selectedDate}&userId=${currentUserId}`
-      );
-      debug(loggingLevel, 'WaterIntake: goalData received:', goalData);
-      if (
-        goalData &&
-        goalData.water_goal_ml !== undefined &&
-        goalData.water_goal_ml !== null
-      ) {
-        setWaterGoalMl(
-          Number(goalData.water_goal_ml) === 0
-            ? 1920
-            : Number(goalData.water_goal_ml)
-        );
-      } else {
-        setWaterGoalMl(1920);
-      }
-
-      const waterData = await apiCall(
-        `/measurements/water-intake/${selectedDate}?userId=${currentUserId}`
-      );
-      if (Array.isArray(waterData) && waterData.length > 0) {
-        const totalWaterMl = waterData.reduce(
-          (sum, record) => sum + Number(record.water_ml),
-          0
-        );
-        setWaterMl(totalWaterMl);
-      } else if (waterData && waterData.water_ml !== undefined) {
-        setWaterMl(Number(waterData.water_ml));
-      } else {
-        setWaterMl(0);
-      }
-    } catch (error) {
-      console.error('Error loading water data:', error);
-      setWaterMl(0);
-    }
-  };
-
-  const saveWaterIntake = async (
+  const saveWaterIntake = (
     changeDrinks: number,
     containerId: number | null
   ) => {
-    if (!user) return;
-
-    try {
-      setLoading(true);
-
-      await apiCall('/measurements/water-intake', {
-        method: 'POST',
-        body: {
-          user_id: activeUserId || user.id, // Use activeUserId or authenticated user.id
-          entry_date: selectedDate,
-          change_drinks: changeDrinks, // Send the change in drinks
-          container_id: containerId, // Send the active container ID
-        },
-      });
-
-      toast({
-        title: t('foodDiary.success', 'Success'),
-        description: t('foodDiary.waterIntake.updated', 'Water intake updated'),
-      });
-      window.dispatchEvent(new Event('measurementsRefresh'));
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: t('foodDiary.error', 'Error'),
-        description: t(
-          'foodDiary.waterIntake.updateError',
-          'Failed to save water intake'
-        ),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+    updateWaterIntake({
+      user_id: userId,
+      entry_date: selectedDate,
+      change_drinks: changeDrinks,
+      container_id: containerId,
+    });
   };
 
-  const adjustWater = async (changeDrinks: number) => {
-    await saveWaterIntake(changeDrinks, activeContainer?.id || null);
+  const adjustWater = (changeDrinks: number) => {
+    saveWaterIntake(changeDrinks, activeContainer?.id || null);
   };
 
   if (!user) {

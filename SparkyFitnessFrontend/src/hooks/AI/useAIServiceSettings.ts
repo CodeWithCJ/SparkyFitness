@@ -10,7 +10,7 @@ import {
   getActiveAiServiceSetting,
   type AIService,
   type UserPreferences,
-} from '@/services/aiServiceSettingsService';
+} from '@/api/Settings/aiServiceSettingsService';
 import { aiServiceKeys, userPreferencesKeys } from '@/api/keys/admin';
 
 // Query hooks for fetching data

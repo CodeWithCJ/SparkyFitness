@@ -2,7 +2,7 @@ import { parseISO } from 'date-fns';
 import type { CoachResponse } from './Chatbot_types';
 import { debug, info, error, type UserLoggingLevel } from '@/utils/logging';
 import { apiCall } from '../api';
-import { getPrimaryWaterContainer } from '../waterContainerService';
+import { getPrimaryWaterContainer } from '../../api/Settings/waterContainerService';
 
 export const processWaterInput = async (
   data: { quantity: number; unit?: 'oz' | 'cup' | 'glass' },

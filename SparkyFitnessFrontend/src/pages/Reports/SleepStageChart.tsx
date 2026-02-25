@@ -31,9 +31,7 @@ const stageLabels: { [key: string]: string } = {
   deep: 'Deep',
 };
 
-const SleepStageChart: React.FC<SleepStageChartProps> = ({
-  sleepChartData,
-}) => {
+const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const { resolvedTheme } = useTheme();

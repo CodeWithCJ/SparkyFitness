@@ -293,7 +293,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 130 }}>
         <View className="flex-1 p-4 pb-20">
           <ServerConfigComponent
@@ -331,7 +331,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
 
           <TouchableOpacity
-            className="bg-section rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+            className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
             onPress={() => navigation.navigate('Logs')}
             activeOpacity={0.7}
           >

@@ -1,4 +1,3 @@
-import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { WorkoutData } from './ActivityReportVisualizer';
@@ -19,21 +18,16 @@ interface WorkoutReportVisualizerProps {
   workoutData: WorkoutData;
 }
 
-const WorkoutReportVisualizer: React.FC<WorkoutReportVisualizerProps> = ({
+const WorkoutReportVisualizer = ({
   workoutData,
-}) => {
+}: WorkoutReportVisualizerProps) => {
   const { t } = useTranslation();
   const { weightUnit, convertWeight } = usePreferences(); // Destructure convertWeight
 
   if (!workoutData) return null;
 
-  const {
-    workoutName,
-    description,
-    sportType,
-    estimatedDurationInSecs,
-    workoutSegments,
-  } = workoutData;
+  const { description, sportType, estimatedDurationInSecs, workoutSegments } =
+    workoutData;
 
   // Helper function to flatten workout steps, handling nested RepeatGroupDTOs
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

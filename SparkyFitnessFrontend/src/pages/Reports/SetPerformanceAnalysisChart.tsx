@@ -22,9 +22,10 @@ interface SetPerformanceAnalysisChartProps {
   exerciseName?: string; // New prop for exercise name
 }
 
-const SetPerformanceAnalysisChart: React.FC<
-  SetPerformanceAnalysisChartProps
-> = ({ setPerformanceData, exerciseName }) => {
+const SetPerformanceAnalysisChart = ({
+  setPerformanceData,
+  exerciseName,
+}: SetPerformanceAnalysisChartProps) => {
   const { t } = useTranslation();
   const [isMounted, setIsMounted] = React.useState(false);
 

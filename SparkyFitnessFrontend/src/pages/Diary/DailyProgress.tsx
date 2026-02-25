@@ -43,7 +43,6 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   if (isLoading) {
     return <DailyProgressSkeleton />;
   }
-
   const goalCalories = goals?.calories || 2000;
   const eatenCalories = foodData?.totals.calories || 0;
 

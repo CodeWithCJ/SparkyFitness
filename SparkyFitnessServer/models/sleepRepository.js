@@ -1,55 +1,58 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
+const { getClient } = require("../db/poolManager");
+const { log } = require("../config/logging");
 
 async function upsertSleepEntry(userId, actingUserId, sleepEntryData) {
-    const client = await getClient(userId);
-    try {
-        await client.query('BEGIN');
+  const client = await getClient(userId);
+  try {
+    await client.query("BEGIN");
 
-        const {
-            id, // Optional: if provided, attempt to update
-            entry_date,
-            bedtime,
-            wake_time,
-            duration_in_seconds,
-            time_asleep_in_seconds,
-            sleep_score,
-            source,
-            deep_sleep_seconds,
-            light_sleep_seconds,
-            rem_sleep_seconds,
-            awake_sleep_seconds,
-            average_spo2_value,
-            lowest_spo2_value,
-            highest_spo2_value,
-            average_respiration_value,
-            lowest_respiration_value,
-            highest_respiration_value,
-            awake_count,
-            avg_sleep_stress,
-            restless_moments_count,
-            avg_overnight_hrv,
-            body_battery_change,
-            resting_heart_rate
-        } = sleepEntryData;
+    const {
+      id, // Optional: if provided, attempt to update
+      entry_date,
+      bedtime,
+      wake_time,
+      duration_in_seconds,
+      time_asleep_in_seconds,
+      sleep_score,
+      source,
+      deep_sleep_seconds,
+      light_sleep_seconds,
+      rem_sleep_seconds,
+      awake_sleep_seconds,
+      average_spo2_value,
+      lowest_spo2_value,
+      highest_spo2_value,
+      average_respiration_value,
+      lowest_respiration_value,
+      highest_respiration_value,
+      awake_count,
+      avg_sleep_stress,
+      restless_moments_count,
+      avg_overnight_hrv,
+      body_battery_change,
+      resting_heart_rate,
+    } = sleepEntryData;
 
-        let sleepEntryId = id;
+    let sleepEntryId = id;
 
-        // If no ID is provided, check for an existing entry for this user, date, and source to prevent duplicates
-        if (!sleepEntryId) {
-            const existingCheck = await client.query(
-                `SELECT id FROM sleep_entries WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
-                [userId, entry_date, source]
-            );
-            if (existingCheck.rows.length > 0) {
-                sleepEntryId = existingCheck.rows[0].id;
-                log('info', `Found existing sleep entry ${sleepEntryId} for user ${userId} on ${entry_date} from source ${source}. Switching to update.`);
-            }
-        }
+    // If no ID is provided, check for an existing entry for this user, date, and source to prevent duplicates
+    if (!sleepEntryId) {
+      const existingCheck = await client.query(
+        `SELECT id FROM sleep_entries WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
+        [userId, entry_date, source],
+      );
+      if (existingCheck.rows.length > 0) {
+        sleepEntryId = existingCheck.rows[0].id;
+        log(
+          "info",
+          `Found existing sleep entry ${sleepEntryId} for user ${userId} on ${entry_date} from source ${source}. Switching to update.`,
+        );
+      }
+    }
 
-        if (sleepEntryId) {
-            // Attempt to update existing entry
-            const updateQuery = `
+    if (sleepEntryId) {
+      // Attempt to update existing entry
+      const updateQuery = `
                 UPDATE sleep_entries
                 SET
                     entry_date = $3,
@@ -79,112 +82,126 @@ async function upsertSleepEntry(userId, actingUserId, sleepEntryData) {
                 WHERE id = $1 AND user_id = $2
                 RETURNING id;
             `;
-            const updateResult = await client.query(updateQuery, [
-                sleepEntryId,
-                userId,
-                entry_date,
-                bedtime,
-                wake_time,
-                duration_in_seconds,
-                time_asleep_in_seconds,
-                sleep_score,
-                source,
-                deep_sleep_seconds,
-                light_sleep_seconds,
-                rem_sleep_seconds,
-                awake_sleep_seconds,
-                average_spo2_value,
-                lowest_spo2_value,
-                highest_spo2_value,
-                average_respiration_value,
-                lowest_respiration_value,
-                highest_respiration_value,
-                awake_count,
-                avg_sleep_stress,
-                restless_moments_count,
-                avg_overnight_hrv,
-                body_battery_change,
-                resting_heart_rate
-            ]);
+      const updateResult = await client.query(updateQuery, [
+        sleepEntryId,
+        userId,
+        entry_date,
+        bedtime,
+        wake_time,
+        duration_in_seconds,
+        time_asleep_in_seconds,
+        sleep_score,
+        source,
+        deep_sleep_seconds,
+        light_sleep_seconds,
+        rem_sleep_seconds,
+        awake_sleep_seconds,
+        average_spo2_value,
+        lowest_spo2_value,
+        highest_spo2_value,
+        average_respiration_value,
+        lowest_respiration_value,
+        highest_respiration_value,
+        awake_count,
+        avg_sleep_stress,
+        restless_moments_count,
+        avg_overnight_hrv,
+        body_battery_change,
+        resting_heart_rate,
+      ]);
 
-            if (updateResult.rows.length > 0) {
-                sleepEntryId = updateResult.rows[0].id;
-                log('info', `Updated sleep entry ${sleepEntryId} for user ${userId}.`);
-            } else {
-                // If it was supposed to update but the ID (from param) didn't exist for this user,
-                // we fall back to insert if id was explicitly provided but not found.
-                // But in our case of sync, if we found it via existingCheck, it WILL update.
-                throw new Error(`Failed to update sleep entry ${sleepEntryId}.`);
-            }
-        } else {
-            // Insert new entry
-            const insertQuery = `
+      if (updateResult.rows.length > 0) {
+        sleepEntryId = updateResult.rows[0].id;
+        log("info", `Updated sleep entry ${sleepEntryId} for user ${userId}.`);
+      } else {
+        // If it was supposed to update but the ID (from param) didn't exist for this user,
+        // we fall back to insert if id was explicitly provided but not found.
+        // But in our case of sync, if we found it via existingCheck, it WILL update.
+        throw new Error(`Failed to update sleep entry ${sleepEntryId}.`);
+      }
+    } else {
+      // Insert new entry
+      const insertQuery = `
                 INSERT INTO sleep_entries (user_id, entry_date, bedtime, wake_time, duration_in_seconds, time_asleep_in_seconds, sleep_score, source, deep_sleep_seconds, light_sleep_seconds, rem_sleep_seconds, awake_sleep_seconds, average_spo2_value, lowest_spo2_value, highest_spo2_value, average_respiration_value, lowest_respiration_value, highest_respiration_value, awake_count, avg_sleep_stress, restless_moments_count, avg_overnight_hrv, body_battery_change, resting_heart_rate)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
                 RETURNING id;
             `;
-            const insertResult = await client.query(insertQuery, [
-                userId,
-                entry_date,
-                bedtime,
-                wake_time,
-                duration_in_seconds,
-                time_asleep_in_seconds,
-                sleep_score,
-                source,
-                deep_sleep_seconds,
-                light_sleep_seconds,
-                rem_sleep_seconds,
-                awake_sleep_seconds,
-                average_spo2_value,
-                lowest_spo2_value,
-                highest_spo2_value,
-                average_respiration_value,
-                lowest_respiration_value,
-                highest_respiration_value,
-                awake_count,
-                avg_sleep_stress,
-                restless_moments_count,
-                avg_overnight_hrv,
-                body_battery_change,
-                resting_heart_rate
-            ]);
-            sleepEntryId = insertResult.rows[0].id;
-            log('info', `Inserted new sleep entry ${sleepEntryId} for user ${userId}.`);
-        }
-
-        await client.query('COMMIT');
-        return { id: sleepEntryId, ...sleepEntryData };
-    } catch (error) {
-        await client.query('ROLLBACK');
-        log('error', `Error upserting sleep entry for user ${userId}: `, error);
-        throw error;
-    } finally {
-        client.release();
+      const insertResult = await client.query(insertQuery, [
+        userId,
+        entry_date,
+        bedtime,
+        wake_time,
+        duration_in_seconds,
+        time_asleep_in_seconds,
+        sleep_score,
+        source,
+        deep_sleep_seconds,
+        light_sleep_seconds,
+        rem_sleep_seconds,
+        awake_sleep_seconds,
+        average_spo2_value,
+        lowest_spo2_value,
+        highest_spo2_value,
+        average_respiration_value,
+        lowest_respiration_value,
+        highest_respiration_value,
+        awake_count,
+        avg_sleep_stress,
+        restless_moments_count,
+        avg_overnight_hrv,
+        body_battery_change,
+        resting_heart_rate,
+      ]);
+      sleepEntryId = insertResult.rows[0].id;
+      log(
+        "info",
+        `Inserted new sleep entry ${sleepEntryId} for user ${userId}.`,
+      );
     }
+
+    await client.query("COMMIT");
+    return { id: sleepEntryId, ...sleepEntryData };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log("error", `Error upserting sleep entry for user ${userId}: `, error);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
-    const client = await getClient(userId);
-    try {
-        await client.query('BEGIN');
+  const client = await getClient(userId);
+  try {
+    await client.query("BEGIN");
 
-        const {
-            id, // Optional: if provided, attempt to update
-            stage_type,
-            start_time,
-            end_time,
-            duration_in_seconds
-        } = sleepStageEventData;
+    const { id } = sleepStageEventData; // Optional: if provided, attempt to update
+    let { stage_type, start_time, end_time, duration_in_seconds } =
+      sleepStageEventData;
 
-        let sleepStageEventId;
+    // Defense: If end_time is missing but duration and start_time are present, calculate it
+    if (!end_time && start_time && duration_in_seconds) {
+      const start = new Date(start_time);
+      end_time = new Date(
+        start.getTime() + duration_in_seconds * 1000,
+      ).toISOString();
+      log(
+        "info",
+        `[sleepRepository] Derived missing end_time (${end_time}) for stage ${stage_type} at ${start_time} for user ${userId}`,
+      );
+    }
 
-        // Basic UUID validation
-        const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id);
+    let sleepStageEventId;
 
-        if (id && isUUID) {
-            // Attempt to update existing event
-            const updateQuery = `
+    // Basic UUID validation
+    const isUUID =
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+        id,
+      );
+
+    if (id && isUUID) {
+      // Attempt to update existing event
+      const updateQuery = `
                 UPDATE sleep_entry_stages
         SET
         stage_type = $4,
@@ -195,73 +212,87 @@ async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
                 WHERE id = $1 AND entry_id = $2 AND user_id = $3
                 RETURNING id;
         `;
-            const updateResult = await client.query(updateQuery, [
-                id,
-                entryId,
-                userId,
-                stage_type,
-                start_time,
-                end_time,
-                duration_in_seconds
-            ]);
+      const updateResult = await client.query(updateQuery, [
+        id,
+        entryId,
+        userId,
+        stage_type,
+        start_time,
+        end_time,
+        duration_in_seconds,
+      ]);
 
-            if (updateResult.rows.length > 0) {
-                sleepStageEventId = updateResult.rows[0].id;
-                log('info', `Updated sleep stage event ${sleepStageEventId} for entry ${entryId}.`);
-            } else {
-                // If no row was updated, insert new event
-                const insertQuery = `
+      if (updateResult.rows.length > 0) {
+        sleepStageEventId = updateResult.rows[0].id;
+        log(
+          "info",
+          `Updated sleep stage event ${sleepStageEventId} for entry ${entryId}.`,
+        );
+      } else {
+        // If no row was updated, insert new event
+        const insertQuery = `
                     INSERT INTO sleep_entry_stages(entry_id, user_id, stage_type, start_time, end_time, duration_in_seconds)
         VALUES($1, $2, $3, $4, $5, $6)
                     RETURNING id;
         `;
-                const insertResult = await client.query(insertQuery, [
-                    entryId,
-                    userId,
-                    stage_type,
-                    start_time,
-                    end_time,
-                    duration_in_seconds
-                ]);
-                sleepStageEventId = insertResult.rows[0].id;
-                log('info', `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId}.`);
-            }
-        } else {
-            // Insert new event, ignoring the invalid ID
-            const insertQuery = `
+        const insertResult = await client.query(insertQuery, [
+          entryId,
+          userId,
+          stage_type,
+          start_time,
+          end_time,
+          duration_in_seconds,
+        ]);
+        sleepStageEventId = insertResult.rows[0].id;
+        log(
+          "info",
+          `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId}.`,
+        );
+      }
+    } else {
+      // Insert new event, ignoring the invalid ID
+      const insertQuery = `
                 INSERT INTO sleep_entry_stages(entry_id, user_id, stage_type, start_time, end_time, duration_in_seconds)
         VALUES($1, $2, $3, $4, $5, $6)
                 RETURNING id;
         `;
-            const insertResult = await client.query(insertQuery, [
-                entryId,
-                userId,
-                stage_type,
-                start_time,
-                end_time,
-                duration_in_seconds
-            ]);
-            sleepStageEventId = insertResult.rows[0].id;
-            const reason = id === undefined ? 'no ID provided' : `ignoring invalid ID: ${id}`;
-            log('info', `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId} (${reason}).`);
-        }
-
-        await client.query('COMMIT');
-        const { id: originalId, ...restOfData } = sleepStageEventData;
-        return { id: sleepStageEventId, ...restOfData };
-    } catch (error) {
-        await client.query('ROLLBACK');
-        log('error', `Error upserting sleep stage event for entry ${entryId}: `, error);
-        throw error;
-    } finally {
-        client.release();
+      const insertResult = await client.query(insertQuery, [
+        entryId,
+        userId,
+        stage_type,
+        start_time,
+        end_time,
+        duration_in_seconds,
+      ]);
+      sleepStageEventId = insertResult.rows[0].id;
+      const reason =
+        id === undefined ? "no ID provided" : `ignoring invalid ID: ${id}`;
+      log(
+        "info",
+        `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId} (${reason}).`,
+      );
     }
+
+    await client.query("COMMIT");
+    const { id: originalId, ...restOfData } = sleepStageEventData;
+    return { id: sleepStageEventId, ...restOfData };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log(
+      "error",
+      `Error upserting sleep stage event for entry ${entryId}: `,
+      error,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function getSleepEntriesByUserIdAndDateRange(userId, startDate, endDate) {
-    const client = await getClient(userId);
-    try {
-        const query = `
+  const client = await getClient(userId);
+  try {
+    const query = `
         SELECT
         se.id,
             se.user_id,
@@ -297,20 +328,28 @@ async function getSleepEntriesByUserIdAndDateRange(userId, startDate, endDate) {
             GROUP BY se.id
             ORDER BY se.entry_date DESC;
         `;
-        const result = await client.query(query, [userId, startDate, endDate]);
-        return result.rows;
-    } catch (error) {
-        log('error', `Error fetching sleep entries for user ${userId} from ${startDate} to ${endDate}: `, error);
-        throw error;
-    } finally {
-        client.release();
-    }
+    const result = await client.query(query, [userId, startDate, endDate]);
+    return result.rows;
+  } catch (error) {
+    log(
+      "error",
+      `Error fetching sleep entries for user ${userId} from ${startDate} to ${endDate}: `,
+      error,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
-async function getAggregatedSleepStageDataByDateRange(userId, startDate, endDate) {
-    const client = await getClient(userId);
-    try {
-        const query = `
+async function getAggregatedSleepStageDataByDateRange(
+  userId,
+  startDate,
+  endDate,
+) {
+  const client = await getClient(userId);
+  try {
+    const query = `
         SELECT
         se.entry_date,
             sse.stage_type,
@@ -321,203 +360,335 @@ async function getAggregatedSleepStageDataByDateRange(userId, startDate, endDate
             GROUP BY se.entry_date, sse.stage_type
             ORDER BY se.entry_date, sse.stage_type;
         `;
-        const result = await client.query(query, [userId, startDate, endDate]);
-        return result.rows;
-    } catch (error) {
-        log('error', `Error fetching aggregated sleep stage data for user ${userId} from ${startDate} to ${endDate}: `, error);
-        throw error;
-    } finally {
-        client.release();
-    }
+    const result = await client.query(query, [userId, startDate, endDate]);
+    return result.rows;
+  } catch (error) {
+    log(
+      "error",
+      `Error fetching aggregated sleep stage data for user ${userId} from ${startDate} to ${endDate}: `,
+      error,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
-    const client = await getClient(userId);
-    try {
-        await client.query('BEGIN');
+  const client = await getClient(userId);
+  try {
+    await client.query("BEGIN");
 
-        const {
-            entry_date,
-            bedtime,
-            wake_time,
-            duration_in_seconds,
-            time_asleep_in_seconds,
-            sleep_score,
-            source,
-            deep_sleep_seconds,
-            light_sleep_seconds,
-            rem_sleep_seconds,
-            awake_sleep_seconds,
-            average_spo2_value,
-            lowest_spo2_value,
-            highest_spo2_value,
-            average_respiration_value,
-            lowest_respiration_value,
-            highest_respiration_value,
-            awake_count,
-            avg_sleep_stress,
-            restless_moments_count,
-            avg_overnight_hrv,
-            body_battery_change,
-            resting_heart_rate,
-            stage_events // Extract stage_events
-        } = updateData;
+    const {
+      entry_date,
+      bedtime,
+      wake_time,
+      duration_in_seconds,
+      time_asleep_in_seconds,
+      sleep_score,
+      source,
+      deep_sleep_seconds,
+      light_sleep_seconds,
+      rem_sleep_seconds,
+      awake_sleep_seconds,
+      average_spo2_value,
+      lowest_spo2_value,
+      highest_spo2_value,
+      average_respiration_value,
+      lowest_respiration_value,
+      highest_respiration_value,
+      awake_count,
+      avg_sleep_stress,
+      restless_moments_count,
+      avg_overnight_hrv,
+      body_battery_change,
+      resting_heart_rate,
+      stage_events, // Extract stage_events
+    } = updateData;
 
-        const updateFields = [];
-        const updateValues = [];
-        let paramIndex = 1;
+    const updateFields = [];
+    const updateValues = [];
+    let paramIndex = 1;
 
-        if (entry_date !== undefined) { updateFields.push(`entry_date = $${paramIndex++} `); updateValues.push(entry_date); }
-        if (bedtime !== undefined) { updateFields.push(`bedtime = $${paramIndex++} `); updateValues.push(bedtime); }
-        if (wake_time !== undefined) { updateFields.push(`wake_time = $${paramIndex++} `); updateValues.push(wake_time); }
-        if (duration_in_seconds !== undefined) { updateFields.push(`duration_in_seconds = $${paramIndex++} `); updateValues.push(duration_in_seconds); }
-        if (time_asleep_in_seconds !== undefined) { updateFields.push(`time_asleep_in_seconds = $${paramIndex++} `); updateValues.push(time_asleep_in_seconds); }
-        if (sleep_score !== undefined) { updateFields.push(`sleep_score = $${paramIndex++} `); updateValues.push(sleep_score); }
-        if (source !== undefined) { updateFields.push(`source = $${paramIndex++} `); updateValues.push(source); }
-        if (deep_sleep_seconds !== undefined) { updateFields.push(`deep_sleep_seconds = $${paramIndex++} `); updateValues.push(deep_sleep_seconds); }
-        if (light_sleep_seconds !== undefined) { updateFields.push(`light_sleep_seconds = $${paramIndex++} `); updateValues.push(light_sleep_seconds); }
-        if (rem_sleep_seconds !== undefined) { updateFields.push(`rem_sleep_seconds = $${paramIndex++} `); updateValues.push(rem_sleep_seconds); }
-        if (awake_sleep_seconds !== undefined) { updateFields.push(`awake_sleep_seconds = $${paramIndex++} `); updateValues.push(awake_sleep_seconds); }
-        if (average_spo2_value !== undefined) { updateFields.push(`average_spo2_value = $${paramIndex++} `); updateValues.push(average_spo2_value); }
-        if (lowest_spo2_value !== undefined) { updateFields.push(`lowest_spo2_value = $${paramIndex++} `); updateValues.push(lowest_spo2_value); }
-        if (highest_spo2_value !== undefined) { updateFields.push(`highest_spo2_value = $${paramIndex++} `); updateValues.push(highest_spo2_value); }
-        if (average_respiration_value !== undefined) { updateFields.push(`average_respiration_value = $${paramIndex++} `); updateValues.push(average_respiration_value); }
-        if (lowest_respiration_value !== undefined) { updateFields.push(`lowest_respiration_value = $${paramIndex++} `); updateValues.push(lowest_respiration_value); }
-        if (highest_respiration_value !== undefined) { updateFields.push(`highest_respiration_value = $${paramIndex++} `); updateValues.push(highest_respiration_value); }
-        if (awake_count !== undefined) { updateFields.push(`awake_count = $${paramIndex++} `); updateValues.push(awake_count); }
-        if (avg_sleep_stress !== undefined) { updateFields.push(`avg_sleep_stress = $${paramIndex++} `); updateValues.push(avg_sleep_stress); }
-        if (restless_moments_count !== undefined) { updateFields.push(`restless_moments_count = $${paramIndex++} `); updateValues.push(restless_moments_count); }
-        if (avg_overnight_hrv !== undefined) { updateFields.push(`avg_overnight_hrv = $${paramIndex++} `); updateValues.push(avg_overnight_hrv); }
-        if (body_battery_change !== undefined) { updateFields.push(`body_battery_change = $${paramIndex++} `); updateValues.push(body_battery_change); }
-        if (resting_heart_rate !== undefined) { updateFields.push(`resting_heart_rate = $${paramIndex++} `); updateValues.push(resting_heart_rate); }
+    if (entry_date !== undefined) {
+      updateFields.push(`entry_date = $${paramIndex++} `);
+      updateValues.push(entry_date);
+    }
+    if (bedtime !== undefined) {
+      updateFields.push(`bedtime = $${paramIndex++} `);
+      updateValues.push(bedtime);
+    }
+    if (wake_time !== undefined) {
+      updateFields.push(`wake_time = $${paramIndex++} `);
+      updateValues.push(wake_time);
+    }
+    if (duration_in_seconds !== undefined) {
+      updateFields.push(`duration_in_seconds = $${paramIndex++} `);
+      updateValues.push(duration_in_seconds);
+    }
+    if (time_asleep_in_seconds !== undefined) {
+      updateFields.push(`time_asleep_in_seconds = $${paramIndex++} `);
+      updateValues.push(time_asleep_in_seconds);
+    }
+    if (sleep_score !== undefined) {
+      updateFields.push(`sleep_score = $${paramIndex++} `);
+      updateValues.push(sleep_score);
+    }
+    if (source !== undefined) {
+      updateFields.push(`source = $${paramIndex++} `);
+      updateValues.push(source);
+    }
+    if (deep_sleep_seconds !== undefined) {
+      updateFields.push(`deep_sleep_seconds = $${paramIndex++} `);
+      updateValues.push(deep_sleep_seconds);
+    }
+    if (light_sleep_seconds !== undefined) {
+      updateFields.push(`light_sleep_seconds = $${paramIndex++} `);
+      updateValues.push(light_sleep_seconds);
+    }
+    if (rem_sleep_seconds !== undefined) {
+      updateFields.push(`rem_sleep_seconds = $${paramIndex++} `);
+      updateValues.push(rem_sleep_seconds);
+    }
+    if (awake_sleep_seconds !== undefined) {
+      updateFields.push(`awake_sleep_seconds = $${paramIndex++} `);
+      updateValues.push(awake_sleep_seconds);
+    }
+    if (average_spo2_value !== undefined) {
+      updateFields.push(`average_spo2_value = $${paramIndex++} `);
+      updateValues.push(average_spo2_value);
+    }
+    if (lowest_spo2_value !== undefined) {
+      updateFields.push(`lowest_spo2_value = $${paramIndex++} `);
+      updateValues.push(lowest_spo2_value);
+    }
+    if (highest_spo2_value !== undefined) {
+      updateFields.push(`highest_spo2_value = $${paramIndex++} `);
+      updateValues.push(highest_spo2_value);
+    }
+    if (average_respiration_value !== undefined) {
+      updateFields.push(`average_respiration_value = $${paramIndex++} `);
+      updateValues.push(average_respiration_value);
+    }
+    if (lowest_respiration_value !== undefined) {
+      updateFields.push(`lowest_respiration_value = $${paramIndex++} `);
+      updateValues.push(lowest_respiration_value);
+    }
+    if (highest_respiration_value !== undefined) {
+      updateFields.push(`highest_respiration_value = $${paramIndex++} `);
+      updateValues.push(highest_respiration_value);
+    }
+    if (awake_count !== undefined) {
+      updateFields.push(`awake_count = $${paramIndex++} `);
+      updateValues.push(awake_count);
+    }
+    if (avg_sleep_stress !== undefined) {
+      updateFields.push(`avg_sleep_stress = $${paramIndex++} `);
+      updateValues.push(avg_sleep_stress);
+    }
+    if (restless_moments_count !== undefined) {
+      updateFields.push(`restless_moments_count = $${paramIndex++} `);
+      updateValues.push(restless_moments_count);
+    }
+    if (avg_overnight_hrv !== undefined) {
+      updateFields.push(`avg_overnight_hrv = $${paramIndex++} `);
+      updateValues.push(avg_overnight_hrv);
+    }
+    if (body_battery_change !== undefined) {
+      updateFields.push(`body_battery_change = $${paramIndex++} `);
+      updateValues.push(body_battery_change);
+    }
+    if (resting_heart_rate !== undefined) {
+      updateFields.push(`resting_heart_rate = $${paramIndex++} `);
+      updateValues.push(resting_heart_rate);
+    }
 
-        // Add updated_by_user_id
-        updateFields.push(`updated_by_user_id = $${paramIndex++}`);
-        updateValues.push(actingUserId);
+    // Add updated_by_user_id
+    updateFields.push(`updated_by_user_id = $${paramIndex++}`);
+    updateValues.push(actingUserId);
 
-        updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
 
-        if (updateFields.length === 1 && updateFields[0].includes('updated_at') && !stage_events) { // Only updated_at, no other fields to update
-            await client.query('COMMIT');
-            return { id: entryId, message: "No specific fields to update for sleep entry." };
-        }
+    if (
+      updateFields.length === 1 &&
+      updateFields[0].includes("updated_at") &&
+      !stage_events
+    ) {
+      // Only updated_at, no other fields to update
+      await client.query("COMMIT");
+      return {
+        id: entryId,
+        message: "No specific fields to update for sleep entry.",
+      };
+    }
 
-        if (updateFields.length > 0) {
-            const updateQuery = `
+    if (updateFields.length > 0) {
+      const updateQuery = `
                 UPDATE sleep_entries
-                SET ${updateFields.join(', ')}
+                SET ${updateFields.join(", ")}
                 WHERE id = $${paramIndex++} AND user_id = $${paramIndex++}
                 RETURNING id;
         `;
-            updateValues.push(entryId, userId);
+      updateValues.push(entryId, userId);
 
-            const result = await client.query(updateQuery, updateValues);
+      const result = await client.query(updateQuery, updateValues);
 
-            if (result.rows.length === 0) {
-                throw new Error(`Sleep entry with ID ${entryId} not found for user ${userId}.`);
-            }
-        }
+      if (result.rows.length === 0) {
+        throw new Error(
+          `Sleep entry with ID ${entryId} not found for user ${userId}.`,
+        );
+      }
+    }
 
-        // Handle stage_events if provided
-        if (stage_events && stage_events.length > 0) {
-            // Delete existing stage events for this entry
-            await client.query('DELETE FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2', [entryId, userId]);
+    // Handle stage_events if provided
+    if (stage_events && stage_events.length > 0) {
+      // Delete existing stage events for this entry
+      await client.query(
+        "DELETE FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2",
+        [entryId, userId],
+      );
 
-            // Insert new stage events with audit columns
-            const stageEventInsertQuery = `
+      // Insert new stage events with audit columns
+      const stageEventInsertQuery = `
                 INSERT INTO sleep_entry_stages(entry_id, user_id, stage_type, start_time, end_time, duration_in_seconds, created_by_user_id, updated_by_user_id)
         VALUES($1, $2, $3, $4, $5, $6, $7, $7);
         `;
-            for (const event of stage_events) {
-                await client.query(stageEventInsertQuery, [
-                    entryId,
-                    userId,
-                    event.stage_type,
-                    event.start_time,
-                    event.end_time,
-                    event.duration_in_seconds,
-                    actingUserId // Use actingUserId for creation/update
-                ]);
-            }
-            log('info', `Updated sleep stage events for entry ${entryId}.`);
-        } else if (stage_events && stage_events.length === 0) {
-            // If an empty array is sent, it means all stage events should be deleted
-            await client.query('DELETE FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2', [entryId, userId]);
-            log('info', `Deleted all sleep stage events for entry ${entryId} as an empty array was provided.`);
-        }
-
-        await client.query('COMMIT');
-        return { id: entryId, ...updateData };
-    } catch (error) {
-        await client.query('ROLLBACK');
-        log('error', `Error updating sleep entry ${entryId} for user ${userId}: `, error);
-        throw error;
-    } finally {
-        client.release();
+      for (const event of stage_events) {
+        await client.query(stageEventInsertQuery, [
+          entryId,
+          userId,
+          event.stage_type,
+          event.start_time,
+          event.end_time,
+          event.duration_in_seconds,
+          actingUserId, // Use actingUserId for creation/update
+        ]);
+      }
+      log("info", `Updated sleep stage events for entry ${entryId}.`);
+    } else if (stage_events && stage_events.length === 0) {
+      // If an empty array is sent, it means all stage events should be deleted
+      await client.query(
+        "DELETE FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2",
+        [entryId, userId],
+      );
+      log(
+        "info",
+        `Deleted all sleep stage events for entry ${entryId} as an empty array was provided.`,
+      );
     }
+
+    await client.query("COMMIT");
+    return { id: entryId, ...updateData };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log(
+      "error",
+      `Error updating sleep entry ${entryId} for user ${userId}: `,
+      error,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function deleteSleepStageEventsByEntryId(userId, entryId) {
-    const client = await getClient(userId);
-    try {
-        await client.query('BEGIN');
-        const query = `
+  const client = await getClient(userId);
+  try {
+    await client.query("BEGIN");
+    const query = `
             DELETE FROM sleep_entry_stages
             WHERE entry_id = $1 AND user_id = $2;
         `;
-        await client.query(query, [entryId, userId]);
-        await client.query('COMMIT');
-        log('info', `Deleted all sleep stage events for entry ${entryId} for user ${userId}.`);
-        return { message: `Deleted all sleep stage events for entry ${entryId} for user ${userId}.` };
-    } catch (error) {
-        await client.query('ROLLBACK');
-        log('error', `Error deleting sleep stage events for entry ${entryId} for user ${userId}: `, error);
-        throw error;
-    } finally {
-        client.release();
-    }
+    await client.query(query, [entryId, userId]);
+    await client.query("COMMIT");
+    log(
+      "info",
+      `Deleted all sleep stage events for entry ${entryId} for user ${userId}.`,
+    );
+    return {
+      message: `Deleted all sleep stage events for entry ${entryId} for user ${userId}.`,
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log(
+      "error",
+      `Error deleting sleep stage events for entry ${entryId} for user ${userId}: `,
+      error,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
-async function deleteSleepEntriesByEntrySourceAndDate(userId, entrySource, startDate, endDate) {
-    const client = await getClient(userId);
-    try {
-        await client.query('BEGIN');
-        const query = `
+async function deleteSleepEntriesByEntrySourceAndDate(
+  userId,
+  entrySource,
+  startDate,
+  endDate,
+) {
+  const client = await getClient(userId);
+  try {
+    await client.query("BEGIN");
+    const query = `
             DELETE FROM sleep_entries
             WHERE user_id = $1 AND source = $2 AND entry_date BETWEEN $3 AND $4
             RETURNING id;
         `;
-        log('debug', `[sleepRepository.deleteSleepEntriesByEntrySourceAndDate] Deletion query: ${query} `);
-        log('debug', `[sleepRepository.deleteSleepEntriesByEntrySourceAndDate] Deletion parameters: userId = ${userId}, entrySource = ${entrySource}, startDate = ${startDate}, endDate = ${endDate} `);
-        const result = await client.query(query, [userId, entrySource, startDate, endDate]);
-        await client.query('COMMIT');
-        log('info', `Deleted ${result.rows.length} sleep entries for user ${userId} from source ${entrySource} between ${startDate} and ${endDate}.`);
-        return { message: `Deleted ${result.rows.length} sleep entries.` };
-    } catch (error) {
-        await client.query('ROLLBACK');
-        log('error', `Error deleting sleep entries for user ${userId} from source ${entrySource} between ${startDate} and ${endDate}: `, error);
-        throw error;
-    } finally {
-        client.release();
-    }
+    log(
+      "debug",
+      `[sleepRepository.deleteSleepEntriesByEntrySourceAndDate] Deletion query: ${query} `,
+    );
+    log(
+      "debug",
+      `[sleepRepository.deleteSleepEntriesByEntrySourceAndDate] Deletion parameters: userId = ${userId}, entrySource = ${entrySource}, startDate = ${startDate}, endDate = ${endDate} `,
+    );
+    const result = await client.query(query, [
+      userId,
+      entrySource,
+      startDate,
+      endDate,
+    ]);
+    await client.query("COMMIT");
+    log(
+      "info",
+      `Deleted ${result.rows.length} sleep entries for user ${userId} from source ${entrySource} between ${startDate} and ${endDate}.`,
+    );
+    return { message: `Deleted ${result.rows.length} sleep entries.` };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log(
+      "error",
+      `Error deleting sleep entries for user ${userId} from source ${entrySource} between ${startDate} and ${endDate}: `,
+      error,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 module.exports = {
-    upsertSleepEntry,
-    upsertSleepStageEvent,
-    getSleepEntriesByUserIdAndDateRange,
-    updateSleepEntry,
-    deleteSleepStageEventsByEntryId,
-    deleteSleepEntry,
-    getSleepEntriesWithAllDetailsByUserIdAndDateRange,
-    deleteSleepEntriesByEntrySourceAndDate,
-    getSleepEntriesWithAllDetailsByUserIdAndDateRange, // New export
+  upsertSleepEntry,
+  upsertSleepStageEvent,
+  getSleepEntriesByUserIdAndDateRange,
+  updateSleepEntry,
+  deleteSleepStageEventsByEntryId,
+  deleteSleepEntry,
+  getSleepEntriesWithAllDetailsByUserIdAndDateRange,
+  deleteSleepEntriesByEntrySourceAndDate,
+  getSleepEntriesWithAllDetailsByUserIdAndDateRange, // New export
 };
 
-async function getSleepEntriesWithAllDetailsByUserIdAndDateRange(userId, startDate, endDate) {
-    const client = await getClient(userId);
-    try {
-        const query = `
+async function getSleepEntriesWithAllDetailsByUserIdAndDateRange(
+  userId,
+  startDate,
+  endDate,
+) {
+  const client = await getClient(userId);
+  try {
+    const query = `
         SELECT
         se.id,
             se.user_id,
@@ -568,43 +739,53 @@ async function getSleepEntriesWithAllDetailsByUserIdAndDateRange(userId, startDa
             GROUP BY se.id
             ORDER BY se.entry_date DESC;
         `;
-        const result = await client.query(query, [userId, startDate, endDate]);
-        return result.rows;
-    } catch (error) {
-        log('error', `Error fetching sleep entries with all details for user ${userId} from ${startDate} to ${endDate}: `, error);
-        throw error;
-    } finally {
-        client.release();
-    }
+    const result = await client.query(query, [userId, startDate, endDate]);
+    return result.rows;
+  } catch (error) {
+    log(
+      "error",
+      `Error fetching sleep entries with all details for user ${userId} from ${startDate} to ${endDate}: `,
+      error,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function deleteSleepEntry(userId, entryId) {
-    const client = await getClient(userId);
-    try {
-        await client.query('BEGIN');
+  const client = await getClient(userId);
+  try {
+    await client.query("BEGIN");
 
-        // First, delete associated sleep stage events
-        await deleteSleepStageEventsByEntryId(userId, entryId);
+    // First, delete associated sleep stage events
+    await deleteSleepStageEventsByEntryId(userId, entryId);
 
-        const deleteQuery = `
+    const deleteQuery = `
             DELETE FROM sleep_entries
             WHERE id = $1 AND user_id = $2
             RETURNING id;
         `;
-        const result = await client.query(deleteQuery, [entryId, userId]);
+    const result = await client.query(deleteQuery, [entryId, userId]);
 
-        if (result.rows.length === 0) {
-            throw new Error(`Sleep entry with ID ${entryId} not found for user ${userId}.`);
-        }
-
-        await client.query('COMMIT');
-        log('info', `Deleted sleep entry ${entryId} for user ${userId}.`);
-        return { message: `Sleep entry ${entryId} deleted successfully.` };
-    } catch (error) {
-        await client.query('ROLLBACK');
-        log('error', `Error deleting sleep entry ${entryId} for user ${userId}: `, error);
-        throw error;
-    } finally {
-        client.release();
+    if (result.rows.length === 0) {
+      throw new Error(
+        `Sleep entry with ID ${entryId} not found for user ${userId}.`,
+      );
     }
+
+    await client.query("COMMIT");
+    log("info", `Deleted sleep entry ${entryId} for user ${userId}.`);
+    return { message: `Sleep entry ${entryId} deleted successfully.` };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log(
+      "error",
+      `Error deleting sleep entry ${entryId} for user ${userId}: `,
+      error,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
 }

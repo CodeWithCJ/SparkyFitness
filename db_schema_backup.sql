@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict mmFe3I6PE40bsSY7o0STpSpymGM7H7RF1jRwqceFHFBJGpcbSbj0PHsG0r579Ve
+\restrict D86uStvbk2ffljWuy3BtsTa32l05krEalVzQvC8ObUyS4bQL6SK857nLgBzQ3Tl
 
 -- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
@@ -528,6 +528,21 @@ $$;
 
 
 --
+-- Name: is_admin(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_admin() RETURNS boolean
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public."user" u
+    WHERE u.id = authenticated_user_id()
+    AND u.role = 'admin'
+  );
+$$;
+
+
+--
 -- Name: manage_goal_timeline(uuid, date, numeric, numeric, numeric, numeric, integer, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -853,7 +868,7 @@ CREATE TABLE public.admin_activity_logs (
 
 CREATE TABLE public.ai_service_settings (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
+    user_id uuid,
     service_type text NOT NULL,
     service_name text NOT NULL,
     custom_url text,
@@ -864,7 +879,9 @@ CREATE TABLE public.ai_service_settings (
     model_name text,
     encrypted_api_key text,
     api_key_iv text,
-    api_key_tag text
+    api_key_tag text,
+    is_public boolean DEFAULT false NOT NULL,
+    CONSTRAINT check_public_settings_user_id_null CHECK ((((is_public = true) AND (user_id IS NULL)) OR ((is_public = false) AND (user_id IS NOT NULL))))
 );
 
 
@@ -1084,8 +1101,16 @@ CREATE TABLE public.exercise_entry_sets (
     rest_time integer,
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    rpe numeric(3,1)
 );
+
+
+--
+-- Name: COLUMN exercise_entry_sets.rpe; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entry_sets.rpe IS 'Rate of Perceived Exertion (usually 1-10 scale)';
 
 
 --
@@ -1192,7 +1217,8 @@ CREATE TABLE public.external_data_providers (
     refresh_token_tag text,
     scope text,
     last_sync_at timestamp with time zone,
-    sync_frequency text DEFAULT 'manual'::text
+    sync_frequency text DEFAULT 'manual'::text,
+    oauth_state text
 );
 
 
@@ -1401,6 +1427,7 @@ CREATE TABLE public.global_settings (
     is_oidc_active boolean DEFAULT false NOT NULL,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     mfa_mandatory boolean DEFAULT false,
+    allow_user_ai_config boolean DEFAULT true NOT NULL,
     CONSTRAINT single_row_check CHECK ((id = 1))
 );
 
@@ -1442,6 +1469,7 @@ CREATE TABLE public.goal_presets (
     lunch_percentage numeric,
     dinner_percentage numeric,
     snacks_percentage numeric,
+    custom_nutrients jsonb DEFAULT '{}'::jsonb,
     CONSTRAINT chk_meal_percentages_sum CHECK ((((breakfast_percentage IS NULL) AND (lunch_percentage IS NULL) AND (dinner_percentage IS NULL) AND (snacks_percentage IS NULL)) OR ((((breakfast_percentage + lunch_percentage) + dinner_percentage) + snacks_percentage) = (100)::numeric)))
 );
 
@@ -1923,6 +1951,7 @@ CREATE TABLE public.user_goals (
     dinner_percentage numeric,
     snacks_percentage numeric,
     water_goal_ml numeric(10,3),
+    custom_nutrients jsonb DEFAULT '{}'::jsonb,
     CONSTRAINT chk_meal_percentages_sum CHECK ((((breakfast_percentage IS NULL) AND (lunch_percentage IS NULL) AND (dinner_percentage IS NULL) AND (snacks_percentage IS NULL)) OR ((((breakfast_percentage + lunch_percentage) + dinner_percentage) + snacks_percentage) = (100)::numeric)))
 );
 
@@ -3042,6 +3071,20 @@ CREATE INDEX idx_account_user_id ON public.account USING btree (user_id);
 --
 
 CREATE INDEX idx_ai_service_settings_active ON public.ai_service_settings USING btree (user_id, is_active);
+
+
+--
+-- Name: idx_ai_service_settings_active_public; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ai_service_settings_active_public ON public.ai_service_settings USING btree (is_active, is_public) WHERE ((is_active = true) AND (is_public = true));
+
+
+--
+-- Name: idx_ai_service_settings_is_public; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ai_service_settings_is_public ON public.ai_service_settings USING btree (is_public) WHERE (is_public = true);
 
 
 --
@@ -4300,6 +4343,34 @@ ALTER TABLE ONLY public.workout_presets
 ALTER TABLE public.ai_service_settings ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: ai_service_settings ai_service_settings_delete_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY ai_service_settings_delete_policy ON public.ai_service_settings FOR DELETE USING ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin())));
+
+
+--
+-- Name: ai_service_settings ai_service_settings_insert_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY ai_service_settings_insert_policy ON public.ai_service_settings FOR INSERT WITH CHECK ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin())));
+
+
+--
+-- Name: ai_service_settings ai_service_settings_select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY ai_service_settings_select_policy ON public.ai_service_settings FOR SELECT USING (((is_public = true) OR ((is_public = false) AND (user_id = public.current_user_id()))));
+
+
+--
+-- Name: ai_service_settings ai_service_settings_update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY ai_service_settings_update_policy ON public.ai_service_settings FOR UPDATE USING ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin()))) WITH CHECK ((((is_public = false) AND (user_id = public.current_user_id())) OR ((is_public = true) AND public.is_admin())));
+
+
+--
 -- Name: check_in_measurements; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4580,13 +4651,6 @@ CREATE POLICY modify_policy ON public.workout_presets USING ((public.current_use
 --
 
 ALTER TABLE public.mood_entries ENABLE ROW LEVEL SECURITY;
-
---
--- Name: ai_service_settings owner_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY owner_policy ON public.ai_service_settings USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
-
 
 --
 -- Name: api_key owner_policy; Type: POLICY; Schema: public; Owner: -
@@ -5296,6 +5360,13 @@ GRANT ALL ON FUNCTION public.hmac(bytea, bytea, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.hmac(text, text, text) TO sparky_uat;
+
+
+--
+-- Name: FUNCTION is_admin(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.is_admin() TO sparky_uat;
 
 
 --
@@ -6170,5 +6241,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict mmFe3I6PE40bsSY7o0STpSpymGM7H7RF1jRwqceFHFBJGpcbSbj0PHsG0r579Ve
+\unrestrict D86uStvbk2ffljWuy3BtsTa32l05krEalVzQvC8ObUyS4bQL6SK857nLgBzQ3Tl
 

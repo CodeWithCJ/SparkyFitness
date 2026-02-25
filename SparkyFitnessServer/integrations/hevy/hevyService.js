@@ -11,67 +11,17 @@ const {
   ENCRYPTION_KEY,
 } = require("../../security/encryption");
 const { log } = require("../../config/logging");
+const { loadRawBundle } = require("../../utils/diagnosticLogger");
 const hevyDataProcessor = require("./hevyDataProcessor");
 
 const HEVY_API_BASE_URL = "https://api.hevyapp.com";
 
 // Configuration for data mocking/caching
 const HEVY_DATA_SOURCE = process.env.SPARKY_FITNESS_HEVY_DATA_SOURCE || "hevy";
-const SAVE_MOCK_DATA = process.env.SPARKY_FITNESS_SAVE_MOCK_DATA === "true"; // Defaults to false
-const MOCK_DATA_DIR = path.join(__dirname, "..", "..", "mock_data");
-
-// Ensure mock_data directory exists
-if (!fs.existsSync(MOCK_DATA_DIR)) {
-  fs.mkdirSync(MOCK_DATA_DIR, { recursive: true });
-  log("info", `[hevyService] Created mock_data directory at ${MOCK_DATA_DIR}`);
-}
-
 log(
   "info",
   `[hevyService] Hevy data source configured to: ${HEVY_DATA_SOURCE}`,
 );
-
-/**
- * Load data from a local JSON file in the mock_data directory
- * @param {string} filename - Name of the file to load
- * @returns {object|null} - Parsed JSON data or null if file doesn't exist
- */
-function _loadFromLocalFile(filename) {
-  const filepath = path.join(MOCK_DATA_DIR, filename);
-  if (fs.existsSync(filepath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(filepath, "utf8"));
-      log("info", `[hevyService] Data loaded from local file: ${filepath}`);
-      return data;
-    } catch (error) {
-      log(
-        "error",
-        `[hevyService] Error reading mock data file ${filepath}: ${error.message}`,
-      );
-      return null;
-    }
-  }
-  log("warn", `[hevyService] Local file not found: ${filepath}`);
-  return null;
-}
-
-/**
- * Save data to a local JSON file in the mock_data directory
- * @param {string} filename - Name of the file to save
- * @param {object} data - Data to save as JSON
- */
-function _saveToLocalFile(filename, data) {
-  const filepath = path.join(MOCK_DATA_DIR, filename);
-  try {
-    fs.writeFileSync(filepath, JSON.stringify(data, null, 2), "utf8");
-    log("info", `[hevyService] Data saved to local file: ${filepath}`);
-  } catch (error) {
-    log(
-      "error",
-      `[hevyService] Error saving to mock data file ${filepath}: ${error.message}`,
-    );
-  }
-}
 
 /**
  * Get the Hevy API key for a specific provider instance.
@@ -151,6 +101,8 @@ async function getUserInfo(userId, providerId) {
     const response = await axios.get(`${HEVY_API_BASE_URL}/v1/user/info`, {
       headers: { "api-key": apiKey },
     });
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("hevy", "raw_user_info", response.data);
     return response.data;
   } catch (error) {
     log(
@@ -175,6 +127,8 @@ async function getWorkouts(userId, page = 1, pageSize = 10, providerId) {
       headers: { "api-key": apiKey },
       params: { page, page_size: pageSize },
     });
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("hevy", "raw_workouts_page", response.data);
     return response.data;
   } catch (error) {
     log(
@@ -207,6 +161,8 @@ async function getExerciseTemplates(
         params: { page, page_size: pageSize },
       },
     );
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("hevy", "raw_exercise_templates_page", response.data);
     return response.data;
   } catch (error) {
     log(
@@ -238,40 +194,47 @@ async function syncHevyData(
   if (HEVY_DATA_SOURCE === "local") {
     log(
       "info",
-      `[hevyService] Loading Hevy data from local mock file for user ${userId}`,
+      `[hevyService] Replaying Hevy sync from raw diagnostic bundle for user ${userId}`,
     );
-    const mockData = _loadFromLocalFile("hevy_mock_data.json");
+    const bundle = loadRawBundle("hevy");
 
-    if (!mockData) {
+    if (!bundle || !bundle.responses) {
       throw new Error(
-        'Local Hevy mock data file not found. Please run a sync with SPARKY_FITNESS_HEVY_DATA_SOURCE unset (or set to "hevy") ' +
-          "to fetch from live Hevy API and automatically save the data for future local use.",
+        'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_HEVY_DATA_SOURCE unset (or set to "hevy") ' +
+          "and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.",
       );
     }
 
-    log(
-      "info",
-      `[hevyService] Successfully loaded mock data for user ${userId}. Sync date: ${mockData.sync_date || "unknown"}`,
-    );
+    const responses = bundle.responses;
 
     try {
-      const data = mockData.data || {};
+      log("debug", `[hevyService] Processing raw data for ${userId}...`);
 
       // 1. Process user info
-      if (data.userInfo) {
+      if (responses["raw_user_info"]) {
         await hevyDataProcessor.processHevyUserInfo(
           userId,
           createdByUserId,
-          data.userInfo,
+          responses["raw_user_info"].data,
         );
       }
 
-      // 2. Process workouts
-      if (data.workouts && Array.isArray(data.workouts)) {
+      // 2. Process workouts (Look for all pages)
+      const allWorkouts = [];
+      Object.keys(responses).forEach((key) => {
+        if (key.startsWith("raw_workouts_page")) {
+          const pageData = responses[key].data;
+          if (pageData && pageData.workouts) {
+            allWorkouts.push(...pageData.workouts);
+          }
+        }
+      });
+
+      if (allWorkouts.length > 0) {
         await hevyDataProcessor.processHevyWorkouts(
           userId,
           createdByUserId,
-          data.workouts,
+          allWorkouts,
         );
       }
 
@@ -290,18 +253,18 @@ async function syncHevyData(
 
       log(
         "info",
-        `[hevyService] Hevy sync from local cache completed for user ${userId}.`,
+        `[hevyService] Hevy sync from raw bundle completed for user ${userId}.`,
       );
       return {
         success: true,
-        processedCount: (data.workouts || []).length,
-        source: "local_cache",
-        cached_date: mockData.sync_date,
+        processedCount: allWorkouts.length,
+        source: "local_raw_replay",
+        bundle_updated: bundle.last_updated,
       };
     } catch (error) {
       log(
         "error",
-        `[hevyService] Error processing cached Hevy data for user ${userId}:`,
+        `[hevyService] Error replaying Hevy data from raw bundle for user ${userId}:`,
         error.message,
       );
       throw error;
@@ -309,67 +272,65 @@ async function syncHevyData(
   }
 
   try {
-    // 0. Sync user info (measurements)
-    const userInfoData = await getUserInfo(userId, providerId);
-    await hevyDataProcessor.processHevyUserInfo(
-      userId,
-      createdByUserId,
-      userInfoData,
+    // Helper to safely fetch and log raw data without stopping the whole sync
+    async function safeFetch(dataType, fetchFn) {
+      try {
+        const data = await fetchFn();
+        if (data) {
+          const { logRawResponse } = require("../../utils/diagnosticLogger");
+          logRawResponse("hevy", dataType, data);
+        }
+        return data;
+      } catch (error) {
+        log(
+          "warn",
+          `[hevyService] Failed to fetch ${dataType} for user ${userId}: ${error.message}`,
+        );
+        return null;
+      }
+    }
+
+    // 1. Fetch EVERYTHING first (The Safe Phase)
+    log("debug", `[hevyService] Phase 1: Capturing raw API responses...`);
+
+    const userInfoData = await safeFetch("raw_user_info", () =>
+      getUserInfo(userId, providerId),
     );
 
+    const allWorkouts = [];
     let currentPage = 1;
-    let totalProcessed = 0;
     let hasMore = true;
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const allWorkouts = [];
-
     while (hasMore) {
-      log("debug", `Fetching Hevy workouts page ${currentPage}...`);
-      const workoutData = await getWorkouts(
-        userId,
-        currentPage,
-        20,
-        providerId,
+      const pageKey = `raw_workouts_page_${currentPage}`;
+      const workoutPageData = await safeFetch(pageKey, () =>
+        getWorkouts(userId, currentPage, 20, providerId),
       );
-      const workouts = workoutData.workouts || [];
-      const pageCount = workoutData.page_count || 1;
 
-      if (workouts.length === 0) {
+      if (
+        !workoutPageData ||
+        !workoutPageData.workouts ||
+        workoutPageData.workouts.length === 0
+      ) {
         hasMore = false;
         break;
       }
 
-      // Process this page of workouts
-      await hevyDataProcessor.processHevyWorkouts(
-        userId,
-        createdByUserId,
-        workouts,
-      );
-      totalProcessed += workouts.length;
+      const workouts = workoutPageData.workouts;
+      allWorkouts.push(...workouts);
 
-      // Collect for mock data
-      if (SAVE_MOCK_DATA) {
-        allWorkouts.push(...workouts);
-      }
+      const pageCount = workoutPageData.page_count || 1;
 
       // Decision to continue
       if (fullSync) {
-        // Keep going if there are more pages
         hasMore = currentPage < pageCount;
         currentPage++;
       } else {
-        // Incremental sync: check if the oldest workout in this page is within 7 days
-        // Hevy workouts are usually sorted by date desc
-        const oldestWorkoutOnPage = workouts[workouts.length - 1];
-        const oldestTime = new Date(oldestWorkoutOnPage.start_time);
-
+        const oldestWorkout = workouts[workouts.length - 1];
+        const oldestTime = new Date(oldestWorkout.start_time);
         if (oldestTime < sevenDaysAgo) {
-          log(
-            "debug",
-            `Stopping incremental sync: workout date ${oldestTime.toISOString()} is older than 7 days.`,
-          );
           hasMore = false;
         } else {
           hasMore = currentPage < pageCount;
@@ -377,6 +338,27 @@ async function syncHevyData(
         }
       }
     }
+
+    // 2. Process EVERYTHING second (The Action Phase)
+    log("debug", `[hevyService] Phase 2: Processing captured data...`);
+
+    if (userInfoData) {
+      await hevyDataProcessor.processHevyUserInfo(
+        userId,
+        createdByUserId,
+        userInfoData,
+      );
+    }
+
+    if (allWorkouts.length > 0) {
+      await hevyDataProcessor.processHevyWorkouts(
+        userId,
+        createdByUserId,
+        allWorkouts,
+      );
+    }
+
+    const totalProcessed = allWorkouts.length;
 
     // 3. Update last sync time
     const client = await getSystemClient();
@@ -389,20 +371,6 @@ async function syncHevyData(
       );
     } finally {
       client.release();
-    }
-
-    // 4. Save fetched data to mock file
-    if (SAVE_MOCK_DATA) {
-      const mockDataPayload = {
-        user_id: userId,
-        sync_date: moment().format("YYYY-MM-DD HH:mm:ss"),
-        full_sync: fullSync,
-        data: {
-          userInfo: userInfoData,
-          workouts: allWorkouts,
-        },
-      };
-      _saveToLocalFile("hevy_mock_data.json", mockDataPayload);
     }
 
     log(

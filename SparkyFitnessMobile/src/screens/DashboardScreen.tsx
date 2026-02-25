@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
-import { SvgXml } from 'react-native-svg';
+import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation } from '../hooks';
 import OnboardingModal, { shouldShowOnboardingModal } from '../components/OnboardingModal';
 import CalorieRingCard from '../components/CalorieRingCard';
@@ -14,27 +15,6 @@ import { calculateEffectiveBurned, calculateCalorieBalance } from '../services/c
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import HydrationGauge from '../components/HydrationGauge';
 import ExerciseProgressCard from '../components/ExerciseProgressCard';
-
-const buildEmptyStateSvg = (main: string, subtle: string, medium: string, accent: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 746.83 359.73" opacity=".9">
-  <g opacity=".74">
-    <circle fill="${main}" opacity=".77" cx="367.15" cy="168.1" r="168.1"/>
-    <circle fill="none" stroke="${main}" stroke-miterlimit="10" stroke-width="14" cx="657.93" cy="174.83" r="81.9"/>
-    <circle fill="${main}" cx="141.81" cy="313.53" r="13.79"/>
-    <circle fill="${main}" cx="70.73" cy="152.49" r="57.76"/>
-    <circle fill="${main}" cx="499.07" cy="21.56" r="19.83"/>
-    <circle fill="${main}" cx="501.24" cy="324.63" r="21.55"/>
-    <circle fill="${accent}" cx="293.87" cy="278.45" r="12.93"/>
-    <circle fill="${medium}" cx="361.59" cy="283.6" r="23.98"/>
-  </g>
-  <g>
-    <path fill="none" stroke="${main}" stroke-miterlimit="10" stroke-linecap="round" stroke-width="10" opacity=".5" d="M5,248.26c27.51-34.39,81.15-77.71,132.73-3.44"/>
-    <rect fill="${main}" x="495.37" y="105.34" width="224.59" height="65.19" rx="14.44" ry="14.44" transform="translate(46.6 -133.16) rotate(13)"/>
-  </g>
-  <g>
-    <path fill="${main}" d="M341.87,164.2l-21.83-100.16c-3.64-16.69-19.99-27.38-36.74-24.02l-106.7,21.42c-17.14,3.44-28.14,20.26-24.42,37.34l21.83,100.16c3.64,16.69,19.99,27.38,36.74,24.02l106.7-21.42c17.14-3.44,28.14-20.26,24.42-37.34Z"/>
-    <rect fill="${main}" opacity=".69" x="597.85" y="286.15" width="65.52" height="65.52" rx="13.29" ry="13.29" transform="translate(407.82 -351.72) rotate(44.8)"/>
-  </g>
-</svg>`;
 
 interface DashboardScreenProps {
   navigation: { navigate: (screen: string) => void };
@@ -64,6 +44,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     return next > today ? prev : next;
   });
   const goToToday = () => setSelectedDate(getTodayDate());
+
+  const swipeGesture = Gesture.Race(
+    Gesture.Fling().direction(Directions.RIGHT).onEnd(goToPreviousDay).runOnJS(true),
+    Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
+  );
 
   // Check for onboarding on initial mount only
   useEffect(() => {
@@ -108,14 +93,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   ]) as [string, string, string, string, string];
 
   const accentColor = useCSSVariable('--color-accent-primary') as string;
-
-  // Illustration colors (theme-aware)
-  const [illustrationMain, illustrationSubtle, illustrationMedium, illustrationAccent] = useCSSVariable([
-    '--color-progress-track',
-    '--color-border-subtle',
-    '--color-border-strong',
-    '--color-accent-subtle',
-  ]) as [string, string, string, string];
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -204,15 +181,20 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
       >
-        <CalorieRingCard
-          caloriesConsumed={summary.caloriesConsumed}
-          caloriesBurned={totalBurned}
-          calorieGoal={summary.calorieGoal}
-          remainingCalories={remainingCalories}
-          progressPercent={progressPercent}
-        />
+        {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (
+          <CalorieRingCard
+            caloriesConsumed={summary.caloriesConsumed}
+            caloriesBurned={totalBurned}
+            calorieGoal={summary.calorieGoal}
+            remainingCalories={remainingCalories}
+            progressPercent={progressPercent}
+          />
+        )}
         {/* Macros Section - 2x2 grid */}
-        {summary.foodEntries.length > 0 ? (
+        {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 ? (
+          <EmptyDayIllustration />
+        ) : summary.foodEntries.length > 0 ? (
+          
           <View className="flex-row flex-wrap justify-between">
             <MacroCard
               label="Protein"
@@ -243,14 +225,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               overfillColor={progressTrackOverfillColor}
             />
           </View>
-        ) : (
-          <View className="bg-section rounded-xl p-4 mb-2 shadow-sm items-center">
-            <SvgXml xml={buildEmptyStateSvg(illustrationMain, illustrationSubtle, illustrationMedium, illustrationAccent)} width="80%" height={100} />
-            <Text className="text-sm text-text-muted mt-2">No entries recorded for this day</Text>
-          </View>
-        )}
+        ) : null}
 
-        {(summary.exerciseMinutesGoal > 0 || summary.exerciseCaloriesGoal > 0 || summary.exerciseMinutes > 0 || summary.otherExerciseCalories > 0) && (
+        {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0) &&
+          (summary.exerciseMinutesGoal > 0 || summary.exerciseCaloriesGoal > 0 || summary.exerciseMinutes > 0 || summary.otherExerciseCalories > 0) && (
           <ExerciseProgressCard
             exerciseMinutes={summary.exerciseMinutes}
             exerciseMinutesGoal={summary.exerciseMinutesGoal}
@@ -281,24 +259,26 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-canvas">
-      {!isConnectionLoading && isConnected && (
-        <DateNavigator
-          title="Dashboard"
-          selectedDate={selectedDate}
-          onPreviousDay={goToPreviousDay}
-          onNextDay={goToNextDay}
-          onToday={goToToday}
-        />
-      )}
-      {renderContent()}
+    <GestureDetector gesture={swipeGesture}>
+      <View className="flex-1 bg-background">
+        {!isConnectionLoading && isConnected && (
+          <DateNavigator
+            title="Dashboard"
+            selectedDate={selectedDate}
+            onPreviousDay={goToPreviousDay}
+            onNextDay={goToNextDay}
+            onToday={goToToday}
+          />
+        )}
+        {renderContent()}
 
-      <OnboardingModal
-        visible={showOnboardingModal}
-        onGoToSettings={handleOnboardingGoToSettings}
-        onDismiss={handleOnboardingDismiss}
-      />
-    </View>
+        <OnboardingModal
+          visible={showOnboardingModal}
+          onGoToSettings={handleOnboardingGoToSettings}
+          onDismiss={handleOnboardingDismiss}
+        />
+      </View>
+    </GestureDetector>
   );
 };
 

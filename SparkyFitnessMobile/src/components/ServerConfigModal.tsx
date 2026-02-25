@@ -57,14 +57,14 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
           bounces={false}
         >
-          <View className="w-full max-w-90 rounded-2xl p-6 bg-section shadow-sm">
+          <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm">
             <Text className="text-[22px] font-bold mb-5 text-center text-text-primary">
               {isEditing ? 'Edit Configuration' : 'Add Configuration'}
             </Text>
 
             <View className="mb-3">
               <Text className="text-sm mb-2 text-text-secondary">Server URL</Text>
-              <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-card">
+              <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
                 <TextInput
                   className="flex-1 p-2.5 text-base text-text-primary"
                   placeholder="https://your-server-url.com"
@@ -88,7 +88,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
             <View className="mb-5">
               <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
-              <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-card">
+              <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
                 <TextInput
                   className="flex-1 p-2.5 text-base text-text-primary"
                   placeholder="Uds3d8i..."

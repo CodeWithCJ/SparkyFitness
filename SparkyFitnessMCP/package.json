@@ -1,0 +1,35 @@
+{
+  "name": "sparky-fitness-mcp",
+  "version": "1.0.0",
+  "description": "Custom MCP Server for SparkyFitness",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "sparky-fitness",
+    "ai"
+  ],
+  "author": "CodewithCJ",
+  "license": "Refer to License.md",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "pg": "^8.11.0",
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.1.3",
+    "@types/node": "^20.3.1",
+    "@types/pg": "^8.10.2",
+    "@types/express": "^4.17.17",
+    "@types/cors": "^2.8.13",
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.19.2"
+  }
+}

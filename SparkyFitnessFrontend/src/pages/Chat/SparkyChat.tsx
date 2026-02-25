@@ -11,7 +11,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import SparkyChatInterface from './SparkyChatInterface';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
-import { getAIServices } from '@/services/aiServiceSettingsService';
+import { getAIServices } from '@/api/Settings/aiServiceSettingsService';
 
 const SparkyChat = () => {
   const { user, loading } = useAuth(); // Get loading state from useAuth

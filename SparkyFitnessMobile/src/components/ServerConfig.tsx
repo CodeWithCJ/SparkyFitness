@@ -45,10 +45,10 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
   onCloseModal,
   isEditing,
 }) => {
-  const [success, successBackground, accentMuted] = useCSSVariable([
+  const [success, successBackground, accentPrimary] = useCSSVariable([
     '--color-text-success',
     '--color-bg-success',
-    '--color-accent-muted'
+    '--color-accent-primary'
   ]) as [string, string, string];
 
   const showConfigMenu = (item: ServerConfigType) => {
@@ -68,7 +68,7 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
   return (
     <View>
       {/* Server Configuration */}
-      <View className="bg-section rounded-xl p-4 mb-4 shadow-sm">
+      <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
         <View className="flex-row justify-between items-center mb-3">
           <Text className="text-lg font-bold text-text-primary">Server Configuration</Text>
           <ConnectionStatus
@@ -114,10 +114,10 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
           className="flex-row items-center mt-2 py-1"
           style={{ opacity: activeConfigId ? 1 : 0.4 }}
         >
-          <Icon name="globe" size={20} color={activeConfigId ? accentMuted : '#999'} />
+          <Icon name="globe" size={20} color={activeConfigId ? accentPrimary : '#999'} />
           <Text
             className="ml-2 text-base font-medium"
-            style={{ color: activeConfigId ? accentMuted : '#999' }}
+            style={{ color: activeConfigId ? accentPrimary : '#999' }}
           >
             Open Web Dashboard
           </Text>
@@ -128,8 +128,8 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
           accessibilityRole="button"
           className="flex-row items-center mt-2 py-1"
         >
-          <Icon name="add" size={24} color={accentMuted} />
-          <Text className="ml-2 text-base font-medium" style={{ color: accentMuted }}>Add Server</Text>
+          <Icon name="add" size={24} color={accentPrimary} />
+          <Text className="ml-2 text-base font-medium" style={{ color: accentPrimary }}>Add Server</Text>
         </TouchableOpacity>
       </View>
 

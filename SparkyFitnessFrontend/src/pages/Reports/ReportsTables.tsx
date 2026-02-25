@@ -22,7 +22,7 @@ import {
 } from '@/utils/nutrientUtils';
 import { formatWeight } from '@/utils/numberFormatting';
 import type { UserCustomNutrient } from '@/types/customNutrient';
-import type { DailyFoodEntry as BaseDailyFoodEntry } from '@/services/reportsService';
+import type { DailyFoodEntry as BaseDailyFoodEntry } from '@/api/Reports/reportsService';
 
 interface DailyFoodEntry extends BaseDailyFoodEntry {
   isTotal?: boolean;

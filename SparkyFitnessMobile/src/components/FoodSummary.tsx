@@ -184,7 +184,7 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
 const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries }) => {
   if (foodEntries.length === 0) {
     return (
-      <View className="bg-section rounded-xl p-4 mt-2 shadow-sm items-center py-6">
+      <View className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
         <Text className="text-text-muted text-base">No food entries yet</Text>
       </View>
     );
@@ -193,7 +193,7 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries }) => {
   const grouped = groupByMealType(foodEntries);
 
   return (
-    <View className="bg-section rounded-xl p-4 my-2 gap-6 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 my-2 gap-6 shadow-sm">
       {MEAL_TYPES.map((mealType, index) => (
         <React.Fragment key={mealType}>
           <MealSection mealType={mealType} entries={grouped[mealType]} />

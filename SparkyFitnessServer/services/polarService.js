@@ -1,269 +1,381 @@
 // SparkyFitnessServer/services/polarService.js
 
-const { log } = require('../config/logging');
-const polarIntegrationService = require('../integrations/polar/polarService');
-const polarDataProcessor = require('../integrations/polar/polarDataProcessor');
-const { getSystemClient } = require('../db/poolManager');
-const moment = require('moment');
-const fs = require('fs');
-const path = require('path');
+const { log } = require("../config/logging");
+const polarIntegrationService = require("../integrations/polar/polarService");
+const polarDataProcessor = require("../integrations/polar/polarDataProcessor");
+const { getSystemClient } = require("../db/poolManager");
+const moment = require("moment");
+const fs = require("fs");
+const path = require("path");
+
+const { loadRawBundle } = require("../utils/diagnosticLogger");
 
 // Configuration for data mocking/caching
-const POLAR_DATA_SOURCE = process.env.SPARKY_FITNESS_POLAR_DATA_SOURCE || 'polar';
-const SAVE_MOCK_DATA = process.env.SPARKY_FITNESS_SAVE_MOCK_DATA === 'true'; // Defaults to false
-const MOCK_DATA_DIR = path.join(__dirname, '..', 'mock_data');
-
-// Ensure mock_data directory exists
-if (!fs.existsSync(MOCK_DATA_DIR)) {
-    fs.mkdirSync(MOCK_DATA_DIR, { recursive: true });
-    log('info', `[polarService] Created mock_data directory at ${MOCK_DATA_DIR}`);
-}
-
-log('info', `[polarService] Polar data source configured to: ${POLAR_DATA_SOURCE}`);
-
-/**
- * Load data from a local JSON file in the mock_data directory
- * @param {string} filename - Name of the file to load
- * @returns {object|null} - Parsed JSON data or null if file doesn't exist
- */
-function _loadFromLocalFile(filename) {
-    const filepath = path.join(MOCK_DATA_DIR, filename);
-    if (fs.existsSync(filepath)) {
-        try {
-            const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
-            log('info', `[polarService] Data loaded from local file: ${filepath}`);
-            return data;
-        } catch (error) {
-            log('error', `[polarService] Error reading mock data file ${filepath}: ${error.message}`);
-            return null;
-        }
-    }
-    log('warn', `[polarService] Local file not found: ${filepath}`);
-    return null;
-}
-
-/**
- * Save data to a local JSON file in the mock_data directory
- * @param {string} filename - Name of the file to save
- * @param {object} data - Data to save as JSON
- */
-function _saveToLocalFile(filename, data) {
-    const filepath = path.join(MOCK_DATA_DIR, filename);
-    try {
-        fs.writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf8');
-        log('info', `[polarService] Data saved to local file: ${filepath}`);
-    } catch (error) {
-        log('error', `[polarService] Error saving to mock data file ${filepath}: ${error.message}`);
-    }
-}
+const POLAR_DATA_SOURCE =
+  process.env.SPARKY_FITNESS_POLAR_DATA_SOURCE || "polar";
+log(
+  "info",
+  `[polarService] Polar data source configured to: ${POLAR_DATA_SOURCE}`,
+);
 
 /**
  * Orchestrate a full Polar data sync for a user
  * @param {number} userId - The ID of the user to sync data for
  * @param {string} syncType - 'manual' or 'scheduled'
  */
-async function syncPolarData(userId, syncType = 'manual', providerId) {
-    log('info', `[polarService] Starting Polar sync (${syncType}) for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ''}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`);
+async function syncPolarData(userId, syncType = "manual", providerId) {
+  log(
+    "info",
+    `[polarService] Starting Polar sync (${syncType}) for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ""}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`,
+  );
 
-    // Check if we should load from local mock data
-    if (POLAR_DATA_SOURCE === 'local') {
-        log('info', `[polarService] Loading Polar data from local mock file for user ${userId}`);
-        const mockData = _loadFromLocalFile('polar_mock_data.json');
+  if (POLAR_DATA_SOURCE === "local") {
+    log(
+      "info",
+      `[polarService] Replaying Polar sync from raw diagnostic bundle for user ${userId}`,
+    );
+    const bundle = loadRawBundle("polar");
 
-        if (!mockData) {
-            throw new Error(
-                'Local mock data file not found. Please run a sync with SPARKY_FITNESS_POLAR_DATA_SOURCE unset (or set to "polar") ' +
-                'to fetch from live Polar API and automatically save the data for future local use.'
-            );
-        }
-
-        log('info', `[polarService] Successfully loaded mock data for user ${userId}. Sync date: ${mockData.sync_date || 'unknown'}`);
-
-        const cachedData = mockData.data || {};
-
-        try {
-            // Process cached data
-            log('debug', `[polarService] Processing cached data for ${userId}...`);
-            if (cachedData.physicalInfo) {
-                await polarDataProcessor.processPolarPhysicalInfo(userId, userId, cachedData.physicalInfo);
-            }
-            if (cachedData.exercises) {
-                await polarDataProcessor.processPolarExercises(userId, userId, cachedData.exercises);
-            }
-            if (cachedData.activities) {
-                await polarDataProcessor.processPolarActivity(userId, userId, cachedData.activities);
-            }
-            if (cachedData.sleep) {
-                await polarDataProcessor.processPolarSleep(userId, userId, cachedData.sleep);
-            }
-            if (cachedData.nightlyRecharge) {
-                await polarDataProcessor.processPolarNightlyRecharge(userId, userId, cachedData.nightlyRecharge);
-            }
-
-            // Update last_sync_at
-            const client = await getSystemClient();
-            try {
-                const updateQuery = providerId
-                    ? { text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE id = $1 AND user_id = $2`, values: [providerId, userId] }
-                    : { text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'`, values: [userId] };
-
-                await client.query(updateQuery.text, updateQuery.values);
-            } finally {
-                client.release();
-            }
-
-            log('info', `[polarService] Polar sync from local cache completed for user ${userId}.`);
-            return { success: true, source: 'local_cache', cached_date: mockData.sync_date };
-        } catch (error) {
-            log('error', `[polarService] Error processing cached Polar data for user ${userId}:`, error.message);
-            throw error;
-        }
+    if (!bundle || !bundle.responses) {
+      throw new Error(
+        'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_POLAR_DATA_SOURCE unset (or set to "polar") ' +
+          "and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.",
+      );
     }
+
+    const responses = bundle.responses;
 
     try {
-        log('info', `[polarService] Fetching live Polar data for user ${userId}`);
+      // Process physical info (collection and individual items)
+      const allPhysicalInfo = [];
+      if (responses["raw_physical_info_list"]) {
+        allPhysicalInfo.push(...responses["raw_physical_info_list"].data);
+      }
+      Object.keys(responses).forEach((key) => {
+        if (key.startsWith("raw_physical_info_item_")) {
+          allPhysicalInfo.push(responses[key].data);
+        }
+      });
+      // Legacy support for older bundles
+      if (responses["raw_physical_info_item"] && allPhysicalInfo.length === 0) {
+        allPhysicalInfo.push(responses["raw_physical_info_item"].data);
+      }
 
-        // Get access token and external user ID
-        const { accessToken, externalUserId } = await polarIntegrationService.getValidAccessToken(userId, providerId);
+      if (allPhysicalInfo.length > 0) {
+        await polarDataProcessor.processPolarPhysicalInfo(
+          userId,
+          userId,
+          allPhysicalInfo,
+        );
+      }
 
-        // Fetch data
-        // Fetch data
-        const physicalInfo = await polarIntegrationService.fetchPhysicalInfo(userId, externalUserId, accessToken);
+      // Process exercises
+      const allExercises = [];
+      if (responses["raw_exercises_recent"]) {
+        allExercises.push(...responses["raw_exercises_recent"].data);
+      }
+      Object.keys(responses).forEach((key) => {
+        if (key.startsWith("raw_exercise_item_")) {
+          allExercises.push(responses[key].data);
+        }
+      });
+      // Legacy support
+      if (responses["raw_exercise_item"] && allExercises.length === 0) {
+        allExercises.push(responses["raw_exercise_item"].data);
+      }
 
-        // Transactional fetch for Exercises and Daily Activity
-        const newExercises = await polarIntegrationService.fetchExercises(userId, externalUserId, accessToken);
-        const newActivities = await polarIntegrationService.fetchDailyActivity(userId, externalUserId, accessToken);
+      if (allExercises.length > 0) {
+        await polarDataProcessor.processPolarExercises(
+          userId,
+          userId,
+          allExercises,
+        );
+      }
 
-        let allExercises = [...newExercises];
-        let allActivities = [...newActivities];
+      // Process activities
+      const allActivities = [];
+      if (responses["raw_activity_list"]) {
+        allActivities.push(...responses["raw_activity_list"].data);
+      }
+      Object.keys(responses).forEach((key) => {
+        if (key.startsWith("raw_activity_item_")) {
+          allActivities.push(responses[key].data);
+        }
+      });
+      // Legacy support
+      if (responses["raw_activity_item"] && allActivities.length === 0) {
+        allActivities.push(responses["raw_activity_item"].data);
+      }
 
-        // If manual sync, also fetch recent history (List API) to fill gaps
-        if (syncType === 'manual') {
-            log('info', `[polarService] Manual sync requested. Fetching recent history (List API) for user ${userId}.`);
+      if (allActivities.length > 0) {
+        await polarDataProcessor.processPolarActivity(
+          userId,
+          userId,
+          allActivities,
+        );
+      }
 
-            const recentExercises = await polarIntegrationService.fetchRecentExercises(userId, accessToken);
-            if (recentExercises.length > 0) {
-                // Deduplicate based on 'id' if possible, or just concat and let processor handle
-                // Processor uses start_time to delete duplicates for that day, so it should be safe.
-                allExercises = [...allExercises, ...recentExercises];
+      if (responses["raw_sleep_list"]) {
+        await polarDataProcessor.processPolarSleep(
+          userId,
+          userId,
+          responses["raw_sleep_list"].data,
+        );
+      } else if (responses["raw_sleep"]) {
+        await polarDataProcessor.processPolarSleep(
+          userId,
+          userId,
+          responses["raw_sleep"].data,
+        );
+      }
+
+      if (responses["raw_nightly_recharge"]) {
+        await polarDataProcessor.processPolarNightlyRecharge(
+          userId,
+          userId,
+          responses["raw_nightly_recharge"].data,
+        );
+      }
+
+      // Update last_sync_at
+      const client = await getSystemClient();
+      try {
+        const updateQuery = providerId
+          ? {
+              text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE id = $1 AND user_id = $2`,
+              values: [providerId, userId],
             }
+          : {
+              text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'`,
+              values: [userId],
+            };
 
-            const recentActivities = await polarIntegrationService.fetchRecentDailyActivity(userId, accessToken);
-            if (recentActivities.length > 0) {
-                allActivities = [...allActivities, ...recentActivities];
-            }
+        await client.query(updateQuery.text, updateQuery.values);
+      } finally {
+        client.release();
+      }
 
-            // Also fetch User Profile to get current weight/height if we missed the transaction
-            const userProfile = await polarIntegrationService.fetchUserProfile(userId, externalUserId, accessToken);
-            if (userProfile && (physicalInfo || []).length === 0) {
-                // Synthesize a physical info object from the profile
-                // Profile has: weight, height, registration-date
-                // We'll use "today" as the date for the check-in if we don't have a better one? 
-                // Or maybe the registration date? 
-                // Using current date is better for "current weight".
-                // But let's check if the values are non-zero.
-                if (userProfile.weight || userProfile.height) {
-                    const synthesizedInfo = {
-                        weight: userProfile.weight,
-                        height: userProfile.height,
-                        created: new Date().toISOString() // Treat as current/today
-                    };
-                    physicalInfo.push(synthesizedInfo);
-                    log('info', `[polarService] Added current user profile weight/height to physical info processing.`);
-                }
-            }
-        }
-
-        // Fetch Sleep and Nightly Recharge (non-transactional, but we pull recent data)
-        const newSleep = await polarIntegrationService.fetchRecentSleepData(userId, accessToken);
-        const newRecharge = await polarIntegrationService.fetchRecentNightlyRecharge(userId, accessToken);
-
-        // Remove duplicates from arrays before processing?
-        // Simple distinct by ID for exercises:
-        allExercises = Array.from(new Map(allExercises.map(ex => [ex.id, ex])).values());
-        // Simple distinct by date for activities:
-        allActivities = Array.from(new Map(allActivities.map(act => [act.date, act])).values());
-
-        // Process data
-        if (physicalInfo && physicalInfo.length > 0) {
-            await polarDataProcessor.processPolarPhysicalInfo(userId, userId, physicalInfo);
-        }
-
-        if (allExercises && allExercises.length > 0) {
-            await polarDataProcessor.processPolarExercises(userId, userId, allExercises);
-        } else {
-            log('info', `[polarService] No Polar exercise data (transaction or recent list) found for user ${userId}.`);
-        }
-
-        if (allActivities && allActivities.length > 0) {
-            await polarDataProcessor.processPolarActivity(userId, userId, allActivities);
-        }
-
-        if (newSleep && newSleep.length > 0) {
-            await polarDataProcessor.processPolarSleep(userId, userId, newSleep);
-        }
-
-        if (newRecharge && newRecharge.length > 0) {
-            await polarDataProcessor.processPolarNightlyRecharge(userId, userId, newRecharge);
-        }
-
-        // Update last_sync_at
-        const client = await getSystemClient();
-        try {
-            const updateQuery = providerId
-                ? { text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE id = $1 AND user_id = $2`, values: [providerId, userId] }
-                : { text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'`, values: [userId] };
-
-            await client.query(updateQuery.text, updateQuery.values);
-        } finally {
-            client.release();
-        }
-
-        // Save mock data if enabled
-        const mockDataPayload = {
-            user_id: userId,
-            sync_date: moment().format('YYYY-MM-DD HH:mm:ss'),
-            sync_type: syncType,
-            data: {
-                physicalInfo: physicalInfo,
-                exercises: allExercises,
-                activities: allActivities,
-                sleep: newSleep,
-                nightlyRecharge: newRecharge
-            }
-        };
-
-        if (SAVE_MOCK_DATA) {
-            _saveToLocalFile('polar_mock_data.json', mockDataPayload);
-        }
-
-        log('info', `[polarService] Full Polar live sync completed for user ${userId}.`);
-        return { success: true, source: 'live_api' };
+      log(
+        "info",
+        `[polarService] Polar sync from raw bundle completed for user ${userId}.`,
+      );
+      return {
+        success: true,
+        source: "local_raw_replay",
+        bundle_updated: bundle.last_updated,
+      };
     } catch (error) {
-        log('error', `[polarService] Error during full Polar sync for user ${userId}:`, error.message);
-        throw error;
+      log(
+        "error",
+        `[polarService] Error replaying Polar data from raw bundle for user ${userId}:`,
+        error.message,
+      );
+      throw error;
     }
+  }
+
+  try {
+    log("info", `[polarService] Fetching live Polar data for user ${userId}`);
+
+    // Get access token and external user ID
+    const { accessToken, externalUserId } =
+      await polarIntegrationService.getValidAccessToken(userId, providerId);
+
+    // Helper to safely fetch raw data (logging is handled inside the integration methods)
+    async function safeFetch(dataType, fetchFn) {
+      try {
+        return await fetchFn();
+      } catch (error) {
+        log(
+          "warn",
+          `[polarService] Failed to fetch ${dataType} for user ${userId}: ${error.message}`,
+        );
+        return null;
+      }
+    }
+
+    // 1. Fetch EVERYTHING first (The Safe Phase)
+    log("debug", `[polarService] Phase 1: Capturing raw API responses...`);
+
+    const physicalInfo =
+      (await safeFetch("physical_info", () =>
+        polarIntegrationService.fetchPhysicalInfo(
+          userId,
+          externalUserId,
+          accessToken,
+        ),
+      )) || [];
+
+    const newExercises =
+      (await safeFetch("exercises_transaction", () =>
+        polarIntegrationService.fetchExercises(
+          userId,
+          externalUserId,
+          accessToken,
+        ),
+      )) || [];
+
+    const newActivities =
+      (await safeFetch("activities_transaction", () =>
+        polarIntegrationService.fetchDailyActivity(
+          userId,
+          externalUserId,
+          accessToken,
+        ),
+      )) || [];
+
+    let allExercises = [...newExercises];
+    let allActivities = [...newActivities];
+
+    if (syncType === "manual") {
+      log(
+        "info",
+        `[polarService] Manual sync: Fetching recent history for user ${userId}.`,
+      );
+
+      const recentExercises = await safeFetch("exercises_recent", () =>
+        polarIntegrationService.fetchRecentExercises(userId, accessToken),
+      );
+      if (recentExercises) allExercises = [...allExercises, ...recentExercises];
+
+      const recentActivities = await safeFetch("activities_recent", () =>
+        polarIntegrationService.fetchRecentDailyActivity(userId, accessToken),
+      );
+      if (recentActivities)
+        allActivities = [...allActivities, ...recentActivities];
+
+      const userProfile = await safeFetch("user_profile", () =>
+        polarIntegrationService.fetchUserProfile(
+          userId,
+          externalUserId,
+          accessToken,
+        ),
+      );
+
+      if (userProfile && physicalInfo.length === 0) {
+        if (userProfile.weight || userProfile.height) {
+          physicalInfo.push({
+            weight: userProfile.weight,
+            height: userProfile.height,
+            created: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    const newSleep = await safeFetch("sleep_recent", () =>
+      polarIntegrationService.fetchRecentSleepData(userId, accessToken),
+    );
+
+    const newRecharge = await safeFetch("nightly_recharge", () =>
+      polarIntegrationService.fetchRecentNightlyRecharge(userId, accessToken),
+    );
+
+    // 2. Process EVERYTHING second (The Action Phase)
+    log("debug", `[polarService] Phase 2: Processing captured data...`);
+
+    // Remove duplicates before processing
+    allExercises = Array.from(
+      new Map(allExercises.map((ex) => [ex.id, ex])).values(),
+    );
+    allActivities = Array.from(
+      new Map(allActivities.map((act) => [act.date, act])).values(),
+    );
+
+    // Process data
+    if (physicalInfo && physicalInfo.length > 0) {
+      await polarDataProcessor.processPolarPhysicalInfo(
+        userId,
+        userId,
+        physicalInfo,
+      );
+    }
+
+    if (allExercises && allExercises.length > 0) {
+      await polarDataProcessor.processPolarExercises(
+        userId,
+        userId,
+        allExercises,
+      );
+    } else {
+      log(
+        "info",
+        `[polarService] No Polar exercise data (transaction or recent list) found for user ${userId}.`,
+      );
+    }
+
+    if (allActivities && allActivities.length > 0) {
+      await polarDataProcessor.processPolarActivity(
+        userId,
+        userId,
+        allActivities,
+      );
+    }
+
+    if (newSleep && newSleep.length > 0) {
+      await polarDataProcessor.processPolarSleep(userId, userId, newSleep);
+    }
+
+    if (newRecharge && newRecharge.length > 0) {
+      await polarDataProcessor.processPolarNightlyRecharge(
+        userId,
+        userId,
+        newRecharge,
+      );
+    }
+
+    // Update last_sync_at
+    const client = await getSystemClient();
+    try {
+      const updateQuery = providerId
+        ? {
+            text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE id = $1 AND user_id = $2`,
+            values: [providerId, userId],
+          }
+        : {
+            text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'`,
+            values: [userId],
+          };
+
+      await client.query(updateQuery.text, updateQuery.values);
+    } finally {
+      client.release();
+    }
+
+    log(
+      "info",
+      `[polarService] Full Polar live sync completed for user ${userId}.`,
+    );
+    return { success: true, source: "live_api" };
+  } catch (error) {
+    log(
+      "error",
+      `[polarService] Error during full Polar sync for user ${userId}:`,
+      error.message,
+    );
+    throw error;
+  }
 }
 
 /**
  * Get Polar connection status
- * @param {number} userId 
+ * @param {number} userId
  */
 async function getStatus(userId, providerId) {
-    return await polarIntegrationService.getStatus(userId, providerId);
+  return await polarIntegrationService.getStatus(userId, providerId);
 }
 
 /**
  * Disconnect Polar provider
- * @param {number} userId 
+ * @param {number} userId
  * @param {string} providerId
  */
 async function disconnectPolar(userId, providerId) {
-    return await polarIntegrationService.disconnectPolar(userId, providerId);
+  return await polarIntegrationService.disconnectPolar(userId, providerId);
 }
 
 module.exports = {
-    syncPolarData,
-    getStatus,
-    disconnectPolar
+  syncPolarData,
+  getStatus,
+  disconnectPolar,
 };

@@ -21,10 +21,10 @@ interface SleepAnalyticsTableProps {
   onExport: (data: CombinedSleepData[]) => void;
 }
 
-const SleepAnalyticsTable: React.FC<SleepAnalyticsTableProps> = ({
+const SleepAnalyticsTable = ({
   combinedSleepData,
   onExport,
-}) => {
+}: SleepAnalyticsTableProps) => {
   const { t } = useTranslation();
   const loggingLevel = getUserLoggingLevel();
   debug(

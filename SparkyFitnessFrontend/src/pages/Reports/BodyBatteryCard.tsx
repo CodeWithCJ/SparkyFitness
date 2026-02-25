@@ -15,20 +15,11 @@ import { Battery } from 'lucide-react';
 import type {
   CustomCategory,
   CustomMeasurementData,
-} from '@/services/reportsService';
+} from '@/api/Reports/reportsService';
 import BodyBatteryGauge from './BodyBatteryGauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
-
-// Body Battery metric names as they come from Garmin sync
-const BODY_BATTERY_METRICS = [
-  'Body Battery Highest',
-  'Body Battery Lowest',
-  'Body Battery At Wake',
-  'Body Battery Charged',
-  'Body Battery Drained',
-  'Body Battery Current',
-];
+import { BODY_BATTERY_METRICS } from '@/constants/reports';
 
 interface BodyBatteryCardProps {
   categories: CustomCategory[];

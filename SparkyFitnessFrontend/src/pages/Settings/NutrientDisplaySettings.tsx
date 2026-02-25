@@ -5,9 +5,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { apiCall } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import {
+  useResetNutrientPreferenceMutation,
+  useUpdateNutrientPreferenceMutation,
+} from '@/hooks/Settings/useNutrientPreferences';
 
 const baseNutrients = [
   'calories',
@@ -57,7 +60,9 @@ const NutrientDisplaySettings: React.FC = () => {
     useState<string>('summary');
 
   const { data: customNutrients } = useCustomNutrients();
-
+  const { mutateAsync: updatePreference } =
+    useUpdateNutrientPreferenceMutation();
+  const { mutateAsync: resetPreference } = useResetNutrientPreferenceMutation();
   const allNutrients = [
     ...baseNutrients,
     ...customNutrients.map((n) => n.name),
@@ -96,13 +101,11 @@ const NutrientDisplaySettings: React.FC = () => {
 
     for (const pref of changedPreferences) {
       try {
-        await apiCall(
-          `/preferences/nutrient-display/${pref.view_group}/${pref.platform}`,
-          {
-            method: 'PUT',
-            body: JSON.stringify({ visible_nutrients: pref.visible_nutrients }),
-          }
-        );
+        await updatePreference({
+          viewGroup: pref.view_group,
+          platform: pref.platform,
+          visibleNutrients: pref.visible_nutrients,
+        });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         toast({
@@ -157,7 +160,7 @@ const NutrientDisplaySettings: React.FC = () => {
         (p) => p.view_group === viewGroup && p.platform === pform
       );
       const currentNutrients = pref ? pref.visible_nutrients : [];
-      let newNutrients;
+      let newNutrients: string[];
       if (checked) {
         newNutrients = [...currentNutrients, nutrient];
       } else {
@@ -204,10 +207,10 @@ const NutrientDisplaySettings: React.FC = () => {
 
     for (const pform of platformsToReset) {
       try {
-        const defaultPreference = await apiCall(
-          `/preferences/nutrient-display/${viewGroup}/${pform}`,
-          { method: 'DELETE' }
-        );
+        const defaultPreference = await resetPreference({
+          viewGroup,
+          platform: pform,
+        });
         if (defaultPreference && defaultPreference.visible_nutrients) {
           updatePreferences(
             viewGroup,

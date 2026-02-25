@@ -17,7 +17,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
-import { isUUID } from '@/services/enhancedCustomFoodFormService';
+import { isUUID } from '@/api/Foods/enhancedCustomFoodFormService';
 import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
 import { useUpdateFoodEntriesSnapshotMutation } from '@/hooks/Foods/useFoods';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';

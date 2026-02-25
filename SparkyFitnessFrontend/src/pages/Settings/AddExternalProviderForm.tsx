@@ -1,4 +1,3 @@
-import type React from 'react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,38 +10,64 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Save, X, Clipboard } from 'lucide-react';
+import { Plus, Save, X } from 'lucide-react';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
-import { apiCall } from '@/services/api';
-import { syncHevyData } from '@/api/Integrations/integrations';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import {
+  useConnectFitbitMutation,
+  useConnectPolarMutation,
+  useConnectStravaMutation,
+  useConnectWithingsMutation,
+  useLoginGarminMutation,
+  useSyncHevyMutation,
+} from '@/hooks/Integrations/useIntegrations';
+import { useCreateExternalProviderMutation } from '@/hooks/Settings/useExternalProviderSettings';
+import { getProviderTypes, validateProvider } from '@/utils/settings';
+import { ProviderSpecificFields } from './ProviderSpecificFields';
 
 interface AddExternalProviderFormProps {
   showAddForm: boolean;
   setShowAddForm: (show: boolean) => void;
-  loading: boolean;
-  getProviderTypes: () => { value: string; label: string }[];
   onAddSuccess: () => void;
-  handleConnectWithings: (providerId: string) => Promise<void>;
-  handleConnectFitbit: (providerId: string) => Promise<void>;
-  handleConnectPolar: (providerId: string) => Promise<void>;
   onGarminMfaRequired: (clientState: string) => void; // New prop for MFA handling
 }
 
-const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
+const AddExternalProviderForm = ({
   showAddForm,
   setShowAddForm,
-  loading,
-  getProviderTypes,
   onAddSuccess,
-  handleConnectWithings,
-  handleConnectFitbit,
-  handleConnectPolar,
   onGarminMfaRequired,
-}) => {
+}: AddExternalProviderFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { mutateAsync: syncHevyData, isPending: isSyncingHevy } =
+    useSyncHevyMutation();
+  const { mutateAsync: loginGarmin, isPending: isLoggingInGarmin } =
+    useLoginGarminMutation();
+  const { mutateAsync: createExternalProvider, isPending: isCreatingProvider } =
+    useCreateExternalProviderMutation();
+
+  const { mutateAsync: handleConnectFitbit, isPending: isConnectingFitbit } =
+    useConnectFitbitMutation();
+  const { mutateAsync: handleConnectPolar, isPending: isConnectingPolar } =
+    useConnectPolarMutation();
+  const { mutateAsync: handleConnectStrava, isPending: isConnectingStrava } =
+    useConnectStravaMutation();
+  const {
+    mutateAsync: handleConnectWithings,
+    isPending: isConnectingWithings,
+  } = useConnectWithingsMutation();
+
+  const isAnyIntegrationPending =
+    isSyncingHevy ||
+    isLoggingInGarmin ||
+    isCreatingProvider ||
+    isConnectingFitbit ||
+    isConnectingPolar ||
+    isConnectingStrava ||
+    isConnectingWithings;
+
   const [newProvider, setNewProvider] = useState<Partial<ExternalDataProvider>>(
     {
       provider_name: '',
@@ -60,6 +85,12 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
   );
   const [fullSyncOnConnect, setFullSyncOnConnect] = useState(false);
 
+  const connectionHandlers: Record<string, (id: string) => Promise<void>> = {
+    withings: () => handleConnectWithings(),
+    fitbit: () => handleConnectFitbit(),
+    polar: (id) => handleConnectPolar(id),
+    strava: () => handleConnectStrava(),
+  };
   const handleAddProvider = async () => {
     if (!user) {
       toast({
@@ -69,161 +100,71 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
       });
       return;
     }
-    if (!newProvider.provider_name) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in the provider name',
-        variant: 'destructive',
-      });
-      return;
-    }
 
-    if (
-      newProvider.provider_type === 'mealie' ||
-      newProvider.provider_type === 'tandoor'
-    ) {
-      if (!newProvider.base_url || !newProvider.app_key) {
-        toast({
-          title: 'Error',
-          description: `Please provide App URL and API Key for ${newProvider.provider_type === 'mealie' ? 'Mealie' : 'Tandoor'}`,
-          variant: 'destructive',
-        });
-        return;
-      }
-    } else if (
-      (newProvider.provider_type === 'nutritionix' ||
-        newProvider.provider_type === 'fatsecret') &&
-      (!newProvider.app_id || !newProvider.app_key)
-    ) {
+    const validationError = validateProvider(newProvider);
+    if (validationError) {
       toast({
         title: 'Error',
-        description: `Please provide App ID and App Key for ${newProvider.provider_type}`,
-        variant: 'destructive',
-      });
-      return;
-    } else if (newProvider.provider_type === 'withings') {
-      if (!newProvider.app_id || !newProvider.app_key) {
-        toast({
-          title: 'Error',
-          description: `Please provide Client ID and Client Secret for ${newProvider.provider_type}`,
-          variant: 'destructive',
-        });
-        return;
-      }
-    } else if (newProvider.provider_type === 'fitbit') {
-      if (!newProvider.app_id || !newProvider.app_key) {
-        toast({
-          title: 'Error',
-          description: `Please provide Client ID and Client Secret for ${newProvider.provider_type}`,
-          variant: 'destructive',
-        });
-        return;
-      }
-    } else if (newProvider.provider_type === 'garmin') {
-      if (!newProvider.app_id || !newProvider.app_key) {
-        // app_id is email, app_key is password
-        toast({
-          title: 'Error',
-          description: `Please provide Garmin Email and Password`,
-          variant: 'destructive',
-        });
-        return;
-      }
-    } else if (newProvider.provider_type === 'usda' && !newProvider.app_key) {
-      toast({
-        title: 'Error',
-        description: `Please provide an API Key for USDA`,
-        variant: 'destructive',
-      });
-      return;
-    } else if (newProvider.provider_type === 'hevy' && !newProvider.app_key) {
-      toast({
-        title: 'Error',
-        description: `Please provide an API Key for Hevy`,
+        description: validationError,
         variant: 'destructive',
       });
       return;
     }
 
     try {
-      let data;
+      interface CreatedProvider {
+        id: string;
+        provider_type: string;
+        is_active?: boolean;
+      }
+
+      let createdProvider: CreatedProvider;
+
       if (newProvider.provider_type === 'garmin') {
-        data = await apiCall('/integrations/garmin/login', {
-          method: 'POST',
-          body: JSON.stringify({
-            email: newProvider.app_id, // Use app_id as email
-            password: newProvider.app_key, // Use app_key as password
-          }),
+        const garminData = await loginGarmin({
+          email: newProvider.app_id || '',
+          password: newProvider.app_key || '',
         });
-        // If Garmin login is successful, we need to create an external provider entry
-        // The garminConnectService.garminLogin already handles creating/updating the provider in the backend
-        // So we just need to ensure the frontend state is updated.
-        // The backend /garmin/login endpoint returns the provider details if successful.
-        if (data && data.status === 'success' && data.provider) {
-          // The backend /garmin/login endpoint now returns the provider details if successful.
-          // We need to ensure the frontend state is updated with this provider.
-          // The `data` variable here is the response from the backend, which now contains `status` and `provider`.
-          // We should use `data.provider` for subsequent operations if needed, but for now,
-          // the `onAddSuccess()` call will trigger a refresh of the provider list.
-          // No direct assignment to `data` is needed here as the `onAddSuccess` handles the refresh.
-        } else if (data && data.status === 'needs_mfa' && data.client_state) {
-          onGarminMfaRequired(data.client_state);
+
+        if (garminData?.status === 'needs_mfa' && garminData?.client_state) {
+          onGarminMfaRequired(garminData.client_state);
           toast({
             title: 'Garmin MFA Required',
             description:
               'Please complete Multi-Factor Authentication for Garmin.',
           });
-          setShowAddForm(false); // Close the form after initiating MFA
-          return; // Exit the function as MFA flow is initiated
-        } else {
-          throw new Error(data.error || 'Garmin login failed.');
+          setShowAddForm(false);
+          return;
         }
+
+        if (garminData?.status !== 'success') {
+          throw new Error(garminData?.error || 'Garmin login failed.');
+        }
+
+        createdProvider = garminData.provider as CreatedProvider;
       } else {
-        data = await apiCall('/external-providers', {
-          method: 'POST',
-          body: JSON.stringify({
-            user_id: user.id,
-            provider_name: newProvider.provider_name,
-            provider_type: newProvider.provider_type,
-            app_id:
-              newProvider.provider_type === 'mealie' ||
-              newProvider.provider_type === 'tandoor' ||
-              newProvider.provider_type === 'free-exercise-db' ||
-              newProvider.provider_type === 'wger' ||
-              newProvider.provider_type === 'usda'
-                ? null
-                : newProvider.app_id || null,
-            app_key: newProvider.app_key || null,
-            is_active: newProvider.is_active,
-            base_url:
-              newProvider.provider_type === 'mealie' ||
-              newProvider.provider_type === 'tandoor' ||
-              newProvider.provider_type === 'free-exercise-db'
-                ? newProvider.base_url || null
-                : null,
-            sync_frequency: ['withings', 'garmin', 'fitbit'].includes(
-              newProvider.provider_type
-            )
-              ? newProvider.sync_frequency
-              : null,
-          }),
+        createdProvider = await createExternalProvider({
+          user_id: user.id,
+          provider_name: newProvider.provider_name || '',
+          provider_type: newProvider.provider_type || '',
+          app_id: newProvider.app_id || null,
+          app_key: newProvider.app_key || null,
+          is_active: newProvider.is_active || false,
+          base_url: newProvider.base_url || null,
+          sync_frequency: newProvider.sync_frequency || null,
         });
       }
 
       if (newProvider.provider_type === 'hevy' && newProvider.is_active) {
-        // Trigger initial sync for Hevy if activated
-        // We wrap this in its own try/catch so that a sync error (like a bad key)
-        // doesn't make the user think the provider wasn't added at all.
         try {
-          await syncHevyData(fullSyncOnConnect, data.id);
-        } catch (error: unknown) {
-          const syncError = error as Error;
-          console.error('Initial Hevy sync failed:', syncError);
-          toast({
-            title: 'Sync Warning',
-            description: `Provider added, but initial sync failed: ${syncError.message || 'Unknown error'}. Please check your API key in settings.`,
-            variant: 'destructive',
+          await syncHevyData({
+            fullSync: fullSyncOnConnect,
+            providerId: createdProvider.id,
           });
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            console.error(error);
+          }
         }
       }
 
@@ -231,6 +172,7 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
         title: 'Success',
         description: 'External data provider added successfully',
       });
+
       setNewProvider({
         provider_name: '',
         provider_type: 'openfoodfacts',
@@ -243,26 +185,24 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
         garmin_last_status_check: '',
         garmin_token_expires: '',
       });
+
       onAddSuccess();
-      if (data && data.is_active && data.provider_type === 'withings') {
-        handleConnectWithings(data.id);
+
+      if (
+        createdProvider?.is_active &&
+        connectionHandlers[createdProvider.provider_type]
+      ) {
+        connectionHandlers[createdProvider.provider_type](createdProvider.id);
       }
-      if (data && data.is_active && data.provider_type === 'fitbit') {
-        handleConnectFitbit(data.id);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error(error);
+        toast({
+          title: 'Error',
+          description: `Failed to add external data provider: ${error.message}`,
+          variant: 'destructive',
+        });
       }
-      if (data && data.is_active && data.provider_type === 'polar') {
-        handleConnectPolar(data.id);
-      }
-      // For Garmin, the connection is handled during the addProvider call itself,
-      // so no separate handleConnectGarmin call is needed here.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error('Error adding external data provider:', error);
-      toast({
-        title: 'Error',
-        description: `Failed to add external data provider: ${error.message}`,
-        variant: 'destructive',
-      });
     }
   };
 
@@ -331,509 +271,19 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
               </Select>
             </div>
           </div>
-
-          {newProvider.provider_type === 'tandoor' && (
-            <>
-              <div>
-                <Label htmlFor="new_base_url">App URL</Label>
-                <Input
-                  id="new_base_url"
-                  type="text"
-                  value={newProvider.base_url}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      base_url: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g., http://your-tandoor-instance.com"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <Label htmlFor="new_app_key">API Key</Label>
-                <Input
-                  id="new_app_key"
-                  type="password"
-                  value={newProvider.app_key}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_key: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Tandoor API Key"
-                  autoComplete="off"
-                />
-              </div>
-            </>
-          )}
-
-          {newProvider.provider_type === 'mealie' && (
-            <>
-              <div>
-                <Label htmlFor="new_base_url">App URL</Label>
-                <Input
-                  id="new_base_url"
-                  type="text"
-                  value={newProvider.base_url}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      base_url: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g., http://your-mealie-instance.com"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <Label htmlFor="new_app_key">API Key</Label>
-                <Input
-                  id="new_app_key"
-                  type="password"
-                  value={newProvider.app_key}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_key: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Mealie API Key"
-                  autoComplete="off"
-                />
-              </div>
-            </>
-          )}
-          {(newProvider.provider_type === 'nutritionix' ||
-            newProvider.provider_type === 'fatsecret') && (
-            <>
-              <div>
-                <Label htmlFor="new_app_id">App ID</Label>
-                <Input
-                  id="new_app_id"
-                  type="text"
-                  value={newProvider.app_id}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_id: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter App ID"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <Label htmlFor="new_app_key">App Key</Label>
-                <Input
-                  id="new_app_key"
-                  type="password"
-                  value={newProvider.app_key}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_key: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter App Key"
-                  autoComplete="off"
-                />
-              </div>
-              {newProvider.provider_type === 'fatsecret' && (
-                <p className="text-sm text-muted-foreground col-span-2">
-                  Note: For Fatsecret, you need to set up **your public IP**
-                  whitelisting in your Fatsecret developer account. This process
-                  can take up to 24 hours.
-                </p>
-              )}
-            </>
-          )}
-          {newProvider.provider_type === 'nutritionix' && (
-            <p className="text-sm text-muted-foreground col-span-2">
-              Get your App ID and App Key from the{' '}
-              <a
-                href="https://developer.nutritionix.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 underline"
-              >
-                Nutritionix Developer Portal
-              </a>
-              .
-            </p>
-          )}
-          {newProvider.provider_type === 'fatsecret' && (
-            <p className="text-sm text-muted-foreground col-span-2">
-              Get your App ID and App Key from the{' '}
-              <a
-                href="https://platform.fatsecret.com/my-account/dashboard"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 underline"
-              >
-                Fatsecret Platform Dashboard
-              </a>
-              .
-            </p>
-          )}
-          {newProvider.provider_type === 'usda' && (
-            <>
-              <div>
-                <Label htmlFor="new_app_key">API Key</Label>
-                <Input
-                  id="new_app_key"
-                  type="password"
-                  value={newProvider.app_key}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_key: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter USDA API Key"
-                  autoComplete="off"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground col-span-2">
-                Get your API Key from the{' '}
-                <a
-                  href="https://fdc.nal.usda.gov/api-guide.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 underline"
-                >
-                  USDA FoodData Central API Guide
-                </a>
-                .
-              </p>
-            </>
-          )}
-          {newProvider.provider_type === 'withings' && (
-            <>
-              <div>
-                <Label htmlFor="new_app_id">Client ID</Label>
-                <Input
-                  id="new_app_id"
-                  type="text"
-                  value={newProvider.app_id}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_id: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Withings Client ID"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <Label htmlFor="new_app_key">Client Secret</Label>
-                <Input
-                  id="new_app_key"
-                  type="password"
-                  value={newProvider.app_key}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_key: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Withings Client Secret"
-                  autoComplete="off"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground col-span-2">
-                Withings integration uses OAuth2. You will be redirected to
-                Withings to authorize access after adding the provider.
-                <br />
-                In your{' '}
-                <a
-                  href="https://developer.withings.com/dashboard/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 underline"
-                >
-                  Withings Developer Dashboard
-                </a>
-                , you must set your callback URL to:
-                <strong className="flex items-center">
-                  {`${window.location.origin}/withings/callback`}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="ml-2 h-5 w-5"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigator.clipboard.writeText(
-                        `${window.location.origin}/withings/callback`
-                      );
-                      toast({
-                        title: 'Copied!',
-                        description: 'Callback URL copied to clipboard.',
-                      });
-                    }}
-                  >
-                    <Clipboard className="h-4 w-4" />
-                  </Button>
-                </strong>
-              </p>
-            </>
-          )}
-
-          {newProvider.provider_type === 'fitbit' && (
-            <>
-              <div>
-                <Label htmlFor="new_app_id">Client ID</Label>
-                <Input
-                  id="new_app_id"
-                  type="text"
-                  value={newProvider.app_id}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_id: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Fitbit Client ID"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <Label htmlFor="new_app_key">Client Secret</Label>
-                <Input
-                  id="new_app_key"
-                  type="password"
-                  value={newProvider.app_key}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_key: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Fitbit Client Secret"
-                  autoComplete="off"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground col-span-2">
-                Fitbit integration uses OAuth2. You will be redirected to Fitbit
-                to authorize access after adding the provider.
-                <br />
-                In your{' '}
-                <a
-                  href="https://dev.fitbit.com/apps"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 underline"
-                >
-                  Fitbit Developer Dashboard
-                </a>
-                , you must set your callback URL to:
-                <strong className="flex items-center">
-                  {`${window.location.origin}/fitbit/callback`}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="ml-2 h-5 w-5"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigator.clipboard.writeText(
-                        `${window.location.origin}/fitbit/callback`
-                      );
-                      toast({
-                        title: 'Copied!',
-                        description: 'Callback URL copied to clipboard.',
-                      });
-                    }}
-                  >
-                    <Clipboard className="h-4 w-4" />
-                  </Button>
-                </strong>
-              </p>
-            </>
-          )}
-
-          {newProvider.provider_type === 'polar' && (
-            <>
-              <div>
-                <Label htmlFor="new_app_id">Client ID</Label>
-                <Input
-                  id="new_app_id"
-                  type="text"
-                  value={newProvider.app_id}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_id: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Polar Client ID"
-                  autoComplete="off"
-                />
-              </div>
-              <div>
-                <Label htmlFor="new_app_key">Client Secret</Label>
-                <Input
-                  id="new_app_key"
-                  type="password"
-                  value={newProvider.app_key}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_key: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Polar Client Secret"
-                  autoComplete="off"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground col-span-2">
-                Polar integration uses OAuth2. You will be redirected to Polar
-                to authorize access. <strong>Important:</strong> Polar only
-                shares data recorded <em>after</em> you link your account.
-                Historical data cannot be imported due to Polar API limitations.
-                <br />
-                In your{' '}
-                <a
-                  href="https://admin.polaraccesslink.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 underline"
-                >
-                  Polar AccessLink Admin
-                </a>
-                , you must set your callback URL to:
-                <strong className="flex items-center">
-                  {`${window.location.origin}/polar/callback`}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="ml-2 h-5 w-5"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigator.clipboard.writeText(
-                        `${window.location.origin}/polar/callback`
-                      );
-                      toast({
-                        title: 'Copied!',
-                        description: 'Callback URL copied to clipboard.',
-                      });
-                    }}
-                  >
-                    <Clipboard className="h-4 w-4" />
-                  </Button>
-                </strong>
-              </p>
-            </>
-          )}
-
-          {newProvider.provider_type === 'garmin' && (
-            <>
-              <div>
-                <Label htmlFor="add-garmin-email">Garmin Email</Label>
-                <Input
-                  id="add-garmin-email"
-                  type="email"
-                  value={newProvider.app_id} // Using app_id to temporarily store email
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_id: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Garmin Email"
-                  autoComplete="username"
-                />
-              </div>
-              <div>
-                <Label htmlFor="add-garmin-password">Garmin Password</Label>
-                <Input
-                  id="add-garmin-password"
-                  type="password"
-                  value={newProvider.app_key} // Using app_key to temporarily store password
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_key: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Garmin Password"
-                  autoComplete="current-password"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground col-span-2">
-                Note: Garmin Connect integration is tested with few metrics
-                only. Ensure your Docker Compose is updated to include Garmin
-                section.
-                <br />
-                Sparky Fitness does not store your Garmin email or password.
-                They are used only during login to obtain secure tokens.
-              </p>
-            </>
-          )}
-
-          {newProvider.provider_type === 'hevy' && (
-            <>
-              <div>
-                <Label htmlFor="new_app_key">Hevy API Key</Label>
-                <Input
-                  id="new_app_key"
-                  type="password"
-                  value={newProvider.app_key}
-                  onChange={(e) =>
-                    setNewProvider((prev) => ({
-                      ...prev,
-                      app_key: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter Hevy API Key"
-                  autoComplete="off"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground col-span-2">
-                Get your API Key from Hevy Settings &#62; API Key.
-              </p>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="full_sync_on_connect"
-                  checked={fullSyncOnConnect}
-                  onCheckedChange={setFullSyncOnConnect}
-                />
-                <Label htmlFor="full_sync_on_connect">
-                  Sync entire history on connect
-                </Label>
-              </div>
-            </>
-          )}
-
-          {(newProvider.provider_type === 'withings' ||
-            newProvider.provider_type === 'garmin' ||
-            newProvider.provider_type === 'fitbit' ||
-            newProvider.provider_type === 'polar' ||
-            newProvider.provider_type === 'hevy') && (
-            <div>
-              <Label htmlFor="new_sync_frequency">Sync Frequency</Label>
-              <Select
-                value={newProvider.sync_frequency || 'manual'}
-                onValueChange={(value) =>
-                  setNewProvider((prev) => ({
-                    ...prev,
-                    sync_frequency: value as 'hourly' | 'daily' | 'manual',
-                  }))
-                }
-              >
-                <SelectTrigger id="new_sync_frequency">
-                  <SelectValue placeholder="Select sync frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="manual">Manual</SelectItem>
-                  <SelectItem value="hourly">Hourly</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
+          <ProviderSpecificFields
+            provider={newProvider}
+            setProvider={setNewProvider}
+            fullSyncOnConnect={fullSyncOnConnect}
+            setFullSyncOnConnect={setFullSyncOnConnect}
+            onCopy={(text) => {
+              navigator.clipboard.writeText(text);
+              toast({
+                title: 'Copied!',
+                description: 'URL copied to clipboard.',
+              });
+            }}
+          />
           <div className="flex items-center space-x-2">
             <Switch
               id="new_is_active"
@@ -846,9 +296,9 @@ const AddExternalProviderForm: React.FC<AddExternalProviderFormProps> = ({
           </div>
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={loading}>
+            <Button disabled={isAnyIntegrationPending} type="submit">
               <Save className="h-4 w-4 mr-2" />
-              Add Provider
+              {isAnyIntegrationPending ? 'Connecting...' : 'Add Provider'}
             </Button>
             <Button
               type="button"

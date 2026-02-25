@@ -1,6 +1,6 @@
-import { apiCall } from './api';
-import type { Exercise } from '../api/Exercises/exerciseSearchService';
-import type { SleepAnalyticsData } from '../types';
+import { apiCall } from '@/services/api';
+import type { Exercise } from '../Exercises/exerciseSearchService';
+import type { SleepAnalyticsData } from '../../types';
 
 export interface NutritionData {
   date: string;
@@ -21,6 +21,7 @@ export interface NutritionData {
   vitamin_c: number;
   calcium: number;
   iron: number;
+  [key: string]: number | string; // Add index signature for custom nutrients
 }
 
 export interface MeasurementData {
@@ -259,21 +260,5 @@ export const getExerciseDashboardData = async (
       method: 'GET',
     }
   );
-  return response;
-};
-
-export const getSleepAnalyticsData = async (
-  startDate: string,
-  endDate: string,
-  userId?: string
-): Promise<SleepAnalyticsData[]> => {
-  const params = new URLSearchParams({
-    startDate,
-    endDate,
-  });
-  if (userId) params.append('userId', userId);
-  const response = await apiCall(`/sleep/analytics?${params.toString()}`, {
-    method: 'GET',
-  });
   return response;
 };

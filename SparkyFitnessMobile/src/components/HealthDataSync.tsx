@@ -32,9 +32,9 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   isAllMetricsEnabled,
   handleToggleAllMetrics,
 }) => {
-  const [switchTrack, primary] = useCSSVariable([
-    '--color-progress-track',
-    '--color-accent-primary',
+  const [formEnabled, formDisabled] = useCSSVariable([
+    '--color-form-enabled',
+    '--color-form-disabled'
   ]) as [string, string];
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
@@ -96,14 +96,14 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
       <Switch
         onValueChange={(newValue) => handleToggleHealthMetric(metric, newValue)}
         value={healthMetricStates[metric.stateKey]}
-        trackColor={{ false: switchTrack, true: primary }}
+        trackColor={{ false: formDisabled, true: formEnabled }}
         thumbColor="#FFFFFF"
       />
     </View>
   );
 
   return (
-    <View className="bg-section rounded-xl p-4 mb-4 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
       <Text className="text-lg font-bold mb-3 text-text-primary">Health Data to Sync</Text>
       <View className="mb-3">
         <Text className="text-sm font-semibold text-text-secondary mb-1">{platformSubtitle}</Text>
@@ -112,7 +112,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           <Text className="text-sm text-text-secondary mt-2">{platformDetail}</Text>
         )}
         <TouchableOpacity onPress={handleLearnMoreToggle} activeOpacity={0.7}>
-          <Text className="text-sm font-medium mt-1" style={{ color: primary }}>
+          <Text className="text-sm font-medium mt-1 text-accent-primary">
             {learnMoreExpanded ? 'Show less' : 'Learn more'}
           </Text>
         </TouchableOpacity>
@@ -130,7 +130,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
         <Switch
           onValueChange={handleToggleAllMetrics}
           value={isAllMetricsEnabled}
-          trackColor={{ false: switchTrack, true: primary }}
+          trackColor={{ false: formDisabled, true: formEnabled }}
           thumbColor="#FFFFFF"
         />
       </View>

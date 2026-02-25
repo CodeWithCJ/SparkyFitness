@@ -9,9 +9,9 @@ interface MuscleGroupRecoveryTrackerProps {
   } | null;
 }
 
-const MuscleGroupRecoveryTracker: React.FC<MuscleGroupRecoveryTrackerProps> = ({
+const MuscleGroupRecoveryTracker = ({
   recoveryData,
-}) => {
+}: MuscleGroupRecoveryTrackerProps) => {
   const { t } = useTranslation(); // Initialize t function
 
   if (!recoveryData || Object.keys(recoveryData).length === 0) {

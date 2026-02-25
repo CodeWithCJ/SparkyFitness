@@ -7,14 +7,18 @@ import {
   addNutritionixExercise,
   addFreeExerciseDBExercise,
   Exercise,
+  getAvailableEquipment,
+  getAvailableMuscleGroups,
+  getAvailableExercises,
 } from '@/api/Exercises/exerciseSearchService';
 import { exerciseKeys, exerciseSearchKeys } from '@/api/keys/exercises';
 import i18n from '@/i18n';
 import {
   getExternalDataProviders,
   getProviderCategory,
-} from '@/services/externalProviderService';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+} from '@/api/Settings/externalProviderService';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 export const internalSearchOptions = (
   query: string,
@@ -77,7 +81,7 @@ export const topExercisesOptions = (userId: string, limit: number = 5) => ({
 });
 
 // Verfügbare Provider
-export const exerciseProvidersOptions = {
+export const exerciseProvidersOptions = () => ({
   queryKey: exerciseSearchKeys.providers,
   queryFn: async () => {
     const fetched = await getExternalDataProviders();
@@ -85,7 +89,7 @@ export const exerciseProvidersOptions = {
       (p) => getProviderCategory(p).includes('exercise') && p.is_active
     );
   },
-};
+});
 
 export const useAddExerciseMutation = () => {
   const queryClient = useQueryClient();
@@ -110,6 +114,58 @@ export const useAddExerciseMutation = () => {
         queryKey: exerciseSearchKeys.search.all,
       });
       queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
+    },
+  });
+};
+
+export const useAvailableEquipment = () => {
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: exerciseSearchKeys.filters.equipment(),
+    queryFn: getAvailableEquipment,
+    meta: {
+      errorMessage: t(
+        'exerciseSearch.failedToLoadEquipment',
+        'Failed to load equipment.'
+      ),
+    },
+  });
+};
+
+export const useAvailableMuscleGroups = () => {
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: exerciseSearchKeys.filters.muscles(),
+    queryFn: getAvailableMuscleGroups,
+    meta: {
+      errorMessage: t(
+        'exerciseSearch.failedToLoadMuscles',
+        'Failed to load muscle groups.'
+      ),
+    },
+  });
+};
+
+export const useAvailableExercises = (
+  muscle?: string | null,
+  equipment?: string | null
+) => {
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: exerciseSearchKeys.search.internal(
+      '',
+      equipment ? [equipment] : [],
+      muscle ? [muscle] : []
+    ),
+    queryFn: () => getAvailableExercises(muscle, equipment),
+    meta: {
+      errorMessage: t(
+        'exerciseSearch.failedToLoadExercises',
+        'Failed to load exercises.'
+      ),
     },
   });
 };
