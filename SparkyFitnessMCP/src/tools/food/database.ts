@@ -32,14 +32,19 @@ export const createFood = async (args: any) => {
 
     const createVariantRes = await query(
         `INSERT INTO food_variants (
-            food_id, calories, protein, carbs, fat, dietary_fiber, sugars, sodium, 
-            serving_size, serving_unit, is_default, glycemic_index, created_at, updated_at
+            food_id, calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat, 
+            monounsaturated_fat, trans_fat, cholesterol, sodium, potassium, dietary_fiber, 
+            sugars, vitamin_a, vitamin_c, calcium, iron, serving_size, serving_unit, 
+            is_default, glycemic_index, created_at, updated_at
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11, now(), now()) RETURNING id`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, true, $21, now(), now()) RETURNING id`,
         [
             newFoodId, 
-            macros?.calories || 0, macros?.protein || 0, macros?.carbs || 0, macros?.fat || 0, 
-            macros?.fiber || 0, macros?.sugar || 0, macros?.sodium || 0,
+            macros?.calories || 0, macros?.protein || 0, macros?.carbs || 0, macros?.fat || 0,
+            macros?.saturated_fat || 0, macros?.polyunsaturated_fat || 0, macros?.monounsaturated_fat || 0,
+            macros?.trans_fat || 0, macros?.cholesterol || 0, macros?.sodium || 0, macros?.potassium || 0,
+            macros?.fiber || 0, macros?.sugar || 0, macros?.vitamin_a || 0, macros?.vitamin_c || 0,
+            macros?.calcium || 0, macros?.iron || 0,
             quantity || 100, unit || 'g', macros?.gi || 'None'
         ]
     );
