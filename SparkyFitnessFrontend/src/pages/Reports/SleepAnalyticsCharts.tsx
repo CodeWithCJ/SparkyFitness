@@ -1,41 +1,42 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ZoomableChart from '@/components/ZoomableChart';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from 'recharts';
-import {
-  type SleepAnalyticsData,
   SLEEP_STAGE_COLORS,
+  type SleepAnalyticsData,
   type SleepChartData,
   type SleepEntry,
 } from '@/types';
-import { usePreferences } from '@/contexts/PreferencesContext';
-import ZoomableChart from '@/components/ZoomableChart';
-import SleepStageChart from './SleepStageChart';
-import SleepSummaryCard from './SleepSummaryCard';
-import SpO2Card from './SpO2Card';
-import HRVCard from './HRVCard';
-import SleepRespirationCard from './SleepRespirationCard';
-import SleepHeartRateCard from './SleepHeartRateCard';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useTranslation } from 'react-i18next';
 import {
+  Activity,
   ChevronDown,
   ChevronUp,
   Moon,
   TrendingUp,
-  Activity,
 } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import HRVCard from './HRVCard';
+import SleepHeartRateCard from './SleepHeartRateCard';
+import SleepRespirationCard from './SleepRespirationCard';
+import SleepScienceSection from './SleepScience/SleepScienceSection';
+import SleepStageChart from './SleepStageChart';
+import SleepSummaryCard from './SleepSummaryCard';
+import SpO2Card from './SpO2Card';
 
 interface SpO2DataPoint {
   date: string;
@@ -209,6 +210,8 @@ const SleepAnalyticsCharts = ({
           </div>
         </div>
       )}
+
+      <SleepScienceSection />
 
       {/* SECTION 3: Sleep Trends */}
       <div className="space-y-4">

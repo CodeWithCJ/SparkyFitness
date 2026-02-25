@@ -1,8 +1,9 @@
-import type React from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { whoopCSSVariables } from '@/lib/sleep/whoop-colors';
 import { info } from '@/utils/logging';
+import type React from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 
-type ThemeSetting = 'light' | 'dark' | 'system';
+type ThemeSetting = 'light' | 'dark' | 'whoop' | 'system';
 type ResolvedTheme = 'light' | 'dark';
 
 interface ThemeContextType {
@@ -34,10 +35,27 @@ const getSystemTheme = (): ResolvedTheme => {
   return 'light';
 };
 
+/** Apply WHOOP CSS custom properties to the root element */
+const applyWhoopCSS = () => {
+  const root = document.documentElement;
+  for (const [key, value] of Object.entries(whoopCSSVariables)) {
+    root.style.setProperty(key, value);
+  }
+};
+
+/** Remove WHOOP CSS custom properties from the root element */
+const removeWhoopCSS = () => {
+  const root = document.documentElement;
+  for (const key of Object.keys(whoopCSSVariables)) {
+    root.style.removeProperty(key);
+  }
+};
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { loggingLevel } = usePreferences();
+  const previousTheme = useRef<ThemeSetting | null>(null);
   const [theme, setThemeState] = useState<ThemeSetting>(() => {
     const saved = localStorage.getItem('theme');
     const initialTheme = (saved as ThemeSetting) || 'system';
@@ -53,6 +71,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     const saved = localStorage.getItem('theme') as ThemeSetting;
     if (saved === 'light' || saved === 'dark') {
       return saved;
+    }
+    // WHOOP resolves as dark
+    if (saved === 'whoop') {
+      return 'dark';
     }
     return getSystemTheme();
   });
@@ -81,6 +103,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     if (theme === 'system') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setResolvedTheme(getSystemTheme());
+    } else if (theme === 'whoop') {
+      setResolvedTheme('dark');
     } else {
       setResolvedTheme(theme);
     }
@@ -96,11 +120,22 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
       resolvedTheme
     );
     localStorage.setItem('theme', theme);
+
+    // Apply dark class for dark-based themes
     if (resolvedTheme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
+
+    // WHOOP theme: inject/remove CSS variables
+    if (theme === 'whoop') {
+      applyWhoopCSS();
+    } else if (previousTheme.current === 'whoop') {
+      removeWhoopCSS();
+    }
+
+    previousTheme.current = theme;
   }, [theme, resolvedTheme, loggingLevel]);
 
   const setTheme = (newTheme: ThemeSetting) => {
@@ -111,7 +146,13 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   const toggleTheme = () => {
     setThemeState((prev) => {
       const newTheme =
-        prev === 'light' ? 'dark' : prev === 'dark' ? 'system' : 'light';
+        prev === 'light'
+          ? 'dark'
+          : prev === 'dark'
+            ? 'whoop'
+            : prev === 'whoop'
+              ? 'system'
+              : 'light';
       info(loggingLevel, 'ThemeProvider: Toggling theme to:', newTheme);
       return newTheme;
     });

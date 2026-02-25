@@ -1,6 +1,6 @@
 import { toast } from '@/hooks/use-toast';
-import { getUserLoggingLevel } from '@/utils/userPreferences';
 import * as logging from '@/utils/logging';
+import { getUserLoggingLevel } from '@/utils/userPreferences';
 
 interface ApiCallOptions extends RequestInit {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,8 +25,14 @@ export async function apiCall(
   let url = options?.externalApi ? endpoint : `${API_BASE_URL}${endpoint}`;
 
   if (options?.params) {
-    const queryParams = new URLSearchParams(options.params).toString();
-    url = `${url}?${queryParams}`;
+    // Filter out undefined values to prevent them from becoming the string "undefined" in URLSearchParams
+    const definedParams = Object.fromEntries(
+      Object.entries(options.params).filter(([_, v]) => v !== undefined)
+    );
+    const queryParams = new URLSearchParams(definedParams).toString();
+    if (queryParams) {
+      url = `${url}?${queryParams}`;
+    }
   }
   const headers: Record<string, string> = {
     ...((options?.headers as Record<string, string>) || {}), // Merge existing headers first
