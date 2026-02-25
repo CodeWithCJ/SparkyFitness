@@ -299,8 +299,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
             </Button>
           </div>
         </div>
-
-        <nav className={`hidden sm:grid w-full gap-1 ${gridClass} mb-6 bg-slate-200/60 dark:bg-muted/50 p-1 rounded-lg`}>
+        <nav
+          className={`hidden sm:grid w-full gap-1 ${gridClass} mb-6 bg-slate-200/60 dark:bg-muted/50 p-1 rounded-lg`}
+        >
           {availableTabs.map(({ value, label, icon: Icon }) => (
             <Button
               key={value}
@@ -319,31 +320,31 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         </nav>
 
         {/* Mobile Navigation */}
-        <nav className="apple-safe-area sm:hidden fixed bottom-0 left-0 right-0 z-50 w-full bg-background border-t">
-          <div className={`h-14 grid ${mobileGridClass} items-center justify-items-center`}>
-            {availableMobileTabs.map(({ value, label, icon: Icon }) => (
-              <Button
-                key={value}
-                variant="ghost"
-                className={`flex flex-col items-center gap-1 py-2 ${
-                  location.pathname ===
-                  (value === 'Add' ? location.pathname : value)
-                    ? 'text-primary'
-                    : ''
-                }`}
-                onClick={() => {
-                  if (value === 'Add') {
-                    setIsAddCompOpen((prev) => !prev);
-                  } else {
-                    setIsAddCompOpen(false);
-                    navigate(value);
-                  }
-                }}
-              >
-                <Icon className="h-8 w-8" />
-              </Button>
-            ))}
-          </div>
+        <nav
+          className={`grid w-full gap-1 fixed bottom-0 left-0 right-0 sm:hidden bg-background border-t py-2 px-2 h-14 z-50 ${mobileGridClass}`}
+        >
+          {availableMobileTabs.map(({ value, label, icon: Icon }) => (
+            <Button
+              key={value}
+              variant="ghost"
+              className={`flex flex-col items-center gap-1 py-2 ${
+                location.pathname ===
+                (value === 'Add' ? location.pathname : value)
+                  ? 'text-primary'
+                  : ''
+              }`}
+              onClick={() => {
+                if (value === 'Add') {
+                  setIsAddCompOpen((prev) => !prev);
+                } else {
+                  setIsAddCompOpen(false);
+                  navigate(value);
+                }
+              }}
+            >
+              <Icon className="h-8 w-8" />
+            </Button>
+          ))}
         </nav>
 
         <div className="pb-16 sm:pb-0">
