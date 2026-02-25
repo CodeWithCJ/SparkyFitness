@@ -315,7 +315,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         loggingLevel,
         `MainLayout: Meal type ${mealType} selected, navigating to diary.`
       );
-      console.log(
+      debug(
+        loggingLevel,
         `[MainLayout] Navigating to diary with meal type: ${mealType}`
       );
       setIsMealTypeSelectOpen(false);

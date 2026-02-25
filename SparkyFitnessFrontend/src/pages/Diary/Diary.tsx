@@ -122,7 +122,7 @@ const Diary = () => {
   // Handle navigation for opening food search dialog
   useEffect(() => {
     const state = location.state as { openFoodSearchForMeal?: string };
-    console.log('[Diary] Location state:', state);
+    debug(loggingLevel, '[Diary] Location state:', state);
     if (
       state?.openFoodSearchForMeal &&
       availableMealTypes &&
@@ -133,7 +133,7 @@ const Diary = () => {
         loggingLevel,
         `Diary: Opening food search for meal type: ${mealType}`
       );
-      console.log(`[Diary] Setting openFoodSearchForMealType to: ${mealType}`);
+      debug(loggingLevel, `[Diary] Setting openFoodSearchForMealType to: ${mealType}`);
 
       // Set which meal dialog should open
       setOpenFoodSearchForMealType(mealType);
