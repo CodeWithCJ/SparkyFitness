@@ -56,41 +56,41 @@ async function syncTrustedProviders() {
 syncTrustedProviders().catch(err => console.error('[AUTH] Startup sync failed:', err));
 
 const apiKeyPlugin = require("better-auth/plugins").apiKey({
-    enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
-    rateLimit: {
-        enabled: true,
-        timeWindow: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS, 10) || 60_000,    // 1 minute
-        maxRequests: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS, 10) || 100,      // 100 req/min (Better Auth defaults to 10/day)
+  enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
+  rateLimit: {
+    enabled: true,
+    timeWindow: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS, 10) || 60_000,    // 1 minute
+    maxRequests: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS, 10) || 100,      // 100 req/min (Better Auth defaults to 10/day)
+  },
+  schema: {
+    apikey: {
+      modelName: "api_key",
+      fields: {
+        id: "id",
+        name: "name",
+        key: "key",
+        userId: "user_id",
+        token: "key", // Better Auth sometimes looks for 'token'
+        metadata: "metadata",
+        createdAt: "created_at",
+        updatedAt: "updated_at",
+        expiresAt: "expires_at",
+        start: "start",
+        prefix: "prefix",
+        refillInterval: "refill_interval",
+        refillAmount: "refill_amount",
+        lastRefillAt: "last_refill_at",
+        enabled: "enabled",
+        rateLimitEnabled: "rate_limit_enabled",
+        rateLimitTimeWindow: "rate_limit_time_window",
+        rateLimitMax: "rate_limit_max",
+        requestCount: "request_count",
+        remaining: "remaining",
+        lastRequest: "last_request",
+        permissions: "permissions",
+      },
     },
-    schema: {
-        apikey: {
-            modelName: "api_key",
-            fields: {
-                id: "id",
-                name: "name",
-                key: "key",
-                userId: "user_id",
-                token: "key", // Better Auth sometimes looks for 'token'
-                metadata: "metadata",
-                createdAt: "created_at",
-                updatedAt: "updated_at",
-                expiresAt: "expires_at",
-                start: "start",
-                prefix: "prefix",
-                refillInterval: "refill_interval",
-                refillAmount: "refill_amount",
-                lastRefillAt: "last_refill_at",
-                enabled: "enabled",
-                rateLimitEnabled: "rate_limit_enabled",
-                rateLimitTimeWindow: "rate_limit_time_window",
-                rateLimitMax: "rate_limit_max",
-                requestCount: "request_count",
-                remaining: "remaining",
-                lastRequest: "last_request",
-                permissions: "permissions",
-            },
-        },
-    },
+  },
 });
 
 // FIX: Better Auth v1.4.17 is missing paths for these endpoints in the library definition.
