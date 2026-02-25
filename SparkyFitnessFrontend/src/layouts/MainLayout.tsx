@@ -320,31 +320,33 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
         </nav>
 
         {/* Mobile Navigation */}
-        <nav
-          className={`grid w-full gap-1 fixed bottom-0 left-0 right-0 sm:hidden bg-background border-t py-2 px-2 h-14 z-50 ${mobileGridClass}`}
-        >
-          {availableMobileTabs.map(({ value, label, icon: Icon }) => (
-            <Button
-              key={value}
-              variant="ghost"
-              className={`flex flex-col items-center gap-1 py-2 ${
-                location.pathname ===
-                (value === 'Add' ? location.pathname : value)
-                  ? 'text-primary'
-                  : ''
-              }`}
-              onClick={() => {
-                if (value === 'Add') {
-                  setIsAddCompOpen((prev) => !prev);
-                } else {
-                  setIsAddCompOpen(false);
-                  navigate(value);
-                }
-              }}
-            >
-              <Icon className="h-8 w-8" />
-            </Button>
-          ))}
+        <nav className="apple-safe-area sm:hidden fixed bottom-0 left-0 right-0 z-50 w-full bg-background border-t">
+          <div
+            className={`h-14 grid ${mobileGridClass} items-center justify-items-center`}
+          >
+            {availableMobileTabs.map(({ value, label, icon: Icon }) => (
+              <Button
+                key={value}
+                variant="ghost"
+                className={`flex flex-col items-center gap-1 py-2 ${
+                  location.pathname ===
+                  (value === 'Add' ? location.pathname : value)
+                    ? 'text-primary'
+                    : ''
+                }`}
+                onClick={() => {
+                  if (value === 'Add') {
+                    setIsAddCompOpen((prev) => !prev);
+                  } else {
+                    setIsAddCompOpen(false);
+                    navigate(value);
+                  }
+                }}
+              >
+                <Icon className="h-8 w-8" />
+              </Button>
+            ))}
+          </div>
         </nav>
 
         <div className="pb-16 sm:pb-0">

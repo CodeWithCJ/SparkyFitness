@@ -101,3 +101,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Handling apple safe areas at the bottom bar */
+.apple-safe-area {
+  padding-bottom: env(safe-area-inset-bottom);
+}
