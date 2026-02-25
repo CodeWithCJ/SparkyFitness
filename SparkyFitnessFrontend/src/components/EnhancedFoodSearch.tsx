@@ -39,7 +39,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { apiCall } from '@/services/api';
-import { getProviderCategory } from '@/services/externalProviderService';
+import { getProviderCategory } from '@/api/Settings/externalProviderService';
 import type { Food, FoodVariant, CSVData } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import type { UserCustomNutrient } from '@/types/customNutrient';

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,29 +21,23 @@ import {
 import { Plus, Trash2, Edit } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { usePreferences } from '@/contexts/PreferencesContext';
+import { type CustomCategory } from '@/api/Settings/customCategoryService';
 import {
-  addCategory,
-  updateCategory,
-  deleteCategory,
-  getCategories,
-  type CustomCategory,
-} from '@/services/customCategoryService';
+  useAddCategoryMutation,
+  useCustomCategories,
+  useDeleteCategoryMutation,
+  useUpdateCategoryMutation,
+} from '@/hooks/Settings/useCustomCategories';
 
-interface CustomCategoryManagerProps {
-  categories: CustomCategory[];
-  onCategoriesChange: (categories: CustomCategory[]) => void;
-}
-
-const CustomCategoryManager = ({
-  categories,
-  onCategoriesChange,
-}: CustomCategoryManagerProps) => {
+const CustomCategoryManager = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { loggingLevel } = usePreferences(); // Destructure loggingLevel
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { data: categories = [] } = useCustomCategories(user.activeUserId);
+  const { mutateAsync: addCategory } = useAddCategoryMutation();
+  const { mutateAsync: updateCategory } = useUpdateCategoryMutation();
+  const { mutateAsync: deleteCategory } = useDeleteCategoryMutation();
   const [editingCategory, setEditingCategory] = useState<CustomCategory | null>(
     null
   );
@@ -54,28 +48,6 @@ const CustomCategoryManager = ({
     frequency: 'Daily',
     data_type: 'numeric',
   });
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      if (user) {
-        try {
-          const fetchedCategories = await getCategories(loggingLevel); // Pass loggingLevel
-          onCategoriesChange(fetchedCategories || []);
-        } catch (error) {
-          console.error('Error fetching custom categories:', error);
-          toast({
-            title: t('common.errorOccurred', 'Error'),
-            description: t(
-              'customCategoryManager.failedToLoadCategories',
-              'Failed to load custom categories.'
-            ),
-            variant: 'destructive',
-          });
-        }
-      }
-    };
-    fetchCategories();
-  }, [user, onCategoriesChange, loggingLevel, t]);
 
   const handleAddCategory = async () => {
     if (
@@ -95,20 +67,14 @@ const CustomCategoryManager = ({
     }
 
     try {
-      const data = await addCategory(
-        {
-          user_id: user.id,
-          name: newCategory.name.trim(),
-          display_name: newCategory.display_name.trim() || undefined,
-          measurement_type: newCategory.measurement_type.trim(),
-          frequency: newCategory.frequency,
-          data_type: newCategory.data_type,
-        },
-        loggingLevel
-      ); // Pass loggingLevel
-      // Refetch categories to ensure the new one with the correct ID and all fields is displayed
-      const fetchedCategories = await getCategories(loggingLevel);
-      onCategoriesChange(fetchedCategories || []);
+      await addCategory({
+        user_id: user.id,
+        name: newCategory.name.trim(),
+        display_name: newCategory.display_name.trim() || undefined,
+        measurement_type: newCategory.measurement_type.trim(),
+        frequency: newCategory.frequency,
+        data_type: newCategory.data_type,
+      }); // Pass loggingLevel
       setNewCategory({
         name: '',
         display_name: '',
@@ -117,26 +83,8 @@ const CustomCategoryManager = ({
         data_type: 'numeric',
       });
       setIsAddDialogOpen(false);
-
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'customCategoryManager.addCategorySuccess',
-          'Custom category added successfully'
-        ),
-      });
     } catch (error) {
       console.error('Error adding custom category:', error);
-      toast({
-        title: t('common.errorOccurred', 'Error'),
-        description:
-          error.message ||
-          t(
-            'customCategoryManager.addCategoryError',
-            'Failed to add custom category'
-          ),
-        variant: 'destructive',
-      });
     }
   };
 
@@ -159,40 +107,20 @@ const CustomCategoryManager = ({
     }
 
     try {
-      const updatedData = await updateCategory(
-        editingCategory.id,
-        {
+      await updateCategory({
+        categoryId: editingCategory.id,
+        categoryData: {
           name: editingCategory.name.trim(),
           display_name: editingCategory.display_name?.trim() || undefined,
           measurement_type: editingCategory.measurement_type.trim(),
           frequency: editingCategory.frequency,
           data_type: editingCategory.data_type,
         },
-        loggingLevel
-      ); // Pass loggingLevel
-      // Refetch categories to ensure the updated one is displayed correctly
-      const fetchedCategories = await getCategories(loggingLevel);
-      onCategoriesChange(fetchedCategories || []);
+      });
       setEditingCategory(null);
       setIsEditDialogOpen(false);
-
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'customCategoryManager.updateCategorySuccess',
-          'Custom category updated successfully'
-        ),
-      });
     } catch (error) {
       console.error('Error updating custom category:', error);
-      toast({
-        title: t('common.errorOccurred', 'Error'),
-        description: t(
-          'customCategoryManager.updateCategoryError',
-          'Failed to update custom category'
-        ),
-        variant: 'destructive',
-      });
     }
   };
 
@@ -228,28 +156,9 @@ const CustomCategoryManager = ({
     }
 
     try {
-      await deleteCategory(idToDelete, loggingLevel); // Pass loggingLevel
-      onCategoriesChange(categories.filter((cat) => cat.id !== idToDelete));
-
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'customCategoryManager.deleteCategorySuccess',
-          'Custom category deleted successfully'
-        ),
-      });
+      await deleteCategory(idToDelete);
     } catch (error) {
       console.error('Error deleting custom category:', error);
-      toast({
-        title: t('common.errorOccurred', 'Error'),
-        description:
-          error.message ||
-          t(
-            'customCategoryManager.deleteCategoryError',
-            'Failed to delete custom category'
-          ),
-        variant: 'destructive',
-      });
     }
   };
 

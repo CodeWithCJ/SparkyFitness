@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,21 +22,21 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Users, Plus, Edit, Trash2 } from 'lucide-react';
-import {
-  loadFamilyAccess,
-  createFamilyAccess,
-  updateFamilyAccess,
-  toggleFamilyAccessActiveStatus,
-  deleteFamilyAccess,
-  findUserByEmail,
-  type FamilyAccess,
-} from '@/services/familyAccessService';
+import { type FamilyAccess } from '@/api/Settings/familyAccessService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import {
+  findUserByEmailOptions,
+  useCreateFamilyAccessMutation,
+  useDeleteFamilyAccessMutation,
+  useFamilyAccess,
+  useToggleFamilyAccessMutation,
+  useUpdateFamilyAccessMutation,
+} from '@/hooks/Settings/useFamilyAccess';
+import { useQueryClient } from '@tanstack/react-query';
 
 const FamilyAccessManager = () => {
   const { user } = useAuth();
-  const [familyAccess, setFamilyAccess] = useState<FamilyAccess[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccess, setEditingAccess] = useState<FamilyAccess | null>(null);
   const [formData, setFormData] = useState({
@@ -50,25 +50,13 @@ const FamilyAccessManager = () => {
     access_end_date: '',
   });
 
-  const fetchFamilyAccess = async () => {
-    if (!user) return;
-    try {
-      const data = await loadFamilyAccess(user.id);
-      setFamilyAccess(data);
-    } catch (error) {
-      console.error('Error loading family access:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load family access records',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  useEffect(() => {
-    fetchFamilyAccess();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  const queryClient = useQueryClient();
+  const { data: familyAccess = [] } = useFamilyAccess(user.activeUserId);
+  const { mutateAsync: createFamilyAccess } = useCreateFamilyAccessMutation();
+  const { mutateAsync: updateFamilyAccess } = useUpdateFamilyAccessMutation();
+  const { mutateAsync: deleteFamilyAccess } = useDeleteFamilyAccessMutation();
+  const { mutateAsync: toggleFamilyAccessActiveStatus } =
+    useToggleFamilyAccessMutation();
 
   const rulesICreated = familyAccess.filter(
     (access) => user && access.owner_user_id === user.id
@@ -149,8 +137,9 @@ const FamilyAccessManager = () => {
     }
 
     try {
-      const foundUserId = await findUserByEmail(formData.family_email);
-
+      const foundUserId = await queryClient.fetchQuery(
+        findUserByEmailOptions(formData.family_email)
+      );
       if (!editingAccess && foundUserId) {
         const existingAccess = familyAccess.find(
           (access) =>
@@ -191,76 +180,34 @@ const FamilyAccessManager = () => {
 
       if (editingAccess) {
         // Update existing access
-        await updateFamilyAccess(editingAccess.id, accessData);
-
-        toast({
-          title: 'Success',
-          description: 'Family access updated successfully',
-        });
+        await updateFamilyAccess({ id: editingAccess.id, payload: accessData });
       } else {
         // Create new access
         await createFamilyAccess(accessData);
-
-        const statusMessage = foundUserId
-          ? 'Family access granted successfully'
-          : `Access invitation sent to ${formData.family_email}. They'll have access once they create a SparkyFitness account.`;
-
-        toast({
-          title: 'Success',
-          description: statusMessage,
-        });
       }
-
       setIsDialogOpen(false);
       resetForm();
-      fetchFamilyAccess(); // Call the function directly
     } catch (error) {
       console.error('Error saving family access:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save family access',
-        variant: 'destructive',
-      });
     }
   };
 
   const handleToggleActive = async (access: FamilyAccess) => {
     try {
-      await toggleFamilyAccessActiveStatus(access.id, !access.is_active);
-
-      toast({
-        title: 'Success',
-        description: `Family access ${!access.is_active ? 'activated' : 'deactivated'}`,
+      await toggleFamilyAccessActiveStatus({
+        id: access.id,
+        isActive: !access.is_active,
       });
-
-      fetchFamilyAccess(); // Call the function directly
     } catch (error) {
       console.error('Error toggling family access:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update family access',
-        variant: 'destructive',
-      });
     }
   };
 
   const handleDelete = async (accessId: string) => {
     try {
       await deleteFamilyAccess(accessId);
-
-      toast({
-        title: 'Success',
-        description: 'Family access removed successfully',
-      });
-
-      fetchFamilyAccess(); // Call the function directly
     } catch (error) {
       console.error('Error deleting family access:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to remove family access',
-        variant: 'destructive',
-      });
     }
   };
 

@@ -13,7 +13,7 @@ import ZoomableChart from '@/components/ZoomableChart';
 import {
   CustomCategory,
   CustomMeasurementData,
-} from '@/services/reportsService';
+} from '@/api/Reports/reportsService';
 import { useTranslation } from 'react-i18next';
 import { BODY_BATTERY_METRICS } from './BodyBatteryCard';
 import { RESPIRATION_METRICS } from './RespirationCard';

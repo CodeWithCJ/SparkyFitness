@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,84 +11,32 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Fingerprint, Trash2, Plus, Loader2 } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
-import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import {
+  useAddPasskeyMutation,
+  useDeletePasskeyMutation,
+  usePasskeys,
+} from '@/hooks/Settings/usePasskeys';
 
 const PasskeySettings = () => {
   const { t } = useTranslation();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [passkeys, setPasskeys] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [newPasskeyName, setNewPasskeyName] = useState('');
-  const [registering, setRegistering] = useState(false);
 
-  const fetchPasskeys = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await authClient.passkey.listUserPasskeys();
-      if (error) throw error;
-      setPasskeys(data || []);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to fetch passkeys',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPasskeys();
-  }, []);
+  const { data: passkeys = [], isLoading: loading } = usePasskeys();
+  const { mutateAsync: addPasskey, isPending: registering } =
+    useAddPasskeyMutation();
+  const { mutate: deletePasskey } = useDeletePasskeyMutation();
 
   const handleAddPasskey = async () => {
-    setRegistering(true);
-    try {
-      const { data, error } = await authClient.passkey.addPasskey({
-        name: newPasskeyName || undefined,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Passkey registered successfully!',
-      });
-      setNewPasskeyName('');
-      fetchPasskeys();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      toast({
-        title: 'Registration Failed',
-        description:
-          error.message ||
-          'Could not register passkey. Ensure you are using HTTPS or localhost.',
-        variant: 'destructive',
-      });
-    } finally {
-      setRegistering(false);
-    }
+    addPasskey(newPasskeyName, {
+      onSuccess: () => {
+        setNewPasskeyName('');
+      },
+    });
   };
 
-  const handleDeletePasskey = async (id: string) => {
-    try {
-      const { error } = await authClient.passkey.deletePasskey({ id });
-      if (error) throw error;
-
-      toast({ title: 'Success', description: 'Passkey deleted.' });
-      fetchPasskeys();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete passkey',
-        variant: 'destructive',
-      });
-    }
+  const handleDeletePasskey = (id: string) => {
+    deletePasskey(id);
   };
 
   return (

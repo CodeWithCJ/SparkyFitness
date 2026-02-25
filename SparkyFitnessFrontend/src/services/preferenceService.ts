@@ -37,19 +37,6 @@ export interface UserPreferences {
   default_food_data_provider_id: string | null;
 }
 
-export const getUserPreferences = async (
-  loggingLevel: UserLoggingLevel
-): Promise<UserPreferences> => {
-  try {
-    const response = await api.get('/user-preferences');
-    debug(loggingLevel, 'API response for user preferences:', response); // Use debug logging
-    return response;
-  } catch (err) {
-    error(loggingLevel, 'Error fetching user preferences:', err); // Use error logging
-    throw err;
-  }
-};
-
 export const updateUserPreferences = async (
   preferences: UserPreferences,
   loggingLevel: UserLoggingLevel

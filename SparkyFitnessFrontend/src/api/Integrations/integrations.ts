@@ -47,3 +47,28 @@ export const syncHevyData = async (
     body: JSON.stringify({ providerId }),
   });
 };
+export interface GarminLoginPayload {
+  email: string;
+  password: string;
+}
+export interface GarminProviderData {
+  id: string;
+  provider_type: string;
+}
+
+export interface GarminLoginResponse {
+  status: string;
+  provider?: GarminProviderData;
+  client_state?: string;
+  error?: string;
+  id: string;
+}
+
+export const loginGarmin = async (
+  payload: GarminLoginPayload
+): Promise<GarminLoginResponse> => {
+  return apiCall('/integrations/garmin/login', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};

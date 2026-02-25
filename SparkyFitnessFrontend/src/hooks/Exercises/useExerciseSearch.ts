@@ -16,7 +16,7 @@ import i18n from '@/i18n';
 import {
   getExternalDataProviders,
   getProviderCategory,
-} from '@/services/externalProviderService';
+} from '@/api/Settings/externalProviderService';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 

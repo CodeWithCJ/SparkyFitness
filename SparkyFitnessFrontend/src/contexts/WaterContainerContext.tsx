@@ -2,23 +2,21 @@ import type React from 'react';
 import {
   createContext,
   useContext,
-  useState,
   useEffect,
   type ReactNode,
+  useMemo,
 } from 'react';
-import {
-  getWaterContainers,
-  setPrimaryWaterContainer,
-  type WaterContainer,
-} from '../services/waterContainerService';
-import { useToast } from '../hooks/use-toast';
+import { type WaterContainer } from '../api/Settings/waterContainerService';
 import { usePreferences } from './PreferencesContext';
 import { useAuth } from '../hooks/useAuth';
 import { useActiveUser } from './ActiveUserContext';
+import {
+  useWaterContainersQuery,
+  useSetPrimaryWaterContainerMutation,
+} from '@/hooks/Settings/useWaterContainers';
 
 interface WaterContainerContextType {
   activeContainer: WaterContainer | null;
-  refreshContainers: () => void;
 }
 
 const WaterContainerContext = createContext<
@@ -28,74 +26,49 @@ const WaterContainerContext = createContext<
 export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [activeContainer, setActiveContainer] = useState<WaterContainer | null>(
-    null
-  );
-  const { toast } = useToast();
   const { water_display_unit } = usePreferences();
   const { user, loading } = useAuth();
   const { activeUserId } = useActiveUser(); // Get activeUserId
 
   const currentUserId = activeUserId || user?.id;
+  const { data: containers = [], isSuccess } =
+    useWaterContainersQuery(currentUserId);
+  const { mutate: setPrimary } = useSetPrimaryWaterContainerMutation();
 
-  const fetchAndSetActiveContainer = async () => {
-    try {
-      if (!currentUserId) return;
-      const fetchedContainers = await getWaterContainers();
-
-      let primary = fetchedContainers.find((c) => c.is_primary);
-      if (!primary && fetchedContainers.length > 0) {
-        // If no primary, use the first created container as primary
-        primary = fetchedContainers[0];
-        // Update this in the backend as well
-        await setPrimaryWaterContainer(primary.id);
-        // Re-fetch to get the updated primary status
-        const updatedContainers = await getWaterContainers();
-        primary = updatedContainers.find((c) => c.id === primary.id); // Get the updated primary
-      }
-
-      if (primary) {
-        setActiveContainer(primary);
-      } else {
-        // No containers exist, set a default
-        setActiveContainer({
-          id: null,
-          user_id: '', // Placeholder, not used for non-persisted default
-          name: 'Default Container',
-          volume: 2000, // Default to 2000ml
-          unit: water_display_unit,
-          is_primary: true,
-          servings_per_container: 8,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch water containers.',
-        variant: 'destructive',
-      });
-      setActiveContainer(null); // Ensure activeContainer is null on error
-    }
-  };
-
+  // container exists but no container is primary
   useEffect(() => {
-    if (!loading && currentUserId) {
-      fetchAndSetActiveContainer();
-    } else if (!loading && !currentUserId) {
-      // If user logs out, clear the active container
-      setActiveContainer(null);
+    if (isSuccess && containers.length > 0) {
+      const hasPrimary = containers.some((c) => c.is_primary);
+      if (!hasPrimary) {
+        setPrimary(containers[0].id);
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [water_display_unit, currentUserId, loading]);
+  }, [containers, isSuccess, setPrimary]);
 
-  const refreshContainers = () => {
-    fetchAndSetActiveContainer();
-  };
+  const activeContainer = useMemo(() => {
+    if (loading || !currentUserId || !isSuccess) return null;
+
+    const primary = containers.find((c) => c.is_primary);
+    if (primary) return primary;
+
+    // Fallback, wenn keine Container in der Datenbank existieren
+    if (containers.length === 0) {
+      return {
+        id: -1, // Verhindert Type-Errors, da id oft number ist
+        user_id: '',
+        name: 'Default Container',
+        volume: 2000,
+        unit: water_display_unit,
+        is_primary: true,
+        servings_per_container: 8,
+      } as WaterContainer;
+    }
+
+    return containers[0];
+  }, [containers, currentUserId, isSuccess, loading, water_display_unit]);
 
   return (
-    <WaterContainerContext.Provider
-      value={{ activeContainer, refreshContainers }}
-    >
+    <WaterContainerContext.Provider value={{ activeContainer }}>
       {children}
     </WaterContainerContext.Provider>
   );

@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import type { AIService } from '@/services/aiServiceSettingsService';
+import type { AIService } from '@/api/Settings/aiServiceSettingsService';
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 import { type GlobalSettings } from '@/api/Admin/globalSettingsService';
 import { useTranslation } from 'react-i18next';

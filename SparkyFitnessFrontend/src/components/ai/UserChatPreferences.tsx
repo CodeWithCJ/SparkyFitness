@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Bot, Save } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { UserPreferences } from '@/services/aiServiceSettingsService';
+import type { UserPreferences } from '@/api/Settings/aiServiceSettingsService';
 
 interface UserChatPreferencesProps {
   preferences: UserPreferences;

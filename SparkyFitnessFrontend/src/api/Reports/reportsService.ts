@@ -1,6 +1,6 @@
-import { apiCall } from './api';
-import type { Exercise } from '../api/Exercises/exerciseSearchService';
-import type { SleepAnalyticsData } from '../types';
+import { apiCall } from '@/services/api';
+import type { Exercise } from '../Exercises/exerciseSearchService';
+import type { SleepAnalyticsData } from '../../types';
 
 export interface NutritionData {
   date: string;

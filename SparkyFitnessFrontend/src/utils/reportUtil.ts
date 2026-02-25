@@ -7,7 +7,7 @@ import {
   DailyExerciseEntry,
   DailyFoodEntry,
   MeasurementData,
-} from '@/services/reportsService';
+} from '@/api/Reports/reportsService';
 import { debug, info, warn, error } from '@/utils/logging';
 
 import { parseISO, subDays, subYears } from 'date-fns';

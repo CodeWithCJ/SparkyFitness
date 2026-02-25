@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import type {
   AIService,
   UserPreferences,
-} from '@/services/aiServiceSettingsService';
+} from '@/api/Settings/aiServiceSettingsService';
 import { useTranslation } from 'react-i18next';
 import { UserChatPreferences } from '@/components/ai/UserChatPreferences';
 import { GlobalOverrideBanner } from '@/components/ai/GlobalOverrideBanner';
@@ -43,13 +43,8 @@ const AIServiceSettings = () => {
   // TanStack Query hooks
   const { data: isUserConfigAllowed = false, isLoading: settingsLoading } =
     useUserAiConfigAllowed();
-  const {
-    data: services = [],
-    isLoading: servicesLoading,
-    refetch: refetchServices,
-  } = useAIServices();
-  const { data: preferencesData, isLoading: preferencesLoading } =
-    useUserAIPreferences();
+  const { data: services = [] } = useAIServices();
+  const { data: preferencesData } = useUserAIPreferences();
 
   // Mutations
   const { mutateAsync: addService, isPending: isAdding } = useAddAIService();

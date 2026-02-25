@@ -15,7 +15,7 @@ import { Wind } from 'lucide-react';
 import type {
   CustomCategory,
   CustomMeasurementData,
-} from '@/services/reportsService';
+} from '@/api/Reports/reportsService';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 

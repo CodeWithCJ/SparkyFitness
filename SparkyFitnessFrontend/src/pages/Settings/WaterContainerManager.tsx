@@ -1,12 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
-import {
-  getWaterContainers,
-  createWaterContainer,
-  deleteWaterContainer,
-  setPrimaryWaterContainer,
-  type WaterContainer,
-} from '@/services/waterContainerService';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { convertMlToSelectedUnit } from '@/utils/nutritionCalculations';
@@ -19,10 +12,16 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { useWaterContainer } from '@/contexts/WaterContainerContext';
+import {
+  useWaterContainersQuery,
+  useCreateWaterContainerMutation,
+  useDeleteWaterContainerMutation,
+  useSetPrimaryWaterContainerMutation,
+} from '@/hooks/Settings/useWaterContainers';
+import { useAuth } from '@/hooks/useAuth';
 
 const WaterContainerManager: React.FC = () => {
-  const [containers, setContainers] = useState<WaterContainer[]>([]);
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [volume, setVolume] = useState<number | ''>('');
   const [unit, setUnit] = useState<'ml' | 'oz' | 'liter'>('ml');
@@ -30,80 +29,37 @@ const WaterContainerManager: React.FC = () => {
     ''
   );
   const { toast } = useToast();
-  const { refreshContainers } = useWaterContainer(); // Use the context
-
-  useEffect(() => {
-    fetchContainers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchContainers = async () => {
-    try {
-      const fetchedContainers = await getWaterContainers();
-      setContainers(fetchedContainers);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch water containers.',
-        variant: 'destructive',
-      });
-    }
-  };
+  const { data: containers = [] } = useWaterContainersQuery(user.activeUserId);
+  const { mutateAsync: createWaterContainer } =
+    useCreateWaterContainerMutation();
+  const { mutateAsync: deleteWaterContainer } =
+    useDeleteWaterContainerMutation();
+  const { mutateAsync: setPrimaryWaterContainer } =
+    useSetPrimaryWaterContainerMutation();
 
   const handleAddContainer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || volume === '' || servingsPerContainer === '') return;
-    try {
-      await createWaterContainer({
-        name,
-        volume: Number(volume),
-        unit,
-        is_primary: false,
-        servings_per_container: Number(servingsPerContainer),
-      });
-      toast({ title: 'Success', description: 'Water container added.' });
-      fetchContainers();
-      refreshContainers(); // Refresh active container in context
-      setName('');
-      setVolume('');
-      setServingsPerContainer('');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to add water container.',
-        variant: 'destructive',
-      });
-    }
+    await createWaterContainer({
+      name,
+      volume: Number(volume),
+      unit,
+      is_primary: false,
+      servings_per_container: Number(servingsPerContainer),
+    });
+    setName('');
+    setVolume('');
+    setServingsPerContainer('');
   };
 
   const handleDeleteContainer = async (id: number) => {
-    try {
-      await deleteWaterContainer(id);
-      toast({ title: 'Success', description: 'Water container deleted.' });
-      fetchContainers();
-      refreshContainers(); // Refresh active container in context
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete water container.',
-        variant: 'destructive',
-      });
-    }
+    await deleteWaterContainer(id);
+    toast({ title: 'Success', description: 'Water container deleted.' });
   };
 
   const handleSetPrimary = async (id: number) => {
-    try {
-      await setPrimaryWaterContainer(id);
-      toast({ title: 'Success', description: 'Primary container updated.' });
-      fetchContainers();
-      refreshContainers(); // Refresh active container in context
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to set primary container.',
-        variant: 'destructive',
-      });
-    }
+    await setPrimaryWaterContainer(id);
+    toast({ title: 'Success', description: 'Primary container updated.' });
   };
 
   return (
