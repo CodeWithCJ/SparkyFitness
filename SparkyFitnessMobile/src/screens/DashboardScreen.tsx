@@ -4,7 +4,6 @@ import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handl
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation } from '../hooks';
 import OnboardingModal, { shouldShowOnboardingModal } from '../components/OnboardingModal';
 import CalorieRingCard from '../components/CalorieRingCard';
@@ -191,9 +190,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           />
         )}
         {/* Macros Section - 2x2 grid */}
-        {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 ? (
-          <EmptyDayIllustration />
-        ) : summary.foodEntries.length > 0 ? (
+        {summary.foodEntries.length > 0 ? (
           
           <View className="flex-row flex-wrap justify-between">
             <MacroCard

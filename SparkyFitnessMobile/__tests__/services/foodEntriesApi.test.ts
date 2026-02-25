@@ -1,11 +1,13 @@
 import {
   fetchFoodEntries,
+  createFoodEntry,
   calculateCaloriesConsumed,
   calculateProtein,
   calculateCarbs,
   calculateFat,
   calculateFiber,
 } from '../../src/services/api/foodEntriesApi';
+import type { CreateFoodEntryPayload } from '../../src/services/api/foodEntriesApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 import type { FoodEntry } from '../../src/types/foodEntries';
 
@@ -113,6 +115,79 @@ describe('foodEntriesApi', () => {
 
       await expect(fetchFoodEntries(testDate)).rejects.toThrow(
         'Server error: 404 - Not Found'
+      );
+    });
+  });
+
+  describe('createFoodEntry', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    const linkedPayload: CreateFoodEntryPayload = {
+      meal_type_id: 'meal-1',
+      quantity: 200,
+      unit: 'g',
+      entry_date: '2024-06-15',
+      food_id: 'food-1',
+      variant_id: 'variant-1',
+    };
+
+    test('sends POST request to /api/food-entries/', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'new-entry-1' }),
+      });
+
+      await createFoodEntry(linkedPayload);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/food-entries/',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer test-api-key-12345',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(linkedPayload),
+        })
+      );
+    });
+
+    test('returns parsed JSON response on success', async () => {
+      const responseData = { id: 'new-entry-1', food_id: 'food-1' };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseData),
+      });
+
+      const result = await createFoodEntry(linkedPayload);
+
+      expect(result).toEqual(responseData);
+    });
+
+    test('throws error on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: () => Promise.resolve('Bad Request'),
+      });
+
+      await expect(createFoodEntry(linkedPayload)).rejects.toThrow(
+        'Server error: 400 - Bad Request'
+      );
+    });
+
+    test('throws error when no server config exists', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(null);
+
+      await expect(createFoodEntry(linkedPayload)).rejects.toThrow(
+        'Server configuration not found.'
       );
     });
   });

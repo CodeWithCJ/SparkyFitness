@@ -11,10 +11,11 @@ interface ApiFetchOptions {
   operation: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
+  headers?: Record<string, string>;
 }
 
 export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
-  const { endpoint, serviceName, operation, method = 'GET', body } = options;
+  const { endpoint, serviceName, operation, method = 'GET', body, headers: customHeaders } = options;
 
   const config = await getActiveServerConfig();
   if (!config) {
@@ -29,6 +30,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
       headers: {
         'Authorization': `Bearer ${config.apiKey}`,
         ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...customHeaders,
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });

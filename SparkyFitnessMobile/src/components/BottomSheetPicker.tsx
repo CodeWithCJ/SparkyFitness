@@ -29,6 +29,7 @@ interface BottomSheetPickerProps<T extends string | number> {
   placeholder?: string;
   title?: string;
   containerStyle?: StyleProp<ViewStyle>;
+  renderTrigger?: (props: { onPress: () => void; selectedOption: PickerOption<T> | undefined }) => React.ReactNode;
 }
 
 function BottomSheetPicker<T extends string | number>({
@@ -38,6 +39,7 @@ function BottomSheetPicker<T extends string | number>({
   placeholder = 'Select an option',
   title,
   containerStyle,
+  renderTrigger,
 }: BottomSheetPickerProps<T>) {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useUniwind();
@@ -114,20 +116,24 @@ function BottomSheetPicker<T extends string | number>({
 
   return (
     <>
-      <TouchableOpacity
-        className="flex-row items-center justify-between px-3 py-2.5 rounded-lg border border-border-subtle bg-raised min-h-11"
-        style={containerStyle}
-        onPress={handleOpen}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={title || placeholder}
-        accessibilityHint="Opens selection menu"
-      >
-        <Text className="text-base flex-1 text-text-primary">
-          {displayText}
-        </Text>
-        <Icon name="chevron-down" size={16} color={textMuted} />
-      </TouchableOpacity>
+      {renderTrigger ? (
+        renderTrigger({ onPress: handleOpen, selectedOption })
+      ) : (
+        <TouchableOpacity
+          className="flex-row items-center justify-between px-3 py-2.5 rounded-lg border border-border-subtle bg-raised min-h-11"
+          style={containerStyle}
+          onPress={handleOpen}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={title || placeholder}
+          accessibilityHint="Opens selection menu"
+        >
+          <Text className="text-base flex-1 text-text-primary">
+            {displayText}
+          </Text>
+          <Icon name="chevron-down" size={16} color={textMuted} />
+        </TouchableOpacity>
+      )}
 
       <BottomSheetModal
         ref={bottomSheetRef}

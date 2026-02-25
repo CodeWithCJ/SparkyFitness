@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,7 +13,7 @@ import { useServerConnection, useDailySummary } from '../hooks';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 
 interface DiaryScreenProps {
-  navigation: { navigate: (screen: string) => void };
+  navigation: { navigate: (screen: string) => void; setParams: (params: any) => void };
 }
 
 const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
@@ -30,6 +30,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       }
     }, [])
   );
+
+  useEffect(() => {
+    navigation.setParams({ selectedDate });
+  }, [selectedDate]);
 
   const goToPreviousDay = () => setSelectedDate(prev => addDays(prev, -1));
   const goToNextDay = () => setSelectedDate(prev => {

@@ -22,6 +22,13 @@ const ICON_MAP = {
   'checkmark': { sf: 'checkmark', ion: 'checkmark' },
   'settings': { sf: 'gearshape', ion: 'settings-outline' },
   'add': { sf: 'plus', ion: 'add' },
+  'remove': { sf: 'minus', ion: 'remove' },
+  'close': { sf: 'xmark', ion: 'close' },
+  'search': { sf: 'magnifyingglass', ion: 'search-outline' },
+  'save': { sf: 'square.and.arrow.down', ion: 'save-outline' },
+  'bookmark': { sf: 'bookmark', ion: 'bookmark-outline' },
+  'bookmark-filled': { sf: 'bookmark.fill', ion: 'bookmark' },
+  'checkmark-circle': { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },
 
   // Status
   'shield-checkmark': { sf: 'checkmark.shield', ion: 'shield-checkmark-outline' },

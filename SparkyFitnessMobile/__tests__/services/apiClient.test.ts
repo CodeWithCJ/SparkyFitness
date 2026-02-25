@@ -164,6 +164,32 @@ describe('apiClient', () => {
       );
     });
 
+    test('merges custom headers into fetch call', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+
+      await apiFetch({
+        endpoint: '/api/test',
+        serviceName: 'Test API',
+        operation: 'fetch test',
+        headers: { 'x-provider-id': 'provider-123' },
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/test',
+        expect.objectContaining({
+          method: 'GET',
+          headers: {
+            Authorization: 'Bearer test-api-key-12345',
+            'x-provider-id': 'provider-123',
+          },
+        })
+      );
+    });
+
     test('normalizes URL with trailing slash', async () => {
       mockGetActiveServerConfig.mockResolvedValue({
         ...testConfig,

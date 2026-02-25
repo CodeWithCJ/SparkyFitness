@@ -23,6 +23,7 @@ type IntervalSeedConfig = {
   valueKey: string;
   valueType: IntervalValueType;
   range: [number, number];
+  recordsPerDay?: number;
 };
 
 type InstantSeedConfig = {
@@ -91,6 +92,29 @@ const getPastDates = (days: number): Date[] => {
   return dates;
 };
 
+/**
+ * Distributes a total into `count` random chunks where each chunk
+ * is at least ~10% of the even share to avoid zero/tiny entries.
+ */
+const splitIntoChunks = (total: number, count: number): number[] => {
+  const minShare = Math.floor(total / count * 0.1);
+  const remaining = total - minShare * count;
+
+  // Generate random weights and normalize them to distribute the remainder
+  const weights = Array.from({ length: count }, () => Math.random());
+  const weightSum = weights.reduce((sum, w) => sum + w, 0);
+
+  const chunks = weights.map((w) =>
+    Math.floor(minShare + (w / weightSum) * remaining)
+  );
+
+  // Assign any rounding remainder to the last chunk
+  const distributed = chunks.reduce((sum, c) => sum + c, 0);
+  chunks[chunks.length - 1] += total - distributed;
+
+  return chunks;
+};
+
 // ============================================================================
 // Value Builders
 // ============================================================================
@@ -153,19 +177,64 @@ const buildInstantRecord = (config: InstantSeedConfig, time: Date) => {
 // Generic Seeders
 // ============================================================================
 
+const buildMultiRecordDay = (
+  config: IntervalSeedConfig,
+  date: Date,
+  numRecords: number
+): ReturnType<typeof buildIntervalRecord>[] => {
+  const dailyTotal = randomInt(config.range[0], config.range[1]);
+  const chunks = splitIntoChunks(dailyTotal, numRecords);
+
+  const today = isToday(date);
+  const dayStartHour = today ? 0 : 6;
+  const dayEndHour = today ? 0 : 22;
+  const totalHours = today ? 1 : dayEndHour - dayStartHour;
+  const windowMinutes = Math.floor((totalHours * 60) / numRecords);
+
+  const builder = INTERVAL_VALUE_BUILDERS[config.valueType];
+
+  return chunks.map((chunkValue, i) => {
+    const windowStartMinutes = dayStartHour * 60 + i * windowMinutes;
+    const offsetMinutes = today ? i * 10 : randomInt(0, Math.max(0, windowMinutes - 20));
+
+    const startTime = new Date(date);
+    startTime.setHours(0, 0, 0, 0);
+    startTime.setMinutes(windowStartMinutes + offsetMinutes);
+
+    const endTime = new Date(startTime);
+    const maxDuration = Math.max(5, Math.min(15, windowMinutes - offsetMinutes));
+    endTime.setMinutes(endTime.getMinutes() + randomInt(5, maxDuration));
+
+    return {
+      recordType: config.recordType,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      [config.valueKey]: builder(chunkValue),
+    };
+  });
+};
+
 const seedIntervalRecords = async (
   config: IntervalSeedConfig,
   days: number
 ): Promise<number> => {
   const dates = getPastDates(days);
-  const records = dates.map((date) => {
-    const startHour = getSafeHour(date, 8);
-    const startTime = new Date(date);
-    startTime.setHours(startHour, 0, 0, 0);
-    const endTime = new Date(date);
-    endTime.setHours(startHour, 30, 0, 0);
+  const records = dates.flatMap((date) => {
+    if (!config.recordsPerDay) {
+      const startHour = getSafeHour(date, 8);
+      const startTime = new Date(date);
+      startTime.setHours(startHour, 0, 0, 0);
+      const endTime = new Date(date);
+      endTime.setHours(startHour, 30, 0, 0);
 
-    return buildIntervalRecord(config, startTime, endTime);
+      return [buildIntervalRecord(config, startTime, endTime)];
+    }
+
+    const numRecords = isToday(date)
+      ? Math.ceil(config.recordsPerDay / 3)
+      : config.recordsPerDay;
+
+    return buildMultiRecordDay(config, date, numRecords);
   });
 
   await insertRecords(records as Parameters<typeof insertRecords>[0]);
@@ -525,13 +594,13 @@ const seedNutrition = async (days: number): Promise<number> => {
 
 const SEED_CONFIGS: SeedConfig[] = [
   // Interval records
-  { recordType: 'Steps', seedType: 'interval', valueKey: 'count', valueType: 'count', range: [5000, 15000] },
-  { recordType: 'Distance', seedType: 'interval', valueKey: 'distance', valueType: 'distance', range: [3000, 12000] },
-  { recordType: 'FloorsClimbed', seedType: 'interval', valueKey: 'floors', valueType: 'floors', range: [5, 25] },
+  { recordType: 'Steps', seedType: 'interval', valueKey: 'count', valueType: 'count', range: [5000, 15000], recordsPerDay: 8 },
+  { recordType: 'Distance', seedType: 'interval', valueKey: 'distance', valueType: 'distance', range: [3000, 12000], recordsPerDay: 6 },
+  { recordType: 'FloorsClimbed', seedType: 'interval', valueKey: 'floors', valueType: 'floors', range: [5, 25], recordsPerDay: 4 },
   { recordType: 'WheelchairPushes', seedType: 'interval', valueKey: 'count', valueType: 'count', range: [100, 500] },
   { recordType: 'ElevationGained', seedType: 'interval', valueKey: 'elevation', valueType: 'elevation', range: [20, 150] },
-  { recordType: 'ActiveCaloriesBurned', seedType: 'interval', valueKey: 'energy', valueType: 'energy', range: [200, 800] },
-  { recordType: 'TotalCaloriesBurned', seedType: 'interval', valueKey: 'energy', valueType: 'energy', range: [1800, 3000] },
+  { recordType: 'ActiveCaloriesBurned', seedType: 'interval', valueKey: 'energy', valueType: 'energy', range: [200, 800], recordsPerDay: 6 },
+  { recordType: 'TotalCaloriesBurned', seedType: 'interval', valueKey: 'energy', valueType: 'energy', range: [1800, 3000], recordsPerDay: 6 },
 
   // Samples-based records
   { recordType: 'Speed', seedType: 'samples', sampleKey: 'speed', unit: 'metersPerSecond', range: [1, 5], samplesPerRecord: 5, valueIsObject: true },
