@@ -29,7 +29,7 @@ import ActivityReportVisualizer from './ActivityReportVisualizer';
 import type {
   ExerciseDashboardData,
   ExerciseProgressData,
-} from '@/services/reportsService';
+} from '@/api/Reports/reportsService';
 import { parseISO } from 'date-fns';
 
 import { formatNumber, formatWeight } from '@/utils/numberFormatting';

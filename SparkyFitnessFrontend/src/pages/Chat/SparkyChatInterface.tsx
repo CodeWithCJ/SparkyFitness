@@ -20,7 +20,7 @@ import {
 import {
   getActiveAiServiceSetting,
   type AIService,
-} from '@/services/aiServiceSettingsService';
+} from '@/api/Settings/aiServiceSettingsService';
 
 const SparkyChatInterface = () => {
   const {

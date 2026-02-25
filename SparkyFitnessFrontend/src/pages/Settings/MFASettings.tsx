@@ -37,7 +37,6 @@ const MFASettings = () => {
 
   useEffect(() => {
     if (session?.user) {
-      console.log('DEBUG: Session User:', session.user);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setTotpEnabled(!!(session.user as any).mfaTotpEnabled);
       // Better Auth doesn't store email_mfa_enabled natively in user object by default,

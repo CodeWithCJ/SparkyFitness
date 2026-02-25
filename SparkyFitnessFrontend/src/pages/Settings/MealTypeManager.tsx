@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,24 +13,18 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Plus, Trash2, Edit, Lock, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
-import { usePreferences } from '@/contexts/PreferencesContext';
-import {
-  getMealTypes,
-  createMealType,
-  updateMealType,
-  deleteMealType,
-  type MealTypeDefinition,
-} from '@/api/Diary/mealTypeService';
+import { type MealTypeDefinition } from '@/api/Diary/mealTypeService';
 import { Badge } from '@/components/ui/badge';
+import {
+  useCreateMealTypeMutation,
+  useDeleteMealTypeMutation,
+  useMealTypes,
+  useUpdateMealTypeMutation,
+} from '@/hooks/Diary/useMealTypes';
 
 const MealTypeManager = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const { loggingLevel } = usePreferences();
 
-  const [mealTypes, setMealTypes] = useState<MealTypeDefinition[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
@@ -40,130 +34,47 @@ const MealTypeManager = () => {
   const [newName, setNewName] = useState('');
   const [newSortOrder, setNewSortOrder] = useState(100);
 
-  const fetchMealTypes = async () => {
-    if (user) {
-      try {
-        const data = await getMealTypes();
-        setMealTypes(data);
-      } catch (error) {
-        console.error('Error fetching meal types:', error);
-        toast({
-          title: t('common.errorOccurred', 'Error'),
-          description: t(
-            'mealTypeManager.loadError',
-            'Failed to load meal types.'
-          ),
-          variant: 'destructive',
-        });
-      }
-    }
-  };
-
-  useEffect(() => {
-    fetchMealTypes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  const { data: mealTypes = [] } = useMealTypes();
+  const { mutateAsync: createMealType } = useCreateMealTypeMutation();
+  const { mutateAsync: updateMealType } = useUpdateMealTypeMutation();
+  const { mutate: deleteMealType } = useDeleteMealTypeMutation();
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
 
-    try {
-      await createMealType({
-        name: newName.trim(),
-        sort_order: Number(newSortOrder),
-      });
-
-      toast({
-        title: t('common.success', 'Success'),
-        description: t('mealTypeManager.addSuccess', 'Meal category added.'),
-      });
-
-      setNewName('');
-      setNewSortOrder(100);
-      setIsAddDialogOpen(false);
-      fetchMealTypes();
-      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      toast({
-        title: t('common.errorOccurred', 'Error'),
-        description:
-          error.response?.data?.error || t('common.error', 'An error occurred'),
-        variant: 'destructive',
-      });
-    }
+    await createMealType({
+      name: newName.trim(),
+      sort_order: Number(newSortOrder),
+    });
+    setNewName('');
+    setNewSortOrder(100);
+    setIsAddDialogOpen(false);
   };
 
   const handleEdit = async () => {
     if (!editingMealType || !newName.trim()) return;
 
-    try {
-      await updateMealType(editingMealType.id, {
+    await updateMealType({
+      id: editingMealType.id,
+      data: {
         name: newName.trim(),
         sort_order: Number(newSortOrder),
-      });
+      },
+    });
 
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'mealTypeManager.updateSuccess',
-          'Meal category updated.'
-        ),
-      });
-
-      setIsEditDialogOpen(false);
-      setEditingMealType(null);
-      fetchMealTypes();
-      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      toast({
-        title: t('common.errorOccurred', 'Error'),
-        description:
-          error.response?.data?.error || t('common.error', 'An error occurred'),
-        variant: 'destructive',
-      });
-    }
+    setIsEditDialogOpen(false);
+    setEditingMealType(null);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteMealType(id);
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'mealTypeManager.deleteSuccess',
-          'Meal category deleted.'
-        ),
-      });
-      fetchMealTypes();
-      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      toast({
-        title: t('common.errorOccurred', 'Error'),
-        description:
-          error.response?.data?.error || t('common.error', 'Failed to delete.'),
-        variant: 'destructive',
-      });
-    }
+  const handleDelete = (id: string) => {
+    deleteMealType(id);
   };
 
   const toggleVisibility = async (item: MealTypeDefinition) => {
-    try {
-      await updateMealType(item.id, { is_visible: !item.is_visible });
-
-      fetchMealTypes();
-
-      window.dispatchEvent(new CustomEvent('foodDiaryRefresh'));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
+    await updateMealType({
+      id: item.id,
+      data: { is_visible: !item.is_visible },
+    });
   };
   const openEditDialog = (item: MealTypeDefinition) => {
     setEditingMealType(item);

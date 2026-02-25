@@ -6,7 +6,7 @@ import {
   updateGlobalAIService,
   deleteGlobalAIService,
   type AIService,
-} from '@/services/aiServiceSettingsService';
+} from '@/api/Settings/aiServiceSettingsService';
 import { aiServiceKeys } from '@/api/keys/admin';
 
 // Query hook for fetching global AI services

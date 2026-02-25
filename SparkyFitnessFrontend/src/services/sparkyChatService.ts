@@ -1,4 +1,4 @@
-import { apiCall } from './api';
+import { apiCall } from '@/services/api';
 import { setUserLoggingLevel } from '@/utils/userPreferences';
 import {
   debug,
@@ -7,13 +7,19 @@ import {
   error,
   type UserLoggingLevel,
 } from '@/utils/logging';
-import type { CoachResponse, FoodOption } from './Chatbot/Chatbot_types';
-import { processFoodInput, addFoodOption } from './Chatbot/Chatbot_FoodHandler';
-import { processExerciseInput } from './Chatbot/Chatbot_ExerciseHandler';
-import { processMeasurementInput } from './Chatbot/Chatbot_MeasurementHandler';
-import { processWaterInput } from './Chatbot/Chatbot_WaterHandler';
-import { processChatInput } from './Chatbot/Chatbot_ChatHandler';
-import type { AIService } from './aiServiceSettingsService';
+import type {
+  CoachResponse,
+  FoodOption,
+} from '@/services/Chatbot/Chatbot_types';
+import {
+  processFoodInput,
+  addFoodOption,
+} from '@/services/Chatbot/Chatbot_FoodHandler';
+import { processExerciseInput } from '@/services/Chatbot/Chatbot_ExerciseHandler';
+import { processMeasurementInput } from '@/services/Chatbot/Chatbot_MeasurementHandler';
+import { processWaterInput } from '@/services/Chatbot/Chatbot_WaterHandler';
+import { processChatInput } from '@/services/Chatbot/Chatbot_ChatHandler';
+import { AIService } from '../api/Settings/aiServiceSettingsService';
 
 export interface Message {
   id: string;

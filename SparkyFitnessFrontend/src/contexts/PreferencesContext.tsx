@@ -16,7 +16,7 @@ import { apiCall } from '@/services/api';
 import {
   createWaterContainer,
   setPrimaryWaterContainer,
-} from '@/services/waterContainerService';
+} from '@/api/Settings/waterContainerService';
 import {
   FatBreakdownAlgorithm,
   MineralCalculationAlgorithm,

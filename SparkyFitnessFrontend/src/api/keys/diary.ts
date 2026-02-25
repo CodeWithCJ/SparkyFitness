@@ -34,3 +34,11 @@ export const diaryReportKeys = {
   nutritionTrendDetail: (userId: string, startDate: string, endDate: string) =>
     [...diaryReportKeys.nutritionTrends(), userId, startDate, endDate] as const,
 };
+
+export const waterIntakeKeys = {
+  all: ['waterIntake'] as const,
+  daily: (date: string, userId: string) =>
+    [...waterIntakeKeys.all, date, userId] as const,
+  goals: (date: string, userId: string) =>
+    ['goals', 'water', date, userId] as const,
+};
