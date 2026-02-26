@@ -102,6 +102,16 @@ export const requestHealthPermissions = async (
 const PAGE_SIZE = 5000;
 const MAX_PAGES = 100;
 
+interface ReadRecordsOptions {
+  timeRangeFilter: {
+    operator: 'between';
+    startTime: string;
+    endTime: string;
+  };
+  pageSize: number;
+  pageToken?: string;
+}
+
 export const readHealthRecords = async (
   recordType: string,
   startDate: Date,
@@ -114,7 +124,7 @@ export const readHealthRecords = async (
   try {
     do {
       page++;
-      const options: Record<string, unknown> = {
+      const options: ReadRecordsOptions = {
         timeRangeFilter: {
           operator: 'between',
           startTime: startDate.toISOString(),
