@@ -49,6 +49,7 @@ BEGIN
     'onboarding_status',
     'profiles',
     'sparky_chat_history',
+    'admin_activity_logs',
     'api_key',
     'user_goals',
     'user_ignored_updates',
@@ -336,6 +337,12 @@ SELECT create_owner_policy('user_preferences');
 SELECT create_owner_policy('user_water_containers');
 SELECT create_owner_policy('weekly_goal_plans');
 SELECT create_owner_policy('user_custom_nutrients');
+
+-- Admin Activity Logs: Only the admin who performed the action or other admins can view
+CREATE POLICY admin_only_select ON public.admin_activity_logs FOR SELECT TO PUBLIC
+USING (admin_user_id = current_user_id() OR is_admin());
+CREATE POLICY admin_only_insert ON public.admin_activity_logs FOR INSERT TO PUBLIC
+WITH CHECK (admin_user_id = current_user_id() AND is_admin());
 
 -- Diary access tables
 SELECT create_diary_policy('check_in_measurements');
