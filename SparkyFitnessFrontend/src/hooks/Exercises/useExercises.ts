@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
+  assetKeys,
   exerciseEntryKeys,
   exerciseKeys,
   suggestedExercisesKeys,
@@ -24,9 +25,11 @@ import {
   importExerciseHistory,
   getExerciseById,
   getSuggestedExercises,
+  getBodyMapSvg,
 } from '@/api/Exercises/exerciseService';
 import i18n from '@/i18n';
 import {
+  getActivityDetails,
   getExerciseHistory,
   getExerciseProgressData,
 } from '@/api/Exercises/exerciseEntryService';
@@ -331,3 +334,32 @@ export const exerciseProgressOptions = (
     ),
   },
 });
+
+export const useActivityDetailsQuery = (
+  exerciseEntryId: string,
+  providerName: string
+) => {
+  return useQuery({
+    queryKey: exerciseEntryKeys.activityDetails(
+      exerciseEntryId as string,
+      providerName as string
+    ),
+    queryFn: () =>
+      getActivityDetails(exerciseEntryId as string, providerName as string),
+    enabled: Boolean(exerciseEntryId && providerName),
+    meta: {
+      errorMessage: `Failed to fetch ${providerName} activity details.`,
+    },
+  });
+};
+
+export const useBodyMapSvgQuery = () => {
+  return useQuery({
+    queryKey: assetKeys.svg('muscle-male'),
+    queryFn: getBodyMapSvg,
+    staleTime: Infinity,
+    meta: {
+      errorMessage: 'Error fetching body map SVG',
+    },
+  });
+};

@@ -78,7 +78,7 @@ export default defineConfig(({ mode }) => {
               )
                 return 'vendor-scanners';
               if (id.includes('@dnd-kit')) return 'vendor-dnd';
-              // Everything else (React, utilities, auth, axios) together to avoid dependency issues
+              // Everything else (React, utilities, auth ) together to avoid dependency issues
               // This ensures React loads before anything that depends on it
               return 'vendor-others';
             }

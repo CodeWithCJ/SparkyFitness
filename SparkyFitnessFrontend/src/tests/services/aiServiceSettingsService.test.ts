@@ -2,7 +2,7 @@ import * as aiServiceSettingsService from '@/api/Settings/aiServiceSettingsServi
 
 // Mock the api module
 const mockApiCall = jest.fn();
-jest.mock('@/services/api', () => ({
+jest.mock('@/api/api', () => ({
   apiCall: (...args: unknown[]) => mockApiCall(...args),
 }));
 

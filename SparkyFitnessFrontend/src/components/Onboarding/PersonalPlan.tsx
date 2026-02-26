@@ -1,4 +1,3 @@
-import type React from 'react';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
@@ -17,7 +16,6 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
 import { useSubmitOnboarding } from '@/hooks/Onboarding/useOnboarding';
 import { format } from 'date-fns';
-import { updateProfileData } from '@/api/Settings/profileService';
 import { useSaveCheckInMeasurementsMutation } from '@/hooks/CheckIn/useCheckIn';
 import { DietApproach } from './DietApproach';
 import { CalculationSettings } from './CalculationSettings';
@@ -26,6 +24,7 @@ import { PersonalPlanHeader } from './PersonalPlanHeader';
 import { OnboardingDialog } from './OnboardingDialog';
 import { createInitialPlan } from '@/utils/onboarding';
 import { FormData } from './OnBoardingForm';
+import { useUpdateProfileMutation } from '@/hooks/Settings/useProfile';
 
 interface PersonalPlanProps {
   formData: FormData;
@@ -35,13 +34,13 @@ interface PersonalPlanProps {
   onOnboardingComplete: () => void;
 }
 
-const PersonalPlan: React.FC<PersonalPlanProps> = ({
+const PersonalPlan = ({
   formData,
   weightUnit,
   heightUnit,
   localDateFormat,
   onOnboardingComplete,
-}) => {
+}: PersonalPlanProps) => {
   const {
     convertEnergy,
     getEnergyUnitString,
@@ -105,6 +104,36 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
   const { mutateAsync: saveGoals } = useSaveGoalsMutation();
   const { mutateAsync: saveCheckInMeasurements } =
     useSaveCheckInMeasurementsMutation();
+  const { mutateAsync: updateProfileData } = useUpdateProfileMutation();
+
+  const handleDietChange = (newDiet: string) => {
+    setLocalSelectedDiet(newDiet);
+
+    const updatedPlan = createInitialPlan(
+      formData,
+      weightUnit,
+      heightUnit,
+      localEnergyUnit,
+      newDiet,
+      customPercentages,
+      localFatBreakdownAlgorithm,
+      localMineralAlgorithm,
+      localVitaminAlgorithm,
+      localSugarAlgorithm,
+      convertEnergy
+    );
+
+    setEditedPlan((prev) => {
+      if (!prev) return updatedPlan;
+      return {
+        ...updatedPlan,
+        breakfast_percentage: prev.breakfast_percentage,
+        lunch_percentage: prev.lunch_percentage,
+        dinner_percentage: prev.dinner_percentage,
+        snacks_percentage: prev.snacks_percentage,
+      };
+    });
+  };
 
   const plan = useMemo(() => {
     return calculateBasePlan(
@@ -380,7 +409,7 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
         localSelectedDiet={localSelectedDiet}
         lockedMacros={lockedMacros}
         setCustomPercentages={setCustomPercentages}
-        setLocalSelectedDiet={setLocalSelectedDiet}
+        setLocalSelectedDiet={handleDietChange}
         setLockedMacros={setLockedMacros}
         setShowDietApproach={setShowDietApproach}
         showDietApproach={showDietApproach}

@@ -294,3 +294,11 @@ export const importExerciseHistory = async (
     body: { entries },
   });
 };
+
+export const getBodyMapSvg = async (): Promise<string> => {
+  const response = await fetch('/images/muscle-male.svg');
+  if (!response.ok) {
+    throw new Error('Failed to fetch SVG');
+  }
+  return response.text();
+};

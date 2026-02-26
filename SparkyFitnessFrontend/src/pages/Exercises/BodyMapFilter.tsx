@@ -1,8 +1,8 @@
 import type React from 'react';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { error } from '@/utils/logging';
 import './BodyMapFilter.css';
+import { useBodyMapSvgQuery } from '@/hooks/Exercises/useExercises';
 
 interface BodyMapFilterProps {
   selectedMuscles: string[];
@@ -16,18 +16,8 @@ const BodyMapFilter: React.FC<BodyMapFilterProps> = ({
   availableMuscleGroups,
 }) => {
   const { loggingLevel } = usePreferences();
-  const [svgContent, setSvgContent] = useState<string | null>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    fetch('/images/muscle-male.svg')
-      .then((response) => response.text())
-      .then(setSvgContent)
-      .catch((err) => {
-        error(loggingLevel, 'BodyMapFilter: Error fetching SVG:', err);
-      });
-  }, [loggingLevel]);
-
+  const { data: svgContent } = useBodyMapSvgQuery();
   useEffect(() => {
     if (!svgContent || !svgContainerRef.current) return;
 
