@@ -18,7 +18,7 @@
   "author": "CodewithCJ",
   "license": "Refer to License.md",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "pg": "^8.11.0",
     "express": "^4.18.2",
     "dotenv": "^16.3.1",
