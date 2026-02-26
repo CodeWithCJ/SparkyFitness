@@ -17,7 +17,9 @@ export const fetchAvatarBlob = async (url: string): Promise<Blob> => {
   return new Blob([blob], { type: blob.type });
 };
 
-export const updateProfileData = async (payload: UpdateProfilePayload) => {
+export const updateProfileData = async (
+  payload: Partial<UpdateProfilePayload>
+) => {
   return apiCall('/identity/profiles', {
     method: 'PUT',
     body: JSON.stringify(payload),

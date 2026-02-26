@@ -1,132 +1,312 @@
 import type React from 'react';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  ChevronLeft,
-  Utensils,
-  Lock,
-  Unlock,
-  AlertTriangle,
-  Settings,
-} from 'lucide-react';
-import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
+import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
 import type { ExpandedGoals } from '@/types/goals';
-import type { UserCustomNutrient } from '@/types/customNutrient';
-import { DIET_TEMPLATES, getDietTemplate } from '@/constants/dietTemplates';
 import {
   FatBreakdownAlgorithm,
-  FatBreakdownAlgorithmLabels,
   MineralCalculationAlgorithm,
-  MineralCalculationAlgorithmLabels,
   VitaminCalculationAlgorithm,
-  VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithm,
-  SugarCalculationAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import { toast } from '@/hooks/use-toast';
 import { Save, PlayCircle } from 'lucide-react';
-
-import type { TFunction } from 'i18next';
-import MealPercentageManager from '@/components/MealPercentageManager';
-import { useCreatePresetMutation } from '@/hooks/Goals/useGoals';
-import {
-  convertMlToSelectedUnit,
-  convertSelectedUnitToMl,
-} from '@/utils/nutritionCalculations';
+import { useSaveGoalsMutation } from '@/hooks/Goals/useGoals';
+import { calculateBasePlan } from '@/utils/nutritionCalculations';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useTranslation } from 'react-i18next';
+import { useSubmitOnboarding } from '@/hooks/Onboarding/useOnboarding';
+import { format } from 'date-fns';
+import { updateProfileData } from '@/api/Settings/profileService';
+import { useSaveCheckInMeasurementsMutation } from '@/hooks/CheckIn/useCheckIn';
+import { DietApproach } from './DietApproach';
+import { CalculationSettings } from './CalculationSettings';
+import { NutrientGoals } from './NutrientGoals';
+import { PersonalPlanHeader } from './PersonalPlanHeader';
+import { OnboardingDialog } from './OnboardingDialog';
+import { createInitialPlan } from '@/utils/onboarding';
+import { FormData } from './OnBoardingForm';
 
 interface PersonalPlanProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  plan: any;
-  editedPlan: ExpandedGoals | null;
-  setEditedPlan: React.Dispatch<React.SetStateAction<ExpandedGoals | null>>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  formData: any;
-  t: TFunction; // Use correct type from i18next
-  localEnergyUnit: 'kcal' | 'kJ';
-  setLocalEnergyUnit: (unit: 'kcal' | 'kJ') => void;
-  localWaterUnit: 'ml' | 'oz' | 'liter';
-  setLocalWaterUnit: (unit: 'ml' | 'oz' | 'liter') => void;
-  convertEnergy: (value: number, from: string, to: string) => number;
-  getEnergyUnitString: (unit: string) => string;
-  localSelectedDiet: string;
-  setLocalSelectedDiet: (diet: string) => void;
-  customPercentages: { carbs: number; protein: number; fat: number };
-  setCustomPercentages: (percentages: {
-    carbs: number;
-    protein: number;
-    fat: number;
-  }) => void;
-  handleMacroValueChange: (
-    macro: 'carbs' | 'protein' | 'fat',
-    value: number
-  ) => void;
-  lockedMacros: { carbs: boolean; protein: boolean; fat: boolean };
-  setLockedMacros: React.Dispatch<
-    React.SetStateAction<{ carbs: boolean; protein: boolean; fat: boolean }>
-  >;
-  localFatBreakdownAlgorithm: FatBreakdownAlgorithm;
-  setLocalFatBreakdownAlgorithm: (algo: FatBreakdownAlgorithm) => void;
-  localMineralAlgorithm: MineralCalculationAlgorithm;
-  setLocalMineralAlgorithm: (algo: MineralCalculationAlgorithm) => void;
-  localVitaminAlgorithm: VitaminCalculationAlgorithm;
-  setLocalVitaminAlgorithm: (algo: VitaminCalculationAlgorithm) => void;
-  localSugarAlgorithm: SugarCalculationAlgorithm;
-  setLocalSugarAlgorithm: (algo: SugarCalculationAlgorithm) => void;
-  handleSubmit: () => void;
-  isSubmitting: boolean;
-  customNutrients?: UserCustomNutrient[];
+  formData: FormData;
+  weightUnit: 'kg' | 'lbs';
+  heightUnit: 'cm' | 'inches';
+  localDateFormat: string;
+  onOnboardingComplete: () => void;
 }
 
 const PersonalPlan: React.FC<PersonalPlanProps> = ({
-  plan,
-  editedPlan,
-  setEditedPlan,
   formData,
-  t,
-  localEnergyUnit,
-  setLocalEnergyUnit,
-  localWaterUnit,
-  setLocalWaterUnit,
-  convertEnergy,
-  getEnergyUnitString,
-  localSelectedDiet,
-  setLocalSelectedDiet,
-  customPercentages,
-  setCustomPercentages,
-  handleMacroValueChange,
-  lockedMacros,
-  setLockedMacros,
-  localFatBreakdownAlgorithm,
-  setLocalFatBreakdownAlgorithm,
-  localMineralAlgorithm,
-  setLocalMineralAlgorithm,
-  localVitaminAlgorithm,
-  setLocalVitaminAlgorithm,
-  localSugarAlgorithm,
-  setLocalSugarAlgorithm,
-  handleSubmit,
-  isSubmitting,
-  customNutrients,
+  weightUnit,
+  heightUnit,
+  localDateFormat,
+  onOnboardingComplete,
 }) => {
+  const {
+    convertEnergy,
+    getEnergyUnitString,
+    saveAllPreferences,
+    fatBreakdownAlgorithm,
+    mineralCalculationAlgorithm,
+    vitaminCalculationAlgorithm,
+    sugarCalculationAlgorithm,
+    energyUnit,
+  } = usePreferences();
+  const { t } = useTranslation();
+  const [showDietApproach, setShowDietApproach] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [isSavePresetOpen, setIsSavePresetOpen] = useState(false);
+  const [presetName, setPresetName] = useState('');
+  const [localFatBreakdownAlgorithm, setLocalFatBreakdownAlgorithm] =
+    useState<FatBreakdownAlgorithm>(fatBreakdownAlgorithm);
+  const [localMineralAlgorithm, setLocalMineralAlgorithm] =
+    useState<MineralCalculationAlgorithm>(mineralCalculationAlgorithm);
+  const [localVitaminAlgorithm, setLocalVitaminAlgorithm] =
+    useState<VitaminCalculationAlgorithm>(vitaminCalculationAlgorithm);
+  const [localSugarAlgorithm, setLocalSugarAlgorithm] =
+    useState<SugarCalculationAlgorithm>(sugarCalculationAlgorithm);
+  const [localEnergyUnit, setLocalEnergyUnit] = useState<'kcal' | 'kJ'>(
+    energyUnit
+  );
+  const [localSelectedDiet, setLocalSelectedDiet] =
+    useState<string>('balanced');
+  const [customPercentages, setCustomPercentages] = useState({
+    carbs: 40,
+    protein: 30,
+    fat: 30,
+  });
+
+  const [lockedMacros, setLockedMacros] = useState({
+    carbs: false,
+    protein: false,
+    fat: false,
+  });
+  const [localWaterUnit, setLocalWaterUnit] = useState<'ml' | 'oz' | 'liter'>(
+    'ml'
+  );
+  const [editedPlan, setEditedPlan] = useState<ExpandedGoals | null>(() => {
+    return createInitialPlan(
+      formData,
+      weightUnit,
+      heightUnit,
+      localEnergyUnit,
+      localSelectedDiet,
+      customPercentages,
+      localFatBreakdownAlgorithm,
+      localMineralAlgorithm,
+      localVitaminAlgorithm,
+      localSugarAlgorithm,
+      convertEnergy
+    );
+  });
+
+  const { mutateAsync: submitOnboardingData, isPending: isSubmitting } =
+    useSubmitOnboarding();
+  const { mutateAsync: saveGoals } = useSaveGoalsMutation();
+  const { mutateAsync: saveCheckInMeasurements } =
+    useSaveCheckInMeasurementsMutation();
+
+  const plan = useMemo(() => {
+    return calculateBasePlan(
+      formData,
+      weightUnit,
+      heightUnit,
+      localSelectedDiet,
+      customPercentages
+    );
+  }, [formData, weightUnit, heightUnit, localSelectedDiet, customPercentages]);
+
+  const handleMacroValueChange = (
+    changedMacro: keyof typeof customPercentages,
+    newValue: number
+  ) => {
+    newValue = Math.max(0, Math.min(100, newValue));
+
+    if (lockedMacros[changedMacro]) return;
+
+    const newPercentages = { ...customPercentages };
+    newPercentages[changedMacro] = newValue;
+
+    const otherUnlockedMacros = (
+      Object.keys(customPercentages) as Array<keyof typeof customPercentages>
+    ).filter((m) => m !== changedMacro && !lockedMacros[m]);
+
+    const fixedTotal = Object.keys(newPercentages).reduce((total, key) => {
+      const macro = key as keyof typeof customPercentages;
+      if (macro === changedMacro || lockedMacros[macro]) {
+        return total + newPercentages[macro];
+      }
+      return total;
+    }, 0);
+
+    const remainingToDistribute = 100 - fixedTotal;
+
+    if (otherUnlockedMacros.length > 0) {
+      const totalOfOtherUnlocked = otherUnlockedMacros.reduce(
+        (sum, m) => sum + customPercentages[m],
+        0
+      );
+
+      if (totalOfOtherUnlocked > 0) {
+        otherUnlockedMacros.forEach((macro) => {
+          const ratio = customPercentages[macro] / totalOfOtherUnlocked;
+          newPercentages[macro] = remainingToDistribute * ratio;
+        });
+      } else {
+        otherUnlockedMacros.forEach((macro) => {
+          newPercentages[macro] =
+            remainingToDistribute / otherUnlockedMacros.length;
+        });
+      }
+    }
+
+    let total = 0;
+    (
+      Object.keys(newPercentages) as Array<keyof typeof customPercentages>
+    ).forEach((key) => {
+      newPercentages[key] = Math.round(newPercentages[key]);
+      total += newPercentages[key];
+    });
+
+    const lastUnlocked = otherUnlockedMacros[otherUnlockedMacros.length - 1];
+    if (total !== 100 && lastUnlocked) {
+      newPercentages[lastUnlocked] += 100 - total;
+    }
+
+    (
+      Object.keys(newPercentages) as Array<keyof typeof customPercentages>
+    ).forEach((key) => {
+      if (newPercentages[key] < 0) newPercentages[key] = 0;
+    });
+
+    const updatedPlan = createInitialPlan(
+      formData,
+      weightUnit,
+      heightUnit,
+      localEnergyUnit,
+      localSelectedDiet,
+      newPercentages,
+      localFatBreakdownAlgorithm,
+      localMineralAlgorithm,
+      localVitaminAlgorithm,
+      localSugarAlgorithm,
+      convertEnergy
+    );
+    setEditedPlan(updatedPlan);
+  };
+
+  const handleSubmit = async () => {
+    const dataToSubmit = {
+      ...formData,
+      currentWeight:
+        formData.currentWeight === ''
+          ? undefined
+          : weightUnit === 'lbs'
+            ? Number(formData.currentWeight) * 0.453592
+            : Number(formData.currentWeight),
+      height:
+        formData.height === ''
+          ? undefined
+          : heightUnit === 'inches'
+            ? Number(formData.height) * 2.54
+            : Number(formData.height),
+      targetWeight:
+        formData.targetWeight === ''
+          ? undefined
+          : weightUnit === 'lbs'
+            ? Number(formData.targetWeight) * 0.453592
+            : Number(formData.targetWeight),
+      mealsPerDay:
+        formData.mealsPerDay === '' ? undefined : Number(formData.mealsPerDay),
+    };
+
+    // Update user preferences with selected units and algorithms
+    await saveAllPreferences({
+      weightUnit: weightUnit,
+      measurementUnit: heightUnit,
+      energyUnit: localEnergyUnit,
+      dateFormat: localDateFormat,
+      fatBreakdownAlgorithm: localFatBreakdownAlgorithm,
+      mineralCalculationAlgorithm: localMineralAlgorithm,
+      vitaminCalculationAlgorithm: localVitaminAlgorithm,
+      sugarCalculationAlgorithm: localSugarAlgorithm,
+      selectedDiet: localSelectedDiet,
+    });
+
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+    try {
+      await updateProfileData({
+        gender: formData.sex,
+        date_of_birth: formData.birthDate,
+      });
+    } catch (e) {
+      console.error('Failed to sync profile data', e);
+    }
+
+    try {
+      const metricWeight =
+        weightUnit === 'lbs'
+          ? Number(formData.currentWeight) * 0.453592
+          : Number(formData.currentWeight);
+      const metricHeight =
+        heightUnit === 'inches'
+          ? Number(formData.height) * 2.54
+          : Number(formData.height);
+
+      await saveCheckInMeasurements({
+        entry_date: todayStr,
+        weight: metricWeight,
+        height: metricHeight,
+      });
+    } catch (e) {
+      console.error('Failed to sync measurements', e);
+    }
+
+    try {
+      if (editedPlan) {
+        const storedCalories = convertEnergy(
+          editedPlan.calories,
+          localEnergyUnit,
+          'kcal'
+        );
+
+        const newGoals: ExpandedGoals = {
+          ...editedPlan,
+          calories: storedCalories,
+          protein_percentage: Math.round(
+            ((editedPlan.protein * 4) / storedCalories) * 100
+          ),
+          carbs_percentage: Math.round(
+            ((editedPlan.carbs * 4) / storedCalories) * 100
+          ),
+          fat_percentage: Math.round(
+            ((editedPlan.fat * 9) / storedCalories) * 100
+          ),
+          dietary_fiber: editedPlan.dietary_fiber,
+          water_goal_ml: editedPlan.water_goal_ml,
+          target_exercise_duration_minutes:
+            editedPlan.target_exercise_duration_minutes,
+          target_exercise_calories_burned:
+            editedPlan.target_exercise_calories_burned,
+        };
+
+        if (newGoals) {
+          await saveGoals({ date: todayStr, goals: newGoals, cascade: true });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync goals', e);
+    }
+    try {
+      await submitOnboardingData(dataToSubmit);
+      onOnboardingComplete();
+    } catch (error) {
+      // The mutation hook handles showing an error toast.
+      // We just need to reset the loading state if submission fails.
+    }
+  };
+
   const memoizedInitialPercentages = useMemo(
     () => ({
       breakfast: editedPlan?.breakfast_percentage || 25,
@@ -142,76 +322,23 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
     ]
   );
 
-  const handlePercentagesChange = useCallback(
-    (newPercentages: {
-      breakfast: number;
-      lunch: number;
-      dinner: number;
-      snacks: number;
-    }) => {
-      setEditedPlan((prev) =>
-        prev
-          ? {
-              ...prev,
-              breakfast_percentage: newPercentages.breakfast,
-              lunch_percentage: newPercentages.lunch,
-              dinner_percentage: newPercentages.dinner,
-              snacks_percentage: newPercentages.snacks,
-            }
-          : null
-      );
-    },
-    [setEditedPlan]
-  );
-
-  const [showDietApproach, setShowDietApproach] = useState(false);
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
-  const [isSavePresetOpen, setIsSavePresetOpen] = useState(false);
-  const [presetName, setPresetName] = useState('');
-  const [isSavingPreset, setIsSavingPreset] = useState(false);
-  const { mutateAsync: createGoalPreset } = useCreatePresetMutation();
-  const handleSavePreset = async () => {
-    if (!presetName.trim()) {
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'goals.presetNameRequired',
-          'Please enter a name for your preset.'
-        ),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!editedPlan) return;
-
-    setIsSavingPreset(true);
-    try {
-      // Create the preset
-      await createGoalPreset({
-        ...editedPlan,
-        preset_name: presetName,
-      });
-
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'goals.presetCreatedSuccess',
-          'Goal preset created successfully!'
-        ),
-      });
-
-      // After saving preset, proceed to submit the plan as the active goal (finish onboarding)
-      handleSubmit();
-    } catch (error) {
-      console.error('Error saving preset:', error);
-      toast({
-        title: t('common.error', 'Error'),
-        description: t('goals.errorSavingPreset', 'Failed to save preset.'),
-        variant: 'destructive',
-      });
-      setIsSavingPreset(false);
-    }
+  const handlePercentagesChange = (newPercentages: {
+    breakfast: number;
+    lunch: number;
+    dinner: number;
+    snacks: number;
+  }) => {
+    setEditedPlan((prev) =>
+      prev
+        ? {
+            ...prev,
+            breakfast_percentage: newPercentages.breakfast,
+            lunch_percentage: newPercentages.lunch,
+            dinner_percentage: newPercentages.dinner,
+            snacks_percentage: newPercentages.snacks,
+          }
+        : null
+    );
   };
 
   if (!plan) return null;
@@ -235,1083 +362,58 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
         </AlertDescription>
       </Alert>
 
-      <div className="bg-[#1c1c1e] rounded-2xl p-6 mb-6 text-center border border-gray-800">
-        <div className="flex justify-center mb-6 bg-[#2c2c2e] p-1 rounded-lg w-fit mx-auto">
-          <button
-            onClick={() => {
-              if (localEnergyUnit !== 'kcal' && editedPlan?.calories) {
-                setEditedPlan((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        calories: Math.round(
-                          convertEnergy(prev.calories, 'kJ', 'kcal')
-                        ),
-                      }
-                    : null
-                );
-              }
-              setLocalEnergyUnit('kcal');
-            }}
-            className={`px-4 py-2 rounded-md transition-all ${localEnergyUnit === 'kcal' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-          >
-            {t('settings.preferences.calories', 'Calories (kcal)')}
-          </button>
-          <button
-            onClick={() => {
-              if (localEnergyUnit !== 'kJ' && editedPlan?.calories) {
-                setEditedPlan((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        calories: Math.round(
-                          convertEnergy(prev.calories, 'kcal', 'kJ')
-                        ),
-                      }
-                    : null
-                );
-              }
-              setLocalEnergyUnit('kJ');
-            }}
-            className={`px-4 py-2 rounded-md transition-all ${localEnergyUnit === 'kJ' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-          >
-            {t('settings.preferences.joules', 'Joules (kJ)')}
-          </button>
-        </div>
-
-        <p className="text-gray-400 uppercase text-sm font-bold tracking-wider mb-2">
-          Daily Calorie Budget
-        </p>
-        <div className="text-6xl font-extrabold text-green-500 flex justify-center">
-          <Input
-            type="number"
-            step={1}
-            value={editedPlan?.calories ? editedPlan.calories.toFixed(0) : ''}
-            onChange={(e) =>
-              setEditedPlan((prev) =>
-                prev ? { ...prev, calories: Number(e.target.value) } : null
-              )
-            }
-            className="w-48 text-center bg-transparent border-none text-6xl text-green-500 font-extrabold focus-visible:ring-0 p-0 h-auto"
-          />
-        </div>
-        <p className="text-xl text-white font-medium mt-1">
-          {getEnergyUnitString(localEnergyUnit)} / day
-        </p>
-
-        <div className="mt-6 pt-6 border-t border-gray-800 flex justify-between text-sm text-gray-400">
-          <span>
-            Base BMR:{' '}
-            {Math.round(convertEnergy(plan.bmr, 'kcal', localEnergyUnit))}{' '}
-            {getEnergyUnitString(localEnergyUnit)}
-          </span>
-
-          <span>
-            Calorie Buyback:{' '}
-            <span
-              className={
-                formData.addBurnedCalories ? 'text-green-400' : 'text-gray-500'
-              }
-            >
-              {formData.addBurnedCalories ? 'ON' : 'OFF'}
-            </span>
-          </span>
-        </div>
-      </div>
+      <PersonalPlanHeader
+        formData={formData}
+        convertEnergy={convertEnergy}
+        editedPlan={editedPlan}
+        getEnergyUnitString={getEnergyUnitString}
+        localEnergyUnit={localEnergyUnit}
+        plan={plan}
+        setEditedPlan={setEditedPlan}
+        setLocalEnergyUnit={setLocalEnergyUnit}
+      />
 
       {/* Diet Selection */}
-      <div className="bg-[#1c1c1e] rounded-2xl border border-gray-800 mb-6">
-        <button
-          onClick={() => setShowDietApproach(!showDietApproach)}
-          className="w-full p-4 flex items-center justify-between hover:bg-[#2c2c2e] transition-colors rounded-2xl"
-        >
-          <div className="flex items-center gap-2">
-            <Utensils className="h-5 w-5 text-green-500" />
-            <span className="text-white font-semibold">Diet Approach</span>
-          </div>
-          <ChevronLeft
-            className={`h-5 w-5 text-gray-400 transition-transform ${showDietApproach ? '-rotate-90' : 'rotate-180'}`}
-          />
-        </button>
-
-        {showDietApproach && (
-          <div className="px-4 pb-4 space-y-4 border-t border-gray-800 pt-4">
-            <p className="text-gray-400 text-sm mb-4">
-              Choose a preset diet or customize your macro split
-            </p>
-
-            <Select
-              value={localSelectedDiet}
-              onValueChange={(value) => {
-                setLocalSelectedDiet(value);
-                if (value !== 'custom') {
-                  const template = getDietTemplate(value);
-                  setCustomPercentages({
-                    carbs: template.carbsPercentage,
-                    protein: template.proteinPercentage,
-                    fat: template.fatPercentage,
-                  });
-                }
-              }}
-            >
-              <SelectTrigger className="w-full bg-[#2c2c2e] border-gray-700 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DIET_TEMPLATES.map((diet) => (
-                  <SelectItem key={diet.id} value={diet.id}>
-                    <div>
-                      <div className="font-semibold">{diet.name}</div>
-                      <div className="text-xs text-gray-400">
-                        {diet.carbsPercentage}% Carbs / {diet.proteinPercentage}
-                        % Protein / {diet.fatPercentage}% Fat
-                      </div>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="mt-3 p-3 bg-[#2c2c2e] rounded-lg">
-              <p className="text-sm text-gray-300">
-                {getDietTemplate(localSelectedDiet).description}
-              </p>
-            </div>
-
-            {localSelectedDiet === 'custom' && (
-              <div className="mt-6 space-y-6 p-4 bg-[#2c2c2e] rounded-lg border border-gray-700">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-semibold text-white">
-                    Custom Macro Split
-                  </h4>
-                  <span
-                    className={`text-sm font-mono ${
-                      Math.round(customPercentages.carbs) +
-                        Math.round(customPercentages.protein) +
-                        Math.round(customPercentages.fat) ===
-                      100
-                        ? 'text-green-500'
-                        : 'text-yellow-500'
-                    }`}
-                  >
-                    Total:{' '}
-                    {Math.round(customPercentages.carbs) +
-                      Math.round(customPercentages.protein) +
-                      Math.round(customPercentages.fat)}
-                    %
-                  </span>
-                </div>
-
-                {/* Carbs */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          setLockedMacros((p) => ({ ...p, carbs: !p.carbs }))
-                        }
-                        className="text-gray-400 hover:text-white"
-                      >
-                        {lockedMacros.carbs ? (
-                          <Lock size={16} />
-                        ) : (
-                          <Unlock size={16} />
-                        )}
-                      </button>
-                      <label className="text-sm font-medium text-gray-300">
-                        Carbohydrates
-                      </label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        step={1}
-                        value={Math.round(customPercentages.carbs).toFixed(0)}
-                        onChange={(e) =>
-                          handleMacroValueChange(
-                            'carbs',
-                            parseInt(e.target.value, 10) || 0
-                          )
-                        }
-                        className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                        disabled={lockedMacros.carbs}
-                      />
-                      <span className="text-sm font-mono text-white">%</span>
-                    </div>
-                  </div>
-                  <Slider
-                    value={[customPercentages.carbs]}
-                    onValueChange={([value]) =>
-                      handleMacroValueChange('carbs', value)
-                    }
-                    min={5}
-                    max={80}
-                    step={1}
-                    className="cursor-pointer"
-                    disabled={lockedMacros.carbs}
-                  />
-                </div>
-
-                {/* Protein */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          setLockedMacros((p) => ({
-                            ...p,
-                            protein: !p.protein,
-                          }))
-                        }
-                        className="text-gray-400 hover:text-white"
-                      >
-                        {lockedMacros.protein ? (
-                          <Lock size={16} />
-                        ) : (
-                          <Unlock size={16} />
-                        )}
-                      </button>
-                      <label className="text-sm font-medium text-gray-300">
-                        Protein
-                      </label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        step={1}
-                        value={Math.round(customPercentages.protein).toFixed(0)}
-                        onChange={(e) =>
-                          handleMacroValueChange(
-                            'protein',
-                            parseInt(e.target.value, 10) || 0
-                          )
-                        }
-                        className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                        disabled={lockedMacros.protein}
-                      />
-                      <span className="text-sm font-mono text-white">%</span>
-                    </div>
-                  </div>
-                  <Slider
-                    value={[customPercentages.protein]}
-                    onValueChange={([value]) =>
-                      handleMacroValueChange('protein', value)
-                    }
-                    min={10}
-                    max={50}
-                    step={1}
-                    className="cursor-pointer"
-                    disabled={lockedMacros.protein}
-                  />
-                </div>
-
-                {/* Fat */}
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          setLockedMacros((p) => ({ ...p, fat: !p.fat }))
-                        }
-                        className="text-gray-400 hover:text-white"
-                      >
-                        {lockedMacros.fat ? (
-                          <Lock size={16} />
-                        ) : (
-                          <Unlock size={16} />
-                        )}
-                      </button>
-                      <label className="text-sm font-medium text-gray-300">
-                        Fat
-                      </label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        step={1}
-                        value={Math.round(customPercentages.fat).toFixed(0)}
-                        onChange={(e) =>
-                          handleMacroValueChange(
-                            'fat',
-                            parseInt(e.target.value, 10) || 0
-                          )
-                        }
-                        className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                        disabled={lockedMacros.fat}
-                      />
-                      <span className="text-sm font-mono text-white">%</span>
-                    </div>
-                  </div>
-                  <Slider
-                    value={[customPercentages.fat]}
-                    onValueChange={([value]) =>
-                      handleMacroValueChange('fat', value)
-                    }
-                    min={10}
-                    max={75}
-                    step={1}
-                    className="cursor-pointer"
-                    disabled={lockedMacros.fat}
-                  />
-                </div>
-
-                <p className="text-xs text-gray-500 mt-2">
-                  Adjust or type in a value. Unlocked macros will auto-adjust to
-                  maintain 100% total.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <DietApproach
+        customPercentages={customPercentages}
+        handleMacroValueChange={handleMacroValueChange}
+        localSelectedDiet={localSelectedDiet}
+        lockedMacros={lockedMacros}
+        setCustomPercentages={setCustomPercentages}
+        setLocalSelectedDiet={setLocalSelectedDiet}
+        setLockedMacros={setLockedMacros}
+        setShowDietApproach={setShowDietApproach}
+        showDietApproach={showDietApproach}
+      />
 
       {/* Advanced Calculation Settings */}
-      <div className="bg-[#1c1c1e] rounded-2xl border border-gray-800 mb-6">
-        <button
-          onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-          className="w-full p-4 flex items-center justify-between hover:bg-[#2c2c2e] transition-colors rounded-2xl"
-        >
-          <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-gray-400" />
-            <span className="text-white font-semibold">
-              Calculation Settings
-            </span>
-          </div>
-          <ChevronLeft
-            className={`h-5 w-5 text-gray-400 transition-transform ${showAdvancedSettings ? '-rotate-90' : 'rotate-180'}`}
-          />
-        </button>
-
-        {showAdvancedSettings && (
-          <div className="px-4 pb-4 space-y-4 border-t border-gray-800 pt-4">
-            {/* Fat Breakdown Algorithm */}
-            <div>
-              <Label className="text-gray-300 text-sm mb-2 block">
-                Fat Breakdown Method
-              </Label>
-              <Select
-                value={localFatBreakdownAlgorithm}
-                onValueChange={(value) =>
-                  setLocalFatBreakdownAlgorithm(value as FatBreakdownAlgorithm)
-                }
-              >
-                <SelectTrigger className="bg-[#2c2c2e] border-gray-700 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(FatBreakdownAlgorithm).map((algo) => (
-                    <SelectItem key={algo} value={algo}>
-                      {FatBreakdownAlgorithmLabels[algo]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Mineral Calculation Algorithm */}
-            <div>
-              <Label className="text-gray-300 text-sm mb-2 block">
-                Mineral Calculation
-              </Label>
-              <Select
-                value={localMineralAlgorithm}
-                onValueChange={(value) =>
-                  setLocalMineralAlgorithm(value as MineralCalculationAlgorithm)
-                }
-              >
-                <SelectTrigger className="bg-[#2c2c2e] border-gray-700 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(MineralCalculationAlgorithm).map((algo) => (
-                    <SelectItem key={algo} value={algo}>
-                      {MineralCalculationAlgorithmLabels[algo]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Vitamin Calculation Algorithm */}
-            <div>
-              <Label className="text-gray-300 text-sm mb-2 block">
-                Vitamin Calculation
-              </Label>
-              <Select
-                value={localVitaminAlgorithm}
-                onValueChange={(value) =>
-                  setLocalVitaminAlgorithm(value as VitaminCalculationAlgorithm)
-                }
-              >
-                <SelectTrigger className="bg-[#2c2c2e] border-gray-700 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(VitaminCalculationAlgorithm).map((algo) => (
-                    <SelectItem key={algo} value={algo}>
-                      {VitaminCalculationAlgorithmLabels[algo]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Sugar Calculation Algorithm */}
-            <div>
-              <Label className="text-gray-300 text-sm mb-2 block">
-                Sugar Recommendation
-              </Label>
-              <Select
-                value={localSugarAlgorithm}
-                onValueChange={(value) =>
-                  setLocalSugarAlgorithm(value as SugarCalculationAlgorithm)
-                }
-              >
-                <SelectTrigger className="bg-[#2c2c2e] border-gray-700 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SugarCalculationAlgorithm).map((algo) => (
-                    <SelectItem key={algo} value={algo}>
-                      {SugarCalculationAlgorithmLabels[algo]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <p className="text-xs text-gray-500 mt-2">
-              These settings control how your nutrient goals are calculated. You
-              can change them later in Settings.
-            </p>
-          </div>
-        )}
-      </div>
+      <CalculationSettings
+        localFatBreakdownAlgorithm={localFatBreakdownAlgorithm}
+        localMineralAlgorithm={localMineralAlgorithm}
+        localSugarAlgorithm={localSugarAlgorithm}
+        localVitaminAlgorithm={localVitaminAlgorithm}
+        setLocalFatBreakdownAlgorithm={setLocalFatBreakdownAlgorithm}
+        setLocalMineralAlgorithm={setLocalMineralAlgorithm}
+        setLocalSugarAlgorithm={setLocalSugarAlgorithm}
+        setLocalVitaminAlgorithm={setLocalVitaminAlgorithm}
+        setShowAdvancedSettings={setShowAdvancedSettings}
+        showAdvancedSettings={showAdvancedSettings}
+      />
 
       {/* Nutrient Sections Grid */}
       <h2 className="text-xl font-bold text-white mb-4 ml-1 mt-8">
         Nutrient Goals
       </h2>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* 1. Daily Macro Targets */}
-        <div className="bg-[#1c1c1e] rounded-2xl overflow-hidden border border-gray-800">
-          <div className="bg-[#2c2c2e] px-4 py-3 border-b border-gray-800">
-            <h3 className="text-white font-bold text-sm">
-              Daily Macro Targets
-            </h3>
-          </div>
-          <Table>
-            <TableBody>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Carbohydrates (
-                  {editedPlan?.calories
-                    ? Math.round(
-                        ((editedPlan.carbs * 4) /
-                          convertEnergy(
-                            editedPlan.calories,
-                            localEnergyUnit,
-                            'kcal'
-                          )) *
-                          100
-                      )
-                    : 0}
-                  %)
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.carbs ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, carbs: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">g</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Protein (
-                  {editedPlan?.calories
-                    ? Math.round(
-                        ((editedPlan.protein * 4) /
-                          convertEnergy(
-                            editedPlan.calories,
-                            localEnergyUnit,
-                            'kcal'
-                          )) *
-                          100
-                      )
-                    : 0}
-                  %)
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.protein ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, protein: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">g</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Fats (
-                  {editedPlan?.calories
-                    ? Math.round(
-                        ((editedPlan.fat * 9) /
-                          convertEnergy(
-                            editedPlan.calories,
-                            localEnergyUnit,
-                            'kcal'
-                          )) *
-                          100
-                      )
-                    : 0}
-                  %)
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.fat ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev ? { ...prev, fat: Number(e.target.value) } : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">g</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-none hover:bg-transparent bg-[#252527]">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Fiber
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.dietary_fiber ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, dietary_fiber: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">g</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* 2. Fat Breakdown */}
-        <div className="bg-[#1c1c1e] rounded-2xl overflow-hidden border border-gray-800">
-          <div className="bg-[#2c2c2e] px-4 py-3 border-b border-gray-800">
-            <h3 className="text-white font-bold text-sm">Fat Breakdown</h3>
-          </div>
-          <Table>
-            <TableBody>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Saturated Fat
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.saturated_fat ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, saturated_fat: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">g</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Trans Fat
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.trans_fat ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, trans_fat: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">g</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Polyunsaturated
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.polyunsaturated_fat ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                polyunsaturated_fat: Number(e.target.value),
-                              }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">g</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-none hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Monounsaturated
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.monounsaturated_fat ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                monounsaturated_fat: Number(e.target.value),
-                              }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">g</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* 3. Minerals & Other */}
-        <div className="bg-[#1c1c1e] rounded-2xl overflow-hidden border border-gray-800">
-          <div className="bg-[#2c2c2e] px-4 py-3 border-b border-gray-800">
-            <h3 className="text-white font-bold text-sm">Minerals & Other</h3>
-          </div>
-          <Table>
-            <TableBody>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Cholesterol
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={1}
-                      value={(editedPlan?.cholesterol ?? 0).toFixed(0)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, cholesterol: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">mg</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Sodium
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={1}
-                      value={(editedPlan?.sodium ?? 0).toFixed(0)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, sodium: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">mg</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Potassium
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={1}
-                      value={(editedPlan?.potassium ?? 0).toFixed(0)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, potassium: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">mg</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Calcium
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={1}
-                      value={(editedPlan?.calcium ?? 0).toFixed(0)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, calcium: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">mg</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-none hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Iron
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.iron ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, iron: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">mg</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* 4. Sugars & Vitamins */}
-        <div className="bg-[#1c1c1e] rounded-2xl overflow-hidden border border-gray-800">
-          <div className="bg-[#2c2c2e] px-4 py-3 border-b border-gray-800">
-            <h3 className="text-white font-bold text-sm">Sugars & Vitamins</h3>
-          </div>
-          <Table>
-            <TableBody>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Sugar
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.sugars ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, sugars: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">g</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Vitamin A
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={1}
-                      value={(editedPlan?.vitamin_a ?? 0).toFixed(0)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, vitamin_a: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">µg</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-none hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Vitamin C
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={(editedPlan?.vitamin_c ?? 0).toFixed(1)}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? { ...prev, vitamin_c: Number(e.target.value) }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">mg</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* 5. Custom Nutrients (Conditionally Rendered) */}
-        {customNutrients && customNutrients.length > 0 && (
-          <div className="bg-[#1c1c1e] rounded-2xl overflow-hidden border border-gray-800">
-            <div className="bg-[#2c2c2e] px-4 py-3 border-b border-gray-800">
-              <h3 className="text-white font-bold text-sm">Custom Nutrients</h3>
-            </div>
-            <Table>
-              <TableBody>
-                {customNutrients.map((cn) => (
-                  <TableRow
-                    key={cn.id}
-                    className="border-gray-800 hover:bg-transparent"
-                  >
-                    <TableCell className="font-medium text-gray-300 text-sm">
-                      {cn.name}
-                    </TableCell>
-                    <TableCell className="text-right text-white font-bold">
-                      <div className="flex items-center justify-end gap-1">
-                        <Input
-                          type="number"
-                          step={0.1}
-                          value={(editedPlan?.[cn.name] ?? 0).toFixed(1)}
-                          onChange={(e) =>
-                            setEditedPlan((prev) =>
-                              prev
-                                ? { ...prev, [cn.name]: Number(e.target.value) }
-                                : null
-                            )
-                          }
-                          className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                        />
-                        <span className="text-sm">{cn.unit}</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-
-        {/* 6. Hydration & Exercise */}
-        <div className="bg-[#1c1c1e] rounded-2xl overflow-hidden border border-gray-800">
-          <div className="bg-[#2c2c2e] px-4 py-3 border-b border-gray-800">
-            <h3 className="text-white font-bold text-sm">
-              Hydration & Exercise
-            </h3>
-          </div>
-          <div className="p-3 border-b border-gray-800 flex justify-center gap-2">
-            {(['ml', 'oz', 'liter'] as const).map((unit) => (
-              <button
-                key={unit}
-                onClick={() => setLocalWaterUnit(unit)}
-                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${localWaterUnit === unit ? 'bg-blue-600 text-white' : 'bg-[#2c2c2e] text-gray-400 hover:text-white'}`}
-              >
-                {unit}
-              </button>
-            ))}
-          </div>
-          <Table>
-            <TableBody>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Water Goal
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      step={0.1}
-                      value={
-                        editedPlan?.water_goal_ml
-                          ? convertMlToSelectedUnit(
-                              editedPlan.water_goal_ml,
-                              localWaterUnit
-                            ).toFixed(1)
-                          : ''
-                      }
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        const ml = convertSelectedUnitToMl(val, localWaterUnit);
-                        setEditedPlan((prev) =>
-                          prev ? { ...prev, water_goal_ml: ml } : null
-                        );
-                      }}
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-xs">{localWaterUnit}</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-gray-800 hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Exercise Duration
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      value={editedPlan?.target_exercise_duration_minutes ?? ''}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                target_exercise_duration_minutes: Number(
-                                  e.target.value
-                                ),
-                              }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">min</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-              <TableRow className="border-none hover:bg-transparent">
-                <TableCell className="font-medium text-gray-300 text-sm">
-                  Exercise Calories
-                </TableCell>
-                <TableCell className="text-right text-white font-bold">
-                  <div className="flex items-center justify-end gap-1">
-                    <Input
-                      type="number"
-                      value={editedPlan?.target_exercise_calories_burned ?? ''}
-                      onChange={(e) =>
-                        setEditedPlan((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                target_exercise_calories_burned: Number(
-                                  e.target.value
-                                ),
-                              }
-                            : null
-                        )
-                      }
-                      className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
-                    />
-                    <span className="text-sm">kcal</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* 6. Meal Calorie Distribution */}
-        <div className="bg-[#1c1c1e] rounded-2xl overflow-hidden border border-gray-800">
-          <div className="bg-[#2c2c2e] px-4 py-3 border-b border-gray-800">
-            <h3 className="text-white font-bold text-sm">
-              {t('goals.mealDistribution.title', 'Meal Calorie Distribution')}
-            </h3>
-          </div>
-          <div className="p-4 text-white dark">
-            <MealPercentageManager
-              initialPercentages={memoizedInitialPercentages}
-              totalCalories={editedPlan?.calories || 2000}
-              onPercentagesChange={handlePercentagesChange}
-            />
-          </div>
-        </div>
-      </div>
+      <NutrientGoals
+        convertEnergy={convertEnergy}
+        editedPlan={editedPlan}
+        handlePercentagesChange={handlePercentagesChange}
+        localEnergyUnit={localEnergyUnit}
+        localWaterUnit={localWaterUnit}
+        memoizedInitialPercentages={memoizedInitialPercentages}
+        setEditedPlan={setEditedPlan}
+        setLocalWaterUnit={setLocalWaterUnit}
+      />
 
       <div className="flex flex-col gap-4 mt-8 mb-12">
         <Button
@@ -1339,56 +441,14 @@ const PersonalPlan: React.FC<PersonalPlanProps> = ({
         </Button>
       </div>
 
-      <Dialog open={isSavePresetOpen} onOpenChange={setIsSavePresetOpen}>
-        <DialogContent className="bg-[#1c1c1e] text-white border-gray-800">
-          <DialogHeader>
-            <DialogTitle>
-              {t('goals.saveAsPreset', 'Save as Goal Preset')}
-            </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              {t(
-                'goals.savePresetDescription',
-                'Give your goal preset a name. This will save your current configuration for future use and apply it as your plan starting today.'
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name" className="text-gray-300">
-                {t('goals.presetName', 'Preset Name')}
-              </Label>
-              <Input
-                id="name"
-                value={presetName}
-                onChange={(e) => setPresetName(e.target.value)}
-                className="bg-[#2c2c2e] border-gray-700 text-white"
-                placeholder={t(
-                  'goals.presetNamePlaceholder',
-                  'e.g., Cutting Phase 1'
-                )}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setIsSavePresetOpen(false)}
-              className="text-gray-400 hover:text-white hover:bg-white/10"
-            >
-              {t('common.cancel', 'Cancel')}
-            </Button>
-            <Button
-              onClick={handleSavePreset}
-              disabled={isSavingPreset}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isSavingPreset
-                ? t('common.saving', 'Saving...')
-                : t('goals.saveAndStart', 'Save & Start Plan')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <OnboardingDialog
+        isSavePresetOpen={isSavePresetOpen}
+        presetName={presetName}
+        handleSubmit={handleSubmit}
+        editedPlan={editedPlan}
+        setIsSavePresetOpen={setIsSavePresetOpen}
+        setPresetName={setPresetName}
+      />
     </div>
   );
 };
