@@ -8,7 +8,7 @@ export const proactiveTools = [
     inputSchema: {
       type: "object",
       properties: {
-        user_id: { type: "number", description: "The ID of the user to check (default 1)." }
+        user_id: { type: "string", description: "The ID of the user to check (default 1)." }
       }
     },
   },
