@@ -1,7 +1,7 @@
 import type { IconName } from '../components/Icon';
 import type { MealType } from '../types/mealTypes';
 
-export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
+export const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks'] as const;
 
 export interface MealConfig {
   label: string;
@@ -11,7 +11,6 @@ export interface MealConfig {
 export const MEAL_CONFIG: Record<string, MealConfig> = {
   breakfast: { label: 'Breakfast', icon: 'meal-breakfast' },
   lunch: { label: 'Lunch', icon: 'meal-lunch' },
-  snack: { label: 'Snack', icon: 'meal-snack' },
   snacks: { label: 'Snacks', icon: 'meal-snack' },
   dinner: { label: 'Dinner', icon: 'meal-dinner' },
   other: { label: 'Other', icon: 'meal-snack' },
@@ -26,7 +25,7 @@ export function getDefaultMealType(hour?: number): (typeof MEAL_TYPES)[number] {
   if (h < 11) return 'breakfast';
   if (h < 15) return 'lunch';
   if (h < 20) return 'dinner';
-  return 'snack';
+  return 'snacks';
 }
 
 /**

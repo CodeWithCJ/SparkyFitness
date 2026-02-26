@@ -17,7 +17,7 @@ function groupByMealType(entries: FoodEntry[]): Record<string, FoodEntry[]> {
   }
   grouped.other = [];
   for (const entry of entries) {
-    const mealType = entry.meal_type?.toLowerCase() || 'snack';
+    const mealType = entry.meal_type?.toLowerCase() || 'snacks';
     if (MEAL_TYPES.includes(mealType as (typeof MEAL_TYPES)[number])) {
       grouped[mealType].push(entry);
     } else {
@@ -48,69 +48,6 @@ function calculateEntryNutrition(entry: FoodEntry): EntryNutrition {
   };
 }
 
-// function getDominantMacroColor(
-//   nutrition: EntryNutrition,
-//   proteinColor: string,
-//   carbsColor: string,
-//   fatColor: string,
-// ): string | null {
-//   const proteinCals = nutrition.protein * 4;
-//   const carbsCals = nutrition.carbs * 4;
-//   const fatCals = nutrition.fat * 9;
-
-//   if (proteinCals === 0 && carbsCals === 0 && fatCals === 0) return null;
-
-//   if (fatCals >= proteinCals && fatCals >= carbsCals) return fatColor;
-//   if (proteinCals >= carbsCals) return proteinColor;
-//   return carbsColor;
-// }
-
-interface MealNutrition {
-  totalProteinCals: number;
-  totalCarbsCals: number;
-  totalFatCals: number;
-  totalCals: number;
-}
-
-function calculateMealNutrition(entries: FoodEntry[]): MealNutrition {
-  let totalProteinCals = 0;
-  let totalCarbsCals = 0;
-  let totalFatCals = 0;
-
-  for (const entry of entries) {
-    const nutrition = calculateEntryNutrition(entry);
-    totalProteinCals += nutrition.protein * 4;
-    totalCarbsCals += nutrition.carbs * 4;
-    totalFatCals += nutrition.fat * 9;
-  }
-
-  return {
-    totalProteinCals,
-    totalCarbsCals,
-    totalFatCals,
-    totalCals: totalProteinCals + totalCarbsCals + totalFatCals,
-  };
-}
-
-interface MealMacroBarProps {
-  entries: FoodEntry[];
-  proteinColor: string;
-  carbsColor: string;
-  fatColor: string;
-}
-
-const MealMacroBar: React.FC<MealMacroBarProps> = ({ entries, proteinColor, carbsColor, fatColor }) => {
-  const mealNutrition = calculateMealNutrition(entries);
-  if (mealNutrition.totalCals === 0) return null;
-
-  return (
-    <View className="flex-row h-2 rounded-full overflow-hidden mb-2 mt-1">
-      <View style={{ flex: mealNutrition.totalProteinCals, backgroundColor: proteinColor }} />
-      <View style={{ flex: mealNutrition.totalCarbsCals, backgroundColor: carbsColor }} />
-      <View style={{ flex: mealNutrition.totalFatCals, backgroundColor: fatColor }} />
-    </View>
-  );
-};
 
 interface MealSectionProps {
   mealType: string;
@@ -120,53 +57,43 @@ interface MealSectionProps {
 const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
   const navigation = useNavigation<any>();
   const config = MEAL_CONFIG[mealType] || { label: mealType, icon: 'meal-snack' as IconName };
-  const [textSecondary, proteinColor, carbsColor, fatColor] = useCSSVariable([
-    '--color-text-secondary',
-    '--color-macro-protein',
-    '--color-macro-carbs',
-    '--color-macro-fat',
-  ]) as [string, string, string, string];
+  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const totalCalories = entries.reduce((sum, entry) => sum + calculateEntryNutrition(entry).calories, 0);
 
   return (
-    <View>
+    <View className="bg-surface rounded-xl p-4 shadow-sm">
       <View className="flex-row items-center gap-2 mb-2">
-        <Icon name={config.icon} size={18} color={textSecondary} />
-        <Text className="text-md font-bold text-text-primary flex-1">{config.label}</Text>
+        <Icon name={config.icon} size={18} color={accentPrimary} />
+        <Text className="text-base font-bold text-text-primary flex-1">{config.label}</Text>
         {totalCalories > 0 && (
-          <Text className="text-sm text-text-primary font-semibold">{totalCalories} Cal</Text>
+          <View className="bg-accent-primary/10 rounded-full px-2.5 py-0.5">
+            <Text className="text-xs text-accent-primary font-semibold">{totalCalories} Cal</Text>
+          </View>
         )}
       </View>
-      {entries.length === 0 ? (
-        <Text className="text-sm text-text-muted pl-7">No entries</Text>
-      ) : (
-        <>
-          <MealMacroBar entries={entries} proteinColor={proteinColor} carbsColor={carbsColor} fatColor={fatColor} />
-          {entries.map((entry, index) => {
-            const nutrition = calculateEntryNutrition(entry);
-            const name = entry.food_name || 'Unknown food';
-            return (
-              <TouchableOpacity
-                key={entry.id || index}
-                className="py-1.5 flex-row justify-between items-center"
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('FoodEntryView', { entry })}
-              >
-                <Text className="text-base text-text-primary flex-1 mr-2" numberOfLines={1}>
-                  {name}
-                  <Text className="text-sm text-text-muted">
-                    {' · '}{entry.quantity} {entry.unit}
-                  </Text>
-                </Text>
-                <Text className="text-sm text-text-primary">
-                  {nutrition.calories} Cal
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </>
-      )}
+      {entries.map((entry, index) => {
+        const nutrition = calculateEntryNutrition(entry);
+        const name = entry.food_name || 'Unknown food';
+        return (
+          <TouchableOpacity
+            key={entry.id || index}
+            className="py-2 flex-row justify-between items-center"
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('FoodEntryView', { entry })}
+          >
+            <Text className="text-md text-text-primary flex-1 mr-2" numberOfLines={1}>
+              {name}
+              <Text className="text-sm text-text-secondary">
+                {' · '}{entry.quantity} {entry.unit}
+              </Text>
+            </Text>
+            <Text className="text-sm text-text-secondary font-medium mr-2">
+              {nutrition.calories} Cal
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 };
@@ -181,19 +108,24 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries }) => {
   }
 
   const grouped = groupByMealType(foodEntries);
+  const mealTypesWithEntries = MEAL_TYPES.filter((mealType) => grouped[mealType].length > 0);
+  const hasOther = grouped.other.length > 0;
+
+  if (mealTypesWithEntries.length === 0 && !hasOther) {
+    return (
+      <View className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
+        <Text className="text-text-muted text-base">No food entries yet</Text>
+      </View>
+    );
+  }
 
   return (
-    <View className="bg-surface rounded-xl p-4 my-2 gap-6 shadow-sm">
-      {MEAL_TYPES.map((mealType, index) => (
-        <React.Fragment key={mealType}>
-          <MealSection mealType={mealType} entries={grouped[mealType]} />
-        </React.Fragment>
+    <View className="gap-2 my-2">
+      {mealTypesWithEntries.map((mealType) => (
+        <MealSection key={mealType} mealType={mealType} entries={grouped[mealType]} />
       ))}
-      {grouped.other.length > 0 && (
-        <>
-          
-          <MealSection mealType="other" entries={grouped.other} />
-        </>
+      {hasOther && (
+        <MealSection mealType="other" entries={grouped.other} />
       )}
     </View>
   );

@@ -21,9 +21,9 @@ describe('meals constants', () => {
     });
 
     it('returns snack from 8pm onward', () => {
-      expect(getDefaultMealType(20)).toBe('snack');
-      expect(getDefaultMealType(22)).toBe('snack');
-      expect(getDefaultMealType(23)).toBe('snack');
+      expect(getDefaultMealType(20)).toBe('snacks');
+      expect(getDefaultMealType(22)).toBe('snacks');
+      expect(getDefaultMealType(23)).toBe('snacks');
     });
 
     it('defaults to current hour when no argument given', () => {

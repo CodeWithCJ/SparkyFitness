@@ -36,8 +36,7 @@ interface ExerciseSummaryProps {
 }
 
 const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries }) => {
-  const textSecondary = useCSSVariable('--color-text-secondary') as string;
-  const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const filtered = exerciseEntries.filter(
     (entry) => entry.exercise_snapshot?.name !== 'Active Calories'
@@ -54,7 +53,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries }) =>
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <View className="flex-row items-center gap-2 mb-2">
-        <Icon name="exercise" size={18} color={textSecondary} />
+        <Icon name="exercise" size={18} color={accentPrimary} />
       <Text className="text-base font-bold text-text-primary">Exercise</Text>
       </View>
       {filtered.map((entry, index) => {
@@ -65,8 +64,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries }) =>
         return (
           <View key={entry.id || index} className="py-2.5">
             <View className="flex-row justify-between items-center">
-              <View className="flex-row items-center flex-1 mr-2 gap-1.5">
-                <Icon name={getExerciseIcon(name)} size={18} color={textSecondary} />
+              <View className="flex-row items-center flex-1 mr-2">
                 <Text className="text-base text-text-primary flex-1" numberOfLines={1}>
                   {name}
                   {duration != null && duration > 0 && (
