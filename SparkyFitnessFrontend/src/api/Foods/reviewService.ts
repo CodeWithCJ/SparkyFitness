@@ -1,4 +1,4 @@
-import { api } from '@/services/api';
+import { api } from '@/api/api';
 
 /**
  * Fetches the total number of items (foods, exercises, meals)
@@ -13,21 +13,11 @@ export interface ReviewItem {
 }
 
 export const getNeedsReviewItems = async (): Promise<ReviewItem[]> => {
-  try {
-    const response = await api.get(`/review/needs-review`);
-    return response as ReviewItem[];
-  } catch (error) {
-    console.error('Failed to fetch needs review items:', error);
-    return [];
-  }
+  const response = await api.get(`/review/needs-review`);
+  return response as ReviewItem[];
 };
 
 export const getNeedsReviewCount = async (): Promise<number> => {
-  try {
-    const response = await api.get(`/review/needs-review-count`);
-    return (response as { count: number }).count;
-  } catch (error) {
-    console.error('Failed to fetch needs review count:', error);
-    return 0;
-  }
+  const response = await api.get(`/review/needs-review-count`);
+  return (response as { count: number }).count;
 };

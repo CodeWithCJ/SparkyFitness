@@ -1,7 +1,7 @@
 import { parseISO } from 'date-fns';
 import type { CoachResponse } from '../../types/Chatbot_types';
 import { debug, error, type UserLoggingLevel } from '@/utils/logging';
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 
 // Function to process exercise input
 export const processExerciseInput = async (

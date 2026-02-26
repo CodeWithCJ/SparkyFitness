@@ -94,7 +94,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       // Fetch Authoritative Data (Active Context)
       // This runs on every session update to ensure we are strictly in sync with the backend.
-      import('../services/api').then(({ apiCall }) => {
+      import('../api/api').then(({ apiCall }) => {
         apiCall('/identity/user')
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .then((realUserData: any) => {

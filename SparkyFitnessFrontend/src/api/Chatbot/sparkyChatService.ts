@@ -1,4 +1,4 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 import { setUserLoggingLevel } from '@/utils/userPreferences';
 import {
   debug,

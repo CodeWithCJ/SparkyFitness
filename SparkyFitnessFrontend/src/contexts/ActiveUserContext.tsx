@@ -9,7 +9,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, warn, error } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 
 interface AccessibleUser {
   user_id: string;

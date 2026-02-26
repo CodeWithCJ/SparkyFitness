@@ -1,4 +1,4 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 import type { ExpandedGoals } from '@/types/goals';
 
 const PREDEFINED_GOAL_KEYS = [

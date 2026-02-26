@@ -8,7 +8,7 @@ import {
   saveCheckInMeasurements,
   getMostRecentMeasurement,
 } from '@/api/CheckIn/checkInService';
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 import { DEFAULT_GOALS } from '@/constants/goals';
 import { format, parseISO } from 'date-fns';
 import { usePreferences } from '@/contexts/PreferencesContext';

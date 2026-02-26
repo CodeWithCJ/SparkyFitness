@@ -12,7 +12,7 @@ import { debug, info, error } from '@/utils/logging';
 import { format, parseISO, startOfDay } from 'date-fns';
 
 // Function to fetch user preferences from the backend
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 import {
   createWaterContainer,
   setPrimaryWaterContainer,

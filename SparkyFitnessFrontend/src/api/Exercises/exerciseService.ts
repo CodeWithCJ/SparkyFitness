@@ -1,4 +1,4 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 import { Exercise } from './exerciseSearchService';
 import { ExerciseCSVData } from '@/pages/Exercises/ExerciseImportCSV';
 

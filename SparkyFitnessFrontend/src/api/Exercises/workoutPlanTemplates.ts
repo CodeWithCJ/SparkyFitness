@@ -1,4 +1,4 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 import type { WorkoutPlanTemplate } from '@/types/workout';
 
 export const getWorkoutPlanTemplates = async (): Promise<
