@@ -4,7 +4,7 @@ import { log } from "../food/utils.js"; // Reuse logging helper
 export const exerciseTools = [
   {
     name: "manage_exercise",
-    description: "Search for exercises, log workouts to the diary, manage workout presets (routines), and view exercise history.",
+    description: "Primary tool for fitness tracking. Use this to search for exercises, log workouts (multi-set support), manage routines, and view your exercise history. If an exercise is missing, it will be automatically created. Supports providing details across multiple turns.",
     inputSchema: {
       type: "object",
       properties: {
@@ -22,7 +22,7 @@ export const exerciseTools = [
           description: "The exercise-related action to perform.",
         },
         // Common fields
-        entry_date: { type: "string", description: "The date of the entry (YYYY-MM-DD)." },
+        entry_date: { type: "string", description: "The absolute date of the record in 'YYYY-MM-DD' format. The AI must calculate this date based on the user's relative time and the current reference date." },
         
         // Search/Create fields
         searchTerm: { type: "string", description: "Name or part of exercise name." },
@@ -61,6 +61,7 @@ export const exerciseTools = [
         entry_id: { type: "string", description: "UUID of the exercise entry to delete." }
       },
       required: ["action"],
+      additionalProperties: true
     },
   },
 ];
