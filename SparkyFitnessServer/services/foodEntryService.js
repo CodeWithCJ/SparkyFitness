@@ -618,14 +618,17 @@ async function createFoodEntryMeal(
     // Calculate portion multiplier: consumed_quantity / meal_serving_size
     const consumedQuantity = mealData.quantity || 1.0;
     let multiplier = 1.0;
-    if (mealData.unit === "serving") {
-      multiplier = consumedQuantity;
-    } else {
-      multiplier = consumedQuantity / mealServingSize;
+    //Scale if there is a template ID
+    if (mealData.meal_template_id) {
+      if (mealData.unit === "serving") {
+        multiplier = consumedQuantity;
+      } else {
+        multiplier = consumedQuantity / mealServingSize;
+      }
     }
     log(
       "info",
-      `Portion multiplier: ${multiplier} (consumed: ${consumedQuantity}, serving_size: ${mealServingSize})`,
+      `Portion multiplier: ${multiplier} (consumed: ${consumedQuantity}, serving_size: ${mealServingSize}, has_template: ${!!mealData.meal_template_id})`,
     );
 
     // 2. Create component food_entries records with scaled quantities
@@ -791,11 +794,10 @@ async function updateFoodEntryMeal(
         );
       }
     } else {
-      // No template - foods have base quantities, so multiplier is just the new quantity
-      multiplier = newQuantity;
+      multiplier = 1.0;
       log(
         "info",
-        `Update portion scaling (no template): multiplier ${multiplier} (quantity: ${newQuantity})`,
+        `Update portion scaling (no template): multiplier ${multiplier}`,
       );
     }
 
@@ -991,20 +993,17 @@ async function getFoodEntryMealWithComponents(
     const aggregatedGlycemicIndex =
       totalCarbsForGI > 0 ? weightedGIAccumulator / totalCarbsForGI : null;
 
-    // Get the meal quantity to unscale the food quantities for editing
-    const mealQuantity = foodEntryMeal.quantity || 1;
-
     return {
       ...foodEntryMeal,
       foods: componentFoodEntries.map((entry) => {
-        // Return BASE (unscaled) quantities so MealBuilder can correctly calculate preview
-        // The entry.quantity is already scaled by mealQuantity, so divide to get base
-        const baseQuantity = entry.quantity / mealQuantity;
+        const quantityToReturn = foodEntryMeal.meal_template_id 
+          ? entry.quantity / (foodEntryMeal.quantity || 1)
+          : entry.quantity;
         return {
           food_id: entry.food_id,
           food_name: entry.food_name,
           variant_id: entry.variant_id,
-          quantity: baseQuantity, // BASE quantity for MealBuilder calculation
+          quantity: quantityToReturn,
           unit: entry.unit,
           calories: entry.calories, // BASE value per serving_size
           protein: entry.protein,
