@@ -15,7 +15,7 @@ interface StoredServerConfig {
   apiKey?: string; // Present only in legacy data before migration
 }
 
-export type TimeRange = 'today' | '24h' | '3d' | '7d' | '30d' | '90d';
+export type TimeRange = 'today' | '24h' | '3d' | '7d' | '30d' | '90d' | '180d' | '365d';
 
 const SERVER_CONFIGS_KEY = 'serverConfigs';
 const ACTIVE_SERVER_CONFIG_ID_KEY = 'activeServerConfigId';

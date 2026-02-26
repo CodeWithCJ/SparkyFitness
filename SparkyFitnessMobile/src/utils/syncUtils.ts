@@ -1,4 +1,4 @@
-export type SyncDuration = 'today' | '24h' | '3d' | '7d' | '30d' | '90d';
+export type SyncDuration = 'today' | '24h' | '3d' | '7d' | '30d' | '90d' | '180d' | '365d';
 
 // SyncInterval represents how often to sync (background sync frequency)
 // Note: '24h' appears in both types - SyncDuration for data range, SyncInterval for frequency
@@ -36,6 +36,14 @@ export const getSyncStartDate = (duration: SyncDuration): Date => {
       break;
     case '90d':
       startDate.setDate(now.getDate() - 89);
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    case '180d':
+      startDate.setDate(now.getDate() - 179);
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    case '365d':
+      startDate.setDate(now.getDate() - 364);
       startDate.setHours(0, 0, 0, 0);
       break;
     default:

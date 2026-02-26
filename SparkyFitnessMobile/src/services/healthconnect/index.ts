@@ -34,7 +34,7 @@ export { getSyncStartDate };
  * v3.5.0 has a bug where it uses Instant instead of LocalDateTime (issues #174, #194).
  */
 export const deduplicateByOrigin = (
-  records: Array<{ metadata?: { dataOrigin?: string }; [key: string]: unknown }>,
+  records: { metadata?: { dataOrigin?: string }; [key: string]: unknown }[],
   getDate: (record: any) => string,
   getValue: (record: any) => number,
 ): Record<string, number> => {
@@ -99,27 +99,69 @@ export const requestHealthPermissions = async (
   }
 };
 
+const PAGE_SIZE = 5000;
+const MAX_PAGES = 100;
+
+interface ReadRecordsOptions {
+  timeRangeFilter: {
+    operator: 'between';
+    startTime: string;
+    endTime: string;
+  };
+  pageSize: number;
+  pageToken?: string;
+}
+
 export const readHealthRecords = async (
   recordType: string,
   startDate: Date,
   endDate: Date
 ): Promise<unknown[]> => {
+  const allRecords: unknown[] = [];
+  let pageToken: string | undefined;
+  let page = 0;
+
   try {
-    const startTime = startDate.toISOString();
-    const endTime = endDate.toISOString();
-    const result = await readRecords(recordType as Parameters<typeof readRecords>[0], {
-      timeRangeFilter: {
-        operator: 'between',
-        startTime: startTime,
-        endTime: endTime,
-      },
-    });
-    return result.records || [];
+    do {
+      page++;
+      const options: ReadRecordsOptions = {
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: startDate.toISOString(),
+          endTime: endDate.toISOString(),
+        },
+        pageSize: PAGE_SIZE,
+      };
+      if (pageToken) {
+        options.pageToken = pageToken;
+      }
+
+      const result = await readRecords(
+        recordType as Parameters<typeof readRecords>[0],
+        options as unknown as Parameters<typeof readRecords>[1]
+      );
+
+      const records = result.records || [];
+      allRecords.push(...records);
+      pageToken = result.pageToken;
+    } while (pageToken && page < MAX_PAGES);
+
+    if (page > 1) {
+      addLog(`[HealthConnectService] Read ${allRecords.length} ${recordType} records across ${page} pages`);
+    }
+    if (page >= MAX_PAGES) {
+      addLog(`[HealthConnectService] Hit max page limit (${MAX_PAGES}) for ${recordType}`, 'WARNING');
+    }
+
+    return allRecords;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Failed to read ${recordType} records: ${message}. Full error: ${JSON.stringify(error)}`, 'ERROR');
+    addLog(
+      `[HealthConnectService] Failed reading ${recordType} on page ${page}: ${message}. Returning ${allRecords.length} records collected so far.`,
+      'ERROR'
+    );
     console.error(`Failed to read ${recordType} records`, error);
-    return [];
+    return allRecords;
   }
 };
 
@@ -138,7 +180,7 @@ export const getAggregatedStepsByDate = async (
     }
 
     const byDate = deduplicateByOrigin(
-      rawRecords as Array<{ metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; count?: number }>,
+      rawRecords as { metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; count?: number }[],
       (record) => {
         const timestamp = record.endTime || record.startTime;
         return timestamp ? toLocalDateString(timestamp) : '';
@@ -177,7 +219,7 @@ export const getAggregatedActiveCaloriesByDate = async (
     }
 
     const byDate = deduplicateByOrigin(
-      rawRecords as Array<{ metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; energy?: { inKilocalories?: number } }>,
+      rawRecords as { metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; energy?: { inKilocalories?: number } }[],
       (record) => {
         const timestamp = record.endTime || record.startTime;
         return timestamp ? toLocalDateString(timestamp) : '';

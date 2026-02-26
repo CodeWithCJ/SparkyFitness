@@ -57,6 +57,8 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     { label: "Last 7 Days", value: "7d" },
     { label: "Last 30 Days", value: "30d" },
     { label: "Last 90 Days", value: "90d" },
+    { label: "Last 6 Months", value: "180d" },
+    { label: "Last Year", value: "365d" },
   ];
 
   const initialize = useCallback(async (): Promise<void> => {
@@ -512,7 +514,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           <Text className="text-2xl font-bold text-text-primary">Sync</Text>
           <ConnectionStatus isConnected={isConnected} variant="header" />
         </View>
-        
+
         {/* Sync Now Button */}
         <TouchableOpacity
           className="bg-accent-primary rounded-xl py-3.5 px-4 flex-row items-center mb-2"
@@ -577,6 +579,9 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
             />
           </View>
           <Text className="text-text-secondary text-xs mt-1">Controls how much data will be included in the next sync</Text>
+          {(selectedTimeRange === '180d' || selectedTimeRange === '365d') && (
+            <Text className="text-text-secondary text-xs mt-2">Large time ranges may take a while.</Text>
+          )}
         </View>
 
         {/* Health Overview */}

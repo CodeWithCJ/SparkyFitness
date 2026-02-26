@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { seedHealthData } from '../services/seedHealthData';
+import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
 import OnboardingModal from './OnboardingModal';
 
@@ -19,6 +19,26 @@ const DevTools: React.FC = () => {
       Alert.alert('Error', `Sync failed: ${message}`);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleSeedHistoricalSteps = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedHistoricalSteps();
+      if (result.success) {
+        Alert.alert(
+          'Success',
+          `Seeded ${result.recordsInserted} historical step records across the past year.`
+        );
+      } else {
+        Alert.alert('Error', result.error || 'Failed to seed historical step data.');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Alert.alert('Error', `Failed to seed historical step data: ${message}`);
+    } finally {
+      setIsSeeding(false);
     }
   };
 
@@ -84,6 +104,15 @@ const DevTools: React.FC = () => {
           disabled={isSeeding}
         >
           <Text className="text-white text-base font-bold">30 Days</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
+          style={{ opacity: isSeeding ? 0.6 : 1 }}
+          onPress={handleSeedHistoricalSteps}
+          disabled={isSeeding}
+        >
+          <Text className="text-white text-base font-bold text-center">1 Year{'\n'}(Steps)</Text>
         </TouchableOpacity>
       </View>
 
