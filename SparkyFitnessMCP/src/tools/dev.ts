@@ -29,11 +29,12 @@ export const devTools = [
     inputSchema: {
       type: "object",
       properties: {
-        userId: { type: "string" },
+        userId: { type: ["string", "number"] },
         foodName: { type: "string" },
         mealType: { type: "string" }
       },
-      required: ["userId", "foodName"]
+      required: ["userId", "foodName"],
+      additionalProperties: true
     }
   },
   {

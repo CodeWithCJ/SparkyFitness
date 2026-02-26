@@ -72,17 +72,6 @@ export const nutritionTools = [
       required: ["action"],
     },
   },
-  {
-    name: "analyze_food_image",
-    description: "Analyze an image of food to estimate its nutritional content.",
-    inputSchema: {
-        type: "object",
-        properties: {
-            image_url: { type: "string", description: "Base64 or URL of the food image." }
-        },
-        required: ["image_url"]
-    }
-  }
 ];
 
 export const handleNutritionTool = async (name: string, args: any) => {
