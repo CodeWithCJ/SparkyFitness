@@ -7,8 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Load environment variables from the root .env
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
-import { handleNutritionTool } from "../tools/nutrition.js";
-import { handleCoachTool } from "../tools/coach.js";
+import { handleNutritionTool } from "../tools/food/index.js";
+import { handleCoachTool } from "../tools/coach/index.js";
 import { poolInstance } from "../db.js";
 
 async function runTests() {
