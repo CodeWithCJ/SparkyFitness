@@ -18,7 +18,15 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Save, Flame, UtensilsCrossed, Target, Sparkles } from 'lucide-react';
+import {
+  Save,
+  Flame,
+  UtensilsCrossed,
+  Target,
+  Sparkles,
+  Percent,
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { error as logError } from '@/utils/logging';
@@ -53,13 +61,17 @@ const CalculationSettings = () => {
     saveAllPreferences,
     calorieGoalAdjustmentMode: contextCalorieGoalAdjustmentMode,
     setCalorieGoalAdjustmentMode: setCalorieGoalAdjustmentModeContext,
+    exerciseCaloriePercentage: contextExerciseCaloriePercentage,
+    setExerciseCaloriePercentage: setExerciseCaloriePercentageContext,
 
     loggingLevel,
   } = usePreferences();
 
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] = useState<
-    'dynamic' | 'fixed'
+    'dynamic' | 'fixed' | 'percentage' | 'smart'
   >(contextCalorieGoalAdjustmentMode || 'dynamic');
+  const [exerciseCaloriePercentage, setExerciseCaloriePercentage] =
+    useState<number>(contextExerciseCaloriePercentage ?? 100);
 
   const [bmrAlgorithm, setBmrAlgorithm] = useState<BmrAlgorithm>(
     contextBmrAlgorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
@@ -118,6 +130,9 @@ const CalculationSettings = () => {
     if (contextCalorieGoalAdjustmentMode) {
       setCalorieGoalAdjustmentMode(contextCalorieGoalAdjustmentMode);
     }
+    if (contextExerciseCaloriePercentage !== undefined) {
+      setExerciseCaloriePercentage(contextExerciseCaloriePercentage);
+    }
     // Since preferences are loaded by the PreferencesProvider at a higher level,
     // we can assume they are available by the time this component renders.
     // Set isLoading to false after initial render with context values.
@@ -131,6 +146,7 @@ const CalculationSettings = () => {
     contextVitaminCalculationAlgorithm,
     contextSugarCalculationAlgorithm,
     contextCalorieGoalAdjustmentMode,
+    contextExerciseCaloriePercentage,
   ]);
 
   const handleSave = async () => {
@@ -146,8 +162,10 @@ const CalculationSettings = () => {
         vitaminCalculationAlgorithm: vitaminCalculationAlgorithm,
         sugarCalculationAlgorithm: sugarCalculationAlgorithm,
         calorieGoalAdjustmentMode: calorieGoalAdjustmentMode,
+        exerciseCaloriePercentage: exerciseCaloriePercentage,
       });
       setCalorieGoalAdjustmentModeContext(calorieGoalAdjustmentMode);
+      setExerciseCaloriePercentageContext(exerciseCaloriePercentage);
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
       toast({
         title: t('calculationSettings.saveSuccess', 'Success'),
@@ -348,10 +366,10 @@ const CalculationSettings = () => {
           </Label>
           <RadioGroup
             value={calorieGoalAdjustmentMode}
-            onValueChange={(value: 'dynamic' | 'fixed') =>
-              setCalorieGoalAdjustmentMode(value)
-            }
-            className="flex flex-col space-y-1 mb-4"
+            onValueChange={(
+              value: 'dynamic' | 'fixed' | 'percentage' | 'smart'
+            ) => setCalorieGoalAdjustmentMode(value)}
+            className="flex flex-col space-y-2 mb-4"
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="dynamic" id="dynamic-goal" />
@@ -378,6 +396,68 @@ const CalculationSettings = () => {
                 {t(
                   'settings.calorieGoalAdjustment.fixedGoalDescription',
                   'Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.'
+                )}
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="percentage" id="percentage-goal" />
+              <Label htmlFor="percentage-goal" className="cursor-pointer">
+                <span className="font-medium">
+                  {t(
+                    'settings.calorieGoalAdjustment.percentageGoal',
+                    'Percentage Earn-Back'
+                  )}
+                  :
+                </span>{' '}
+                {t(
+                  'settings.calorieGoalAdjustment.percentageGoalDescription',
+                  'Only earn back a set percentage of your exercise calories. For example, 50% creates a safety buffer to avoid overeating from over-estimated burns.'
+                )}
+              </Label>
+            </div>
+            {calorieGoalAdjustmentMode === 'percentage' && (
+              <div className="ml-6 flex items-center gap-3">
+                <Percent className="w-4 h-4 text-muted-foreground" />
+                <Label
+                  htmlFor="exercise-calorie-percentage"
+                  className="text-sm whitespace-nowrap"
+                >
+                  {t(
+                    'settings.calorieGoalAdjustment.percentageLabel',
+                    'Earn-back percentage:'
+                  )}
+                </Label>
+                <Input
+                  id="exercise-calorie-percentage"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={exerciseCaloriePercentage}
+                  onChange={(e) => {
+                    const val = Math.min(
+                      100,
+                      Math.max(0, Number(e.target.value))
+                    );
+                    setExerciseCaloriePercentage(val);
+                  }}
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            )}
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="smart" id="smart-goal" />
+              <Label htmlFor="smart-goal" className="cursor-pointer">
+                <span className="font-medium">
+                  {t(
+                    'settings.calorieGoalAdjustment.smartGoal',
+                    'Smart Adjustment'
+                  )}
+                  :
+                </span>{' '}
+                {t(
+                  'settings.calorieGoalAdjustment.smartGoalDescription',
+                  'Only earns back calories burned above your exercise goal target (similar to MyFitnessPal). Your calorie goal already accounts for your planned exercise, so only extra effort is credited.'
                 )}
               </Label>
             </div>
@@ -458,10 +538,21 @@ const CalculationSettings = () => {
                           'settings.calculationExplanation.remainingDynamic',
                           'Daily Goal - Net Energy (Your goal grows as you move)'
                         )
-                      : t(
-                          'settings.calculationExplanation.remainingFixed',
-                          'Daily Goal - Eaten (Activity does not change your budget)'
-                        )}
+                      : calorieGoalAdjustmentMode === 'percentage'
+                        ? t(
+                            'settings.calculationExplanation.remainingPercentage',
+                            'Daily Goal - (Eaten - {{pct}}% of Exercise Burned)',
+                            { pct: exerciseCaloriePercentage }
+                          )
+                        : calorieGoalAdjustmentMode === 'smart'
+                          ? t(
+                              'settings.calculationExplanation.remainingSmart',
+                              'Daily Goal - (Eaten - Calories burned above your exercise target)'
+                            )
+                          : t(
+                              'settings.calculationExplanation.remainingFixed',
+                              'Daily Goal - Eaten (Activity does not change your budget)'
+                            )}
                   </p>
                 </div>
               </div>
@@ -473,10 +564,20 @@ const CalculationSettings = () => {
                     'settings.calculationExplanation.dynamicFootnote',
                     '* Ideal for fueling workouts and active recovery.'
                   )
-                : t(
-                    'settings.calculationExplanation.fixedFootnote',
-                    '* Ideal for strict caloric deficits and weight management.'
-                  )}
+                : calorieGoalAdjustmentMode === 'percentage'
+                  ? t(
+                      'settings.calculationExplanation.percentageFootnote',
+                      '* Creates a safety buffer to avoid overeating from over-estimated calorie burns.'
+                    )
+                  : calorieGoalAdjustmentMode === 'smart'
+                    ? t(
+                        'settings.calculationExplanation.smartFootnote',
+                        '* Ideal for those who already include planned exercise in their daily goal.'
+                      )
+                    : t(
+                        'settings.calculationExplanation.fixedFootnote',
+                        '* Ideal for strict caloric deficits and weight management.'
+                      )}
             </div>
           </div>
         </div>

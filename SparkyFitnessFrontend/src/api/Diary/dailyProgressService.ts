@@ -6,6 +6,7 @@ export interface Goals {
   carbs: number;
   fat: number;
   water_goal_ml: number;
+  target_exercise_calories_burned?: number;
 }
 
 import type { FoodEntry } from '@/types/food';
