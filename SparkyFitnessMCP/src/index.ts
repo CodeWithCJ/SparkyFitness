@@ -12,7 +12,7 @@ import cors from "cors";
 
 import { nutritionTools, handleNutritionTool } from "./tools/food/index.js";
 import { exerciseTools, handleExerciseTool } from "./tools/exercise/index.js";
-import { biometricTools, handleBiometricTool } from "./tools/biometrics.js";
+import { checkinTools, handleCheckinTool } from "./tools/checkin/index.js";
 import { coachTools, handleCoachTool } from "./tools/coach.js";
 import { proactiveTools, handleProactiveTool } from "./tools/engagement.js";
 import { visionTools, handleVisionTool } from "./tools/vision.js";
@@ -42,7 +42,7 @@ function createMCPServer() {
       tools: [
         ...nutritionTools,
         ...exerciseTools,
-        ...biometricTools,
+        ...checkinTools,
         ...coachTools,
         ...proactiveTools,
         ...visionTools,
@@ -56,7 +56,7 @@ function createMCPServer() {
     const handlers = [
       handleNutritionTool,
       handleExerciseTool,
-      handleBiometricTool,
+      handleCheckinTool,
       handleCoachTool,
       handleProactiveTool,
       handleVisionTool,

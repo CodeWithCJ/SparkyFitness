@@ -61,7 +61,8 @@ export const convertUnit = (value: number, fromUnit: string, toUnit: string): nu
         'kg': 1000,
         'mg': 0.001,
         'lb': 453.592,
-        'oz': 28.3495 // Weight ounce (ambiguous with fluid oz, but distinct in context usually)
+        'lbs': 453.592,
+        'oz': 28.3495
     };
     
     // Check for "oz" ambiguity - usually context dependent, but we'll try mass if volume failed

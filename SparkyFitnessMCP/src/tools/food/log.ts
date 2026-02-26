@@ -31,6 +31,29 @@ export const logFood = async (args: any) => {
         targetVariant = foodInfoRes.rows[0];
     }
 
+    // NEW: Auto-create if not found
+    if (!targetVariant && food_name) {
+        log(`Food item "${food_name}" not found. Creating placeholder.`);
+        const createRes = await query(
+            "INSERT INTO foods (name, brand, is_custom, user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now()) RETURNING id",
+            [food_name, 'Unknown Brand', true, MOCK_USER_ID]
+        );
+        const newFoodId = createRes.rows[0].id;
+        const variantRes = await query(
+            `INSERT INTO food_variants (food_id, calories, protein, carbs, fat, serving_size, serving_unit, is_default, created_at, updated_at)
+             VALUES ($1, 0, 0, 0, 0, 1, 'serving', true, now(), now()) RETURNING id`,
+            [newFoodId]
+        );
+        
+        // Re-fetch the newly created target
+        const reFetch = await query(
+            `SELECT f.id as food_id, f.name, f.brand, fv.id as variant_id, fv.calories, fv.protein, fv.carbs, fv.fat, fv.serving_size, fv.serving_unit
+             FROM foods f JOIN food_variants fv ON f.id = fv.food_id WHERE fv.id = $1`,
+            [variantRes.rows[0].id]
+        );
+        targetVariant = reFetch.rows[0];
+    }
+
     if (!targetVariant) {
         return { content: [{ type: "text", text: `Food item not found.` }], isError: true };
     }
