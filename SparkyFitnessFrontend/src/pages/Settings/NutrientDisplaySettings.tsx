@@ -59,7 +59,7 @@ const NutrientDisplaySettings: React.FC = () => {
   const [activeViewGroupTab, setActiveViewGroupTab] =
     useState<string>('summary');
 
-  const { data: customNutrients } = useCustomNutrients();
+  const { data: customNutrients = [] } = useCustomNutrients();
   const { mutateAsync: updatePreference } =
     useUpdateNutrientPreferenceMutation();
   const { mutateAsync: resetPreference } = useResetNutrientPreferenceMutation();

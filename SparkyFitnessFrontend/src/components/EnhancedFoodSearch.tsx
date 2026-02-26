@@ -166,7 +166,7 @@ const NutrientGrid = ({
 
         const digits = nutrient === 'calories' ? 0 : 1;
 
-        let displayValue;
+        let displayValue: number | string;
         if (nutrient === 'calories') {
           const kcalValue = Number(
             (food?.[nutrient as keyof FoodVariant] as number) || 0
@@ -500,7 +500,6 @@ const EnhancedFoodSearch = ({
         title: 'Food added',
         description: `${foodData.name} has been added and is ready to be added to your meal`,
       });
-      window.dispatchEvent(new CustomEvent('foodDatabaseRefresh'));
     } catch (error) {
       console.error('Error handling edited food:', error);
       toast({
@@ -530,7 +529,6 @@ const EnhancedFoodSearch = ({
       });
       setShowImportFromCsvDialog(false);
       setLoading(false);
-      window.dispatchEvent(new CustomEvent('foodDatabaseRefresh')); // Dispatch event to refresh food database
     } catch (error) {
       if (error?.status === 409 && error.data?.duplicates) {
         const duplicateList = error.data.duplicates
@@ -1084,7 +1082,7 @@ const EnhancedFoodSearch = ({
           value={searchTerm}
           autoFocus
           onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyPress={(e) => {
+          onKeyDown={(e) => {
             if (
               e.key === 'Enter' &&
               (activeTab === 'online' || activeTab === 'barcode')

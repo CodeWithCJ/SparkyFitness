@@ -7,6 +7,7 @@ import {
 import { waterIntakeKeys } from '@/api/keys/diary';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useDiaryInvalidation } from './useDiaryInvalidation';
 
 export const useWaterGoalQuery = (date: string, userId?: string) => {
   return useQuery({
@@ -50,6 +51,7 @@ export const useUpdateWaterIntakeMutation = () => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
+  const invalidate = useDiaryInvalidation();
   return useMutation({
     mutationFn: (payload: UpdateWaterPayload) => updateWaterIntake(payload),
     onSuccess: (_, variables) => {
@@ -59,8 +61,7 @@ export const useUpdateWaterIntakeMutation = () => {
           variables.user_id
         ),
       });
-      // Fallback für externe Komponenten, die eventuell noch nicht migriert sind
-      window.dispatchEvent(new Event('measurementsRefresh'));
+      invalidate();
     },
     meta: {
       successMessage: t(
