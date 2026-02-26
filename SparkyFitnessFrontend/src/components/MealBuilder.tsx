@@ -107,6 +107,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     mealFood: MealFood;
     index: number;
   } | null>(null);
+  // State to hold template info for scaling logic in food diary context
   const [templateInfo, setTemplateInfo] = useState<{
     id: string | null;
     size: number;
@@ -189,6 +190,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         setMealFoods(initialFoods);
         setMealName(foodEntryMealType || 'Logged Meal');
         setMealDescription('');
+        // Set template info based on props for scaling logic, defaults to 1 serving otherwise
         const initialSize = initialServingSize || 1;
         const initialUnit = initialServingUnit || 'serving';
         setTemplateInfo({ id: null, size: initialSize, unit: initialUnit });
