@@ -5,7 +5,6 @@
 
 type Gender = 'male' | 'female';
 type BmrAlgorithm = 'mifflin_st_jeor' | 'harris_benedict';
-type BodyFatAlgorithm = 'navy';
 
 /**
  * Calculates age in years from a date of birth string.

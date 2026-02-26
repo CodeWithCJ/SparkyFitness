@@ -2,34 +2,8 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ExerciseEntry } from '../types/exercise';
-import Icon, { type IconName } from './Icon';
+import Icon from './Icon';
 
-// Ordered from most-specific to least-specific to avoid false positives
-// (e.g., "stair" before "run" so "Stair Running" matches stair icon)
-const EXERCISE_ICON_RULES: [RegExp, IconName][] = [
-  [/stair/i, 'exercise-stair'],
-  [/elliptical/i, 'exercise-elliptical'],
-  [/basketball/i, 'exercise-basketball'],
-  [/kickbox/i, 'exercise-boxing'],
-  [/pilates/i, 'exercise-pilates'],
-  [/soccer|football/i, 'exercise-soccer'],
-  [/tennis/i, 'exercise-tennis'],
-  [/row/i, 'exercise-rowing'],
-  [/box/i, 'exercise-boxing'],
-  [/danc/i, 'exercise-dance'],
-  [/yoga/i, 'exercise-yoga'],
-  [/weight|strength|barbell|dumbbell|lifting/i, 'exercise-weights'],
-  [/swim/i, 'exercise-swimming'],
-  [/hik/i, 'exercise-hiking'],
-  [/cycl|bik/i, 'exercise-cycling'],
-  [/run|jog/i, 'exercise-running'],
-  [/walk/i, 'exercise-walking'],
-];
-
-function getExerciseIcon(name: string): IconName {
-  const match = EXERCISE_ICON_RULES.find(([re]) => re.test(name));
-  return match ? match[1] : 'exercise-default';
-}
 
 interface ExerciseSummaryProps {
   exerciseEntries: ExerciseEntry[];
