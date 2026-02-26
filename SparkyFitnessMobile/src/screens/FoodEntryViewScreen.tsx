@@ -87,12 +87,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
         {/* Food name & brand */}
-        <View className="p-4">
+        <View className="pb-4">
           <Text className="text-text-primary text-3xl font-bold">{entry.food_name || 'Unknown food'}</Text>
           {entry.brand_name && (
-            <Text className="text-text-secondary text-base mt-1">{entry.brand_name}</Text>
+            <Text className="text-text-muted mt-1 font-semibold">{entry.brand_name}</Text>
           )}
-          <Text className="text-text-muted text-sm mt-3">{servingsDisplay}</Text>
+          <Text className="text-text-secondary text-sm mt-3">{servingsDisplay}</Text>
         </View>
 
         {/* Calories & Macros */}
@@ -133,7 +133,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
         {/* Other Nutrients */}
         {otherNutrients.length > 0 && (
-          <View className="rounded-xl my-2 px-4">
+          <View className="rounded-xl my-2">
             <Text className="text-text-secondary text-sm font-medium mb-2">Other Nutrients</Text>
             {otherNutrients.map((n, i) => (
               <View key={n.label} className={`flex-row justify-between py-1 ${i < otherNutrients.length - 1 ? 'border-b border-border-subtle' : ''}`}>
@@ -147,7 +147,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         )}
 
         {/* Date & Meal type */}
-        <View className="mx-4 mt-2 gap-2">
+        <View className="mt-2 gap-2">
           <View className="flex-row items-center">
             <Text className="text-text-secondary text-sm">Date</Text>
             <Text className="text-text-primary text-sm font-medium mx-1.5">
@@ -166,10 +166,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         <TouchableOpacity
           onPress={handleDelete}
           disabled={deleteEntryMutation.isPending}
-          className="items-center py-3 mt-4"
+          className="items-center py-3 mt-2 "
           activeOpacity={0.6}
         >
-          <Text className="text-text-danger text-base font-medium">
+          <Text className="text-bg-danger text-base font-medium">
             {deleteEntryMutation.isPending ? 'Deleting...' : 'Delete Entry'}
           </Text>
         </TouchableOpacity>

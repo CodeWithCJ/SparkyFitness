@@ -515,6 +515,27 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           <ConnectionStatus isConnected={isConnected} variant="header" />
         </View>
 
+        {/* Sync Range */}
+        <View className="bg-surface rounded-xl p-4 py-3 mb-4 shadow-sm">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-semibold text-text-primary">Sync Range</Text>
+            <BottomSheetPicker
+              value={selectedTimeRange}
+              options={timeRangeOptions}
+              onSelect={async (value) => {
+                setSelectedTimeRange(value);
+                await saveTimeRange(value);
+                fetchHealthData(healthMetricStates, value);
+              }}
+              title="Select Sync Range"
+              containerStyle={{ flex: 1, maxWidth: 180, marginLeft: 16 }}
+            />
+          </View>
+          <Text className="text-text-secondary text-xs mt-1">Controls how much data will be included in the next sync</Text>
+          {(selectedTimeRange === '180d' || selectedTimeRange === '365d') && (
+            <Text className="text-text-secondary text-xs mt-2">Large time ranges may take a while.</Text>
+          )}
+        </View>
         {/* Sync Now Button */}
         <TouchableOpacity
           className="bg-accent-primary rounded-xl py-3.5 px-4 flex-row items-center mb-2"
@@ -562,27 +583,6 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           )}
         </View>
 
-        {/* Sync Range */}
-        <View className="bg-surface rounded-xl p-4 py-3 mb-4 shadow-sm">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">Sync Range</Text>
-            <BottomSheetPicker
-              value={selectedTimeRange}
-              options={timeRangeOptions}
-              onSelect={async (value) => {
-                setSelectedTimeRange(value);
-                await saveTimeRange(value);
-                fetchHealthData(healthMetricStates, value);
-              }}
-              title="Select Sync Range"
-              containerStyle={{ flex: 1, maxWidth: 180, marginLeft: 16 }}
-            />
-          </View>
-          <Text className="text-text-secondary text-xs mt-1">Controls how much data will be included in the next sync</Text>
-          {(selectedTimeRange === '180d' || selectedTimeRange === '365d') && (
-            <Text className="text-text-secondary text-xs mt-2">Large time ranges may take a while.</Text>
-          )}
-        </View>
 
         {/* Health Overview */}
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">

@@ -268,7 +268,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
         >
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
-        
+
         {item.source === 'external' && (
           <TouchableOpacity
             onPress={() => saveFoodMutation.mutate()}
@@ -292,64 +292,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
         {/* Food name & brand */}
-        <View className="px-4">
+        <View className="">
           <Text className="text-text-primary text-3xl font-bold">{item.name}</Text>
           {item.brand && (
             <Text className="text-text-secondary text-base mt-1">{item.brand}</Text>
           )}
 
-          {/* Servings control */}
-          <View className="mt-4 items-start">
-            <View className="flex-row items-center bg-raised border border-border-subtle rounded-xl overflow-hidden">
-              <TouchableOpacity
-                onPress={() => adjustServings(-0.5)}
-                className="w-9 h-10 items-center justify-center border-r border-border-subtle"
-                activeOpacity={0.7}
-              >
-                <Icon name="remove" size={20} color={accentColor} />
-              </TouchableOpacity>
-              <TextInput
-                value={servingsText}
-                onChangeText={updateServingsText}
-                onBlur={clampServings}
-                keyboardType="decimal-pad"
-                selectTextOnFocus
-                className="text-text-primary text-base text-center w-14 h-10"
-                style={{ fontSize: 20, lineHeight: 24 }}
-              />
-              <TouchableOpacity
-                onPress={() => adjustServings(0.5)}
-                className="w-9 h-10 items-center justify-center border-l border-border-subtle"
-                activeOpacity={0.7}
-              >
-                <Icon name="add" size={20} color={accentColor} />
-              </TouchableOpacity>
-            </View>
-            {variantPickerOptions.length > 1 ? (
-              <BottomSheetPicker
-                value={selectedVariantId!}
-                options={variantPickerOptions}
-                onSelect={setSelectedVariantId}
-                title="Select Serving"
-                renderTrigger={({ onPress }) => (
-                  <TouchableOpacity
-                    onPress={onPress}
-                    activeOpacity={0.7}
-                    className="flex-row items-center mt-1"
-                  >
-                    <Text className="text-text-secondary text-base">
-                      {activeVariant.servingSize} {activeVariant.servingUnit} per serving
-                    </Text>
-                    <Icon name="chevron-down" size={14} color={textPrimary} style={{ marginLeft: 4 }} />
-                  </TouchableOpacity>
-                )}
-              />
-            ) : (
-              <Text className="text-text-secondary text-base mt-2">
-                {activeVariant.servingSize} {activeVariant.servingUnit} per serving
-              </Text>
-            )}
-          </View>
         </View>
 
         {/* Calories & Macros */}
@@ -379,7 +327,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
                   <Text className="text-text-secondary text-sm">{macro.label}</Text>
                   <Text className="text-text-primary text-sm font-medium">
                     {Math.round(scaled(macro.value))}g
-                    
+
                   </Text>
                 </View>
                 <View className="h-2 rounded-full bg-progress-track overflow-hidden">
@@ -400,8 +348,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
 
         {/* Additional nutrition details */}
         {(activeVariant.fiber != null || activeVariant.saturatedFat != null || activeVariant.sodium != null || activeVariant.sugars != null) && (
-          <View className="rounded-xl my-2 px-4">
-            <Text className="text-text-secondary text-sm font-medium mb-2">Other Nutrients</Text>
+          <View className="rounded-xl">
             {[
               { label: 'Fiber', value: activeVariant.fiber, unit: 'g' },
               { label: 'Sugars', value: activeVariant.sugars, unit: 'g' },
@@ -419,12 +366,65 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
               ))}
           </View>
         )}
+        {/* Servings control */}
+        <Text className="text-text-secondary text-sm">Servings</Text>
+        <View className="flex-row justify-evenly mt-4">
+          <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
+            <TouchableOpacity
+              onPress={() => adjustServings(-0.5)}
+              className="w-10 h-10 items-center justify-center border-r border-border-subtle"
+              activeOpacity={0.7}
+            >
+              <Icon name="remove" size={20} color={accentColor} />
+            </TouchableOpacity>
+            <TextInput
+              value={servingsText}
+              onChangeText={updateServingsText}
+              onBlur={clampServings}
+              keyboardType="decimal-pad"
+              selectTextOnFocus
+              className="text-text-primary text-base text-center w-14 h-10"
+              style={{ fontSize: 20, lineHeight: 22 }}
+            />
+            <TouchableOpacity
+              onPress={() => adjustServings(0.5)}
+              className="w-10 h-10 items-center justify-center border-l border-border-subtle"
+              activeOpacity={0.7}
+            >
+              <Icon name="add" size={20} color={accentColor} />
+            </TouchableOpacity>
+          </View>
+          {variantPickerOptions.length > 1 ? (
+            <BottomSheetPicker
+              value={selectedVariantId!}
+              options={variantPickerOptions}
+              onSelect={setSelectedVariantId}
+              title="Select Serving"
+              renderTrigger={({ onPress }) => (
+                <TouchableOpacity
+                  onPress={onPress}
+                  activeOpacity={0.7}
+                  className="flex-row items-center mt-1"
+                >
+                  <Text className="text-text-primary text-base">
+                    {activeVariant.servingSize} {activeVariant.servingUnit} per serving
+                  </Text>
+                  <Icon name="chevron-down" size={14} color={textPrimary} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              )}
+            />
+          ) : (
+            <Text className="text-text-secondary text-base mt-2">
+              {activeVariant.servingSize} {activeVariant.servingUnit} per serving
+            </Text>
+          )}
+        </View>
 
         {/* Date selector */}
         <TouchableOpacity
           onPress={() => calendarRef.current?.present()}
           activeOpacity={0.7}
-          className="flex-row items-center mt-2 mx-4"
+          className="flex-row items-center mt-2"
         >
           <Text className="text-text-secondary text-sm">Date</Text>
           <Text className="text-text-primary text-sm font-medium mx-1.5">
@@ -435,7 +435,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
 
         {/* Meal type selector */}
         {selectedMealType && (
-          <View className="flex-row items-center mt-2 mx-4">
+          <View className="flex-row items-center mt-2">
             <Text className="text-text-secondary text-sm">Meal</Text>
             <BottomSheetPicker
               value={effectiveMealId!}
@@ -461,7 +461,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
 
         {/* Action buttons */}
         <TouchableOpacity
-          className="bg-accent-primary rounded-[10px] py-3.5 items-center mt-2 mx-4"
+          className="bg-accent-primary rounded-[10px] py-3.5 items-center mt-2"
           activeOpacity={0.8}
           disabled={addFoodEntryMutation.isPending || !effectiveMealId || servings < 0.5}
           style={(!effectiveMealId || servings < 0.5) ? { opacity: 0.5 } : undefined}

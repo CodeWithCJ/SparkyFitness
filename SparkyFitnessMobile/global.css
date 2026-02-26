@@ -53,11 +53,11 @@
 
       --color-bg-success:        hsl(162, 64%, 88%);
       --color-bg-warning:        hsl(35, 59%, 78%);
-      --color-bg-danger:         hsl(358, 63%, 50%);
+      --color-bg-danger:         hsl(358, 61%, 44%);
 
       --color-text-success:      hsl(164, 57%, 30%);
       --color-text-warning:      hsl(36, 71%, 42%);
-      --color-text-danger:       hsl(358, 49%, 49%);
+      --color-text-danger:       hsl(0, 100%, 97%);
     }
       
     @variant dark {
@@ -102,7 +102,7 @@
    
       --color-text-success:      hsl(159, 15%, 95%);
       --color-text-warning:      hsl(35, 59%, 78%);
-      --color-text-danger:       hsl(358, 53%, 89%);
+      --color-text-danger:       hsl(357, 68%, 94%);
     }
 
     /* TODO Update AMOLED variant colors to be more distinct from dark mode */

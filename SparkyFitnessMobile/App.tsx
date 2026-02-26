@@ -197,12 +197,20 @@ function AppContent() {
           <Stack.Screen
             name="FoodEntryAdd"
             component={FoodEntryAddScreen}
-            options={{ headerShown: false }}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
           />
           <Stack.Screen
             name="FoodEntryView"
             component={FoodEntryViewScreen}
-            options={{ headerShown: false }}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
           />
           <Stack.Screen
             name="Logs"
