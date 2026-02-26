@@ -11,7 +11,7 @@ import express from "express";
 import cors from "cors";
 
 import { nutritionTools, handleNutritionTool } from "./tools/food/index.js";
-import { fitnessTools, handleFitnessTool } from "./tools/fitness.js";
+import { exerciseTools, handleExerciseTool } from "./tools/exercise/index.js";
 import { biometricTools, handleBiometricTool } from "./tools/biometrics.js";
 import { coachTools, handleCoachTool } from "./tools/coach.js";
 import { proactiveTools, handleProactiveTool } from "./tools/engagement.js";
@@ -41,7 +41,7 @@ function createMCPServer() {
     return {
       tools: [
         ...nutritionTools,
-        ...fitnessTools,
+        ...exerciseTools,
         ...biometricTools,
         ...coachTools,
         ...proactiveTools,
@@ -55,7 +55,7 @@ function createMCPServer() {
     const { name, arguments: args } = request.params;
     const handlers = [
       handleNutritionTool,
-      handleFitnessTool,
+      handleExerciseTool,
       handleBiometricTool,
       handleCoachTool,
       handleProactiveTool,
