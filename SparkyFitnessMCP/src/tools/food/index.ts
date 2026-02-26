@@ -7,7 +7,7 @@ import * as logEntries from "./log.js";
 export const nutritionTools = [
   {
     name: "manage_food",
-    description: "Search for, create, and manage food and meal entries in the diary. Supports logging, editing, and viewing the daily food diary.",
+    description: "Primary tool for nutrition tracking. Use this to search for food, log meals, create custom food items, and manage your daily diary. Supports multi-turn conversations where you provide details one by one.",
     inputSchema: {
       type: "object",
       properties: {
@@ -28,7 +28,7 @@ export const nutritionTools = [
           description: "The nutrition-related action to perform.",
         },
         // Common fields
-        entry_date: { type: "string", description: "The date of the entry (YYYY-MM-DD)." },
+        entry_date: { type: "string", description: "The absolute date of the record in 'YYYY-MM-DD' format. The AI must calculate this date based on the user's relative time and the current reference date." },
         meal_type: { type: "string", description: "The meal timeframe (e.g., 'breakfast', 'lunch', 'dinner', 'snacks')." },
         
         // Search/Log Food fields
@@ -70,19 +70,9 @@ export const nutritionTools = [
         source_date: { type: "string", description: "Source date for copying entries (YYYY-MM-DD)." },
       },
       required: ["action"],
+      additionalProperties: true
     },
   },
-  {
-    name: "analyze_food_image",
-    description: "Analyze an image of food to estimate its nutritional content.",
-    inputSchema: {
-        type: "object",
-        properties: {
-            image_url: { type: "string", description: "Base64 or URL of the food image." }
-        },
-        required: ["image_url"]
-    }
-  }
 ];
 
 export const handleNutritionTool = async (name: string, args: any) => {

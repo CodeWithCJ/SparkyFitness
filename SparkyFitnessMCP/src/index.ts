@@ -1,13 +1,4 @@
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// 1. Initialize environment variables. Look for .env in the root (2 levels up from src)
-const rootEnvPath = path.resolve(__dirname, "../../.env");
-dotenv.config({ path: rootEnvPath });
-console.error(`[MCP] Loading env from: ${rootEnvPath}`);
+import "./load_env.js"; // MUST BE FIRST
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -18,9 +9,10 @@ import {
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import express from "express";
 import cors from "cors";
+
 import { nutritionTools, handleNutritionTool } from "./tools/food/index.js";
-import { fitnessTools, handleFitnessTool } from "./tools/fitness.js";
-import { biometricTools, handleBiometricTool } from "./tools/biometrics.js";
+import { exerciseTools, handleExerciseTool } from "./tools/exercise/index.js";
+import { checkinTools, handleCheckinTool } from "./tools/checkin/index.js";
 import { coachTools, handleCoachTool } from "./tools/coach.js";
 import { proactiveTools, handleProactiveTool } from "./tools/engagement.js";
 import { visionTools, handleVisionTool } from "./tools/vision.js";
@@ -29,97 +21,115 @@ import { MOCK_USER_ID } from "./config.js";
 
 console.error(`[MCP] Active Mock User ID: ${MOCK_USER_ID}`);
 
-const server = new Server(
-  {
-    name: "sparky-fitness-mcp",
-    version: "1.0.0",
-  },
-  {
-    capabilities: {
-      tools: {},
+/**
+ * Factory function to create a new MCP Server instance.
+ */
+function createMCPServer() {
+  const server = new Server(
+    {
+      name: "sparky-fitness-mcp",
+      version: "1.0.0",
     },
-  }
-);
+    {
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
 
-/**
- * Register Tool Lists
- */
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      ...nutritionTools,
-      ...fitnessTools,
-      ...biometricTools,
-      ...coachTools,
-      ...proactiveTools,
-      ...visionTools,
-      ...devTools
-    ],
-  };
-});
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return {
+      tools: [
+        ...nutritionTools,
+        ...exerciseTools,
+        ...checkinTools,
+        ...coachTools,
+        ...proactiveTools,
+        ...visionTools,
+        ...devTools
+      ],
+    };
+  });
 
-/**
- * Tool Execution Router
- */
-server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
-  const { name, arguments: args } = request.params;
+  server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
+    const { name, arguments: args } = request.params;
+    const handlers = [
+      handleNutritionTool,
+      handleExerciseTool,
+      handleCheckinTool,
+      handleCoachTool,
+      handleProactiveTool,
+      handleVisionTool,
+      handleDevTool
+    ];
 
-  // 1. Try Nutrition Tools
-  const nutritionRes = await handleNutritionTool(name, args);
-  if (nutritionRes) return nutritionRes;
+    for (const handler of handlers) {
+      const res = await handler(name, args);
+      if (res) return res;
+    }
 
-  // 2. Try Fitness Tools
-  const fitnessRes = await handleFitnessTool(name, args);
-  if (fitnessRes) return fitnessRes;
+    throw new Error(`Unknown tool: ${name}`);
+  });
 
-  // 3. Try Biometric Tools
-  const biometricRes = await handleBiometricTool(name, args);
-  if (biometricRes) return biometricRes;
+  return server;
+}
 
-  // 4. Try Coach Tools
-  const coachRes = await handleCoachTool(name, args);
-  if (coachRes) return coachRes;
-
-  // 5. Try Proactive Tools
-  const proactiveRes = await handleProactiveTool(name, args);
-  if (proactiveRes) return proactiveRes;
-
-  // 6. Try Vision Tools
-  const visionRes = await handleVisionTool(name, args);
-  if (visionRes) return visionRes;
-
-  // 7. Try Dev Tools
-  const devRes = await handleDevTool(name, args);
-  if (devRes) return devRes;
-
-  throw new Error(`Unknown tool: ${name}`);
-});
-
-/**
- * Transport Setup: SSE
- */
 const app = express();
 app.use(cors());
 
-let sseTransport: SSEServerTransport | null = null;
+// Map to store active SSE transports by their session ID
+const transports = new Map<string, SSEServerTransport>();
 
-app.get("/sse", async (req, res) => {
-  console.log("New SSE connection established");
-  sseTransport = new SSEServerTransport("/messages", res);
-  await server.connect(sseTransport);
-});
-
-// IMPORTANT: Do NOT use express.json() before this route. 
-// The MCP SDK's handlePostMessage expects to consume the raw request stream.
-app.post("/messages", async (req, res) => {
-  if (sseTransport) {
-    await sseTransport.handlePostMessage(req, res);
-  } else {
-    res.status(400).send("No active SSE transport");
+/**
+ * Optimized SSE Connection Handler
+ */
+const handleSseConnection = async (req: express.Request, res: express.Response) => {
+  console.log(`[MCP] New SSE connection: ${req.method} ${req.path}`);
+  
+  const transport = new SSEServerTransport(req.path, res);
+  const server = createMCPServer();
+  
+  await server.connect(transport);
+  
+  if (transport.sessionId) {
+    transports.set(transport.sessionId, transport);
+    console.log(`[MCP] Session active: ${transport.sessionId}`);
+    
+    res.on("close", () => {
+      console.log(`[MCP] Session closed: ${transport.sessionId}`);
+      transports.delete(transport.sessionId!);
+      server.close();
+    });
   }
-});
+};
 
-// Other routes can use json parsing
+/**
+ * Resilient Message Handler
+ */
+const handleSseMessage = async (req: express.Request, res: express.Response) => {
+  const sessionId = req.query.sessionId as string;
+  
+  let transport = transports.get(sessionId);
+  if (!transport) {
+    console.log(`[MCP] Session ${sessionId} not found yet, retrying...`);
+    await new Promise(r => setTimeout(r, 200));
+    transport = transports.get(sessionId);
+  }
+
+  if (transport) {
+    await transport.handlePostMessage(req, res);
+  } else {
+    const activeSessions = Array.from(transports.keys()).join(", ");
+    console.error(`[MCP] ERROR: Unknown session ${sessionId}. Active: [${activeSessions}]`);
+    res.status(404).send("Unknown session");
+  }
+};
+
+app.get("/mcp", handleSseConnection);
+app.post("/mcp", handleSseMessage);
+app.get("/sse", handleSseConnection);
+app.post(["/sse", "/messages"], handleSseMessage);
+
 app.use(express.json());
 
 const PORT = process.env.SPARKY_FITNESS_MCP_PORT || process.env.PORT || 5435;
@@ -129,6 +139,7 @@ if (process.stdout.isTTY || process.env.TRANSPORT === 'sse') {
         console.log(`Sparky MCP Server running on port ${PORT} (SSE mode)`);
     });
 } else {
+    const server = createMCPServer();
     const transport = new StdioServerTransport();
     server.connect(transport).catch(console.error);
     console.error("Sparky MCP Server running in Stdio mode");

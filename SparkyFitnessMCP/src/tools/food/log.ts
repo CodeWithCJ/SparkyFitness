@@ -31,6 +31,29 @@ export const logFood = async (args: any) => {
         targetVariant = foodInfoRes.rows[0];
     }
 
+    // NEW: Auto-create if not found
+    if (!targetVariant && food_name) {
+        log(`Food item "${food_name}" not found. Creating placeholder.`);
+        const createRes = await query(
+            "INSERT INTO foods (name, brand, is_custom, user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now()) RETURNING id",
+            [food_name, 'Unknown Brand', true, MOCK_USER_ID]
+        );
+        const newFoodId = createRes.rows[0].id;
+        const variantRes = await query(
+            `INSERT INTO food_variants (food_id, calories, protein, carbs, fat, serving_size, serving_unit, is_default, created_at, updated_at)
+             VALUES ($1, 0, 0, 0, 0, 1, 'serving', true, now(), now()) RETURNING id`,
+            [newFoodId]
+        );
+        
+        // Re-fetch the newly created target
+        const reFetch = await query(
+            `SELECT f.id as food_id, f.name, f.brand, fv.id as variant_id, fv.calories, fv.protein, fv.carbs, fv.fat, fv.serving_size, fv.serving_unit
+             FROM foods f JOIN food_variants fv ON f.id = fv.food_id WHERE fv.id = $1`,
+            [variantRes.rows[0].id]
+        );
+        targetVariant = reFetch.rows[0];
+    }
+
     if (!targetVariant) {
         return { content: [{ type: "text", text: `Food item not found.` }], isError: true };
     }
@@ -60,8 +83,8 @@ export const logFood = async (args: any) => {
           food_name, brand_name, calories, protein, carbs, fat, serving_size, serving_unit,
           saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, 
           sodium, potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, 
-          glycemic_index, custom_nutrients, created_by_user_id, updated_by_user_id, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $1, $1, now()) RETURNING id`,
+          glycemic_index, custom_nutrients, created_by_user_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $1) RETURNING id`,
         [
             MOCK_USER_ID, targetVariant.food_id, targetVariant.variant_id, mealTypeId,
             finalQuantity, finalUnit, date,
@@ -291,7 +314,7 @@ export const updateEntry = async (args: any) => {
     const { entry_id, entry_type, quantity, unit } = args;
     const table = entry_type === 'food_entry_meal' ? 'food_entry_meals' : 'food_entries';
     const res = await query(
-        `UPDATE ${table} SET quantity = $1, unit = $2, updated_at = now() WHERE id = $3 AND user_id = $4`,
+        `UPDATE ${table} SET quantity = $1, unit = $2 WHERE id = $3 AND user_id = $4`,
         [quantity, unit, entry_id, MOCK_USER_ID]
     );
     if (res.rowCount === 0) {

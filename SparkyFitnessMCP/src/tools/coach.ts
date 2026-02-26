@@ -33,7 +33,7 @@ export const handleCoachTool = async (name: string, args: any) => {
     case "get_health_summary":
       const summaryDate = start_date;
       const nutritionRes = await query(
-        "SELECT SUM(calories) as total_cals, SUM(protein) as total_protein FROM food_entries fe JOIN foods f ON fe.food_id = f.id WHERE entry_date = $1 AND user_id = $2",
+        "SELECT SUM(calories) as total_cals, SUM(protein) as total_protein FROM food_entries fe JOIN foods f ON fe.food_id = f.id WHERE entry_date = $1 AND fe.user_id = $2",
         [summaryDate, MOCK_USER_ID]
       );
       
