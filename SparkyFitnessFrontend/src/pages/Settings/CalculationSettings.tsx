@@ -457,7 +457,7 @@ const CalculationSettings = () => {
                 </span>{' '}
                 {t(
                   'settings.calorieGoalAdjustment.smartGoalDescription',
-                  'Only earns back calories burned above your exercise goal target (similar to MyFitnessPal). Your calorie goal already accounts for your planned exercise, so only extra effort is credited.'
+                  'Only earns back exercise calories above what is already built into your daily goal (similar to MyFitnessPal). Uses Goal − BMR as the expected activity level, so only effort beyond that threshold is credited.'
                 )}
               </Label>
             </div>
@@ -547,7 +547,7 @@ const CalculationSettings = () => {
                         : calorieGoalAdjustmentMode === 'smart'
                           ? t(
                               'settings.calculationExplanation.remainingSmart',
-                              'Daily Goal - (Eaten - Calories burned above your exercise target)'
+                              'Daily Goal − Eaten + max(0, Exercise burned − (Goal − BMR))'
                             )
                           : t(
                               'settings.calculationExplanation.remainingFixed',
@@ -572,7 +572,7 @@ const CalculationSettings = () => {
                   : calorieGoalAdjustmentMode === 'smart'
                     ? t(
                         'settings.calculationExplanation.smartFootnote',
-                        '* Ideal for those who already include planned exercise in their daily goal.'
+                        '* Requires BMR to be calculable (profile must have weight, height, gender, and date of birth). Falls back to no exercise credit if BMR is unavailable.'
                       )
                     : t(
                         'settings.calculationExplanation.fixedFootnote',

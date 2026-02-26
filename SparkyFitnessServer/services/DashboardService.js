@@ -111,11 +111,12 @@ async function getDashboardStats(userId, date) {
       const adjustedTotalBurned = adjustedExerciseBurned + bmrToAdd;
       remaining = goalCalories - (eatenCalories - adjustedTotalBurned);
     } else if (adjustmentMode === "smart") {
-      // Only credits exercise calories ABOVE the target exercise burn goal (MFP-style)
-      const targetExerciseBurned = parseFloat(goals?.target_exercise_calories_burned || 0);
-      const excessExerciseBurned = Math.max(0, exerciseCalories - targetExerciseBurned);
-      const adjustedTotalBurned = excessExerciseBurned + bmrToAdd;
-      remaining = goalCalories - (eatenCalories - adjustedTotalBurned);
+      // MFP-style: only earn back exercise calories above what's already built into the daily goal.
+      // The activity portion already assumed in the goal = goal - BMR.
+      // (If BMR is 0/unavailable, this falls back to no exercise credit, like fixed mode.)
+      const activityAlreadyInGoal = Math.max(0, goalCalories - bmr);
+      const exerciseAdjustment = Math.max(0, exerciseCalories - activityAlreadyInGoal);
+      remaining = goalCalories - eatenCalories + exerciseAdjustment;
     } else {
       // fixed: no exercise calories credited
       remaining = goalCalories - eatenCalories;
