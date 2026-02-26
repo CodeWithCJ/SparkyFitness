@@ -33,7 +33,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   useEffect(() => {
     navigation.setParams({ selectedDate });
-  }, [selectedDate]);
+  }, [selectedDate, navigation]);
 
   const goToPreviousDay = () => setSelectedDate(prev => addDays(prev, -1));
   const goToNextDay = () => setSelectedDate(prev => {

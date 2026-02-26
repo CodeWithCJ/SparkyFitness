@@ -227,7 +227,7 @@ describe('readHealthRecords', () => {
     jest.clearAllMocks();
   });
 
-  test('calls readRecords with correct parameters', async () => {
+  test('calls readRecords with correct parameters including pageSize', async () => {
     mockReadRecords.mockResolvedValue({ records: [] });
 
     const startDate = new Date('2024-01-15T00:00:00Z');
@@ -241,6 +241,7 @@ describe('readHealthRecords', () => {
         startTime: startDate.toISOString(),
         endTime: endDate.toISOString(),
       },
+      pageSize: 5000,
     });
   });
 
@@ -294,6 +295,61 @@ describe('readHealthRecords', () => {
     );
 
     expect(result).toEqual([]);
+  });
+
+  test('fetches multiple pages when pageToken is returned', async () => {
+    const page1Records = [{ startTime: '2024-01-15T10:00:00Z', count: 100 }];
+    const page2Records = [{ startTime: '2024-01-15T12:00:00Z', count: 200 }];
+
+    mockReadRecords
+      .mockResolvedValueOnce({ records: page1Records, pageToken: 'token-page-2' })
+      .mockResolvedValueOnce({ records: page2Records });
+
+    const result = await readHealthRecords(
+      'HeartRate',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result).toEqual([...page1Records, ...page2Records]);
+    expect(mockReadRecords).toHaveBeenCalledTimes(2);
+    // Second call should include the pageToken
+    expect(mockReadRecords.mock.calls[1][1]).toMatchObject({
+      pageToken: 'token-page-2',
+    });
+  });
+
+  test('returns partial data when error occurs mid-pagination', async () => {
+    const page1Records = [{ startTime: '2024-01-15T10:00:00Z', count: 100 }];
+
+    mockReadRecords
+      .mockResolvedValueOnce({ records: page1Records, pageToken: 'token-page-2' })
+      .mockRejectedValueOnce(new Error('Connection lost'));
+
+    const result = await readHealthRecords(
+      'HeartRate',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    // Should return page 1 records instead of empty array
+    expect(result).toEqual(page1Records);
+  });
+
+  test('stops at max page limit as safety valve', async () => {
+    // Always return a pageToken to simulate infinite pagination
+    mockReadRecords.mockImplementation(() =>
+      Promise.resolve({ records: [{ value: 1 }], pageToken: 'next' })
+    );
+
+    const result = await readHealthRecords(
+      'HeartRate',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(mockReadRecords).toHaveBeenCalledTimes(100);
+    expect(result).toHaveLength(100);
   });
 });
 
