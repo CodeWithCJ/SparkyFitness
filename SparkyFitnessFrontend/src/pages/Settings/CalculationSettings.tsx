@@ -9,6 +9,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -18,7 +19,14 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Save, Flame, UtensilsCrossed, Target, Sparkles } from 'lucide-react';
+import {
+  Save,
+  Flame,
+  UtensilsCrossed,
+  Target,
+  Sparkles,
+  Activity,
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { error as logError } from '@/utils/logging';
@@ -34,6 +42,7 @@ import {
   VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
+import { getMostRecentMeasurement } from '@/services/checkInService';
 
 const CalculationSettings = () => {
   const { t } = useTranslation();
@@ -49,12 +58,17 @@ const CalculationSettings = () => {
     sugarCalculationAlgorithm: contextSugarCalculationAlgorithm,
     saveAllPreferences,
     calorieGoalAdjustmentMode: contextCalorieGoalAdjustmentMode,
+    exerciseCalorieEarnBackPercentage: contextEarnBackPercentage,
     loggingLevel,
   } = usePreferences();
 
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] = useState<
-    'dynamic' | 'fixed'
+    'dynamic' | 'fixed' | 'percentage' | 'smart'
   >(contextCalorieGoalAdjustmentMode || 'dynamic');
+  const [earnBackPercentage, setEarnBackPercentage] = useState<number>(
+    contextEarnBackPercentage ?? 100
+  );
+  const [bmi, setBmi] = useState<number | null>(null);
 
   const [bmrAlgorithm, setBmrAlgorithm] = useState<BmrAlgorithm>(
     contextBmrAlgorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
@@ -113,6 +127,9 @@ const CalculationSettings = () => {
     if (contextCalorieGoalAdjustmentMode) {
       setCalorieGoalAdjustmentMode(contextCalorieGoalAdjustmentMode);
     }
+    if (contextEarnBackPercentage !== undefined) {
+      setEarnBackPercentage(contextEarnBackPercentage);
+    }
     // Since preferences are loaded by the PreferencesProvider at a higher level,
     // we can assume they are available by the time this component renders.
     // Set isLoading to false after initial render with context values.
@@ -126,7 +143,31 @@ const CalculationSettings = () => {
     contextVitaminCalculationAlgorithm,
     contextSugarCalculationAlgorithm,
     contextCalorieGoalAdjustmentMode,
+    contextEarnBackPercentage,
   ]);
+
+  // Fetch height and weight to compute BMI
+  useEffect(() => {
+    const fetchBmi = async () => {
+      try {
+        const [weightData, heightData] = await Promise.all([
+          getMostRecentMeasurement('weight'),
+          getMostRecentMeasurement('height'),
+        ]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const weightKg = (weightData as any)?.weight;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const heightCm = (heightData as any)?.height;
+        if (weightKg && heightCm) {
+          const heightM = heightCm / 100;
+          setBmi(Math.round((weightKg / (heightM * heightM)) * 10) / 10);
+        }
+      } catch {
+        // BMI display is optional; ignore errors
+      }
+    };
+    fetchBmi();
+  }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -141,6 +182,7 @@ const CalculationSettings = () => {
         vitaminCalculationAlgorithm: vitaminCalculationAlgorithm,
         sugarCalculationAlgorithm: sugarCalculationAlgorithm,
         calorieGoalAdjustmentMode: calorieGoalAdjustmentMode,
+        exerciseCalorieEarnBackPercentage: earnBackPercentage,
       });
       toast({
         title: t('calculationSettings.saveSuccess', 'Success'),
@@ -341,13 +383,17 @@ const CalculationSettings = () => {
           </Label>
           <RadioGroup
             value={calorieGoalAdjustmentMode}
-            onValueChange={(value: 'dynamic' | 'fixed') =>
-              setCalorieGoalAdjustmentMode(value)
-            }
-            className="flex flex-col space-y-1 mb-4"
+            onValueChange={(
+              value: 'dynamic' | 'fixed' | 'percentage' | 'smart'
+            ) => setCalorieGoalAdjustmentMode(value)}
+            className="flex flex-col space-y-2 mb-4"
           >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="dynamic" id="dynamic-goal" />
+            <div className="flex items-start space-x-2">
+              <RadioGroupItem
+                value="dynamic"
+                id="dynamic-goal"
+                className="mt-0.5"
+              />
               <Label htmlFor="dynamic-goal" className="cursor-pointer">
                 <span className="font-medium">
                   {t(
@@ -358,25 +404,102 @@ const CalculationSettings = () => {
                 </span>{' '}
                 {t(
                   'settings.calorieGoalAdjustment.dynamicGoalDescription',
-                  'Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily.'
+                  '100% of burned calories are added back to your budget. Ideal for active individuals whose activity varies daily.'
                 )}
               </Label>
             </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="fixed" id="fixed-goal" />
+            <div className="flex items-start space-x-2">
+              <RadioGroupItem
+                value="fixed"
+                id="fixed-goal"
+                className="mt-0.5"
+              />
               <Label htmlFor="fixed-goal" className="cursor-pointer">
                 <span className="font-medium">
                   {t('settings.calorieGoalAdjustment.fixedGoal', 'Fixed Goal')}:
                 </span>{' '}
                 {t(
                   'settings.calorieGoalAdjustment.fixedGoalDescription',
-                  'Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.'
+                  'Your calorie goal stays fixed regardless of activity. Suitable for strict deficits.'
+                )}
+              </Label>
+            </div>
+            <div className="flex items-start space-x-2">
+              <RadioGroupItem
+                value="percentage"
+                id="percentage-goal"
+                className="mt-0.5"
+              />
+              <Label htmlFor="percentage-goal" className="cursor-pointer">
+                <span className="font-medium">
+                  {t(
+                    'settings.calorieGoalAdjustment.percentageGoal',
+                    'Percentage Earn-Back'
+                  )}
+                  :
+                </span>{' '}
+                {t(
+                  'settings.calorieGoalAdjustment.percentageGoalDescription',
+                  'Only a set percentage of burned calories are credited. Creates a safety buffer against overestimated burns.'
+                )}
+              </Label>
+            </div>
+            {calorieGoalAdjustmentMode === 'percentage' && (
+              <div className="ml-6 flex items-center gap-3">
+                <Label
+                  htmlFor="earn-back-pct"
+                  className="text-sm whitespace-nowrap"
+                >
+                  {t(
+                    'settings.calorieGoalAdjustment.earnBackLabel',
+                    'Earn back'
+                  )}
+                </Label>
+                <Input
+                  id="earn-back-pct"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={earnBackPercentage}
+                  onChange={(e) =>
+                    setEarnBackPercentage(
+                      Math.min(100, Math.max(0, Number(e.target.value)))
+                    )
+                  }
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">
+                  %{' '}
+                  {t(
+                    'settings.calorieGoalAdjustment.ofBurnedCalories',
+                    'of burned calories'
+                  )}
+                </span>
+              </div>
+            )}
+            <div className="flex items-start space-x-2">
+              <RadioGroupItem
+                value="smart"
+                id="smart-goal"
+                className="mt-0.5"
+              />
+              <Label htmlFor="smart-goal" className="cursor-pointer">
+                <span className="font-medium">
+                  {t(
+                    'settings.calorieGoalAdjustment.smartGoal',
+                    'Smart Adjustment'
+                  )}
+                  :
+                </span>{' '}
+                {t(
+                  'settings.calorieGoalAdjustment.smartGoalDescription',
+                  'Similar to MyFitnessPal – only calories burned above your daily exercise goal are credited. Set your exercise calorie goal in the Goals tab.'
                 )}
               </Label>
             </div>
           </RadioGroup>
 
-          {/* Dynamic Calculation Explanation Box */}
+          {/* Calculation Explanation Box */}
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl space-y-4">
             <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200 font-semibold">
               <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -446,32 +569,98 @@ const CalculationSettings = () => {
                     )}
                   </p>
                   <p className="text-gray-600 dark:text-gray-400">
-                    {calorieGoalAdjustmentMode === 'dynamic'
-                      ? t(
-                          'settings.calculationExplanation.remainingDynamic',
-                          'Daily Goal - Net Energy (Your goal grows as you move)'
-                        )
-                      : t(
-                          'settings.calculationExplanation.remainingFixed',
-                          'Daily Goal - Eaten (Activity does not change your budget)'
-                        )}
+                    {calorieGoalAdjustmentMode === 'dynamic' &&
+                      t(
+                        'settings.calculationExplanation.remainingDynamic',
+                        'Goal + Burned − Eaten (full credit for every calorie burned)'
+                      )}
+                    {calorieGoalAdjustmentMode === 'fixed' &&
+                      t(
+                        'settings.calculationExplanation.remainingFixed',
+                        'Goal − Eaten (activity does not change your budget)'
+                      )}
+                    {calorieGoalAdjustmentMode === 'percentage' &&
+                      t(
+                        'settings.calculationExplanation.remainingPercentage',
+                        `Goal + (Burned × ${earnBackPercentage}%) − Eaten`
+                      )}
+                    {calorieGoalAdjustmentMode === 'smart' &&
+                      t(
+                        'settings.calculationExplanation.remainingSmart',
+                        'Goal + max(0, Burned − Exercise Goal) − Eaten'
+                      )}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="pt-2 text-xs text-blue-700/70 dark:text-blue-300/60 italic border-t border-blue-100 dark:border-blue-800">
-              {calorieGoalAdjustmentMode === 'dynamic'
-                ? t(
-                    'settings.calculationExplanation.dynamicFootnote',
-                    '* Ideal for fueling workouts and active recovery.'
-                  )
-                : t(
-                    'settings.calculationExplanation.fixedFootnote',
-                    '* Ideal for strict caloric deficits and weight management.'
-                  )}
+              {calorieGoalAdjustmentMode === 'dynamic' &&
+                t(
+                  'settings.calculationExplanation.dynamicFootnote',
+                  '* Ideal for fueling workouts and active recovery.'
+                )}
+              {calorieGoalAdjustmentMode === 'fixed' &&
+                t(
+                  'settings.calculationExplanation.fixedFootnote',
+                  '* Ideal for strict caloric deficits and weight management.'
+                )}
+              {calorieGoalAdjustmentMode === 'percentage' &&
+                t(
+                  'settings.calculationExplanation.percentageFootnote',
+                  '* A 50% earn-back creates a safety buffer for overestimated exercise burns.'
+                )}
+              {calorieGoalAdjustmentMode === 'smart' &&
+                t(
+                  'settings.calculationExplanation.smartFootnote',
+                  '* Mirrors MyFitnessPal: only surplus activity beyond your exercise goal expands your budget.'
+                )}
             </div>
           </div>
+        </div>
+
+        {/* BMI Display */}
+        <div className="pt-4 border-t">
+          <div className="flex items-center gap-2 mb-2">
+            <Activity className="w-5 h-5 text-muted-foreground" />
+            <Label className="text-base font-semibold">
+              {t('settings.bmi.title', 'Body Mass Index (BMI)')}
+            </Label>
+          </div>
+          {bmi !== null ? (
+            <div className="flex items-center gap-4 p-3 bg-muted rounded-lg">
+              <div>
+                <p className="text-2xl font-bold">{bmi}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'settings.bmi.calculated',
+                    'Calculated from latest weight & height'
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">
+                  {bmi < 18.5
+                    ? t('settings.bmi.underweight', 'Underweight')
+                    : bmi < 25
+                      ? t('settings.bmi.normal', 'Normal weight')
+                      : bmi < 30
+                        ? t('settings.bmi.overweight', 'Overweight')
+                        : t('settings.bmi.obese', 'Obese')}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t('settings.bmi.ranges', 'Healthy: 18.5 – 24.9')}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {t(
+                'settings.bmi.noData',
+                'No BMI data available. Log your weight and height in Check-In to see your BMI.'
+              )}
+            </p>
+          )}
         </div>
 
         {/* Nutrient Calculation Algorithms */}

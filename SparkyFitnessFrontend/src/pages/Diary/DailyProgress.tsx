@@ -39,8 +39,13 @@ const DailyProgress = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const { loggingLevel, calorieGoalAdjustmentMode, energyUnit, convertEnergy } =
-    usePreferences(); // Import calorieGoalAdjustmentMode, energyUnit, convertEnergy
+  const {
+    loggingLevel,
+    calorieGoalAdjustmentMode,
+    exerciseCalorieEarnBackPercentage,
+    energyUnit,
+    convertEnergy,
+  } = usePreferences(); // Import calorieGoalAdjustmentMode, energyUnit, convertEnergy
   debug(
     loggingLevel,
     'DailyProgress: Component rendered for date:',
@@ -82,6 +87,7 @@ const DailyProgress = ({
     carbs: 250,
     fat: 67,
     water_goal_ml: 1920, // Default to 8 glasses * 240ml
+    target_exercise_calories_burned: 0,
   });
   const [dailyIntake, setDailyIntake] = useState({
     calories: 0, // Stored internally as kcal
@@ -184,6 +190,8 @@ const DailyProgress = ({
         carbs: goalsData.carbs || 250,
         fat: goalsData.fat || 67,
         water_goal_ml: goalsData.water_goal_ml || 1920,
+        target_exercise_calories_burned:
+          goalsData.target_exercise_calories_burned || 0,
       });
 
       // Process Food Entries
@@ -452,23 +460,35 @@ const DailyProgress = ({
   const netCalories =
     Math.round(dailyIntake.calories) - finalTotalCaloriesBurned;
 
+  // Determine how many exercise calories are credited back to the daily budget
+  let creditedCalories: number;
   if (calorieGoalAdjustmentMode === 'dynamic') {
-    // Dynamic Goal: burned calories are effectively added to the budget
-    // Formula: Remaining = Goal - Net  => Goal - (Eaten - Burned) => Goal + Burned - Eaten
-    caloriesRemaining = dailyGoals.calories - netCalories;
+    // 100% add-back: all burned calories increase the budget
+    creditedCalories = finalTotalCaloriesBurned;
+  } else if (calorieGoalAdjustmentMode === 'percentage') {
+    // Partial add-back: user-defined % of burned calories credited
+    const pct = Math.min(100, Math.max(0, exerciseCalorieEarnBackPercentage));
+    creditedCalories = Math.round(finalTotalCaloriesBurned * (pct / 100));
+  } else if (calorieGoalAdjustmentMode === 'smart') {
+    // Smart adjustment: only credit calories burned ABOVE the user's exercise goal
+    // This mirrors MFP's approach – the daily goal already assumes you'll hit your
+    // exercise target, so only surplus effort earns extra budget.
+    const targetBurn = dailyGoals.target_exercise_calories_burned || 0;
+    creditedCalories = Math.max(0, finalTotalCaloriesBurned - targetBurn);
   } else {
-    // Fixed Goal: daily calorie goal remains constant
-    // Formula: Remaining = Goal - Eaten
-    caloriesRemaining = dailyGoals.calories - Math.round(dailyIntake.calories);
+    // Fixed Goal: no add-back
+    creditedCalories = 0;
   }
 
+  // Remaining = Goal - (Eaten - Credited) = Goal + Credited - Eaten
+  caloriesRemaining =
+    dailyGoals.calories - Math.round(dailyIntake.calories) + creditedCalories;
+
+  // For progress bar: use intake relative to effective budget
+  const effectiveBudget = dailyGoals.calories + creditedCalories;
   const calorieProgress = Math.max(
     0,
-    ((calorieGoalAdjustmentMode === 'dynamic'
-      ? netCalories
-      : Math.round(dailyIntake.calories)) /
-      dailyGoals.calories) *
-      100
+    (Math.round(dailyIntake.calories) / effectiveBudget) * 100
   );
   debug(loggingLevel, 'DailyProgress: Calculated progress values:', {
     finalTotalCaloriesBurned,
