@@ -19,14 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import {
-  Save,
-  Flame,
-  UtensilsCrossed,
-  Target,
-  Sparkles,
-  Activity,
-} from 'lucide-react';
+import { Save, Flame, UtensilsCrossed, Target, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { error as logError } from '@/utils/logging';
@@ -42,7 +35,6 @@ import {
   VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
-import { getMostRecentMeasurement } from '@/services/checkInService';
 
 const CalculationSettings = () => {
   const { t } = useTranslation();
@@ -68,7 +60,6 @@ const CalculationSettings = () => {
   const [earnBackPercentage, setEarnBackPercentage] = useState<number>(
     contextEarnBackPercentage ?? 100
   );
-  const [bmi, setBmi] = useState<number | null>(null);
 
   const [bmrAlgorithm, setBmrAlgorithm] = useState<BmrAlgorithm>(
     contextBmrAlgorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
@@ -145,29 +136,6 @@ const CalculationSettings = () => {
     contextCalorieGoalAdjustmentMode,
     contextEarnBackPercentage,
   ]);
-
-  // Fetch height and weight to compute BMI
-  useEffect(() => {
-    const fetchBmi = async () => {
-      try {
-        const [weightData, heightData] = await Promise.all([
-          getMostRecentMeasurement('weight'),
-          getMostRecentMeasurement('height'),
-        ]);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const weightKg = (weightData as any)?.weight;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const heightCm = (heightData as any)?.height;
-        if (weightKg && heightCm) {
-          const heightM = heightCm / 100;
-          setBmi(Math.round((weightKg / (heightM * heightM)) * 10) / 10);
-        }
-      } catch {
-        // BMI display is optional; ignore errors
-      }
-    };
-    fetchBmi();
-  }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -617,50 +585,6 @@ const CalculationSettings = () => {
                 )}
             </div>
           </div>
-        </div>
-
-        {/* BMI Display */}
-        <div className="pt-4 border-t">
-          <div className="flex items-center gap-2 mb-2">
-            <Activity className="w-5 h-5 text-muted-foreground" />
-            <Label className="text-base font-semibold">
-              {t('settings.bmi.title', 'Body Mass Index (BMI)')}
-            </Label>
-          </div>
-          {bmi !== null ? (
-            <div className="flex items-center gap-4 p-3 bg-muted rounded-lg">
-              <div>
-                <p className="text-2xl font-bold">{bmi}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t(
-                    'settings.bmi.calculated',
-                    'Calculated from latest weight & height'
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium">
-                  {bmi < 18.5
-                    ? t('settings.bmi.underweight', 'Underweight')
-                    : bmi < 25
-                      ? t('settings.bmi.normal', 'Normal weight')
-                      : bmi < 30
-                        ? t('settings.bmi.overweight', 'Overweight')
-                        : t('settings.bmi.obese', 'Obese')}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t('settings.bmi.ranges', 'Healthy: 18.5 – 24.9')}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {t(
-                'settings.bmi.noData',
-                'No BMI data available. Log your weight and height in Check-In to see your BMI.'
-              )}
-            </p>
-          )}
         </div>
 
         {/* Nutrient Calculation Algorithms */}
