@@ -25,8 +25,13 @@ import { EnergyCircle } from './EnergyProgressCircle';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { t } = useTranslation();
-  const { loggingLevel, calorieGoalAdjustmentMode, energyUnit, convertEnergy } =
-    usePreferences();
+  const {
+    loggingLevel,
+    calorieGoalAdjustmentMode,
+    exerciseCaloriePercentage,
+    energyUnit,
+    convertEnergy,
+  } = usePreferences();
 
   const { data: goals, isLoading: loadingGoals } = useDailyGoals(selectedDate);
   const { data: foodData, isLoading: loadingFood } =
@@ -60,21 +65,39 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   const bmrCalories = includeInNet && bmr ? bmr : 0;
 
-  const totalCaloriesBurned =
-    otherExerciseCalories + activeOrStepsCaloriesToAdd + bmrCalories;
+  const exerciseCaloriesBurned =
+    otherExerciseCalories + activeOrStepsCaloriesToAdd;
+  const totalCaloriesBurned = exerciseCaloriesBurned + bmrCalories;
 
   const netCalories = eatenCalories - totalCaloriesBurned;
 
   let caloriesRemaining = 0;
   if (calorieGoalAdjustmentMode === 'dynamic') {
+    // 100% of all burned calories credited
     caloriesRemaining = goalCalories - netCalories;
+  } else if (calorieGoalAdjustmentMode === 'percentage') {
+    // Only earn back a percentage of exercise calories; BMR unchanged
+    const adjustedExerciseBurned =
+      exerciseCaloriesBurned * (exerciseCaloriePercentage / 100);
+    const adjustedTotalBurned = adjustedExerciseBurned + bmrCalories;
+    caloriesRemaining = goalCalories - (eatenCalories - adjustedTotalBurned);
+  } else if (calorieGoalAdjustmentMode === 'smart') {
+    // Only credits exercise calories ABOVE the target exercise burn from goals (MFP-style)
+    const targetExerciseBurned = goals?.target_exercise_calories_burned ?? 0;
+    const excessExerciseBurned = Math.max(
+      0,
+      exerciseCaloriesBurned - targetExerciseBurned
+    );
+    const adjustedTotalBurned = excessExerciseBurned + bmrCalories;
+    caloriesRemaining = goalCalories - (eatenCalories - adjustedTotalBurned);
   } else {
+    // fixed: no exercise calories credited
     caloriesRemaining = goalCalories - eatenCalories;
   }
 
-  const numerator =
-    calorieGoalAdjustmentMode === 'dynamic' ? netCalories : eatenCalories;
-  const calorieProgress = Math.max(0, (numerator / goalCalories) * 100);
+  // effectiveConsumed represents how much of the goal is "used up"
+  const effectiveConsumed = goalCalories - caloriesRemaining;
+  const calorieProgress = Math.max(0, (effectiveConsumed / goalCalories) * 100);
 
   // --- Display Conversion (to kJ or kcal) ---
   const display = {

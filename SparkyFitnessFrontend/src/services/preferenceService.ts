@@ -28,7 +28,8 @@ export interface UserPreferences {
   vitamin_calculation_algorithm: 'RDA_STANDARD' | string;
   sugar_calculation_algorithm: 'WHO_GUIDELINES' | string;
   include_bmr_in_net_calories: boolean;
-  calorie_goal_adjustment_mode: 'dynamic' | 'fixed' | string;
+  calorie_goal_adjustment_mode: 'dynamic' | 'fixed' | 'percentage' | 'smart' | string;
+  exercise_calorie_percentage: number;
   auto_scale_open_food_facts_imports: boolean;
   auto_clear_history: 'never' | string;
   logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
