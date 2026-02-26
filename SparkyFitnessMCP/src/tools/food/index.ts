@@ -41,21 +41,30 @@ export const nutritionTools = [
         
         // Create Food fields
         brand: { type: "string", description: "The brand name of the food." },
-        macros: {
-          type: "object",
-          properties: {
-            calories: { type: "number" },
-            protein: { type: "number" },
-            carbs: { type: "number" },
-            fat: { type: "number" },
-            fiber: { type: "number" },
-            sugar: { type: "number" },
-            sodium: { type: "number" },
-            gi: { type: "string", enum: ["None", "Very Low", "Low", "Medium", "High", "Very High"] }
-          },
-          description: "Nutritional information for creating a new food.",
-        },
-        
+                  macros: {
+                    type: "object",
+                    properties: {
+                      calories: { type: "number" },
+                      protein: { type: "number" },
+                      carbs: { type: "number" },
+                      fat: { type: "number" },
+                      saturated_fat: { type: "number" },
+                      polyunsaturated_fat: { type: "number" },
+                      monounsaturated_fat: { type: "number" },
+                      trans_fat: { type: "number" },
+                      cholesterol: { type: "number" },
+                      sodium: { type: "number" },
+                      potassium: { type: "number" },
+                      fiber: { type: "number" },
+                      sugar: { type: "number" },
+                      vitamin_a: { type: "number" },
+                      vitamin_c: { type: "number" },
+                      calcium: { type: "number" },
+                      iron: { type: "number" },
+                      gi: { type: "string", enum: ["None", "Very Low", "Low", "Medium", "High", "Very High"] }
+                    },
+                    description: "Nutritional information for creating a new food.",
+                  },        
         // Meal fields
         meal_name: { type: "string", description: "The name of the meal." },
         meal_id: { type: "string", description: "UUID of the meal template (if known)." },

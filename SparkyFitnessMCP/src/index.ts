@@ -13,10 +13,10 @@ import cors from "cors";
 import { nutritionTools, handleNutritionTool } from "./tools/food/index.js";
 import { exerciseTools, handleExerciseTool } from "./tools/exercise/index.js";
 import { checkinTools, handleCheckinTool } from "./tools/checkin/index.js";
-import { coachTools, handleCoachTool } from "./tools/coach.js";
-import { proactiveTools, handleProactiveTool } from "./tools/engagement.js";
-import { visionTools, handleVisionTool } from "./tools/vision.js";
-import { devTools, handleDevTool } from "./tools/dev.js";
+import { coachTools, handleCoachTool } from "./tools/coach/index.js";
+import { proactiveTools, handleProactiveTool } from "./tools/engagement/index.js";
+import { visionTools, handleVisionTool } from "./tools/vision/index.js";
+import { devTools, handleDevTool } from "./tools/dev/index.js";
 import { MOCK_USER_ID } from "./config.js";
 
 console.error(`[MCP] Active Mock User ID: ${MOCK_USER_ID}`);
