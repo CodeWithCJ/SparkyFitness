@@ -1,5 +1,5 @@
-import { query } from "../db.js";
-import { MOCK_USER_ID } from "../config.js";
+import { query } from "../../db.js";
+import { MOCK_USER_ID } from "../../config.js";
 
 export const devTools = [
   {
