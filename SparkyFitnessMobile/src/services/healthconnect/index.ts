@@ -34,7 +34,7 @@ export { getSyncStartDate };
  * v3.5.0 has a bug where it uses Instant instead of LocalDateTime (issues #174, #194).
  */
 export const deduplicateByOrigin = (
-  records: Array<{ metadata?: { dataOrigin?: string }; [key: string]: unknown }>,
+  records: { metadata?: { dataOrigin?: string }; [key: string]: unknown }[],
   getDate: (record: any) => string,
   getValue: (record: any) => number,
 ): Record<string, number> => {
@@ -128,7 +128,7 @@ export const readHealthRecords = async (
 
       const result = await readRecords(
         recordType as Parameters<typeof readRecords>[0],
-        options as Parameters<typeof readRecords>[1]
+        options as unknown as Parameters<typeof readRecords>[1]
       );
 
       const records = result.records || [];
@@ -170,7 +170,7 @@ export const getAggregatedStepsByDate = async (
     }
 
     const byDate = deduplicateByOrigin(
-      rawRecords as Array<{ metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; count?: number }>,
+      rawRecords as { metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; count?: number }[],
       (record) => {
         const timestamp = record.endTime || record.startTime;
         return timestamp ? toLocalDateString(timestamp) : '';
@@ -209,7 +209,7 @@ export const getAggregatedActiveCaloriesByDate = async (
     }
 
     const byDate = deduplicateByOrigin(
-      rawRecords as Array<{ metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; energy?: { inKilocalories?: number } }>,
+      rawRecords as { metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; energy?: { inKilocalories?: number } }[],
       (record) => {
         const timestamp = record.endTime || record.startTime;
         return timestamp ? toLocalDateString(timestamp) : '';

@@ -686,6 +686,78 @@ const requestWritePermissions = async (): Promise<boolean> => {
 // Main Seed Function
 // ============================================================================
 
+/**
+ * Seeds a sparse set of step records across the past year for testing
+ * long-range sync. Places 2-3 records in the 3-6 month range and
+ * 2-3 records in the 6-12 month range.
+ */
+export const seedHistoricalSteps = async (): Promise<SeedResult> => {
+  addLog('[SeedHealthData] Starting to seed historical step data (past year)...', 'INFO');
+
+  try {
+    // Request only Steps write permission
+    try {
+      await requestPermission([
+        { accessType: 'write' as const, recordType: 'Steps' },
+      ] as unknown as Parameters<typeof requestPermission>[0]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHistoricalSteps] Failed to request write permissions: ${message}`, 'ERROR');
+      return { success: false, recordsInserted: 0, error: 'Write permissions not granted.' };
+    }
+
+    const now = new Date();
+    let totalRecords = 0;
+
+    const pickRandomDates = (minDaysAgo: number, maxDaysAgo: number, count: number): Date[] => {
+      const dates: Date[] = [];
+      for (let i = 0; i < count; i++) {
+        const daysAgo = randomInt(minDaysAgo, maxDaysAgo);
+        const date = new Date(now);
+        date.setDate(date.getDate() - daysAgo);
+        date.setHours(12, 0, 0, 0);
+        dates.push(date);
+      }
+      return dates;
+    };
+
+    const stepsConfig: IntervalSeedConfig = {
+      recordType: 'Steps',
+      seedType: 'interval',
+      valueKey: 'count',
+      valueType: 'count',
+      range: [5000, 15000],
+      recordsPerDay: 8,
+    };
+
+    // 2-3 records between 3-6 months ago (~90-180 days)
+    const midRangeDays = pickRandomDates(90, 180, randomInt(2, 3));
+    for (const date of midRangeDays) {
+      const records = buildMultiRecordDay(stepsConfig, date, stepsConfig.recordsPerDay!);
+      await insertRecords(records as Parameters<typeof insertRecords>[0]);
+      totalRecords += records.length;
+    }
+    addLog(`[SeedHistoricalSteps] Seeded step records for ${midRangeDays.length} days in 3-6 month range`, 'SUCCESS');
+
+    // 2-3 records between 6-12 months ago (~180-365 days)
+    const farRangeDays = pickRandomDates(180, 365, randomInt(2, 3));
+    for (const date of farRangeDays) {
+      const records = buildMultiRecordDay(stepsConfig, date, stepsConfig.recordsPerDay!);
+      await insertRecords(records as Parameters<typeof insertRecords>[0]);
+      totalRecords += records.length;
+    }
+    addLog(`[SeedHistoricalSteps] Seeded step records for ${farRangeDays.length} days in 6-12 month range`, 'SUCCESS');
+
+    addLog(`[SeedHistoricalSteps] Done — ${totalRecords} total step records seeded`, 'SUCCESS');
+
+    return { success: true, recordsInserted: totalRecords };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[SeedHistoricalSteps] Error: ${message}`, 'ERROR');
+    return { success: false, recordsInserted: 0, error: message };
+  }
+};
+
 export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
   addLog(`[SeedHealthData] Starting to seed ${days} days of health data...`, 'INFO');
 

@@ -589,6 +589,69 @@ const seedWorkouts = async (dates: Date[]): Promise<number> => {
 // Main Seed Function
 // ============================================================================
 
+/**
+ * Seeds a sparse set of step records across the past year for testing
+ * long-range sync. Places 2-3 records in the 3-6 month range and
+ * 2-3 records in the 6-12 month range.
+ */
+export const seedHistoricalSteps = async (): Promise<SeedResult> => {
+  addLog('[SeedHealthData] Starting to seed historical step data (past year)...', 'INFO');
+
+  try {
+    const permissionsGranted = await requestWritePermissions();
+    if (!permissionsGranted) {
+      return {
+        success: false,
+        recordsInserted: 0,
+        error: 'Write permissions not granted. Please grant permissions in Health app settings.',
+      };
+    }
+
+    const now = new Date();
+    let totalRecords = 0;
+
+    // Pick random dates in each range
+    const pickRandomDates = (minDaysAgo: number, maxDaysAgo: number, count: number): Date[] => {
+      const dates: Date[] = [];
+      for (let i = 0; i < count; i++) {
+        const daysAgo = randomInt(minDaysAgo, maxDaysAgo);
+        const date = new Date(now);
+        date.setDate(date.getDate() - daysAgo);
+        date.setHours(12, 0, 0, 0);
+        dates.push(date);
+      }
+      return dates;
+    };
+
+    const stepsConfig: QuantitySeedConfig = {
+      identifier: 'HKQuantityTypeIdentifierStepCount',
+      unit: 'count',
+      range: [5000, 12000],
+      samplesPerDay: 8,
+    };
+
+    // 2-3 records between 3-6 months ago (~90-180 days)
+    const midRangeDates = pickRandomDates(90, 180, randomInt(2, 3));
+    const midCount = await seedQuantitySamples(stepsConfig, midRangeDates);
+    totalRecords += midCount;
+    addLog(`[SeedHistoricalSteps] Seeded ${midCount} step records in 3-6 month range`, 'SUCCESS');
+
+    // 2-3 records between 6-12 months ago (~180-365 days)
+    const farRangeDates = pickRandomDates(180, 365, randomInt(2, 3));
+    const farCount = await seedQuantitySamples(stepsConfig, farRangeDates);
+    totalRecords += farCount;
+    addLog(`[SeedHistoricalSteps] Seeded ${farCount} step records in 6-12 month range`, 'SUCCESS');
+
+    addLog(`[SeedHistoricalSteps] Done — ${totalRecords} total step records seeded`, 'SUCCESS');
+
+    return { success: true, recordsInserted: totalRecords };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[SeedHistoricalSteps] Error: ${message}`, 'ERROR');
+    return { success: false, recordsInserted: 0, error: message };
+  }
+};
+
 export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
   addLog(`[SeedHealthData] Starting to seed ${days} days of health data for iOS...`, 'INFO');
 

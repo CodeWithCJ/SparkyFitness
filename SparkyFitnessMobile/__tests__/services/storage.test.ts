@@ -317,6 +317,22 @@ describe('storage', () => {
       expect(result).toBe('30d');
     });
 
+    test('round-trips 180d', async () => {
+      await saveTimeRange('180d');
+
+      const result = await loadTimeRange();
+
+      expect(result).toBe('180d');
+    });
+
+    test('round-trips 365d', async () => {
+      await saveTimeRange('365d');
+
+      const result = await loadTimeRange();
+
+      expect(result).toBe('365d');
+    });
+
     test('returns null when no value exists', async () => {
       const result = await loadTimeRange();
 
