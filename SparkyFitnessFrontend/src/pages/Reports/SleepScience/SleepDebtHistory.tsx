@@ -111,10 +111,7 @@ const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
                   name === 'deviation'
                     ? t('sleepScience.debt', 'Debt')
                     : t('sleepScience.surplus', 'Surplus');
-                return [
-                  formatSecondsToHHMM(Math.abs(value) * 3600),
-                  label,
-                ];
+                return [formatSecondsToHHMM(Math.abs(value) * 3600), label];
               }}
             />
             <ReferenceLine y={0} stroke={isDark ? '#555' : '#ccc'} />

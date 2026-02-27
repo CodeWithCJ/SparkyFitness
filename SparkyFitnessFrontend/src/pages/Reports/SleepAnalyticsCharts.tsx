@@ -431,10 +431,12 @@ const SleepAnalyticsCharts = ({
                           stroke={tickColor}
                           tick={{ fill: tickColor }}
                         />
-                        <YAxis 
-                          stroke={tickColor} 
+                        <YAxis
+                          stroke={tickColor}
                           tick={{ fill: tickColor }}
-                          tickFormatter={(value) => formatSecondsToHHMM(value * 3600)}
+                          tickFormatter={(value) =>
+                            formatSecondsToHHMM(value * 3600)
+                          }
                         />
                         <Tooltip
                           labelFormatter={(label) =>
