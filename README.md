@@ -47,11 +47,12 @@ It stores and manages health data on infrastructure you control, without relying
 
 ## Core Features
 
-- Nutrition, exercise, hydration, and body measurement tracking
+- Nutrition, exercise, hydration, sleep, fasting, mood and  body measurement tracking
 - Goal setting and daily check-ins
 - Interactive charts and long-term reports
 - Multiple user profiles and family access
 - Light and dark themes
+- OIDC, TOTP, Passkey, MFA etc.
 
 ## Health & Device Integrations
 
