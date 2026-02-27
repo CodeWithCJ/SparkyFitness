@@ -41,7 +41,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     useDailyExerciseStats(selectedDate);
   const { data: stepsData, isLoading: loadingSteps } =
     useDailySteps(selectedDate);
-  const { bmr, tdee, includeInNet } = useCalculatedBMR();
+  const { bmr, includeInNet } = useCalculatedBMR();
 
   const isLoading =
     loadingGoals || loadingFood || loadingExercise || loadingSteps;
@@ -72,9 +72,24 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   const netCalories = eatenCalories - totalCaloriesBurned;
 
-  // For TDEE mode: actual burn always uses BMR regardless of includeBmrInNetCalories
-  const actualBurnForTdee = (bmr || 0) + exerciseCaloriesBurned;
-  const rawTdeeAdjustment = tdee != null ? actualBurnForTdee - tdee : 0;
+  // For TDEE mode: actual burn uses BMR + current device data (regardless of includeBmrInNetCalories)
+  const actualBurnSoFar = (bmr || 0) + exerciseCaloriesBurned;
+
+  // Project current device burn rate to end of day (mirrors MFP + Apple Watch behaviour).
+  // We extrapolate based on how much of the day has elapsed.
+  // Below 5% of the day (~72 min) we don't inflate the projection — just use current data.
+  const now = new Date();
+  const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+  const dayFraction = minutesSinceMidnight / (24 * 60);
+  const MIN_PROJECTION_FRACTION = 0.05;
+  const projectedDeviceCalories =
+    dayFraction >= MIN_PROJECTION_FRACTION && exerciseCaloriesBurned > 0
+      ? Math.round(exerciseCaloriesBurned / dayFraction)
+      : exerciseCaloriesBurned;
+  const projectedBurn = (bmr || 0) + projectedDeviceCalories;
+
+  // Adjustment = how much more the projection exceeds the daily goal
+  const rawTdeeAdjustment = projectedBurn - goalCalories;
   const tdeeAdjustment = tdeeAllowNegativeAdjustment
     ? rawTdeeAdjustment
     : Math.max(0, rawTdeeAdjustment);
@@ -138,11 +153,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     exerciseCredited: Math.round(
       convertEnergy(exerciseCredited, 'kcal', energyUnit)
     ),
-    tdee:
-      tdee != null ? Math.round(convertEnergy(tdee, 'kcal', energyUnit)) : null,
-    actualBurn: Math.round(
-      convertEnergy(actualBurnForTdee, 'kcal', energyUnit)
-    ),
+    projectedBurn: Math.round(convertEnergy(projectedBurn, 'kcal', energyUnit)),
+    actualSoFar: Math.round(convertEnergy(actualBurnSoFar, 'kcal', energyUnit)),
     tdeeAdjustment: Math.round(
       convertEnergy(tdeeAdjustment, 'kcal', energyUnit)
     ),
@@ -367,18 +379,21 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500 dark:text-slate-400">
-                  {t('exercise.dailyProgress.expected', 'Expected (TDEE)')}
+                  {t(
+                    'exercise.dailyProgress.projectedBurn',
+                    'Projected (Full Day)'
+                  )}
                 </span>
                 <span className="font-semibold text-gray-800 dark:text-slate-200">
-                  {display.tdee ?? '—'} {getEnergyUnitString(energyUnit)}
+                  {display.projectedBurn} {getEnergyUnitString(energyUnit)}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500 dark:text-slate-400">
-                  {t('exercise.dailyProgress.actualBurn', 'Actual Burned')}
+                  {t('exercise.dailyProgress.actualSoFar', 'Actual So Far')}
                 </span>
                 <span className="font-semibold text-orange-600">
-                  {display.actualBurn} {getEnergyUnitString(energyUnit)}
+                  {display.actualSoFar} {getEnergyUnitString(energyUnit)}
                 </span>
               </div>
               <div className="border-t border-orange-200 dark:border-slate-600 pt-1 flex justify-between text-xs">
