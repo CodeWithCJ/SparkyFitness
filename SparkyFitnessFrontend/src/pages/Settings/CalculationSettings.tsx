@@ -65,6 +65,8 @@ const CalculationSettings = () => {
     setExerciseCaloriePercentage: setExerciseCaloriePercentageContext,
     tdeeAllowNegativeAdjustment: contextTdeeAllowNegativeAdjustment,
     setTdeeAllowNegativeAdjustment: setTdeeAllowNegativeAdjustmentContext,
+    activityLevel: contextActivityLevel,
+    setActivityLevel: setActivityLevelContext,
 
     loggingLevel,
   } = usePreferences();
@@ -76,6 +78,9 @@ const CalculationSettings = () => {
     useState<number>(contextExerciseCaloriePercentage ?? 100);
   const [tdeeAllowNegativeAdjustment, setTdeeAllowNegativeAdjustment] =
     useState<boolean>(contextTdeeAllowNegativeAdjustment ?? false);
+  const [activityLevel, setActivityLevel] = useState<
+    'not_much' | 'light' | 'moderate' | 'heavy'
+  >(contextActivityLevel || 'not_much');
 
   const [bmrAlgorithm, setBmrAlgorithm] = useState<BmrAlgorithm>(
     contextBmrAlgorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
@@ -140,6 +145,9 @@ const CalculationSettings = () => {
     if (contextTdeeAllowNegativeAdjustment !== undefined) {
       setTdeeAllowNegativeAdjustment(contextTdeeAllowNegativeAdjustment);
     }
+    if (contextActivityLevel) {
+      setActivityLevel(contextActivityLevel);
+    }
     // Since preferences are loaded by the PreferencesProvider at a higher level,
     // we can assume they are available by the time this component renders.
     // Set isLoading to false after initial render with context values.
@@ -155,6 +163,7 @@ const CalculationSettings = () => {
     contextCalorieGoalAdjustmentMode,
     contextExerciseCaloriePercentage,
     contextTdeeAllowNegativeAdjustment,
+    contextActivityLevel,
   ]);
 
   const handleSave = async () => {
@@ -172,10 +181,12 @@ const CalculationSettings = () => {
         calorieGoalAdjustmentMode: calorieGoalAdjustmentMode,
         exerciseCaloriePercentage: exerciseCaloriePercentage,
         tdeeAllowNegativeAdjustment: tdeeAllowNegativeAdjustment,
+        activityLevel: activityLevel,
       });
       setCalorieGoalAdjustmentModeContext(calorieGoalAdjustmentMode);
       setExerciseCaloriePercentageContext(exerciseCaloriePercentage);
       setTdeeAllowNegativeAdjustmentContext(tdeeAllowNegativeAdjustment);
+      setActivityLevelContext(activityLevel);
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
       toast({
         title: t('calculationSettings.saveSuccess', 'Success'),
@@ -467,13 +478,60 @@ const CalculationSettings = () => {
                 </span>{' '}
                 {t(
                   'settings.calorieGoalAdjustment.tdeeGoalDescription',
-                  'Like MyFitnessPal with Apple Watch. SparkyFitness projects your full-day burn by extrapolating your current device data to midnight. The adjustment = projection − BMR.'
+                  'Like MyFitnessPal with Apple Watch. SparkyFitness projects your full-day burn by extrapolating your current device data to midnight. The adjustment = projection − TDEE.'
                 )}
               </Label>
             </div>
             {calorieGoalAdjustmentMode === 'tdee' && (
-              <div className="ml-6 flex flex-col gap-2">
-                <div className="flex items-center space-x-2 pt-1">
+              <div className="ml-6 flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <Label
+                    htmlFor="activity-level"
+                    className="text-sm whitespace-nowrap"
+                  >
+                    {t(
+                      'settings.calorieGoalAdjustment.activityLevel',
+                      'Activity level:'
+                    )}
+                  </Label>
+                  <Select
+                    value={activityLevel}
+                    onValueChange={(
+                      value: 'not_much' | 'light' | 'moderate' | 'heavy'
+                    ) => setActivityLevel(value)}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="not_much">
+                        {t(
+                          'settings.calorieGoalAdjustment.activityNotMuch',
+                          'Sedentary (×1.2)'
+                        )}
+                      </SelectItem>
+                      <SelectItem value="light">
+                        {t(
+                          'settings.calorieGoalAdjustment.activityLight',
+                          'Lightly active (×1.375)'
+                        )}
+                      </SelectItem>
+                      <SelectItem value="moderate">
+                        {t(
+                          'settings.calorieGoalAdjustment.activityModerate',
+                          'Moderately active (×1.55)'
+                        )}
+                      </SelectItem>
+                      <SelectItem value="heavy">
+                        {t(
+                          'settings.calorieGoalAdjustment.activityHeavy',
+                          'Very active (×1.725)'
+                        )}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-x-2">
                   <Checkbox
                     id="tdee-allow-negative"
                     checked={tdeeAllowNegativeAdjustment}
@@ -487,7 +545,7 @@ const CalculationSettings = () => {
                   >
                     {t(
                       'settings.calorieGoalAdjustment.allowNegativeAdjustment',
-                      'Allow negative adjustment (penalise for burning less than BMR)'
+                      'Allow negative adjustment (penalise for burning less than TDEE)'
                     )}
                   </Label>
                 </div>
@@ -579,7 +637,7 @@ const CalculationSettings = () => {
                         : calorieGoalAdjustmentMode === 'tdee'
                           ? t(
                               'settings.calculationExplanation.remainingTdee',
-                              'Daily Goal − Eaten + (Projected Full Day − BMR)'
+                              'Daily Goal − Eaten + (Projected Full Day − TDEE)'
                             )
                           : t(
                               'settings.calculationExplanation.remainingFixed',
