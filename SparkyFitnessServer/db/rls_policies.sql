@@ -18,15 +18,17 @@ END $$;
 
 -- Step 2: Enable RLS on all relevant tables to ensure consistent security state.
 DO $$
+DECLARE
+  table_name text;
 BEGIN
-  PERFORM 'ALTER TABLE public.' || quote_ident(table_name) || ' ENABLE ROW LEVEL SECURITY;'
-  FROM unnest(ARRAY[
+  FOR table_name IN SELECT unnest(ARRAY[
     'ai_service_settings',
     'check_in_measurements',
     'custom_categories',
     'custom_measurements',
     'exercise_entries',
     'exercise_entry_sets',
+    'exercise_entry_activity_details',
     'exercises',
     'exercise_preset_entries',
     'external_data_providers',
@@ -41,12 +43,17 @@ BEGIN
     'meal_plan_templates',
     'meal_plans',
     'meals',
+    'meal_types',
     'mood_entries',
+    'onboarding_data',
+    'onboarding_status',
     'profiles',
     'sparky_chat_history',
+    'admin_activity_logs',
     'api_key',
     'user_goals',
     'user_ignored_updates',
+    'user_meal_visibilities',
     'user_nutrient_display_preferences',
     'user_oidc_links',
     'user_preferences',
@@ -62,12 +69,15 @@ BEGIN
     'sleep_entries',
     'sleep_entry_stages',
     'fasting_logs',
-        'user_custom_nutrients',
-        'sleep_need_calculations',
-        'daily_sleep_need',
-        'day_classification_cache'
-      ]::text[]) AS table_name;
-    END $$;
+    'user_custom_nutrients',
+    'sleep_need_calculations',
+    'daily_sleep_need',
+    'day_classification_cache'
+  ]::text[])
+  LOOP
+    EXECUTE 'ALTER TABLE public.' || quote_ident(table_name) || ' ENABLE ROW LEVEL SECURITY;';
+  END LOOP;
+END $$;
 
 -- Step 3: Define reusable helper functions for common RLS conditions.
 CREATE OR REPLACE FUNCTION current_user_id() RETURNS uuid
@@ -328,6 +338,12 @@ SELECT create_owner_policy('user_water_containers');
 SELECT create_owner_policy('weekly_goal_plans');
 SELECT create_owner_policy('user_custom_nutrients');
 
+-- Admin Activity Logs: Only the admin who performed the action or other admins can view
+CREATE POLICY admin_only_select ON public.admin_activity_logs FOR SELECT TO PUBLIC
+USING (admin_user_id = current_user_id() OR is_admin());
+CREATE POLICY admin_only_insert ON public.admin_activity_logs FOR INSERT TO PUBLIC
+WITH CHECK (admin_user_id = current_user_id() AND is_admin());
+
 -- Diary access tables
 SELECT create_diary_policy('check_in_measurements');
 SELECT create_diary_policy('custom_categories');
@@ -344,7 +360,7 @@ USING (
 -- The modify policy for exercise_entries is already handled by create_diary_policy('exercise_entries')
 
 SELECT create_diary_policy('exercise_preset_entries');
-SELECT create_diary_policy('food_entry_meals'); -- Add this line
+SELECT create_diary_policy('food_entry_meals');
 SELECT create_diary_policy('sleep_entries');
 SELECT create_diary_policy('sleep_entry_stages');
 SELECT create_diary_policy('water_intake');
@@ -392,10 +408,17 @@ WITH CHECK (current_user_id() = owner_user_id);
 CREATE POLICY select_policy ON public.food_entries FOR SELECT TO PUBLIC
 USING (has_diary_access(user_id));
 CREATE POLICY insert_policy ON public.food_entries FOR INSERT TO PUBLIC
-WITH CHECK (has_diary_access(user_id) AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = food_entries.food_id));
-CREATE POLICY modify_policy ON public.food_entries FOR ALL TO PUBLIC
+WITH CHECK (
+  has_diary_access(user_id) AND (
+    (food_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = food_entries.food_id)) OR
+    (meal_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.meals m WHERE m.id = food_entries.meal_id))
+  )
+);
+CREATE POLICY update_policy ON public.food_entries FOR UPDATE TO PUBLIC
 USING (has_diary_access(user_id))
 WITH CHECK (has_diary_access(user_id));
+CREATE POLICY delete_policy ON public.food_entries FOR DELETE TO PUBLIC
+USING (has_diary_access(user_id));
 
 CREATE POLICY select_and_modify_policy ON public.food_variants FOR ALL TO PUBLIC
 USING (
@@ -445,6 +468,32 @@ WITH CHECK (EXISTS (SELECT 1 FROM public.workout_presets wp WHERE wp.id = workou
 
 SELECT create_owner_policy('user_ignored_updates');
 SELECT create_owner_policy('fasting_logs');
+SELECT create_owner_policy('onboarding_data');
+SELECT create_owner_policy('onboarding_status');
+SELECT create_owner_policy('user_meal_visibilities');
+
+-- Meal types: access if user_id is null (system) or if user has diary access
+CREATE POLICY select_policy ON public.meal_types FOR SELECT TO PUBLIC
+USING (user_id IS NULL OR has_diary_access(user_id));
+CREATE POLICY modify_policy ON public.meal_types FOR ALL TO PUBLIC
+USING (user_id = current_user_id())
+WITH CHECK (user_id = current_user_id());
+
+-- Activity details: access if linked exercise entry or preset entry is accessible
+CREATE POLICY select_policy ON public.exercise_entry_activity_details FOR SELECT TO PUBLIC
+USING (
+  (exercise_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_id AND has_diary_access(ee.user_id))) OR
+  (exercise_preset_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_preset_entries epe WHERE epe.id = exercise_preset_entry_id AND has_diary_access(epe.user_id)))
+);
+CREATE POLICY modify_policy ON public.exercise_entry_activity_details FOR ALL TO PUBLIC
+USING (
+  (exercise_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_id AND current_user_id() = ee.user_id)) OR
+  (exercise_preset_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_preset_entries epe WHERE epe.id = exercise_preset_entry_id AND current_user_id() = epe.user_id))
+)
+WITH CHECK (
+  (exercise_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_entries ee WHERE ee.id = exercise_entry_id AND current_user_id() = ee.user_id)) OR
+  (exercise_preset_entry_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.exercise_preset_entries epe WHERE epe.id = exercise_preset_entry_id AND current_user_id() = epe.user_id))
+);
 
 -- Sleep Science tables
 SELECT create_owner_policy('sleep_need_calculations');

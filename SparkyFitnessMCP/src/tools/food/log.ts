@@ -8,7 +8,9 @@ import { log, getMealTypeId, NUTRIENT_KEYS, convertUnit } from "./utils.js";
 
 export const logFood = async (args: any) => {
     log("Action: log_food", args);
-    const { food_id, variant_id, food_name, quantity, unit, meal_type, entry_date } = args;
+    const { food_id, variant_id, food_name, unit, meal_type, entry_date } = args;
+    // Ensure quantity is a number even if AI sends a string
+    const quantity = typeof args.quantity === 'string' ? parseFloat(args.quantity) : args.quantity;
     let targetVariant;
 
     if (variant_id) {
@@ -91,13 +93,18 @@ export const logFood = async (args: any) => {
 
 export const logMeal = async (args: any) => {
     log("Action: log_meal", args);
-    const { meal_id, meal_name, meal_type, entry_date, quantity, unit } = args;
+    const { meal_id, meal_type, entry_date, unit } = args;
+    // Fallback for meal_name if AI uses food_name
+    const meal_name = args.meal_name || args.food_name;
+    // Ensure quantity is a number
+    const quantity = typeof args.quantity === 'string' ? parseFloat(args.quantity) : args.quantity;
+
     let meal;
 
     if (meal_id) {
         const res = await query("SELECT * FROM meals WHERE id = $1 AND user_id = $2", [meal_id, MOCK_USER_ID]);
         meal = res.rows[0];
-    } else {
+    } else if (meal_name) {
         const res = await query("SELECT * FROM meals WHERE user_id = $1 AND name ILIKE $2 LIMIT 1", [MOCK_USER_ID, meal_name]);
         meal = res.rows[0];
     }

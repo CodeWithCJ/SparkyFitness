@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict D86uStvbk2ffljWuy3BtsTa32l05krEalVzQvC8ObUyS4bQL6SK857nLgBzQ3Tl
+\restrict WW9hayY1U2sVbFsaTYnW1ce66g9FjLcXJaiCqguBGZmNOCkioo9CfqpnllKOiix
 
 -- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
@@ -84,6 +84,36 @@ CREATE FUNCTION public.authenticated_user_id() RETURNS uuid
     AS $$
   SELECT NULLIF(current_setting('app.authenticated_user_id', true), '')::uuid;
 $$;
+
+
+--
+-- Name: calculate_mid_sleep(bigint, bigint); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) RETURNS time without time zone
+    LANGUAGE plpgsql IMMUTABLE
+    AS $$
+DECLARE
+    mid_ts BIGINT;
+    mid_time TIMESTAMP WITH TIME ZONE;
+BEGIN
+    IF sleep_start_ts IS NULL OR sleep_end_ts IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    mid_ts := sleep_start_ts + (sleep_end_ts - sleep_start_ts) / 2;
+    mid_time := TO_TIMESTAMP(mid_ts / 1000.0);
+
+    RETURN mid_time::TIME;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) IS 'Calculates mid-sleep point from timestamps (milliseconds)';
 
 
 --
@@ -1030,6 +1060,66 @@ CREATE TABLE public.custom_measurements (
 
 
 --
+-- Name: daily_sleep_need; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.daily_sleep_need (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    target_date date NOT NULL,
+    calculated_at timestamp with time zone DEFAULT now(),
+    baseline_need numeric(4,2) NOT NULL,
+    strain_addition numeric(4,2) DEFAULT 0,
+    debt_addition numeric(4,2) DEFAULT 0,
+    nap_subtraction numeric(4,2) DEFAULT 0,
+    total_need numeric(4,2) NOT NULL,
+    training_load_score numeric(5,2),
+    current_debt_hours numeric(4,2),
+    nap_minutes integer DEFAULT 0,
+    recovery_score_yesterday integer
+);
+
+
+--
+-- Name: TABLE daily_sleep_need; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.daily_sleep_need IS 'Daily sleep need cache with WHOOP-style decomposition';
+
+
+--
+-- Name: day_classification_cache; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.day_classification_cache (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    day_of_week smallint NOT NULL,
+    classified_as character varying(10) NOT NULL,
+    mean_wake_hour numeric(5,2),
+    variance_minutes numeric(6,2),
+    sample_count integer,
+    last_updated timestamp with time zone DEFAULT now(),
+    CONSTRAINT day_classification_cache_classified_as_check CHECK (((classified_as)::text = ANY ((ARRAY['workday'::character varying, 'freeday'::character varying])::text[]))),
+    CONSTRAINT day_classification_cache_day_of_week_check CHECK (((day_of_week >= 0) AND (day_of_week <= 6)))
+);
+
+
+--
+-- Name: TABLE day_classification_cache; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.day_classification_cache IS 'Automatic weekday classification cache';
+
+
+--
+-- Name: COLUMN day_classification_cache.day_of_week; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.day_classification_cache.day_of_week IS '0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat';
+
+
+--
 -- Name: exercise_entries; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1559,7 +1649,8 @@ CREATE TABLE public.meal_types (
     user_id uuid,
     sort_order integer DEFAULT 0,
     created_at timestamp with time zone DEFAULT now(),
-    is_visible boolean DEFAULT true NOT NULL
+    is_visible boolean DEFAULT true NOT NULL,
+    show_in_quick_log boolean DEFAULT true
 );
 
 
@@ -1727,8 +1818,72 @@ CREATE TABLE public.profiles (
     phone text,
     bio text,
     phone_number character varying(20),
-    gender character varying(10)
+    gender character varying(10),
+    sleep_need_method character varying(30) DEFAULT 'mctq_corrected'::character varying,
+    sleep_need_confidence character varying(10) DEFAULT 'low'::character varying,
+    sleep_need_based_on_days integer DEFAULT 0,
+    sleep_need_last_calculated timestamp with time zone,
+    sd_workday_hours numeric(4,2),
+    sd_freeday_hours numeric(4,2),
+    baseline_sleep_need numeric(4,2) DEFAULT 8.25,
+    social_jetlag_hours numeric(4,2)
 );
+
+
+--
+-- Name: COLUMN profiles.sleep_need_method; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.sleep_need_method IS 'Method used: mctq_corrected, rise_percentile, satiation_point, manual, default';
+
+
+--
+-- Name: COLUMN profiles.sleep_need_confidence; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.sleep_need_confidence IS 'Calculation confidence: low, medium, high';
+
+
+--
+-- Name: COLUMN profiles.sleep_need_based_on_days; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.sleep_need_based_on_days IS 'Number of days used in last calculation';
+
+
+--
+-- Name: COLUMN profiles.sleep_need_last_calculated; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.sleep_need_last_calculated IS 'Timestamp of last sleep need calculation';
+
+
+--
+-- Name: COLUMN profiles.sd_workday_hours; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.sd_workday_hours IS 'Average sleep on workdays (SD_W)';
+
+
+--
+-- Name: COLUMN profiles.sd_freeday_hours; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.sd_freeday_hours IS 'Average sleep on free days (SD_F)';
+
+
+--
+-- Name: COLUMN profiles.baseline_sleep_need; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.baseline_sleep_need IS 'Calculated baseline need (without dynamic adjustments)';
+
+
+--
+-- Name: COLUMN profiles.social_jetlag_hours; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.social_jetlag_hours IS 'Calculated Social Jetlag (|MSF - MSW|)';
 
 
 --
@@ -1811,6 +1966,39 @@ CREATE TABLE public.sleep_entry_stages (
 
 
 --
+-- Name: sleep_need_calculations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sleep_need_calculations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    calculated_at timestamp with time zone DEFAULT now(),
+    method character varying(30) NOT NULL,
+    calculated_need numeric(4,2) NOT NULL,
+    confidence character varying(10) NOT NULL,
+    based_on_days integer NOT NULL,
+    sd_workday numeric(4,2),
+    sd_freeday numeric(4,2),
+    sd_week numeric(4,2),
+    social_jetlag_hours numeric(4,2),
+    mid_sleep_workday time without time zone,
+    mid_sleep_freeday time without time zone,
+    mid_sleep_corrected time without time zone,
+    workdays_count integer,
+    freedays_count integer,
+    data_start_date date,
+    data_end_date date
+);
+
+
+--
+-- Name: TABLE sleep_need_calculations; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.sleep_need_calculations IS 'History of sleep need calculations with MCTQ parameters';
+
+
+--
 -- Name: sparky_chat_history; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1849,7 +2037,7 @@ CREATE TABLE public.sso_provider (
     domain text DEFAULT 'default.internal'::text NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    oidc_config text
+    oidc_config jsonb
 );
 
 
@@ -1975,7 +2163,8 @@ CREATE TABLE public.user_meal_visibilities (
     user_id uuid NOT NULL,
     meal_type_id uuid NOT NULL,
     is_visible boolean DEFAULT true,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    show_in_quick_log boolean DEFAULT true
 );
 
 
@@ -2126,6 +2315,99 @@ CREATE SEQUENCE public.user_water_containers_id_seq
 --
 
 ALTER SEQUENCE public.user_water_containers_id_seq OWNED BY public.user_water_containers.id;
+
+
+--
+-- Name: v_mctq_analysis; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.v_mctq_analysis AS
+ SELECT se.user_id,
+    se.entry_date AS date,
+    EXTRACT(dow FROM se.entry_date) AS day_of_week,
+        CASE
+            WHEN (dcc.classified_as IS NOT NULL) THEN dcc.classified_as
+            WHEN (EXTRACT(dow FROM se.entry_date) = ANY (ARRAY[(0)::numeric, (6)::numeric])) THEN 'freeday'::character varying
+            ELSE 'workday'::character varying
+        END AS day_type,
+    ((se.duration_in_seconds)::numeric / 3600.0) AS tst_hours,
+        CASE
+            WHEN ((se.bedtime IS NOT NULL) AND (se.wake_time IS NOT NULL)) THEN ((se.bedtime + ((se.wake_time - se.bedtime) / (2)::double precision)))::time without time zone
+            ELSE NULL::time without time zone
+        END AS mid_sleep,
+    se.bedtime,
+    se.wake_time,
+        CASE
+            WHEN (se.wake_time IS NOT NULL) THEN (EXTRACT(hour FROM se.wake_time) + (EXTRACT(minute FROM se.wake_time) / 60.0))
+            ELSE NULL::numeric
+        END AS wake_hour
+   FROM (public.sleep_entries se
+     LEFT JOIN public.day_classification_cache dcc ON (((se.user_id = dcc.user_id) AND (EXTRACT(dow FROM se.entry_date) = (dcc.day_of_week)::numeric))))
+  WHERE ((se.bedtime IS NOT NULL) AND (se.wake_time IS NOT NULL) AND (se.duration_in_seconds > 0));
+
+
+--
+-- Name: VIEW v_mctq_analysis; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON VIEW public.v_mctq_analysis IS 'View for MCTQ analysis with day classification and TST';
+
+
+--
+-- Name: v_mctq_stats; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.v_mctq_stats AS
+ WITH recent_data AS (
+         SELECT v_mctq_analysis.user_id,
+            v_mctq_analysis.day_type,
+            v_mctq_analysis.tst_hours,
+            v_mctq_analysis.mid_sleep,
+            v_mctq_analysis.wake_hour
+           FROM public.v_mctq_analysis
+          WHERE ((v_mctq_analysis.date >= (CURRENT_DATE - '90 days'::interval)) AND (v_mctq_analysis.tst_hours IS NOT NULL) AND ((v_mctq_analysis.tst_hours >= (3)::numeric) AND (v_mctq_analysis.tst_hours <= (14)::numeric)))
+        ), workday_stats AS (
+         SELECT recent_data.user_id,
+            avg(recent_data.tst_hours) AS sd_workday,
+            avg((EXTRACT(hour FROM recent_data.mid_sleep) + (EXTRACT(minute FROM recent_data.mid_sleep) / 60.0))) AS msw_hour,
+            count(*) AS workday_count
+           FROM recent_data
+          WHERE ((recent_data.day_type)::text = 'workday'::text)
+          GROUP BY recent_data.user_id
+        ), freeday_stats AS (
+         SELECT recent_data.user_id,
+            avg(recent_data.tst_hours) AS sd_freeday,
+            avg((EXTRACT(hour FROM recent_data.mid_sleep) + (EXTRACT(minute FROM recent_data.mid_sleep) / 60.0))) AS msf_hour,
+            count(*) AS freeday_count
+           FROM recent_data
+          WHERE ((recent_data.day_type)::text = 'freeday'::text)
+          GROUP BY recent_data.user_id
+        )
+ SELECT COALESCE(w.user_id, f.user_id) AS user_id,
+    round(w.sd_workday, 2) AS sd_workday,
+    round(f.sd_freeday, 2) AS sd_freeday,
+    round(((((5)::numeric * COALESCE(w.sd_workday, (7)::numeric)) + ((2)::numeric * COALESCE(f.sd_freeday, (8)::numeric))) / (7)::numeric), 2) AS sd_week,
+        CASE
+            WHEN (f.sd_freeday > w.sd_workday) THEN round((f.sd_freeday - ((f.sd_freeday - ((((5)::numeric * w.sd_workday) + ((2)::numeric * f.sd_freeday)) / (7)::numeric)) / (2)::numeric)), 2)
+            ELSE round(((((5)::numeric * COALESCE(w.sd_workday, (7)::numeric)) + ((2)::numeric * COALESCE(f.sd_freeday, (8)::numeric))) / (7)::numeric), 2)
+        END AS sleep_need_ideal,
+    round(abs((COALESCE(f.msf_hour, (4)::numeric) - COALESCE(w.msw_hour, (3)::numeric))), 2) AS social_jetlag_hours,
+    w.workday_count,
+    f.freeday_count,
+        CASE
+            WHEN ((COALESCE(w.workday_count, (0)::bigint) >= 40) AND (COALESCE(f.freeday_count, (0)::bigint) >= 16)) THEN 'high'::text
+            WHEN ((COALESCE(w.workday_count, (0)::bigint) >= 20) AND (COALESCE(f.freeday_count, (0)::bigint) >= 8)) THEN 'medium'::text
+            ELSE 'low'::text
+        END AS confidence
+   FROM (workday_stats w
+     FULL JOIN freeday_stats f ON ((w.user_id = f.user_id)));
+
+
+--
+-- Name: VIEW v_mctq_stats; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON VIEW public.v_mctq_stats IS 'Aggregated MCTQ stats per user with ideal Sleep Need calculation';
 
 
 --
@@ -2581,6 +2863,38 @@ ALTER TABLE ONLY public.backup_settings
 
 
 --
+-- Name: daily_sleep_need daily_sleep_need_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.daily_sleep_need
+    ADD CONSTRAINT daily_sleep_need_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: daily_sleep_need daily_sleep_need_user_id_target_date_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.daily_sleep_need
+    ADD CONSTRAINT daily_sleep_need_user_id_target_date_key UNIQUE (user_id, target_date);
+
+
+--
+-- Name: day_classification_cache day_classification_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.day_classification_cache
+    ADD CONSTRAINT day_classification_cache_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: day_classification_cache day_classification_cache_user_id_day_of_week_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.day_classification_cache
+    ADD CONSTRAINT day_classification_cache_user_id_day_of_week_key UNIQUE (user_id, day_of_week);
+
+
+--
 -- Name: exercise_entries exercise_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2826,6 +3140,14 @@ ALTER TABLE ONLY public.sleep_entries
 
 ALTER TABLE ONLY public.sleep_entry_stages
     ADD CONSTRAINT sleep_entry_stages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sleep_need_calculations sleep_need_calculations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_need_calculations
+    ADD CONSTRAINT sleep_need_calculations_pkey PRIMARY KEY (id);
 
 
 --
@@ -3151,6 +3473,20 @@ CREATE INDEX idx_custom_measurements_user_id ON public.custom_measurements USING
 
 
 --
+-- Name: idx_daily_sleep_need_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_daily_sleep_need_lookup ON public.daily_sleep_need USING btree (user_id, target_date DESC);
+
+
+--
+-- Name: idx_day_classification_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_day_classification_user ON public.day_classification_cache USING btree (user_id);
+
+
+--
 -- Name: idx_exercise_entries_exercise_preset_entry_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3288,6 +3624,13 @@ CREATE INDEX idx_sleep_entry_stages_start_time ON public.sleep_entry_stages USIN
 --
 
 CREATE INDEX idx_sleep_entry_stages_user_id ON public.sleep_entry_stages USING btree (user_id);
+
+
+--
+-- Name: idx_sleep_need_calc_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sleep_need_calc_user ON public.sleep_need_calculations USING btree (user_id, calculated_at DESC);
 
 
 --
@@ -3606,6 +3949,22 @@ ALTER TABLE ONLY public.custom_measurements
 
 ALTER TABLE ONLY public.custom_measurements
     ADD CONSTRAINT custom_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: daily_sleep_need daily_sleep_need_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.daily_sleep_need
+    ADD CONSTRAINT daily_sleep_need_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: day_classification_cache day_classification_cache_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.day_classification_cache
+    ADD CONSTRAINT day_classification_cache_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -4110,6 +4469,14 @@ ALTER TABLE ONLY public.sleep_entry_stages
 
 ALTER TABLE ONLY public.sleep_entry_stages
     ADD CONSTRAINT sleep_entry_stages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sleep_need_calculations sleep_need_calculations_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_need_calculations
+    ADD CONSTRAINT sleep_need_calculations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -4660,6 +5027,20 @@ CREATE POLICY owner_policy ON public.api_key USING ((user_id = public.current_us
 
 
 --
+-- Name: daily_sleep_need owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.daily_sleep_need USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: day_classification_cache owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.day_classification_cache USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
 -- Name: fasting_logs owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -4711,6 +5092,13 @@ CREATE POLICY owner_policy ON public.mood_entries USING ((user_id = public.curre
 --
 
 CREATE POLICY owner_policy ON public.profiles USING ((id = public.current_user_id())) WITH CHECK ((id = public.current_user_id()));
+
+
+--
+-- Name: sleep_need_calculations owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.sleep_need_calculations USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
 
 
 --
@@ -5087,6 +5475,8 @@ ALTER TABLE public.workout_presets ENABLE ROW LEVEL SECURITY;
 --
 
 GRANT USAGE ON SCHEMA auth TO sparky_uat;
+GRANT USAGE ON SCHEMA auth TO "sparky-uat";
+GRANT USAGE ON SCHEMA auth TO "sparky uat";
 
 
 --
@@ -5094,6 +5484,8 @@ GRANT USAGE ON SCHEMA auth TO sparky_uat;
 --
 
 GRANT USAGE ON SCHEMA public TO sparky_uat;
+GRANT USAGE ON SCHEMA public TO "sparky-uat";
+GRANT USAGE ON SCHEMA public TO "sparky uat";
 
 
 --
@@ -5101,6 +5493,8 @@ GRANT USAGE ON SCHEMA public TO sparky_uat;
 --
 
 GRANT USAGE ON SCHEMA system TO sparky_uat;
+GRANT USAGE ON SCHEMA system TO "sparky-uat";
+GRANT USAGE ON SCHEMA system TO "sparky uat";
 
 
 --
@@ -5108,6 +5502,8 @@ GRANT USAGE ON SCHEMA system TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.armor(bytea) TO sparky_uat;
+GRANT ALL ON FUNCTION public.armor(bytea) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.armor(bytea) TO "sparky uat";
 
 
 --
@@ -5115,6 +5511,8 @@ GRANT ALL ON FUNCTION public.armor(bytea) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.armor(bytea, text[], text[]) TO sparky_uat;
+GRANT ALL ON FUNCTION public.armor(bytea, text[], text[]) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.armor(bytea, text[], text[]) TO "sparky uat";
 
 
 --
@@ -5122,6 +5520,17 @@ GRANT ALL ON FUNCTION public.armor(bytea, text[], text[]) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.authenticated_user_id() TO sparky_uat;
+GRANT ALL ON FUNCTION public.authenticated_user_id() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.authenticated_user_id() TO "sparky uat";
+
+
+--
+-- Name: FUNCTION calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) TO sparky_uat;
+GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) TO "sparky uat";
 
 
 --
@@ -5129,6 +5538,8 @@ GRANT ALL ON FUNCTION public.authenticated_user_id() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO "sparky uat";
 
 
 --
@@ -5136,6 +5547,8 @@ GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permissio
 --
 
 GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO "sparky uat";
 
 
 --
@@ -5143,6 +5556,8 @@ GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_
 --
 
 GRANT ALL ON FUNCTION public.clear_old_chat_history() TO sparky_uat;
+GRANT ALL ON FUNCTION public.clear_old_chat_history() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.clear_old_chat_history() TO "sparky uat";
 
 
 --
@@ -5150,6 +5565,8 @@ GRANT ALL ON FUNCTION public.clear_old_chat_history() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO "sparky uat";
 
 
 --
@@ -5157,6 +5574,8 @@ GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uu
 --
 
 GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO "sparky uat";
 
 
 --
@@ -5164,6 +5583,8 @@ GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO "sparky uat";
 
 
 --
@@ -5171,6 +5592,8 @@ GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_colum
 --
 
 GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO "sparky uat";
 
 
 --
@@ -5178,6 +5601,8 @@ GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO
 --
 
 GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO "sparky uat";
 
 
 --
@@ -5185,6 +5610,8 @@ GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO 
 --
 
 GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO "sparky uat";
 
 
 --
@@ -5192,6 +5619,8 @@ GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text
 --
 
 GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO "sparky uat";
 
 
 --
@@ -5199,6 +5628,8 @@ GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO spar
 --
 
 GRANT ALL ON FUNCTION public.create_user_preferences() TO sparky_uat;
+GRANT ALL ON FUNCTION public.create_user_preferences() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.create_user_preferences() TO "sparky uat";
 
 
 --
@@ -5206,6 +5637,8 @@ GRANT ALL ON FUNCTION public.create_user_preferences() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.crypt(text, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.crypt(text, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.crypt(text, text) TO "sparky uat";
 
 
 --
@@ -5213,6 +5646,8 @@ GRANT ALL ON FUNCTION public.crypt(text, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.current_user_id() TO sparky_uat;
+GRANT ALL ON FUNCTION public.current_user_id() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.current_user_id() TO "sparky uat";
 
 
 --
@@ -5220,6 +5655,8 @@ GRANT ALL ON FUNCTION public.current_user_id() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.dearmor(text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.dearmor(text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.dearmor(text) TO "sparky uat";
 
 
 --
@@ -5227,6 +5664,8 @@ GRANT ALL ON FUNCTION public.dearmor(text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.decrypt(bytea, bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.decrypt(bytea, bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.decrypt(bytea, bytea, text) TO "sparky uat";
 
 
 --
@@ -5234,6 +5673,8 @@ GRANT ALL ON FUNCTION public.decrypt(bytea, bytea, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.decrypt_iv(bytea, bytea, bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.decrypt_iv(bytea, bytea, bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.decrypt_iv(bytea, bytea, bytea, text) TO "sparky uat";
 
 
 --
@@ -5241,6 +5682,8 @@ GRANT ALL ON FUNCTION public.decrypt_iv(bytea, bytea, bytea, text) TO sparky_uat
 --
 
 GRANT ALL ON FUNCTION public.digest(bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.digest(bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.digest(bytea, text) TO "sparky uat";
 
 
 --
@@ -5248,6 +5691,8 @@ GRANT ALL ON FUNCTION public.digest(bytea, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.digest(text, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.digest(text, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.digest(text, text) TO "sparky uat";
 
 
 --
@@ -5255,6 +5700,8 @@ GRANT ALL ON FUNCTION public.digest(text, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.encrypt(bytea, bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.encrypt(bytea, bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.encrypt(bytea, bytea, text) TO "sparky uat";
 
 
 --
@@ -5262,6 +5709,8 @@ GRANT ALL ON FUNCTION public.encrypt(bytea, bytea, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.encrypt_iv(bytea, bytea, bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.encrypt_iv(bytea, bytea, bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.encrypt_iv(bytea, bytea, bytea, text) TO "sparky uat";
 
 
 --
@@ -5269,6 +5718,8 @@ GRANT ALL ON FUNCTION public.encrypt_iv(bytea, bytea, bytea, text) TO sparky_uat
 --
 
 GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO "sparky uat";
 
 
 --
@@ -5276,6 +5727,8 @@ GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.gen_random_bytes(integer) TO sparky_uat;
+GRANT ALL ON FUNCTION public.gen_random_bytes(integer) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.gen_random_bytes(integer) TO "sparky uat";
 
 
 --
@@ -5283,6 +5736,8 @@ GRANT ALL ON FUNCTION public.gen_random_bytes(integer) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.gen_random_uuid() TO sparky_uat;
+GRANT ALL ON FUNCTION public.gen_random_uuid() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.gen_random_uuid() TO "sparky uat";
 
 
 --
@@ -5290,6 +5745,8 @@ GRANT ALL ON FUNCTION public.gen_random_uuid() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.gen_salt(text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.gen_salt(text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.gen_salt(text) TO "sparky uat";
 
 
 --
@@ -5297,6 +5754,8 @@ GRANT ALL ON FUNCTION public.gen_salt(text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.gen_salt(text, integer) TO sparky_uat;
+GRANT ALL ON FUNCTION public.gen_salt(text, integer) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.gen_salt(text, integer) TO "sparky uat";
 
 
 --
@@ -5304,6 +5763,8 @@ GRANT ALL ON FUNCTION public.gen_salt(text, integer) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO "sparky uat";
 
 
 --
@@ -5311,6 +5772,8 @@ GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO sparky_uat;
+GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO "sparky uat";
 
 
 --
@@ -5318,6 +5781,8 @@ GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO 
 --
 
 GRANT ALL ON FUNCTION public.handle_new_user() TO sparky_uat;
+GRANT ALL ON FUNCTION public.handle_new_user() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.handle_new_user() TO "sparky uat";
 
 
 --
@@ -5325,6 +5790,8 @@ GRANT ALL ON FUNCTION public.handle_new_user() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO "sparky uat";
 
 
 --
@@ -5332,6 +5799,8 @@ GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO "sparky uat";
 
 
 --
@@ -5339,6 +5808,8 @@ GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO sp
 --
 
 GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO sparky_uat;
+GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO "sparky uat";
 
 
 --
@@ -5346,6 +5817,8 @@ GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[])
 --
 
 GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO sparky_uat;
+GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO "sparky uat";
 
 
 --
@@ -5353,6 +5826,8 @@ GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_
 --
 
 GRANT ALL ON FUNCTION public.hmac(bytea, bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.hmac(bytea, bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.hmac(bytea, bytea, text) TO "sparky uat";
 
 
 --
@@ -5360,6 +5835,8 @@ GRANT ALL ON FUNCTION public.hmac(bytea, bytea, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.hmac(text, text, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.hmac(text, text, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.hmac(text, text, text) TO "sparky uat";
 
 
 --
@@ -5367,6 +5844,8 @@ GRANT ALL ON FUNCTION public.hmac(text, text, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.is_admin() TO sparky_uat;
+GRANT ALL ON FUNCTION public.is_admin() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.is_admin() TO "sparky uat";
 
 
 --
@@ -5374,6 +5853,8 @@ GRANT ALL ON FUNCTION public.is_admin() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO sparky_uat;
+GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO "sparky uat";
 
 
 --
@@ -5381,6 +5862,8 @@ GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date d
 --
 
 GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT blk_read_time double precision, OUT blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT blk_read_time double precision, OUT blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT blk_read_time double precision, OUT blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision) TO "sparky uat";
 
 
 --
@@ -5388,6 +5871,8 @@ GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid
 --
 
 GRANT ALL ON FUNCTION public.pg_stat_statements_info(OUT dealloc bigint, OUT stats_reset timestamp with time zone) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pg_stat_statements_info(OUT dealloc bigint, OUT stats_reset timestamp with time zone) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pg_stat_statements_info(OUT dealloc bigint, OUT stats_reset timestamp with time zone) TO "sparky uat";
 
 
 --
@@ -5395,6 +5880,8 @@ GRANT ALL ON FUNCTION public.pg_stat_statements_info(OUT dealloc bigint, OUT sta
 --
 
 GRANT ALL ON FUNCTION public.pg_stat_statements_reset(userid oid, dbid oid, queryid bigint) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pg_stat_statements_reset(userid oid, dbid oid, queryid bigint) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pg_stat_statements_reset(userid oid, dbid oid, queryid bigint) TO "sparky uat";
 
 
 --
@@ -5402,6 +5889,8 @@ GRANT ALL ON FUNCTION public.pg_stat_statements_reset(userid oid, dbid oid, quer
 --
 
 GRANT ALL ON FUNCTION public.pgp_armor_headers(text, OUT key text, OUT value text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_armor_headers(text, OUT key text, OUT value text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_armor_headers(text, OUT key text, OUT value text) TO "sparky uat";
 
 
 --
@@ -5409,6 +5898,8 @@ GRANT ALL ON FUNCTION public.pgp_armor_headers(text, OUT key text, OUT value tex
 --
 
 GRANT ALL ON FUNCTION public.pgp_key_id(bytea) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_key_id(bytea) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_key_id(bytea) TO "sparky uat";
 
 
 --
@@ -5416,6 +5907,8 @@ GRANT ALL ON FUNCTION public.pgp_key_id(bytea) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea) TO "sparky uat";
 
 
 --
@@ -5423,6 +5916,8 @@ GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text) TO "sparky uat";
 
 
 --
@@ -5430,6 +5925,8 @@ GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text) TO "sparky uat";
 
 
 --
@@ -5437,6 +5934,8 @@ GRANT ALL ON FUNCTION public.pgp_pub_decrypt(bytea, bytea, text, text) TO sparky
 --
 
 GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea) TO "sparky uat";
 
 
 --
@@ -5444,6 +5943,8 @@ GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text) TO "sparky uat";
 
 
 --
@@ -5451,6 +5952,8 @@ GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text) TO sparky
 --
 
 GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text) TO "sparky uat";
 
 
 --
@@ -5458,6 +5961,8 @@ GRANT ALL ON FUNCTION public.pgp_pub_decrypt_bytea(bytea, bytea, text, text) TO 
 --
 
 GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea) TO "sparky uat";
 
 
 --
@@ -5465,6 +5970,8 @@ GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea, text) TO "sparky uat";
 
 
 --
@@ -5472,6 +5979,8 @@ GRANT ALL ON FUNCTION public.pgp_pub_encrypt(text, bytea, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea) TO "sparky uat";
 
 
 --
@@ -5479,6 +5988,8 @@ GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text) TO "sparky uat";
 
 
 --
@@ -5486,6 +5997,8 @@ GRANT ALL ON FUNCTION public.pgp_pub_encrypt_bytea(bytea, bytea, text) TO sparky
 --
 
 GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text) TO "sparky uat";
 
 
 --
@@ -5493,6 +6006,8 @@ GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text, text) TO "sparky uat";
 
 
 --
@@ -5500,6 +6015,8 @@ GRANT ALL ON FUNCTION public.pgp_sym_decrypt(bytea, text, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text) TO "sparky uat";
 
 
 --
@@ -5507,6 +6024,8 @@ GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text) TO "sparky uat";
 
 
 --
@@ -5514,6 +6033,8 @@ GRANT ALL ON FUNCTION public.pgp_sym_decrypt_bytea(bytea, text, text) TO sparky_
 --
 
 GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text) TO "sparky uat";
 
 
 --
@@ -5521,6 +6042,8 @@ GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text, text) TO "sparky uat";
 
 
 --
@@ -5528,6 +6051,8 @@ GRANT ALL ON FUNCTION public.pgp_sym_encrypt(text, text, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text) TO "sparky uat";
 
 
 --
@@ -5535,6 +6060,8 @@ GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text) TO "sparky uat";
 
 
 --
@@ -5542,6 +6069,8 @@ GRANT ALL ON FUNCTION public.pgp_sym_encrypt_bytea(bytea, text, text) TO sparky_
 --
 
 GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO "sparky uat";
 
 
 --
@@ -5549,6 +6078,8 @@ GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_use
 --
 
 GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO sparky_uat;
+GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO "sparky uat";
 
 
 --
@@ -5556,6 +6087,8 @@ GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO sparky_uat;
+GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO "sparky uat";
 
 
 --
@@ -5563,6 +6096,8 @@ GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO sparky_uat;
+GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO "sparky uat";
 
 
 --
@@ -5570,6 +6105,8 @@ GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.sync_user_mfa_master_flag() TO sparky_uat;
+GRANT ALL ON FUNCTION public.sync_user_mfa_master_flag() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.sync_user_mfa_master_flag() TO "sparky uat";
 
 
 --
@@ -5577,6 +6114,8 @@ GRANT ALL ON FUNCTION public.sync_user_mfa_master_flag() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.sync_user_totp_flag() TO sparky_uat;
+GRANT ALL ON FUNCTION public.sync_user_totp_flag() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.sync_user_totp_flag() TO "sparky uat";
 
 
 --
@@ -5584,6 +6123,8 @@ GRANT ALL ON FUNCTION public.sync_user_totp_flag() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO sparky_uat;
+GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO "sparky uat";
 
 
 --
@@ -5591,6 +6132,8 @@ GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO sparky_uat;
+GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO "sparky uat";
 
 
 --
@@ -5598,6 +6141,8 @@ GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO spar
 --
 
 GRANT ALL ON FUNCTION public.update_timestamp() TO sparky_uat;
+GRANT ALL ON FUNCTION public.update_timestamp() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.update_timestamp() TO "sparky uat";
 
 
 --
@@ -5605,6 +6150,8 @@ GRANT ALL ON FUNCTION public.update_timestamp() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.update_updated_at_column() TO sparky_uat;
+GRANT ALL ON FUNCTION public.update_updated_at_column() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.update_updated_at_column() TO "sparky uat";
 
 
 --
@@ -5612,6 +6159,8 @@ GRANT ALL ON FUNCTION public.update_updated_at_column() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.uuid_generate_v1() TO sparky_uat;
+GRANT ALL ON FUNCTION public.uuid_generate_v1() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.uuid_generate_v1() TO "sparky uat";
 
 
 --
@@ -5619,6 +6168,8 @@ GRANT ALL ON FUNCTION public.uuid_generate_v1() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.uuid_generate_v1mc() TO sparky_uat;
+GRANT ALL ON FUNCTION public.uuid_generate_v1mc() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.uuid_generate_v1mc() TO "sparky uat";
 
 
 --
@@ -5626,6 +6177,8 @@ GRANT ALL ON FUNCTION public.uuid_generate_v1mc() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.uuid_generate_v3(namespace uuid, name text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.uuid_generate_v3(namespace uuid, name text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.uuid_generate_v3(namespace uuid, name text) TO "sparky uat";
 
 
 --
@@ -5633,6 +6186,8 @@ GRANT ALL ON FUNCTION public.uuid_generate_v3(namespace uuid, name text) TO spar
 --
 
 GRANT ALL ON FUNCTION public.uuid_generate_v4() TO sparky_uat;
+GRANT ALL ON FUNCTION public.uuid_generate_v4() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.uuid_generate_v4() TO "sparky uat";
 
 
 --
@@ -5640,6 +6195,8 @@ GRANT ALL ON FUNCTION public.uuid_generate_v4() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.uuid_generate_v5(namespace uuid, name text) TO sparky_uat;
+GRANT ALL ON FUNCTION public.uuid_generate_v5(namespace uuid, name text) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.uuid_generate_v5(namespace uuid, name text) TO "sparky uat";
 
 
 --
@@ -5647,6 +6204,8 @@ GRANT ALL ON FUNCTION public.uuid_generate_v5(namespace uuid, name text) TO spar
 --
 
 GRANT ALL ON FUNCTION public.uuid_nil() TO sparky_uat;
+GRANT ALL ON FUNCTION public.uuid_nil() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.uuid_nil() TO "sparky uat";
 
 
 --
@@ -5654,6 +6213,8 @@ GRANT ALL ON FUNCTION public.uuid_nil() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.uuid_ns_dns() TO sparky_uat;
+GRANT ALL ON FUNCTION public.uuid_ns_dns() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.uuid_ns_dns() TO "sparky uat";
 
 
 --
@@ -5661,6 +6222,8 @@ GRANT ALL ON FUNCTION public.uuid_ns_dns() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.uuid_ns_oid() TO sparky_uat;
+GRANT ALL ON FUNCTION public.uuid_ns_oid() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.uuid_ns_oid() TO "sparky uat";
 
 
 --
@@ -5668,6 +6231,8 @@ GRANT ALL ON FUNCTION public.uuid_ns_oid() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.uuid_ns_url() TO sparky_uat;
+GRANT ALL ON FUNCTION public.uuid_ns_url() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.uuid_ns_url() TO "sparky uat";
 
 
 --
@@ -5675,6 +6240,8 @@ GRANT ALL ON FUNCTION public.uuid_ns_url() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.uuid_ns_x500() TO sparky_uat;
+GRANT ALL ON FUNCTION public.uuid_ns_x500() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.uuid_ns_x500() TO "sparky uat";
 
 
 --
@@ -5682,6 +6249,8 @@ GRANT ALL ON FUNCTION public.uuid_ns_x500() TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO "sparky uat";
 
 
 --
@@ -5689,6 +6258,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO "sparky uat";
 
 
 --
@@ -5696,6 +6267,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO "sparky uat";
 
 
 --
@@ -5703,6 +6276,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO "sparky uat";
 
 
 --
@@ -5710,6 +6285,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO "sparky uat";
 
 
 --
@@ -5717,6 +6294,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO "sparky uat";
 
 
 --
@@ -5724,6 +6303,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_uat;
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO "sparky uat";
 
 
 --
@@ -5731,6 +6312,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO "sparky uat";
 
 
 --
@@ -5738,6 +6321,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO spark
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO "sparky uat";
 
 
 --
@@ -5745,6 +6330,26 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_ua
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO "sparky uat";
+
+
+--
+-- Name: TABLE daily_sleep_need; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO "sparky uat";
+
+
+--
+-- Name: TABLE day_classification_cache; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO "sparky uat";
 
 
 --
@@ -5752,6 +6357,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO "sparky uat";
 
 
 --
@@ -5759,6 +6366,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_uat
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO "sparky uat";
 
 
 --
@@ -5766,6 +6375,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_detail
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO "sparky uat";
 
 
 --
@@ -5773,6 +6384,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO "sparky uat";
 
 
 --
@@ -5780,6 +6393,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO "sparky uat";
 
 
 --
@@ -5787,6 +6402,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO spa
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO "sparky uat";
 
 
 --
@@ -5794,6 +6411,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO "sparky uat";
 
 
 --
@@ -5801,6 +6420,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO spa
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO "sparky uat";
 
 
 --
@@ -5808,6 +6429,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO spa
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO "sparky uat";
 
 
 --
@@ -5815,6 +6438,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO "sparky uat";
 
 
 --
@@ -5822,6 +6447,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO "sparky uat";
 
 
 --
@@ -5829,6 +6456,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO "sparky uat";
 
 
 --
@@ -5836,6 +6465,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_uat
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO "sparky uat";
 
 
 --
@@ -5843,6 +6474,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO "sparky uat";
 
 
 --
@@ -5850,6 +6483,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO "sparky uat";
 
 
 --
@@ -5857,6 +6492,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO "sparky uat";
 
 
 --
@@ -5864,6 +6501,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO "sparky uat";
 
 
 --
@@ -5871,6 +6510,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO "sparky uat";
 
 
 --
@@ -5878,6 +6519,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO "sparky uat";
 
 
 --
@@ -5885,6 +6528,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO "sparky uat";
 
 
 --
@@ -5892,6 +6537,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO "sparky uat";
 
 
 --
@@ -5899,6 +6546,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO "sparky uat";
 
 
 --
@@ -5906,6 +6555,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO "sparky uat";
 
 
 --
@@ -5913,6 +6564,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO "sparky uat";
 
 
 --
@@ -5920,6 +6573,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_uat;
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO "sparky uat";
 
 
 --
@@ -5927,6 +6582,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO "sparky uat";
 
 
 --
@@ -5934,6 +6591,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO "sparky uat";
 
 
 --
@@ -5941,6 +6600,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_ua
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO "sparky uat";
 
 
 --
@@ -5948,6 +6609,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO "sparky uat";
 
 
 --
@@ -5955,6 +6618,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements TO sparky_u
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO "sparky uat";
 
 
 --
@@ -5962,6 +6627,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pg_stat_statements_info TO spa
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO "sparky uat";
 
 
 --
@@ -5969,6 +6636,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO "sparky uat";
 
 
 --
@@ -5976,6 +6645,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO "sparky uat";
 
 
 --
@@ -5983,6 +6654,17 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO "sparky uat";
+
+
+--
+-- Name: TABLE sleep_need_calculations; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO "sparky uat";
 
 
 --
@@ -5990,6 +6672,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_u
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO "sparky uat";
 
 
 --
@@ -5997,6 +6681,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO "sparky uat";
 
 
 --
@@ -6004,6 +6690,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO "sparky uat";
 
 
 --
@@ -6011,6 +6699,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO "sparky uat";
 
 
 --
@@ -6018,6 +6708,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO "sparky uat";
 
 
 --
@@ -6025,6 +6717,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO spark
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO "sparky uat";
 
 
 --
@@ -6032,6 +6726,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO "sparky uat";
 
 
 --
@@ -6039,6 +6735,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO "sparky uat";
 
 
 --
@@ -6046,6 +6744,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO spar
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO "sparky uat";
 
 
 --
@@ -6053,6 +6753,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferen
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO "sparky uat";
 
 
 --
@@ -6060,6 +6762,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq T
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO "sparky uat";
 
 
 --
@@ -6067,6 +6771,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_uat;
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO "sparky uat";
 
 
 --
@@ -6074,6 +6780,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO "sparky uat";
 
 
 --
@@ -6081,6 +6789,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_uat
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO "sparky uat";
 
 
 --
@@ -6088,6 +6798,26 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO spark
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO "sparky uat";
+
+
+--
+-- Name: TABLE v_mctq_analysis; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO "sparky uat";
+
+
+--
+-- Name: TABLE v_mctq_stats; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO "sparky uat";
 
 
 --
@@ -6095,6 +6825,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_uat
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO "sparky uat";
 
 
 --
@@ -6102,6 +6834,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO "sparky uat";
 
 
 --
@@ -6109,6 +6843,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO "sparky uat";
 
 
 --
@@ -6116,6 +6852,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_ua
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO "sparky uat";
 
 
 --
@@ -6123,6 +6861,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets T
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO "sparky uat";
 
 
 --
@@ -6130,6 +6870,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO spa
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO "sparky uat";
 
 
 --
@@ -6137,6 +6879,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignme
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO "sparky uat";
 
 
 --
@@ -6144,6 +6888,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq T
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO "sparky uat";
 
 
 --
@@ -6151,6 +6897,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO spar
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO "sparky uat";
 
 
 --
@@ -6158,6 +6906,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_ua
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO "sparky uat";
 
 
 --
@@ -6165,6 +6915,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets T
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO "sparky uat";
 
 
 --
@@ -6172,6 +6924,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO spa
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO "sparky uat";
 
 
 --
@@ -6179,6 +6933,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sp
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO "sparky uat";
 
 
 --
@@ -6186,6 +6942,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_uat;
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO "sparky uat";
 
 
 --
@@ -6193,6 +6951,8 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_uat;
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_uat;
+GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO "sparky-uat";
+GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO "sparky uat";
 
 
 --
@@ -6200,6 +6960,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_uat;
 --
 
 GRANT SELECT ON TABLE system.schema_migrations TO sparky_uat;
+GRANT SELECT ON TABLE system.schema_migrations TO "sparky-uat";
+GRANT SELECT ON TABLE system.schema_migrations TO "sparky uat";
 
 
 --
@@ -6207,6 +6969,8 @@ GRANT SELECT ON TABLE system.schema_migrations TO sparky_uat;
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO "sparky-uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO "sparky uat";
 
 
 --
@@ -6214,6 +6978,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS T
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky-uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky uat";
 
 
 --
@@ -6221,6 +6987,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELE
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO "sparky-uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO "sparky uat";
 
 
 --
@@ -6228,6 +6996,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON 
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO "sparky-uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO "sparky uat";
 
 
 --
@@ -6235,11 +7005,13 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky-uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky uat";
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict D86uStvbk2ffljWuy3BtsTa32l05krEalVzQvC8ObUyS4bQL6SK857nLgBzQ3Tl
+\unrestrict WW9hayY1U2sVbFsaTYnW1ce66g9FjLcXJaiCqguBGZmNOCkioo9CfqpnllKOiix
 
