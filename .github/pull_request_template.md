@@ -4,7 +4,7 @@ Provide a brief summary of your changes.
 
 ## Related Issue
 
-PR type [ ] Issue [ ] New Feature [ ] Other
+PR type [ ] Issue [ ] New Feature [ ] Documentation
 Linked Issue: #
 
 ## Checklist
