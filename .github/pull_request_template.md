@@ -16,7 +16,7 @@ Please check all that apply:
 - [ ] **Screenshots**: I have attached "Before" vs "After" screenshots below (required for UI changes).
 - [ ] **Quality**: I have run `npm run lint` and `npm run format` (especially for Frontend).
 - [ ] **Translations**: I have only updated the English (`en`) translation file (if applicable).
-- [ ] **Architecture**: My code follows the existing architecture standards (see `AGENTS.md`).
+- [ ] **Architecture**: My code follows the existing architecture standards.
 - [ ] **Database Security**: I have updated `rls_policies.sql` for any new user-specific tables.
 - [ ] **Integrity**: I certify this is my own work, free of malicious code(phishing, malware, etc.)
 - [ ] **License**: I agree to the [License terms](LICENSE).
