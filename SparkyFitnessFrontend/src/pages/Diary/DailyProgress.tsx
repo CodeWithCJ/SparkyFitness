@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Target, Zap, Utensils, Flame, Flag } from 'lucide-react';
+import { Target, Zap, Utensils, Flame, Flag, Activity } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -101,6 +101,12 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const effectiveConsumed = goalCalories - caloriesRemaining;
   const calorieProgress = Math.max(0, (effectiveConsumed / goalCalories) * 100);
 
+  // Calories credited back from exercise (MFP-style: how much exercise adds to your budget)
+  const exerciseCredited = Math.max(
+    0,
+    caloriesRemaining - (goalCalories - eatenCalories)
+  );
+
   // --- Display Conversion (to kJ or kcal) ---
   const display = {
     remaining: Math.round(convertEnergy(caloriesRemaining, 'kcal', energyUnit)),
@@ -118,6 +124,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     steps: Math.round(convertEnergy(stepsCalories, 'kcal', energyUnit)),
     bmr: bmr ? Math.round(convertEnergy(bmr, 'kcal', energyUnit)) : 0,
     net: Math.round(convertEnergy(netCalories, 'kcal', energyUnit)),
+    exerciseCredited: Math.round(
+      convertEnergy(exerciseCredited, 'kcal', energyUnit)
+    ),
   };
 
   debug(loggingLevel, 'DailyProgress: Calculated values', {
@@ -327,28 +336,66 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             </div>
           )}
 
-          {/* Net Energy Display */}
-          <div className="text-center p-2 dark:bg-slate-300 bg-gray-50 rounded-lg">
-            <div className="text-sm font-medium dark:text-black text-gray-700">
-              {t(
-                'exercise.dailyProgress.netEnergy',
-                'Net Energy: {{netCalories}}',
-                {
-                  netCalories: display.net,
-                  energyUnit: getEnergyUnitString(energyUnit),
-                }
-              )}
+          {/* MFP-style Daily Burn Formula Bar */}
+          <div className="p-3 bg-orange-50 dark:bg-slate-700 rounded-lg">
+            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400 mb-2 gap-1">
+              <Activity className="w-3 h-3 text-orange-400 shrink-0" />
+              <span className="font-medium text-orange-600 dark:text-orange-400">
+                {t('exercise.dailyProgress.dailyBurn', 'Daily Burn')}
+              </span>
             </div>
-            <div className="text-xs dark:text-black text-gray-600">
-              {t(
-                'exercise.dailyProgress.netEnergyBreakdown',
-                '{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned',
-                {
-                  dailyIntakeCalories: display.eaten,
-                  finalTotalCaloriesBurned: display.burnedTotal,
-                  energyUnit: getEnergyUnitString(energyUnit),
-                }
-              )}
+            <div className="flex items-center justify-between text-center gap-1">
+              {/* Goal */}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-gray-800 dark:text-slate-200 truncate">
+                  {display.goal}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-slate-400">
+                  {t('exercise.dailyProgress.goal', 'Goal')}
+                </div>
+              </div>
+              <div className="text-gray-400 dark:text-slate-500 font-bold text-sm shrink-0">
+                −
+              </div>
+              {/* Food */}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-green-600 truncate">
+                  {display.eaten}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-slate-400">
+                  {t('exercise.dailyProgress.food', 'Food')}
+                </div>
+              </div>
+              <div className="text-gray-400 dark:text-slate-500 font-bold text-sm shrink-0">
+                +
+              </div>
+              {/* Exercise Credited */}
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-orange-500 truncate">
+                  {display.exerciseCredited}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-slate-400">
+                  {t('exercise.dailyProgress.exercise', 'Exercise')}
+                </div>
+              </div>
+              <div className="text-gray-400 dark:text-slate-500 font-bold text-sm shrink-0">
+                =
+              </div>
+              {/* Remaining */}
+              <div className="flex-1 min-w-0">
+                <div
+                  className={`text-sm font-bold truncate ${
+                    caloriesRemaining >= 0
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-red-600 dark:text-red-400'
+                  }`}
+                >
+                  {display.remaining}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-slate-400">
+                  {t('exercise.dailyProgress.remaining', 'Left')}
+                </div>
+              </div>
             </div>
           </div>
 
