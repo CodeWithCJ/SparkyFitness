@@ -40,7 +40,18 @@
       "importCSVTab": "Імпорт CSV",
       "nameLabel": "Ім'я",
       "categoryLabel": "Категорія",
-      "selectCategoryPlaceholder": "Обрати категорію"
+      "selectCategoryPlaceholder": "Обрати категорію",
+      "categoryYoga": "Йога",
+      "categoryCardio": "Кардіо",
+      "categoryStrength": "Сила",
+      "caloriesPerHourLabel": "Калорій/Годину",
+      "levelLabel": "Рівень",
+      "selectLevelPlaceholder": "Оберіть рівень",
+      "levelBeginner": "Початківець",
+      "levelIntermediate": "Середній",
+      "levelExpert": "Експерт",
+      "descriptionLabel": "Опис",
+      "addError": "Не вдалось додати вправу"
     }
   }
 }
