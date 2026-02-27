@@ -76,12 +76,10 @@ export const useDailyFoodIntake = (date: string) => {
 
 export const useDailyExerciseStats = (date: string) => {
   const { t } = useTranslation();
-  const isToday = date === new Date().toLocaleDateString('en-CA');
   return useQuery({
     queryKey: dailyProgressKeys.exercises(date),
     queryFn: () => getExerciseEntriesForDate(date),
     enabled: !!date,
-    refetchInterval: isToday ? 5 * 60 * 1000 : false,
     select: (data: GroupedExerciseEntry[]) => {
       let activeCalories = 0;
       let otherCalories = 0;
@@ -120,12 +118,10 @@ export const useDailyExerciseStats = (date: string) => {
 };
 
 export const useDailySteps = (date: string) => {
-  const isToday = date === new Date().toLocaleDateString('en-CA');
   return useQuery({
     queryKey: dailyProgressKeys.steps(date),
     queryFn: () => getCheckInMeasurementsForDate(date),
     enabled: !!date,
-    refetchInterval: isToday ? 5 * 60 * 1000 : false,
     select: (data) => {
       const steps = data?.steps || 0;
       return {

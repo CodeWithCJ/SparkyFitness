@@ -24,7 +24,6 @@ import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { EnergyCircle } from './EnergyProgressCircle';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
-  const isToday = selectedDate === new Date().toLocaleDateString('en-CA');
   const { t } = useTranslation();
   const {
     loggingLevel,
@@ -144,15 +143,6 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           <span className="dark:text-slate-300">
             {t('exercise.dailyProgress.dailyEnergyGoal', 'Daily Energy Goal')}
           </span>
-          {isToday && (
-            <span className="flex items-center gap-1 ml-auto text-xs font-normal text-green-500">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-              </span>
-              {t('exercise.dailyProgress.live', 'Live')}
-            </span>
-          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="pb-4">
