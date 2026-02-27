@@ -118,7 +118,8 @@ For full installation guides, configuration options, and development docs, pleas
 
 ### Need Help?
 
-- **[Join our Discord](https://discord.gg/vcnMT5cPEA)**
+- Post in Github issues/discussion.
+- For faster response and get help from other community memebers **[Join our Discord](https://discord.gg/vcnMT5cPEA)**
 
 ## Star History
 
