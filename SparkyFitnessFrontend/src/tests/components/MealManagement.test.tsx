@@ -3,6 +3,16 @@ import '@testing-library/jest-dom';
 import MealManagement from '@/pages/Foods/MealManagement';
 import { renderWithClient } from '../test-utils';
 
+// mock i18 directly for calls outside of hooks
+jest.mock('@/i18n', () => ({
+  __esModule: true, // Dies behebt den "default.t is not a function" Fehler
+  default: {
+    t: (key: string, fallback?: string) => fallback || key,
+    use: jest.fn().mockReturnThis(),
+    init: jest.fn(),
+  },
+}));
+
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({

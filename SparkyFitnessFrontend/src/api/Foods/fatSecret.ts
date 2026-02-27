@@ -1,9 +1,14 @@
 import { toast } from '@/hooks/use-toast';
 import { apiCall } from '@/api/api';
+import { GlycemicIndex } from '@/types/food';
 
 const PROXY_BASE_URL = '/foods/fatsecret'; // Base path for FatSecret proxy endpoints
 
 export interface FatSecretFoodItem {
+  serving_qty?: number;
+  carbohydrates?: number;
+  name?: string;
+  brand?: string;
   food_id: string;
   food_name: string;
   brand_name?: string;
@@ -17,6 +22,20 @@ export interface FatSecretFoodItem {
   fat?: number;
   serving_size?: number;
   serving_unit?: string;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  glycemic_index?: GlycemicIndex;
 }
 
 interface FatSecretServing {
