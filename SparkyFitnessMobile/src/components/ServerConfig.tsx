@@ -92,7 +92,7 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
                   className="w-6 h-6 rounded-xl justify-center items-center"
                   style={{ backgroundColor: successBackground }}
                 >
-                  <Text className="text-sm font-bold" style={{ color: success }}>✓</Text>
+                  <Icon name="checkmark" color={success} weight={'bold'} size={16} />
                 </View>
               )}
             </View>

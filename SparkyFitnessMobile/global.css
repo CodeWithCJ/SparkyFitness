@@ -100,7 +100,7 @@
       --color-bg-warning:        hsl(36, 72%, 65%);
       --color-bg-danger:         hsl(358, 46%, 39%);
    
-      --color-text-success:      hsl(159, 15%, 95%);
+      --color-text-success:      hsl(159, 45%, 93%);
       --color-text-warning:      hsl(35, 59%, 78%);
       --color-text-danger:       hsl(357, 68%, 94%);
     }

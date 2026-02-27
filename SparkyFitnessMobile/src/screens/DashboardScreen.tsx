@@ -80,6 +80,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   });
   const { increment: incrementWater, decrement: decrementWater, isReady: isWaterReady, unit: waterUnit } = useWaterIntakeMutation({
     date: selectedDate,
+    enabled: isConnected,
   });
 
   // Get macro colors from CSS variables (theme-aware)
