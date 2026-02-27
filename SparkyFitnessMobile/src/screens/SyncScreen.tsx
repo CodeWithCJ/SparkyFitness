@@ -80,8 +80,6 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
     setSelectedTimeRange(initialTimeRange);
     setHealthMetricStates(newHealthMetricStates);
 
-    await fetchHealthData(newHealthMetricStates, initialTimeRange);
-
     const loadedSyncTime = await loadLastSyncedTime();
     setLastSyncedTime(loadedSyncTime);
     setLastSyncedTimeLoaded(true);
@@ -525,7 +523,6 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
               onSelect={async (value) => {
                 setSelectedTimeRange(value);
                 await saveTimeRange(value);
-                fetchHealthData(healthMetricStates, value);
               }}
               title="Select Sync Range"
               containerStyle={{ flex: 1, maxWidth: 180, marginLeft: 16 }}
