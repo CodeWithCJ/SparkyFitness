@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTheme } from '@/contexts/ThemeContext';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 import {
   Bar,
   BarChart,
@@ -54,7 +55,7 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
             {t('sleepScience.sleepNeedTonight', 'Sleep Need Tonight')}
           </span>
           <span className="text-2xl font-bold text-primary">
-            {data.totalNeed.toFixed(1)}h
+            {formatSecondsToHHMM(data.totalNeed * 3600)}
           </span>
         </CardTitle>
       </CardHeader>
@@ -83,7 +84,7 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
                   ? ['auto', 'auto']
                   : [0, 'auto']
               }
-              tickFormatter={(v: number) => `${v}h`}
+              tickFormatter={(v: number) => formatSecondsToHHMM(v * 3600)}
             />
             <Tooltip
               contentStyle={{
@@ -92,7 +93,7 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(value: number) => [`${value.toFixed(2)}h`]}
+              formatter={(value: number) => [formatSecondsToHHMM(value * 3600)]}
             />
             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
               {chartData.map((entry, index) => (

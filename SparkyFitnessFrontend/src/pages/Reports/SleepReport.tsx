@@ -9,6 +9,7 @@ import type {
 } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { toast as sonnerToast } from 'sonner';
+import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 import SleepAnalyticsCharts from './SleepAnalyticsCharts';
 import SleepAnalyticsTable from './SleepAnalyticsTable';
 
@@ -37,8 +38,8 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
       t('sleepReport.csvHeadersDate', 'Date'),
       t('sleepReport.csvHeadersBedtime', 'Bedtime'),
       t('sleepReport.csvHeadersWakeTime', 'Wake Time'),
-      t('sleepReport.csvHeadersDurationHours', 'Duration (h)'),
-      t('sleepReport.csvHeadersTimeAsleepHours', 'Time Asleep (h)'),
+      t('sleepReport.csvHeadersDuration', 'Duration'),
+      t('sleepReport.csvHeadersTimeAsleep', 'Time Asleep'),
       t('sleepReport.csvHeadersScore', 'Score'),
       t('sleepReport.csvHeadersEfficiencyPercentage', 'Efficiency (%)'),
       t('sleepReport.csvHeadersDebtHours', 'Debt (h)'),
@@ -56,9 +57,9 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
         formatDateInUserTimezone(sleepEntry.entry_date, dateFormat),
         formatDateInUserTimezone(sleepEntry.bedtime, 'HH:mm'),
         formatDateInUserTimezone(sleepEntry.wake_time, 'HH:mm'),
-        (sleepEntry.duration_in_seconds / 3600).toFixed(1),
+        formatSecondsToHHMM(sleepEntry.duration_in_seconds),
         sleepEntry.time_asleep_in_seconds
-          ? (sleepEntry.time_asleep_in_seconds / 3600).toFixed(1)
+          ? formatSecondsToHHMM(sleepEntry.time_asleep_in_seconds)
           : t('common.notApplicable', 'N/A'),
         sleepAnalyticsData.sleepScore.toFixed(0),
         sleepAnalyticsData.sleepEfficiency.toFixed(1),
