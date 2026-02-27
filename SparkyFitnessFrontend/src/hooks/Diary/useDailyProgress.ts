@@ -132,17 +132,9 @@ export const useDailySteps = (date: string) => {
   });
 };
 
-const ACTIVITY_MULTIPLIERS: Record<string, number> = {
-  not_much: 1.2,
-  light: 1.375,
-  moderate: 1.55,
-  heavy: 1.725,
-};
-
 export const useCalculatedBMR = () => {
   const { user } = useAuth();
-  const { bmrAlgorithm, includeBmrInNetCalories, activityLevel } =
-    usePreferences();
+  const { bmrAlgorithm, includeBmrInNetCalories } = usePreferences();
 
   const { data: userProfile } = useQuery({
     queryKey: ['user', 'profile', user?.id],
@@ -171,7 +163,7 @@ export const useCalculatedBMR = () => {
     !heightData?.height ||
     !userProfile.gender
   ) {
-    return { bmr: null, tdee: null, includeInNet: false };
+    return { bmr: null, includeInNet: false };
   }
 
   const age = userProfile.date_of_birth
@@ -189,15 +181,11 @@ export const useCalculatedBMR = () => {
       bodyFatData?.body_fat_percentage
     );
 
-    const multiplier = ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.2;
-    const tdee = Math.round(bmr * multiplier);
-
     return {
       bmr,
-      tdee,
       includeInNet: includeBmrInNetCalories || false,
     };
   } catch (err) {
-    return { bmr: null, tdee: null, includeInNet: false };
+    return { bmr: null, includeInNet: false };
   }
 };

@@ -28,10 +28,7 @@ import {
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import {
-  usePreferences,
-  type ActivityLevel,
-} from '@/contexts/PreferencesContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { error as logError } from '@/utils/logging';
 import { useTranslation } from 'react-i18next';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -66,8 +63,6 @@ const CalculationSettings = () => {
     setCalorieGoalAdjustmentMode: setCalorieGoalAdjustmentModeContext,
     exerciseCaloriePercentage: contextExerciseCaloriePercentage,
     setExerciseCaloriePercentage: setExerciseCaloriePercentageContext,
-    activityLevel: contextActivityLevel,
-    setActivityLevel: setActivityLevelContext,
     tdeeAllowNegativeAdjustment: contextTdeeAllowNegativeAdjustment,
     setTdeeAllowNegativeAdjustment: setTdeeAllowNegativeAdjustmentContext,
 
@@ -79,9 +74,6 @@ const CalculationSettings = () => {
   >(contextCalorieGoalAdjustmentMode || 'dynamic');
   const [exerciseCaloriePercentage, setExerciseCaloriePercentage] =
     useState<number>(contextExerciseCaloriePercentage ?? 100);
-  const [activityLevel, setActivityLevel] = useState<ActivityLevel>(
-    contextActivityLevel || 'not_much'
-  );
   const [tdeeAllowNegativeAdjustment, setTdeeAllowNegativeAdjustment] =
     useState<boolean>(contextTdeeAllowNegativeAdjustment ?? false);
 
@@ -145,9 +137,6 @@ const CalculationSettings = () => {
     if (contextExerciseCaloriePercentage !== undefined) {
       setExerciseCaloriePercentage(contextExerciseCaloriePercentage);
     }
-    if (contextActivityLevel) {
-      setActivityLevel(contextActivityLevel);
-    }
     if (contextTdeeAllowNegativeAdjustment !== undefined) {
       setTdeeAllowNegativeAdjustment(contextTdeeAllowNegativeAdjustment);
     }
@@ -165,7 +154,6 @@ const CalculationSettings = () => {
     contextSugarCalculationAlgorithm,
     contextCalorieGoalAdjustmentMode,
     contextExerciseCaloriePercentage,
-    contextActivityLevel,
     contextTdeeAllowNegativeAdjustment,
   ]);
 
@@ -183,12 +171,10 @@ const CalculationSettings = () => {
         sugarCalculationAlgorithm: sugarCalculationAlgorithm,
         calorieGoalAdjustmentMode: calorieGoalAdjustmentMode,
         exerciseCaloriePercentage: exerciseCaloriePercentage,
-        activityLevel: activityLevel,
         tdeeAllowNegativeAdjustment: tdeeAllowNegativeAdjustment,
       });
       setCalorieGoalAdjustmentModeContext(calorieGoalAdjustmentMode);
       setExerciseCaloriePercentageContext(exerciseCaloriePercentage);
-      setActivityLevelContext(activityLevel);
       setTdeeAllowNegativeAdjustmentContext(tdeeAllowNegativeAdjustment);
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
       toast({
@@ -491,63 +477,18 @@ const CalculationSettings = () => {
                 <span className="font-medium">
                   {t(
                     'settings.calorieGoalAdjustment.tdeeGoal',
-                    'TDEE Adjustment'
+                    'Device Projection'
                   )}
                   :
                 </span>{' '}
                 {t(
                   'settings.calorieGoalAdjustment.tdeeGoalDescription',
-                  'Like MyFitnessPal with a device. Your expected daily burn is fixed (BMR × activity level). If you burn more or less than that, the difference adjusts your remaining food budget.'
+                  'Like MyFitnessPal with Apple Watch. SparkyFitness projects your full-day burn by extrapolating your current device data to midnight. The adjustment = projection − goal.'
                 )}
               </Label>
             </div>
             {calorieGoalAdjustmentMode === 'tdee' && (
               <div className="ml-6 flex flex-col gap-2">
-                <Label htmlFor="activity-level" className="text-sm">
-                  {t(
-                    'settings.calorieGoalAdjustment.activityLevelLabel',
-                    'Activity Level'
-                  )}
-                </Label>
-                <Select
-                  value={activityLevel}
-                  onValueChange={(value: ActivityLevel) =>
-                    setActivityLevel(value)
-                  }
-                >
-                  <SelectTrigger className="w-56" id="activity-level">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="not_much">
-                      {t(
-                        'activityLevel.not_much',
-                        'Sedentary (little or no exercise)'
-                      )}
-                    </SelectItem>
-                    <SelectItem value="light">
-                      {t(
-                        'activityLevel.light',
-                        'Lightly active (1–3 days/week)'
-                      )}
-                    </SelectItem>
-                    <SelectItem value="moderate">
-                      {t(
-                        'activityLevel.moderate',
-                        'Moderately active (3–5 days/week)'
-                      )}
-                    </SelectItem>
-                    <SelectItem value="heavy">
-                      {t('activityLevel.heavy', 'Very active (6–7 days/week)')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {t(
-                    'settings.calorieGoalAdjustment.activityLevelHint',
-                    'Sets your fixed daily expected burn (TDEE = BMR × multiplier). Sedentary ×1.2 · Light ×1.375 · Moderate ×1.55 · Very active ×1.725'
-                  )}
-                </p>
                 <div className="flex items-center space-x-2 pt-1">
                   <Checkbox
                     id="tdee-allow-negative"
@@ -659,7 +600,7 @@ const CalculationSettings = () => {
                           : calorieGoalAdjustmentMode === 'tdee'
                             ? t(
                                 'settings.calculationExplanation.remainingTdee',
-                                'Daily Goal − Eaten + (Actual Burned − TDEE)'
+                                'Daily Goal − Eaten + (Projected Full Day − Goal)'
                               )
                             : t(
                                 'settings.calculationExplanation.remainingFixed',
@@ -689,7 +630,7 @@ const CalculationSettings = () => {
                     : calorieGoalAdjustmentMode === 'tdee'
                       ? t(
                           'settings.calculationExplanation.tdeeFootnote',
-                          '* Adjustment can be positive (burned more than TDEE) or negative (burned less). Requires BMR and activity level to be set.'
+                          '* Projection converges with actual at midnight. Requires BMR to be calculable and a device syncing steps or active calories.'
                         )
                       : t(
                           'settings.calculationExplanation.fixedFootnote',
