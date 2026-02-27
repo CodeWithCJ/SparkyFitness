@@ -81,7 +81,7 @@ jest.mock('@/components/FoodUnitSelector', () => {
   };
 });
 
-jest.mock('../../components/FoodSearchDialog', () => {
+jest.mock('@/components/FoodSearch/FoodSearchDialog', () => {
   return function MockFoodSearchDialog() {
     return <div data-testid="food-search-dialog">FoodSearchDialog</div>;
   };
