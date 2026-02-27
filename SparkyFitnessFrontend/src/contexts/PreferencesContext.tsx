@@ -60,6 +60,7 @@ const upsertUserPreferences = async (payload: any) => {
 };
 
 export type EnergyUnit = 'kcal' | 'kJ';
+export type ActivityLevel = 'not_much' | 'light' | 'moderate' | 'heavy';
 
 // Conversion constant
 const KCAL_TO_KJ = 4.184;
@@ -81,7 +82,12 @@ interface PreferencesContextType {
   timezone: string;
   foodDisplayLimit: number;
   itemDisplayLimit: number;
-  calorieGoalAdjustmentMode: 'dynamic' | 'fixed' | 'percentage' | 'smart';
+  calorieGoalAdjustmentMode:
+    | 'dynamic'
+    | 'fixed'
+    | 'percentage'
+    | 'smart'
+    | 'tdee';
   energyUnit: EnergyUnit;
   autoScaleOpenFoodFactsImports: boolean;
   nutrientDisplayPreferences: NutrientPreference[];
@@ -95,6 +101,7 @@ interface PreferencesContextType {
   vitaminCalculationAlgorithm: VitaminCalculationAlgorithm;
   sugarCalculationAlgorithm: SugarCalculationAlgorithm;
   exerciseCaloriePercentage: number;
+  activityLevel: ActivityLevel;
   selectedDiet: string;
   setWeightUnit: (unit: 'kg' | 'lbs') => void;
   setMeasurementUnit: (unit: 'cm' | 'inches') => void;
@@ -108,9 +115,10 @@ interface PreferencesContextType {
   setTimezone: (timezone: string) => void;
   setItemDisplayLimit: (limit: number) => void;
   setCalorieGoalAdjustmentMode: (
-    mode: 'dynamic' | 'fixed' | 'percentage' | 'smart'
+    mode: 'dynamic' | 'fixed' | 'percentage' | 'smart' | 'tdee'
   ) => void;
   setExerciseCaloriePercentage: (percentage: number) => void;
+  setActivityLevel: (level: ActivityLevel) => void;
   setEnergyUnit: (unit: EnergyUnit) => void;
   setAutoScaleOpenFoodFactsImports: (enabled: boolean) => void;
   loadNutrientDisplayPreferences: () => Promise<void>;
@@ -194,9 +202,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [itemDisplayLimit, setItemDisplayLimitState] = useState<number>(10);
   const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10);
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentModeState] =
-    useState<'dynamic' | 'fixed' | 'percentage' | 'smart'>('dynamic');
+    useState<'dynamic' | 'fixed' | 'percentage' | 'smart' | 'tdee'>('dynamic');
   const [exerciseCaloriePercentage, setExerciseCaloriePercentageState] =
     useState<number>(100);
+  const [activityLevel, setActivityLevelState] =
+    useState<ActivityLevel>('not_much');
   const [energyUnit, setEnergyUnitState] = useState<EnergyUnit>('kcal');
   const [autoScaleOpenFoodFactsImports, setAutoScaleOpenFoodFactsImportsState] =
     useState<boolean>(false);
@@ -365,8 +375,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           | 'dynamic'
           | 'fixed'
           | 'percentage'
-          | 'smart';
+          | 'smart'
+          | 'tdee';
         exercise_calorie_percentage: number;
+        activity_level: ActivityLevel;
         energy_unit: EnergyUnit;
         auto_scale_open_food_facts_imports: boolean;
         bmr_algorithm: BmrAlgorithm;
@@ -462,6 +474,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode,
         exercise_calorie_percentage:
           newPrefs?.exerciseCaloriePercentage ?? exerciseCaloriePercentage,
+        activity_level: newPrefs?.activityLevel ?? activityLevel,
         energy_unit: newPrefs?.energyUnit ?? energyUnit,
         auto_scale_open_food_facts_imports:
           newPrefs?.autoScaleOpenFoodFactsImports ??
@@ -511,6 +524,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       language,
       calorieGoalAdjustmentMode,
       exerciseCaloriePercentage,
+      activityLevel,
       energyUnit,
       autoScaleOpenFoodFactsImports,
       bmrAlgorithm,
@@ -612,6 +626,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setExerciseCaloriePercentageState(
           data.exercise_calorie_percentage ?? 100
         );
+        setActivityLevelState(
+          (data.activity_level as ActivityLevel) || 'not_much'
+        );
         setEnergyUnitState(data.energy_unit || 'kcal');
         setAutoScaleOpenFoodFactsImportsState(
           data.auto_scale_open_food_facts_imports ?? false
@@ -700,7 +717,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const setCalorieGoalAdjustmentMode = useCallback(
-    (mode: 'dynamic' | 'fixed' | 'percentage' | 'smart') => {
+    (mode: 'dynamic' | 'fixed' | 'percentage' | 'smart' | 'tdee') => {
       setCalorieGoalAdjustmentModeState(mode);
       saveAllPreferences({ calorieGoalAdjustmentMode: mode });
     },
@@ -710,6 +727,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const setExerciseCaloriePercentage = useCallback((percentage: number) => {
     setExerciseCaloriePercentageState(percentage);
   }, []);
+
+  const setActivityLevel = useCallback(
+    (level: ActivityLevel) => {
+      setActivityLevelState(level);
+      saveAllPreferences({ activityLevel: level });
+    },
+    [saveAllPreferences]
+  );
 
   const setDefaultFoodDataProviderId = useCallback((id: string | null) => {
     setDefaultFoodDataProviderIdState(id);
@@ -808,6 +833,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       foodDisplayLimit,
       calorieGoalAdjustmentMode,
       exerciseCaloriePercentage,
+      activityLevel,
       energyUnit,
       autoScaleOpenFoodFactsImports,
       nutrientDisplayPreferences,
@@ -832,6 +858,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,
       setExerciseCaloriePercentage,
+      setActivityLevel,
       setEnergyUnit,
       setAutoScaleOpenFoodFactsImports,
       loadNutrientDisplayPreferences,
@@ -869,6 +896,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       foodDisplayLimit,
       calorieGoalAdjustmentMode,
       exerciseCaloriePercentage,
+      activityLevel,
       energyUnit,
       autoScaleOpenFoodFactsImports,
       nutrientDisplayPreferences,
@@ -893,6 +921,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,
       setExerciseCaloriePercentage,
+      setActivityLevel,
       setEnergyUnit,
       setAutoScaleOpenFoodFactsImports,
       loadNutrientDisplayPreferences,
