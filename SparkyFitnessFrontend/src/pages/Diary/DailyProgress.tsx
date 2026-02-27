@@ -72,8 +72,10 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   const netCalories = eatenCalories - totalCaloriesBurned;
 
-  // For TDEE mode: actual burn uses BMR + current device data (regardless of includeBmrInNetCalories)
-  const actualBurnSoFar = (bmr || 0) + exerciseCaloriesBurned;
+  // For TDEE mode:
+  // "SparkyFitness Burned" = BMR only — same every day, purely profile-based (like MFP's own
+  // burned number which never changes unless you edit your profile).
+  const sparkyfitnessBurned = bmr || 0;
 
   // Project current device burn rate to end of day (mirrors MFP + Apple Watch behaviour).
   // We extrapolate based on how much of the day has elapsed.
@@ -88,8 +90,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
       : exerciseCaloriesBurned;
   const projectedBurn = (bmr || 0) + projectedDeviceCalories;
 
-  // Adjustment = how much more the projection exceeds the daily goal
-  const rawTdeeAdjustment = projectedBurn - goalCalories;
+  // Adjustment = projected full-day burn minus the SparkyFitness baseline (BMR).
+  // Positive = device projects more activity than resting; negative = less active day.
+  const rawTdeeAdjustment = projectedBurn - sparkyfitnessBurned;
   const tdeeAdjustment = tdeeAllowNegativeAdjustment
     ? rawTdeeAdjustment
     : Math.max(0, rawTdeeAdjustment);
@@ -154,7 +157,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
       convertEnergy(exerciseCredited, 'kcal', energyUnit)
     ),
     projectedBurn: Math.round(convertEnergy(projectedBurn, 'kcal', energyUnit)),
-    actualSoFar: Math.round(convertEnergy(actualBurnSoFar, 'kcal', energyUnit)),
+    sparkyfitnessBurned: Math.round(
+      convertEnergy(sparkyfitnessBurned, 'kcal', energyUnit)
+    ),
     tdeeAdjustment: Math.round(
       convertEnergy(tdeeAdjustment, 'kcal', energyUnit)
     ),
@@ -390,10 +395,14 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500 dark:text-slate-400">
-                  {t('exercise.dailyProgress.actualSoFar', 'Actual So Far')}
+                  {t(
+                    'exercise.dailyProgress.sparkyfitnessBurned',
+                    'SparkyFitness Burned'
+                  )}
                 </span>
                 <span className="font-semibold text-orange-600">
-                  {display.actualSoFar} {getEnergyUnitString(energyUnit)}
+                  {display.sparkyfitnessBurned}{' '}
+                  {getEnergyUnitString(energyUnit)}
                 </span>
               </div>
               <div className="border-t border-orange-200 dark:border-slate-600 pt-1 flex justify-between text-xs">

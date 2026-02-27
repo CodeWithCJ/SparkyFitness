@@ -483,7 +483,7 @@ const CalculationSettings = () => {
                 </span>{' '}
                 {t(
                   'settings.calorieGoalAdjustment.tdeeGoalDescription',
-                  'Like MyFitnessPal with Apple Watch. SparkyFitness projects your full-day burn by extrapolating your current device data to midnight. The adjustment = projection − goal.'
+                  'Like MyFitnessPal with Apple Watch. SparkyFitness projects your full-day burn by extrapolating your current device data to midnight. The adjustment = projection − BMR.'
                 )}
               </Label>
             </div>
@@ -503,7 +503,7 @@ const CalculationSettings = () => {
                   >
                     {t(
                       'settings.calorieGoalAdjustment.allowNegativeAdjustment',
-                      'Allow negative adjustment (penalise for burning less than TDEE)'
+                      'Allow negative adjustment (penalise for burning less than BMR)'
                     )}
                   </Label>
                 </div>
@@ -600,7 +600,7 @@ const CalculationSettings = () => {
                           : calorieGoalAdjustmentMode === 'tdee'
                             ? t(
                                 'settings.calculationExplanation.remainingTdee',
-                                'Daily Goal − Eaten + (Projected Full Day − Goal)'
+                                'Daily Goal − Eaten + (Projected Full Day − BMR)'
                               )
                             : t(
                                 'settings.calculationExplanation.remainingFixed',
