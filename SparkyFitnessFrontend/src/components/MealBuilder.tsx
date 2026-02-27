@@ -152,6 +152,48 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
             // Use the foods directly without unscaling, so the list shows the actual consumed amounts
             setMealFoods(loggedMeal.foods || []);
+
+            // Fetch the template info for scaling if the meal came from a template
+            if (loggedMeal.meal_template_id) {
+              try {
+                const templateMeal = await queryClient.fetchQuery(
+                  mealViewOptions(loggedMeal.meal_template_id)
+                );
+                if (templateMeal) {
+                  setTemplateInfo({
+                    id: loggedMeal.meal_template_id,
+                    size: templateMeal.serving_size || 1,
+                    unit: templateMeal.serving_unit || 'serving',
+                  });
+                } else {
+                  // If template not found, still perserve ID for scaling
+                  error(
+                    loggingLevel,
+                    'Template meal not found, preserving ID for scaling'
+                  );
+                  setTemplateInfo({
+                    id: loggedMeal.meal_template_id,
+                    size: loggedMeal.unit === 'serving' ? 1 : 100, // Default guess
+                    unit: loggedMeal.unit || 'serving',
+                  });
+                }
+              } catch (err) {
+                error(
+                  loggingLevel,
+                  'Failed to fetch template for logged meal, preserving ID:',
+                  err
+                );
+                // Still preserve ID for scaling
+                setTemplateInfo({
+                  id: loggedMeal.meal_template_id,
+                  size: loggedMeal.unit === 'serving' ? 1 : 100,
+                  unit: loggedMeal.unit || 'serving',
+                });
+              }
+            } else {
+              // Custom meal without a template handling
+              setTemplateInfo({ id: null, size: 1, unit: 'serving' });
+            }
           }
         } catch (err) {
           error(
@@ -427,7 +469,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       }
 
       const foodEntryMealData = {
-        meal_template_id: null, // Detach from template to prevent backend auto-scaling logic
+        meal_template_id: templateInfo.id, // Preserve template ID for proper scaling now that it has logic to handle missing template info
         meal_type: foodEntryMealType,
         entry_date: foodEntryDate,
         name: mealName.trim() || 'Custom Meal', // Use edited name or default
@@ -436,6 +478,13 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         unit: servingUnit,
         foods: mealFoods,
       };
+
+      console.log('[MealBuilder] Saving food diary meal:', {
+        meal_template_id: templateInfo.id,
+        quantity: foodEntryMealData.quantity,
+        unit: foodEntryMealData.unit,
+        templateInfo,
+      });
 
       try {
         if (foodEntryId) {

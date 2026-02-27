@@ -584,34 +584,41 @@ async function createFoodEntryMeal(
     let foodsToProcess = mealData.foods || [];
     let mealServingSize = 1.0; // Default serving size
 
-    // If a meal_template_id is provided and no specific foods are given, fetch foods from the template
-    if (
-      mealData.meal_template_id &&
-      (!mealData.foods || mealData.foods.length === 0)
-    ) {
+    // If a meal_template id is provided fetch the template for serving size
+    if (mealData.meal_template_id) {
       log(
         "info",
-        `Fetching foods from meal template ${mealData.meal_template_id} for new food entry meal.`,
+        `Fetching meal template ${mealData.meal_template_id} for serving size and foods.`,
       );
       const mealTemplate = await mealService.getMealById(
         authenticatedUserId,
         mealData.meal_template_id,
       );
-      if (mealTemplate && mealTemplate.foods) {
-        foodsToProcess = mealTemplate.foods;
-        mealServingSize = mealTemplate.serving_size || 1.0; // Get the meal's serving size
+      if (mealTemplate) {
+        mealServingSize = mealTemplate.serving_size || 1.0; // Always get the meal serving size
         log(
           "info",
           `Meal template serving size: ${mealServingSize} ${
             mealTemplate.serving_unit || "serving"
           }`,
         );
+        // If no specific foods provided use template
+        if (!mealData.foods || mealData.foods.length === 0) {
+          if (mealTemplate.foods) {
+            foodsToProcess = mealTemplate.foods;
+          } else {
+            log(
+              "warn",
+              `Meal template ${mealData.meal_template_id} has no foods.`,
+            );
+          }
+        }
       } else {
         log(
           "warn",
-          `Meal template ${mealData.meal_template_id} not found or has no foods when creating food entry meal.`,
+          `Meal template ${mealData.meal_template_id} not found when creating food entry meal.`,
         );
-        // Continue without foods, or throw an error if template foods are mandatory
+        // Continue without template data
       }
     }
 
@@ -915,6 +922,36 @@ async function getFoodEntryMealWithComponents(
         authenticatedUserId,
       );
 
+    // Calculate the multiplier that was used when storing for editing purposes
+    let storedMultiplier = 1.0;
+    if (foodEntryMeal.meal_template_id) {
+      try {
+        const mealTemplate = await mealService.getMealById(
+          authenticatedUserId,
+          foodEntryMeal.meal_template_id,
+        );
+        if (mealTemplate) {
+          const consumedQuantity = foodEntryMeal.quantity || 1.0;
+          const templateServingSize = mealTemplate.serving_size || 1.0;
+          if (foodEntryMeal.unit === "serving") {
+            storedMultiplier = consumedQuantity;
+          } else {
+            storedMultiplier = consumedQuantity / templateServingSize;
+          }
+          log(
+            "info",
+            `Calculated stored multiplier for unscaling: ${storedMultiplier} (consumed: ${consumedQuantity}, template serving: ${templateServingSize})`,
+          );
+        }
+      } catch (err) {
+        log(
+          "warn",
+          `Failed to fetch meal template for unscaling, using multiplier 1.0`,
+          err,
+        );
+      }
+    }
+
     // Aggregate nutritional data from componentFoodEntries (for frontend display)
     let totalCalories = 0;
     let totalProtein = 0;
@@ -997,7 +1034,7 @@ async function getFoodEntryMealWithComponents(
       ...foodEntryMeal,
       foods: componentFoodEntries.map((entry) => {
         const quantityToReturn = foodEntryMeal.meal_template_id 
-          ? entry.quantity / (foodEntryMeal.quantity || 1)
+          ? entry.quantity / storedMultiplier
           : entry.quantity;
         return {
           food_id: entry.food_id,
