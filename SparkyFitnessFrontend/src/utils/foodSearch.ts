@@ -264,7 +264,7 @@ export const convertNutritionixToFood = (
 
   return {
     id: undefined,
-    name: source.food_name || source.name || 'Unknown',
+    name: source.food_name || source.name,
     brand: source.brand_name || source.brand,
     is_custom: false,
     provider_external_id: item.id,

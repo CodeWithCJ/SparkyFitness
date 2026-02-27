@@ -182,7 +182,7 @@ const EnhancedFoodSearch = ({
 
   const [manualProviderId, setManualProviderId] = useState<string | null>(null);
   const [isOnlineLoading, setIsOnlineLoading] = useState(false);
-
+  const [searchProviderId, setSearchProviderId] = useState<string | null>(null);
   const [externalResults, setExternalResults] = useState<
     ExternalResultWrapper[]
   >([]);
@@ -413,6 +413,7 @@ const EnhancedFoodSearch = ({
       );
 
       if (provider && searchHandlers[provider.provider_type]) {
+        setSearchProviderId(provider.id);
         await searchHandlers[provider.provider_type](
           searchTerm,
           provider.id,
@@ -431,7 +432,7 @@ const EnhancedFoodSearch = ({
 
   const handleUsdaEdit = async (item: UsdaItem) => {
     const nutrientData = await queryClient.fetchQuery(
-      usdaFoodDetailsOptions(item.fdcId, selectedFoodDataProvider!)
+      usdaFoodDetailsOptions(item.fdcId, searchProviderId)
     );
 
     if (nutrientData) {
@@ -450,11 +451,11 @@ const EnhancedFoodSearch = ({
     let nutrientData;
     if (item.brand) {
       nutrientData = await queryClient.fetchQuery(
-        nutritionixBrandedNutrientsOptions(item.id, selectedFoodDataProvider!)
+        nutritionixBrandedNutrientsOptions(item.id, searchProviderId)
       );
     } else {
       nutrientData = await queryClient.fetchQuery(
-        nutritionixNaturalNutrientsOptions(item.name, selectedFoodDataProvider!)
+        nutritionixNaturalNutrientsOptions(item.name, searchProviderId)
       );
     }
 
@@ -472,7 +473,7 @@ const EnhancedFoodSearch = ({
 
   const handleFatSecretEdit = async (item: FatSecretFoodItem) => {
     const nutrientData = await queryClient.fetchQuery(
-      fatSecretNutrientOptions(item.food_id, selectedFoodDataProvider!)
+      fatSecretNutrientOptions(item.food_id, searchProviderId)
     );
 
     if (nutrientData) {
@@ -722,16 +723,23 @@ const EnhancedFoodSearch = ({
               providerLabel={result.provider_type.toUpperCase()}
               nutrientConfig={nutrientConfig}
               onEditClick={() => {
-                if (result.provider_type === 'openfoodfacts') {
-                  handleOpenFoodFactsEdit(result.raw);
-                } else if (result.provider_type === 'nutritionix') {
-                  handleNutritionixEdit(result.raw);
-                } else if (result.provider_type === 'fatsecret') {
-                  handleFatSecretEdit(result.raw);
-                } else if (result.provider_type === 'usda') {
-                  handleUsdaEdit(result.raw);
-                } else {
-                  handleMealieOrTandoorEdit(result.raw);
+                switch (result.provider_type) {
+                  case 'openfoodfacts':
+                    handleOpenFoodFactsEdit(result.raw);
+                    break;
+                  case 'nutritionix':
+                    handleNutritionixEdit(result.raw);
+                    break;
+                  case 'fatsecret':
+                    handleFatSecretEdit(result.raw);
+                    break;
+                  case 'usda':
+                    handleUsdaEdit(result.raw);
+                    break;
+                  case 'mealie':
+                  case 'tandoor':
+                    handleMealieOrTandoorEdit(result.raw);
+                    break;
                 }
               }}
             />
