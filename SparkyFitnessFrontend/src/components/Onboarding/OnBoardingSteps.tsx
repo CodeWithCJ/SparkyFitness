@@ -118,12 +118,12 @@ export const OnboardingSteps = ({
             <button
               onClick={() => {
                 if (weightUnit !== 'kg' && formData.currentWeight) {
-                  handleSelect(
-                    'currentWeight',
-                    Number(
-                      (Number(formData.currentWeight) * 0.453592).toFixed(1)
-                    )
-                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    currentWeight: Number(
+                      (Number(prev.currentWeight) * 0.453592).toFixed(1)
+                    ),
+                  }));
                 }
                 setLocalWeightUnit('kg');
               }}
@@ -134,12 +134,12 @@ export const OnboardingSteps = ({
             <button
               onClick={() => {
                 if (weightUnit !== 'lbs' && formData.currentWeight) {
-                  handleSelect(
-                    'currentWeight',
-                    Number(
-                      (Number(formData.currentWeight) * 2.20462).toFixed(1)
-                    )
-                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    currentWeight: Number(
+                      (Number(prev.currentWeight) * 2.20462).toFixed(1)
+                    ),
+                  }));
                 }
                 setLocalWeightUnit('lbs');
               }}
@@ -185,10 +185,10 @@ export const OnboardingSteps = ({
             <button
               onClick={() => {
                 if (heightUnit !== 'cm' && formData.height) {
-                  handleSelect(
-                    'height',
-                    Number((Number(formData.height) * 2.54).toFixed(1))
-                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    height: Number((Number(prev.height) * 2.54).toFixed(1)),
+                  }));
                 }
                 setLocalHeightUnit('cm');
               }}
@@ -199,10 +199,10 @@ export const OnboardingSteps = ({
             <button
               onClick={() => {
                 if (heightUnit !== 'inches' && formData.height) {
-                  handleSelect(
-                    'height',
-                    Number((Number(formData.height) / 2.54).toFixed(1))
-                  );
+                  setFormData((prev) => ({
+                    ...prev,
+                    height: Number((Number(prev.height) / 2.54).toFixed(1)),
+                  }));
                 }
                 setLocalHeightUnit('inches');
               }}
@@ -293,7 +293,10 @@ export const OnboardingSteps = ({
                   }
                   onSelect={(date) => {
                     if (date) {
-                      handleSelect('birthDate', format(date, 'yyyy-MM-dd'));
+                      setFormData((prev) => ({
+                        ...prev,
+                        birthDate: format(date, 'yyyy-MM-dd'),
+                      }));
                     }
                   }}
                   disabled={(date) =>
