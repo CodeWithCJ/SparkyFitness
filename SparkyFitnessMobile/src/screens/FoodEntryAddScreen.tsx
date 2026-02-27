@@ -15,14 +15,12 @@ import { dailySummaryQueryKey, foodsQueryKey, goalsQueryKey, foodVariantsQueryKe
 import { useMealTypes } from '../hooks';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import type { FoodInfoItem } from '../types/foodInfo';
+import type { RootStackScreenProps } from '../types/navigation';
 
-interface FoodEntryAddScreenProps {
-  navigation?: { goBack: () => void };
-  route?: { params: { item: FoodInfoItem; date?: string } };
-}
+type FoodEntryAddScreenProps = RootStackScreenProps<'FoodEntryAdd'>;
 
 const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, route }) => {
-  const { item, date: initialDate } = route!.params;
+  const { item, date: initialDate } = route.params;
   const nav = useNavigation();
   const [selectedDate, setSelectedDate] = useState(initialDate ?? getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
@@ -262,7 +260,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
-          onPress={() => navigation!.goBack()}
+          onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >

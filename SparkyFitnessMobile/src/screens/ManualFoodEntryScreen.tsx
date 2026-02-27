@@ -4,11 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
+import type { RootStackScreenProps } from '../types/navigation';
 
-interface ManualFoodEntryScreenProps {
-  navigation: { goBack: () => void };
-  route?: { params?: { date?: string } };
-}
+type ManualFoodEntryScreenProps = RootStackScreenProps<'ManualFoodEntry'>;
 
 const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();

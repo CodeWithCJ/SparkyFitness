@@ -20,11 +20,9 @@ import { ExternalFoodItem } from '../types/externalFoods';
 import { Meal } from '../types/meals';
 import { foodItemToFoodInfo, externalFoodItemToFoodInfo, mealToFoodInfo } from '../types/foodInfo';
 import type { FoodInfoItem } from '../types/foodInfo';
+import type { RootStackScreenProps } from '../types/navigation';
 
-interface FoodSearchScreenProps {
-  navigation: { goBack: () => void; navigate: (screen: string, params: any) => void };
-  route?: { params?: { date?: string } };
-}
+type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
 
 type FoodSection = {
   title: string;
@@ -40,7 +38,7 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
-  const date = route?.params?.date;
+  const date = route.params?.date;
   const insets = useSafeAreaInsets();
   const [accentColor, textMuted, textSecondary] = useCSSVariable([
     '--color-accent-primary',

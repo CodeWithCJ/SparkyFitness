@@ -7,11 +7,9 @@ import { formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
+import type { RootStackScreenProps } from '../types/navigation';
 
-interface FoodEntryViewScreenProps {
-  navigation?: { goBack: () => void };
-  route?: { params: { entry: FoodEntry } };
-}
+type FoodEntryViewScreenProps = RootStackScreenProps<'FoodEntryView'>;
 
 const scaledValue = (value: number | undefined, entry: FoodEntry): number => {
   if (value === undefined || !entry.serving_size) return 0;
@@ -19,7 +17,7 @@ const scaledValue = (value: number | undefined, entry: FoodEntry): number => {
 };
 
 const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, route }) => {
-  const { entry } = route!.params;
+  const { entry } = route.params;
   const insets = useSafeAreaInsets();
 
   const { confirmAndDelete, isPending, invalidateCache } = useDeleteFoodEntry({
@@ -27,7 +25,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     entryDate: entry.entry_date,
     onSuccess: () => {
       invalidateCache();
-      navigation!.goBack();
+      navigation.goBack();
     },
   });
 
@@ -65,7 +63,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
-          onPress={() => navigation!.goBack()}
+          onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >

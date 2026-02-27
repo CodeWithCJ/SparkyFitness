@@ -21,7 +21,7 @@ const ROW_COLLAPSE_DURATION = 300;
 const DELETE_ACTION_WIDTH = 80;
 
 const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition }) => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation();
   const swipeableRef = useRef<any>(null);
   const rowHeight = useSharedValue<number | null>(null);
   const isRemoving = useSharedValue(false);

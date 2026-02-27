@@ -14,10 +14,15 @@ import { calculateEffectiveBurned, calculateCalorieBalance } from '../services/c
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import HydrationGauge from '../components/HydrationGauge';
 import ExerciseProgressCard from '../components/ExerciseProgressCard';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
+import type { RootStackParamList, TabParamList } from '../types/navigation';
 
-interface DashboardScreenProps {
-  navigation: { navigate: (screen: string) => void };
-}
+type DashboardScreenProps = CompositeScreenProps<
+  NativeBottomTabScreenProps<TabParamList, 'Dashboard'>,
+  StackScreenProps<RootStackParamList>
+>;
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(getTodayDate);

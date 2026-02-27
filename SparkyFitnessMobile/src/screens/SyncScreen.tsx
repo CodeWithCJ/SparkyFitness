@@ -22,17 +22,17 @@ import { addLog } from '../services/LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { HealthMetricStates, HealthDataDisplayState } from '../types/healthRecords';
 import { useServerConnection, useSyncHealthData } from '../hooks';
+import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
+import type { TabParamList } from '../types/navigation';
 
-interface SyncScreenProps {
-  navigation: { navigate: (screen: string) => void };
-}
+type SyncScreenProps = NativeBottomTabScreenProps<TabParamList, 'Sync'>;
 
 interface TimeRangeOption {
   label: string;
   value: TimeRange;
 }
 
-const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
+const SyncScreen: React.FC<SyncScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [healthData, setHealthData] = useState<HealthDataDisplayState>({});
