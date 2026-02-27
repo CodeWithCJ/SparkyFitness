@@ -50,7 +50,6 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[API] Sync failed: ${message}`, 'ERROR');
-    console.error('Failed to sync health data', error);
     throw error;
   }
 };
@@ -83,13 +82,11 @@ export const checkServerConnection = async (): Promise<boolean> => {
       // For non-2xx responses, log the error and return false
       const errorText = await response.text();
       addLog(`[API] Server connection check failed: status ${response.status}`, 'WARNING', [errorText]);
-      console.error(`[API Service] Connection check failed with status ${response.status}: ${errorText}`);
       return false;
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[API] Server connection check failed: ${message}`, 'ERROR');
-    console.error('[API Service] Failed to check server connection:', error);
     return false;
   }
 };
