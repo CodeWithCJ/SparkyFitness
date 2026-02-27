@@ -22,13 +22,13 @@ import type {
   MealPlanTemplateAssignment,
 } from '@/types/meal';
 import type { Food, FoodVariant } from '@/types/food';
-import FoodSearchDialog from '@/components/FoodSearchDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import MealUnitSelector from './MealUnitSelector';
 import { Edit, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { mealViewOptions } from '@/hooks/Foods/useMeals';
 import { foodViewOptions } from '@/hooks/Foods/useFoods';
+import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 
 // Extended assignment type with nutrition data for display
 interface ExtendedAssignment extends MealPlanTemplateAssignment {

@@ -20,7 +20,7 @@ import { warn, error } from '@/utils/logging';
 import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
 import type { Meal, MealFood, MealPayload } from '@/types/meal';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
-import FoodSearchDialog from './FoodSearchDialog';
+import FoodSearchDialog from './FoodSearch/FoodSearchDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   mealViewOptions,

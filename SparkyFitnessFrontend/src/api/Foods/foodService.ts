@@ -1,6 +1,7 @@
+import { OpenFoodFactsProduct } from '@/components/FoodSearch/FoodSearch';
 import { apiCall } from '../api';
 
-import type { Food, FoodDeletionImpact } from '@/types/food';
+import type { CSVData, Food, FoodDeletionImpact } from '@/types/food';
 
 export type FoodFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
 
@@ -174,4 +175,63 @@ export const searchTandoorFoods = async (
     },
   });
   return response || [];
+};
+
+export const getRecentAndTopFoods = async (
+  limit: number,
+  mealType?: string
+) => {
+  const params = new URLSearchParams({ limit: limit.toString() });
+  if (mealType) params.append('mealType', mealType);
+
+  return apiCall(`/foods?${params.toString()}`);
+};
+
+export const searchDatabaseFoods = async (
+  term: string,
+  limit: number,
+  mealType?: string
+) => {
+  const params = new URLSearchParams({
+    name: term,
+    broadMatch: 'true',
+    limit: limit.toString(),
+  });
+  if (mealType) params.append('mealType', mealType);
+
+  return apiCall(`/foods?${params.toString()}`);
+};
+
+export interface OpenFoodFactsSearchResponse {
+  products?: OpenFoodFactsProduct[];
+}
+
+export interface OpenFoodFactsBarcodeResponse {
+  status: number;
+  product?: OpenFoodFactsProduct;
+}
+
+export const searchOpenFoodFactsApi = async (
+  query: string
+): Promise<OpenFoodFactsSearchResponse> => {
+  return apiCall(
+    `/foods/openfoodfacts/search?query=${encodeURIComponent(query)}`
+  );
+};
+
+export const searchOpenFoodFactsBarcodeApi = async (
+  barcode: string
+): Promise<OpenFoodFactsBarcodeResponse> => {
+  return apiCall(`/foods/openfoodfacts/barcode/${barcode}`);
+};
+
+export type FoodDataForBackend = Omit<CSVData, 'id'>;
+
+export const importFoodsFromCsv = async (
+  foods: FoodDataForBackend[]
+): Promise<void> => {
+  await apiCall('/foods/import-from-csv', {
+    method: 'POST',
+    body: JSON.stringify({ foods }),
+  });
 };

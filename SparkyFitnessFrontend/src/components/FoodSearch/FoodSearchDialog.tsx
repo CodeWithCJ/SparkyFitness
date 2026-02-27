@@ -6,9 +6,9 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useTranslation } from 'react-i18next';
-import EnhancedFoodSearch from './EnhancedFoodSearch';
 import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
+import EnhancedFoodSearch from './FoodSearch';
 
 interface FoodSearchDialogProps {
   open: boolean;
