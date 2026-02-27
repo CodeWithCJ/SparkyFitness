@@ -1,29 +1,5 @@
 import { apiCall } from '@/api/api';
-
-export interface Exercise {
-  id: string;
-  source?: string; // e.g., 'manual', 'wger', 'free-exercise-db'
-  source_id?: string; // ID from the external source
-  name: string;
-  force?: string; // e.g., 'static', 'pull', 'push'
-  level?: string; // e.g., 'beginner', 'intermediate', 'expert'
-  mechanic?: string; // e.g., 'isolation', 'compound'
-  equipment?: string[]; // Stored as JSON array of strings
-  primary_muscles?: string[]; // Stored as JSON array of strings
-  secondary_muscles?: string[]; // Stored as JSON array of strings
-  instructions?: string[]; // Stored as JSON array of strings
-  category: string; // e.g., 'strength', 'cardio'
-  images?: string[]; // Stored as JSON array of URLs (local paths after download)
-  calories_per_hour: number;
-  description?: string;
-  duration_min?: number; // Added duration_min
-  user_id?: string;
-  is_custom?: boolean;
-  shared_with_public?: boolean;
-  created_at?: string;
-  updated_at?: string;
-  tags?: string[];
-}
+import { Exercise } from '@/types/exercises';
 
 export const searchExercises = async (
   query: string,

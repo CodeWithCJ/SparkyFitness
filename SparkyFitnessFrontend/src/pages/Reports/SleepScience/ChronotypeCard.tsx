@@ -1,4 +1,4 @@
-import type { ChronotypeData as ChronotypeApiData } from '@/api/SleepScience/sleepScience';
+import type { ChronotypeData as ChronotypeApiData } from '@/types/sleepScience';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Moon, Sun, Sunrise } from 'lucide-react';
 import type React from 'react';

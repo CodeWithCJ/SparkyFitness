@@ -139,3 +139,68 @@ export interface CSVData {
   iron: number;
   custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
 }
+
+export interface FatSecretFoodItem {
+  serving_qty: number;
+  carbohydrates: number;
+  name: string;
+  brand: string;
+  food_id: string;
+  food_name: string;
+  brand_name?: string;
+  food_type: string;
+  food_url: string;
+  food_description: string;
+  // Add parsed basic nutrients from food_description
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  serving_size?: number;
+  serving_unit?: string;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  glycemic_index?: GlycemicIndex;
+}
+
+export interface FatSecretServing {
+  serving_id: string;
+  serving_description: string;
+  metric_serving_amount: string;
+  metric_serving_unit: string;
+  number_of_units: string;
+  measurement_description: string;
+  is_default: string;
+  calories: string;
+  carbohydrate: string;
+  protein: string;
+  fat: string;
+  saturated_fat?: string;
+  polyunsaturated_fat?: string;
+  monounsaturated_fat?: string;
+  trans_fat?: string;
+  cholesterol?: string;
+  sodium?: string;
+  potassium?: string;
+  fiber?: string;
+  sugar?: string;
+  added_sugars?: string;
+  vitamin_d?: string;
+  vitamin_a?: string;
+  vitamin_c?: string;
+  calcium?: string;
+  iron?: string;
+}
+
+export type FoodDataForBackend = Omit<CSVData, 'id'>;

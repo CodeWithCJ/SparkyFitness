@@ -15,11 +15,6 @@ import EditExerciseEntryDialog from './EditExerciseEntryDialog';
 import ExercisePlaybackModal from '@/pages/Diary/ExercisePlaybackModal';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
-import {
-  GroupedExerciseEntry,
-  type ExerciseEntry,
-} from '@/api/Exercises/exerciseEntryService';
-import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import type {
   WorkoutPresetSet,
   WorkoutPreset,
@@ -40,6 +35,11 @@ import {
 } from '@/hooks/Exercises/useExerciseEntries';
 import { useQueryClient } from '@tanstack/react-query';
 import { exerciseByIdOptions } from '@/hooks/Exercises/useExercises';
+import {
+  Exercise,
+  ExerciseEntry,
+  GroupedExerciseEntry,
+} from '@/types/exercises';
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
 interface PresetExerciseToLog extends Exercise {

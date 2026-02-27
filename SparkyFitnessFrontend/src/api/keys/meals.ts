@@ -1,5 +1,4 @@
-import { MealFilter } from '@/api/Foods/meals';
-import { FoodFilter } from '@/api/Foods/foodService';
+import { MealFilter } from '@/types/meal';
 
 export const mealKeys = {
   all: ['meals'] as const,
@@ -15,7 +14,7 @@ export const foodKeys = {
   lists: () => [...foodKeys.all, 'list'] as const,
   list: (
     searchTerm: string,
-    filter: FoodFilter,
+    filter: MealFilter,
     page: number,
     limit: number,
     sort: string

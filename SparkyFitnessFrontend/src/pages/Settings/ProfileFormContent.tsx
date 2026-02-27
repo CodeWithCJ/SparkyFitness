@@ -20,11 +20,10 @@ import {
 } from '@/components/ui/popover'; // Import Popover components
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
-import { ProfileFormState } from './SettingsPage';
-import { Profile } from '@/api/Settings/profileService';
 import { useAuth } from '@/hooks/useAuth';
 import { useUpdateProfileMutation } from '@/hooks/Settings/useProfile';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { Profile, ProfileFormState } from '@/types/settings';
 
 export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
   const { t } = useTranslation();

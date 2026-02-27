@@ -19,8 +19,8 @@ import {
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
-import { DayData } from '@/api/Diary/foodEntryService';
 import { useMiniNutritionTrendData } from '@/hooks/Foods/useFoods';
+import { DayData } from '@/types/diary';
 
 interface MiniNutritionTrendsProps {
   selectedDate: string;

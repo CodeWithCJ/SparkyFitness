@@ -3,11 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { format, parseISO, subDays } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import {
-  getMostRecentMeasurement,
-  type CombinedMeasurement,
-  type CheckInMeasurement,
-} from '@/api/CheckIn/checkInService';
+import { getMostRecentMeasurement } from '@/api/CheckIn/checkInService';
 import {
   calculateBodyFatBmi,
   calculateBodyFatNavy,
@@ -29,7 +25,11 @@ import {
   useSaveMoodEntryMutation,
 } from '@/hooks/CheckIn/useMood';
 import { useFastingHistory } from '@/hooks/Fasting/useFasting';
-import type { CustomMeasurement } from '@/api/CheckIn/checkInService';
+import {
+  CustomMeasurement,
+  CombinedMeasurement,
+  CheckInMeasurement,
+} from '@/types/checkin';
 
 function useDerivedState<T>(derivedValue: T, selectedDate: string) {
   const [stateMap, setStateMap] = useState<Record<string, T>>({});
@@ -266,7 +266,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       });
     });
 
-    recentStandard.forEach((s) => {
+    recentStandard.forEach((s: CheckInMeasurement) => {
       if (s.weight !== null)
         allMeasurements.push({
           id: `${s.id}-weight`,

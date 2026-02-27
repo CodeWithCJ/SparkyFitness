@@ -1,7 +1,6 @@
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type OidcProvider } from '../../api/Admin/oidcSettingsService';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { OidcProvider } from '@/types/admin';
 
 export const ProviderDialog: React.FC<{
   provider: OidcProvider;

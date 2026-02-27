@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
+import { AIService } from '@/types/settings';
 import { Globe, User, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { AIService } from '@/api/Settings/aiServiceSettingsService';
 
 interface GlobalOverrideBannerProps {
   activeGlobalSetting: AIService | undefined;

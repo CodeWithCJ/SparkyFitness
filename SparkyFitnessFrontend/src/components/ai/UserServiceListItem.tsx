@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Edit, Trash2, Globe, User } from 'lucide-react';
 import { getServiceTypes } from '@/utils/aiServiceUtils';
-import type { AIService } from '@/api/Settings/aiServiceSettingsService';
 import { ServiceForm } from './ServiceForm';
+import { AIService } from '@/types/settings';
 
 interface UserServiceListItemProps {
   service: AIService;

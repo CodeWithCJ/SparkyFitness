@@ -14,7 +14,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
-import { type ExerciseEntry } from '@/api/Exercises/exerciseEntryService';
 import type { WorkoutPresetSet } from '@/types/workout';
 import ExerciseActivityDetailsEditor, {
   type ActivityDetailKeyValuePair,
@@ -41,6 +40,7 @@ import {
 } from '@/hooks/Exercises/useExerciseEntries';
 import { useQueryClient } from '@tanstack/react-query';
 import { SortableSetItem } from './ExerciseSortableItems';
+import { ExerciseEntry } from '@/types/exercises';
 
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;

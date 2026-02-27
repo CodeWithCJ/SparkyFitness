@@ -6,7 +6,6 @@ import {
   type ReactNode,
   useMemo,
 } from 'react';
-import { type WaterContainer } from '../api/Settings/waterContainerService';
 import { usePreferences } from './PreferencesContext';
 import { useAuth } from '../hooks/useAuth';
 import { useActiveUser } from './ActiveUserContext';
@@ -14,6 +13,7 @@ import {
   useWaterContainersQuery,
   useSetPrimaryWaterContainerMutation,
 } from '@/hooks/Settings/useWaterContainers';
+import { WaterContainer } from '@/types/settings';
 
 interface WaterContainerContextType {
   activeContainer: WaterContainer | null;

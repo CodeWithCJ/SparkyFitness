@@ -12,18 +12,15 @@ import {
   Legend,
 } from 'recharts';
 import { Battery } from 'lucide-react';
-import type {
-  CustomCategory,
-  CustomMeasurementData,
-} from '@/api/Reports/reportsService';
 import BodyBatteryGauge from './BodyBatteryGauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import { BODY_BATTERY_METRICS } from '@/constants/reports';
+import { CustomCategory, CustomMeasurement } from '@/types/checkin';
 
 interface BodyBatteryCardProps {
   categories: CustomCategory[];
-  measurementsData: Record<string, CustomMeasurementData[]>;
+  measurementsData: Record<string, CustomMeasurement[]>;
 }
 
 interface BodyBatteryDay {

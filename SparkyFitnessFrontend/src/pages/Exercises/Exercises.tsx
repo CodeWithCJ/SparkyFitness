@@ -41,11 +41,11 @@ import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAuth } from '@/hooks/useAuth';
 import { error } from '@/utils/logging';
-import {
-  type ExerciseDeletionImpact,
-  type ExerciseOwnershipFilter,
-} from '@/api/Exercises/exerciseService';
-import type { Exercise as ExerciseInterface } from '@/api/Exercises/exerciseSearchService';
+import type {
+  ExerciseDeletionImpact,
+  Exercise as ExerciseInterface,
+  ExerciseOwnershipFilter,
+} from '@/types/exercises';
 import WorkoutPresetsManager from './WorkoutPresetsManager';
 import WorkoutPlansManager from '@/pages/Exercises/WorkoutPlansManager';
 import {
@@ -57,7 +57,7 @@ import {
   useUpdateExerciseShareStatusMutation,
 } from '@/hooks/Exercises/useExercises';
 import { useQueryClient } from '@tanstack/react-query';
-import { exerciseKeys } from '@/api/keys/exercises';
+import { useExerciseInvalidation } from '@/hooks/useInvalidateKeys';
 
 const ExerciseDatabaseManager = () => {
   const { t } = useTranslation();
@@ -132,7 +132,7 @@ const ExerciseDatabaseManager = () => {
   const { mutateAsync: updateExerciseShareStatus } =
     useUpdateExerciseShareStatusMutation();
   const { mutateAsync: deleteExercise } = useDeleteExerciseMutation();
-
+  const invalidateExercises = useExerciseInvalidation();
   const currentExercises = data ? data.exercises : [];
   const totalExercisesCount = data ? data.totalCount : 0;
   useEffect(() => {
@@ -806,9 +806,7 @@ const ExerciseDatabaseManager = () => {
         open={isAddExerciseDialogOpen}
         onOpenChange={setIsAddExerciseDialogOpen}
         mode="database-manager"
-        onExerciseAdded={() => {
-          queryClient.invalidateQueries({ queryKey: exerciseKeys.lists() });
-        }}
+        onExerciseAdded={() => invalidateExercises()}
       />
       {/* Edit Exercise Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

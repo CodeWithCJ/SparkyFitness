@@ -51,12 +51,12 @@ export interface GarminLoginPayload {
   email: string;
   password: string;
 }
-export interface GarminProviderData {
+interface GarminProviderData {
   id: string;
   provider_type: string;
 }
 
-export interface GarminLoginResponse {
+interface GarminLoginResponse {
   status: string;
   provider?: GarminProviderData;
   client_state?: string;

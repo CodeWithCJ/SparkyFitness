@@ -11,7 +11,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
-import { CustomCategory } from '@/api/CheckIn/checkInService';
+import { CustomCategory } from '@/types/checkin';
 
 interface CheckInFormProps {
   bodyFatPercentage: string;

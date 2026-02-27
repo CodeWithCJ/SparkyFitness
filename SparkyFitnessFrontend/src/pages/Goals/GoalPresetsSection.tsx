@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { GoalPreset } from '@/api/Goals/goals';
+import { GoalPreset } from '@/types/goals';
 
 interface GoalPresetsSectionProps {
   handleCreatePresetClick: () => void;

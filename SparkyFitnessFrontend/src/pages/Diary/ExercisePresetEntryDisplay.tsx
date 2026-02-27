@@ -10,14 +10,14 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import type {
-  GroupedExerciseEntry,
-  ExerciseEntry,
-} from '@/api/Exercises/exerciseEntryService';
-import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
+import {
+  Exercise,
+  ExerciseEntry,
+  GroupedExerciseEntry,
+} from '@/types/exercises';
 
 interface ExercisePresetEntryDisplayProps {
   presetEntry: GroupedExerciseEntry;

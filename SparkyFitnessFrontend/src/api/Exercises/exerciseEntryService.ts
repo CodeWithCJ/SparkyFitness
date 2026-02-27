@@ -1,70 +1,12 @@
 import { apiCall } from '@/api/api';
 import { getExerciseEntriesForDate as getDailyExerciseEntries } from '@/api/Diary/dailyProgressService';
-import type { Exercise } from './exerciseSearchService';
 import { parseJsonArray } from './exerciseService';
-import type { ExerciseProgressData } from '@/api/Reports/reportsService';
 import type { WorkoutPresetSet } from '@/types/workout';
-import type { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
-
-export interface ExerciseEntry {
-  id: string;
-  exercise_id: string;
-  duration_minutes?: number;
-  calories_burned: number;
-  entry_date: string;
-  notes?: string;
-  sets: WorkoutPresetSet[];
-  image_url?: string;
-  distance?: number;
-  avg_heart_rate?: number;
-  exercise_snapshot: Exercise; // Renamed from 'exercises' to 'exercise_snapshot'
-  activity_details?: ActivityDetailKeyValuePair[]; // New field
-  exercise_preset_entry_id?: string; // New field
-  created_at: string; // Add created_at for sorting
-}
-
-// Define a type for the grouped entries returned by the backend
-export interface GroupedExerciseEntry {
-  type: 'individual' | 'preset';
-  id: string; // UUID for individual exercise entry or exercise preset entry
-  created_at: string; // For sorting
-  // Common fields for individual exercise entries
-  exercise_id?: string;
-  duration_minutes?: number;
-  calories_burned?: number;
-  entry_date?: string;
-  notes?: string;
-  workout_plan_assignment_id?: number;
-  image_url?: string;
-  created_by_user_id?: string;
-  exercise_name?: string;
-  calories_per_hour?: number;
-  updated_by_user_id?: string;
-  category?: string;
-  source?: string;
-  source_id?: string;
-  force?: string;
-  level?: string;
-  mechanic?: string;
-  equipment?: string[];
-  primary_muscles?: string[];
-  secondary_muscles?: string[];
-  instructions?: string[];
-  images?: string[];
-  distance?: number;
-  avg_heart_rate?: number;
-  sets?: WorkoutPresetSet[];
-  exercise_snapshot?: Exercise; // Snapshot of exercise details
-
-  // Fields specific to preset entries
-  workout_preset_id?: number;
-  name?: string; // Name of the preset entry
-  description?: string;
-  // Array of individual exercise entries within this preset
-  exercises?: ExerciseEntry[]; // This will hold the individual exercise entries
-}
+import { ExerciseEntry } from '@/types/diary';
+import { GroupedExerciseEntry } from '@/types/exercises';
+import { ExerciseProgressData } from '@/types/reports';
 
 export const fetchExerciseEntries = async (
   selectedDate: string
@@ -355,7 +297,7 @@ export const getActivityDetails = async (
   providerName: string
 ): Promise<ActivityDetailsResponse> => {
   return apiCall(
-    `/api/exercises/activity-details/${exerciseEntryId}/${providerName}`,
+    `/exercises/activity-details/${exerciseEntryId}/${providerName}`,
     {
       method: 'GET',
     }

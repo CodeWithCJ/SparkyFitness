@@ -18,7 +18,6 @@ import { debug, info, error } from '@/utils/logging';
 import { authClient } from '@/lib/auth-client';
 
 import { useAuth } from '@/hooks/useAuth';
-import type { AuthResponse } from '@/types/auth';
 import useToggle from '@/hooks/use-toggle';
 import PasswordToggle from '../../components/PasswordToggle';
 import MfaChallenge from './MfaChallenge';
@@ -33,6 +32,7 @@ import {
 } from '@/hooks/Auth/useAuth';
 import { MagicLinkRequestDialog } from './MagicLinkRequestDialog';
 import { useQueryClient } from '@tanstack/react-query';
+import { AuthResponse } from '@/types/auth';
 
 const Auth = () => {
   const navigate = useNavigate();

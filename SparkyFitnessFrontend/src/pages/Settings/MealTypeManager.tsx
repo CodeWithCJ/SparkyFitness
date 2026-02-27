@@ -22,7 +22,6 @@ import {
   Zap,
   ZapOff,
 } from 'lucide-react';
-import { type MealTypeDefinition } from '@/api/Diary/mealTypeService';
 import { Badge } from '@/components/ui/badge';
 import {
   useCreateMealTypeMutation,
@@ -30,6 +29,7 @@ import {
   useMealTypes,
   useUpdateMealTypeMutation,
 } from '@/hooks/Diary/useMealTypes';
+import { MealTypeDefinition } from '@/types/diary';
 
 const MealTypeManager = () => {
   const { t } = useTranslation();

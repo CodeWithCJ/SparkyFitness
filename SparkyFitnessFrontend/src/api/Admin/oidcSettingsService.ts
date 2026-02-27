@@ -1,30 +1,5 @@
 import { apiCall } from '@/api/api';
-
-export interface OidcProvider {
-  id?: string;
-  issuer_url: string;
-  client_id: string;
-  client_secret?: string;
-  redirect_uris: string[];
-  scope: string;
-  token_endpoint_auth_method: string;
-  response_types: string[];
-  is_active: boolean;
-  display_name?: string;
-  logo_url?: string;
-  auto_register?: boolean;
-  signing_algorithm?: string;
-  profile_signing_algorithm?: string;
-  timeout?: number;
-  domain?: string;
-  provider_id?: string;
-  is_env_configured?: boolean;
-}
-
-export interface CreateOidcProvider {
-  id: string;
-  message: string;
-}
+import { OidcProvider, CreateOidcProvider } from '@/types/admin';
 
 const oidcSettingsService = {
   getProviders: async (): Promise<OidcProvider[]> => {
