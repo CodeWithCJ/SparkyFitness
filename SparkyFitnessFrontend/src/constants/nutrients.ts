@@ -204,3 +204,11 @@ export const EMPTY_MEAL_TOTALS: MealTotals = {
   calcium: 0,
   custom_nutrients: {},
 };
+
+export const DEFAULT_NUTRIENTS = [
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'dietary_fiber',
+];

@@ -20,7 +20,7 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import { useState } from 'react';
-import EnhancedFoodSearch from '../../components/EnhancedFoodSearch';
+import EnhancedFoodSearch from '../../components/FoodSearch/FoodSearch';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { debug } from '@/utils/logging';
@@ -55,6 +55,7 @@ interface MealTotals {
 }
 
 import type { UserCustomNutrient } from '@/types/customNutrient';
+import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 
 interface MealCardProps {
   meal: {
@@ -174,17 +175,9 @@ const MealCard = ({
       .map((cn) => cn.name),
   ];
 
-  const defaultNutrients = [
-    'calories',
-    'protein',
-    'carbs',
-    'fat',
-    'dietary_fiber',
-  ];
-
   const quickInfoNutrients = quickInfoPreferences
     ? quickInfoPreferences.visible_nutrients
-    : defaultNutrients;
+    : DEFAULT_NUTRIENTS;
 
   debug(loggingLevel, 'MealCard: isMobile:', isMobile);
   debug(loggingLevel, 'MealCard: platform:', platform);

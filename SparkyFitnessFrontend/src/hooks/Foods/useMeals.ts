@@ -11,21 +11,22 @@ import {
 import { MealPayload } from '@/types/meal';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import i18n from '@/i18n';
 
-export const useMeals = (filter: MealFilter) => {
-  const { t } = useTranslation();
+export const mealSearchOptions = (filter: MealFilter, term?: string) => ({
+  queryKey: mealKeys.filter(filter, term),
+  queryFn: () => getMeals(filter, term),
+  meta: {
+    errorTitle: i18n.t('common.error', 'Error'),
+    errorMessage: i18n.t(
+      'mealManagement.failedToLoadMeals',
+      'Failed to load meals.'
+    ),
+  },
+});
 
-  return useQuery({
-    queryKey: mealKeys.filter(filter),
-    queryFn: () => getMeals(filter),
-    meta: {
-      errorTitle: t('common.error', 'Error'),
-      errorMessage: t(
-        'mealManagement.failedToLoadMeals',
-        'Failed to load meals.'
-      ),
-    },
-  });
+export const useMeals = (filter: MealFilter, term?: string) => {
+  return useQuery(mealSearchOptions(filter, term));
 };
 
 export const mealDeletionImpactOptions = (mealId: string) => ({
@@ -34,7 +35,10 @@ export const mealDeletionImpactOptions = (mealId: string) => ({
   staleTime: 1000 * 10,
   enabled: !!mealId,
   meta: {
-    errorMessage: 'Failed to load meal deletion impact.',
+    errorMessage: i18n.t(
+      'mealManagement.failedToLoadDeletionImpact',
+      'Failed to load meal deletion impact.'
+    ),
   },
 });
 export const mealViewOptions = (mealId: string) => ({
@@ -43,7 +47,10 @@ export const mealViewOptions = (mealId: string) => ({
   staleTime: 1000 * 10,
   enabled: !!mealId,
   meta: {
-    errorMessage: 'Failed to load meal details.',
+    errorMessage: i18n.t(
+      'mealManagement.failedToLoadMealDetails',
+      'Failed to load meal details.'
+    ),
   },
 });
 

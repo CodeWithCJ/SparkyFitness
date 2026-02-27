@@ -37,7 +37,7 @@ ENV NGINX_RATE_LIMIT=5r/s
 EXPOSE 80
 
 # Healthcheck
-HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["curl", "http://127.0.0.1"]
+HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["curl", "-f", "http://127.0.0.1"]
 
 # Start with our custom entrypoint
 CMD ["/docker-entrypoint.sh"]

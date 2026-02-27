@@ -75,7 +75,7 @@ export const useExternalProviders = (userId?: string) => {
 };
 export const useExternalProvidersQuery = () => {
   return useQuery({
-    queryKey: ['providers', 'external'],
+    queryKey: externalProviderKeys.lists(),
     queryFn: getExternalDataProviders,
     staleTime: 1000 * 60 * 60 * 24,
   });

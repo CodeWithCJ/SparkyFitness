@@ -102,12 +102,6 @@ const SparkyChatInterface = () => {
   }, [historyData, localMessages, welcomeMessage]);
 
   useEffect(() => {
-    if (historyData && historyData.length > 0) {
-      setLocalMessages([]);
-    }
-  }, [historyData]);
-
-  useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector(
         '[data-radix-scroll-area-viewport]'

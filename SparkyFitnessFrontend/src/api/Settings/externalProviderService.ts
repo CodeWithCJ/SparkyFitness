@@ -10,6 +10,8 @@ export interface DataProvider {
   has_token?: boolean;
   shared_with_public?: boolean;
   is_strictly_private?: boolean;
+  base_url?: string;
+  app_key: string;
 }
 
 export const getExternalDataProviders = async (): Promise<DataProvider[]> => {
