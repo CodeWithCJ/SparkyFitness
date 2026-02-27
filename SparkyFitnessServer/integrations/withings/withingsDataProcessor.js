@@ -4,6 +4,7 @@ const measurementRepository = require('../../models/measurementRepository');
 const { log } = require('../../config/logging');
 const exerciseRepository = require('../../models/exercise'); // Import exercise repository
 const exerciseEntryRepository = require('../../models/exerciseEntry'); // Import exerciseEntry repository
+const sleepRepository = require('../../models/sleepRepository'); // Import sleep repository
 
 // Define a mapping for Withings metric types to SparkyFitness measurement types
 // This can be extended as more Withings metrics are integrated
@@ -53,16 +54,23 @@ const WITHINGS_METRIC_MAPPING = {
     'total_sleep_duration': { name: 'Total Sleep Duration', unit: 'seconds', type: 'custom_measurement', categoryName: 'Total Sleep Duration', frequency: 'Daily' },
     'wake_up_count': { name: 'Wake Up Count', unit: 'count', type: 'custom_measurement', categoryName: 'Wake Up Count', frequency: 'Daily' },
     'sleep_score': { name: 'Sleep Score', unit: 'score', type: 'custom_measurement', categoryName: 'Sleep Score', frequency: 'Daily' },
+    // ECG / Afib (from heart series)
+    'afib': { name: 'Atrial Fibrillation Result', unit: 'boolean', type: 'custom_measurement', categoryName: 'Atrial Fibrillation Result', frequency: 'Daily' },
 };
 
 async function processWithingsMeasures(userId, createdByUserId, measuregrps) {
-    if (!measuregrps || measuregrps.length === 0) {
+    if (!Array.isArray(measuregrps) || measuregrps.length === 0) {
         log('info', `No Withings measures data to process for user ${userId}.`);
         return;
     }
 
     for (const group of measuregrps) {
-        const entryDate = new Date(group.date * 1000).toISOString().split('T')[0]; // Convert Unix timestamp to YYYY-MM-DD
+        const timestamp = group.date || group.timestamp;
+        if (!timestamp || isNaN(timestamp)) {
+            log('warn', `Invalid date/timestamp in Withings measure group: ${JSON.stringify(group)}`);
+            continue;
+        }
+        const entryDate = new Date(timestamp * 1000).toISOString().split('T')[0]; // Convert Unix timestamp to YYYY-MM-DD
         const measurementsToUpsert = {};
         const customMeasurementsToUpsert = [];
 
@@ -89,8 +97,8 @@ async function processWithingsMeasures(userId, createdByUserId, measuregrps) {
                         value: value,
                         unit: metricInfo.unit, // Store Withings unit for custom measurements
                         entryDate: entryDate,
-                        entryHour: new Date(group.date * 1000).getUTCHours(), // Use UTC hour
-                        entryTimestamp: new Date(group.date * 1000).toISOString(),
+                        entryHour: new Date(timestamp * 1000).getUTCHours(), // Use UTC hour
+                        entryTimestamp: new Date(timestamp * 1000).toISOString(),
                         frequency: metricInfo.frequency // Use frequency from mapping
                     });
                 }
@@ -107,70 +115,201 @@ async function processWithingsMeasures(userId, createdByUserId, measuregrps) {
 
         // Upsert into custom_measurements
         for (const customMeasurement of customMeasurementsToUpsert) {
-            await upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement);
+            await upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement, 'Withings');
         }
     }
 }
 
 async function processWithingsHeartData(userId, createdByUserId, heartSeries = []) {
-    if (heartSeries.length === 0) {
+    if (!Array.isArray(heartSeries) || heartSeries.length === 0) {
         log('info', `No Withings heart data to process for user ${userId}.`);
         return;
     }
 
     for (const series of heartSeries) {
+        const timestamp = series.date || series.timestamp;
+        if (!timestamp || isNaN(timestamp)) {
+            log('warn', `Invalid date/timestamp in Withings heart series: ${JSON.stringify(series)}`);
+            continue;
+        }
+
+        const entryDate = new Date(timestamp * 1000).toISOString().split('T')[0];
+        const entryHour = new Date(timestamp * 1000).getUTCHours();
+        const entryTimestamp = new Date(timestamp * 1000).toISOString();
+
+        // Process Heart Rate
         if (series.heart_rate) {
-            const entryDate = new Date(series.date * 1000).toISOString().split('T')[0];
+            const metricInfo = WITHINGS_METRIC_MAPPING.heart_rate;
             const customMeasurement = {
-                categoryName: WITHINGS_METRIC_MAPPING.heart_rate.categoryName,
+                categoryName: metricInfo.categoryName,
                 value: series.heart_rate,
-                unit: WITHINGS_METRIC_MAPPING.heart_rate.unit,
+                unit: metricInfo.unit,
                 entryDate: entryDate,
-                entryHour: new Date(series.date * 1000).getUTCHours(),
-                entryTimestamp: new Date(series.date * 1000).toISOString(),
-                frequency: WITHINGS_METRIC_MAPPING.heart_rate.frequency // Use frequency from mapping
+                entryHour: entryHour,
+                entryTimestamp: entryTimestamp,
+                frequency: metricInfo.frequency
             };
-            await upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement);
+            await upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement, 'Withings');
             log('info', `Upserted Withings heart rate for user ${userId} on ${entryDate}.`);
+        }
+
+        // Process Afib from ECG
+        if (series.ecg && series.ecg.afib !== undefined) {
+            const metricInfo = WITHINGS_METRIC_MAPPING.afib;
+            const customMeasurement = {
+                categoryName: metricInfo.categoryName,
+                value: series.ecg.afib,
+                unit: metricInfo.unit,
+                entryDate: entryDate,
+                entryHour: entryHour,
+                entryTimestamp: entryTimestamp,
+                frequency: metricInfo.frequency
+            };
+            await upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement, 'Withings');
+            log('info', `Upserted Withings afib result for user ${userId} on ${entryDate}.`);
         }
     }
 }
 
 async function processWithingsSleepData(userId, createdByUserId, sleepSeries = []) {
-    if (sleepSeries.length === 0) {
+    if (!Array.isArray(sleepSeries) || sleepSeries.length === 0) {
         log('info', `No Withings sleep data to process for user ${userId}.`);
         return;
     }
 
-    for (const series of sleepSeries) {
-        const entryDate = new Date(series.date * 1000).toISOString().split('T')[0];
-        const sleepMetrics = [
-            { key: 'total_sleep_duration', value: series.data.total_sleep_time },
-            { key: 'wake_up_count', value: series.data.wakeup_count },
-            { key: 'sleep_score', value: series.data.sleep_score }
-            // Add more sleep metrics from series.data as needed
-        ];
+    // Map Withings sleep states to SparkyFitness stage types
+    const SLEEP_STAGE_MAPPING = {
+        0: 'Awake',
+        1: 'Light',
+        2: 'Deep',
+        3: 'REM'
+    };
 
-        for (const metric of sleepMetrics) {
-            const metricInfo = WITHINGS_METRIC_MAPPING[metric.key];
-            if (metricInfo && metric.value !== undefined && metric.value !== null) {
-                const customMeasurement = {
-                    categoryName: metricInfo.categoryName,
-                    value: metric.value,
-                    unit: metricInfo.unit,
-                    entryDate: entryDate,
-                    entryHour: null, // Sleep data is typically daily, not hourly specific
-                    entryTimestamp: new Date(series.date * 1000).toISOString(),
-                    frequency: metricInfo.frequency // Use frequency from mapping
-                };
-                await upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement);
-                log('info', `Upserted Withings sleep metric '${metricInfo.categoryName}' for user ${userId} on ${entryDate}.`);
+    // First, identify the date range to delete existing Withings sleep entries
+    let minDate = null;
+    let maxDate = null;
+
+    for (const series of sleepSeries) {
+        const timestamp = series.date || series.startdate;
+        if (timestamp) {
+            const entryDate = new Date(timestamp * 1000).toISOString().split('T')[0];
+            if (!minDate || entryDate < minDate) minDate = entryDate;
+            if (!maxDate || entryDate > maxDate) maxDate = entryDate;
+        }
+    }
+
+    if (minDate && maxDate) {
+        await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(userId, 'Withings', minDate, maxDate);
+        log('info', `Deleted existing Withings sleep entries between ${minDate} and ${maxDate} for user ${userId}.`);
+    }
+
+    // Map to keep track of created sleep entries by date
+    const sleepEntryMap = new Map();
+
+    // Pass 1: Process Summary Objects (Sleep Entries)
+    for (const series of sleepSeries) {
+        if (series.date && series.data) {
+            const timestamp = series.date;
+            const entryDate = new Date(timestamp * 1000).toISOString().split('T')[0];
+            const bedtime = new Date(series.data.bedtime * 1000).toISOString();
+            const wakeTime = new Date(series.data.wakeup_time * 1000).toISOString();
+            
+            const sleepEntryData = {
+                entry_date: entryDate,
+                bedtime: bedtime,
+                wake_time: wakeTime,
+                duration_in_seconds: series.data.total_sleep_time + series.data.total_timeinbed - series.data.total_sleep_time, // Approximation if needed
+                time_asleep_in_seconds: series.data.total_sleep_time,
+                sleep_score: series.data.sleep_score,
+                source: 'Withings',
+                awake_count: series.data.wakeup_count,
+                // These will be updated if stage data is found later
+                deep_sleep_seconds: 0,
+                light_sleep_seconds: 0,
+                rem_sleep_seconds: 0,
+                awake_sleep_seconds: 0
+            };
+
+            const createdEntry = await sleepRepository.upsertSleepEntry(userId, createdByUserId, sleepEntryData);
+            sleepEntryMap.set(entryDate, createdEntry.id);
+
+            // Also upsert into custom_measurements for consistency
+            const sleepMetrics = [
+                { key: 'total_sleep_duration', value: series.data.total_sleep_time },
+                { key: 'wake_up_count', value: series.data.wakeup_count },
+                { key: 'sleep_score', value: series.data.sleep_score }
+            ];
+
+            for (const metric of sleepMetrics) {
+                const metricInfo = WITHINGS_METRIC_MAPPING[metric.key];
+                if (metricInfo && metric.value !== undefined && metric.value !== null) {
+                    const customMeasurement = {
+                        categoryName: metricInfo.categoryName,
+                        value: metric.value,
+                        unit: metricInfo.unit,
+                        entryDate: entryDate,
+                        entryHour: null,
+                        entryTimestamp: new Date(timestamp * 1000).toISOString(),
+                        frequency: metricInfo.frequency
+                    };
+                    await upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement, 'Withings');
+                }
             }
+        }
+    }
+
+    // Pass 2: Process Stage Segments and Aggregate
+    const stageAggregates = new Map(); // Map<Date, {deep, light, rem, awake}>
+
+    for (const series of sleepSeries) {
+        if (series.startdate && series.state !== undefined) {
+            const startDate = new Date(series.startdate * 1000);
+            const entryDate = startDate.toISOString().split('T')[0];
+            const entryId = sleepEntryMap.get(entryDate);
+
+            if (entryId) {
+                const duration = series.enddate - series.startdate;
+                const stageType = SLEEP_STAGE_MAPPING[series.state] || 'Awake';
+                
+                // Initialize aggregate for this date if not present
+                if (!stageAggregates.has(entryDate)) {
+                    stageAggregates.set(entryDate, { deep: 0, light: 0, rem: 0, awake: 0 });
+                }
+                const agg = stageAggregates.get(entryDate);
+                const fieldKey = stageType.toLowerCase();
+                if (agg[fieldKey] !== undefined) {
+                    agg[fieldKey] += duration;
+                }
+
+                const stageData = {
+                    stage_type: stageType,
+                    start_time: startDate.toISOString(),
+                    end_time: new Date(series.enddate * 1000).toISOString(),
+                    duration_in_seconds: duration
+                };
+
+                await sleepRepository.upsertSleepStageEvent(userId, entryId, stageData);
+            }
+        }
+    }
+
+    // Pass 3: Update Summary Aggregates
+    for (const [entryDate, agg] of stageAggregates.entries()) {
+        const entryId = sleepEntryMap.get(entryDate);
+        if (entryId) {
+            const updateData = {
+                deep_sleep_seconds: agg.deep,
+                light_sleep_seconds: agg.light,
+                rem_sleep_seconds: agg.rem,
+                awake_sleep_seconds: agg.awake
+            };
+            await sleepRepository.updateSleepEntry(userId, entryId, createdByUserId, updateData);
+            log('info', `Updated summary aggregates for sleep entry ${entryDate} (Deep: ${agg.deep}s, Light: ${agg.light}s, REM: ${agg.rem}s, Awake: ${agg.awake}s).`);
         }
     }
 }
 
-async function upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement) {
+async function upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement, source = 'manual') {
     const { categoryName, value, unit, entryDate, entryHour, entryTimestamp, frequency } = customMeasurement;
 
     let category = await measurementRepository.getCustomCategories(userId);
@@ -204,12 +343,13 @@ async function upsertCustomMeasurementLogic(userId, createdByUserId, customMeasu
         entryHour,
         entryTimestamp,
         null, // notes
-        frequency
+        frequency,
+        source
     );
 }
 
 async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
-    if (workouts.length === 0) {
+    if (!Array.isArray(workouts) || workouts.length === 0) {
         log('info', `No Withings workout data to process for user ${userId}.`);
         return;
     }
@@ -273,6 +413,10 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
     // specifically targeting entries with 'Withings' as their source.
     const processedDates = new Set();
     for (const workout of workouts) {
+        if (!workout.startdate || isNaN(workout.startdate)) {
+            log('warn', `Invalid startdate in Withings workout: ${JSON.stringify(workout)}`);
+            continue;
+        }
         const entryDate = new Date(workout.startdate * 1000).toISOString().split('T')[0];
         if (!processedDates.has(entryDate)) {
             await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(userId, entryDate, entryDate, 'Withings');
