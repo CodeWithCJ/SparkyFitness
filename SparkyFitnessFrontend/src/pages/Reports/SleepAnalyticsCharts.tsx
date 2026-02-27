@@ -9,6 +9,7 @@ import {
   type SleepChartData,
   type SleepEntry,
 } from '@/types';
+import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 import {
   Activity,
   ChevronDown,
@@ -430,11 +431,21 @@ const SleepAnalyticsCharts = ({
                           stroke={tickColor}
                           tick={{ fill: tickColor }}
                         />
-                        <YAxis stroke={tickColor} tick={{ fill: tickColor }} />
+                        <YAxis
+                          stroke={tickColor}
+                          tick={{ fill: tickColor }}
+                          tickFormatter={(value) =>
+                            formatSecondsToHHMM(value * 3600)
+                          }
+                        />
                         <Tooltip
                           labelFormatter={(label) =>
                             formatDateInUserTimezone(label, dateFormat)
                           }
+                          formatter={(value: number, name: string) => [
+                            formatSecondsToHHMM(value * 3600),
+                            name,
+                          ]}
                           contentStyle={{
                             backgroundColor: tooltipBackgroundColor,
                             borderColor: tooltipBorderColor,

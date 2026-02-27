@@ -13,7 +13,6 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Save, X } from 'lucide-react';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import {
   useConnectFitbitMutation,
   useConnectPolarMutation,
@@ -25,6 +24,7 @@ import {
 import { useCreateExternalProviderMutation } from '@/hooks/Settings/useExternalProviderSettings';
 import { getProviderTypes, validateProvider } from '@/utils/settings';
 import { ProviderSpecificFields } from './ProviderSpecificFields';
+import { useToast } from '@/hooks/use-toast';
 
 interface AddExternalProviderFormProps {
   showAddForm: boolean;

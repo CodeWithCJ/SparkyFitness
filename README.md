@@ -47,11 +47,12 @@ It stores and manages health data on infrastructure you control, without relying
 
 ## Core Features
 
-- Nutrition, exercise, hydration, and body measurement tracking
+- Nutrition, exercise, hydration, sleep, fasting, mood and  body measurement tracking
 - Goal setting and daily check-ins
 - Interactive charts and long-term reports
 - Multiple user profiles and family access
 - Light and dark themes
+- OIDC, TOTP, Passkey, MFA etc.
 
 ## Health & Device Integrations
 
@@ -62,6 +63,14 @@ SparkyFitness can sync data from multiple health and fitness platforms:
 - **Fitbit**
 - **Garmin Connect**
 - **Withings**
+- **Polar Flow** (partially tested)
+- **Hevy** (not tested)
+- **OpenFoodFacts**
+- **USDA**
+- **Fatsecret**
+- **Nutritioninx**
+- **Mealie**
+- **Tandori**
 
 Integrations automatically sync activity data such as steps, workouts, and sleep, along with health metrics like weight and body measurements, to your SparkyFitness server.
 
@@ -109,7 +118,8 @@ For full installation guides, configuration options, and development docs, pleas
 
 ### Need Help?
 
-- **[Join our Discord](https://discord.gg/vcnMT5cPEA)**
+- Post in Github issues/discussion.
+- For faster response and get help from other community memebers **[Join our Discord](https://discord.gg/vcnMT5cPEA)**
 
 ## Star History
 

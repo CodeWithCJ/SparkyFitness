@@ -1,5 +1,5 @@
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 
 export interface DataProvider {
   id: string;

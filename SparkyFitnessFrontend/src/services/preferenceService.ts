@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api } from '../api/api';
 import { debug, error, type UserLoggingLevel } from '@/utils/logging';
 
 export interface UserPreferences {

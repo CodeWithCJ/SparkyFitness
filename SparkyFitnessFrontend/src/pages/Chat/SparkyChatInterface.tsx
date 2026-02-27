@@ -21,10 +21,12 @@ import { CoachResponse } from '@/types/Chatbot_types';
 import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
 import { chatbotKeys } from '@/api/keys/ai';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 
 const SparkyChatInterface = () => {
   const { formatDateInUserTimezone } = usePreferences();
 
+  const { user } = useAuth();
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +35,7 @@ const SparkyChatInterface = () => {
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const { data: activeAIServiceSetting } = useActiveAIService();
+  const { data: activeAIServiceSetting } = useActiveAIService(!!user);
   const { data: userPreferences, isLoading: isPrefsLoading } =
     useChatPreferencesQuery();
 
@@ -57,7 +59,6 @@ const SparkyChatInterface = () => {
 
   const invalidate = useDiaryInvalidation();
   const queryClient = useQueryClient();
-
   useEffect(() => {
     if (userPreferences?.auto_clear_history === 'all' && !hasAutoCleared) {
       clearChatHistory('all').catch(() => {});

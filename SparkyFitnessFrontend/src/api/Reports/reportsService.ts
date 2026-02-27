@@ -1,4 +1,4 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 import type { Exercise } from '../Exercises/exerciseSearchService';
 import type { SleepAnalyticsData } from '../../types';
 

@@ -1,11 +1,5 @@
 import type React from 'react';
 import { useState, useEffect, lazy, Suspense } from 'react';
-import {
-  MutationCache,
-  QueryCache,
-  QueryClient,
-  QueryClientProvider,
-} from '@tanstack/react-query';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ChatbotVisibilityProvider } from '@/contexts/ChatbotVisibilityContext';
 import LanguageHandler from '@/components/LanguageHandler';
@@ -16,17 +10,13 @@ import DraggableChatbotButton from '@/components/DraggableChatbotButton';
 import AboutDialog from '@/components/AboutDialog';
 import NewReleaseDialog from '@/components/NewReleaseDialog';
 import AppSetup from '@/components/AppSetup';
-import axios from 'axios';
 import { Toaster } from '@/components/ui/toaster';
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import OidcCallback from '@/components/OidcCallback';
 import { useActiveUser } from './contexts/ActiveUserContext';
-import { toast } from './hooks/use-toast';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { error } from '@/utils/logging';
-import i18n from '@/i18n';
-import { getUserLoggingLevel } from '@/utils/userPreferences';
+import { useCurrentVersionQuery } from './hooks/useGeneralQueries';
 const Auth = lazy(() => import('@/pages/Auth/Auth'));
 const ForgotPassword = lazy(() => import('@/pages/Auth/ForgotPassword'));
 const ResetPassword = lazy(() => import('@/pages/Auth/ResetPassword'));
@@ -57,99 +47,6 @@ const StravaCallback = lazy(
   () => import('@/pages/Integrations/StravaCallback')
 );
 
-declare module '@tanstack/react-query' {
-  interface Register {
-    queryMeta: {
-      errorTitle?: string;
-      errorMessage?: string;
-    };
-    mutationMeta: {
-      successMessage?: string | ((data: unknown, variables: unknown) => string);
-      errorMessage?: string | ((error: unknown, variables: unknown) => string);
-      errorTitle?: string;
-    };
-  }
-}
-
-// helper function to allow variables in toast messages
-const resolveMessage = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  message: string | ((...args: any[]) => string) | undefined,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...args: any[]
-): string | undefined => {
-  if (typeof message === 'function') {
-    return message(...args);
-  }
-  return message;
-};
-
-const queryClient = new QueryClient({
-  queryCache: new QueryCache({
-    onError: (e, query) => {
-      error(getUserLoggingLevel(), 'Query Error: ', e);
-      if (query.meta?.errorMessage) {
-        toast({
-          title:
-            (query.meta.errorTitle as string) ??
-            i18n.t('common.error', 'Error'),
-          description: query.meta.errorMessage,
-          variant: 'destructive',
-        });
-      }
-    },
-  }),
-  mutationCache: new MutationCache({
-    onError: (err, variables, _context, mutation) => {
-      const loggingLevel = getUserLoggingLevel();
-      error(loggingLevel, 'Mutation Error: ', err);
-      const resolvedErrorMessage = resolveMessage(
-        mutation.meta?.errorMessage,
-        err,
-        variables
-      );
-      const description =
-        resolvedErrorMessage ||
-        (err instanceof Error ? err.message : 'An error occurred');
-      toast({
-        title:
-          (mutation.meta?.errorTitle as string) ||
-          i18n.t('common.error', 'Error'),
-        description: description,
-        variant: 'destructive',
-      });
-    },
-    onSuccess: (data, variables, _context, mutation) => {
-      const message = resolveMessage(
-        mutation.meta?.successMessage,
-        data,
-        variables
-      );
-
-      if (message) {
-        toast({
-          title: i18n.t('common.success', 'Success'),
-          description: message,
-        });
-      }
-    },
-  }),
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // Reduced from 30m to 5m for better responsiveness
-      gcTime: 1000 * 60 * 60,
-      refetchOnWindowFocus: true,
-      refetchOnReconnect: true,
-      refetchOnMount: true,
-      retry: 1,
-      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
-    },
-    mutations: {
-      retry: 0,
-    },
-  },
-});
-
 // A wrapper to protect routes that require authentication
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -173,7 +70,7 @@ const PermissionRoute = ({
   permission: string;
   children: React.ReactNode;
 }) => {
-  const { hasPermission, isActingOnBehalf } = useActiveUser();
+  const { hasPermission } = useActiveUser();
 
   if (hasPermission(permission)) {
     return <>{children}</>;
@@ -186,21 +83,9 @@ const App = () => {
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [latestRelease, setLatestRelease] = useState(null);
   const [showNewReleaseDialog, setShowNewReleaseDialog] = useState(false);
-  const [appVersion, setAppVersion] = useState('unknown');
   const { timezone } = usePreferences();
 
-  useEffect(() => {
-    // Other useEffects like network intercept, reload detection, etc. can remain
-    const fetchVersion = async () => {
-      try {
-        const response = await axios.get('/api/version/current');
-        setAppVersion(response.data.version);
-      } catch (error) {
-        console.error('Error fetching app version:', error);
-      }
-    };
-    fetchVersion();
-  }, []);
+  const { data: appVersion } = useCurrentVersionQuery();
 
   const handleDismissRelease = (version: string) => {
     localStorage.setItem('dismissedReleaseVersion', version);
@@ -217,7 +102,7 @@ const App = () => {
   }, [navigate]);
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <>
       <ReactQueryDevtools buttonPosition="top-left" initialIsOpen={false} />
       <LanguageHandler />
       <ThemeProvider>
@@ -314,7 +199,7 @@ const App = () => {
               <AboutDialog
                 isOpen={showAboutDialog}
                 onClose={() => setShowAboutDialog(false)}
-                version={appVersion}
+                version={appVersion?.version ?? ''}
               />
               <NewReleaseDialog
                 isOpen={showNewReleaseDialog}
@@ -327,7 +212,7 @@ const App = () => {
           </ActiveUserProvider>
         </ChatbotVisibilityProvider>
       </ThemeProvider>
-    </QueryClientProvider>
+    </>
   );
 };
 

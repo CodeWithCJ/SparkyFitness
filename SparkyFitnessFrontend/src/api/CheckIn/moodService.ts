@@ -1,4 +1,4 @@
-import { api } from '@/services/api';
+import { api } from '@/api/api';
 import type { MoodEntry } from '@/types/mood';
 import { debug, info, error } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';

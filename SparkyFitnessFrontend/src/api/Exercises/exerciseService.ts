@@ -1,4 +1,4 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 import { Exercise } from './exerciseSearchService';
 import { ExerciseCSVData } from '@/pages/Exercises/ExerciseImportCSV';
 
@@ -293,4 +293,12 @@ export const importExerciseHistory = async (
     method: 'POST',
     body: { entries },
   });
+};
+
+export const getBodyMapSvg = async (): Promise<string> => {
+  const response = await fetch('/images/muscle-male.svg');
+  if (!response.ok) {
+    throw new Error('Failed to fetch SVG');
+  }
+  return response.text();
 };

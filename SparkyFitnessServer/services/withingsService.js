@@ -64,28 +64,28 @@ async function syncWithingsData(userId, syncType = "manual") {
         await withingsDataProcessor.processWithingsMeasures(
           userId,
           userId,
-          responses["raw_measures"].data,
+          responses["raw_measures"].data.body?.measuregrps || [],
         );
       }
       if (responses["raw_heart"]) {
         await withingsDataProcessor.processWithingsHeartData(
           userId,
           userId,
-          responses["raw_heart"].data,
+          responses["raw_heart"].data.body?.series || [],
         );
       }
       if (responses["raw_sleep"]) {
         await withingsDataProcessor.processWithingsSleepData(
           userId,
           userId,
-          responses["raw_sleep"].data,
+          responses["raw_sleep"].data.body?.series || [],
         );
       }
       if (responses["raw_workouts"]) {
         await withingsDataProcessor.processWithingsWorkouts(
           userId,
           userId,
-          responses["raw_workouts"].data,
+          responses["raw_workouts"].data.body?.series || [],
         );
       }
 

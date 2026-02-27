@@ -7,7 +7,7 @@ import {
   error,
   type UserLoggingLevel,
 } from '@/utils/logging';
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 
 // Function to process food input
 export const processFoodInput = async (

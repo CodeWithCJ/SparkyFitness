@@ -6,7 +6,7 @@ import {
   error,
   type UserLoggingLevel,
 } from '@/utils/logging';
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 
 // Function to upsert check-in measurements
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

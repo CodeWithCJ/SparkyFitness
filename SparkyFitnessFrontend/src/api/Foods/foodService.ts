@@ -1,4 +1,4 @@
-import { apiCall } from '../../services/api';
+import { apiCall } from '../api';
 
 import type { Food, FoodDeletionImpact } from '@/types/food';
 

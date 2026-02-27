@@ -10,6 +10,7 @@ import {
   resetPassword,
   requestPasswordReset,
   getMfaFactors,
+  getAccessibleUsers,
 } from '@/api/Auth/auth';
 import { authKeys } from '@/api/keys/auth';
 
@@ -151,3 +152,12 @@ export const mfaFactorsOptions = (email: string) =>
     queryKey: authKeys.mfaFactors(email),
     queryFn: () => getMfaFactors(email),
   });
+
+export const useAccessibleUsersQuery = (enabled: boolean) => {
+  return useQuery({
+    queryKey: authKeys.identity,
+    queryFn: getAccessibleUsers,
+    enabled,
+    staleTime: 1000 * 60 * 5,
+  });
+};

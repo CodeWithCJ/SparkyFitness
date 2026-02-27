@@ -1,4 +1,4 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 
 export interface GlobalSettings {
   enable_email_password_login: boolean;

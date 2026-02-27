@@ -1,6 +1,6 @@
-import { api } from '@/services/api';
-
 // ====== Types ======
+
+import { api } from '../api';
 
 export interface SleepDebtDailyEntry {
   date: string;

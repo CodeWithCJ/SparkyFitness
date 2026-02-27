@@ -1,4 +1,4 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 import { getExerciseEntriesForDate as getDailyExerciseEntries } from '@/api/Diary/dailyProgressService';
 import type { Exercise } from './exerciseSearchService';
 import { parseJsonArray } from './exerciseService';
@@ -342,4 +342,22 @@ export const fetchExerciseDetails = async (
   return apiCall(`/exercises/${exerciseId}`, {
     method: 'GET',
   });
+};
+
+export interface ActivityDetailsResponse {
+  id?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+export const getActivityDetails = async (
+  exerciseEntryId: string,
+  providerName: string
+): Promise<ActivityDetailsResponse> => {
+  return apiCall(
+    `/api/exercises/activity-details/${exerciseEntryId}/${providerName}`,
+    {
+      method: 'GET',
+    }
+  );
 };

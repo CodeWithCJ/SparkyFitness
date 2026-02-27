@@ -102,9 +102,21 @@ export const exerciseEntryKeys = {
       exerciseId,
       { startDate, endDate, agg },
     ] as const,
+  activityDetails: (entryId: string, providerName: string) =>
+    [
+      ...exerciseEntryKeys.all,
+      'activityDetails',
+      entryId,
+      providerName,
+    ] as const,
 };
 export const suggestedExercisesKeys = {
   all: ['exercises', 'suggested'] as const,
   byLimit: (limit: number) =>
     [...suggestedExercisesKeys.all, { limit }] as const,
+};
+
+export const assetKeys = {
+  all: ['assets'] as const,
+  svg: (filename: string) => [...assetKeys.all, 'svg', filename] as const,
 };

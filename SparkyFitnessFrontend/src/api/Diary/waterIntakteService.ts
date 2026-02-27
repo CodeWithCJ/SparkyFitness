@@ -1,4 +1,4 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 
 export interface UpdateWaterPayload {
   user_id: string;
