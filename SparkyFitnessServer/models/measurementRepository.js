@@ -2,6 +2,9 @@
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
+// SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
+const ALLOWED_CHECK_IN_COLUMNS = ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'];
+
 async function upsertStepData(userId, actingUserId, value, date) {
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
@@ -140,9 +143,8 @@ async function upsertCheckInMeasurements(userId, actingUserId, entryDate, measur
     delete filteredMeasurements.id;
 
     // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
-    const allowedMeasurementKeys = ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'];
     const measurementKeys = Object.keys(filteredMeasurements).filter(key => {
-      if (!allowedMeasurementKeys.includes(key)) {
+      if (!ALLOWED_CHECK_IN_COLUMNS.includes(key)) {
         console.warn(`Attempted to upsert unauthorized measurement key: ${key}`);
         return false;
       }
@@ -215,7 +217,7 @@ async function updateCheckInMeasurements(userId, actingUserId, entryDate, update
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     const fieldsToUpdate = Object.keys(updateData)
-      .filter(key => ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'].includes(key))
+      .filter(key => ALLOWED_CHECK_IN_COLUMNS.includes(key))
       .map((key, index) => `${key} = $${index + 1}`);
 
     if (fieldsToUpdate.length === 0) {
@@ -225,7 +227,7 @@ async function updateCheckInMeasurements(userId, actingUserId, entryDate, update
 
     // Correctly construct the values array: first the values for the SET clause, then actingUserId (for audit), then userId, then entryDate
     const updateValues = Object.keys(updateData)
-      .filter(key => ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'].includes(key))
+      .filter(key => ALLOWED_CHECK_IN_COLUMNS.includes(key))
       .map(key => updateData[key]);
 
     const values = [...updateValues, actingUserId, userId, entryDate];
@@ -624,8 +626,7 @@ async function getCustomMeasurementOwnerId(id, userId) {
 
 async function getMostRecentMeasurement(userId, measurementType) {
   // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic column names
-  const allowedMeasurementKeys = ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'];
-  if (!allowedMeasurementKeys.includes(measurementType)) {
+  if (!ALLOWED_CHECK_IN_COLUMNS.includes(measurementType)) {
     throw new Error(`Invalid measurement type requested: ${measurementType}`);
   }
 
