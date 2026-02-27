@@ -179,7 +179,7 @@ const SleepAnalyticsTable = ({
                       {sleepAnalyticsData.sleepEfficiency.toFixed(1)}%
                     </TableCell>
                     <TableCell>
-                      {sleepAnalyticsData.sleepDebt.toFixed(1)}h
+                      {formatSecondsToHHMM(sleepAnalyticsData.sleepDebt * 3600)}
                     </TableCell>
                     <TableCell>{sleepAnalyticsData.awakePeriods}</TableCell>
                     <TableCell>{insight}</TableCell>

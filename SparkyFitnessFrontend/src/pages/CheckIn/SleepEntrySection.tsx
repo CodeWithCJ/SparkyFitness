@@ -647,6 +647,9 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                           duration: formatSecondsToHHMM(
                             entry.duration_in_seconds
                           ),
+                          timeAsleep: entry.time_asleep_in_seconds !== null
+                            ? formatSecondsToHHMM(entry.time_asleep_in_seconds)
+                            : undefined,
                           sleepScore: entry.sleep_score,
                           source: entry.source,
                           deepSleepSeconds: entry.deep_sleep_seconds,
