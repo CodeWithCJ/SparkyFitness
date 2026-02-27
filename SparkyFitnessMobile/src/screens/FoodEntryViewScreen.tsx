@@ -1,13 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import { formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
-import { deleteFoodEntry } from '../services/api/foodEntriesApi';
-import { dailySummaryQueryKey } from '../hooks/queryKeys';
+import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
 
 interface FoodEntryViewScreenProps {
@@ -23,25 +21,15 @@ const scaledValue = (value: number | undefined, entry: FoodEntry): number => {
 const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, route }) => {
   const { entry } = route!.params;
   const insets = useSafeAreaInsets();
-  const queryClient = useQueryClient();
 
-  const deleteEntryMutation = useMutation({
-    mutationFn: () => deleteFoodEntry(entry.id),
+  const { confirmAndDelete, isPending, invalidateCache } = useDeleteFoodEntry({
+    entryId: entry.id,
+    entryDate: entry.entry_date,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(entry.entry_date.split('T')[0]) });
+      invalidateCache();
       navigation!.goBack();
     },
-    onError: () => {
-      Alert.alert('Failed to delete', 'Please try again.');
-    },
   });
-
-  const handleDelete = () => {
-    Alert.alert('Delete Entry', 'Are you sure you want to delete this food entry?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteEntryMutation.mutate() },
-    ]);
-  };
 
   const [accentColor, proteinColor, carbsColor, fatColor] = useCSSVariable([
     '--color-accent-primary',
@@ -164,13 +152,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
         {/* Delete button */}
         <TouchableOpacity
-          onPress={handleDelete}
-          disabled={deleteEntryMutation.isPending}
+          onPress={confirmAndDelete}
+          disabled={isPending}
           className="items-center py-3 mt-2 "
           activeOpacity={0.6}
         >
           <Text className="text-bg-danger text-base font-medium">
-            {deleteEntryMutation.isPending ? 'Deleting...' : 'Delete Entry'}
+            {isPending ? 'Deleting...' : 'Delete Entry'}
           </Text>
         </TouchableOpacity>
       </ScrollView>

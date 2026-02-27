@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { FoodEntry } from '../types/foodEntries';
 import Icon, { type IconName } from './Icon';
 import { MEAL_TYPES, MEAL_CONFIG } from '../constants/meals';
+import SwipeableFoodRow from './SwipeableFoodRow';
 
 interface FoodSummaryProps {
   foodEntries: FoodEntry[];
@@ -32,14 +32,14 @@ function calculateEntryValue(value: number | undefined, entry: FoodEntry): numbe
   return (value * entry.quantity) / entry.serving_size;
 }
 
-interface EntryNutrition {
+export interface EntryNutrition {
   calories: number;
   protein: number;
   carbs: number;
   fat: number;
 }
 
-function calculateEntryNutrition(entry: FoodEntry): EntryNutrition {
+export function calculateEntryNutrition(entry: FoodEntry): EntryNutrition {
   return {
     calories: Math.round(calculateEntryValue(entry.calories, entry)),
     protein: Math.round(calculateEntryValue(entry.protein, entry)),
@@ -55,14 +55,13 @@ interface MealSectionProps {
 }
 
 const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
-  const navigation = useNavigation<any>();
   const config = MEAL_CONFIG[mealType] || { label: mealType, icon: 'meal-snack' as IconName };
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const totalCalories = entries.reduce((sum, entry) => sum + calculateEntryNutrition(entry).calories, 0);
 
   return (
-    <View className="bg-surface rounded-xl p-4 shadow-sm">
+    <View className="bg-surface rounded-xl p-4 overflow-hidden shadow-sm">
       <View className="flex-row items-center gap-2 mb-2">
         <Icon name={config.icon} size={18} color={accentPrimary} />
         <Text className="text-base font-bold text-text-primary flex-1">{config.label}</Text>
@@ -74,24 +73,12 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
       </View>
       {entries.map((entry, index) => {
         const nutrition = calculateEntryNutrition(entry);
-        const name = entry.food_name || 'Unknown food';
         return (
-          <TouchableOpacity
+          <SwipeableFoodRow
             key={entry.id || index}
-            className="py-2 flex-row justify-between items-center"
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('FoodEntryView', { entry })}
-          >
-            <Text className="text-md text-text-primary flex-1 mr-2" numberOfLines={1}>
-              {name}
-              <Text className="text-sm text-text-secondary">
-                {' · '}{entry.quantity} {entry.unit}
-              </Text>
-            </Text>
-            <Text className="text-sm text-text-secondary font-medium mr-2">
-              {nutrition.calories} Cal
-            </Text>
-          </TouchableOpacity>
+            entry={entry}
+            nutrition={nutrition}
+          />
         );
       })}
     </View>

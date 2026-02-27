@@ -134,6 +134,25 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
+// Mock react-native-gesture-handler/ReanimatedSwipeable
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: React.forwardRef(({ children, renderRightActions, ...props }, ref) => {
+      React.useImperativeHandle(ref, () => ({
+        close: jest.fn(),
+        reset: jest.fn(),
+      }));
+      return React.createElement(View, { testID: 'reanimated-swipeable', ...props },
+        children,
+        renderRightActions ? React.createElement(View, { testID: 'swipeable-right-actions' }, renderRightActions()) : null,
+      );
+    }),
+  };
+});
+
 // Mock expo-web-browser
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(),
