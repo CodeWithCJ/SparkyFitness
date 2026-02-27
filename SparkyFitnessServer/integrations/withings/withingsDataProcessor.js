@@ -171,142 +171,186 @@ async function processWithingsHeartData(userId, createdByUserId, heartSeries = [
     }
 }
 
-async function processWithingsSleepData(userId, createdByUserId, sleepSeries = []) {
-    if (!Array.isArray(sleepSeries) || sleepSeries.length === 0) {
-        log('info', `No Withings sleep data to process for user ${userId}.`);
-        return;
+async function processWithingsSleepData(
+  userId,
+  createdByUserId,
+  sleepSeries = [],
+  sleepSummary = [],
+) {
+  // Normalize inputs to always be arrays (Withings sometimes returns a single object)
+  const seriesArr = Array.isArray(sleepSeries) ? sleepSeries : (sleepSeries ? [sleepSeries] : []);
+  const summaryArr = Array.isArray(sleepSummary) ? sleepSummary : (sleepSummary ? [sleepSummary] : []);
+
+  if (seriesArr.length === 0 && summaryArr.length === 0) {
+    log("info", `No Withings sleep data to process for user ${userId}.`);
+    return;
+  }
+
+  // Map Withings sleep states to SparkyFitness stage types
+  const SLEEP_STAGE_MAPPING = {
+    0: "awake",
+    1: "light",
+    2: "deep",
+    3: "rem",
+  };
+
+  // Identify the date range for deletion
+  let minDate = null;
+  let maxDate = null;
+
+  const allRelevantEntries = [...seriesArr, ...summaryArr];
+  for (const item of allRelevantEntries) {
+    const timestamp = item.date || item.startdate || item.timestamp;
+    if (timestamp) {
+      // If date is "YYYY-MM-DD" string, use it directly, otherwise convert from unix
+      const entryDate = typeof timestamp === 'string' && timestamp.includes('-')
+        ? timestamp
+        : new Date(timestamp * 1000).toISOString().split("T")[0];
+      
+      if (!minDate || entryDate < minDate) minDate = entryDate;
+      if (!maxDate || entryDate > maxDate) maxDate = entryDate;
+    }
+  }
+
+  if (minDate && maxDate) {
+    await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(
+      userId,
+      "Withings",
+      minDate,
+      maxDate,
+    );
+    log(
+      "info",
+      `Deleted existing Withings sleep entries between ${minDate} and ${maxDate} for user ${userId}.`,
+    );
+  }
+
+  const sleepEntryMap = new Map(); // entry_date -> db_id
+
+  // 1. Process Summaries (The most reliable source for high-level metrics)
+  for (const summary of summaryArr) {
+    const entryDate = typeof summary.date === 'string' 
+      ? summary.date 
+      : new Date(summary.date * 1000).toISOString().split("T")[0];
+    
+    // Default to start/end dates
+    let bedtimeTs = summary.startdate;
+    let wakeTimeTs = summary.enddate;
+
+    // Refine with night_events if available (1=got in bed, 4=got out of bed)
+    if (summary.data.night_events) {
+      const events = summary.data.night_events;
+      // Withings says keys are strings of the event type, value is array of offsets
+      if (events["1"] && events["1"].length > 0) {
+        bedtimeTs = summary.startdate + events["1"][0];
+      }
+      if (events["4"] && events["4"].length > 0) {
+        wakeTimeTs = summary.startdate + events["4"][events["4"].length - 1];
+      }
     }
 
-    // Map Withings sleep states to SparkyFitness stage types
-    const SLEEP_STAGE_MAPPING = {
-        0: 'Awake',
-        1: 'Light',
-        2: 'Deep',
-        3: 'REM'
+    const bedtime = new Date(bedtimeTs * 1000).toISOString();
+    const wakeTime = new Date(wakeTimeTs * 1000).toISOString();
+
+    const sleepEntryData = {
+      entry_date: entryDate,
+      bedtime: bedtime,
+      wake_time: wakeTime,
+      duration_in_seconds: summary.data.total_timeinbed || 0,
+      time_asleep_in_seconds: summary.data.total_sleep_time || 0,
+      sleep_score: summary.data.sleep_score || 0,
+      source: "Withings",
+      awake_count: summary.data.wakeupcount || 0,
+      deep_sleep_seconds: summary.data.deepsleepduration || 0,
+      light_sleep_seconds: summary.data.lightsleepduration || 0,
+      rem_sleep_seconds: summary.data.remsleepduration || 0,
+      awake_sleep_seconds: summary.data.wakeupduration || 0,
+      resting_heart_rate: summary.data.hr_average || null,
+      average_respiration_value: summary.data.rr_average || null,
+      lowest_respiration_value: summary.data.rr_min || null,
+      highest_respiration_value: summary.data.rr_max || null,
     };
 
-    // First, identify the date range to delete existing Withings sleep entries
-    let minDate = null;
-    let maxDate = null;
+    const createdEntry = await sleepRepository.upsertSleepEntry(
+      userId,
+      createdByUserId,
+      sleepEntryData,
+    );
+    sleepEntryMap.set(entryDate, createdEntry.id);
+    log("info", `Processed sleep summary for ${entryDate} for user ${userId}.`);
+  }
 
-    for (const series of sleepSeries) {
-        const timestamp = series.date || series.startdate;
-        if (timestamp) {
-            const entryDate = new Date(timestamp * 1000).toISOString().split('T')[0];
-            if (!minDate || entryDate < minDate) minDate = entryDate;
-            if (!maxDate || entryDate > maxDate) maxDate = entryDate;
-        }
+  // 2. Process Detailed Series (Sleep Stages)
+  const stagesByDate = new Map();
+
+  for (const segment of seriesArr) {
+    if (segment.startdate && segment.state !== undefined) {
+      const segmentStart = new Date(segment.startdate * 1000);
+      const entryDate = segmentStart.toISOString().split("T")[0];
+
+      if (!stagesByDate.has(entryDate)) {
+        stagesByDate.set(entryDate, []);
+      }
+      stagesByDate.get(entryDate).push(segment);
+    }
+  }
+
+  for (const [entryDate, segments] of stagesByDate.entries()) {
+    let entryId = sleepEntryMap.get(entryDate);
+
+    // If no summary was found for this date, we create a basic entry from the series
+    if (!entryId) {
+      const firstSegment = segments[0];
+      const lastSegment = segments[segments.length - 1];
+      const bedtime = new Date(firstSegment.startdate * 1000).toISOString();
+      const wakeTime = new Date(lastSegment.enddate * 1000).toISOString();
+
+      const basicEntry = await sleepRepository.upsertSleepEntry(
+        userId,
+        createdByUserId,
+        {
+          entry_date: entryDate,
+          bedtime: bedtime,
+          wake_time: wakeTime,
+          source: "Withings",
+          duration_in_seconds: lastSegment.enddate - firstSegment.startdate,
+          time_asleep_in_seconds: 0, 
+        },
+      );
+      entryId = basicEntry.id;
+      sleepEntryMap.set(entryDate, entryId);
     }
 
-    if (minDate && maxDate) {
-        await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(userId, 'Withings', minDate, maxDate);
-        log('info', `Deleted existing Withings sleep entries between ${minDate} and ${maxDate} for user ${userId}.`);
+    const stageAggregates = { deep: 0, light: 0, rem: 0, awake: 0 };
+
+    for (const segment of segments) {
+      const duration = segment.enddate - segment.startdate;
+      const stageType = SLEEP_STAGE_MAPPING[segment.state] || "awake";
+      const stageKey = stageType; // Already lowercase from SLEEP_STAGE_MAPPING
+
+      if (stageAggregates[stageKey] !== undefined) {
+        stageAggregates[stageKey] += duration;
+      }
+
+      await sleepRepository.upsertSleepStageEvent(userId, entryId, {
+        stage_type: stageType,
+        start_time: new Date(segment.startdate * 1000).toISOString(),
+        end_time: new Date(segment.enddate * 1000).toISOString(),
+        duration_in_seconds: duration,
+      });
     }
 
-    // Map to keep track of created sleep entries by date
-    const sleepEntryMap = new Map();
-
-    // Pass 1: Process Summary Objects (Sleep Entries)
-    for (const series of sleepSeries) {
-        if (series.date && series.data) {
-            const timestamp = series.date;
-            const entryDate = new Date(timestamp * 1000).toISOString().split('T')[0];
-            const bedtime = new Date(series.data.bedtime * 1000).toISOString();
-            const wakeTime = new Date(series.data.wakeup_time * 1000).toISOString();
-            
-            const sleepEntryData = {
-                entry_date: entryDate,
-                bedtime: bedtime,
-                wake_time: wakeTime,
-                duration_in_seconds: series.data.total_sleep_time + series.data.total_timeinbed - series.data.total_sleep_time, // Approximation if needed
-                time_asleep_in_seconds: series.data.total_sleep_time,
-                sleep_score: series.data.sleep_score,
-                source: 'Withings',
-                awake_count: series.data.wakeup_count,
-                // These will be updated if stage data is found later
-                deep_sleep_seconds: 0,
-                light_sleep_seconds: 0,
-                rem_sleep_seconds: 0,
-                awake_sleep_seconds: 0
-            };
-
-            const createdEntry = await sleepRepository.upsertSleepEntry(userId, createdByUserId, sleepEntryData);
-            sleepEntryMap.set(entryDate, createdEntry.id);
-
-            // Also upsert into custom_measurements for consistency
-            const sleepMetrics = [
-                { key: 'total_sleep_duration', value: series.data.total_sleep_time },
-                { key: 'wake_up_count', value: series.data.wakeup_count },
-                { key: 'sleep_score', value: series.data.sleep_score }
-            ];
-
-            for (const metric of sleepMetrics) {
-                const metricInfo = WITHINGS_METRIC_MAPPING[metric.key];
-                if (metricInfo && metric.value !== undefined && metric.value !== null) {
-                    const customMeasurement = {
-                        categoryName: metricInfo.categoryName,
-                        value: metric.value,
-                        unit: metricInfo.unit,
-                        entryDate: entryDate,
-                        entryHour: null,
-                        entryTimestamp: new Date(timestamp * 1000).toISOString(),
-                        frequency: metricInfo.frequency
-                    };
-                    await upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement, 'Withings');
-                }
-            }
-        }
-    }
-
-    // Pass 2: Process Stage Segments and Aggregate
-    const stageAggregates = new Map(); // Map<Date, {deep, light, rem, awake}>
-
-    for (const series of sleepSeries) {
-        if (series.startdate && series.state !== undefined) {
-            const startDate = new Date(series.startdate * 1000);
-            const entryDate = startDate.toISOString().split('T')[0];
-            const entryId = sleepEntryMap.get(entryDate);
-
-            if (entryId) {
-                const duration = series.enddate - series.startdate;
-                const stageType = SLEEP_STAGE_MAPPING[series.state] || 'Awake';
-                
-                // Initialize aggregate for this date if not present
-                if (!stageAggregates.has(entryDate)) {
-                    stageAggregates.set(entryDate, { deep: 0, light: 0, rem: 0, awake: 0 });
-                }
-                const agg = stageAggregates.get(entryDate);
-                const fieldKey = stageType.toLowerCase();
-                if (agg[fieldKey] !== undefined) {
-                    agg[fieldKey] += duration;
-                }
-
-                const stageData = {
-                    stage_type: stageType,
-                    start_time: startDate.toISOString(),
-                    end_time: new Date(series.enddate * 1000).toISOString(),
-                    duration_in_seconds: duration
-                };
-
-                await sleepRepository.upsertSleepStageEvent(userId, entryId, stageData);
-            }
-        }
-    }
-
-    // Pass 3: Update Summary Aggregates
-    for (const [entryDate, agg] of stageAggregates.entries()) {
-        const entryId = sleepEntryMap.get(entryDate);
-        if (entryId) {
-            const updateData = {
-                deep_sleep_seconds: agg.deep,
-                light_sleep_seconds: agg.light,
-                rem_sleep_seconds: agg.rem,
-                awake_sleep_seconds: agg.awake
-            };
-            await sleepRepository.updateSleepEntry(userId, entryId, createdByUserId, updateData);
-            log('info', `Updated summary aggregates for sleep entry ${entryDate} (Deep: ${agg.deep}s, Light: ${agg.light}s, REM: ${agg.rem}s, Awake: ${agg.awake}s).`);
-        }
-    }
+    await sleepRepository.updateSleepEntry(userId, entryId, createdByUserId, {
+      deep_sleep_seconds: stageAggregates.deep,
+      light_sleep_seconds: stageAggregates.light,
+      rem_sleep_seconds: stageAggregates.rem,
+      awake_sleep_seconds: stageAggregates.awake,
+      time_asleep_in_seconds:
+        stageAggregates.deep + stageAggregates.light + stageAggregates.rem,
+    });
+    
+    log("info", `Processed ${segments.length} sleep stages for ${entryDate} for user ${userId}.`);
+  }
 }
 
 async function upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement, source = 'manual') {

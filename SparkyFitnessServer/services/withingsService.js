@@ -79,6 +79,7 @@ async function syncWithingsData(userId, syncType = "manual") {
           userId,
           userId,
           responses["raw_sleep"].data.body?.series || [],
+          responses["raw_sleep_summary"]?.data.body?.series || [],
         );
       }
       if (responses["raw_workouts"]) {
@@ -162,6 +163,13 @@ async function syncWithingsData(userId, syncType = "manual") {
           endDateUnix,
         ),
       ),
+      sleep_summary: await safeFetch("raw_sleep_summary", () =>
+        withingsIntegrationService.fetchSleepSummaryData(
+          userId,
+          startDateUnix,
+          endDateUnix,
+        ),
+      ),
       workouts: await safeFetch("raw_workouts", () =>
         withingsIntegrationService.fetchWorkoutsData(
           userId,
@@ -188,11 +196,12 @@ async function syncWithingsData(userId, syncType = "manual") {
         bundle.heart,
       );
     }
-    if (bundle.sleep) {
+    if (bundle.sleep || bundle.sleep_summary) {
       await withingsDataProcessor.processWithingsSleepData(
         userId,
         userId,
-        bundle.sleep,
+        bundle.sleep || [],
+        bundle.sleep_summary || [],
       );
     }
     if (bundle.workouts) {

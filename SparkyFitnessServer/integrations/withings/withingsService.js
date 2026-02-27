@@ -579,6 +579,59 @@ async function fetchAndProcessSleepData(
   return sleepSeries;
 }
 
+// Function to fetch sleep summary data (action=getsummary)
+async function fetchSleepSummaryData(userId, startDate, endDate) {
+  const accessToken = await getValidAccessToken(userId);
+  const client = await getClient(userId);
+  try {
+    const providerResult = await client.query(
+      `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
+      [userId],
+    );
+    const withingsUserId = providerResult.rows[0].external_user_id;
+
+    // Convert dates to YYYY-MM-DD for getsummary
+    const startDateYMD = new Date(startDate * 1000).toISOString().split("T")[0];
+    const endDateYMD = new Date(endDate * 1000).toISOString().split("T")[0];
+
+    const response = await axios.post(
+      `${WITHINGS_API_BASE_URL}/v2/sleep`,
+      null,
+      {
+        params: {
+          action: "getsummary",
+          access_token: accessToken,
+          userid: withingsUserId,
+          startdateymd: startDateYMD,
+          enddateymd: endDateYMD,
+          data_fields:
+            "total_timeinbed,total_sleep_time,asleepduration,lightsleepduration,remsleepduration,deepsleepduration,sleep_efficiency,sleep_latency,wakeup_latency,wakeupduration,wakeupcount,waso,nb_rem_episodes,sleep_score,breathing_disturbances_intensity,snoring,snoringepisodecount,hr_average,hr_min,hr_max,rr_average,rr_min,rr_max",
+        },
+      },
+    );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("withings", "raw_sleep_summary", response.data);
+
+    if (!response.data || !response.data.body) {
+      log(
+        "warn",
+        `Withings sleep summary API returned no body for user ${userId}. Status: ${response.data?.status || "unknown"}`,
+      );
+      return null;
+    }
+    return response.data.body.series || [];
+  } catch (error) {
+    log(
+      "error",
+      `Error fetching Withings sleep summary data for user ${userId}: ${error.message}`,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 // Function to fetch workout data
 async function fetchWorkoutsData(userId, startDateYMD, endDateYMD) {
   const accessToken = await getValidAccessToken(userId);
@@ -773,6 +826,7 @@ module.exports = {
   fetchMeasuresData,
   fetchHeartData,
   fetchSleepData,
+  fetchSleepSummaryData,
   fetchWorkoutsData,
   fetchAndProcessMeasuresData,
   fetchAndProcessHeartData,
