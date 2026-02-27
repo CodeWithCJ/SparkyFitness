@@ -8,9 +8,9 @@ import {
   processUserInput,
   getTodaysNutrition,
 } from '@/api/Chatbot/sparkyChatService';
-import { AIService } from '@/api/Settings/aiServiceSettingsService';
 import { UserLoggingLevel } from '@/utils/logging';
 import { chatbotKeys } from '@/api/keys/ai';
+import { AIService } from '@/types/settings';
 
 export const useChatPreferencesQuery = () => {
   const { t } = useTranslation();

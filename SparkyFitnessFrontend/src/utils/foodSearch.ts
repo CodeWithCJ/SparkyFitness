@@ -1,11 +1,9 @@
 import { debug } from '@/utils/logging';
-import {} from '@/api/Foods/foodService.ts';
-import type { Food, FoodVariant } from '@/types/food';
+import type { FatSecretFoodItem, Food, FoodVariant } from '@/types/food';
 import {
   NutritionixItem,
   OpenFoodFactsProduct,
 } from '@/components/FoodSearch/FoodSearch';
-import { FatSecretFoodItem } from '@/api/Foods/fatSecret';
 
 export const convertOpenFoodFactsToFood = (
   product: OpenFoodFactsProduct,
@@ -316,4 +314,10 @@ export const convertFatSecretToFood = (
     variants: [defaultVariant],
     glycemic_index: nutrientData.glycemic_index || 'None',
   };
+};
+
+export const isUUID = (uuid: string) => {
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(uuid);
 };

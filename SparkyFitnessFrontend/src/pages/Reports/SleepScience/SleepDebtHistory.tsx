@@ -1,4 +1,3 @@
-import type { SleepDebtData } from '@/api/SleepScience/sleepScience';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
@@ -17,6 +16,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { SleepDebtData } from '@/types/sleepScience';
 
 interface SleepDebtHistoryProps {
   data: SleepDebtData;

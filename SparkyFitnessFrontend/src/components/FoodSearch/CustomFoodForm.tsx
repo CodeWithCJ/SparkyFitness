@@ -17,7 +17,6 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
-import { isUUID } from '@/api/Foods/enhancedCustomFoodFormService';
 import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
 import { useUpdateFoodEntriesSnapshotMutation } from '@/hooks/Foods/useFoods';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
@@ -26,6 +25,7 @@ import {
   foodVariantsOptions,
   useSaveFoodMutation,
 } from '@/hooks/Foods/useFoodVariants';
+import { isUUID } from '@/utils/foodSearch';
 
 type NumericFoodVariantKeys = Exclude<
   keyof FoodVariant,

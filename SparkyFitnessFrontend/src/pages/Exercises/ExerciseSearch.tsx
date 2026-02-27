@@ -12,7 +12,6 @@ import {
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, warn, error } from '@/utils/logging';
-import { type Exercise } from '@/api/Exercises/exerciseSearchService';
 import {
   Plus,
   Loader2,
@@ -22,7 +21,6 @@ import {
   Volume2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { type DataProvider } from '@/api/Settings/externalProviderService';
 import { Badge } from '@/components/ui/badge';
 import { Share2, Users } from 'lucide-react';
 import BodyMapFilter from './BodyMapFilter';
@@ -39,6 +37,8 @@ import {
   useAddExerciseMutation,
 } from '@/hooks/Exercises/useExerciseSearch';
 import { useQueryClient } from '@tanstack/react-query';
+import { Exercise } from '@/types/exercises';
+import { DataProvider } from '@/types/settings';
 
 interface ExerciseSearchProps {
   onExerciseSelect: (

@@ -7,13 +7,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { type GlobalSettings } from '../../api/Admin/globalSettingsService';
 import { toast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
+import { GlobalSettings } from '@/types/admin';
 
 const AuthenticationSettings: React.FC = () => {
   const { t } = useTranslation();

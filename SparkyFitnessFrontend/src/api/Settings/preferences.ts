@@ -10,13 +10,13 @@ import {
 
 export type EnergyUnit = 'kcal' | 'kJ';
 
-export interface NutrientPreference {
+interface NutrientPreference {
   view_group: string;
   platform: 'desktop' | 'mobile';
   visible_nutrients: string[];
 }
 
-export interface UserPreferences {
+interface UserPreferences {
   user_id: string;
   default_weight_unit: 'kg' | 'lbs';
   default_measurement_unit: 'cm' | 'inches';

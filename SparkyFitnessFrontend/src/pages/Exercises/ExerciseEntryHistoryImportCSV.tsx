@@ -30,8 +30,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useImportExerciseHistoryMutation } from '@/hooks/Exercises/useExercises';
-import { HistoryImportEntry } from '@/api/Exercises/exerciseService';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { HistoryImportEntry } from '@/types/exercises';
 
 // Define the shape of a single row from the CSV
 interface CsvRow {

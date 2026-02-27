@@ -6,7 +6,6 @@ import { Search, Plus, Loader2, Camera, BookText } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { type FatSecretFoodItem } from '@/api/Foods/fatSecret.ts';
 import {
   Select,
   SelectContent,
@@ -15,11 +14,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import {
-  DataProvider,
-  getProviderCategory,
-} from '@/api/Settings/externalProviderService';
-import type { Food, CSVData, GlycemicIndex } from '@/types/food';
+import type {
+  Food,
+  CSVData,
+  GlycemicIndex,
+  FatSecretFoodItem,
+} from '@/types/food';
 import type { Meal } from '@/types/meal';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -60,6 +60,8 @@ import {
   searchOpenFoodFactsOptions,
 } from '@/hooks/Foods/useOpenFoodFacts.ts';
 import { mealSearchOptions } from '@/hooks/Foods/useMeals.ts';
+import { DataProvider } from '@/types/settings.ts';
+import { getProviderCategory } from '@/utils/settings.ts';
 
 export interface OpenFoodFactsProduct {
   product_name: string;

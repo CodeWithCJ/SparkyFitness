@@ -5,7 +5,7 @@ import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
 import { useWeeklyGoalPlans } from '@/hooks/Goals/useGoals';
-import { WeeklyGoalPlan } from '@/api/Goals/goals';
+import { WeeklyGoalPlan } from '@/types/goals';
 interface WeeklyGoalPlansSectionProps {
   handleCreateWeeklyPlanClick: () => void;
   handleEditWeeklyPlanClick: (plan: WeeklyGoalPlan) => void;

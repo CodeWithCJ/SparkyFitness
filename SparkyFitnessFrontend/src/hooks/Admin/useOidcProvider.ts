@@ -1,10 +1,8 @@
 import { oidcKeys } from '@/api/keys/admin';
-import {
-  OidcProvider,
-  oidcSettingsService,
-} from '@/api/Admin/oidcSettingsService';
+import { oidcSettingsService } from '@/api/Admin/oidcSettingsService';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { OidcProvider } from '@/types/admin';
 
 export const useOidcProviders = () => {
   const { t } = useTranslation();

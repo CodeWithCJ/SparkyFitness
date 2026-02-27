@@ -32,26 +32,10 @@ import { WaterTrackingSettings } from './WaterTrackingSettings';
 import { PreferenceSettings } from './PreferenceSettings';
 import { ProfileInformation } from './ProfileInformation';
 
-export interface Profile {
-  id: string;
-  full_name: string | null;
-  phone_number: string | null; // Changed from 'phone' to 'phone_number' to match DB
-  date_of_birth: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-  gender: string | null; // Add gender to the Profile interface
-}
 export interface PasswordFormState {
   current_password: string;
   new_password: string;
   confirm_password: string;
-}
-export interface ProfileFormState {
-  full_name: string;
-  phone: string;
-  date_of_birth: string;
-  bio: string;
-  gender: string;
 }
 const Settings = () => {
   const { t } = useTranslation();

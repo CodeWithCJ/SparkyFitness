@@ -1,11 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import {
-  GlobalSettings,
-  globalSettingsService,
-} from '@/api/Admin/globalSettingsService';
+import { globalSettingsService } from '@/api/Admin/globalSettingsService';
 import { settingsKeys } from '@/api/keys/admin';
 import { authClient } from '@/lib/auth-client';
+import { GlobalSettings } from '@/types/admin';
 
 export const useSettings = () => {
   const { t } = useTranslation();

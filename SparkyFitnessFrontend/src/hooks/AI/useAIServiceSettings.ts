@@ -8,10 +8,9 @@ import {
   deleteAIService,
   updateUserPreferences,
   getActiveAiServiceSetting,
-  type AIService,
-  type UserPreferences,
 } from '@/api/Settings/aiServiceSettingsService';
 import { aiServiceKeys, userPreferencesKeys } from '@/api/keys/admin';
+import { AIService, UserPreferencesChat } from '@/types/settings';
 
 // Query hooks for fetching data
 export const useAIServices = () => {
@@ -141,7 +140,7 @@ export const useUpdateUserAIPreferences = () => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: (preferences: UserPreferences) =>
+    mutationFn: (preferences: UserPreferencesChat) =>
       updateUserPreferences(preferences),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userPreferencesKeys.ai() });

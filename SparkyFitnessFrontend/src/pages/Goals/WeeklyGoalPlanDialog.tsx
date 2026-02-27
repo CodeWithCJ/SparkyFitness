@@ -26,7 +26,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
-import { GoalPreset, WeeklyGoalPlan } from '@/api/Goals/goals';
 import { useEffect, useState } from 'react';
 import {
   useCreateWeeklyPlanMutation,
@@ -35,6 +34,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { DEFAULT_PLAN } from '@/constants/goals';
+import { WeeklyGoalPlan, GoalPreset } from '@/types/goals';
 
 const DAYS_OF_WEEK = [
   'monday',

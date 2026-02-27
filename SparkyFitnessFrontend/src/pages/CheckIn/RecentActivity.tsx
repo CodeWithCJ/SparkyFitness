@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { Timer, Activity } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
-import { CombinedMeasurement } from '@/api/CheckIn/checkInService';
+import { CombinedMeasurement } from '@/types/checkin';
 
 interface RecentActivityProps {
   convertMeasurement: (

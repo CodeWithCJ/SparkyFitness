@@ -1,8 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
-import { type GoalPreset } from '@/api/Goals/goals';
-import type { ExpandedGoals } from '@/types/goals';
+import type { ExpandedGoals, GoalPreset } from '@/types/goals';
 import { getNutrientMetadata } from '@/utils/nutrientUtils';
 import { UserCustomNutrient } from '@/types/customNutrient';
 

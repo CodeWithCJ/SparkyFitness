@@ -1,45 +1,8 @@
 import { apiCall } from '../api';
-
-export interface Goals {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  water_goal_ml: number;
-}
-
 import type { FoodEntry } from '@/types/food';
-import type { GroupedExerciseEntry } from '../Exercises/exerciseEntryService';
-
-import type { WorkoutPresetSet } from '@/types/workout';
-
-export interface ExerciseEntry {
-  id: string;
-  exercise_id: string;
-  duration_minutes: number;
-  calories_burned: number;
-  entry_date: string;
-  notes?: string;
-  sets?: WorkoutPresetSet[]; // Add sets property
-  exercises: {
-    id: string;
-    name: string;
-    user_id?: string;
-    category: string;
-    calories_per_hour: number;
-  } | null;
-}
-
-export interface CheckInMeasurement {
-  entry_date: string;
-  weight?: number;
-  neck?: number;
-  waist?: number;
-  hips?: number;
-  steps?: number;
-  height?: number;
-  body_fat_percentage?: number;
-}
+import { CheckInMeasurement } from '@/types/checkin';
+import { Goals } from '@/types/diary';
+import { GroupedExerciseEntry } from '@/types/exercises';
 
 export const getGoalsForDate = async (date: string): Promise<Goals> => {
   const params = new URLSearchParams({ date });

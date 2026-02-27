@@ -9,7 +9,6 @@ import {
 } from '@/api/Integrations/integrations';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
 
 import {
   handleConnectWithings,
@@ -32,6 +31,7 @@ import {
 } from '@/api/Settings/externalProviderService';
 import { garminKeys } from '@/api/keys/integrations';
 import { externalProviderKeys } from '@/api/keys/settings';
+import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
 export const useLinkFitbitMutation = () => {
   const { t } = useTranslation();
   const invalidate = useDiaryInvalidation();

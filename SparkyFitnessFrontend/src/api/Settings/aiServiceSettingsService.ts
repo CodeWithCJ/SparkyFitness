@@ -1,22 +1,5 @@
 import { apiCall } from '@/api/api';
-
-export interface AIService {
-  id: string;
-  service_name: string;
-  service_type: string;
-  api_key?: string; // Temporarily holds plain text key from user for new/update operations, not received from backend.
-  custom_url: string | null;
-  system_prompt: string | null;
-  is_active: boolean;
-  model_name?: string;
-  custom_model_name?: string; // Add custom_model_name to AIService interface
-  is_public?: boolean; // Indicates if this is a public setting
-  source?: 'user' | 'global' | 'environment'; // Indicates the source of the setting
-}
-
-export interface UserPreferences {
-  auto_clear_history: string;
-}
+import { AIService, UserPreferencesChat } from '@/types/settings';
 
 export const getAIServices = async (): Promise<AIService[]> => {
   try {
@@ -36,7 +19,7 @@ export const getAIServices = async (): Promise<AIService[]> => {
   }
 };
 
-export const getPreferences = async (): Promise<UserPreferences> => {
+export const getPreferences = async (): Promise<UserPreferencesChat> => {
   try {
     const preferences = await apiCall(`/user-preferences`, {
       method: 'GET',
@@ -113,8 +96,8 @@ export const updateAIServiceStatus = async (
 };
 
 export const updateUserPreferences = async (
-  preferences: UserPreferences
-): Promise<UserPreferences> => {
+  preferences: UserPreferencesChat
+): Promise<UserPreferencesChat> => {
   return apiCall(`/user-preferences`, {
     method: 'PUT',
     body: preferences,

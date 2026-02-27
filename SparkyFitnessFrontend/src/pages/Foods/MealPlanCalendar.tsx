@@ -24,7 +24,7 @@ import {
   useMealPlanTemplates,
   useUpdateMealPlanMutation,
 } from '@/hooks/Foods/useMealplanTemplate';
-import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
+import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
 
 const MealPlanCalendar: React.FC = () => {
   const { t } = useTranslation();

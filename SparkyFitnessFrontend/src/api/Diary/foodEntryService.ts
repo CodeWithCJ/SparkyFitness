@@ -2,12 +2,23 @@ import { apiCall } from '../api';
 import type { MealFood } from '@/types/meal';
 import type { FoodEntryMeal } from '@/types/meal';
 import type { FoodEntry } from '@/types/food';
+import { DayData } from '@/types/diary';
 
 export interface FoodEntryUpdateData {
   quantity?: number;
   unit?: string;
 }
 
+export interface FoodEntryCreateData {
+  user_id?: string;
+  food_id: string;
+  meal_type: string;
+  meal_type_id?: string;
+  quantity: number;
+  unit: string;
+  entry_date: string;
+  variant_id?: string | null;
+}
 export const updateFoodEntry = async (
   id: string,
   data: FoodEntryUpdateData
@@ -19,15 +30,6 @@ export const updateFoodEntry = async (
   });
   return response;
 };
-
-export interface DayData {
-  date: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  dietary_fiber: number;
-}
 
 export const loadMiniNutritionTrendData = async (
   userId: string,
@@ -48,17 +50,6 @@ export const loadMiniNutritionTrendData = async (
   );
   return data || []; // Return empty array if 404 (no data found)
 };
-
-export interface FoodEntryCreateData {
-  user_id?: string;
-  food_id: string;
-  meal_type: string;
-  meal_type_id?: string;
-  quantity: number;
-  unit: string;
-  entry_date: string;
-  variant_id?: string | null;
-}
 
 export const createFoodEntry = async (
   data: FoodEntryCreateData

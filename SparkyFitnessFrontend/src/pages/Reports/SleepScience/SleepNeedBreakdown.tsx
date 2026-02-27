@@ -1,4 +1,3 @@
-import type { DailyNeedData } from '@/api/SleepScience/sleepScience';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTheme } from '@/contexts/ThemeContext';
 import type React from 'react';
@@ -14,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { DailyNeedData } from '@/types/sleepScience';
 
 interface SleepNeedBreakdownProps {
   data: DailyNeedData;

@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import ImportFromCSV from '../../pages/Foods/FoodImportFromCSV.tsx';
 import { useTranslation } from 'react-i18next';
-import { FoodDataForBackend } from '@/api/Foods/foodService.ts';
+import { FoodDataForBackend } from '@/types/food.ts';
 
 interface CsvImportDialogProps {
   isOpen: boolean;
