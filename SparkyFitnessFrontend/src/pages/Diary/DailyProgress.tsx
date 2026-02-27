@@ -110,17 +110,6 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
       exerciseCaloriesBurned * (exerciseCaloriePercentage / 100);
     const adjustedTotalBurned = adjustedExerciseBurned + bmrCalories;
     caloriesRemaining = goalCalories - (eatenCalories - adjustedTotalBurned);
-  } else if (calorieGoalAdjustmentMode === 'smart') {
-    // MFP-style: only earn back exercise calories above what's already built into the daily goal.
-    // The activity portion already assumed in the goal = goal - BMR.
-    // (If BMR is unavailable, this falls back to no exercise credit, like fixed mode.)
-    const rawBmr = bmr || 0;
-    const activityAlreadyInGoal = Math.max(0, goalCalories - rawBmr);
-    const exerciseAdjustment = Math.max(
-      0,
-      exerciseCaloriesBurned - activityAlreadyInGoal
-    );
-    caloriesRemaining = goalCalories - eatenCalories + exerciseAdjustment;
   } else {
     // fixed: no exercise calories credited
     caloriesRemaining = goalCalories - eatenCalories;

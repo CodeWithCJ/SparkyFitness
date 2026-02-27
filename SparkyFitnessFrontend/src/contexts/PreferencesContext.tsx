@@ -82,12 +82,7 @@ interface PreferencesContextType {
   timezone: string;
   foodDisplayLimit: number;
   itemDisplayLimit: number;
-  calorieGoalAdjustmentMode:
-    | 'dynamic'
-    | 'fixed'
-    | 'percentage'
-    | 'smart'
-    | 'tdee';
+  calorieGoalAdjustmentMode: 'dynamic' | 'fixed' | 'percentage' | 'tdee';
   energyUnit: EnergyUnit;
   autoScaleOpenFoodFactsImports: boolean;
   nutrientDisplayPreferences: NutrientPreference[];
@@ -116,7 +111,7 @@ interface PreferencesContextType {
   setTimezone: (timezone: string) => void;
   setItemDisplayLimit: (limit: number) => void;
   setCalorieGoalAdjustmentMode: (
-    mode: 'dynamic' | 'fixed' | 'percentage' | 'smart' | 'tdee'
+    mode: 'dynamic' | 'fixed' | 'percentage' | 'tdee'
   ) => void;
   setExerciseCaloriePercentage: (percentage: number) => void;
   setActivityLevel: (level: ActivityLevel) => void;
@@ -204,7 +199,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [itemDisplayLimit, setItemDisplayLimitState] = useState<number>(10);
   const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10);
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentModeState] =
-    useState<'dynamic' | 'fixed' | 'percentage' | 'smart' | 'tdee'>('dynamic');
+    useState<'dynamic' | 'fixed' | 'percentage' | 'tdee'>('dynamic');
   const [exerciseCaloriePercentage, setExerciseCaloriePercentageState] =
     useState<number>(100);
   const [activityLevel, setActivityLevelState] =
@@ -379,7 +374,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           | 'dynamic'
           | 'fixed'
           | 'percentage'
-          | 'smart'
           | 'tdee';
         exercise_calorie_percentage: number;
         activity_level: ActivityLevel;
@@ -728,7 +722,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const setCalorieGoalAdjustmentMode = useCallback(
-    (mode: 'dynamic' | 'fixed' | 'percentage' | 'smart' | 'tdee') => {
+    (mode: 'dynamic' | 'fixed' | 'percentage' | 'tdee') => {
       setCalorieGoalAdjustmentModeState(mode);
       saveAllPreferences({ calorieGoalAdjustmentMode: mode });
     },
