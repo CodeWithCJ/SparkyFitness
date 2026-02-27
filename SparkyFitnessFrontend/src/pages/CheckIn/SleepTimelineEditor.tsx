@@ -27,6 +27,7 @@ interface SleepTimelineEditorProps {
     bedtime: string;
     wakeTime: string;
     duration: string;
+    timeAsleep?: string;
     sleepScore?: number;
     source?: string;
     deepSleepSeconds?: number | null;
@@ -358,8 +359,14 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
           )}
           <p>
             <b>{t('sleepTimelineEditor.duration', 'Duration')}:</b>{' '}
-            {entryDetails.duration} hours
+            {entryDetails.duration}
           </p>
+          {entryDetails.timeAsleep && (
+            <p>
+              <b>{t('sleepTimelineEditor.timeAsleep', 'Time Asleep')}:</b>{' '}
+              {entryDetails.timeAsleep}
+            </p>
+          )}
           {entryDetails.sleepScore && (
             <p>
               <b>{t('sleepTimelineEditor.sleepScore', 'Sleep Score')}:</b>{' '}

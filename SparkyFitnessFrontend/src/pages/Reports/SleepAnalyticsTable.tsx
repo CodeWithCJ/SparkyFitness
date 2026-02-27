@@ -15,6 +15,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
+import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 
 interface SleepAnalyticsTableProps {
   combinedSleepData: CombinedSleepData[];
@@ -117,11 +118,11 @@ const SleepAnalyticsTable = ({
           {combinedSleepData && combinedSleepData.length > 0 ? (
             combinedSleepData.map(({ sleepEntry, sleepAnalyticsData }) => {
               const isExpanded = expandedRows.has(sleepEntry.id);
-              const totalSleepDurationHours = (
-                sleepEntry.duration_in_seconds / 3600
-              ).toFixed(1);
-              const timeAsleepHours = sleepEntry.time_asleep_in_seconds
-                ? (sleepEntry.time_asleep_in_seconds / 3600).toFixed(1)
+              const totalSleepDuration = formatSecondsToHHMM(
+                sleepEntry.duration_in_seconds
+              );
+              const timeAsleep = sleepEntry.time_asleep_in_seconds
+                ? formatSecondsToHHMM(sleepEntry.time_asleep_in_seconds)
                 : t('common.notApplicable', 'N/A');
               const insight =
                 sleepEntry.sleep_score && sleepEntry.sleep_score > 70
@@ -169,8 +170,8 @@ const SleepAnalyticsTable = ({
                     <TableCell>
                       {formatDateInUserTimezone(sleepEntry.wake_time, 'HH:mm')}
                     </TableCell>
-                    <TableCell>{totalSleepDurationHours}h</TableCell>
-                    <TableCell>{timeAsleepHours}h</TableCell>
+                    <TableCell>{totalSleepDuration}</TableCell>
+                    <TableCell>{timeAsleep}</TableCell>
                     <TableCell>
                       {sleepAnalyticsData.sleepScore.toFixed(0)}
                     </TableCell>
@@ -178,7 +179,7 @@ const SleepAnalyticsTable = ({
                       {sleepAnalyticsData.sleepEfficiency.toFixed(1)}%
                     </TableCell>
                     <TableCell>
-                      {sleepAnalyticsData.sleepDebt.toFixed(1)}h
+                      {formatSecondsToHHMM(sleepAnalyticsData.sleepDebt * 3600)}
                     </TableCell>
                     <TableCell>{sleepAnalyticsData.awakePeriods}</TableCell>
                     <TableCell>{insight}</TableCell>

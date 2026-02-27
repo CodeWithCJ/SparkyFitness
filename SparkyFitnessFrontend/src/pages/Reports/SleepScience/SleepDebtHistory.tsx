@@ -5,6 +5,7 @@ import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 import {
   Bar,
   BarChart,
@@ -96,7 +97,7 @@ const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
             <YAxis
               stroke={isDark ? '#888' : '#666'}
               fontSize={10}
-              tickFormatter={(v: number) => `${v}h`}
+              tickFormatter={(v: number) => formatSecondsToHHMM(v * 3600)}
             />
             <Tooltip
               contentStyle={{
@@ -110,7 +111,7 @@ const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
                   name === 'deviation'
                     ? t('sleepScience.debt', 'Debt')
                     : t('sleepScience.surplus', 'Surplus');
-                return [`${Math.abs(value).toFixed(1)}h`, label];
+                return [formatSecondsToHHMM(Math.abs(value) * 3600), label];
               }}
             />
             <ReferenceLine y={0} stroke={isDark ? '#555' : '#ccc'} />
