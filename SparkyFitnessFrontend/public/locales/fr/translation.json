@@ -410,7 +410,7 @@
     "toggleStatusError": "Échec de la modification du statut du plan d'entraînement."
   },
   "exerciseCard": {
-    "noEntries": "Aucune entrée d'exercice pour cette journée.",
+    "noEntries": "Aucune donnée d'exercice pour aujourd’hui.",
     "exerciseTotal": "Total des exercices",
     "editExerciseInDatabase": "Modifier l'exercice dans la base de données",
     "editExerciseInDatabaseDescription": "Modifier les détails de(s) exercice(s) sélectionné(s) dans la base de données.",
