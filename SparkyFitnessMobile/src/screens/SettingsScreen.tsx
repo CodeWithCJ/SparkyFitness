@@ -370,6 +370,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           />
 
 
+
+
+          <HealthDataSync
+            healthMetricStates={healthMetricStates}
+            handleToggleHealthMetric={handleToggleHealthMetric}
+            isAllMetricsEnabled={isAllMetricsEnabled}
+            handleToggleAllMetrics={handleToggleAllMetrics}
+          />
+          <AppearanceSettings />
           <TouchableOpacity
             className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
             onPress={() => navigation.navigate('Logs')}
@@ -391,19 +400,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               <Icon name="share" size={20} color="#999" />
             )}
           </TouchableOpacity>
-          <HealthDataSync
-            healthMetricStates={healthMetricStates}
-            handleToggleHealthMetric={handleToggleHealthMetric}
-            isAllMetricsEnabled={isAllMetricsEnabled}
-            handleToggleAllMetrics={handleToggleAllMetrics}
-          />
-          <AppearanceSettings />
+          <Text className="text-text-secondary text-sm px-2 mb-4 mt-2">
+            Exports a local diagnostic report (app version, sync status, logs).{'\n'}
+            No personal health or food data is included. Nothing is sent automatically.
+          </Text>
 
           {__DEV__ &&
             (Constants.expoConfig?.extra?.APP_VARIANT === 'development' ||
-             Constants.expoConfig?.extra?.APP_VARIANT === 'dev') && (
-            <DevTools />
-          )}
+              Constants.expoConfig?.extra?.APP_VARIANT === 'dev') && (
+              <DevTools />
+            )}
 
 
           <View className="items-center z-100">
