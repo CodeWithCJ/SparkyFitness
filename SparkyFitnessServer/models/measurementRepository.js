@@ -2,6 +2,9 @@
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
+// SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
+const ALLOWED_CHECK_IN_COLUMNS = ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'];
+
 async function upsertStepData(userId, actingUserId, value, date) {
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
@@ -138,7 +141,15 @@ async function upsertCheckInMeasurements(userId, actingUserId, entryDate, measur
     // Filter out 'id' from measurements to prevent it from being upserted into numeric columns
     const filteredMeasurements = { ...measurements };
     delete filteredMeasurements.id;
-    const measurementKeys = Object.keys(filteredMeasurements);
+
+    // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
+    const measurementKeys = Object.keys(filteredMeasurements).filter(key => {
+      if (!ALLOWED_CHECK_IN_COLUMNS.includes(key)) {
+        console.warn(`Attempted to upsert unauthorized measurement key: ${key}`);
+        return false;
+      }
+      return true;
+    });
 
     if (measurementKeys.length === 0) {
       // If no measurements are provided, and no existing record, there's nothing to do.
@@ -156,12 +167,12 @@ async function upsertCheckInMeasurements(userId, actingUserId, entryDate, measur
       const fields = measurementKeys.map((key, index) => `${key} = $${index + 1}`).join(', ');
       // Add updated_by_user_id to update query
       query = `UPDATE check_in_measurements SET ${fields}, updated_at = now(), updated_by_user_id = $${measurementKeys.length + 1} WHERE id = $${measurementKeys.length + 2} RETURNING *`;
-      values = [...Object.values(filteredMeasurements), actingUserId, id];
+      values = [...measurementKeys.map(key => filteredMeasurements[key]), actingUserId, id];
     } else {
       // Add updated_by_user_id to insert query
       const cols = ['user_id', 'entry_date', ...measurementKeys, 'created_by_user_id', 'updated_by_user_id', 'created_at', 'updated_at'];
       const placeholders = cols.map((_, index) => `$${index + 1}`).join(', ');
-      values = [userId, entryDate, ...Object.values(filteredMeasurements), actingUserId, actingUserId, new Date().toISOString(), new Date().toISOString()];
+      values = [userId, entryDate, ...measurementKeys.map(key => filteredMeasurements[key]), actingUserId, actingUserId, new Date().toISOString(), new Date().toISOString()];
       query = `INSERT INTO check_in_measurements (${cols.join(', ')}) VALUES (${placeholders}) RETURNING *`;
     }
 
@@ -206,7 +217,7 @@ async function updateCheckInMeasurements(userId, actingUserId, entryDate, update
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     const fieldsToUpdate = Object.keys(updateData)
-      .filter(key => ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'].includes(key))
+      .filter(key => ALLOWED_CHECK_IN_COLUMNS.includes(key))
       .map((key, index) => `${key} = $${index + 1}`);
 
     if (fieldsToUpdate.length === 0) {
@@ -216,7 +227,7 @@ async function updateCheckInMeasurements(userId, actingUserId, entryDate, update
 
     // Correctly construct the values array: first the values for the SET clause, then actingUserId (for audit), then userId, then entryDate
     const updateValues = Object.keys(updateData)
-      .filter(key => ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'].includes(key))
+      .filter(key => ALLOWED_CHECK_IN_COLUMNS.includes(key))
       .map(key => updateData[key]);
 
     const values = [...updateValues, actingUserId, userId, entryDate];
@@ -614,6 +625,11 @@ async function getCustomMeasurementOwnerId(id, userId) {
 }
 
 async function getMostRecentMeasurement(userId, measurementType) {
+  // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic column names
+  if (!ALLOWED_CHECK_IN_COLUMNS.includes(measurementType)) {
+    throw new Error(`Invalid measurement type requested: ${measurementType}`);
+  }
+
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
