@@ -1,12 +1,16 @@
 import { useEffect } from 'react';
-import axios from 'axios';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { info } from '@/utils/logging';
+import { useLatestReleaseQuery } from '@/hooks/useGeneralQueries';
+
+export interface LatestReleaseResponse {
+  version: string;
+  isNewVersionAvailable: boolean;
+}
 
 interface AppSetupProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setLatestRelease: (release: any) => void;
+  setLatestRelease: (release: LatestReleaseResponse) => void;
   setShowNewReleaseDialog: (show: boolean) => void;
 }
 
@@ -17,52 +21,54 @@ const AppSetup = ({
   const { user, loading } = useAuth();
   const { loggingLevel } = usePreferences();
 
+  const { data: releaseData, isSuccess } = useLatestReleaseQuery({
+    enabled: !loading && !!user,
+  });
+
   useEffect(() => {
-    info(loggingLevel, 'AppSetup useEffect: user', { user, loading });
-    if (!loading && user) {
-      info(loggingLevel, 'User is authenticated, checking for new release.');
-      const checkNewRelease = async () => {
-        try {
-          const response = await axios.get('/api/version/latest-github');
-          const releaseData = response.data;
-          setLatestRelease(releaseData);
-          info(loggingLevel, 'Latest GitHub release data:', releaseData);
+    info(loggingLevel, 'AppSetup useEffect: auth state', {
+      user: !!user,
+      loading,
+    });
 
-          const dismissedVersion = localStorage.getItem(
-            'dismissedReleaseVersion'
-          );
-          info(
-            loggingLevel,
-            'Dismissed release version from localStorage:',
-            dismissedVersion
-          );
+    if (!loading && user && isSuccess && releaseData) {
+      info(loggingLevel, 'Latest GitHub release data fetched:', releaseData);
 
-          if (
-            releaseData.isNewVersionAvailable &&
-            dismissedVersion !== releaseData.version
-          ) {
-            info(loggingLevel, 'Showing new release dialog.');
-            setShowNewReleaseDialog(true);
-          } else {
-            info(loggingLevel, 'New release dialog not shown.', {
-              isNewVersionAvailable: releaseData.isNewVersionAvailable,
-              dismissedVersion,
-              releaseDataVersion: releaseData.version,
-            });
-          }
-        } catch (error) {
-          console.error('Error checking for new release:', error);
-        }
-      };
+      setLatestRelease(releaseData);
 
-      checkNewRelease();
-    } else {
+      const dismissedVersion = localStorage.getItem('dismissedReleaseVersion');
+
       info(
         loggingLevel,
-        'User not authenticated or still loading, skipping new release check.'
+        'Dismissed release version from localStorage:',
+        dismissedVersion
       );
+
+      if (
+        releaseData.isNewVersionAvailable &&
+        dismissedVersion !== releaseData.version
+      ) {
+        info(loggingLevel, 'Showing new release dialog.');
+        setShowNewReleaseDialog(true);
+      } else {
+        info(loggingLevel, 'New release dialog not shown.', {
+          isNewVersionAvailable: releaseData.isNewVersionAvailable,
+          dismissedVersion,
+          releaseDataVersion: releaseData.version,
+        });
+      }
+    } else if (!user && !loading) {
+      info(loggingLevel, 'User not authenticated, skipping new release check.');
     }
-  }, [user, loading, loggingLevel, setLatestRelease, setShowNewReleaseDialog]);
+  }, [
+    user,
+    loading,
+    isSuccess,
+    releaseData,
+    loggingLevel,
+    setLatestRelease,
+    setShowNewReleaseDialog,
+  ]);
 
   return null;
 };

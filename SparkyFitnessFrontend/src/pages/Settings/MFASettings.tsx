@@ -11,12 +11,19 @@ import { toast } from '@/hooks/use-toast';
 import { log } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import QRCode from 'react-qr-code';
+import {
+  useSyncTotpMutation,
+  useToggleEmailMfaMutation,
+} from '@/hooks/Settings/useProfile';
 
 const MFASettings = () => {
   const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
   const [loading, setLoading] = useState(false);
   const { data: session, refetch } = authClient.useSession();
+
+  const { mutateAsync: syncTotp } = useSyncTotpMutation();
+  const { mutateAsync: toggleEmailMfa } = useToggleEmailMfaMutation();
 
   const [totpEnabled, setTotpEnabled] = useState(false);
   const [emailMfaEnabled, setEmailMfaEnabled] = useState(false);
@@ -39,9 +46,6 @@ const MFASettings = () => {
     if (session?.user) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setTotpEnabled(!!(session.user as any).mfaTotpEnabled);
-      // Better Auth doesn't store email_mfa_enabled natively in user object by default,
-      // but we added it to the table. We might need a separate fetch or custom user field.
-      // For now, let's assume it's available via session or a small custom fetch.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setEmailMfaEnabled(!!(session.user as any).mfaEmailEnabled);
     }
@@ -77,8 +81,7 @@ const MFASettings = () => {
           });
           if (disableRes.error) throw disableRes.error;
 
-          // Explicitly sync the mfa_totp_enabled flag
-          await fetch('/api/auth/totp/sync-after-disable', { method: 'POST' });
+          await syncTotp();
 
           toast({ title: 'Success', description: 'TOTP disabled.' });
           await refetch();
@@ -95,7 +98,6 @@ const MFASettings = () => {
           await refetch();
           break;
         }
-        // Custom Email MFA still needs an endpoint or we adapt Better Auth OTP
       }
       setShowPasswordPrompt(false);
       setConfirmPassword(''); // Clear password after use
@@ -141,21 +143,14 @@ const MFASettings = () => {
   const handleEnableEmailMfa = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/identity/mfa/email-toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: true }),
-      });
-      if (!response.ok) throw new Error('Failed to enable Email MFA');
-
+      await toggleEmailMfa(true);
       toast({ title: 'Success', description: 'Email MFA enabled!' });
-      // Refresh session to pick up changes - force bypass of local fetch cache
       await refetch();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Failed to enable Email MFA',
         variant: 'destructive',
       });
     } finally {
@@ -166,21 +161,14 @@ const MFASettings = () => {
   const handleDisableEmailMfa = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/identity/mfa/email-toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: false }),
-      });
-      if (!response.ok) throw new Error('Failed to disable Email MFA');
-
+      await toggleEmailMfa(false);
       toast({ title: 'Success', description: 'Email MFA disabled.' });
-      // Refresh session to pick up changes - force bypass of local fetch cache
       await refetch();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Failed to disable Email MFA',
         variant: 'destructive',
       });
     } finally {

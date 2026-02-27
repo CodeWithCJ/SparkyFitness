@@ -29,12 +29,13 @@ export const useAIServices = () => {
   });
 };
 
-export const useActiveAIService = () => {
+export const useActiveAIService = (enabled: boolean) => {
   const { t } = useTranslation();
 
   return useQuery({
     queryKey: aiServiceKeys.active(),
     queryFn: () => getActiveAiServiceSetting(),
+    enabled,
     meta: {
       errorMessage: t(
         'settings.aiService.userSettings.errorLoading',

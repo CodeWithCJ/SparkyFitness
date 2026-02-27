@@ -3,8 +3,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { getActiveAiServiceSetting } from '@/api/Settings/aiServiceSettingsService';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 
 const BUTTON_SIZE = 56; // 14 * 4 = 56px (w-14)
 const MINIMIZED_SIZE = 24;
@@ -24,7 +24,6 @@ interface ButtonState {
 const DraggableChatbotButton: React.FC = () => {
   const { toggleChat, isChatOpen } = useChatbotVisibility();
   const { user, loading } = useAuth();
-  const [hasAiProvider, setHasAiProvider] = useState(false);
   const [buttonState, setButtonState] = useState<ButtonState>({
     y: 0,
     edge: 'right',
@@ -39,6 +38,13 @@ const DraggableChatbotButton: React.FC = () => {
   const dragOffset = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const { data: activeService, isLoading: serviceLoading } =
+    useActiveAIService(!!user);
+
+  // Berechneter Wert statt State
+  const hasAiProvider = !!(
+    activeService && Object.keys(activeService).length > 0
+  );
 
   // Calculate actual position based on state
   const getPosition = useCallback(() => {
@@ -112,36 +118,6 @@ const DraggableChatbotButton: React.FC = () => {
   }, [getMaxY]);
 
   // AI Provider check
-  const checkAiProviders = useCallback(async () => {
-    if (!loading && user?.id) {
-      try {
-        const activeService = await getActiveAiServiceSetting();
-        const hasActive =
-          activeService !== null &&
-          activeService !== undefined &&
-          Object.keys(activeService).length > 0;
-        setHasAiProvider(hasActive);
-      } catch (error) {
-        console.error(
-          '[DraggableChatbotButton] Failed to fetch AI services:',
-          error
-        );
-        setHasAiProvider(false);
-      }
-    } else if (!loading && !user) {
-      setHasAiProvider(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.id]);
-
-  useEffect(() => {
-    checkAiProviders();
-  }, [checkAiProviders]);
-
-  useEffect(() => {
-    const interval = setInterval(checkAiProviders, 60000);
-    return () => clearInterval(interval);
-  }, [checkAiProviders]);
 
   // Trigger entrance animation after provider check
   useEffect(() => {

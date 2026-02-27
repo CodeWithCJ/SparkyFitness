@@ -1,4 +1,4 @@
-import { apiCall } from '../../services/api';
+import { apiCall } from '../api';
 
 export interface Goals {
   calories: number;

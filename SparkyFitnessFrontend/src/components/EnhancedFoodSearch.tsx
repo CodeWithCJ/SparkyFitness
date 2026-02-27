@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api.ts';
 import { getProviderCategory } from '@/api/Settings/externalProviderService';
 import type { Food, FoodVariant, CSVData } from '@/types/food';
 import type { Meal } from '@/types/meal';

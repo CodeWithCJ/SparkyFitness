@@ -1,42 +1,22 @@
-import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  getNeedsReviewCount,
-  getNeedsReviewItems,
-  type ReviewItem,
-} from '@/services/reviewService';
+  useNeedsReviewCountQuery,
+  useNeedsReviewItemsQuery,
+} from '@/hooks/Foods/useReview';
 
-const GlobalNotificationIcon: React.FC = () => {
+const GlobalNotificationIcon = () => {
   const { user } = useAuth();
-  const [reviewCount, setReviewCount] = useState(0);
-  const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  useEffect(() => {
-    if (!user) return;
+  // remove false to activate
+  const { data: reviewCount = 0 } = useNeedsReviewCountQuery(!!user && false);
 
-    const fetchReviewCount = async () => {
-      try {
-        // This service and endpoint need to be created.
-        const count = await getNeedsReviewCount();
-        setReviewCount(count);
-        if (count > 0) {
-          const items = await getNeedsReviewItems();
-          setReviewItems(items);
-        }
-      } catch (error) {
-        console.error('Failed to fetch items needing review:', error);
-      }
-    };
+  const { data: reviewItems = [] } = useNeedsReviewItemsQuery(
+    !!user && reviewCount > 0
+  );
 
-    fetchReviewCount();
-    const interval = setInterval(fetchReviewCount, 60000); // Poll every 60 seconds
-
-    return () => clearInterval(interval);
-  }, [user]);
-
-  // Temporarily hide the notification. Remove this line to re-enable.
   return null;
 };
+
 export default GlobalNotificationIcon;

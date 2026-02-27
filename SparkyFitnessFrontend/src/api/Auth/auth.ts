@@ -1,5 +1,6 @@
 import { authClient } from '@/lib/auth-client';
 import type { AuthResponse, LoginSettings } from '@/types/auth';
+import { apiCall } from '../api';
 
 export const requestMagicLink = async (email: string): Promise<void> => {
   const { error } = await authClient.signIn.magicLink({
@@ -128,14 +129,16 @@ export const initiateOidcLogin = async ({
 };
 
 export const getLoginSettings = async (): Promise<LoginSettings> => {
-  const response = await fetch('/api/auth/settings');
-  if (!response.ok) {
+  try {
+    return await apiCall('/auth/settings', {
+      method: 'GET',
+    });
+  } catch (error) {
     return {
       email: { enabled: true },
       oidc: { enabled: false, providers: [] },
     };
   }
-  return await response.json();
 };
 
 export const verifyMagicLink = async (token: string): Promise<AuthResponse> => {
@@ -177,11 +180,89 @@ export const verifyMagicLink = async (token: string): Promise<AuthResponse> => {
 };
 
 export const getMfaFactors = async (email: string) => {
-  const response = await fetch(
-    `/api/auth/mfa-factors?email=${encodeURIComponent(email)}`
-  );
-  if (!response.ok) {
-    throw new Error('Failed to fetch MFA factors');
-  }
-  return await response.json();
+  return await apiCall(`/auth/mfa-factors?email=${encodeURIComponent(email)}`, {
+    method: 'GET',
+  });
+};
+
+export interface IdentityUserResponse {
+  activeUserId: string;
+  fullName: string | null;
+  activeUserFullName?: string;
+  activeUserEmail: string;
+}
+
+export interface SwitchContextResponse {
+  activeUserId?: string;
+}
+
+export const fetchIdentityUser = async (): Promise<IdentityUserResponse> => {
+  return apiCall('/identity/user', {
+    method: 'GET',
+  });
+};
+
+export const switchUserContext = async (
+  targetUserId: string
+): Promise<SwitchContextResponse> => {
+  return apiCall('/identity/switch-context', {
+    method: 'POST',
+    body: { targetUserId },
+  });
+};
+
+export interface AccessibleUser {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  permissions: {
+    diary: boolean;
+    checkin: boolean;
+    reports: boolean;
+    food_list: boolean;
+    calorie: boolean;
+  };
+  access_end_date: string | null;
+}
+
+export const getAccessibleUsers = async (): Promise<AccessibleUser[]> => {
+  const data = await apiCall('/identity/users/accessible-users', {
+    method: 'GET',
+  });
+
+  return (data || []).map((item) => ({
+    user_id: item.user_id,
+    full_name: item.full_name,
+    email: item.email,
+    permissions:
+      typeof item.permissions === 'object' && item.permissions
+        ? {
+            diary:
+              item.permissions.diary ||
+              item.permissions.calorie ||
+              item.permissions.can_manage_diary ||
+              false,
+            checkin:
+              item.permissions.checkin ||
+              item.permissions.can_manage_checkin ||
+              false,
+            reports:
+              item.permissions.reports ||
+              item.permissions.can_view_reports ||
+              false,
+            food_list:
+              item.permissions.food_list ||
+              item.permissions.can_view_food_library ||
+              false,
+            calorie: item.permissions.calorie || false,
+          }
+        : {
+            diary: false,
+            checkin: false,
+            reports: false,
+            food_list: false,
+            calorie: false,
+          },
+    access_end_date: item.access_end_date,
+  }));
 };
