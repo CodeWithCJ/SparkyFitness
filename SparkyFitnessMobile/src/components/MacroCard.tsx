@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text } from 'react-native';
-import { Canvas, Rect, Path, Group, Skia, rect, rrect } from '@shopify/react-native-skia';
+import { Canvas, Rect, Group, rect, rrect } from '@shopify/react-native-skia';
 import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
@@ -33,25 +33,23 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
     }, [progress, animatedProgress])
   );
 
-  const fillPath = useDerivedValue(() => {
+  const fillWidth = useDerivedValue(() => {
     const p = animatedProgress.value;
-    if (p <= 0 || barWidth <= 0) return Skia.Path.Make();
-    const w = p > 1 ? barWidth / p : barWidth * p;
-    const path = Skia.Path.Make();
-    path.addRect(Skia.XYWHRect(0, 0, w, barHeight));
-    return path;
+    if (p <= 0 || barWidth <= 0) return 0;
+    return p > 1 ? barWidth / p : barWidth * p;
   }, [barWidth]);
 
-  const overflowPath = useDerivedValue(() => {
+  const overflowX = useDerivedValue(() => {
     const p = animatedProgress.value;
-    if (p <= 1 || barWidth <= 0) return Skia.Path.Make();
-    const solidW = barWidth / p;
-    const gapStart = solidW + 2;
-    const w = barWidth - gapStart;
-    if (w <= 0) return Skia.Path.Make();
-    const path = Skia.Path.Make();
-    path.addRect(Skia.XYWHRect(gapStart, 0, w, barHeight));
-    return path;
+    if (p <= 1 || barWidth <= 0) return barWidth;
+    return barWidth / p + 2;
+  }, [barWidth]);
+
+  const overflowWidth = useDerivedValue(() => {
+    const p = animatedProgress.value;
+    if (p <= 1 || barWidth <= 0) return 0;
+    const gapStart = barWidth / p + 2;
+    return Math.max(0, barWidth - gapStart);
   }, [barWidth]);
 
   return (
@@ -80,10 +78,10 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
                 color={trackColor}
               />
               {/* Animated fill portion */}
-              <Path path={fillPath} color={color} />
+              <Rect x={0} y={0} width={fillWidth} height={barHeight} color={color} />
               {/* Overflow portion with reduced opacity */}
               <Group opacity={0.65}>
-                <Path path={overflowPath} color={color} />
+                <Rect x={overflowX} y={0} width={overflowWidth} height={barHeight} color={color} />
               </Group>
             </Group>
           </Canvas>
