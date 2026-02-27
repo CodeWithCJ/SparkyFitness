@@ -297,7 +297,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     const foodInfo = mealToFoodInfo(item);
     return (
       <TouchableOpacity
-        className="px-4 py-3 border-b border-border-subtle"
+        className="px-4 py-2 border-b border-border-subtle"
         activeOpacity={0.7}
         onPress={() => showFoodInfo(foodInfo)}
       >
@@ -305,7 +305,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <View className="flex-1 mr-3">
             <Text className="text-text-primary text-base font-medium">{item.name}</Text>
             {item.description ? (
-              <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>
+              <Text className="text-text-secondary text-sm" numberOfLines={1}>
                 {item.description}
               </Text>
             ) : null}
@@ -630,17 +630,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Add
         </Text>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('ManualFoodEntry', { date })}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="ml-auto z-10"
-        >
-          <Icon name="add" size={22} color={accentColor} />
-        </TouchableOpacity>
       </View>
 
       {/* Segmented control */}
-      <View className="px-4 pb-2">
+      <View className="px-4 mt-2">
         <View className="flex-row bg-raised p-1 rounded-lg">
           {TABS.map((tab) => (
             <TouchableOpacity

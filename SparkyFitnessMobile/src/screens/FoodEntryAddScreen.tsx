@@ -367,8 +367,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
           </View>
         )}
         {/* Servings control */}
-        <Text className="text-text-secondary text-sm">Servings</Text>
-        <View className="flex-row justify-evenly mt-4">
+        <View className="flex-row justify-start mt-2">
           <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
             <TouchableOpacity
               onPress={() => adjustServings(-0.5)}
@@ -404,17 +403,17 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
                 <TouchableOpacity
                   onPress={onPress}
                   activeOpacity={0.7}
-                  className="flex-row items-center mt-1"
+                  className="flex-row items-center mt-1 ml-3"
                 >
-                  <Text className="text-text-primary text-base">
+                  <Text className="text-text-primary text-base font-medium">
                     {activeVariant.servingSize} {activeVariant.servingUnit} per serving
                   </Text>
-                  <Icon name="chevron-down" size={14} color={textPrimary} style={{ marginLeft: 4 }} />
+                  <Icon name="chevron-down" size={14} color={textPrimary} style={{ marginLeft: 4 }} weight="medium" />
                 </TouchableOpacity>
               )}
             />
           ) : (
-            <Text className="text-text-secondary text-base mt-2">
+            <Text className="text-text-secondary text-base mt-2 ml-3">
               {activeVariant.servingSize} {activeVariant.servingUnit} per serving
             </Text>
           )}
@@ -426,17 +425,17 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
           activeOpacity={0.7}
           className="flex-row items-center mt-2"
         >
-          <Text className="text-text-secondary text-sm">Date</Text>
-          <Text className="text-text-primary text-sm font-medium mx-1.5">
+          <Text className="text-text-secondary text-base">Date</Text>
+          <Text className="text-text-primary text-base font-medium mx-1.5">
             {formatDateLabel(selectedDate)}
           </Text>
-          <Icon name="chevron-down" size={12} color={textPrimary} />
+          <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
         </TouchableOpacity>
 
         {/* Meal type selector */}
         {selectedMealType && (
           <View className="flex-row items-center mt-2">
-            <Text className="text-text-secondary text-sm">Meal</Text>
+            <Text className="text-text-secondary text-base">Meal</Text>
             <BottomSheetPicker
               value={effectiveMealId!}
               options={mealPickerOptions}
@@ -448,10 +447,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
                   activeOpacity={0.7}
                   className="flex-row items-center"
                 >
-                  <Text className="text-text-primary text-sm font-medium mx-1.5">
+                  <Text className="text-text-primary text-base font-medium mx-1.5">
                     {getMealTypeLabel(selectedMealType.name)}
                   </Text>
-                  <Icon name="chevron-down" size={12} color={textPrimary} />
+                  <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
                 </TouchableOpacity>
               )}
             />
