@@ -106,15 +106,15 @@ const createRobustTransformer = (config: RobustExtractorConfig): ValueTransforme
 
     if (isValidValue && isValidDate) {
       if (index === 0) {
-        addLog(`[Transform] ${config.logLabel} SUCCESS: ${value} on ${date}`, 'SUCCESS');
+        addLog(`[Transform] ${config.logLabel} SUCCESS on ${date}`, 'SUCCESS');
       }
       return { value: value!, date };
     }
 
     if (index === 0) {
       const issues: string[] = [];
-      if (!isValidValue) issues.push(`invalid value (${value})`);
-      if (!isValidDate) issues.push(`invalid date (${date})`);
+      if (!isValidValue) issues.push('invalid value');
+      if (!isValidDate) issues.push('invalid date');
       addLog(`[Transform] ${config.logLabel} FAILED: ${issues.join(', ')}`, 'WARNING');
     }
     return null;
@@ -522,7 +522,7 @@ const createCalorieTransformer = (aggregatedType: string, logLabel: string): Val
       const value = rec.value as number;
       const recordDate = rec.date as string;
       if (index === 0) {
-        addLog(`[Transform] ${logLabel} (aggregated as ${rec.type}): ${value} kcal on ${recordDate}`, 'DEBUG');
+        addLog(`[Transform] ${logLabel} (aggregated as ${rec.type}) on ${recordDate}`, 'DEBUG');
       }
       // Preserve the original type from aggregated records
       return { value, date: recordDate, type: rec.type as string };
@@ -542,13 +542,13 @@ const createCalorieTransformer = (aggregatedType: string, logLabel: string): Val
 
     if (value !== null && date) {
       if (index === 0) {
-        addLog(`[Transform] ${logLabel} (raw): ${value} kcal on ${date}`, 'DEBUG');
+        addLog(`[Transform] ${logLabel} (raw) on ${date}`, 'DEBUG');
       }
       return { value, date };
     }
 
     if (index === 0) {
-      addLog(`[Transform] ${logLabel} FAILED: value=${value}, date=${date}`, 'WARNING');
+      addLog(`[Transform] ${logLabel} FAILED: missing ${value === null ? 'value' : 'date'}`, 'WARNING');
     }
     return null;
   };
@@ -569,7 +569,7 @@ const SKIP_TYPES = new Set(['CervicalMucus', 'MenstruationFlow', 'OvulationTest'
 
 export const transformHealthRecords = (records: unknown[], metricConfig: MetricConfig): TransformOutput[] => {
   if (!Array.isArray(records)) {
-    addLog(`[HealthConnectService] transformHealthRecords received non-array records for ${metricConfig.recordType}: ${JSON.stringify(records)}`, 'WARNING');
+    addLog(`[HealthConnectService] transformHealthRecords received non-array records for ${metricConfig.recordType}`, 'WARNING');
     return [];
   }
 

@@ -26,6 +26,7 @@ import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import ManualFoodEntryScreen from './src/screens/ManualFoodEntryScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { initializeTheme } from './src/services/themeService';
+import { initLogService } from './src/services/LogService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
@@ -105,6 +106,11 @@ function AppContent() {
     };
 
     initializeApp();
+
+    // Initialize log service (warms cache, prunes old logs, registers AppState listener)
+    initLogService().catch(error => {
+      console.error('[App] Failed to initialize log service:', error);
+    });
 
     // Configure background sync without blocking app startup
     configureBackgroundSync().catch(error => {

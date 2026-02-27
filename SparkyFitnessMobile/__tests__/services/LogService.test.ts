@@ -7,12 +7,15 @@ import {
   setLogFilter,
   getLogFilter,
   getLogSummary,
+  _resetForTesting,
+  _flushBuffer,
   LogFilter,
 } from '../../src/services/LogService';
 
 describe('LogService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
+    _resetForTesting();
     await AsyncStorage.clear();
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -20,6 +23,7 @@ describe('LogService', () => {
   });
 
   afterEach(() => {
+    _resetForTesting();
     jest.restoreAllMocks();
     jest.useRealTimers();
   });
@@ -264,6 +268,49 @@ describe('LogService', () => {
     test('succeeds when no logs exist', async () => {
       await expect(clearLogs()).resolves.toBeUndefined();
     });
+
+    test('clears buffered entries that have not been flushed', async () => {
+      await addLog('Buffered log');
+
+      // Don't flush — clearLogs should discard the buffer
+      await clearLogs();
+
+      const logs = await getLogs(0, 30, 'all');
+      expect(logs).toEqual([]);
+    });
+
+    test('waits for in-flight flush before removing storage', async () => {
+      // Trigger a flush so flushPromise is set
+      await addLog('Entry before clear');
+      const flushDone = _flushBuffer();
+
+      // clearLogs runs while flush is in progress — should wait for it,
+      // then remove storage so the flushed entries don't survive.
+      await clearLogs();
+      await flushDone;
+
+      const logs = await getLogs(0, 30, 'all');
+      expect(logs).toEqual([]);
+    });
+
+    test('discards entries requeued by a failed in-flight flush', async () => {
+      await addLog('Will be requeued');
+
+      // Make setItem fail once so flushBuffer's catch path restores entries
+      jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(
+        new Error('simulated storage failure')
+      );
+
+      // Start a flush that will fail and requeue entries into writeBuffer
+      const flushDone = _flushBuffer();
+
+      // clearLogs awaits the failed flush, then re-clears writeBuffer
+      await clearLogs();
+      await flushDone;
+
+      const logs = await getLogs(0, 30, 'all');
+      expect(logs).toEqual([]);
+    });
   });
 
   describe('setLogFilter / getLogFilter', () => {
@@ -299,6 +346,19 @@ describe('LogService', () => {
 
       const filter = await getLogFilter();
       expect(filter).toBe('warnings_errors');
+    });
+
+    test('getLogFilter returns cached value without hitting AsyncStorage', async () => {
+      await setLogFilter('all');
+
+      // First call populates cache
+      await getLogFilter();
+
+      // Clear AsyncStorage — cached value should still be returned
+      await AsyncStorage.removeItem('log_filter');
+
+      const filter = await getLogFilter();
+      expect(filter).toBe('all');
     });
   });
 
@@ -424,6 +484,121 @@ describe('LogService', () => {
       // Old key should be removed
       const oldValue = await AsyncStorage.getItem('log_level');
       expect(oldValue).toBeNull();
+    });
+  });
+
+  describe('Write buffering', () => {
+    test('buffers entries and flushes them to storage on getLogs', async () => {
+      await addLog('Buffered entry 1');
+      await addLog('Buffered entry 2');
+
+      // Entries should not be in AsyncStorage yet (below flush threshold)
+      const rawBefore = await AsyncStorage.getItem('app_logs');
+      expect(rawBefore).toBeNull();
+
+      // getLogs flushes before reading
+      const logs = await getLogs(0, 30, 'all');
+      expect(logs).toHaveLength(2);
+
+      // Now entries should be in AsyncStorage
+      const rawAfter = await AsyncStorage.getItem('app_logs');
+      expect(rawAfter).not.toBeNull();
+      expect(JSON.parse(rawAfter!)).toHaveLength(2);
+    });
+
+    test('flushes immediately when buffer hits threshold', async () => {
+      // Add enough entries to trigger an immediate flush (FLUSH_THRESHOLD = 20)
+      for (let i = 0; i < 20; i++) {
+        await addLog(`Entry ${i}`);
+      }
+
+      // Should have been flushed to storage already
+      const raw = await AsyncStorage.getItem('app_logs');
+      expect(raw).not.toBeNull();
+      expect(JSON.parse(raw!).length).toBe(20);
+    });
+
+    test('explicit _flushBuffer writes buffered entries to storage', async () => {
+      await addLog('Manual flush test');
+
+      await _flushBuffer();
+
+      const raw = await AsyncStorage.getItem('app_logs');
+      expect(raw).not.toBeNull();
+      expect(JSON.parse(raw!)).toHaveLength(1);
+      expect(JSON.parse(raw!)[0].message).toBe('Manual flush test');
+    });
+
+    test('_flushBuffer is a no-op when buffer is empty', async () => {
+      await _flushBuffer();
+
+      const raw = await AsyncStorage.getItem('app_logs');
+      expect(raw).toBeNull();
+    });
+
+    test('flush merges with existing entries in storage', async () => {
+      // Pre-populate storage with an existing entry
+      const existing = [{ timestamp: '2024-01-01T00:00:00.000Z', message: 'Existing', status: 'INFO', details: [] }];
+      await AsyncStorage.setItem('app_logs', JSON.stringify(existing));
+
+      await addLog('New entry');
+      await _flushBuffer();
+
+      const raw = await AsyncStorage.getItem('app_logs');
+      const logs = JSON.parse(raw!);
+      expect(logs).toHaveLength(2);
+      expect(logs[0].message).toBe('New entry');
+      expect(logs[1].message).toBe('Existing');
+    });
+
+    test('flush caps total entries at MAX_LOG_ENTRIES', async () => {
+      // Pre-populate storage with entries near the cap
+      const existing = Array.from({ length: 995 }, (_, i) => ({
+        timestamp: new Date().toISOString(),
+        message: `Old ${i}`,
+        status: 'INFO',
+        details: [],
+      }));
+      await AsyncStorage.setItem('app_logs', JSON.stringify(existing));
+
+      // Add 10 new entries
+      for (let i = 0; i < 10; i++) {
+        await addLog(`New ${i}`);
+      }
+      await _flushBuffer();
+
+      const raw = await AsyncStorage.getItem('app_logs');
+      const logs = JSON.parse(raw!);
+      expect(logs.length).toBe(1000);
+      // Newest entries should be first
+      expect(logs[0].message).toBe('New 9');
+    });
+
+    test('_resetForTesting clears all buffer state', async () => {
+      await addLog('Should be cleared');
+
+      _resetForTesting();
+
+      // Buffer should be empty — flushing should write nothing
+      await _flushBuffer();
+
+      const raw = await AsyncStorage.getItem('app_logs');
+      expect(raw).toBeNull();
+    });
+
+    test('getLogs waits for in-flight flush even when buffer is empty', async () => {
+      await addLog('Entry during flush');
+
+      // Start a flush — this swaps writeBuffer to [] immediately
+      const flushDone = _flushBuffer();
+
+      // getLogs runs while flush is in progress. The buffer is empty (already
+      // swapped), but getLogs should still wait for the flush to commit.
+      const logs = await getLogs(0, 30, 'all');
+      await flushDone;
+
+      expect(logs).toHaveLength(1);
+      expect(logs[0].message).toBe('Entry during flush');
     });
   });
 });

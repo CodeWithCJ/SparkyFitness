@@ -9,12 +9,21 @@ jest.mock('@react-navigation/native', () => ({
 const mockUseFocusEffect = useFocusEffect as jest.MockedFunction<typeof useFocusEffect>;
 
 describe('useRefetchOnFocus', () => {
+  let focusCallback: (() => void) | undefined;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    // By default, simulate immediate focus
+    focusCallback = undefined;
+    // Capture the callback and invoke it immediately (simulates focus on mount)
     mockUseFocusEffect.mockImplementation((callback) => {
+      focusCallback = callback;
       callback();
     });
+    jest.spyOn(Date, 'now').mockReturnValue(0);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('calls refetch when enabled is true (default)', () => {
@@ -62,5 +71,48 @@ describe('useRefetchOnFocus', () => {
     renderHook(() => useRefetchOnFocus(mockRefetch));
 
     expect(mockUseFocusEffect).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  test('skips refetch when re-focused within staleTime', () => {
+    const mockRefetch = jest.fn();
+
+    renderHook(() => useRefetchOnFocus(mockRefetch));
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+
+    // Simulate re-focus 10s later (within the default 30s staleTime)
+    (Date.now as jest.Mock).mockReturnValue(10_000);
+    focusCallback!();
+
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('refetches after staleTime has elapsed', () => {
+    const mockRefetch = jest.fn();
+
+    renderHook(() => useRefetchOnFocus(mockRefetch));
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+
+    // Simulate re-focus 30s later (exactly at staleTime boundary)
+    (Date.now as jest.Mock).mockReturnValue(30_000);
+    focusCallback!();
+
+    expect(mockRefetch).toHaveBeenCalledTimes(2);
+  });
+
+  test('custom staleTime is respected', () => {
+    const mockRefetch = jest.fn();
+
+    renderHook(() => useRefetchOnFocus(mockRefetch, true, 5_000));
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+
+    // 4s later — still within 5s staleTime
+    (Date.now as jest.Mock).mockReturnValue(4_000);
+    focusCallback!();
+    expect(mockRefetch).toHaveBeenCalledTimes(1);
+
+    // 5s later — staleTime elapsed
+    (Date.now as jest.Mock).mockReturnValue(5_000);
+    focusCallback!();
+    expect(mockRefetch).toHaveBeenCalledTimes(2);
   });
 });

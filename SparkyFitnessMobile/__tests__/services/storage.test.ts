@@ -14,6 +14,7 @@ import {
   loadBackgroundSyncEnabled,
   saveCollapsedCategories,
   loadCollapsedCategories,
+  clearServerConfigCache,
   ServerConfig,
 } from '../../src/services/storage';
 import { CATEGORY_ORDER } from '../../src/HealthMetrics';
@@ -26,6 +27,7 @@ describe('storage', () => {
     jest.clearAllMocks();
     await AsyncStorage.clear();
     clearSecureStore();
+    clearServerConfigCache();
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
   });
@@ -480,6 +482,111 @@ describe('storage', () => {
       const result = await loadCollapsedCategories();
 
       expect(result).toEqual(CATEGORY_ORDER.filter(c => c !== 'Common'));
+    });
+  });
+
+  describe('getActiveServerConfig cache', () => {
+    const configA: ServerConfig = { id: 'a', url: 'https://a.com', apiKey: 'key-a' };
+    const configB: ServerConfig = { id: 'b', url: 'https://b.com', apiKey: 'key-b' };
+
+    test('returns cached value without hitting storage again', async () => {
+      await saveServerConfig(configA);
+
+      await getActiveServerConfig();
+      const callsBefore = (AsyncStorage.getItem as jest.Mock).mock.calls.length;
+      const result = await getActiveServerConfig();
+
+      expect(result).toEqual(configA);
+      expect((AsyncStorage.getItem as jest.Mock).mock.calls.length).toBe(callsBefore);
+    });
+
+    test('caches null when no active config', async () => {
+      await getActiveServerConfig();
+      const callsBefore = (AsyncStorage.getItem as jest.Mock).mock.calls.length;
+      const result = await getActiveServerConfig();
+
+      expect(result).toBeNull();
+      expect((AsyncStorage.getItem as jest.Mock).mock.calls.length).toBe(callsBefore);
+    });
+
+    test('saveServerConfig invalidates cache', async () => {
+      await saveServerConfig(configA);
+      await getActiveServerConfig();
+
+      await saveServerConfig(configB);
+      const result = await getActiveServerConfig();
+
+      expect(result).toEqual(configB);
+    });
+
+    test('setActiveServerConfig invalidates cache', async () => {
+      await saveServerConfig(configA);
+      await saveServerConfig(configB);
+      await setActiveServerConfig(configA.id);
+      await getActiveServerConfig();
+
+      await setActiveServerConfig(configB.id);
+      const result = await getActiveServerConfig();
+
+      expect(result).toEqual(configB);
+    });
+
+    test('deleteServerConfig invalidates cache', async () => {
+      await saveServerConfig(configA);
+      await getActiveServerConfig();
+
+      await deleteServerConfig(configA.id);
+      const result = await getActiveServerConfig();
+
+      expect(result).toBeNull();
+    });
+
+    test('clearServerConfigCache forces fresh read', async () => {
+      await saveServerConfig(configA);
+      await getActiveServerConfig();
+
+      clearServerConfigCache();
+      const callsBefore = (AsyncStorage.getItem as jest.Mock).mock.calls.length;
+      await getActiveServerConfig();
+
+      expect((AsyncStorage.getItem as jest.Mock).mock.calls.length).toBeGreaterThan(callsBefore);
+    });
+
+    test('does not cache on error', async () => {
+      jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('Storage error'));
+      await expect(getActiveServerConfig()).rejects.toThrow('Storage error');
+
+      jest.restoreAllMocks();
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+      await saveServerConfig(configA);
+      const result = await getActiveServerConfig();
+
+      expect(result).toEqual(configA);
+    });
+
+    test('does not cache null when getAllServerConfigs silently fails', async () => {
+      // Save a config so there is an active ID
+      await saveServerConfig(configA);
+      clearServerConfigCache();
+
+      // Make getAllServerConfigs fail silently (it swallows errors and returns [])
+      const original = AsyncStorage.getItem as jest.Mock;
+      const originalImpl = original.getMockImplementation();
+      original.mockImplementation(async (key: string) => {
+        // Return active ID normally, but fail on serverConfigs read
+        if (key === 'activeServerConfigId') return 'a';
+        if (key === 'serverConfigs') throw new Error('Transient failure');
+        return originalImpl ? originalImpl(key) : null;
+      });
+
+      // Should return null (config not found) but NOT cache it
+      const result = await getActiveServerConfig();
+      expect(result).toBeNull();
+
+      // Restore storage, next call should retry and find the config
+      original.mockImplementation(originalImpl);
+      const retryResult = await getActiveServerConfig();
+      expect(retryResult).toEqual(configA);
     });
   });
 });

@@ -4,7 +4,7 @@ import { Alert } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useWaterIntakeMutation } from '../../src/hooks/useWaterIntakeMutation';
 import { fetchWaterContainers, changeWaterIntake } from '../../src/services/api/measurementsApi';
-import type { DailySummary } from '../../src/types/dailySummary';
+import type { DailySummaryRawData } from '../../src/hooks/useDailySummary';
 import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
 
 jest.mock('../../src/services/api/measurementsApi', () => ({
@@ -30,26 +30,20 @@ const primaryContainer = {
   servings_per_container: 1,
 };
 
-const makeSummary = (waterConsumed = 500): DailySummary => ({
-  date: '2024-06-15',
-  calorieGoal: 2000,
-  caloriesConsumed: 1200,
-  caloriesBurned: 300,
-  activeCalories: 200,
-  otherExerciseCalories: 100,
-  exerciseMinutes: 30,
-  exerciseMinutesGoal: 60,
-  exerciseCaloriesGoal: 300,
-  netCalories: 900,
-  remainingCalories: 1100,
-  protein: { consumed: 80, goal: 150 },
-  carbs: { consumed: 200, goal: 250 },
-  fat: { consumed: 50, goal: 70 },
-  fiber: { consumed: 20, goal: 30 },
-  waterConsumed,
-  waterGoal: 2500,
+const makeRawData = (waterMl = 500): DailySummaryRawData => ({
+  goals: {
+    calories: 2000,
+    protein: 150,
+    carbs: 250,
+    fat: 70,
+    dietary_fiber: 30,
+    water_goal_ml: 2500,
+    target_exercise_calories_burned: 300,
+    target_exercise_duration_minutes: 60,
+  },
   foodEntries: [],
   exerciseEntries: [],
+  waterIntake: { water_ml: waterMl },
 });
 
 describe('useWaterIntakeMutation', () => {
@@ -213,7 +207,7 @@ describe('useWaterIntakeMutation', () => {
     });
 
     test('optimistic update adjusts waterConsumed in cache', async () => {
-      const summary = makeSummary(500);
+      const summary = makeRawData(500);
       queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
 
       // Hold the mutation so we can check the optimistic state
@@ -236,8 +230,8 @@ describe('useWaterIntakeMutation', () => {
 
       // Check optimistic update applied
       await waitFor(() => {
-        const cached = queryClient.getQueryData<DailySummary>(dailySummaryQueryKey(testDate));
-        expect(cached?.waterConsumed).toBe(750); // 500 + 250 (container volume)
+        const cached = queryClient.getQueryData<DailySummaryRawData>(dailySummaryQueryKey(testDate));
+        expect(cached?.waterIntake.water_ml).toBe(750); // 500 + 250 (container volume)
       });
 
       // Resolve with server truth
@@ -247,13 +241,13 @@ describe('useWaterIntakeMutation', () => {
 
       // Server truth overwrites optimistic value
       await waitFor(() => {
-        const cached = queryClient.getQueryData<DailySummary>(dailySummaryQueryKey(testDate));
-        expect(cached?.waterConsumed).toBe(760);
+        const cached = queryClient.getQueryData<DailySummaryRawData>(dailySummaryQueryKey(testDate));
+        expect(cached?.waterIntake.water_ml).toBe(760);
       });
     });
 
     test('server truth overwrites optimistic value on success', async () => {
-      const summary = makeSummary(1000);
+      const summary = makeRawData(1000);
       queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
 
       mockChangeWaterIntake.mockResolvedValue({ id: '1', water_ml: 1300, entry_date: testDate });
@@ -271,13 +265,13 @@ describe('useWaterIntakeMutation', () => {
       });
 
       await waitFor(() => {
-        const cached = queryClient.getQueryData<DailySummary>(dailySummaryQueryKey(testDate));
-        expect(cached?.waterConsumed).toBe(1300);
+        const cached = queryClient.getQueryData<DailySummaryRawData>(dailySummaryQueryKey(testDate));
+        expect(cached?.waterIntake.water_ml).toBe(1300);
       });
     });
 
     test('invalidates query on error', async () => {
-      const summary = makeSummary(500);
+      const summary = makeRawData(500);
       queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
 
       mockChangeWaterIntake.mockRejectedValue(new Error('Network error'));
@@ -311,7 +305,7 @@ describe('useWaterIntakeMutation', () => {
     });
 
     test('optimistic decrement clamps to zero', async () => {
-      const summary = makeSummary(100); // Less than container volume (250)
+      const summary = makeRawData(100); // Less than container volume (250)
       queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
 
       let resolveMutation: (value: { id: string; water_ml: number; entry_date: string }) => void;
@@ -333,8 +327,8 @@ describe('useWaterIntakeMutation', () => {
 
       // Optimistic should clamp to 0, not go negative
       await waitFor(() => {
-        const cached = queryClient.getQueryData<DailySummary>(dailySummaryQueryKey(testDate));
-        expect(cached?.waterConsumed).toBe(0);
+        const cached = queryClient.getQueryData<DailySummaryRawData>(dailySummaryQueryKey(testDate));
+        expect(cached?.waterIntake.water_ml).toBe(0);
       });
 
       await act(async () => {
@@ -343,7 +337,7 @@ describe('useWaterIntakeMutation', () => {
     });
 
     test('rapid taps: each mutation sends to server', async () => {
-      const summary = makeSummary(500);
+      const summary = makeRawData(500);
       queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
 
       let callCount = 0;

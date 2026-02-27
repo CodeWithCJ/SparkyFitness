@@ -14,8 +14,7 @@ export { toLocalDateString };
 
 export const aggregateHeartRateByDate = (records: HCHeartRateRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) {
-    addLog(`[HealthConnectService] aggregateHeartRateByDate received non-array records: ${JSON.stringify(records)}`, 'WARNING');
-    console.warn('aggregateHeartRateByDate received non-array records:', records);
+    addLog(`[HealthConnectService] aggregateHeartRateByDate received non-array records`, 'WARNING');
     return [];
   }
 
@@ -56,8 +55,7 @@ export const aggregateHeartRateByDate = (records: HCHeartRateRecord[]): Aggregat
 
 export const aggregateStepsByDate = (records: HCStepsRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) {
-    addLog(`[HealthConnectService] aggregateStepsByDate received non-array records: ${JSON.stringify(records)}`, 'WARNING');
-    console.warn('aggregateStepsByDate received non-array records:', records);
+    addLog(`[HealthConnectService] aggregateStepsByDate received non-array records`, 'WARNING');
     return [];
   }
 
@@ -99,8 +97,7 @@ export const aggregateStepsByDate = (records: HCStepsRecord[]): AggregatedHealth
 
 export const aggregateTotalCaloriesByDate = (records: HCEnergyRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) {
-    addLog(`[HealthConnectService] aggregateTotalCaloriesByDate received non-array records: ${JSON.stringify(records)}`, 'WARNING');
-    console.warn('aggregateTotalCaloriesByDate received non-array records:', records);
+    addLog(`[HealthConnectService] aggregateTotalCaloriesByDate received non-array records`, 'WARNING');
     return [];
   }
 
@@ -157,8 +154,7 @@ export const aggregateTotalCaloriesByDate = (records: HCEnergyRecord[]): Aggrega
 
 export const aggregateActiveCaloriesByDate = (records: HCEnergyRecord[]): AggregatedHealthRecord[] => {
   if (!Array.isArray(records)) {
-    addLog(`[HealthConnectService] aggregateActiveCaloriesByDate received non-array records: ${JSON.stringify(records)}`, 'WARNING');
-    console.warn('aggregateActiveCaloriesByDate received non-array records:', records);
+    addLog(`[HealthConnectService] aggregateActiveCaloriesByDate received non-array records`, 'WARNING');
     return [];
   }
 

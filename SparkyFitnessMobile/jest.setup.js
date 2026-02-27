@@ -178,6 +178,32 @@ jest.mock('@react-native-clipboard/clipboard', () => ({
   getString: jest.fn().mockResolvedValue(''),
 }));
 
+// Mock expo-device
+jest.mock('expo-device', () => ({
+  modelName: 'iPhone 15 Pro',
+  manufacturer: 'Apple',
+  osVersion: '18.3',
+}));
+
+// Mock expo-file-system
+jest.mock('expo-file-system', () => {
+  const MockFile = jest.fn().mockImplementation(() => ({
+    uri: 'file:///mock-cache/mock-file.json',
+    create: jest.fn(),
+    write: jest.fn(),
+    delete: jest.fn(),
+  }));
+  return {
+    File: MockFile,
+    Paths: { cache: { uri: 'file:///mock-cache/' } },
+  };
+});
+
+// Mock expo-sharing
+jest.mock('expo-sharing', () => ({
+  shareAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
 // Mock @shopify/react-native-skia
 jest.mock('@shopify/react-native-skia', () => {
   const React = require('react');
