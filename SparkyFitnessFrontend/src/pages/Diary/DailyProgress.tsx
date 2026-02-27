@@ -29,6 +29,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     loggingLevel,
     calorieGoalAdjustmentMode,
     exerciseCaloriePercentage,
+    tdeeAllowNegativeAdjustment,
     energyUnit,
     convertEnergy,
   } = usePreferences();
@@ -73,7 +74,10 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   // For TDEE mode: actual burn always uses BMR regardless of includeBmrInNetCalories
   const actualBurnForTdee = (bmr || 0) + exerciseCaloriesBurned;
-  const tdeeAdjustment = tdee != null ? actualBurnForTdee - tdee : 0;
+  const rawTdeeAdjustment = tdee != null ? actualBurnForTdee - tdee : 0;
+  const tdeeAdjustment = tdeeAllowNegativeAdjustment
+    ? rawTdeeAdjustment
+    : Math.max(0, rawTdeeAdjustment);
 
   let caloriesRemaining = 0;
   if (calorieGoalAdjustmentMode === 'tdee') {

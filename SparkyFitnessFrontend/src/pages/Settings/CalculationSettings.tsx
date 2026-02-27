@@ -68,6 +68,8 @@ const CalculationSettings = () => {
     setExerciseCaloriePercentage: setExerciseCaloriePercentageContext,
     activityLevel: contextActivityLevel,
     setActivityLevel: setActivityLevelContext,
+    tdeeAllowNegativeAdjustment: contextTdeeAllowNegativeAdjustment,
+    setTdeeAllowNegativeAdjustment: setTdeeAllowNegativeAdjustmentContext,
 
     loggingLevel,
   } = usePreferences();
@@ -80,6 +82,8 @@ const CalculationSettings = () => {
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>(
     contextActivityLevel || 'not_much'
   );
+  const [tdeeAllowNegativeAdjustment, setTdeeAllowNegativeAdjustment] =
+    useState<boolean>(contextTdeeAllowNegativeAdjustment ?? false);
 
   const [bmrAlgorithm, setBmrAlgorithm] = useState<BmrAlgorithm>(
     contextBmrAlgorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
@@ -144,6 +148,9 @@ const CalculationSettings = () => {
     if (contextActivityLevel) {
       setActivityLevel(contextActivityLevel);
     }
+    if (contextTdeeAllowNegativeAdjustment !== undefined) {
+      setTdeeAllowNegativeAdjustment(contextTdeeAllowNegativeAdjustment);
+    }
     // Since preferences are loaded by the PreferencesProvider at a higher level,
     // we can assume they are available by the time this component renders.
     // Set isLoading to false after initial render with context values.
@@ -159,6 +166,7 @@ const CalculationSettings = () => {
     contextCalorieGoalAdjustmentMode,
     contextExerciseCaloriePercentage,
     contextActivityLevel,
+    contextTdeeAllowNegativeAdjustment,
   ]);
 
   const handleSave = async () => {
@@ -176,10 +184,12 @@ const CalculationSettings = () => {
         calorieGoalAdjustmentMode: calorieGoalAdjustmentMode,
         exerciseCaloriePercentage: exerciseCaloriePercentage,
         activityLevel: activityLevel,
+        tdeeAllowNegativeAdjustment: tdeeAllowNegativeAdjustment,
       });
       setCalorieGoalAdjustmentModeContext(calorieGoalAdjustmentMode);
       setExerciseCaloriePercentageContext(exerciseCaloriePercentage);
       setActivityLevelContext(activityLevel);
+      setTdeeAllowNegativeAdjustmentContext(tdeeAllowNegativeAdjustment);
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
       toast({
         title: t('calculationSettings.saveSuccess', 'Success'),
@@ -538,6 +548,24 @@ const CalculationSettings = () => {
                     'Sets your fixed daily expected burn (TDEE = BMR × multiplier). Sedentary ×1.2 · Light ×1.375 · Moderate ×1.55 · Very active ×1.725'
                   )}
                 </p>
+                <div className="flex items-center space-x-2 pt-1">
+                  <Checkbox
+                    id="tdee-allow-negative"
+                    checked={tdeeAllowNegativeAdjustment}
+                    onCheckedChange={(checked) =>
+                      setTdeeAllowNegativeAdjustment(Boolean(checked))
+                    }
+                  />
+                  <Label
+                    htmlFor="tdee-allow-negative"
+                    className="text-sm cursor-pointer"
+                  >
+                    {t(
+                      'settings.calorieGoalAdjustment.allowNegativeAdjustment',
+                      'Allow negative adjustment (penalise for burning less than TDEE)'
+                    )}
+                  </Label>
+                </div>
               </div>
             )}
           </RadioGroup>
