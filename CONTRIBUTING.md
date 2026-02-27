@@ -15,7 +15,7 @@ Every PR must include:
 - **Quality Checks**: You must run these before submitting:
   - `npm run lint` and `npm run format` (specifically for `SparkyFitnessFrontend`).
 - **Translations**: If applicable, only update the English (`en`) translation file. Translations should have hardcoded fall back directly in the code Non-English translation files are maintained in a separate repository linked with Webplate. https://github.com/CodeWithCJ/SparkyFitnessTranslations
-- **Architecture**: Follow the existing project standards (see `AGENTS.md`).
+- **Architecture**: Follow the existing project standards
 - **Database Security**: Any new user-specific tables must be added to Row Level Security (RLS) in `SparkyFitnessServer/db/rls_policies.sql`.
 - **Code Integrity**: You certify that your contribution contains no malicious code (phishing, malware, etc.)
 - **License**: By submitting, you agree to the [License terms](LICENSE).
