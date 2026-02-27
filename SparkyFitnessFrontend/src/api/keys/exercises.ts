@@ -1,4 +1,4 @@
-import { ExerciseOwnershipFilter } from '../Exercises/exerciseService';
+import { ExerciseOwnershipFilter } from '@/types/exercises';
 
 export const exerciseKeys = {
   all: ['exercises'] as const,

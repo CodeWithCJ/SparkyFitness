@@ -27,8 +27,6 @@ import {
   useSleepEntriesQuery,
   useUpdateSleepEntryMutation,
 } from '@/hooks/CheckIn/useSleep';
-import { useQueryClient } from '@tanstack/react-query';
-import { sleepKeys } from '@/api/keys/checkin';
 
 // Helper to aggregate sleep stages from stage_events (same approach as reports page)
 const aggregateSleepStages = (stageEvents: SleepStageEvent[] | undefined) => {
@@ -87,7 +85,6 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
   const { mutateAsync: saveSleepEntry } = useSaveSleepEntryMutation();
   const { mutateAsync: updateSleepEntry } = useUpdateSleepEntryMutation();
   const { mutateAsync: deleteSleepEntry } = useDeleteSleepEntryMutation();
-  const queryClient = useQueryClient();
 
   const [existingEditDraft, setExistingEditDraft] = useState<{
     stageEvents: SleepStageEvent[];
@@ -276,21 +273,6 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     });
 
     setEditingEntryId(null);
-  };
-
-  const handleDiscardExistingEntryStageEvents = (entryId: string) => {
-    debug(
-      loggingLevel,
-      `SleepEntrySection: handleDiscardExistingEntryStageEvents for entry ${entryId}`
-    );
-    // Re-fetch the entry to revert changes
-    queryClient.invalidateQueries({ queryKey: sleepKeys.all });
-    sonnerToast.info(
-      t(
-        'sleepEntrySection.stagesDiscarded',
-        'Sleep stage changes for existing entry discarded.'
-      )
-    );
   };
 
   const handleDeleteSleepEntry = async (entryId: string) => {

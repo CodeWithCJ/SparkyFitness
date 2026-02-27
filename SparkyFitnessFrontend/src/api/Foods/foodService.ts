@@ -1,24 +1,12 @@
 import { OpenFoodFactsProduct } from '@/components/FoodSearch/FoodSearch';
 import { apiCall } from '../api';
 
-import type { CSVData, Food, FoodDeletionImpact } from '@/types/food';
-
-export type FoodFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
-
-export interface ExternalDataProvider {
-  id: string;
-  provider_name: string;
-  provider_type:
-    | 'openfoodfacts'
-    | 'nutritionix'
-    | 'fatsecret'
-    | 'wger'
-    | 'mealie'
-    | 'tandoor';
-  app_id: string | null;
-  app_key: string | null;
-  is_active: boolean;
-}
+import type {
+  Food,
+  FoodDataForBackend,
+  FoodDeletionImpact,
+} from '@/types/food';
+import { MealFilter } from '@/types/meal';
 
 interface FoodPayload {
   name: string;
@@ -56,7 +44,7 @@ interface LoadFoodsResponse {
 }
 export const loadFoods = async (
   searchTerm: string,
-  foodFilter: FoodFilter,
+  foodFilter: MealFilter,
   currentPage: number,
   itemsPerPage: number,
   sortBy: string = 'name:asc', // Default sort by name ascending
@@ -224,8 +212,6 @@ export const searchOpenFoodFactsBarcodeApi = async (
 ): Promise<OpenFoodFactsBarcodeResponse> => {
   return apiCall(`/foods/openfoodfacts/barcode/${barcode}`);
 };
-
-export type FoodDataForBackend = Omit<CSVData, 'id'>;
 
 export const importFoodsFromCsv = async (
   foods: FoodDataForBackend[]

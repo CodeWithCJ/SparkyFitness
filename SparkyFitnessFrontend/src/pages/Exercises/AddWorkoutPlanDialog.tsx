@@ -47,7 +47,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card } from '@/components/ui/card';
-import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -64,6 +63,7 @@ import ExerciseHistoryDisplay from '../../components/ExerciseHistoryDisplay';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug } from '@/utils/logging';
 import { useWorkoutPresets } from '@/hooks/Exercises/useWorkoutPresets';
+import { Exercise } from '@/types/exercises';
 
 interface AddWorkoutPlanDialogProps {
   isOpen: boolean;

@@ -1,43 +1,11 @@
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
 import { apiCall } from '@/api/api';
-
-export interface DataProvider {
-  id: string;
-  name: string;
-  provider_type: string; // e.g., 'wger', 'fatsecret', 'openfoodfacts', 'nutritionix'
-  provider_name: string; // e.g., 'Wger', 'FatSecret' (for display and value)
-  is_active: boolean; // Changed from is_enabled to is_active
-  has_token?: boolean;
-  shared_with_public?: boolean;
-  is_strictly_private?: boolean;
-  base_url?: string;
-  app_key: string;
-}
+import { DataProvider } from '@/types/settings';
 
 export const getExternalDataProviders = async (): Promise<DataProvider[]> => {
   return apiCall('/external-providers', {
     method: 'GET',
   });
-};
-
-export const getProviderCategory = (
-  provider: DataProvider
-): ('food' | 'exercise' | 'other')[] => {
-  switch (provider.provider_type.toLowerCase()) {
-    case 'wger':
-    case 'free-exercise-db': // Added free-exercise-db
-      return ['exercise'];
-    case 'fatsecret':
-    case 'openfoodfacts':
-    case 'mealie':
-    case 'tandoor':
-    case 'usda':
-      return ['food'];
-    case 'nutritionix':
-      return ['food', 'exercise'];
-    default:
-      return ['other'];
-  }
 };
 
 export const toggleProviderPublicSharing = async (

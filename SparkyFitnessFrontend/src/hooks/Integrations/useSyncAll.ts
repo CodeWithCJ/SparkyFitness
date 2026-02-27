@@ -2,7 +2,6 @@ import { useMutation } from '@tanstack/react-query';
 import { syncHevyData } from '@/api/Integrations/integrations';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
-import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
 import { MANUAL_SYNC_PROVIDERS } from '@/constants/integrationConstants';
 import {
   handleManualSyncFitbit,
@@ -10,8 +9,9 @@ import {
   handleManualSyncPolar,
   handleManualSyncStrava,
   handleManualSync,
-  type DataProvider,
 } from '@/api/Settings/externalProviderService';
+import { DataProvider } from '@/types/settings';
+import { useDiaryInvalidation } from '../useInvalidateKeys';
 
 export const useSyncAllMutation = () => {
   const { toast } = useToast();

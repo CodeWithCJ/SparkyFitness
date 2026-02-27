@@ -20,11 +20,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import type { AIService } from '@/api/Settings/aiServiceSettingsService';
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
-import { type GlobalSettings } from '@/api/Admin/globalSettingsService';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
 import { ServiceForm } from '@/components/ai/ServiceForm';
 import { ServiceList } from '@/components/ai/ServiceList';
 import { getModelOptions } from '@/utils/aiServiceUtils';
@@ -34,18 +31,18 @@ import {
   useUpdateGlobalAIService,
   useDeleteGlobalAIService,
 } from '@/hooks/AI/useGlobalAIServiceSettings';
-import { userAiConfigKeys } from '@/api/keys/admin';
+import { GlobalSettings } from '@/types/admin';
+import { AIService } from '@/types/settings';
+import { useAiConfigInvalidation } from '@/hooks/useInvalidateKeys';
 
 const GlobalAISettings = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { data: globalSettings, isLoading: settingsLoading } = useSettings();
   const { mutate: updateSettings } = useUpdateSettings();
 
   // TanStack Query hooks
-  const { data: services = [], isLoading: servicesLoading } =
-    useGlobalAIServices();
+  const { data: services = [] } = useGlobalAIServices();
 
   // Mutations
   const { mutateAsync: createService, isPending: isCreating } =
@@ -54,6 +51,7 @@ const GlobalAISettings = () => {
     useUpdateGlobalAIService();
   const { mutateAsync: deleteService, isPending: isDeleting } =
     useDeleteGlobalAIService();
+  const invalidateAiConfig = useAiConfigInvalidation();
 
   const loading = isCreating || isUpdating || isDeleting;
 
@@ -91,7 +89,7 @@ const GlobalAISettings = () => {
     updateSettings(newSettings, {
       onSuccess: () => {
         // Invalidate the userAiConfigAllowed query so all users see the updated setting
-        queryClient.invalidateQueries({ queryKey: userAiConfigKeys.all });
+        invalidateAiConfig();
         toast({
           title: t('settings.aiService.globalSettings.success'),
           description: t(

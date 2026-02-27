@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
-import { CheckInMeasurement } from '@/api/CheckIn/checkInService';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import PersonalPlan from './PersonalPlan';
-import { Profile } from '@/api/Settings/profileService';
 import { OnboardingSteps } from './OnBoardingSteps';
+import { CheckInMeasurement } from '@/types/checkin';
+import { Profile } from '@/types/settings';
 
 type sex = 'male' | 'female' | '';
 export interface FormData {

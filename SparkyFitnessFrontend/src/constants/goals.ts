@@ -1,5 +1,4 @@
-import { WeeklyGoalPlan } from '@/api/Goals/goals';
-import type { ExpandedGoals } from '@/types/goals';
+import type { ExpandedGoals, WeeklyGoalPlan } from '@/types/goals';
 
 export const DEFAULT_GOALS: ExpandedGoals = {
   calories: 2000,
@@ -49,3 +48,38 @@ export const DEFAULT_PLAN: Partial<WeeklyGoalPlan> = {
   sunday_preset_id: null,
   end_date: null,
 };
+
+export const PREDEFINED_GOAL_KEYS = [
+  'id',
+  'user_id',
+  'preset_name',
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'water_goal_ml',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
+  'target_exercise_calories_burned',
+  'target_exercise_duration_minutes',
+  'protein_percentage',
+  'carbs_percentage',
+  'fat_percentage',
+  'breakfast_percentage',
+  'lunch_percentage',
+  'dinner_percentage',
+  'snacks_percentage',
+  'created_at',
+  'updated_at',
+];

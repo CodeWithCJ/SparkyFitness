@@ -27,11 +27,11 @@ import type { WorkoutPreset } from '@/types/workout';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { XCircle } from 'lucide-react';
-import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import {
   useCreateExerciseMutation,
   useImportExercisesJsonMutation,
 } from '@/hooks/Exercises/useExercises';
+import { Exercise } from '@/types/exercises';
 
 interface AddExerciseDialogProps {
   open: boolean;

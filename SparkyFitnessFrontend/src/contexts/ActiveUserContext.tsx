@@ -3,8 +3,8 @@ import { createContext, useContext, useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAccessibleUsersQuery } from '@/hooks/Auth/useAuth';
-import { AccessibleUser } from '@/api/Auth/auth';
 import { error as logError } from '@/utils/logging';
+import { AccessibleUser } from '@/types/auth';
 
 interface ActiveUserContextType {
   activeUserId: string | null;

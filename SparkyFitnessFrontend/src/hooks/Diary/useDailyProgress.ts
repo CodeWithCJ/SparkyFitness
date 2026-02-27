@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { FoodEntry } from '@/types/food';
-import type { GroupedExerciseEntry } from '@/api/Exercises/exerciseEntryService';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { dailyProgressKeys, foodEntryKeys } from '@/api/keys/diary';
@@ -18,6 +17,7 @@ import {
 import { userManagementService } from '@/api/Admin/userManagementService';
 import { getMostRecentMeasurement } from '@/api/CheckIn/checkInService';
 import { calculateBmr } from '@/services/bmrService';
+import { GroupedExerciseEntry } from '@/types/exercises';
 
 export const useDailyGoals = (date: string) => {
   const { t } = useTranslation();

@@ -1,3 +1,5 @@
+import { OidcProvider } from './admin';
+
 export interface AuthResponse {
   userId: string;
   email?: string;
@@ -13,13 +15,6 @@ export interface AuthResponse {
   mfaToken?: string;
 }
 
-export interface OidcProvider {
-  id: string;
-  display_name: string;
-  logo_url: string;
-  auto_register?: boolean;
-}
-
 export interface LoginSettings {
   email: {
     enabled: boolean;
@@ -31,4 +26,18 @@ export interface LoginSettings {
     auto_redirect?: boolean;
   };
   warning?: string | null;
+}
+
+export interface AccessibleUser {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  permissions: {
+    diary: boolean;
+    checkin: boolean;
+    reports: boolean;
+    food_list: boolean;
+    calorie: boolean;
+  };
+  access_end_date: string | null;
 }

@@ -3,11 +3,11 @@ import {
   getWaterContainers,
   getPrimaryWaterContainer,
   createWaterContainer,
-  WaterContainer,
   updateWaterContainer,
   deleteWaterContainer,
   setPrimaryWaterContainer,
 } from '@/api/Settings/waterContainerService';
+import { WaterContainer } from '@/types/settings';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 
 export const useWaterContainersQuery = (userId: string) => {

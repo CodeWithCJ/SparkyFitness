@@ -1,40 +1,6 @@
 import { apiCall } from '@/api/api';
-import type { ExpandedGoals } from '@/types/goals';
-
-const PREDEFINED_GOAL_KEYS = [
-  'id',
-  'user_id',
-  'preset_name',
-  'calories',
-  'protein',
-  'carbs',
-  'fat',
-  'water_goal_ml',
-  'saturated_fat',
-  'polyunsaturated_fat',
-  'monounsaturated_fat',
-  'trans_fat',
-  'cholesterol',
-  'sodium',
-  'potassium',
-  'dietary_fiber',
-  'sugars',
-  'vitamin_a',
-  'vitamin_c',
-  'calcium',
-  'iron',
-  'target_exercise_calories_burned',
-  'target_exercise_duration_minutes',
-  'protein_percentage',
-  'carbs_percentage',
-  'fat_percentage',
-  'breakfast_percentage',
-  'lunch_percentage',
-  'dinner_percentage',
-  'snacks_percentage',
-  'created_at',
-  'updated_at',
-];
+import { PREDEFINED_GOAL_KEYS } from '@/constants/goals';
+import type { ExpandedGoals, GoalPreset, WeeklyGoalPlan } from '@/types/goals';
 
 function flattenCustomNutrients<
   T extends { custom_nutrients?: Record<string, number> },
@@ -64,39 +30,6 @@ function unflattenCustomNutrients<T extends Record<string, unknown>>(
   return { ...unflattened, custom_nutrients } as T & {
     custom_nutrients: Record<string, number>;
   };
-}
-export interface GoalPreset {
-  id?: string;
-  user_id?: string;
-  preset_name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  water_goal_ml: number;
-  saturated_fat: number;
-  polyunsaturated_fat: number;
-  monounsaturated_fat: number;
-  trans_fat: number;
-  cholesterol: number;
-  sodium: number;
-  potassium: number;
-  dietary_fiber: number;
-  sugars: number;
-  vitamin_a: number;
-  vitamin_c: number;
-  calcium: number;
-  iron: number;
-  target_exercise_calories_burned: number;
-  target_exercise_duration_minutes: number;
-  protein_percentage: number | null;
-  carbs_percentage: number | null;
-  fat_percentage: number | null;
-  breakfast_percentage: number;
-  lunch_percentage: number;
-  dinner_percentage: number;
-  snacks_percentage: number;
-  custom_nutrients?: Record<string, number>;
 }
 
 export async function createGoalPreset(
@@ -139,22 +72,6 @@ export async function deleteGoalPreset(id: string): Promise<void> {
   return apiCall(`/goal-presets/${id}`, {
     method: 'DELETE',
   });
-}
-
-export interface WeeklyGoalPlan {
-  id?: string;
-  user_id?: string;
-  plan_name: string;
-  start_date: string; // YYYY-MM-DD
-  end_date: string | null; // YYYY-MM-DD
-  is_active: boolean;
-  monday_preset_id: string | null;
-  tuesday_preset_id: string | null;
-  wednesday_preset_id: string | null;
-  thursday_preset_id: string | null;
-  friday_preset_id: string | null;
-  saturday_preset_id: string | null;
-  sunday_preset_id: string | null;
 }
 
 export async function createWeeklyGoalPlan(

@@ -1,4 +1,4 @@
-import { Exercise } from '@/api/Exercises/exerciseSearchService';
+import { Exercise } from './exercises';
 
 export interface PresetExercise {
   id: string;

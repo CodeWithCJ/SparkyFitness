@@ -8,9 +8,9 @@ import {
   getFastingStats,
   getFastingDataRange,
   updateFast,
-  type FastingLog,
 } from '@/api/Fasting/fastingService';
 import { fastingKeys } from '@/api/keys/fasting';
+import { FastingLog } from '@/types/fasting';
 
 export const useCurrentFast = () => {
   return useQuery({

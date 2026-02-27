@@ -8,16 +8,14 @@ import {
   deleteGoalPreset,
   getGoalPresets,
   updateGoalPreset,
-  type GoalPreset,
 } from '@/api/Goals/goals';
 import {
   createWeeklyGoalPlan,
   deleteWeeklyGoalPlan,
   getWeeklyGoalPlans,
   updateWeeklyGoalPlan,
-  type WeeklyGoalPlan,
 } from '@/api/Goals/goals';
-import type { ExpandedGoals } from '@/types/goals';
+import type { ExpandedGoals, GoalPreset, WeeklyGoalPlan } from '@/types/goals';
 import { DEFAULT_GOALS } from '@/constants/goals';
 
 // --- DAILY GOALS ---

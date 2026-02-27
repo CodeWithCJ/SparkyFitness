@@ -10,16 +10,13 @@ import {
 } from 'recharts';
 import { Activity } from 'lucide-react';
 import ZoomableChart from '@/components/ZoomableChart';
-import {
-  CustomCategory,
-  CustomMeasurementData,
-} from '@/api/Reports/reportsService';
 import { useTranslation } from 'react-i18next';
 import { BODY_BATTERY_METRICS } from './BodyBatteryCard';
 import { RESPIRATION_METRICS } from './RespirationCard';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatCustomChartData } from '@/utils/reportUtil';
 import { calculateSmartYAxisDomain, getChartConfig } from '@/utils/chartUtils';
+import { CustomCategory, CustomMeasurement } from '@/types/checkin';
 
 const HIDDEN_CUSTOM_METRICS = [
   ...BODY_BATTERY_METRICS,
@@ -32,7 +29,7 @@ export const CustomCategoryReport = ({
   customMeasurementsData,
 }: {
   customCategories: CustomCategory[];
-  customMeasurementsData: Record<string, CustomMeasurementData[]>;
+  customMeasurementsData: Record<string, CustomMeasurement[]>;
 }) => {
   const { t } = useTranslation();
   const {

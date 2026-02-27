@@ -5,10 +5,9 @@ import {
   getMealById,
   getMealDeletionImpact,
   getMeals,
-  MealFilter,
   updateMeal,
 } from '@/api/Foods/meals';
-import { MealPayload } from '@/types/meal';
+import { MealFilter, MealPayload } from '@/types/meal';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';

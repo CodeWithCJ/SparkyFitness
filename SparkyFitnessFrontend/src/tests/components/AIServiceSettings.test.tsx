@@ -2,7 +2,7 @@ import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AIServiceSettings from '@/pages/Settings/AIServiceSettings';
 import { renderWithClient } from '../test-utils';
-import * as aiServiceSettingsService from '@/api/Settings/aiServiceSettingsService';
+import { AIService, UserPreferencesChat } from '@/types/settings';
 
 // Mock react-i18next
 const translations: Record<string, string> = {
@@ -154,7 +154,7 @@ jest.mock('@/api/Admin/globalSettingsService', () => ({
 const mockConfirm = jest.fn();
 window.confirm = mockConfirm;
 
-const mockUserServices: aiServiceSettingsService.AIService[] = [
+const mockUserServices: AIService[] = [
   {
     id: 'user-service1',
     service_name: 'My OpenAI',
@@ -169,7 +169,7 @@ const mockUserServices: aiServiceSettingsService.AIService[] = [
   },
 ];
 
-const mockPreferences: aiServiceSettingsService.UserPreferences = {
+const mockPreferences: UserPreferencesChat = {
   auto_clear_history: '7days',
 };
 

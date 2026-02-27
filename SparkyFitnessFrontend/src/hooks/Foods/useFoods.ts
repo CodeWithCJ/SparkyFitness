@@ -6,8 +6,6 @@ import {
 } from '@/api/Diary/foodEntryService';
 import {
   deleteFood,
-  FoodDataForBackend,
-  FoodFilter,
   getFoodById,
   getFoodDeletionImpact,
   getRecentAndTopFoods,
@@ -28,10 +26,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { diaryReportKeys } from '@/api/keys/diary';
+import { MealFilter } from '@/types/meal';
+import { FoodDataForBackend } from '@/types/food';
 
 export const useFoods = (
   searchTerm: string,
-  foodFilter: FoodFilter,
+  foodFilter: MealFilter,
   currentPage: number,
   itemsPerPage: number,
   sortOrder: string

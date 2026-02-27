@@ -22,7 +22,12 @@ import {
 } from '@/utils/nutrientUtils';
 import { formatWeight } from '@/utils/numberFormatting';
 import type { UserCustomNutrient } from '@/types/customNutrient';
-import type { DailyFoodEntry as BaseDailyFoodEntry } from '@/api/Reports/reportsService';
+import type { DailyFoodEntry as BaseDailyFoodEntry } from '@/types/reports';
+import {
+  CheckInMeasurement,
+  CustomCategory,
+  CustomMeasurement,
+} from '@/types/checkin';
 
 interface DailyFoodEntry extends BaseDailyFoodEntry {
   isTotal?: boolean;
@@ -56,41 +61,12 @@ interface DailyExerciseEntry {
   }[];
 }
 
-interface MeasurementData {
-  entry_date: string; // Changed from 'date' to 'entry_date'
-  weight?: number;
-  neck?: number;
-  waist?: number;
-  hips?: number;
-  steps?: number;
-  height?: number;
-  body_fat_percentage?: number;
-}
-
-interface CustomCategory {
-  id: string;
-  name: string;
-  display_name?: string | null;
-  measurement_type: string;
-  frequency: string;
-  data_type: string;
-}
-
-interface CustomMeasurementData {
-  category_id: string;
-  entry_date: string; // Changed from 'date' to 'entry_date'
-  hour?: number;
-  value: string | number;
-  notes?: string;
-  timestamp: string;
-}
-
 interface ReportsTablesProps {
   tabularData: DailyFoodEntry[];
   exerciseEntries: DailyExerciseEntry[]; // New prop for exercise entries
-  measurementData: MeasurementData[];
+  measurementData: CheckInMeasurement[];
   customCategories: CustomCategory[];
-  customMeasurementsData: Record<string, CustomMeasurementData[]>;
+  customMeasurementsData: Record<string, CustomMeasurement[]>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prData: any; // Add prData to props
   showWeightInKg: boolean;
