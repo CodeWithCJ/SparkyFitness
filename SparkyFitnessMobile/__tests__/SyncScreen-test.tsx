@@ -21,8 +21,8 @@ const AppNavigator = () => {
     <QueryClientProvider client={queryClient}>
       <NavigationContainer>
         <Stack.Navigator>
-          <Stack.Screen name="Home" component={SyncScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="Home" component={SyncScreen as React.ComponentType} />
+          <Stack.Screen name="Settings" component={SettingsScreen as React.ComponentType} />
         </Stack.Navigator>
       </NavigationContainer>
     </QueryClientProvider>

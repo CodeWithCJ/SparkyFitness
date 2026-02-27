@@ -20,10 +20,15 @@ import Icon from '../components/Icon';
 import type { HealthMetricStates } from '../types/healthRecords';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
+import type { RootStackParamList, TabParamList } from '../types/navigation';
 
-interface SettingsScreenProps {
-  navigation: { navigate: (screen: string) => void };
-}
+type SettingsScreenProps = CompositeScreenProps<
+  NativeBottomTabScreenProps<TabParamList, 'Settings'>,
+  StackScreenProps<RootStackParamList>
+>;
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();

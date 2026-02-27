@@ -92,7 +92,7 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
                   className="w-6 h-6 rounded-xl justify-center items-center"
                   style={{ backgroundColor: successBackground }}
                 >
-                  <Text className="text-sm font-bold" style={{ color: success }}>✓</Text>
+                  <Icon name="checkmark" color={success} weight={'bold'} size={16} />
                 </View>
               )}
             </View>
@@ -106,31 +106,34 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
             </TouchableOpacity>
           </View>
         ))}
-        <TouchableOpacity
-          onPress={onOpenWebDashboard}
-          disabled={!activeConfigId}
-          accessibilityLabel="Open web dashboard"
-          accessibilityRole="button"
-          className="flex-row items-center mt-2 py-1"
-          style={{ opacity: activeConfigId ? 1 : 0.4 }}
-        >
-          <Icon name="globe" size={20} color={activeConfigId ? accentPrimary : '#999'} />
-          <Text
-            className="ml-2 text-base font-medium"
-            style={{ color: activeConfigId ? accentPrimary : '#999' }}
+        <View className="flex-row align-items-baseline justify-start gap-4">
+          <TouchableOpacity
+            onPress={handleAddNewConfig}
+            accessibilityLabel="Add new configuration"
+            accessibilityRole="button"
+            className="flex-row items-center mt-2 py-1"
           >
-            Open Web Dashboard
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleAddNewConfig}
-          accessibilityLabel="Add new configuration"
-          accessibilityRole="button"
-          className="flex-row items-center mt-2 py-1"
-        >
-          <Icon name="add" size={24} color={accentPrimary} />
-          <Text className="ml-2 text-base font-medium" style={{ color: accentPrimary }}>Add Server</Text>
-        </TouchableOpacity>
+            <Icon name="add" size={24} color={accentPrimary} />
+            <Text className="ml-2 text-base font-medium" style={{ color: accentPrimary }}>Add Server</Text>
+          </TouchableOpacity>
+          
+          {activeConfigId && (
+            <TouchableOpacity
+              onPress={onOpenWebDashboard}
+              accessibilityLabel="Open web dashboard"
+              accessibilityRole="button"
+              className="flex-row items-center mt-2 py-1"
+            >
+              <Icon name="globe" size={20} color={accentPrimary} />
+              <Text
+                className="ml-2 text-base font-medium"
+                style={{ color: accentPrimary }}
+              >
+                Open Web
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <ServerConfigModal

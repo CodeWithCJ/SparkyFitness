@@ -28,7 +28,7 @@ const ProgressRing: React.FC<ProgressRingProps> = ({
     useCallback(() => {
       animatedProgress.value = 0;
       animatedProgress.value = withTiming(progressCapped, {
-        duration: 700,
+        duration: 500,
         easing: Easing.out(Easing.cubic),
       });
     }, [progressCapped, animatedProgress])

@@ -27,7 +27,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, c
     useCallback(() => {
       animatedProgress.value = 0;
       animatedProgress.value = withTiming(progress, {
-        duration: 700,
+        duration: 500,
         easing: Easing.out(Easing.cubic),
       });
     }, [progress, animatedProgress])

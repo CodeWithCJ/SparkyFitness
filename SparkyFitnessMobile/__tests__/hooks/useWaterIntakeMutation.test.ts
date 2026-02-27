@@ -57,8 +57,10 @@ describe('useWaterIntakeMutation', () => {
   const testDate = '2024-06-15';
 
   const createWrapper = () => {
-    return ({ children }: { children: React.ReactNode }) =>
+    const Wrapper = ({ children }: { children: React.ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children);
+    Wrapper.displayName = 'QueryClientWrapper';
+    return Wrapper;
   };
 
   beforeEach(() => {

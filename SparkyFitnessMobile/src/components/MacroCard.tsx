@@ -27,7 +27,7 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
     useCallback(() => {
       animatedProgress.value = 0;
       animatedProgress.value = withTiming(progress, {
-        duration: 700,
+        duration: 500,
         easing: Easing.out(Easing.cubic),
       });
     }, [progress, animatedProgress])

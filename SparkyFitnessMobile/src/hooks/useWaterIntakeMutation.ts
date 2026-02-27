@@ -6,15 +6,17 @@ import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
 
 interface UseWaterIntakeMutationOptions {
   date: string;
+  enabled?: boolean;
 }
 
-export function useWaterIntakeMutation({ date }: UseWaterIntakeMutationOptions) {
+export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeMutationOptions) {
   const queryClient = useQueryClient();
 
   const { data: containers } = useQuery({
     queryKey: [...waterContainersQueryKey],
     queryFn: fetchWaterContainers,
     staleTime: Infinity,
+    enabled,
   });
 
   const primaryContainer = containers?.find(c => c.is_primary);
