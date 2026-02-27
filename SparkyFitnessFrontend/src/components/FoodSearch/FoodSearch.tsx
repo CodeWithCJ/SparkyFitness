@@ -219,6 +219,15 @@ const EnhancedFoodSearch = ({
   const [hasOnlineSearchBeenPerformed, setHasOnlineSearchBeenPerformed] =
     useState(false);
 
+  const handleMealSearch = useCallback(
+    async (term: string) => {
+      const results = await queryClient.fetchQuery(
+        mealSearchOptions('all', term)
+      );
+      setMeals(results);
+    },
+    [queryClient]
+  );
   useEffect(() => {
     const handler = setTimeout(() => {
       if (activeTab === 'meal') {
@@ -229,7 +238,7 @@ const EnhancedFoodSearch = ({
     return () => {
       clearTimeout(handler);
     };
-  }, [searchTerm, activeTab]);
+  }, [searchTerm, activeTab, handleMealSearch]);
 
   const searchOpenFoodFacts = async () => {
     if (!searchTerm.trim()) return;
@@ -315,16 +324,6 @@ const EnhancedFoodSearch = ({
     await importCsvMutation(foodDataArray);
     setShowImportFromCsvDialog(false);
   };
-
-  const handleMealSearch = useCallback(
-    async (term: string) => {
-      const results = await queryClient.fetchQuery(
-        mealSearchOptions('all', term)
-      );
-      setMeals(results);
-    },
-    [queryClient]
-  );
 
   const searchHandlers: Record<
     string,
