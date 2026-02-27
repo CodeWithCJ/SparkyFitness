@@ -105,50 +105,48 @@
       --color-text-danger:       hsl(357, 68%, 94%);
     }
 
-    /* TODO Update AMOLED variant colors to be more distinct from dark mode */
     @variant amoled {
       --color-background:        hsl(0, 0%, 0%);
-      --color-surface:           hsl(222, 33%, 3%);
-      --color-raised:            hsl(223, 40%, 6%);
-      --color-chrome:            hsla(0, 0%, 0%, 0.85);
-      --color-chrome-border:     hsl(215, 25%, 15%);
+      --color-surface:           hsl(220, 18%, 4%);
+      --color-raised:            hsl(220, 16%, 8%);
+      --color-chrome:            hsla(0, 0%, 0%, 0.9);
 
-      --color-border:     hsl(220, 26%, 11%);
-      --color-border-subtle:     hsl(220, 26%, 11%);
-      --color-border-strong:     hsl(215, 28%, 17%);
+      --color-border-subtle:     hsl(220, 15%, 10%);
+      --color-border:            hsl(220, 15%, 13%);
+      --color-border-strong:     hsl(220, 15%, 17%);
+      --color-chrome-border:     hsl(220, 18%, 11%);
 
-      --color-text-primary:      hsl(220, 23%, 92%);
-      --color-text-secondary:    hsl(220, 32%, 84%);
-      --color-text-muted:        hsl(215, 16%, 47%);
+      --color-text-primary:      hsl(220, 15%, 92%);
+      --color-text-secondary:    hsl(220, 10%, 70%);
+      --color-text-muted:        hsl(220, 10%, 50%);
 
-      --color-accent-primary:    hsl(233, 100%, 77%);
-      --color-accent-muted:      hsl(233, 100%, 85%);
+      --color-accent-primary:    hsl(220, 85%, 60%);
+      --color-accent-muted:      hsl(220, 50%, 74%);
 
-
-      --color-tab-active:        hsl(233, 100%, 82%);
-      --color-tab-inactive:      hsl(215, 20%, 62%);
+      --color-tab-active:        hsl(220, 85%, 65%);
+      --color-tab-inactive:      hsl(215, 15%, 55%);
       --color-form-enabled:      hsl(220, 30%, 62%);
-      --color-form-disabled:     hsl(220, 12%, 26%);
+      --color-form-disabled:     hsl(220, 12%, 18%);
 
-      --color-macro-protein:     hsl(233, 82%, 70%);
-      --color-macro-carbs:       hsl(190, 85%, 62%);
-      --color-macro-fat:         hsl(36, 100%, 71%);
-      --color-macro-fiber:       hsl(152, 55%, 54%);
+      --color-calories:          hsl(233, 62%, 71%);
+      --color-macro-protein:     hsl(35, 70%, 64%);
+      --color-macro-carbs:       hsl(124, 36%, 66%);
+      --color-macro-fat:         hsl(195, 60%, 67%);
+      --color-macro-fiber:       hsl(126, 25%, 45%);
 
-      --color-hydration:         hsl(200, 70%, 55%);
-      --color-exercise:          hsl(158, 58%, 50%);
+      --color-hydration:         hsl(200, 50%, 52%);
+      --color-exercise:          hsl(158, 49%, 48%);
 
-      --color-progress-track:    hsl(226, 46%, 18%);
-      --color-calories:     hsl(233, 100%, 74%);
+      --color-progress-track:    hsl(218, 41%, 15%);
       --color-progress-overfill: hsl(357, 66%, 65%);
-      
-      --color-bg-success:        hsl(163, 40%, 22%);
+
+      --color-bg-success:        hsl(159, 56%, 16%);
       --color-bg-warning:        hsl(36, 72%, 65%);
-      --color-bg-danger:         hsl(358, 51%, 53%);
-   
-      --color-text-success:      hsl(162, 60%, 65%);
+      --color-bg-danger:         hsl(358, 46%, 39%);
+
+      --color-text-success:      hsl(159, 15%, 95%);
       --color-text-warning:      hsl(35, 59%, 78%);
-      --color-text-danger:       hsl(358, 53%, 89%);
+      --color-text-danger:       hsl(357, 68%, 94%);
     }
   }
 }
