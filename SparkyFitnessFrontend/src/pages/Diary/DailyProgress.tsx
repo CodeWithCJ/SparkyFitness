@@ -30,9 +30,17 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     calorieGoalAdjustmentMode,
     exerciseCaloriePercentage,
     tdeeAllowNegativeAdjustment,
+    activityLevel,
     energyUnit,
     convertEnergy,
   } = usePreferences();
+
+  const ACTIVITY_MULTIPLIERS: Record<string, number> = {
+    not_much: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    heavy: 1.725,
+  };
 
   const { data: goals, isLoading: loadingGoals } = useDailyGoals(selectedDate);
   const { data: foodData, isLoading: loadingFood } =
@@ -73,9 +81,10 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const netCalories = eatenCalories - totalCaloriesBurned;
 
   // For TDEE mode:
-  // "SparkyFitness Burned" = BMR only — same every day, purely profile-based (like MFP's own
-  // burned number which never changes unless you edit your profile).
-  const sparkyfitnessBurned = bmr || 0;
+  // "SparkyFitness Burned" = TDEE (BMR × activity multiplier) — same every day, profile-based
+  // (mirrors MFP's own burned number which is BMR scaled by activity level using METs).
+  const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.2;
+  const sparkyfitnessBurned = Math.round((bmr || 0) * activityMultiplier);
 
   // Project current device burn rate to end of day (mirrors MFP + Apple Watch behaviour).
   // We extrapolate based on how much of the day has elapsed.
@@ -90,8 +99,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
       : exerciseCaloriesBurned;
   const projectedBurn = (bmr || 0) + projectedDeviceCalories;
 
-  // Adjustment = projected full-day burn minus the SparkyFitness baseline (BMR).
-  // Positive = device projects more activity than resting; negative = less active day.
+  // Adjustment = projected full-day burn minus the SparkyFitness baseline (TDEE).
+  // Positive = device projects more activity than expected; negative = less active day.
   const rawTdeeAdjustment = projectedBurn - sparkyfitnessBurned;
   const tdeeAdjustment = tdeeAllowNegativeAdjustment
     ? rawTdeeAdjustment
