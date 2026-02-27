@@ -70,7 +70,7 @@ const CalculationSettings = () => {
   } = usePreferences();
 
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] = useState<
-    'dynamic' | 'fixed' | 'percentage' | 'smart' | 'tdee'
+    'dynamic' | 'fixed' | 'percentage' | 'tdee'
   >(contextCalorieGoalAdjustmentMode || 'dynamic');
   const [exerciseCaloriePercentage, setExerciseCaloriePercentage] =
     useState<number>(contextExerciseCaloriePercentage ?? 100);
@@ -377,7 +377,7 @@ const CalculationSettings = () => {
           <RadioGroup
             value={calorieGoalAdjustmentMode}
             onValueChange={(
-              value: 'dynamic' | 'fixed' | 'percentage' | 'smart' | 'tdee'
+              value: 'dynamic' | 'fixed' | 'percentage' | 'tdee'
             ) => setCalorieGoalAdjustmentMode(value)}
             className="flex flex-col space-y-2 mb-4"
           >
@@ -456,22 +456,6 @@ const CalculationSettings = () => {
               </div>
             )}
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="smart" id="smart-goal" />
-              <Label htmlFor="smart-goal" className="cursor-pointer">
-                <span className="font-medium">
-                  {t(
-                    'settings.calorieGoalAdjustment.smartGoal',
-                    'Smart Adjustment'
-                  )}
-                  :
-                </span>{' '}
-                {t(
-                  'settings.calorieGoalAdjustment.smartGoalDescription',
-                  'Only earns back exercise calories above what is already built into your daily goal (similar to MyFitnessPal). Uses Goal − BMR as the expected activity level, so only effort beyond that threshold is credited.'
-                )}
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
               <RadioGroupItem value="tdee" id="tdee-goal" />
               <Label htmlFor="tdee-goal" className="cursor-pointer">
                 <span className="font-medium">
@@ -483,7 +467,7 @@ const CalculationSettings = () => {
                 </span>{' '}
                 {t(
                   'settings.calorieGoalAdjustment.tdeeGoalDescription',
-                  'Like MyFitnessPal with Apple Watch. SparkyFitness projects your full-day burn by extrapolating your current device data to midnight. The adjustment = projection − goal.'
+                  'Like MyFitnessPal with Apple Watch. SparkyFitness projects your full-day burn by extrapolating your current device data to midnight. The adjustment = projection − BMR.'
                 )}
               </Label>
             </div>
@@ -503,7 +487,7 @@ const CalculationSettings = () => {
                   >
                     {t(
                       'settings.calorieGoalAdjustment.allowNegativeAdjustment',
-                      'Allow negative adjustment (penalise for burning less than TDEE)'
+                      'Allow negative adjustment (penalise for burning less than BMR)'
                     )}
                   </Label>
                 </div>
@@ -592,20 +576,15 @@ const CalculationSettings = () => {
                             'Daily Goal - (Eaten - {{pct}}% of Exercise Burned)',
                             { pct: exerciseCaloriePercentage }
                           )
-                        : calorieGoalAdjustmentMode === 'smart'
+                        : calorieGoalAdjustmentMode === 'tdee'
                           ? t(
-                              'settings.calculationExplanation.remainingSmart',
-                              'Daily Goal − Eaten + max(0, Exercise burned − (Goal − BMR))'
+                              'settings.calculationExplanation.remainingTdee',
+                              'Daily Goal − Eaten + (Projected Full Day − BMR)'
                             )
-                          : calorieGoalAdjustmentMode === 'tdee'
-                            ? t(
-                                'settings.calculationExplanation.remainingTdee',
-                                'Daily Goal − Eaten + (Projected Full Day − Goal)'
-                              )
-                            : t(
-                                'settings.calculationExplanation.remainingFixed',
-                                'Daily Goal - Eaten (Activity does not change your budget)'
-                              )}
+                          : t(
+                              'settings.calculationExplanation.remainingFixed',
+                              'Daily Goal - Eaten (Activity does not change your budget)'
+                            )}
                   </p>
                 </div>
               </div>
@@ -622,20 +601,15 @@ const CalculationSettings = () => {
                       'settings.calculationExplanation.percentageFootnote',
                       '* Creates a safety buffer to avoid overeating from over-estimated calorie burns.'
                     )
-                  : calorieGoalAdjustmentMode === 'smart'
+                  : calorieGoalAdjustmentMode === 'tdee'
                     ? t(
-                        'settings.calculationExplanation.smartFootnote',
-                        '* Requires BMR to be calculable (profile must have weight, height, gender, and date of birth). Falls back to no exercise credit if BMR is unavailable.'
+                        'settings.calculationExplanation.tdeeFootnote',
+                        '* Projection converges with actual at midnight. Requires BMR to be calculable and a device syncing steps or active calories.'
                       )
-                    : calorieGoalAdjustmentMode === 'tdee'
-                      ? t(
-                          'settings.calculationExplanation.tdeeFootnote',
-                          '* Projection converges with actual at midnight. Requires BMR to be calculable and a device syncing steps or active calories.'
-                        )
-                      : t(
-                          'settings.calculationExplanation.fixedFootnote',
-                          '* Ideal for strict caloric deficits and weight management.'
-                        )}
+                    : t(
+                        'settings.calculationExplanation.fixedFootnote',
+                        '* Ideal for strict caloric deficits and weight management.'
+                      )}
             </div>
           </div>
         </div>
