@@ -23,6 +23,7 @@ import LogScreen from './src/screens/LogScreen';
 import FoodSearchScreen from './src/screens/FoodSearchScreen';
 import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
+import ManualFoodEntryScreen from './src/screens/ManualFoodEntryScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { initializeTheme } from './src/services/themeService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -197,6 +198,15 @@ function AppContent() {
           <Stack.Screen
             name="FoodEntryAdd"
             component={FoodEntryAddScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          />
+          <Stack.Screen
+            name="ManualFoodEntry"
+            component={ManualFoodEntryScreen}
             options={{
               headerShown: false,
               gestureEnabled: true,

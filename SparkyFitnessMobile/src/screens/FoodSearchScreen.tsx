@@ -630,6 +630,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Add
         </Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ManualFoodEntry', { date })}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="ml-auto z-10"
+        >
+          <Icon name="add" size={22} color={accentColor} />
+        </TouchableOpacity>
       </View>
 
       {/* Segmented control */}
