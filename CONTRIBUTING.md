@@ -10,7 +10,7 @@ If you want to add a new feature, you **must first raise a GitHub Issue**. Get i
 
 Every PR must include:
 
-- **Tests**: Automated tests for your changes.
+- **Tests**: Automated tests for your Frontend changes if applicable.
 - **Screenshots**: Attach "Before" vs "After" screenshots for any UI changes.
 - **Quality Checks**: You must run these before submitting:
   - `npm run lint` and `npm run format` (specifically for `SparkyFitnessFrontend`).
