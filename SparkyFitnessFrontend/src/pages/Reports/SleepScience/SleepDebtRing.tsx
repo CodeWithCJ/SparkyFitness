@@ -1,6 +1,7 @@
-import type { SleepDebtData } from '@/api/SleepScience/sleepScience';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatSecondsToHHMM } from '@/utils/timeFormatters';
+import { SleepDebtData } from '@/types/sleepScience';
 
 interface SleepDebtRingProps {
   data: SleepDebtData;
@@ -106,7 +107,7 @@ const SleepDebtRing: React.FC<SleepDebtRingProps> = ({
           className="fill-foreground font-bold"
           style={{ fontSize: size * 0.22 }}
         >
-          {data.currentDebt.toFixed(1)}h
+          {formatSecondsToHHMM(data.currentDebt * 3600)}
         </text>
         {/* Subtitle */}
         <text

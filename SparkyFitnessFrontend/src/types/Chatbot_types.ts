@@ -54,4 +54,11 @@ export interface FoodOption {
   iron?: number;
 }
 
-// Add other types as needed later
+export interface Message {
+  id: string;
+  content: string;
+  isUser: boolean;
+  timestamp: Date;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  metadata?: any;
+}

@@ -15,12 +15,12 @@ import {
   Line,
   CartesianGrid,
 } from 'recharts';
-import type { FastingLog } from '@/api/Fasting/fastingService';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import ZoomableChart from '@/components/ZoomableChart';
 import { List, Clock, Hourglass, Award } from 'lucide-react';
 import { calculateSmartYAxisDomain, getChartConfig } from '@/utils/chartUtils';
+import { FastingLog } from '@/types/fasting';
 
 interface FastingReportProps {
   fastingData: FastingLog[];

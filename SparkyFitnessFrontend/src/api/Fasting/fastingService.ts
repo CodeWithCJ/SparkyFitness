@@ -1,22 +1,7 @@
-import { api } from '@/services/api';
+import { api } from '@/api/api';
+import { FastingLog } from '@/types/fasting';
 
-export interface FastingLog {
-  id: string;
-  user_id: string;
-  start_time: string;
-  end_time: string | null;
-  target_end_time: string | null;
-  duration_minutes: number | null;
-  fasting_type: string;
-  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
-  // mood and weight are stored in dedicated tables; fasting_logs no longer contains these fields
-  mood_value?: number;
-  mood_notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface FastingStats {
+interface FastingStats {
   total_completed_fasts: string; // Postgres returns bigints as strings sometimes
   total_minutes_fasted: string;
   average_duration_minutes: string;

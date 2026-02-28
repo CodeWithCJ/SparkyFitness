@@ -1,14 +1,5 @@
-import { apiCall } from '@/services/api';
-
-export interface WaterContainer {
-  id: number;
-  user_id: string;
-  name: string;
-  volume: number;
-  unit: 'ml' | 'oz' | 'liter'; // Removed 'cup'
-  is_primary: boolean;
-  servings_per_container: number; // New field
-}
+import { apiCall } from '@/api/api';
+import { WaterContainer } from '@/types/settings';
 
 export const getWaterContainers = async (): Promise<WaterContainer[]> => {
   return await apiCall('/water-containers');

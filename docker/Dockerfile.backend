@@ -30,7 +30,7 @@ COPY package.json /app/package.json
 EXPOSE 3010
 
 # Healthcheck
-HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["/usr/bin/curl", "http://127.0.0.1:3010/health"]
+HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["/usr/bin/curl", "-f", "http://127.0.0.1:3010/api/health"]
 
 # Command to run the backend server
 CMD ["node", "SparkyFitnessServer.js"]

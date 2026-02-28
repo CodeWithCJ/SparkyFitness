@@ -1,20 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { fetchWaterContainers, changeWaterIntake } from '../services/api/measurementsApi';
-import type { DailySummary } from '../types/dailySummary';
+import type { DailySummaryRawData } from './useDailySummary';
 import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
 
 interface UseWaterIntakeMutationOptions {
   date: string;
+  enabled?: boolean;
 }
 
-export function useWaterIntakeMutation({ date }: UseWaterIntakeMutationOptions) {
+export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeMutationOptions) {
   const queryClient = useQueryClient();
 
   const { data: containers } = useQuery({
     queryKey: [...waterContainersQueryKey],
     queryFn: fetchWaterContainers,
     staleTime: Infinity,
+    enabled,
   });
 
   const primaryContainer = containers?.find(c => c.is_primary);
@@ -35,20 +37,22 @@ export function useWaterIntakeMutation({ date }: UseWaterIntakeMutationOptions) 
 
       await queryClient.cancelQueries({ queryKey: dailySummaryQueryKey(date) });
 
-      queryClient.setQueryData<DailySummary>(dailySummaryQueryKey(date), (old) => {
+      queryClient.setQueryData<DailySummaryRawData>(dailySummaryQueryKey(date), (old) => {
         if (!old) return old;
         return {
           ...old,
-          waterConsumed: Math.max(0, old.waterConsumed + changeDrinks * primaryContainer.volume),
+          waterIntake: {
+            water_ml: Math.max(0, (old.waterIntake.water_ml || 0) + changeDrinks * primaryContainer.volume),
+          },
         };
       });
     },
     onSuccess: (response) => {
-      queryClient.setQueryData<DailySummary>(dailySummaryQueryKey(date), (old) => {
+      queryClient.setQueryData<DailySummaryRawData>(dailySummaryQueryKey(date), (old) => {
         if (!old) return old;
         return {
           ...old,
-          waterConsumed: response.water_ml,
+          waterIntake: { water_ml: response.water_ml },
         };
       });
     },

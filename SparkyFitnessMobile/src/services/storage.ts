@@ -26,6 +26,9 @@ const BACKGROUND_SYNC_ENABLED_KEY = 'backgroundSyncEnabled';
 const secureStoreKey = (configId: string) => `apiKey_${configId}`;
 const secureStoreOptions = { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK };
 
+// undefined = cache cold (not yet read), null = no active config, ServerConfig = cached config
+let activeServerConfigCache: ServerConfig | null | undefined = undefined;
+
 /** Read raw configs from AsyncStorage without hydrating keys from SecureStore. */
 const getRawStoredConfigs = async (): Promise<StoredServerConfig[]> => {
   const jsonValue = await AsyncStorage.getItem(SERVER_CONFIGS_KEY);
@@ -57,6 +60,7 @@ export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
 
     await SecureStore.setItemAsync(secureStoreKey(config.id), config.apiKey, secureStoreOptions);
     await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
+    activeServerConfigCache = undefined;
     await setActiveServerConfig(config.id);
   } catch (e) {
     console.error('Failed to save server config.', e);
@@ -68,14 +72,25 @@ export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
  * Retrieves the currently active server configuration.
  */
 export const getActiveServerConfig = async (): Promise<ServerConfig | null> => {
+  if (activeServerConfigCache !== undefined) {
+    return activeServerConfigCache;
+  }
+
   try {
     const activeId = await AsyncStorage.getItem(ACTIVE_SERVER_CONFIG_ID_KEY);
     if (!activeId) {
+      activeServerConfigCache = null;
       return null;
     }
 
     const configs = await getAllServerConfigs();
-    return configs.find(config => config.id === activeId) || null;
+    const result = configs.find(config => config.id === activeId) || null;
+    // Only cache non-null results; getAllServerConfigs swallows errors and returns [],
+    // so a transient failure would otherwise be cached as "no config" permanently.
+    if (result !== null) {
+      activeServerConfigCache = result;
+    }
+    return result;
   } catch (e) {
     console.error('Failed to retrieve active server config.', e);
     throw e;
@@ -133,6 +148,7 @@ export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
 export const setActiveServerConfig = async (configId: string): Promise<void> => {
   try {
     await AsyncStorage.setItem(ACTIVE_SERVER_CONFIG_ID_KEY, configId);
+    activeServerConfigCache = undefined;
   } catch (e) {
     console.error('Failed to set active server config.', e);
     throw e;
@@ -148,6 +164,7 @@ export const deleteServerConfig = async (configId: string): Promise<void> => {
     let stored = await getRawStoredConfigs();
     stored = stored.filter(config => config.id !== configId);
     await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
+    activeServerConfigCache = undefined;
     await SecureStore.deleteItemAsync(secureStoreKey(configId));
 
     const activeId = await AsyncStorage.getItem(ACTIVE_SERVER_CONFIG_ID_KEY);
@@ -246,4 +263,8 @@ export const loadCollapsedCategories = async (): Promise<string[]> => {
   }
   // Default: all categories except Common are collapsed
   return CATEGORY_ORDER.filter(c => c !== 'Common');
+};
+
+export const clearServerConfigCache = (): void => {
+  activeServerConfigCache = undefined;
 };

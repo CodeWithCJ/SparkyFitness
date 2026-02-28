@@ -1,7 +1,8 @@
-import type { SleepDebtData } from '@/api/SleepScience/sleepScience';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatSecondsToHHMM } from '@/utils/timeFormatters';
+import { SleepDebtData } from '@/types/sleepScience';
 
 interface SleepDebtBreakdownProps {
   data: SleepDebtData;
@@ -53,7 +54,7 @@ const SleepDebtBreakdown: React.FC<SleepDebtBreakdownProps> = ({ data }) => {
                     })}
                   </td>
                   <td className="text-right py-1.5 font-mono">
-                    {day.tst.toFixed(1)}h
+                    {formatSecondsToHHMM(day.tst * 3600)}
                   </td>
                   <td className="text-right py-1.5 font-mono">
                     <span
@@ -66,7 +67,7 @@ const SleepDebtBreakdown: React.FC<SleepDebtBreakdownProps> = ({ data }) => {
                       }
                     >
                       {day.deviation > 0 ? '+' : ''}
-                      {day.deviation.toFixed(1)}h
+                      {formatSecondsToHHMM(day.deviation * 3600)}
                     </span>
                   </td>
                   <td className="text-right py-1.5 font-mono text-muted-foreground">

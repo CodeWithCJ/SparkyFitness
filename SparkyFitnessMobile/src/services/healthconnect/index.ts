@@ -63,7 +63,6 @@ export const initHealthConnect = async (): Promise<boolean> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[HealthConnectService] Failed to initialize Health Connect: ${message}`);
-    console.error('Failed to initialize Health Connect', error);
     return false;
   }
 };
@@ -93,8 +92,7 @@ export const requestHealthPermissions = async (
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Failed to request health permissions: ${message}. Full error: ${JSON.stringify(error)}`);
-    console.error('Failed to request health permissions', error);
+    addLog(`[HealthConnectService] Failed to request health permissions: ${message}`, 'ERROR');
     throw error;
   }
 };
@@ -160,7 +158,6 @@ export const readHealthRecords = async (
       `[HealthConnectService] Failed reading ${recordType} on page ${page}: ${message}. Returning ${allRecords.length} records collected so far.`,
       'ERROR'
     );
-    console.error(`Failed to read ${recordType} records`, error);
     return allRecords;
   }
 };
@@ -296,7 +293,6 @@ export const syncHealthData = async (
       const message = error instanceof Error ? error.message : String(error);
       const errorMsg = `Error reading or transforming ${type} records: ${message}`;
       addLog(`[HealthConnectService] ${errorMsg}`, 'ERROR');
-      console.error(`[HealthConnectService] ${errorMsg}`, error);
       syncErrors.push({ type, error: message });
     }
   }

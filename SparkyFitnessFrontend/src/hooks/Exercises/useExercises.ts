@@ -3,9 +3,11 @@ import {
   useMutation,
   useQueryClient,
   keepPreviousData,
+  useQueries,
 } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
+  assetKeys,
   exerciseEntryKeys,
   exerciseKeys,
   suggestedExercisesKeys,
@@ -18,18 +20,22 @@ import {
   updateExerciseShareStatus,
   getExerciseDeletionImpact,
   updateExerciseEntriesSnapshot,
-  ExerciseOwnershipFilter,
   ExercisePayload,
   importExercisesFromJson,
   importExerciseHistory,
   getExerciseById,
   getSuggestedExercises,
+  getBodyMapSvg,
 } from '@/api/Exercises/exerciseService';
 import i18n from '@/i18n';
 import {
+  getActivityDetails,
   getExerciseHistory,
   getExerciseProgressData,
 } from '@/api/Exercises/exerciseEntryService';
+import { ExerciseOwnershipFilter } from '@/types/exercises';
+import { getComparisonDates } from '@/utils/reportUtil';
+import { useMemo } from 'react';
 
 // --- Queries ---
 
@@ -331,3 +337,97 @@ export const exerciseProgressOptions = (
     ),
   },
 });
+
+export const useActivityDetailsQuery = (
+  exerciseEntryId: string,
+  providerName: string
+) => {
+  return useQuery({
+    queryKey: exerciseEntryKeys.activityDetails(
+      exerciseEntryId as string,
+      providerName as string
+    ),
+    queryFn: () =>
+      getActivityDetails(exerciseEntryId as string, providerName as string),
+    enabled: Boolean(exerciseEntryId && providerName),
+    meta: {
+      errorMessage: `Failed to fetch ${providerName} activity details.`,
+    },
+  });
+};
+
+export const useBodyMapSvgQuery = () => {
+  return useQuery({
+    queryKey: assetKeys.svg('muscle-male'),
+    queryFn: getBodyMapSvg,
+    staleTime: Infinity,
+    meta: {
+      errorMessage: 'Error fetching body map SVG',
+    },
+  });
+};
+
+interface ExerciseQueryProps {
+  selectedExercisesForChart: string[];
+  startDate: string | null;
+  endDate: string | null;
+  aggregationLevel: string;
+  comparisonPeriod: string | null;
+}
+
+export const useExerciseProgressQueries = ({
+  selectedExercisesForChart,
+  startDate,
+  endDate,
+  aggregationLevel,
+  comparisonPeriod,
+}: ExerciseQueryProps) => {
+  const { t } = useTranslation();
+  const compDates = useMemo(
+    () =>
+      comparisonPeriod && startDate && endDate
+        ? getComparisonDates(startDate, endDate, comparisonPeriod)
+        : null,
+    [startDate, endDate, comparisonPeriod]
+  );
+
+  const mainQueries = useQueries({
+    queries: selectedExercisesForChart.map((exerciseId) => ({
+      ...exerciseProgressOptions(
+        exerciseId,
+        startDate ?? '',
+        endDate ?? '',
+        aggregationLevel
+      ),
+      enabled: Boolean(
+        startDate && endDate && selectedExercisesForChart.length > 0
+      ),
+      meta: {
+        errorMessage: t(
+          'exerciseReportsDashboard.failedToLoadExerciseProgressData',
+          'Failed to load exercise progress data.'
+        ),
+      },
+    })),
+  });
+
+  const comparisonQueries = useQueries({
+    queries: selectedExercisesForChart.map((exerciseId) => ({
+      ...exerciseProgressOptions(
+        exerciseId,
+        compDates?.[0] ?? '',
+        compDates?.[1] ?? '',
+        aggregationLevel
+      ),
+      enabled: Boolean(compDates && selectedExercisesForChart.length > 0),
+      meta: {
+        errorMessage: t(
+          'exerciseReportsDashboard.failedToLoadComparisonData',
+          'Failed to load comparison data.'
+        ),
+      },
+    })),
+  });
+
+  return { mainQueries, comparisonQueries };
+};

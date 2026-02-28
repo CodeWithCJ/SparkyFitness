@@ -1,13 +1,5 @@
-import { apiCall } from '@/services/api';
-
-export interface CustomCategory {
-  id: string;
-  name: string;
-  display_name?: string | null;
-  measurement_type: string;
-  frequency: string;
-  data_type: string;
-}
+import { apiCall } from '@/api/api';
+import { CustomCategory } from '@/types/checkin';
 
 export const getCategories = async (): Promise<CustomCategory[]> => {
   const response = await apiCall(`/measurements/custom-categories`, {

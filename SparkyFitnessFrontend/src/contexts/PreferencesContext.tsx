@@ -10,13 +10,6 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, error } from '@/utils/logging';
 import { format, parseISO, startOfDay } from 'date-fns';
-
-// Function to fetch user preferences from the backend
-import { apiCall } from '@/services/api';
-import {
-  createWaterContainer,
-  setPrimaryWaterContainer,
-} from '@/api/Settings/waterContainerService';
 import {
   FatBreakdownAlgorithm,
   MineralCalculationAlgorithm,
@@ -25,39 +18,19 @@ import {
 } from '@/types/nutrientAlgorithms';
 import { BmrAlgorithm } from '@/services/bmrService';
 import { BodyFatAlgorithm } from '@/services/bodyCompositionService';
+import {
+  preferencesOptions,
+  useUpdatePreferencesMutation,
+} from '@/hooks/Settings/usePreferences';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  useCreateWaterContainerMutation,
+  useSetPrimaryWaterContainerMutation,
+} from '@/hooks/Settings/useWaterContainers';
 
 // Function to fetch user preferences from the backend
-const fetchUserPreferences = async () => {
-  try {
-    const data = await apiCall(`/user-preferences`, {
-      method: 'GET',
-      suppress404Toast: true,
-    });
-    return data;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
-    if (err.message && err.message.includes('404')) {
-      return null;
-    }
-    console.error('Error fetching user preferences:', err);
-    throw err;
-  }
-};
 
 // Function to upsert user preferences to the backend
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const upsertUserPreferences = async (payload: any) => {
-  try {
-    const data = await apiCall('/user-preferences', {
-      method: 'POST',
-      body: payload,
-    });
-    return data;
-  } catch (err) {
-    console.error('Error upserting user preferences:', err);
-    throw err;
-  }
-};
 
 export type EnergyUnit = 'kcal' | 'kJ';
 export type ActivityLevel = 'not_much' | 'light' | 'moderate' | 'heavy';
@@ -180,6 +153,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const { user, loading } = useAuth();
+  const queryClient = useQueryClient();
+  const { mutateAsync: upsertUserPreferences } = useUpdatePreferencesMutation();
+
+  const { mutateAsync: createWaterContainer } =
+    useCreateWaterContainerMutation();
+  const { mutateAsync: setPrimaryWaterContainer } =
+    useSetPrimaryWaterContainerMutation();
   const [weightUnit, setWeightUnitState] = useState<'kg' | 'lbs'>('kg');
   const [measurementUnit, setMeasurementUnitState] = useState<'cm' | 'inches'>(
     'cm'
@@ -239,6 +219,19 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   const [selectedDiet, setSelectedDietState] = useState<string>('balanced');
 
+  const fetchUserPreferences = useCallback(async () => {
+    try {
+      const data = await queryClient.fetchQuery(preferencesOptions.user());
+      return data;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      if (err.message && err.message.includes('404')) {
+        return null;
+      }
+      console.error('Error fetching user preferences:', err);
+      throw err;
+    }
+  }, [queryClient]);
   // --- Utilities ---
 
   const convertWeight = useCallback(
@@ -445,7 +438,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         throw err;
       }
     },
-    [user, loggingLevel]
+    [user, loggingLevel, upsertUserPreferences]
   );
 
   const saveAllPreferences = useCallback(
@@ -574,7 +567,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         err
       );
     }
-  }, [user, loggingLevel, waterDisplayUnit]);
+  }, [user, loggingLevel, waterDisplayUnit, upsertUserPreferences]);
 
   const createDefaultWaterContainer = useCallback(async () => {
     if (!user) return;
@@ -597,7 +590,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         err
       );
     }
-  }, [user, loggingLevel]);
+  }, [user, loggingLevel, createWaterContainer, setPrimaryWaterContainer]);
 
   const loadPreferences = useCallback(async () => {
     if (!user) return;
@@ -679,18 +672,19 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     loggingLevel,
     createDefaultPreferences,
     createDefaultWaterContainer,
+    fetchUserPreferences,
   ]);
 
   const loadNutrientDisplayPreferences = useCallback(async () => {
     if (!user) return;
     try {
-      const data = await apiCall('/preferences/nutrient-display');
+      const data = await queryClient.fetchQuery(preferencesOptions.nutrients());
       setNutrientDisplayPreferences(data);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       console.error('Error fetching nutrient display preferences:', err);
     }
-  }, [user]);
+  }, [user, queryClient]);
 
   // --- Setters ---
 

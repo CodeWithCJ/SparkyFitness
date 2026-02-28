@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { debug, info, error } from '@/utils/logging';
@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import axios from 'axios';
 
 import SparkyChat from '../pages/Chat/SparkyChat';
 import AddComp from '@/layouts/AddComp';
@@ -39,6 +38,8 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
+import { useCurrentVersionQuery } from '@/hooks/useGeneralQueries';
+import { getGridClass } from '@/utils/layout';
 
 interface AddCompItem {
   value: string;
@@ -65,25 +66,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, 'MainLayout: Component rendered.');
 
-  const [appVersion, setAppVersion] = useState('Loading...');
+  const { data: appVersion } = useCurrentVersionQuery();
   const [isAddCompOpen, setIsAddCompOpen] = useState(false);
   const [isMealTypeSelectOpen, setIsMealTypeSelectOpen] = useState(false);
 
   // Fetch meal types for quick log menu
   const { data: mealTypes } = useMealTypes();
-
-  useEffect(() => {
-    const fetchVersion = async () => {
-      try {
-        const response = await axios.get('/api/version/current');
-        setAppVersion(response.data.version);
-      } catch (err) {
-        console.error('Error fetching app version for footer:', err);
-        setAppVersion('Error');
-      }
-    };
-    fetchVersion();
-  }, []);
 
   const handleSignOut = async () => {
     info(loggingLevel, 'MainLayout: Attempting to sign out.');
@@ -325,29 +313,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
     [loggingLevel, navigate]
   );
 
-  const getGridClass = (count: number) => {
-    switch (count) {
-      case 1:
-        return 'grid-cols-1';
-      case 2:
-        return 'grid-cols-2';
-      case 3:
-        return 'grid-cols-3';
-      case 4:
-        return 'grid-cols-4';
-      case 5:
-        return 'grid-cols-5';
-      case 6:
-        return 'grid-cols-6';
-      case 7:
-        return 'grid-cols-7';
-      case 8:
-        return 'grid-cols-8';
-      default:
-        return 'grid-cols-7';
-    }
-  };
-
   const gridClass = getGridClass(availableTabs.length);
   const mobileGridClass = getGridClass(availableMobileTabs.length);
 
@@ -421,7 +386,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
           <div
             className={`h-14 grid ${mobileGridClass} items-center justify-items-center`}
           >
-            {availableMobileTabs.map(({ value, label, icon: Icon }) => (
+            {availableMobileTabs.map(({ value, icon: Icon }) => (
               <Button
                 key={value}
                 variant="ghost"
@@ -476,13 +441,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
               <GitHubSponsorButton owner="CodeWithCJ" />
             </div>
             <p className="cursor-pointer underline" onClick={onShowAboutDialog}>
-              SparkyFitness v{appVersion}
+              SparkyFitness v{appVersion?.version ?? ''}
             </p>
           </div>
         ) : (
           <div className="flex justify-center items-center gap-4">
             <p className="cursor-pointer underline" onClick={onShowAboutDialog}>
-              SparkyFitness v{appVersion}
+              SparkyFitness v{appVersion?.version ?? ''}
             </p>
           </div>
         )}

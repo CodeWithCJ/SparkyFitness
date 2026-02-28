@@ -7,7 +7,7 @@ import * as logEntries from "./log.js";
 export const nutritionTools = [
   {
     name: "manage_food",
-    description: "Primary tool for nutrition tracking. Use this to search for food, log meals, create custom food items, and manage your daily diary. Supports multi-turn conversations where you provide details one by one.",
+    description: "Primary tool for nutrition tracking. Use this to search for food, log meals, create custom food items, and manage your daily diary. IMPORTANT: 'quantity' MUST be a numeric value (e.g., 500, not '500g'). Use 'food_name' for individual items and 'meal_name' for meal templates.",
     inputSchema: {
       type: "object",
       properties: {
@@ -28,45 +28,45 @@ export const nutritionTools = [
           description: "The nutrition-related action to perform.",
         },
         // Common fields
-        entry_date: { type: "string", description: "The absolute date of the record in 'YYYY-MM-DD' format. The AI must calculate this date based on the user's relative time and the current reference date." },
+        entry_date: { type: "string", description: "The absolute date of the record in 'YYYY-MM-DD' format." },
         meal_type: { type: "string", description: "The meal timeframe (e.g., 'breakfast', 'lunch', 'dinner', 'snacks')." },
         
         // Search/Log Food fields
-        food_name: { type: "string", description: "The name of the food item." },
+        food_name: { type: "string", description: "The name of the food item (use for 'search_food', 'log_food', 'create_food')." },
         food_id: { type: "string", description: "UUID of the food item (if known)." },
         variant_id: { type: "string", description: "UUID of the food variant (if known)." },
-        quantity: { type: "number", description: "The amount consumed." },
+        quantity: { type: "number", description: "The NUMERIC amount consumed. Do NOT include units here (e.g. 500, NOT '500g')." },
         unit: { type: "string", description: "The unit of measurement (e.g., 'g', 'piece', 'serving')." },
         search_type: { type: "string", enum: ["exact", "broad"], description: "The type of search to perform for food items." },
         
         // Create Food fields
         brand: { type: "string", description: "The brand name of the food." },
-                  macros: {
-                    type: "object",
-                    properties: {
-                      calories: { type: "number" },
-                      protein: { type: "number" },
-                      carbs: { type: "number" },
-                      fat: { type: "number" },
-                      saturated_fat: { type: "number" },
-                      polyunsaturated_fat: { type: "number" },
-                      monounsaturated_fat: { type: "number" },
-                      trans_fat: { type: "number" },
-                      cholesterol: { type: "number" },
-                      sodium: { type: "number" },
-                      potassium: { type: "number" },
-                      fiber: { type: "number" },
-                      sugar: { type: "number" },
-                      vitamin_a: { type: "number" },
-                      vitamin_c: { type: "number" },
-                      calcium: { type: "number" },
-                      iron: { type: "number" },
-                      gi: { type: "string", enum: ["None", "Very Low", "Low", "Medium", "High", "Very High"] }
-                    },
-                    description: "Nutritional information for creating a new food.",
-                  },        
+        macros: {
+          type: "object",
+          properties: {
+            calories: { type: "number" },
+            protein: { type: "number" },
+            carbs: { type: "number" },
+            fat: { type: "number" },
+            saturated_fat: { type: "number" },
+            polyunsaturated_fat: { type: "number" },
+            monounsaturated_fat: { type: "number" },
+            trans_fat: { type: "number" },
+            cholesterol: { type: "number" },
+            sodium: { type: "number" },
+            potassium: { type: "number" },
+            fiber: { type: "number" },
+            sugar: { type: "number" },
+            vitamin_a: { type: "number" },
+            vitamin_c: { type: "number" },
+            calcium: { type: "number" },
+            iron: { type: "number" },
+            gi: { type: "string", enum: ["None", "Very Low", "Low", "Medium", "High", "Very High"] }
+          },
+          description: "Nutritional information for creating a new food.",
+        },        
         // Meal fields
-        meal_name: { type: "string", description: "The name of the meal." },
+        meal_name: { type: "string", description: "The name of the meal template (use for 'search_meal', 'log_meal', 'save_as_meal_template')." },
         meal_id: { type: "string", description: "UUID of the meal template (if known)." },
         description: { type: "string", description: "Description for a new meal template." },
         

@@ -22,7 +22,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Users, Plus, Edit, Trash2 } from 'lucide-react';
-import { type FamilyAccess } from '@/api/Settings/familyAccessService';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -34,6 +33,7 @@ import {
   useUpdateFamilyAccessMutation,
 } from '@/hooks/Settings/useFamilyAccess';
 import { useQueryClient } from '@tanstack/react-query';
+import { FamilyAccess } from '@/types/settings';
 
 const FamilyAccessManager = () => {
   const { user } = useAuth();

@@ -1,4 +1,5 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
+import { Profile } from '@/types/settings';
 
 export interface UpdateProfilePayload {
   full_name: string;
@@ -17,7 +18,9 @@ export const fetchAvatarBlob = async (url: string): Promise<Blob> => {
   return new Blob([blob], { type: blob.type });
 };
 
-export const updateProfileData = async (payload: UpdateProfilePayload) => {
+export const updateProfileData = async (
+  payload: Partial<UpdateProfilePayload>
+) => {
   return apiCall('/identity/profiles', {
     method: 'PUT',
     body: JSON.stringify(payload),
@@ -31,18 +34,21 @@ export const uploadAvatarImage = async (formData: FormData) => {
     isFormData: true,
   });
 };
-export interface Profile {
-  id: string;
-  full_name: string | null;
-  phone_number: string | null;
-  date_of_birth: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-  gender: string | null;
-}
 
 export const getProfileData = async (): Promise<Profile> => {
   return apiCall('/identity/profiles', {
     method: 'GET',
+  });
+};
+export const syncTotpAfterDisable = async (): Promise<void> => {
+  return apiCall('/api/auth/totp/sync-after-disable', {
+    method: 'POST',
+  });
+};
+
+export const toggleEmailMfa = async (enabled: boolean): Promise<void> => {
+  return apiCall('/api/identity/mfa/email-toggle', {
+    method: 'POST',
+    body: { enabled },
   });
 };

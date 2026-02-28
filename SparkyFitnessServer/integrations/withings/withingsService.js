@@ -398,31 +398,41 @@ async function fetchMeasuresData(userId, startDate, endDate) {
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
 
-    const response = await axios.post(
-      `${WITHINGS_API_BASE_URL}/measure`,
-      null,
-      {
-        params: {
-          action: "getmeas",
-          access_token: accessToken,
-          userid: withingsUserId,
-          startdate: startDate, // Unix timestamp
-          enddate: endDate, // Unix timestamp
+    let allGroups = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await axios.post(
+        `${WITHINGS_API_BASE_URL}/measure`,
+        null,
+        {
+          params: {
+            action: "getmeas",
+            access_token: accessToken,
+            userid: withingsUserId,
+            startdate: startDate, // Unix timestamp
+            enddate: endDate, // Unix timestamp
+            offset: offset,
+          },
         },
-      },
-    );
+      );
+
+      if (response.data && response.data.body) {
+        if (response.data.body.measuregrps) {
+          allGroups = allGroups.concat(response.data.body.measuregrps);
+        }
+        hasMore = response.data.body.more === true || response.data.body.more === 1;
+        offset = response.data.body.offset || 0;
+      } else {
+        hasMore = false;
+      }
+    }
 
     const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("withings", "raw_measures", response.data);
+    logRawResponse("withings", "raw_measures", { status: 0, body: { measuregrps: allGroups } });
 
-    if (!response.data || !response.data.body) {
-      log(
-        "warn",
-        `Withings measures API returned no body for user ${userId}. Status: ${response.data?.status || "unknown"}`,
-      );
-      return null;
-    }
-    return response.data.body.measuregrps || [];
+    return allGroups;
   } catch (error) {
     log(
       "error",
@@ -462,31 +472,42 @@ async function fetchHeartData(userId, startDate, endDate) {
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
 
-    const response = await axios.post(
-      `${WITHINGS_API_BASE_URL}/v2/heart`,
-      null,
-      {
-        params: {
-          action: "list",
-          access_token: accessToken,
-          userid: withingsUserId,
-          startdate: startDate, // Unix timestamp
-          enddate: endDate, // Unix timestamp
+    let allSeries = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await axios.post(
+        `${WITHINGS_API_BASE_URL}/v2/heart`,
+        null,
+        {
+          params: {
+            action: "list",
+            access_token: accessToken,
+            userid: withingsUserId,
+            startdate: startDate, // Unix timestamp
+            enddate: endDate, // Unix timestamp
+            offset: offset,
+          },
         },
-      },
-    );
+      );
+
+      if (response.data && response.data.body) {
+        if (response.data.body.series) {
+          const series = response.data.body.series;
+          allSeries = allSeries.concat(Array.isArray(series) ? series : [series]);
+        }
+        hasMore = response.data.body.more === true || response.data.body.more === 1;
+        offset = response.data.body.offset || 0;
+      } else {
+        hasMore = false;
+      }
+    }
 
     const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("withings", "raw_heart", response.data);
+    logRawResponse("withings", "raw_heart", { status: 0, body: { series: allSeries } });
 
-    if (!response.data || !response.data.body) {
-      log(
-        "warn",
-        `Withings heart API returned no body for user ${userId}. Status: ${response.data?.status || "unknown"}`,
-      );
-      return null;
-    }
-    return response.data.body.series || [];
+    return allSeries;
   } catch (error) {
     log(
       "error",
@@ -515,7 +536,7 @@ async function fetchAndProcessHeartData(
   return heartSeries;
 }
 
-// Function to fetch sleep data
+// Function to fetch sleep data (high-frequency stages)
 async function fetchSleepData(userId, startDate, endDate) {
   const accessToken = await getValidAccessToken(userId);
   const client = await getClient(userId);
@@ -526,31 +547,44 @@ async function fetchSleepData(userId, startDate, endDate) {
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
 
-    const response = await axios.post(
-      `${WITHINGS_API_BASE_URL}/v2/sleep`,
-      null,
-      {
-        params: {
-          action: "get",
-          access_token: accessToken,
-          userid: withingsUserId,
-          startdate: startDate, // Unix timestamp
-          enddate: endDate, // Unix timestamp
+    let allSeries = [];
+    let currentStart = startDate;
+    const SECONDS_IN_DAY = 24 * 60 * 60;
+
+    // Withings limit: only 24h of high-frequency data per call
+    while (currentStart < endDate) {
+      const currentEnd = Math.min(currentStart + SECONDS_IN_DAY, endDate);
+      
+      const response = await axios.post(
+        `${WITHINGS_API_BASE_URL}/v2/sleep`,
+        null,
+        {
+          params: {
+            action: "get",
+            access_token: accessToken,
+            userid: withingsUserId,
+            startdate: currentStart,
+            enddate: currentEnd,
+          },
         },
-      },
-    );
+      );
+
+      if (response.data && response.data.body && response.data.body.series) {
+        const series = response.data.body.series;
+        if (Array.isArray(series)) {
+          allSeries = allSeries.concat(series);
+        } else {
+          allSeries.push(series);
+        }
+      }
+      
+      currentStart = currentEnd;
+    }
 
     const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("withings", "raw_sleep", response.data);
+    logRawResponse("withings", "raw_sleep", { status: 0, body: { series: allSeries } });
 
-    if (!response.data || !response.data.body) {
-      log(
-        "warn",
-        `Withings sleep API returned no body for user ${userId}. Status: ${response.data?.status || "unknown"}`,
-      );
-      return null;
-    }
-    return response.data.body.series || [];
+    return allSeries;
   } catch (error) {
     log(
       "error",
@@ -579,6 +613,128 @@ async function fetchAndProcessSleepData(
   return sleepSeries;
 }
 
+// Function to fetch sleep summary data (action=getsummary)
+async function fetchSleepSummaryData(userId, startDate, endDate) {
+  const accessToken = await getValidAccessToken(userId);
+  const client = await getClient(userId);
+  try {
+    const providerResult = await client.query(
+      `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
+      [userId],
+    );
+    const withingsUserId = providerResult.rows[0].external_user_id;
+
+    // Convert dates to YYYY-MM-DD for getsummary
+    const startDateYMD = new Date(startDate * 1000).toISOString().split("T")[0];
+    const endDateYMD = new Date(endDate * 1000).toISOString().split("T")[0];
+
+    let allSeries = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await axios.post(
+        `${WITHINGS_API_BASE_URL}/v2/sleep`,
+        null,
+        {
+          params: {
+            action: "getsummary",
+            access_token: accessToken,
+            userid: withingsUserId,
+            startdateymd: startDateYMD,
+            enddateymd: endDateYMD,
+            data_fields:
+              "total_timeinbed,total_sleep_time,asleepduration,lightsleepduration,remsleepduration,deepsleepduration,sleep_efficiency,sleep_latency,wakeup_latency,wakeupduration,wakeupcount,waso,nb_rem_episodes,sleep_score,breathing_disturbances_intensity,snoring,snoringepisodecount,hr_average,hr_min,hr_max,rr_average,rr_min,rr_max",
+            offset: offset,
+          },
+        },
+      );
+
+      if (response.data && response.data.body) {
+        if (response.data.body.series) {
+          const series = response.data.body.series;
+          allSeries = allSeries.concat(Array.isArray(series) ? series : [series]);
+        }
+        hasMore = response.data.body.more === true || response.data.body.more === 1;
+        offset = response.data.body.offset || 0;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("withings", "raw_sleep_summary", { status: 0, body: { series: allSeries } });
+
+    return allSeries;
+  } catch (error) {
+    log(
+      "error",
+      `Error fetching Withings sleep summary data for user ${userId}: ${error.message}`,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// Function to fetch daily activity data (steps, total calories, etc.)
+async function fetchActivityData(userId, startDateYMD, endDateYMD) {
+  const accessToken = await getValidAccessToken(userId);
+  const client = await getClient(userId);
+  try {
+    const providerResult = await client.query(
+      `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
+      [userId],
+    );
+    const withingsUserId = providerResult.rows[0].external_user_id;
+
+    let allActivities = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await axios.post(
+        `${WITHINGS_API_BASE_URL}/v2/measure`,
+        null,
+        {
+          params: {
+            action: "getactivity",
+            access_token: accessToken,
+            userid: withingsUserId,
+            startdateymd: startDateYMD,
+            enddateymd: endDateYMD,
+            data_fields: "steps,distance,elevation,soft,moderate,intense,active,calories,totalcalories,hr_average,hr_min,hr_max,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3",
+            offset: offset,
+          },
+        },
+      );
+
+      if (response.data && response.data.body) {
+        if (response.data.body.activities) {
+          allActivities = allActivities.concat(response.data.body.activities);
+        }
+        hasMore = response.data.body.more === true || response.data.body.more === 1;
+        offset = response.data.body.offset || 0;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("withings", "raw_activity", { status: 0, body: { activities: allActivities } });
+
+    return allActivities;
+  } catch (error) {
+    log(
+      "error",
+      `Error fetching Withings activity data for user ${userId}: ${error.message}`,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 // Function to fetch workout data
 async function fetchWorkoutsData(userId, startDateYMD, endDateYMD) {
   const accessToken = await getValidAccessToken(userId);
@@ -590,31 +746,43 @@ async function fetchWorkoutsData(userId, startDateYMD, endDateYMD) {
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
 
-    const response = await axios.post(
-      `${WITHINGS_API_BASE_URL}/v2/measure`,
-      null,
-      {
-        params: {
-          action: "getworkouts",
-          access_token: accessToken,
-          userid: withingsUserId,
-          startdateymd: startDateYMD,
-          enddateymd: endDateYMD,
+    let allSeries = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const response = await axios.post(
+        `${WITHINGS_API_BASE_URL}/v2/measure`,
+        null,
+        {
+          params: {
+            action: "getworkouts",
+            access_token: accessToken,
+            userid: withingsUserId,
+            startdateymd: startDateYMD,
+            enddateymd: endDateYMD,
+            data_fields: "calories,intensity,manual_intensity,manual_distance,manual_calories,hr_average,hr_min,hr_max,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3,pause_duration,spo2_average,steps,distance,elevation",
+            offset: offset,
+          },
         },
-      },
-    );
+      );
+
+      if (response.data && response.data.body) {
+        if (response.data.body.series) {
+          const series = response.data.body.series;
+          allSeries = allSeries.concat(Array.isArray(series) ? series : [series]);
+        }
+        hasMore = response.data.body.more === true || response.data.body.more === 1;
+        offset = response.data.body.offset || 0;
+      } else {
+        hasMore = false;
+      }
+    }
 
     const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("withings", "raw_workouts", response.data);
+    logRawResponse("withings", "raw_workouts", { status: 0, body: { series: allSeries } });
 
-    if (!response.data || !response.data.body) {
-      log(
-        "warn",
-        `Withings workouts API returned no body for user ${userId}. Status: ${response.data?.status || "unknown"}`,
-      );
-      return null;
-    }
-    return response.data.body.series || [];
+    return allSeries;
   } catch (error) {
     log(
       "error",
@@ -773,7 +941,9 @@ module.exports = {
   fetchMeasuresData,
   fetchHeartData,
   fetchSleepData,
+  fetchSleepSummaryData,
   fetchWorkoutsData,
+  fetchActivityData,
   fetchAndProcessMeasuresData,
   fetchAndProcessHeartData,
   fetchAndProcessSleepData,

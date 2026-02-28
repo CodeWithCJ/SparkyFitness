@@ -5,6 +5,8 @@ import {
   updateProfileData,
   uploadAvatarImage,
   getProfileData,
+  syncTotpAfterDisable,
+  toggleEmailMfa,
 } from '@/api/Settings/profileService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -31,7 +33,8 @@ export const useUpdateProfileMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: UpdateProfilePayload) => updateProfileData(payload),
+    mutationFn: (payload: Partial<UpdateProfilePayload>) =>
+      updateProfileData(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: profileKeys.all });
     },
@@ -54,5 +57,17 @@ export const useUploadAvatarMutation = () => {
       successMessage: 'Profile picture updated successfully',
       errorMessage: 'Failed to upload profile picture',
     },
+  });
+};
+
+export const useSyncTotpMutation = () => {
+  return useMutation({
+    mutationFn: syncTotpAfterDisable,
+  });
+};
+
+export const useToggleEmailMfaMutation = () => {
+  return useMutation({
+    mutationFn: toggleEmailMfa,
   });
 };

@@ -24,8 +24,8 @@ import {
   useUpdatePresetMutation,
 } from '@/hooks/Goals/useGoals';
 import { useMemo, useState } from 'react';
-import { GoalPreset } from '@/api/Goals/goals';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { GoalPreset } from '@/types/goals';
 
 interface GoalPresetDialogProps {
   open: boolean;

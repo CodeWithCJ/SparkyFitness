@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '../lib/auth-client';
+import { fetchIdentityUser, switchUserContext } from '@/api/Auth/auth';
 
 interface User {
   id: string;
@@ -94,36 +95,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
       // Fetch Authoritative Data (Active Context)
       // This runs on every session update to ensure we are strictly in sync with the backend.
-      import('../services/api').then(({ apiCall }) => {
-        apiCall('/identity/user')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .then((realUserData: any) => {
-            setUser((prev) => {
-              if (!prev) return prev;
-              if (
-                prev.activeUserId === realUserData.activeUserId &&
-                prev.fullName === realUserData.fullName
-              ) {
-                return prev; // No change
-              }
-              return {
-                ...prev,
-                activeUserId: realUserData.activeUserId,
-                fullName:
-                  realUserData.activeUserFullName ||
-                  realUserData.activeUserEmail ||
-                  null,
-                email: realUserData.activeUserEmail,
-              };
-            });
-          })
-          .catch((err) =>
-            console.error(
-              '[Auth Hook] Failed to fetch authoritative user data:',
-              err
-            )
-          );
-      });
+      fetchIdentityUser()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .then((realUserData: any) => {
+          setUser((prev) => {
+            if (!prev) return prev;
+            if (
+              prev.activeUserId === realUserData.activeUserId &&
+              prev.fullName === realUserData.fullName
+            ) {
+              return prev; // No change
+            }
+            return {
+              ...prev,
+              activeUserId: realUserData.activeUserId,
+              fullName:
+                realUserData.activeUserFullName ||
+                realUserData.activeUserEmail ||
+                null,
+              email: realUserData.activeUserEmail,
+            };
+          });
+        })
+        .catch((err) =>
+          console.error(
+            '[Auth Hook] Failed to fetch authoritative user data:',
+            err
+          )
+        );
 
       setIsSyncing(false);
     } else if (session?.user && user && user.id === session.user.id) {
@@ -203,37 +202,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const switchContext = useCallback(
     async (targetUserId: string) => {
       try {
-        console.info('[Auth Hook] Switching context to:', targetUserId);
-        const response = await fetch('/api/identity/switch-context', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetUserId }),
+        const data = await switchUserContext(targetUserId);
+
+        setUser((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            activeUserId: data.activeUserId || targetUserId,
+          };
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          console.info(
-            '[Auth Hook] Context switched successfully, new activeUserId:',
-            data.activeUserId
-          );
-
-          // Immediately update local state before refreshing session
-          setUser((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              activeUserId: data.activeUserId || targetUserId,
-            };
-          });
-
-          // Then refresh to get authoritative data from backend
-          await refreshUser();
-        } else {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to switch context');
-        }
+        await refreshUser();
       } catch (error) {
-        console.error('[Auth Hook] Error switching context:', error);
+        console.error(error);
         throw error;
       }
     },

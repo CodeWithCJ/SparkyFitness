@@ -21,13 +21,13 @@ import {
 import { Plus, Trash2, Edit } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { type CustomCategory } from '@/api/Settings/customCategoryService';
 import {
   useAddCategoryMutation,
   useCustomCategories,
   useDeleteCategoryMutation,
   useUpdateCategoryMutation,
 } from '@/hooks/Settings/useCustomCategories';
+import { CustomCategory } from '@/types/checkin';
 
 const CustomCategoryManager = () => {
   const { t } = useTranslation();

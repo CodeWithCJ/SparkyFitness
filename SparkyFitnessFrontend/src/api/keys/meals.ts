@@ -1,10 +1,10 @@
-import { MealFilter } from '@/api/Foods/meals';
-import { FoodFilter } from '@/api/Foods/foodService';
+import { MealFilter } from '@/types/meal';
 
 export const mealKeys = {
   all: ['meals'] as const,
   one: (mealId: string) => [...mealKeys.all, mealId] as const,
-  filter: (filter: MealFilter) => [...mealKeys.all, 'filter', filter] as const,
+  filter: (filter: MealFilter, searchTerm?: string) =>
+    [...mealKeys.all, 'filter', filter, searchTerm] as const,
   impact: (mealId: string) => [...mealKeys.one(mealId), 'impact'] as const,
 };
 export const foodKeys = {
@@ -14,12 +14,16 @@ export const foodKeys = {
   lists: () => [...foodKeys.all, 'list'] as const,
   list: (
     searchTerm: string,
-    filter: FoodFilter,
+    filter: MealFilter,
     page: number,
     limit: number,
     sort: string
   ) =>
     [...foodKeys.lists(), { searchTerm, filter, page, limit, sort }] as const,
+  recentTop: (limit: number, mealType?: string) =>
+    [...foodKeys.all, 'recentTop', limit, mealType] as const,
+  databaseSearch: (term: string, limit: number, mealType?: string) =>
+    [...foodKeys.all, 'search', term, limit, mealType] as const,
 };
 
 export const providerKeys = {
@@ -77,4 +81,11 @@ export const usdaKeys = {
 export const foodVariantKeys = {
   all: [...foodKeys.all, 'variants'] as const,
   byFood: (foodId: string) => [...foodKeys.all, 'variants', foodId] as const,
+};
+export const openFoodFactsKeys = {
+  all: ['openfoodfacts'] as const,
+  search: (query: string) =>
+    [...openFoodFactsKeys.all, 'search', query] as const,
+  barcode: (barcode: string) =>
+    [...openFoodFactsKeys.all, 'barcode', barcode] as const,
 };

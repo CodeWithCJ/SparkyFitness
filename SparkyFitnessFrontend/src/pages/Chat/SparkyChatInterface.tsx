@@ -7,7 +7,6 @@ import { toast } from '@/hooks/use-toast';
 import DOMPurify from 'dompurify';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { info, warn, error } from '@/utils/logging';
-import { type Message } from '@/api/Chatbot/sparkyChatService';
 import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 import {
   useChatHistoryQuery,
@@ -17,14 +16,17 @@ import {
   useSaveMessageMutation,
   useTodaysNutritionQuery,
 } from '@/hooks/AI/useSparkyChat';
-import { CoachResponse } from '@/types/Chatbot_types';
-import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
-import { chatbotKeys } from '@/api/keys/ai';
-import { useQueryClient } from '@tanstack/react-query';
+import { CoachResponse, Message } from '@/types/Chatbot_types';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  useChatInvalidation,
+  useDiaryInvalidation,
+} from '@/hooks/useInvalidateKeys';
 
 const SparkyChatInterface = () => {
   const { formatDateInUserTimezone } = usePreferences();
 
+  const { user } = useAuth();
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +35,7 @@ const SparkyChatInterface = () => {
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const { data: activeAIServiceSetting } = useActiveAIService();
+  const { data: activeAIServiceSetting } = useActiveAIService(!!user);
   const { data: userPreferences, isLoading: isPrefsLoading } =
     useChatPreferencesQuery();
 
@@ -55,9 +57,8 @@ const SparkyChatInterface = () => {
   const { mutateAsync: clearChatHistory } = useClearChatHistoryMutation();
   const { mutateAsync: processUserInput } = useProcessUserInputMutation();
 
-  const invalidate = useDiaryInvalidation();
-  const queryClient = useQueryClient();
-
+  const invalidateDiary = useDiaryInvalidation();
+  const invalidateChat = useChatInvalidation();
   useEffect(() => {
     if (userPreferences?.auto_clear_history === 'all' && !hasAutoCleared) {
       clearChatHistory('all').catch(() => {});
@@ -99,12 +100,6 @@ const SparkyChatInterface = () => {
 
     return [...serverMessages, ...filteredLocal];
   }, [historyData, localMessages, welcomeMessage]);
-
-  useEffect(() => {
-    if (historyData && historyData.length > 0) {
-      setLocalMessages([]);
-    }
-  }, [historyData]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -255,15 +250,13 @@ const SparkyChatInterface = () => {
           case 'water_added':
             botMessageContent =
               response.response || 'Entry logged successfully!';
-            invalidate();
-            queryClient.invalidateQueries({
-              queryKey: chatbotKeys.todaysNutrition(todayStr),
-            });
+            invalidateChat();
+            invalidateDiary();
             break;
           case 'measurement_added':
             botMessageContent =
               response.response || 'Entry logged successfully!';
-            invalidate();
+            invalidateDiary();
             break;
           case 'food_options':
           case 'exercise_options':

@@ -6,10 +6,12 @@ import {
 } from '@/api/Diary/foodEntryService';
 import {
   deleteFood,
-  FoodFilter,
   getFoodById,
   getFoodDeletionImpact,
+  getRecentAndTopFoods,
+  importFoodsFromCsv,
   loadFoods,
+  searchDatabaseFoods,
   searchMealieFoods,
   searchTandoorFoods,
   togglePublicSharing,
@@ -24,10 +26,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { diaryReportKeys } from '@/api/keys/diary';
+import { MealFilter } from '@/types/meal';
+import { FoodDataForBackend } from '@/types/food';
 
 export const useFoods = (
   searchTerm: string,
-  foodFilter: FoodFilter,
+  foodFilter: MealFilter,
   currentPage: number,
   itemsPerPage: number,
   sortOrder: string
@@ -243,6 +247,71 @@ export const useMiniNutritionTrendData = (
       errorMessage: t(
         'reports.miniNutritionTrendsError',
         'Failed to load nutrition trend data.'
+      ),
+    },
+  });
+};
+
+export const useRecentAndTopFoodsQuery = (
+  limit: number,
+  mealType?: string,
+  enabled: boolean = true
+) => {
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: foodKeys.recentTop(limit, mealType),
+    queryFn: () => getRecentAndTopFoods(limit, mealType),
+    enabled,
+    meta: {
+      errorMessage: t(
+        'foodDatabaseManager.failedToLoadRecentAndTopFoods',
+        'Failed to load recent and top foods.'
+      ),
+    },
+  });
+};
+
+export const useDatabaseFoodSearchQuery = (
+  term: string,
+  limit: number,
+  mealType?: string,
+  enabled: boolean = true
+) => {
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: foodKeys.databaseSearch(term, limit, mealType),
+    queryFn: () => searchDatabaseFoods(term, limit, mealType),
+    enabled,
+    meta: {
+      errorMessage: t(
+        'foodDatabaseManager.failedToSearchFoods',
+        'Failed to search foods.'
+      ),
+    },
+  });
+};
+
+export const useImportCsvMutation = () => {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: (foods: FoodDataForBackend[]) => importFoodsFromCsv(foods),
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: foodKeys.all,
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'foodDatabaseManager.failedToImportFoodData',
+        'Failed to import food data. Please try again.'
+      ),
+      successMessage: t(
+        'foodDatabaseManager.foodDataImportedSuccessfully',
+        'Food data imported successfully.'
       ),
     },
   });

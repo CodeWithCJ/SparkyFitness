@@ -5,9 +5,9 @@ import {
   createGlobalAIService,
   updateGlobalAIService,
   deleteGlobalAIService,
-  type AIService,
 } from '@/api/Settings/aiServiceSettingsService';
 import { aiServiceKeys } from '@/api/keys/admin';
+import { AIService } from '@/types/settings';
 
 // Query hook for fetching global AI services
 export const useGlobalAIServices = () => {

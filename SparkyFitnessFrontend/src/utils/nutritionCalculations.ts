@@ -1,3 +1,4 @@
+import { getDietTemplate } from '@/constants/dietTemplates';
 import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
 import i18n from '@/i18n';
 import type { FoodEntry, FoodVariant } from '@/types/food';
@@ -545,4 +546,98 @@ export const getMealData = (
     entries: combinedEntries,
     targetCalories: goals ? (goals.calories * percentage) / 100 : 0,
   };
+};
+
+export interface CalculatorFormData {
+  sex: 'male' | 'female' | '';
+  primaryGoal: 'lose_weight' | 'maintain_weight' | 'gain_weight' | '';
+  currentWeight: number | '';
+  height: number | '';
+  birthDate: string;
+  activityLevel: 'not_much' | 'light' | 'moderate' | 'heavy' | '';
+}
+
+export interface BasePlan {
+  bmr: number;
+  tdee: number;
+  finalDailyCalories: number;
+  macros: {
+    carbs: number;
+    protein: number;
+    fat: number;
+    fiber: number;
+  };
+}
+
+export const calculateBasePlan = (
+  formData: CalculatorFormData,
+  weightUnit: 'kg' | 'lbs',
+  heightUnit: 'cm' | 'inches',
+  localSelectedDiet: string,
+  customPercentages: { carbs: number; protein: number; fat: number }
+): BasePlan | null => {
+  const weightKg =
+    weightUnit === 'lbs'
+      ? Number(formData.currentWeight) * 0.453592
+      : Number(formData.currentWeight);
+
+  const heightCm =
+    heightUnit === 'inches'
+      ? Number(formData.height) * 2.54
+      : Number(formData.height);
+
+  const age =
+    new Date().getFullYear() - new Date(formData.birthDate).getFullYear();
+
+  if (
+    isNaN(weightKg) ||
+    isNaN(heightCm) ||
+    isNaN(age) ||
+    !formData.activityLevel
+  ) {
+    return null;
+  }
+
+  let bmr = 10 * weightKg + 6.25 * heightCm - 5 * age;
+  bmr += formData.sex === 'male' ? 5 : -161;
+
+  const activityMultipliers: Record<string, number> = {
+    not_much: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    heavy: 1.725,
+  };
+
+  const multiplier = activityMultipliers[formData.activityLevel] || 1.2;
+  const tdee = bmr * multiplier;
+
+  let targetCalories = tdee;
+  if (formData.primaryGoal === 'lose_weight') targetCalories = tdee * 0.8;
+  if (formData.primaryGoal === 'gain_weight') targetCalories = tdee + 500;
+
+  const finalDailyCalories = Math.round(targetCalories / 10) * 10;
+
+  const dietTemplate =
+    localSelectedDiet === 'custom'
+      ? {
+          carbsPercentage: customPercentages.carbs,
+          proteinPercentage: customPercentages.protein,
+          fatPercentage: customPercentages.fat,
+        }
+      : getDietTemplate(localSelectedDiet);
+
+  const macros = {
+    carbs: Math.round(
+      (finalDailyCalories * (dietTemplate.carbsPercentage / 100)) / 4
+    ),
+    protein: Math.round(
+      (finalDailyCalories * (dietTemplate.proteinPercentage / 100)) / 4
+    ),
+    fat: Math.round(
+      (finalDailyCalories * (dietTemplate.fatPercentage / 100)) / 9
+    ),
+    fiber: Math.round((finalDailyCalories / 1000) * 14),
+  };
+
+  return { bmr, tdee, finalDailyCalories, macros };
 };

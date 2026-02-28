@@ -164,3 +164,5 @@ export interface MealTotals {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any; // Allow custom nutrients
 }
+
+export type MealFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';

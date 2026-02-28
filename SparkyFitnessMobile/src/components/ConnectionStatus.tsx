@@ -75,7 +75,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
       case 'disconnected':
         return 'Connection failed';
       case 'unconfigured':
-        return 'Configuration required';
+        return 'Config required';
     }
   };
 

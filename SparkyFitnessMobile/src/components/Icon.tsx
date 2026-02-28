@@ -26,6 +26,7 @@ const ICON_MAP = {
   'close': { sf: 'xmark', ion: 'close' },
   'search': { sf: 'magnifyingglass', ion: 'search-outline' },
   'save': { sf: 'square.and.arrow.down', ion: 'save-outline' },
+  'share': { sf: 'square.and.arrow.up', ion: 'share-outline' },
   'bookmark': { sf: 'bookmark', ion: 'bookmark-outline' },
   'bookmark-filled': { sf: 'bookmark.fill', ion: 'bookmark' },
   'checkmark-circle': { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },

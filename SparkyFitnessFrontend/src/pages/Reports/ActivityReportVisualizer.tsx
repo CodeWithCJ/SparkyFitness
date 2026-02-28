@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import {
   LineChart,
@@ -29,6 +28,7 @@ import ActivityReportLapTable from './ActivityReportLapTable';
 import { info, warn, error as logError } from '@/utils/logging';
 import ActivityReportMap from './ActivityReportMap';
 import WorkoutReportVisualizer from './WorkoutReportVisualizer';
+import { useActivityDetailsQuery } from '@/hooks/Exercises/useExercises';
 
 interface ActivityReportVisualizerProps {
   exerciseEntryId: string;
@@ -95,12 +95,13 @@ const ActivityReportVisualizer = ({
   providerName,
 }: ActivityReportVisualizerProps) => {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activityData, setActivityData] = useState<ActivityData | null>(null);
   const [xAxisMode, setXAxisMode] = useState<XAxisMode>('timeOfDay'); // Default to time of day
   const [isMounted, setIsMounted] = useState(false);
-
+  const {
+    data: activityData,
+    isLoading: loading,
+    isError: error,
+  } = useActivityDetailsQuery(exerciseEntryId, providerName);
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -117,46 +118,6 @@ const ActivityReportVisualizer = ({
       ? t('common.kcalUnit', 'kcal')
       : t('common.kJUnit', 'kJ');
   };
-
-  useEffect(() => {
-    const fetchActivityData = async () => {
-      try {
-        setLoading(true);
-        // Dynamically construct the API endpoint based on providerName
-        let apiUrl = '';
-        // Construct the API URL using the generic endpoint and providerName
-        apiUrl = `/api/exercises/activity-details/${exerciseEntryId}/${providerName}`;
-
-        const response = await axios.get(apiUrl);
-        setActivityData(response.data);
-        info(
-          loggingLevel,
-          'Fetched activity data:',
-          JSON.stringify(response.data, null, 2)
-        );
-      } catch (err) {
-        setError(
-          t('reports.activityReport.error', {
-            error: `Failed to fetch ${providerName} activity details.`,
-          })
-        );
-        logError(
-          loggingLevel,
-          t('reports.activityReport.error', {
-            error: `Failed to fetch ${providerName} activity details.`,
-          }),
-          err
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (exerciseEntryId && providerName) {
-      fetchActivityData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exerciseEntryId, providerName]);
 
   if (loading) {
     return <div>{t('reports.activityReport.loadingActivityReport')}</div>;

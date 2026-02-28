@@ -1,23 +1,12 @@
-import { apiCall } from '../../services/api';
+import { OpenFoodFactsProduct } from '@/components/FoodSearch/FoodSearch';
+import { apiCall } from '../api';
 
-import type { Food, FoodDeletionImpact } from '@/types/food';
-
-export type FoodFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
-
-export interface ExternalDataProvider {
-  id: string;
-  provider_name: string;
-  provider_type:
-    | 'openfoodfacts'
-    | 'nutritionix'
-    | 'fatsecret'
-    | 'wger'
-    | 'mealie'
-    | 'tandoor';
-  app_id: string | null;
-  app_key: string | null;
-  is_active: boolean;
-}
+import type {
+  Food,
+  FoodDataForBackend,
+  FoodDeletionImpact,
+} from '@/types/food';
+import { MealFilter } from '@/types/meal';
 
 interface FoodPayload {
   name: string;
@@ -55,7 +44,7 @@ interface LoadFoodsResponse {
 }
 export const loadFoods = async (
   searchTerm: string,
-  foodFilter: FoodFilter,
+  foodFilter: MealFilter,
   currentPage: number,
   itemsPerPage: number,
   sortBy: string = 'name:asc', // Default sort by name ascending
@@ -174,4 +163,61 @@ export const searchTandoorFoods = async (
     },
   });
   return response || [];
+};
+
+export const getRecentAndTopFoods = async (
+  limit: number,
+  mealType?: string
+) => {
+  const params = new URLSearchParams({ limit: limit.toString() });
+  if (mealType) params.append('mealType', mealType);
+
+  return apiCall(`/foods?${params.toString()}`);
+};
+
+export const searchDatabaseFoods = async (
+  term: string,
+  limit: number,
+  mealType?: string
+) => {
+  const params = new URLSearchParams({
+    name: term,
+    broadMatch: 'true',
+    limit: limit.toString(),
+  });
+  if (mealType) params.append('mealType', mealType);
+
+  return apiCall(`/foods?${params.toString()}`);
+};
+
+export interface OpenFoodFactsSearchResponse {
+  products?: OpenFoodFactsProduct[];
+}
+
+export interface OpenFoodFactsBarcodeResponse {
+  status: number;
+  product?: OpenFoodFactsProduct;
+}
+
+export const searchOpenFoodFactsApi = async (
+  query: string
+): Promise<OpenFoodFactsSearchResponse> => {
+  return apiCall(
+    `/foods/openfoodfacts/search?query=${encodeURIComponent(query)}`
+  );
+};
+
+export const searchOpenFoodFactsBarcodeApi = async (
+  barcode: string
+): Promise<OpenFoodFactsBarcodeResponse> => {
+  return apiCall(`/foods/openfoodfacts/barcode/${barcode}`);
+};
+
+export const importFoodsFromCsv = async (
+  foods: FoodDataForBackend[]
+): Promise<void> => {
+  await apiCall('/foods/import-from-csv', {
+    method: 'POST',
+    body: JSON.stringify({ foods }),
+  });
 };

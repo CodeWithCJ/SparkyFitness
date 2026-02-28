@@ -1,12 +1,11 @@
-import { apiCall } from '../../services/api';
+import { apiCall } from '../api';
 import type {
   Meal,
   MealPayload,
   MealPlanTemplate,
   MealDeletionImpact,
+  MealFilter,
 } from '@/types/meal';
-
-export type MealFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
 
 export const createMeal = async (mealData: MealPayload): Promise<Meal> => {
   return await apiCall(`/meals`, { method: 'POST', body: mealData });

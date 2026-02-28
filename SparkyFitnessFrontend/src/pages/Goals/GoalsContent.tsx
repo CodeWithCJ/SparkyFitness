@@ -4,10 +4,8 @@ import { Target } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { type GoalPreset } from '@/api/Goals/goals';
-import { type WeeklyGoalPlan } from '@/api/Goals/goals';
 
-import type { ExpandedGoals } from '@/types/goals';
+import type { ExpandedGoals, GoalPreset, WeeklyGoalPlan } from '@/types/goals';
 import {
   useDeletePresetMutation,
   useDeleteWeeklyPlanMutation,

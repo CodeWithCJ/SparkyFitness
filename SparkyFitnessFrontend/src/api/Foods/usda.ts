@@ -1,6 +1,6 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 
-export interface UsdaFoodSearchItem {
+interface UsdaFoodSearchItem {
   fdcId: number;
   description: string;
   brandOwner?: string;
@@ -12,7 +12,7 @@ export interface UsdaFoodSearchItem {
   servingSizeUnit?: string;
 }
 
-export interface UsdaFoodNutrient {
+interface UsdaFoodNutrient {
   nutrientId: number;
   nutrientName: string;
   nutrientNumber: string;
@@ -20,7 +20,7 @@ export interface UsdaFoodNutrient {
   value: number;
 }
 
-export interface UsdaFoodDetails {
+interface UsdaFoodDetails {
   fdcId: number;
   description: string;
   brandOwner?: string;

@@ -11,6 +11,7 @@ import { debug, info, warn, error } from '@/utils/logging';
 import { toast as sonnerToast } from 'sonner';
 import { Trash2, Edit, Save, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 import {
   Tooltip,
   TooltipContent,
@@ -26,8 +27,6 @@ import {
   useSleepEntriesQuery,
   useUpdateSleepEntryMutation,
 } from '@/hooks/CheckIn/useSleep';
-import { useQueryClient } from '@tanstack/react-query';
-import { sleepKeys } from '@/api/keys/checkin';
 
 // Helper to aggregate sleep stages from stage_events (same approach as reports page)
 const aggregateSleepStages = (stageEvents: SleepStageEvent[] | undefined) => {
@@ -55,13 +54,9 @@ const aggregateSleepStages = (stageEvents: SleepStageEvent[] | undefined) => {
   };
 };
 
-// Format duration: show hours if >= 60 min, otherwise minutes
+// Format duration: use HH:MM format
 const formatStageDuration = (seconds: number): string => {
-  const minutes = seconds / 60;
-  if (minutes >= 60) {
-    return `${(minutes / 60).toFixed(1)}h`;
-  }
-  return `${minutes.toFixed(0)}m`;
+  return formatSecondsToHHMM(seconds);
 };
 
 interface SleepEntrySectionProps {
@@ -90,7 +85,6 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
   const { mutateAsync: saveSleepEntry } = useSaveSleepEntryMutation();
   const { mutateAsync: updateSleepEntry } = useUpdateSleepEntryMutation();
   const { mutateAsync: deleteSleepEntry } = useDeleteSleepEntryMutation();
-  const queryClient = useQueryClient();
 
   const [existingEditDraft, setExistingEditDraft] = useState<{
     stageEvents: SleepStageEvent[];
@@ -281,21 +275,6 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     setEditingEntryId(null);
   };
 
-  const handleDiscardExistingEntryStageEvents = (entryId: string) => {
-    debug(
-      loggingLevel,
-      `SleepEntrySection: handleDiscardExistingEntryStageEvents for entry ${entryId}`
-    );
-    // Re-fetch the entry to revert changes
-    queryClient.invalidateQueries({ queryKey: sleepKeys.all });
-    sonnerToast.info(
-      t(
-        'sleepEntrySection.stagesDiscarded',
-        'Sleep stage changes for existing entry discarded.'
-      )
-    );
-  };
-
   const handleDeleteSleepEntry = async (entryId: string) => {
     if (!currentUserId) {
       warn(
@@ -433,9 +412,11 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {t('sleepEntrySection.duration', 'Duration')}:{' '}
-                      {(entry.duration_in_seconds / 3600).toFixed(1)}h &middot;
+                      {formatSecondsToHHMM(entry.duration_in_seconds)} &middot;
                       {t('sleepEntrySection.asleep', 'Asleep')}:{' '}
-                      {(entry.time_asleep_in_seconds / 3600).toFixed(1)}h
+                      {entry.time_asleep_in_seconds !== null
+                        ? formatSecondsToHHMM(entry.time_asleep_in_seconds)
+                        : 'N/A'}{' '}
                       &middot;
                       {t('sleepEntrySection.score', 'Score')}:{' '}
                       {entry.sleep_score || 'N/A'} &middot;
@@ -645,9 +626,15 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                             entry.wake_time,
                             'p'
                           ),
-                          duration: (entry.duration_in_seconds / 3600).toFixed(
-                            1
+                          duration: formatSecondsToHHMM(
+                            entry.duration_in_seconds
                           ),
+                          timeAsleep:
+                            entry.time_asleep_in_seconds !== null
+                              ? formatSecondsToHHMM(
+                                  entry.time_asleep_in_seconds
+                                )
+                              : undefined,
                           sleepScore: entry.sleep_score,
                           source: entry.source,
                           deepSleepSeconds: entry.deep_sleep_seconds,

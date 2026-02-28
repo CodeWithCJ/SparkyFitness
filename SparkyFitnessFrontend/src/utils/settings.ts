@@ -1,4 +1,5 @@
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
+import { DataProvider } from '@/types/settings';
 
 export const providerRequirements: Record<string, string[]> = {
   mealie: ['base_url', 'app_key'],
@@ -56,4 +57,24 @@ export const getInitials = (name: string | null) => {
     .join('')
     .toUpperCase()
     .slice(0, 2);
+};
+
+export const getProviderCategory = (
+  provider: DataProvider
+): ('food' | 'exercise' | 'other')[] => {
+  switch (provider.provider_type.toLowerCase()) {
+    case 'wger':
+    case 'free-exercise-db': // Added free-exercise-db
+      return ['exercise'];
+    case 'fatsecret':
+    case 'openfoodfacts':
+    case 'mealie':
+    case 'tandoor':
+    case 'usda':
+      return ['food'];
+    case 'nutritionix':
+      return ['food', 'exercise'];
+    default:
+      return ['other'];
+  }
 };

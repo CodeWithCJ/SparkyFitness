@@ -1,14 +1,5 @@
-import { api } from '@/services/api';
-
-export interface BackupSettingsResponse {
-  backupEnabled?: boolean;
-  backupDays?: string[];
-  backupTime?: string;
-  retentionDays?: number;
-  lastBackupStatus?: string;
-  lastBackupTimestamp?: string;
-  backupLocation?: string;
-}
+import { api } from '@/api/api';
+import { BackupSettingsResponse } from '@/types/admin';
 
 export const fetchBackupSettings =
   async (): Promise<BackupSettingsResponse> => {

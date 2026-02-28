@@ -20,11 +20,9 @@ import { ExternalFoodItem } from '../types/externalFoods';
 import { Meal } from '../types/meals';
 import { foodItemToFoodInfo, externalFoodItemToFoodInfo, mealToFoodInfo } from '../types/foodInfo';
 import type { FoodInfoItem } from '../types/foodInfo';
+import type { RootStackScreenProps } from '../types/navigation';
 
-interface FoodSearchScreenProps {
-  navigation: { goBack: () => void; navigate: (screen: string, params: any) => void };
-  route?: { params?: { date?: string } };
-}
+type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
 
 type FoodSection = {
   title: string;
@@ -40,7 +38,7 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
-  const date = route?.params?.date;
+  const date = route.params?.date;
   const insets = useSafeAreaInsets();
   const [accentColor, textMuted, textSecondary] = useCSSVariable([
     '--color-accent-primary',
@@ -297,7 +295,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     const foodInfo = mealToFoodInfo(item);
     return (
       <TouchableOpacity
-        className="px-4 py-3 border-b border-border-subtle"
+        className="px-4 py-2 border-b border-border-subtle"
         activeOpacity={0.7}
         onPress={() => showFoodInfo(foodInfo)}
       >
@@ -305,7 +303,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <View className="flex-1 mr-3">
             <Text className="text-text-primary text-base font-medium">{item.name}</Text>
             {item.description ? (
-              <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>
+              <Text className="text-text-secondary text-sm" numberOfLines={1}>
                 {item.description}
               </Text>
             ) : null}
@@ -633,7 +631,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       </View>
 
       {/* Segmented control */}
-      <View className="px-4 pb-2">
+      <View className="px-4 mt-2">
         <View className="flex-row bg-raised p-1 rounded-lg">
           {TABS.map((tab) => (
             <TouchableOpacity

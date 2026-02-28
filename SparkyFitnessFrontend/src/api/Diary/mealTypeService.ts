@@ -1,15 +1,7 @@
-import { apiCall } from '../../services/api';
+import { MealTypeDefinition } from '@/types/diary';
+import { apiCall } from '../api';
 
-export interface MealTypeDefinition {
-  id: string;
-  name: string;
-  sort_order: number;
-  user_id: string | null;
-  is_visible?: boolean;
-  show_in_quick_log?: boolean;
-}
-
-export interface MealTypeUpdate {
+interface MealTypeUpdate {
   name?: string;
   sort_order?: number;
   is_visible?: boolean;

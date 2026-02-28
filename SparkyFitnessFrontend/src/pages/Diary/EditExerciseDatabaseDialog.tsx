@@ -20,11 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { XCircle } from 'lucide-react';
-
-import type { Exercise } from '@/api/Exercises/exerciseSearchService';
 import { error } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUpdateExerciseMutation } from '@/hooks/Exercises/useExercises';
+import { Exercise } from '@/types/exercises';
 
 interface EditExerciseDatabaseDialogProps {
   open: boolean;

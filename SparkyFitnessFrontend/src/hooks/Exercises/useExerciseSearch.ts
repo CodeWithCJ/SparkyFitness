@@ -6,19 +6,17 @@ import {
   addExternalExerciseToUserExercises,
   addNutritionixExercise,
   addFreeExerciseDBExercise,
-  Exercise,
   getAvailableEquipment,
   getAvailableMuscleGroups,
   getAvailableExercises,
 } from '@/api/Exercises/exerciseSearchService';
 import { exerciseKeys, exerciseSearchKeys } from '@/api/keys/exercises';
 import i18n from '@/i18n';
-import {
-  getExternalDataProviders,
-  getProviderCategory,
-} from '@/api/Settings/externalProviderService';
+import { getExternalDataProviders } from '@/api/Settings/externalProviderService';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Exercise } from '@/types/exercises';
+import { getProviderCategory } from '@/utils/settings';
 
 export const internalSearchOptions = (
   query: string,

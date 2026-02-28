@@ -1,7 +1,7 @@
 {
   "name": "sparkyfitnessfrontend",
   "private": true,
-  "version": "0.16.4.5",
+  "version": "0.16.4.7",
   "homepage": "https://github.com/CodeWithCJ/SparkyFitness",
   "type": "module",
   "scripts": {
@@ -78,7 +78,6 @@
     "@tanstack/react-query": "^5.90.19",
     "@types/leaflet": "^1.9.21",
     "@zxing/library": "^0.21.3",
-    "axios": "^1.13.2",
     "better-auth": "^1.4.17",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

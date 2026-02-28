@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Alert, Text, ScrollView, Platform, TouchableOpacity, Linking } from 'react-native';
+import { View, Alert, Text, ScrollView, Platform, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
 import type { ServerConfig } from '../services/storage';
@@ -7,7 +7,7 @@ import { addLog } from '../services/LogService';
 import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference } from '../services/healthConnectService';
 import { configureBackgroundSync, stopBackgroundSync } from '../services/backgroundSyncService';
 import { HEALTH_METRICS } from '../HealthMetrics';
-import { useServerConnection } from '../hooks';
+import { useServerConnection, usePreferences, queryClient } from '../hooks';
 import type { HealthMetric } from '../HealthMetrics';
 import ServerConfigComponent from '../components/ServerConfig';
 import HealthDataSync from '../components/HealthDataSync';
@@ -17,13 +17,20 @@ import DevTools from '../components/DevTools';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import * as Application from 'expo-application';
 import Icon from '../components/Icon';
+import { shareDiagnosticReport, sanitizeQueryKey } from '../services/diagnosticReportService';
+import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import type { HealthMetricStates } from '../types/healthRecords';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
+import type { RootStackParamList, TabParamList } from '../types/navigation';
 
-interface SettingsScreenProps {
-  navigation: { navigate: (screen: string) => void };
-}
+type SettingsScreenProps = CompositeScreenProps<
+  NativeBottomTabScreenProps<TabParamList, 'Settings'>,
+  StackScreenProps<RootStackParamList>
+>;
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -43,6 +50,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
 
   const { isConnected, refetch: refetchConnection } = useServerConnection();
+  const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
+  const [isSharing, setIsSharing] = useState<boolean>(false);
 
   const healthSettingsName = Platform.OS === 'android' ? 'Health Connect settings' : 'Health app settings';
 
@@ -292,6 +301,37 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
   };
 
+  const handleShareDiagnosticReport = async (): Promise<void> => {
+    setIsSharing(true);
+    try {
+      const queryStates: DiagnosticQueryState[] = queryClient
+        .getQueryCache()
+        .getAll()
+        .map((query) => ({
+          queryKey: JSON.stringify(sanitizeQueryKey(query.queryKey)),
+          status: query.state.status,
+          fetchStatus: query.state.fetchStatus,
+          isStale: query.isStale(),
+          errorMessage: query.state.error instanceof Error
+            ? query.state.error.message
+            : query.state.error
+              ? String(query.state.error)
+              : null,
+        }));
+
+      await shareDiagnosticReport({
+        isServerConnected: isConnected,
+        userPreferences: userPreferences ?? null,
+        queryStates,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      Alert.alert('Error', `Failed to share diagnostic report: ${errorMessage}`);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <View className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 130 }}>
@@ -330,6 +370,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           />
 
 
+
+
+          <HealthDataSync
+            healthMetricStates={healthMetricStates}
+            handleToggleHealthMetric={handleToggleHealthMetric}
+            isAllMetricsEnabled={isAllMetricsEnabled}
+            handleToggleAllMetrics={handleToggleAllMetrics}
+          />
+          <AppearanceSettings />
           <TouchableOpacity
             className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
             onPress={() => navigation.navigate('Logs')}
@@ -338,19 +387,29 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             <Text className="text-base font-semibold text-text-primary">View Logs</Text>
             <Icon name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
-          <HealthDataSync
-            healthMetricStates={healthMetricStates}
-            handleToggleHealthMetric={handleToggleHealthMetric}
-            isAllMetricsEnabled={isAllMetricsEnabled}
-            handleToggleAllMetrics={handleToggleAllMetrics}
-          />
-          <AppearanceSettings />
+          <TouchableOpacity
+            className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+            onPress={handleShareDiagnosticReport}
+            activeOpacity={0.7}
+            disabled={isSharing}
+          >
+            <Text className="text-base font-semibold text-text-primary">Share Diagnostic Report</Text>
+            {isSharing ? (
+              <ActivityIndicator size="small" />
+            ) : (
+              <Icon name="share" size={20} color="#999" />
+            )}
+          </TouchableOpacity>
+          <Text className="text-text-secondary text-sm px-2 mb-4 mt-2">
+            Exports a local diagnostic report (app version, sync status, logs).{'\n'}
+            No personal health or food data is included. Nothing is sent automatically.
+          </Text>
 
           {__DEV__ &&
             (Constants.expoConfig?.extra?.APP_VARIANT === 'development' ||
-             Constants.expoConfig?.extra?.APP_VARIANT === 'dev') && (
-            <DevTools />
-          )}
+              Constants.expoConfig?.extra?.APP_VARIANT === 'dev') && (
+              <DevTools />
+            )}
 
 
           <View className="items-center z-100">

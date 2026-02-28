@@ -1,4 +1,4 @@
-import { apiCall } from '@/services/api';
+import { apiCall } from '@/api/api';
 import { setUserLoggingLevel } from '@/utils/userPreferences';
 import {
   debug,
@@ -14,18 +14,9 @@ import {
 import { processExerciseInput } from '@/api/Chatbot/Chatbot_ExerciseHandler';
 import { processMeasurementInput } from '@/api/Chatbot/Chatbot_MeasurementHandler';
 import { processWaterInput } from '@/api/Chatbot/Chatbot_WaterHandler';
-import { AIService } from '@/api/Settings/aiServiceSettingsService';
-import { CoachResponse, FoodOption } from '@/types/Chatbot_types';
+import { CoachResponse, FoodOption, Message } from '@/types/Chatbot_types';
 import { processChatInput } from '@/utils/Chatbot_utils';
-
-export interface Message {
-  id: string;
-  content: string;
-  isUser: boolean;
-  timestamp: Date;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  metadata?: any;
-}
+import { AIService } from '@/types/settings';
 
 export interface UserPreferences {
   auto_clear_history: 'never' | '7days' | 'all';

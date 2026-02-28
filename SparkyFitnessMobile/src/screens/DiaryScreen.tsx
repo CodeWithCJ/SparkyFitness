@@ -11,10 +11,15 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import { useServerConnection, useDailySummary } from '../hooks';
 import { addDays, getTodayDate } from '../utils/dateUtils';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { StackScreenProps } from '@react-navigation/stack';
+import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
+import type { RootStackParamList, TabParamList } from '../types/navigation';
 
-interface DiaryScreenProps {
-  navigation: { navigate: (screen: string) => void; setParams: (params: any) => void };
-}
+type DiaryScreenProps = CompositeScreenProps<
+  NativeBottomTabScreenProps<TabParamList, 'Diary'>,
+  StackScreenProps<RootStackParamList>
+>;
 
 const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(getTodayDate);

@@ -1,5 +1,5 @@
 import type { UserCustomNutrient } from '../../types/customNutrient';
-import { api } from '../../services/api';
+import { api } from '../api';
 
 export const customNutrientService = {
   async createCustomNutrient(

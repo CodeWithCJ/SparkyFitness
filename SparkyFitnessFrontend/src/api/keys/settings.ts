@@ -35,3 +35,9 @@ export const profileKeys = {
   all: ['profile'] as const,
   avatar: (url: string) => [...profileKeys.all, 'avatar', url] as const,
 };
+
+export const preferencesKeys = {
+  all: ['preferences'] as const,
+  user: () => [...preferencesKeys.all, 'user'] as const,
+  nutrients: () => [...preferencesKeys.all, 'nutrients'] as const,
+};

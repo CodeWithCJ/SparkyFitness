@@ -1,6 +1,6 @@
 {
   "name": "sparkyfitnessserver",
-  "version": "0.16.4.5",
+  "version": "0.16.4.7",
   "main": "SparkyFitnessServer.js",
   "scripts": {
     "start": "nodemon SparkyFitnessServer.js",

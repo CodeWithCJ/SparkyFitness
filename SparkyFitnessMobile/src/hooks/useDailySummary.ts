@@ -17,8 +17,19 @@ import {
 } from '../services/api/exerciseApi';
 import { fetchWaterIntake } from '../services/api/measurementsApi';
 import type { DailySummary } from '../types/dailySummary';
+import type { DailyGoals } from '../types/goals';
+import type { FoodEntry } from '../types/foodEntries';
+import type { ExerciseEntry } from '../types/exercise';
+import type { WaterIntake } from '../types/measurements';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { dailySummaryQueryKey } from './queryKeys';
+
+export interface DailySummaryRawData {
+  goals: DailyGoals;
+  foodEntries: FoodEntry[];
+  exerciseEntries: ExerciseEntry[];
+  waterIntake: WaterIntake;
+}
 
 interface UseDailySummaryOptions {
   date: string;
@@ -28,13 +39,18 @@ interface UseDailySummaryOptions {
 export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions) {
   const query = useQuery({
     queryKey: dailySummaryQueryKey(date),
-    queryFn: async (): Promise<DailySummary> => {
+    queryFn: async () => {
       const [goals, foodEntries, exerciseEntries, waterIntake] = await Promise.all([
         fetchDailyGoals(date),
         fetchFoodEntries(date),
         fetchExerciseEntries(date),
         fetchWaterIntake(date).catch(() => ({ water_ml: 0 })),
       ]);
+
+      return { goals, foodEntries, exerciseEntries, waterIntake };
+    },
+    select: (raw): DailySummary => {
+      const { goals, foodEntries, exerciseEntries, waterIntake } = raw;
 
       const calorieGoal = goals.calories || 0;
       const caloriesConsumed = calculateCaloriesConsumed(foodEntries);

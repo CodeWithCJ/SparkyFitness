@@ -1,25 +1,5 @@
-import { apiCall } from '@/services/api';
-
-export interface FamilyAccess {
-  id: string;
-  owner_user_id: string;
-  owner_email?: string; // Added owner_email
-  family_email: string;
-  family_user_id: string;
-  family_user_email?: string; // Added family_user_email
-  access_permissions: {
-    can_manage_diary: boolean;
-    can_view_food_library: boolean;
-    can_view_exercise_library: boolean;
-    can_manage_checkin: boolean; // Added can_manage_checkin
-    can_view_reports: boolean; // Added can_view_reports
-    share_external_providers: boolean;
-  };
-  access_end_date: string | null;
-  is_active: boolean;
-  status: string;
-  created_at: string;
-}
+import { apiCall } from '@/api/api';
+import { FamilyAccess } from '@/types/settings';
 
 export interface FamilyAccessPayload {
   owner_user_id: string;

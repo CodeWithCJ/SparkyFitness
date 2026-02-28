@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Canvas, Path, Circle as SkiaCircle, Skia } from '@shopify/react-native-skia';
 import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
@@ -28,24 +28,24 @@ const ProgressRing: React.FC<ProgressRingProps> = ({
     useCallback(() => {
       animatedProgress.value = 0;
       animatedProgress.value = withTiming(progressCapped, {
-        duration: 700,
+        duration: 500,
         easing: Easing.out(Easing.cubic),
       });
     }, [progressCapped, animatedProgress])
   );
 
+  const oval = useMemo(() => ({
+    x: center - radius,
+    y: center - radius,
+    width: radius * 2,
+    height: radius * 2,
+  }), [center, radius]);
+
   const progressPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
     const sweepAngle = animatedProgress.value * 360;
     if (sweepAngle > 0) {
-      const startAngle = -90; // Start from top
-      const oval = {
-        x: center - radius,
-        y: center - radius,
-        width: radius * 2,
-        height: radius * 2,
-      };
-      path.addArc(oval, startAngle, sweepAngle);
+      path.addArc(oval, -90, sweepAngle);
     }
     return path;
   });

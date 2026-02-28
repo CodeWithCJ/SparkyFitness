@@ -134,6 +134,25 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
+// Mock react-native-gesture-handler/ReanimatedSwipeable
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: React.forwardRef(({ children, renderRightActions, ...props }, ref) => {
+      React.useImperativeHandle(ref, () => ({
+        close: jest.fn(),
+        reset: jest.fn(),
+      }));
+      return React.createElement(View, { testID: 'reanimated-swipeable', ...props },
+        children,
+        renderRightActions ? React.createElement(View, { testID: 'swipeable-right-actions' }, renderRightActions()) : null,
+      );
+    }),
+  };
+});
+
 // Mock expo-web-browser
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(),
@@ -157,6 +176,32 @@ jest.mock('expo-constants', () => ({
 jest.mock('@react-native-clipboard/clipboard', () => ({
   setString: jest.fn(),
   getString: jest.fn().mockResolvedValue(''),
+}));
+
+// Mock expo-device
+jest.mock('expo-device', () => ({
+  modelName: 'iPhone 15 Pro',
+  manufacturer: 'Apple',
+  osVersion: '18.3',
+}));
+
+// Mock expo-file-system
+jest.mock('expo-file-system', () => {
+  const MockFile = jest.fn().mockImplementation(() => ({
+    uri: 'file:///mock-cache/mock-file.json',
+    create: jest.fn(),
+    write: jest.fn(),
+    delete: jest.fn(),
+  }));
+  return {
+    File: MockFile,
+    Paths: { cache: { uri: 'file:///mock-cache/' } },
+  };
+});
+
+// Mock expo-sharing
+jest.mock('expo-sharing', () => ({
+  shareAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
 // Mock @shopify/react-native-skia

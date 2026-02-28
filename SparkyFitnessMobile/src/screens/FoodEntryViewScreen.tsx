@@ -1,19 +1,15 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import { formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
-import { deleteFoodEntry } from '../services/api/foodEntriesApi';
-import { dailySummaryQueryKey } from '../hooks/queryKeys';
+import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
+import type { RootStackScreenProps } from '../types/navigation';
 
-interface FoodEntryViewScreenProps {
-  navigation?: { goBack: () => void };
-  route?: { params: { entry: FoodEntry } };
-}
+type FoodEntryViewScreenProps = RootStackScreenProps<'FoodEntryView'>;
 
 const scaledValue = (value: number | undefined, entry: FoodEntry): number => {
   if (value === undefined || !entry.serving_size) return 0;
@@ -21,27 +17,17 @@ const scaledValue = (value: number | undefined, entry: FoodEntry): number => {
 };
 
 const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, route }) => {
-  const { entry } = route!.params;
+  const { entry } = route.params;
   const insets = useSafeAreaInsets();
-  const queryClient = useQueryClient();
 
-  const deleteEntryMutation = useMutation({
-    mutationFn: () => deleteFoodEntry(entry.id),
+  const { confirmAndDelete, isPending, invalidateCache } = useDeleteFoodEntry({
+    entryId: entry.id,
+    entryDate: entry.entry_date,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(entry.entry_date.split('T')[0]) });
-      navigation!.goBack();
-    },
-    onError: () => {
-      Alert.alert('Failed to delete', 'Please try again.');
+      invalidateCache();
+      navigation.goBack();
     },
   });
-
-  const handleDelete = () => {
-    Alert.alert('Delete Entry', 'Are you sure you want to delete this food entry?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteEntryMutation.mutate() },
-    ]);
-  };
 
   const [accentColor, proteinColor, carbsColor, fatColor] = useCSSVariable([
     '--color-accent-primary',
@@ -77,7 +63,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
-          onPress={() => navigation!.goBack()}
+          onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >
@@ -87,12 +73,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
         {/* Food name & brand */}
-        <View className="p-4">
+        <View className="pb-4">
           <Text className="text-text-primary text-3xl font-bold">{entry.food_name || 'Unknown food'}</Text>
           {entry.brand_name && (
-            <Text className="text-text-secondary text-base mt-1">{entry.brand_name}</Text>
+            <Text className="text-text-muted mt-1 font-semibold">{entry.brand_name}</Text>
           )}
-          <Text className="text-text-muted text-sm mt-3">{servingsDisplay}</Text>
+          <Text className="text-text-secondary text-sm mt-3">{servingsDisplay}</Text>
         </View>
 
         {/* Calories & Macros */}
@@ -133,7 +119,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
         {/* Other Nutrients */}
         {otherNutrients.length > 0 && (
-          <View className="rounded-xl my-2 px-4">
+          <View className="rounded-xl my-2">
             <Text className="text-text-secondary text-sm font-medium mb-2">Other Nutrients</Text>
             {otherNutrients.map((n, i) => (
               <View key={n.label} className={`flex-row justify-between py-1 ${i < otherNutrients.length - 1 ? 'border-b border-border-subtle' : ''}`}>
@@ -147,7 +133,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         )}
 
         {/* Date & Meal type */}
-        <View className="mx-4 mt-2 gap-2">
+        <View className="mt-2 gap-2">
           <View className="flex-row items-center">
             <Text className="text-text-secondary text-sm">Date</Text>
             <Text className="text-text-primary text-sm font-medium mx-1.5">
@@ -164,13 +150,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
         {/* Delete button */}
         <TouchableOpacity
-          onPress={handleDelete}
-          disabled={deleteEntryMutation.isPending}
-          className="items-center py-3 mt-4"
+          onPress={confirmAndDelete}
+          disabled={isPending}
+          className="items-center py-3 mt-2 "
           activeOpacity={0.6}
         >
-          <Text className="text-text-danger text-base font-medium">
-            {deleteEntryMutation.isPending ? 'Deleting...' : 'Delete Entry'}
+          <Text className="text-bg-danger text-base font-medium">
+            {isPending ? 'Deleting...' : 'Delete Entry'}
           </Text>
         </TouchableOpacity>
       </ScrollView>

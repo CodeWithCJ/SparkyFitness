@@ -3,8 +3,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2 } from 'lucide-react';
 import { getServiceTypes } from '@/utils/aiServiceUtils';
-import type { AIService } from '@/api/Settings/aiServiceSettingsService';
 import { ServiceForm } from './ServiceForm';
+import { AIService } from '@/types/settings';
 
 interface ServiceListItemProps {
   service: AIService;

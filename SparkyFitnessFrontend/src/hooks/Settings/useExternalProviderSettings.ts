@@ -3,6 +3,7 @@ import {
   createExternalProvider,
   deleteExternalProvider,
   getEnrichedProviders,
+  getExternalDataProviders,
   toggleProviderActiveStatus,
   toggleProviderPublicSharing,
   updateExternalProvider,
@@ -72,7 +73,13 @@ export const useExternalProviders = (userId?: string) => {
     enabled: !!userId,
   });
 };
-
+export const useExternalProvidersQuery = () => {
+  return useQuery({
+    queryKey: externalProviderKeys.lists(),
+    queryFn: getExternalDataProviders,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+};
 export const useUpdateExternalProviderMutation = () => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();

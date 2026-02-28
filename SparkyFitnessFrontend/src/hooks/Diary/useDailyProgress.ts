@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { FoodEntry } from '@/types/food';
-import type { GroupedExerciseEntry } from '@/api/Exercises/exerciseEntryService';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { dailyProgressKeys, foodEntryKeys } from '@/api/keys/diary';
@@ -18,6 +17,7 @@ import {
 import { userManagementService } from '@/api/Admin/userManagementService';
 import { getMostRecentMeasurement } from '@/api/CheckIn/checkInService';
 import { calculateBmr } from '@/services/bmrService';
+import { GroupedExerciseEntry } from '@/types/exercises';
 
 export const useDailyGoals = (date: string) => {
   const { t } = useTranslation();
@@ -131,7 +131,37 @@ export const useDailySteps = (date: string) => {
     },
   });
 };
+export const useMostRecentWeightQuery = (enabled = true) => {
+  const { t } = useTranslation();
 
+  return useQuery({
+    queryKey: dailyProgressKeys.measurements.mostRecent('weight'),
+    queryFn: () => getMostRecentMeasurement('weight'),
+    enabled,
+    meta: {
+      errorMessage: t(
+        'measurements.errorLoadingWeight',
+        'Failed to load most recent weight.'
+      ),
+    },
+  });
+};
+
+export const useMostRecentHeightQuery = (enabled = true) => {
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: dailyProgressKeys.measurements.mostRecent('height'),
+    queryFn: () => getMostRecentMeasurement('height'),
+    enabled,
+    meta: {
+      errorMessage: t(
+        'measurements.errorLoadingHeight',
+        'Failed to load most recent height.'
+      ),
+    },
+  });
+};
 export const useCalculatedBMR = () => {
   const { user } = useAuth();
   const { bmrAlgorithm, includeBmrInNetCalories } = usePreferences();
@@ -142,16 +172,8 @@ export const useCalculatedBMR = () => {
     enabled: !!user?.id,
   });
 
-  const { data: weightData } = useQuery({
-    queryKey: dailyProgressKeys.measurements.mostRecent('weight'),
-    queryFn: () => getMostRecentMeasurement('weight'),
-  });
-
-  const { data: heightData } = useQuery({
-    queryKey: dailyProgressKeys.measurements.mostRecent('height'),
-    queryFn: () => getMostRecentMeasurement('height'),
-  });
-
+  const { data: weightData } = useMostRecentWeightQuery();
+  const { data: heightData } = useMostRecentHeightQuery();
   const { data: bodyFatData } = useQuery({
     queryKey: dailyProgressKeys.measurements.mostRecent('body_fat_percentage'),
     queryFn: () => getMostRecentMeasurement('body_fat_percentage'),

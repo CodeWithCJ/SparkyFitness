@@ -1,13 +1,5 @@
-import { apiCall } from '@/services/api';
-
-export interface GlobalSettings {
-  enable_email_password_login: boolean;
-  is_oidc_active: boolean;
-  is_mfa_mandatory: boolean;
-  allow_user_ai_config?: boolean;
-  is_email_login_env_configured?: boolean;
-  is_oidc_active_env_configured?: boolean;
-}
+import { apiCall } from '@/api/api';
+import { GlobalSettings } from '@/types/admin';
 
 const globalSettingsService = {
   getSettings: async (): Promise<GlobalSettings> => {

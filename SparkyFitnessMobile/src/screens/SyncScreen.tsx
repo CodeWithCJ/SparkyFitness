@@ -22,17 +22,17 @@ import { addLog } from '../services/LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { HealthMetricStates, HealthDataDisplayState } from '../types/healthRecords';
 import { useServerConnection, useSyncHealthData } from '../hooks';
+import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
+import type { TabParamList } from '../types/navigation';
 
-interface SyncScreenProps {
-  navigation: { navigate: (screen: string) => void };
-}
+type SyncScreenProps = NativeBottomTabScreenProps<TabParamList, 'Sync'>;
 
 interface TimeRangeOption {
   label: string;
   value: TimeRange;
 }
 
-const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
+const SyncScreen: React.FC<SyncScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [healthData, setHealthData] = useState<HealthDataDisplayState>({});
@@ -79,8 +79,6 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
 
     setSelectedTimeRange(initialTimeRange);
     setHealthMetricStates(newHealthMetricStates);
-
-    await fetchHealthData(newHealthMetricStates, initialTimeRange);
 
     const loadedSyncTime = await loadLastSyncedTime();
     setLastSyncedTime(loadedSyncTime);
@@ -515,6 +513,26 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           <ConnectionStatus isConnected={isConnected} variant="header" />
         </View>
 
+        {/* Sync Range */}
+        <View className="bg-surface rounded-xl p-4 py-3 mb-4 shadow-sm">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-semibold text-text-primary">Sync Range</Text>
+            <BottomSheetPicker
+              value={selectedTimeRange}
+              options={timeRangeOptions}
+              onSelect={async (value) => {
+                setSelectedTimeRange(value);
+                await saveTimeRange(value);
+              }}
+              title="Select Sync Range"
+              containerStyle={{ flex: 1, maxWidth: 180, marginLeft: 16 }}
+            />
+          </View>
+          <Text className="text-text-secondary text-xs mt-1">Controls how much data will be included in the next sync</Text>
+          {(selectedTimeRange === '180d' || selectedTimeRange === '365d') && (
+            <Text className="text-text-secondary text-xs mt-2">Large time ranges may take a while.</Text>
+          )}
+        </View>
         {/* Sync Now Button */}
         <TouchableOpacity
           className="bg-accent-primary rounded-xl py-3.5 px-4 flex-row items-center mb-2"
@@ -562,27 +580,6 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           )}
         </View>
 
-        {/* Sync Range */}
-        <View className="bg-surface rounded-xl p-4 py-3 mb-4 shadow-sm">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">Sync Range</Text>
-            <BottomSheetPicker
-              value={selectedTimeRange}
-              options={timeRangeOptions}
-              onSelect={async (value) => {
-                setSelectedTimeRange(value);
-                await saveTimeRange(value);
-                fetchHealthData(healthMetricStates, value);
-              }}
-              title="Select Sync Range"
-              containerStyle={{ flex: 1, maxWidth: 180, marginLeft: 16 }}
-            />
-          </View>
-          <Text className="text-text-secondary text-xs mt-1">Controls how much data will be included in the next sync</Text>
-          {(selectedTimeRange === '180d' || selectedTimeRange === '365d') && (
-            <Text className="text-text-secondary text-xs mt-2">Large time ranges may take a while.</Text>
-          )}
-        </View>
 
         {/* Health Overview */}
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">

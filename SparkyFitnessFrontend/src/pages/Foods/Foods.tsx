@@ -40,10 +40,8 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import { info } from '@/utils/logging';
-import EnhancedCustomFoodForm from '@/components/EnhancedCustomFoodForm';
-import FoodSearchDialog from '@/components/FoodSearchDialog';
+import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
-import { type FoodFilter } from '@/api/Foods/foodService';
 import type { Food, FoodVariant, FoodDeletionImpact } from '@/types/food';
 import MealManagement from './MealManagement';
 import MealPlanCalendar from './MealPlanCalendar';
@@ -59,25 +57,16 @@ import {
   getNutrientMetadata,
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
+import EnhancedCustomFoodForm from '@/components/FoodSearch/CustomFoodForm';
+import { MealFilter } from '@/types/meal';
 
 const FoodDatabaseManager: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
-  const {
-    nutrientDisplayPreferences,
-    loggingLevel,
-    energyUnit,
-    convertEnergy,
-  } = usePreferences();
+  const { nutrientDisplayPreferences, loggingLevel } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
-
-  const getEnergyUnitString = (unit: 'kcal' | 'kJ' = energyUnit): string => {
-    return unit === 'kcal'
-      ? t('common.kcalUnit', 'kcal')
-      : t('common.kJUnit', 'kJ');
-  };
 
   const quickInfoPreferences =
     nutrientDisplayPreferences.find(
@@ -96,7 +85,7 @@ const FoodDatabaseManager: React.FC = () => {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [foodFilter, setFoodFilter] = useState<FoodFilter>('all');
+  const [foodFilter, setFoodFilter] = useState<MealFilter>('all');
   const [sortOrder, setSortOrder] = useState<string>('name:asc');
   const [showFoodUnitSelectorDialog, setShowFoodUnitSelectorDialog] =
     useState(false);
@@ -148,7 +137,7 @@ const FoodDatabaseManager: React.FC = () => {
     setEditingFood(null);
   };
 
-  const handleFoodSelected = (food: Food) => {
+  const handleFoodSelected = () => {
     setShowFoodSearchDialog(false);
   };
 
@@ -311,7 +300,7 @@ const FoodDatabaseManager: React.FC = () => {
                 <Filter className="h-4 w-4 text-gray-500" />
                 <Select
                   value={foodFilter}
-                  onValueChange={(value: FoodFilter) => setFoodFilter(value)}
+                  onValueChange={(value: MealFilter) => setFoodFilter(value)}
                 >
                   <SelectTrigger className="w-32">
                     <SelectValue
