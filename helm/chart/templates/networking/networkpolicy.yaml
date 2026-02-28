@@ -1,0 +1,159 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# Frontend: allow ingress from anywhere on HTTP
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-frontend
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports:
+        - port: {{ .Values.frontend.port }}
+  egress:
+    # → server
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "sparkyfitness.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: server
+      ports:
+        - port: {{ .Values.server.port }}
+    # → DNS
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+---
+# Server: accept from frontend, egress to DB + DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-server
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "sparkyfitness.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: frontend
+      ports:
+        - port: {{ .Values.server.port }}
+  egress:
+    {{- if .Values.postgresql.enabled }}
+    # → bundled PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "sparkyfitness.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: postgresql
+      ports:
+        - port: 5432
+    {{- else }}
+    # → external PostgreSQL (allow all on DB port)
+    - ports:
+        - port: {{ .Values.externalDatabase.port | default 5432 }}
+    {{- end }}
+    {{- if .Values.config.garmin.enabled }}
+    # → Garmin microservice
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "sparkyfitness.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: garmin
+      ports:
+        - port: {{ .Values.garmin.port }}
+    {{- end }}
+    {{- if .Values.config.oidc.enabled }}
+    # → OIDC provider (HTTPS)
+    - ports:
+        - port: 443
+    {{- end }}
+    {{- if .Values.config.email.enabled }}
+    # → SMTP
+    - ports:
+        - port: {{ .Values.config.email.port | default 587 }}
+    {{- end }}
+    # → DNS
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+{{- if .Values.postgresql.enabled }}
+---
+# PostgreSQL: accept from server only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-postgresql
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "sparkyfitness.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: server
+      ports:
+        - port: 5432
+{{- end }}
+{{- if .Values.config.garmin.enabled }}
+---
+# Garmin: accept from server, egress to Garmin API + DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-garmin
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: garmin
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: garmin
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "sparkyfitness.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: server
+      ports:
+        - port: {{ .Values.garmin.port }}
+  egress:
+    # → Garmin Connect API (HTTPS)
+    - ports:
+        - port: 443
+    # → DNS
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+{{- end }}
+{{- end }}

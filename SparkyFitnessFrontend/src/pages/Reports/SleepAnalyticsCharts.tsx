@@ -38,6 +38,7 @@ import SleepScienceSection from './SleepScience/SleepScienceSection';
 import SleepStageChart from './SleepStageChart';
 import SleepSummaryCard from './SleepSummaryCard';
 import SpO2Card from './SpO2Card';
+import { useSleepDebtQuery } from '@/hooks/SleepScience/useSleepScience';
 
 interface SpO2DataPoint {
   date: string;
@@ -87,6 +88,9 @@ const SleepAnalyticsCharts = ({
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const { resolvedTheme } = useTheme();
   const { t } = useTranslation();
+  const { data: sleepDebtData } = useSleepDebtQuery();
+  const personalizedSleepNeed = sleepDebtData?.sleepNeed || 8;
+
   const tickColor = resolvedTheme === 'dark' ? '#E0E0E0' : '#333';
   const gridColor = resolvedTheme === 'dark' ? '#444' : '#ccc';
   const tooltipBackgroundColor = resolvedTheme === 'dark' ? '#333' : '#fff';
@@ -116,14 +120,14 @@ const SleepAnalyticsCharts = ({
         new Date(data.latestWakeTime).getHours() +
         new Date(data.latestWakeTime).getMinutes() / 60,
     }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    .sort((a, b) => {
+      // Safe sorting for date strings
+      return a.date.localeCompare(b.date);
+    });
 
   // Sort hypnograms by date descending (most recent first)
   const sortedHypnograms = useMemo(
-    () =>
-      [...sleepHypnogramData].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      ),
+    () => [...sleepHypnogramData].sort((a, b) => b.date.localeCompare(a.date)),
     [sleepHypnogramData]
   );
 
@@ -472,8 +476,9 @@ const SleepAnalyticsCharts = ({
                 </CardContent>
                 <div className="text-sm text-muted-foreground p-4">
                   {t(
-                    'sleepAnalyticsCharts.sleepDebtDisclaimer',
-                    '*Sleep Debt is calculated based on a recommended 8 hours of sleep. This will be customizable in a future release.'
+                    'sleepAnalyticsCharts.sleepDebtDisclaimerPersonalized',
+                    `*Sleep Debt is calculated based on your personalized sleep need of {{hours}}h.`,
+                    { hours: personalizedSleepNeed }
                   )}
                 </div>
               </Card>

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTheme } from '@/contexts/ThemeContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import type React from 'react';
 import { useMemo } from 'react';
@@ -51,20 +52,18 @@ const TrendIcon: React.FC<{ direction: string }> = ({ direction }) => {
 const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
+  const { formatDateInUserTimezone, dateFormat } = usePreferences();
   const isDark = resolvedTheme === 'dark';
 
   const chartData = useMemo(() => {
     return [...data.last14Days].reverse().map((day) => ({
-      date: new Date(day.date).toLocaleDateString('en', {
-        month: 'short',
-        day: 'numeric',
-      }),
+      date: formatDateInUserTimezone(day.date, dateFormat),
       deviation: Math.max(0, day.deviation),
       surplus: Math.min(0, day.deviation),
       tst: day.tst,
       rawDeviation: day.deviation,
     }));
-  }, [data.last14Days]);
+  }, [data.last14Days, formatDateInUserTimezone, dateFormat]);
 
   return (
     <Card>

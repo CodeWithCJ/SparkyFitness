@@ -26,7 +26,6 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
 }) => {
   const { t } = useTranslation();
   const contentRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (isOpen) {
       const handleMouseDown = (event: MouseEvent) => {

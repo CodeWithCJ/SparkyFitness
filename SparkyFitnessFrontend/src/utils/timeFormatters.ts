@@ -1,11 +1,15 @@
 export const formatMinutesToHHMM = (totalMinutes: number): string => {
-  if (totalMinutes < 60) {
-    return `${Math.round(totalMinutes)} minutes`;
-  } else {
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = Math.round(totalMinutes % 60);
-    return `${hours}h ${minutes}m`;
+  const isNegative = totalMinutes < 0;
+  const absMinutes = Math.abs(totalMinutes);
+  const hours = Math.floor(absMinutes / 60);
+  const minutes = Math.round(absMinutes % 60);
+
+  if (hours === 0) {
+    return isNegative ? `-${minutes}m` : `${minutes}m`;
   }
+
+  const formatted = `${hours}h ${minutes}m`;
+  return isNegative ? `-${formatted}` : formatted;
 };
 
 export const formatSecondsToHHMM = (totalSeconds: number): string => {
@@ -14,6 +18,11 @@ export const formatSecondsToHHMM = (totalSeconds: number): string => {
   const totalMinutes = Math.round(absSeconds / 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  const formatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+  if (hours === 0) {
+    return isNegative ? `-${minutes}m` : `${minutes}m`;
+  }
+
+  const formatted = `${hours}h ${minutes}m`;
   return isNegative ? `-${formatted}` : formatted;
 };

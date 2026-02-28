@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type SleepStageEvent, SLEEP_STAGE_COLORS } from '@/types';
+import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 
 interface SleepTimelineEditorProps {
   bedtime: string;
@@ -379,6 +380,65 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
               {entryDetails.source}
             </p>
           )}
+          {/* Stage breakdown */}
+          {entryDetails.deepSleepSeconds !== undefined &&
+            entryDetails.deepSleepSeconds !== null && (
+              <p>
+                <b>{t('sleepEntrySection.deepSleep', 'Deep')}:</b>{' '}
+                {formatSecondsToHHMM(entryDetails.deepSleepSeconds)}
+              </p>
+            )}
+          {entryDetails.lightSleepSeconds !== undefined &&
+            entryDetails.lightSleepSeconds !== null && (
+              <p>
+                <b>{t('sleepEntrySection.lightSleep', 'Light')}:</b>{' '}
+                {formatSecondsToHHMM(entryDetails.lightSleepSeconds)}
+              </p>
+            )}
+          {entryDetails.remSleepSeconds !== undefined &&
+            entryDetails.remSleepSeconds !== null && (
+              <p>
+                <b>{t('sleepEntrySection.remSleep', 'REM')}:</b>{' '}
+                {formatSecondsToHHMM(entryDetails.remSleepSeconds)}
+              </p>
+            )}
+          {entryDetails.awakeSleepSeconds !== undefined &&
+            entryDetails.awakeSleepSeconds !== null && (
+              <p>
+                <b>{t('sleepEntrySection.awake', 'Awake')}:</b>{' '}
+                {formatSecondsToHHMM(entryDetails.awakeSleepSeconds)}
+              </p>
+            )}
+
+          {/* Health metrics */}
+          {entryDetails.averageSpo2Value !== undefined &&
+            entryDetails.averageSpo2Value !== null && (
+              <p>
+                <b>{t('sleepEntrySection.avgSpO2', 'Avg SpO2')}:</b>{' '}
+                {entryDetails.averageSpo2Value.toFixed(1)}%
+              </p>
+            )}
+          {entryDetails.avgOvernightHrv !== undefined &&
+            entryDetails.avgOvernightHrv !== null && (
+              <p>
+                <b>{t('sleepEntrySection.avgOvernightHrv', 'Avg HRV')}:</b>{' '}
+                {entryDetails.avgOvernightHrv.toFixed(1)} ms
+              </p>
+            )}
+          {entryDetails.avgSleepStress !== undefined &&
+            entryDetails.avgSleepStress !== null && (
+              <p>
+                <b>{t('sleepEntrySection.avgSleepStress', 'Avg Stress')}:</b>{' '}
+                {entryDetails.avgSleepStress.toFixed(1)}
+              </p>
+            )}
+          {entryDetails.restingHeartRate !== undefined &&
+            entryDetails.restingHeartRate !== null && (
+              <p>
+                <b>{t('sleepEntrySection.restingHR', 'Resting HR')}:</b>{' '}
+                {entryDetails.restingHeartRate} bpm
+              </p>
+            )}
         </div>
       )}
 

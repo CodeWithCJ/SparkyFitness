@@ -66,12 +66,6 @@ const SleepAnalyticsTable = ({
     });
   };
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
-  };
-
   return (
     <div>
       <div className="flex justify-end mb-4">
@@ -218,7 +212,9 @@ const SleepAnalyticsTable = ({
                                         stage.slice(1)
                                     )}
                                     :{' '}
-                                    <strong>{formatTime(duration * 60)}</strong>
+                                    <strong>
+                                      {formatSecondsToHHMM(duration * 60)}
+                                    </strong>
                                   </span>
                                 </div>
                               )
@@ -251,7 +247,9 @@ const SleepAnalyticsTable = ({
                                     )}
                                   </div>
                                   <div className="text-xs">
-                                    {formatTime(event.duration_in_seconds)}
+                                    {formatSecondsToHHMM(
+                                      event.duration_in_seconds
+                                    )}
                                   </div>
                                   <div className="text-xs opacity-80">
                                     {formatDateInUserTimezone(
