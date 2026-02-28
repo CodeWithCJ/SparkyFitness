@@ -617,7 +617,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
+      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -628,6 +628,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Add
         </Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ManualFoodEntry', { date })}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="z-10"
+        >
+          <Icon name="add" size={26} color={accentColor} />
+        </TouchableOpacity>
       </View>
 
       {/* Segmented control */}
