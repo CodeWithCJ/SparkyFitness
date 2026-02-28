@@ -1,48 +1,12 @@
 import type { FoodEntry } from '@/types/food';
-import type { GroupedExerciseEntry } from '../Exercises/exerciseEntryService';
-import type { WorkoutPresetSet } from '@/types/workout';
+import type { Goals } from '@/types/diary';
+import type { CheckInMeasurement } from '@/types/checkin';
+import type { GroupedExerciseEntry } from '@/types/exercises';
 import { loadGoals } from '@/api/Goals/goals';
 import { loadFoodEntries } from '@/api/Diary/foodEntryService';
 import { loadExistingCheckInMeasurements } from '@/api/CheckIn/checkInService';
 
 export { getExerciseEntriesForDate } from '../Exercises/exerciseEntryService';
-
-export interface Goals {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  water_goal_ml: number;
-  target_exercise_calories_burned?: number;
-}
-
-export interface ExerciseEntry {
-  id: string;
-  exercise_id: string;
-  duration_minutes: number;
-  calories_burned: number;
-  entry_date: string;
-  notes?: string;
-  sets?: WorkoutPresetSet[];
-  exercises: {
-    id: string;
-    name: string;
-    user_id?: string;
-    category: string;
-    calories_per_hour: number;
-  } | null;
-}
-
-export interface CheckInMeasurement {
-  entry_date: string;
-  weight?: number;
-  neck?: number;
-  waist?: number;
-  hips?: number;
-  steps?: number;
-  height?: number;
-  body_fat_percentage?: number;
-}
 
 export const getGoalsForDate = async (date: string): Promise<Goals> => {
   return loadGoals(date);
@@ -70,5 +34,5 @@ export const getCheckInMeasurementsForDate = async (
   }
 };
 
-// Re-export GroupedExerciseEntry so existing consumers don't break
-export type { GroupedExerciseEntry };
+// Re-export types so existing consumers don't break
+export type { Goals, CheckInMeasurement, GroupedExerciseEntry };
