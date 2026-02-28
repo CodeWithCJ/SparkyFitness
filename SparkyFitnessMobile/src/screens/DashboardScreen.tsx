@@ -1,23 +1,33 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
-import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation } from '../hooks';
+import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation, useMeasurementsRange } from '../hooks';
+import type { StepsRange } from '../hooks';
 import OnboardingModal, { shouldShowOnboardingModal } from '../components/OnboardingModal';
 import CalorieRingCard from '../components/CalorieRingCard';
 import MacroCard from '../components/MacroCard';
 import DateNavigator from '../components/DateNavigator';
+import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { getActiveServerConfig } from '../services/storage';
 import { calculateEffectiveBurned, calculateCalorieBalance } from '../services/calculations';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import HydrationGauge from '../components/HydrationGauge';
+import StepsBarChart from '../components/StepsBarChart';
+import WeightLineChart from '../components/WeightLineChart';
+import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import ExerciseProgressCard from '../components/ExerciseProgressCard';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
+
+const RANGE_SEGMENTS: Segment<StepsRange>[] = [
+  { key: '7d', label: '7d' },
+  { key: '30d', label: '30d' },
+  { key: '90d', label: '90d' },
+];
 
 type DashboardScreenProps = CompositeScreenProps<
   NativeBottomTabScreenProps<TabParamList, 'Dashboard'>,
@@ -26,9 +36,11 @@ type DashboardScreenProps = CompositeScreenProps<
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
+  const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
   const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(false);
   const hasCheckedOnboarding = useRef(false);
   const lastKnownToday = useRef(getTodayDate());
+  const calendarRef = useRef<CalendarSheetRef>(null);
 
   // Only reset to today when the calendar day has actually changed (midnight rollover)
   useFocusEffect(
@@ -48,11 +60,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     return next > today ? prev : next;
   });
   const goToToday = () => setSelectedDate(getTodayDate());
-
-  const swipeGesture = Gesture.Race(
-    Gesture.Fling().direction(Directions.RIGHT).onEnd(goToPreviousDay).runOnJS(true),
-    Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
-  );
+  const openCalendar = useCallback(() => calendarRef.current?.present(), []);
+  const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
 
   // Check for onboarding on initial mount only
   useEffect(() => {
@@ -87,6 +96,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
+  const { stepsData, weightData, isLoading: isStepsLoading, isError: isStepsError, refetch: refetchSteps } = useMeasurementsRange({
+    range: stepsRange,
+    enabled: isConnected,
+  });
 
   // Get macro colors from CSS variables (theme-aware)
   const [proteinColor, carbsColor, fatColor, fiberColor, progressTrackOverfillColor] = useCSSVariable([
@@ -102,9 +115,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetch(), refetchPreferences(), refetchMeasurements()]);
+    await Promise.all([refetch(), refetchPreferences(), refetchMeasurements(), refetchSteps()]);
     setRefreshing(false);
-  }, [refetch, refetchPreferences, refetchMeasurements]);
+  }, [refetch, refetchPreferences, refetchMeasurements, refetchSteps]);
 
   // Render content based on state
   const renderContent = () => {
@@ -186,6 +199,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
       >
+        <DateNavigator
+          title="Dashboard"
+          selectedDate={selectedDate}
+          onPreviousDay={goToPreviousDay}
+          onNextDay={goToNextDay}
+          onToday={goToToday}
+          onDatePress={openCalendar}
+        />
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (
           <CalorieRingCard
             caloriesConsumed={summary.caloriesConsumed}
@@ -248,6 +269,24 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           onDecrement={isWaterReady ? decrementWater : undefined}
           disableDecrement={summary.waterConsumed <= 0}
         />
+
+        <Text className="text-text-primary text-xl font-bold mt-4 mb-2">Health Trends</Text>
+        <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />
+
+        <StepsBarChart
+          data={stepsData}
+          isLoading={isStepsLoading}
+          isError={isStepsError}
+          range={stepsRange}
+        />
+
+        <WeightLineChart
+          data={weightData}
+          isLoading={isStepsLoading}
+          isError={isStepsError}
+          range={stepsRange}
+          unit={preferences?.default_weight_unit ?? 'kg'}
+        />
       </ScrollView>
     );
   };
@@ -262,26 +301,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <GestureDetector gesture={swipeGesture}>
-      <View className="flex-1 bg-background">
-        {!isConnectionLoading && isConnected && (
-          <DateNavigator
-            title="Dashboard"
-            selectedDate={selectedDate}
-            onPreviousDay={goToPreviousDay}
-            onNextDay={goToNextDay}
-            onToday={goToToday}
-          />
-        )}
-        {renderContent()}
+    <View className="flex-1 bg-background">
+      {renderContent()}
 
-        <OnboardingModal
-          visible={showOnboardingModal}
-          onGoToSettings={handleOnboardingGoToSettings}
-          onDismiss={handleOnboardingDismiss}
-        />
-      </View>
-    </GestureDetector>
+      <OnboardingModal
+        visible={showOnboardingModal}
+        onGoToSettings={handleOnboardingGoToSettings}
+        onDismiss={handleOnboardingDismiss}
+      />
+      <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+    </View>
   );
 };
 

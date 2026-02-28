@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import SegmentedControl from '../components/SegmentedControl';
 import BottomSheetPicker, { type PickerOption } from '../components/BottomSheetPicker';
 import { useServerConnection, useFoods, useFoodSearch, useMeals, useMealSearch, useExternalProviders, useExternalFoodSearch } from '../hooks';
 import { fetchFatSecretNutrients } from '../services/api/externalFoodSearchApi';
@@ -35,7 +36,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'search', label: 'Search' },
   { key: 'online', label: 'Online' },
   { key: 'meal', label: 'Meals' },
-];
+] as const;
 
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
@@ -639,26 +640,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
       {/* Segmented control */}
       <View className="px-4 mt-2">
-        <View className="flex-row bg-raised p-1 rounded-lg">
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              onPress={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2 rounded-md items-center ${
-                activeTab === tab.key ? 'bg-surface' : ''
-              }`}
-              activeOpacity={0.7}
-            >
-              <Text
-                className={`text-sm font-medium ${
-                  activeTab === tab.key ? 'text-text-primary' : 'text-text-muted'
-                }`}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <SegmentedControl segments={TABS} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
 
       {/* Search bar */}

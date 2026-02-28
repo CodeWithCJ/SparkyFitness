@@ -9,6 +9,20 @@ export interface CheckInMeasurement {
   body_fat_percentage?: number;
 }
 
+export interface CheckInMeasurementRange {
+  id: string;
+  user_id: string;
+  entry_date: string;
+  weight?: number;
+  neck?: number;
+  waist?: number;
+  hips?: number;
+  steps?: number;
+  height?: number;
+  body_fat_percentage?: number;
+  updated_at: string;
+}
+
 export interface WaterIntake {
   water_ml: number;
 }
