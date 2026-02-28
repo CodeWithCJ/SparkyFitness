@@ -280,10 +280,9 @@ async function processWithingsSleepData(
 
     const bedtime = new Date(bedtimeTs * 1000).toISOString();
     const wakeTime = new Date(wakeTimeTs * 1000).toISOString();
-    const derivedEntryDate = wakeTime.split('T')[0];
 
     const sleepEntryData = {
-      entry_date: derivedEntryDate,
+      entry_date: entryDate,
       bedtime: bedtime,
       wake_time: wakeTime,
       duration_in_seconds: summary.data.total_timeinbed || 0,

@@ -28,37 +28,6 @@ import {
   useUpdateSleepEntryMutation,
 } from '@/hooks/CheckIn/useSleep';
 
-// Helper to aggregate sleep stages from stage_events (same approach as reports page)
-const aggregateSleepStages = (stageEvents: SleepStageEvent[] | undefined) => {
-  if (!stageEvents || stageEvents.length === 0) return null;
-
-  const stages = stageEvents.reduce(
-    (acc, event) => {
-      if (event?.stage_type && event?.duration_in_seconds) {
-        acc[event.stage_type] =
-          (acc[event.stage_type] || 0) + event.duration_in_seconds;
-      }
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-
-  // Only return if we have at least one stage
-  if (Object.keys(stages).length === 0) return null;
-
-  return {
-    deep: stages['deep'] || 0,
-    light: stages['light'] || 0,
-    rem: stages['rem'] || 0,
-    awake: stages['awake'] || 0,
-  };
-};
-
-// Format duration: use HH:MM format
-const formatStageDuration = (seconds: number): string => {
-  return formatSecondsToHHMM(seconds);
-};
-
 interface SleepEntrySectionProps {
   selectedDate: string;
 }
@@ -348,17 +317,18 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
               {session.bedtime &&
                 session.wakeTime &&
                 (() => {
-                  const parsedBedtimeForEditor = parseISO(
+                  let parsedBedtimeForEditor = parseISO(
                     `${selectedDate}T${session.bedtime}`
                   );
-                  let parsedWakeTimeForEditor = parseISO(
+                  const parsedWakeTimeForEditor = parseISO(
                     `${selectedDate}T${session.wakeTime}`
                   );
 
-                  if (parsedWakeTimeForEditor < parsedBedtimeForEditor) {
-                    parsedWakeTimeForEditor = addDays(
-                      parsedWakeTimeForEditor,
-                      1
+                  if (parsedBedtimeForEditor > parsedWakeTimeForEditor) {
+                    // Look back: User went to bed the night before today's wake-up
+                    parsedBedtimeForEditor = addDays(
+                      parsedBedtimeForEditor,
+                      -1
                     );
                   }
 
@@ -409,77 +379,8 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                   <div>
                     <p className="text-md font-semibold">
                       Sleep Entry for{' '}
-                      {formatDateInUserTimezone(entry.bedtime, 'PPP')}
+                      {formatDateInUserTimezone(entry.entry_date, 'PPP')}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      {t('sleepEntrySection.duration', 'Duration')}:{' '}
-                      {formatSecondsToHHMM(entry.duration_in_seconds)} &middot;
-                      {t('sleepEntrySection.asleep', 'Asleep')}:{' '}
-                      {entry.time_asleep_in_seconds !== null
-                        ? formatSecondsToHHMM(entry.time_asleep_in_seconds)
-                        : 'N/A'}{' '}
-                      &middot;
-                      {t('sleepEntrySection.score', 'Score')}:{' '}
-                      {entry.sleep_score || 'N/A'} &middot;
-                      {t('sleepEntrySection.source', 'Source')}: {entry.source}
-                    </p>
-                    {(() => {
-                      // Try to aggregate from stage_events first (preferred), fall back to pre-aggregated fields
-                      const stages =
-                        aggregateSleepStages(entry.stage_events) ||
-                        (entry.deep_sleep_seconds ||
-                        entry.light_sleep_seconds ||
-                        entry.rem_sleep_seconds ||
-                        entry.awake_sleep_seconds
-                          ? {
-                              deep: entry.deep_sleep_seconds || 0,
-                              light: entry.light_sleep_seconds || 0,
-                              rem: entry.rem_sleep_seconds || 0,
-                              awake: entry.awake_sleep_seconds || 0,
-                            }
-                          : null);
-                      return stages ? (
-                        <p className="text-xs text-muted-foreground">
-                          {t('sleepEntrySection.deepSleep', 'Deep')}:{' '}
-                          {formatStageDuration(stages.deep)} &middot;
-                          {t('sleepEntrySection.lightSleep', 'Light')}:{' '}
-                          {formatStageDuration(stages.light)} &middot;
-                          {t('sleepEntrySection.remSleep', 'REM')}:{' '}
-                          {formatStageDuration(stages.rem)} &middot;
-                          {t('sleepEntrySection.awake', 'Awake')}:{' '}
-                          {formatStageDuration(stages.awake)}
-                        </p>
-                      ) : null;
-                    })()}
-                    {entry.average_spo2_value !== null &&
-                      entry.average_spo2_value !== undefined && (
-                        <p className="text-xs text-muted-foreground">
-                          {t('sleepEntrySection.avgSpO2', 'Avg SpO2')}:{' '}
-                          {entry.average_spo2_value.toFixed(1)}% &middot;
-                          {t(
-                            'sleepEntrySection.avgRespiration',
-                            'Avg Respiration'
-                          )}
-                          :{' '}
-                          {entry.average_respiration_value?.toFixed(1) || 'N/A'}{' '}
-                          bpm
-                        </p>
-                      )}
-                    {entry.avg_sleep_stress !== null &&
-                      entry.avg_sleep_stress !== undefined && (
-                        <p className="text-xs text-muted-foreground">
-                          {t(
-                            'sleepEntrySection.avgSleepStress',
-                            'Avg Sleep Stress'
-                          )}
-                          : {entry.avg_sleep_stress.toFixed(1)} &middot;
-                          {t(
-                            'sleepEntrySection.avgOvernightHrv',
-                            'Avg Overnight HRV'
-                          )}
-                          : {entry.avg_overnight_hrv?.toFixed(1) || 'N/A'} ms
-                        </p>
-                      )}
                   </div>
                   <div className="flex space-x-2">
                     {editingEntryId === entry.id ? (

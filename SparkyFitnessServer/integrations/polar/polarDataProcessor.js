@@ -357,8 +357,6 @@ async function processPolarSleep(userId, createdByUserId, sleepNights = []) {
 
       if (!entryDate || !startTime || !endTime) continue;
 
-      const derivedEntryDate = new Date(endTime).toISOString().split('T')[0];
-
       // Summary stats
       const lightSleepSec =
         (getVal(night, "light-non-rem-sleep-duration") || 0) +
@@ -370,7 +368,7 @@ async function processPolarSleep(userId, createdByUserId, sleepNights = []) {
         lightSleepSec + deepSleepSec + remSleepSec + awakeSec;
 
       const sleepEntryData = {
-        entry_date: derivedEntryDate,
+        entry_date: entryDate,
         bedtime: startTime,
         wake_time: endTime,
         duration_in_seconds: totalDurationSec,

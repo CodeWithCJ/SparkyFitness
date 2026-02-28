@@ -462,13 +462,10 @@ async function processFitbitSleep(
 ) {
   if (!data || !data.sleep || data.sleep.length === 0) return;
   for (const entry of data.sleep) {
-    const wakeTime = parseFitbitTime(entry.endTime, timezoneOffset);
-    const derivedEntryDate = wakeTime ? wakeTime.split('T')[0] : entry.dateOfSleep;
-
     const sleepEntryData = {
-      entry_date: derivedEntryDate,
+      entry_date: entry.dateOfSleep,
       bedtime: parseFitbitTime(entry.startTime, timezoneOffset),
-      wake_time: wakeTime,
+      wake_time: parseFitbitTime(entry.endTime, timezoneOffset),
       duration_in_seconds: Math.round(entry.duration / 1000),
       // Fitbit's minutesAsleep is often the most accurate representation of "Time Asleep"
       time_asleep_in_seconds: entry.minutesAsleep * 60,
