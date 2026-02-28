@@ -589,56 +589,6 @@ router.delete(
 
 /**
  * @swagger
- * /food-crud/create-or-get:
- *   post:
- *     summary: Create or get a food
- *     tags: [Nutrition & Meals]
- *     description: Creates a new food if it doesn't exist, or retrieves an existing one.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               foodSuggestion:
- *                 $ref: '#/components/schemas/Food'
- *     responses:
- *       200:
- *         description: The ID of the created or retrieved food.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 foodId:
- *                   type: string
- *                   format: uuid
- *       403:
- *         description: User does not have permission to perform this action.
- */
-router.post(
-  "/create-or-get",
-  authenticate,
-  async (req, res, next) => {
-    try {
-      const { foodSuggestion } = req.body;
-      const food = await foodService.createOrGetFood(
-        req.userId,
-        foodSuggestion
-      );
-      res.status(200).json({ foodId: food.id });
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      next(error);
-    }
-  }
-);
-
-/**
- * @swagger
  * /food-crud/{foodId}:
  *   get:
  *     summary: Get a food by ID
