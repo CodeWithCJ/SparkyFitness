@@ -38,7 +38,9 @@ const CHRONOTYPE_CONFIG = {
 const ChronotypeCard: React.FC<ChronotypeCardProps> = ({ data }) => {
   const { t } = useTranslation();
 
-  if (!data.success || !data.chronotype) return null;
+  if (!data || !data.success || !data.chronotype) {
+    return null;
+  }
 
   const config = CHRONOTYPE_CONFIG[data.chronotype];
   const Icon = config.icon;

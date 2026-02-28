@@ -1584,7 +1584,7 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
     );
 
     const entryToUpsert = {
-      entry_date: entry_date, // Use the entry_date directly from the frontend
+      entry_date: entry_date,
       bedtime: new Date(bedtime),
       wake_time: new Date(wake_time),
       duration_in_seconds: Math.round(Number(duration_in_seconds)) || 0,
@@ -1647,6 +1647,7 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
       wake_time,
       duration_in_seconds,
       sleep_score: incomingSleepScore,
+      entry_date, // Extract entry_date
       ...entryDetails
     } = updateData;
 
@@ -1684,6 +1685,7 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
 
     const updatedEntryDetails = {
       ...entryDetails,
+      entry_date: entry_date, // Trust the passed entry_date
       bedtime: bedtime ? new Date(bedtime) : undefined,
       wake_time: wake_time ? new Date(wake_time) : undefined,
       duration_in_seconds: duration_in_seconds,

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useSleepEntriesQuery } from '@/hooks/CheckIn/useSleep';
+import { useSleepDebtQuery } from '@/hooks/SleepScience/useSleepScience';
 import type {
   CombinedSleepData,
   SleepAnalyticsData,
@@ -21,10 +22,12 @@ interface SleepReportProps {
 const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, dateFormat } = usePreferences();
-  const { data: sleepEntries = [], isLoading: loading } = useSleepEntriesQuery(
-    startDate,
-    endDate
-  );
+  const { data: sleepEntries = [], isLoading: loadingEntries } =
+    useSleepEntriesQuery(startDate, endDate);
+  const { data: sleepDebtData, isLoading: loadingDebt } = useSleepDebtQuery();
+
+  const loading = loadingEntries || loadingDebt;
+  const personalizedSleepNeed = sleepDebtData?.sleepNeed || 8;
 
   const exportSleepDataToCSV = (data: CombinedSleepData[]) => {
     if (!data.length) {
@@ -94,10 +97,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
 
   const processSleepData = (): CombinedSleepData[] => {
     return sleepEntries
-      .sort(
-        (a, b) =>
-          new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
-      )
+      .sort((a, b) => a.entry_date.localeCompare(b.entry_date))
       .map((entry) => {
         const timeAsleep = entry.time_asleep_in_seconds
           ? entry.time_asleep_in_seconds / 60
@@ -123,11 +123,12 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           lightSleepDuration = timeAsleep;
         }
 
-        // Calculate sleep efficiency and sleep debt.
-        // For now, using a fixed 8 hours as recommended sleep duration. This will be enhanced in future releases to use user-defined goals.
-        const recommendedSleepDurationHours = 8;
-        const sleepEfficiency = entry.sleep_score ? entry.sleep_score : 0; // Assuming sleep_score is efficiency for now
-        const sleepDebt = recommendedSleepDurationHours - timeAsleep / 60; // timeAsleep is in minutes, convert to hours
+        // Calculate sleep efficiency and sleep debt using personalized need.
+        const sleepEfficiency =
+          entry.duration_in_seconds > 0
+            ? (timeAsleep / (entry.duration_in_seconds / 60)) * 100
+            : 0;
+        const sleepDebt = personalizedSleepNeed - timeAsleep / 60; // timeAsleep is in minutes, convert to hours
 
         const analyticsData: SleepAnalyticsData = {
           date: entry.entry_date,
@@ -203,9 +204,8 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
   // Get the most recent sleep entry for the summary card
   const getLatestSleepEntry = () => {
     if (sleepEntries.length === 0) return null;
-    return [...sleepEntries].sort(
-      (a, b) =>
-        new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime()
+    return [...sleepEntries].sort((a, b) =>
+      b.entry_date.localeCompare(a.entry_date)
     )[0];
   };
 
