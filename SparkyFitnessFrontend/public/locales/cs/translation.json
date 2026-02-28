@@ -97,7 +97,7 @@
     "dailyProgress": {
       "dailyCalorieGoal": "Denní kalorický cíl",
       "remaining": "zbývá",
-      "eaten": "sněženo",
+      "eaten": "snědeno",
       "burned": "spáleno",
       "burnedCaloriesBreakdown": "Rozklad spálených kalorií:",
       "otherExerciseCalories": "Jiné cvičení: {{exerciseCalories}} kal",
