@@ -85,10 +85,11 @@ const MealUnitSelector = ({
     let totalFat = 0;
 
     meal.foods.forEach((foodItem) => {
-      if (foodItem.calories) totalCalories += foodItem.calories;
-      if (foodItem.protein) totalProtein += foodItem.protein;
-      if (foodItem.carbs) totalCarbs += foodItem.carbs;
-      if (foodItem.fat) totalFat += foodItem.fat;
+      const scale = foodItem.quantity / (foodItem.serving_size || 1);
+      totalCalories += (foodItem.calories || 0) * scale;
+      totalProtein += (foodItem.protein || 0) * scale;
+      totalCarbs += (foodItem.carbs || 0) * scale;
+      totalFat += (foodItem.fat || 0) * scale;
     });
 
     // Calculate meal serving size (default to 1.0 if not set)
@@ -96,11 +97,10 @@ const MealUnitSelector = ({
 
     // Calculate multiplier based on quantity and unit
     let multiplier = 1.0;
-    if (unit === 'serving' || unit === meal.serving_unit) {
-      // If using serving-based units, multiply by the quantity
+    //Check if unit is the same as meal serving unit, if so use quantity directly, otherwise calculate based on meal serving size
+    if (unit === 'serving' && meal.serving_unit === 'serving') {
       multiplier = quantity;
     } else {
-      // If using non-serving units, calculate based on ratio
       multiplier = quantity / mealServingSize;
     }
 

@@ -42,6 +42,7 @@ import {
 } from '@/utils/reportUtil';
 import { CustomCategoryReport } from './CustomCategoryReport';
 import { CustomCategory } from '@/types/checkin';
+import { ChartErrorBoundary } from '../Errors/ChartErrorFallback';
 
 const Reports = () => {
   const { t } = useTranslation();
@@ -231,137 +232,159 @@ const Reports = () => {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="charts" className="space-y-6">
-            <NutritionChartsGrid
-              nutritionData={nutritionData}
-              customNutrients={customNutrients}
-            />
-            <MeasurementChartsGrid
-              measurementData={measurementData}
-              showWeightInKg={defaultWeightUnit === 'kg'}
-              showMeasurementsInCm={defaultMeasurementUnit === 'cm'}
-            />
+            <ChartErrorBoundary>
+              <NutritionChartsGrid
+                nutritionData={nutritionData}
+                customNutrients={customNutrients}
+              />
+            </ChartErrorBoundary>
+            <ChartErrorBoundary>
+              <MeasurementChartsGrid
+                measurementData={measurementData}
+                showWeightInKg={defaultWeightUnit === 'kg'}
+                showMeasurementsInCm={defaultMeasurementUnit === 'cm'}
+              />
+            </ChartErrorBoundary>
 
             {/* Body Battery Card */}
-            <BodyBatteryCard
-              categories={customCategories}
-              measurementsData={customMeasurementsData}
-            />
+            <ChartErrorBoundary>
+              <BodyBatteryCard
+                categories={customCategories}
+                measurementsData={customMeasurementsData}
+              />
+            </ChartErrorBoundary>
 
             {/* Respiration Card */}
-            <RespirationCard
-              categories={customCategories}
-              measurementsData={customMeasurementsData}
-            />
-
-            <CustomCategoryReport
-              customCategories={customCategories}
-              customMeasurementsData={customMeasurementsData}
-            />
-
-            {/* Custom Measurements Charts (excluding dedicated cards) */}
+            <ChartErrorBoundary>
+              <RespirationCard
+                categories={customCategories}
+                measurementsData={customMeasurementsData}
+              />
+            </ChartErrorBoundary>
+            <ChartErrorBoundary>
+              <CustomCategoryReport
+                customCategories={customCategories}
+                customMeasurementsData={customMeasurementsData}
+              />
+            </ChartErrorBoundary>
           </TabsContent>
-
+          {/* Custom Measurements Charts (excluding dedicated cards) */}
           <TabsContent value="fasting" className="space-y-6">
-            <FastingReport fastingData={fastingData} />
+            <ChartErrorBoundary>
+              <FastingReport fastingData={fastingData} />
+            </ChartErrorBoundary>
           </TabsContent>
           <TabsContent value="exercise-charts" className="space-y-6">
             {/* Existing exercise charts content */}
-            <ExerciseReportsDashboard
-              exerciseDashboardData={exerciseDashboardData}
-              startDate={startDate}
-              endDate={endDate}
-              onDrilldown={handleDrilldown}
-            />
+            <ChartErrorBoundary>
+              <ExerciseReportsDashboard
+                exerciseDashboardData={exerciseDashboardData}
+                startDate={startDate}
+                endDate={endDate}
+                onDrilldown={handleDrilldown}
+              />
+            </ChartErrorBoundary>
           </TabsContent>
           <TabsContent value="sleep-analytics" className="space-y-6">
-            <SleepReport startDate={startDate} endDate={endDate} />
+            <ChartErrorBoundary>
+              <SleepReport startDate={startDate} endDate={endDate} />
+            </ChartErrorBoundary>
           </TabsContent>
           <TabsContent value="stress-analytics" className="space-y-6">
-            {rawStressData?.length > 0 ? (
-              <StressChart
-                title={t('reports.stressChartTitle', 'Raw Stress Levels')}
-                data={rawStressData}
-              />
-            ) : (
-              <p>
-                {t('reports.noStressData', 'No raw stress data available.')}
-              </p>
-            )}
-
-            {moodData?.length > 0 ? (
-              <ZoomableChart title={t('reports.moodChartTitle', 'Daily Mood')}>
-                <MoodChart
-                  title={t('reports.moodChartTitle', 'Daily Mood')}
-                  data={moodData}
+            <ChartErrorBoundary>
+              {rawStressData?.length > 0 ? (
+                <StressChart
+                  title={t('reports.stressChartTitle', 'Raw Stress Levels')}
+                  data={rawStressData}
                 />
-              </ZoomableChart>
-            ) : (
-              <p>{t('reports.noMoodData', 'No daily mood data available.')}</p>
-            )}
+              ) : (
+                <p>
+                  {t('reports.noStressData', 'No raw stress data available.')}
+                </p>
+              )}
+            </ChartErrorBoundary>
+            <ChartErrorBoundary>
+              {moodData?.length > 0 ? (
+                <ZoomableChart
+                  title={t('reports.moodChartTitle', 'Daily Mood')}
+                >
+                  <MoodChart
+                    title={t('reports.moodChartTitle', 'Daily Mood')}
+                    data={moodData}
+                  />
+                </ZoomableChart>
+              ) : (
+                <p>
+                  {t('reports.noMoodData', 'No daily mood data available.')}
+                </p>
+              )}
+            </ChartErrorBoundary>
           </TabsContent>
 
           <TabsContent value="table" className="space-y-6">
-            <ReportsTables
-              tabularData={tabularData}
-              exerciseEntries={
-                drilldownDate
-                  ? exerciseEntries.filter(
-                      (e) => e.entry_date === drilldownDate
-                    )
-                  : exerciseEntries
-              } // Pass exerciseEntries
-              measurementData={measurementData}
-              customCategories={customCategories}
-              customMeasurementsData={customMeasurementsData}
-              prData={exerciseDashboardData?.prData}
-              showWeightInKg={defaultWeightUnit === 'kg'}
-              showMeasurementsInCm={defaultMeasurementUnit === 'cm'}
-              onExportFoodDiary={() =>
-                exportFoodDiary({
-                  loggingLevel,
-                  tabularData,
-                  energyUnit,
-                  customNutrients,
-                  startDate,
-                  endDate,
-                  formatDateInUserTimezone,
-                  convertEnergy,
-                })
-              }
-              onExportBodyMeasurements={() =>
-                exportBodyMeasurements({
-                  loggingLevel,
-                  startDate,
-                  endDate,
-                  measurementData,
-                  defaultWeightUnit,
-                  defaultMeasurementUnit,
-                  formatDateInUserTimezone,
-                })
-              }
-              onExportCustomMeasurements={(category: CustomCategory) =>
-                exportCustomMeasurement({
-                  loggingLevel,
-                  startDate,
-                  endDate,
-                  category,
-                  customMeasurementsData,
-                  formatDateInUserTimezone,
-                })
-              }
-              onExportExerciseEntries={() =>
-                exportExerciseEntries({
-                  loggingLevel,
-                  energyUnit,
-                  exerciseEntries,
-                  startDate,
-                  endDate,
-                  formatDateInUserTimezone,
-                  convertEnergy,
-                })
-              } // Pass export function
-              customNutrients={customNutrients} // Pass customNutrients
-            />
+            <ChartErrorBoundary>
+              <ReportsTables
+                tabularData={tabularData}
+                exerciseEntries={
+                  drilldownDate
+                    ? exerciseEntries.filter(
+                        (e) => e.entry_date === drilldownDate
+                      )
+                    : exerciseEntries
+                } // Pass exerciseEntries
+                measurementData={measurementData}
+                customCategories={customCategories}
+                customMeasurementsData={customMeasurementsData}
+                prData={exerciseDashboardData?.prData}
+                showWeightInKg={defaultWeightUnit === 'kg'}
+                showMeasurementsInCm={defaultMeasurementUnit === 'cm'}
+                onExportFoodDiary={() =>
+                  exportFoodDiary({
+                    loggingLevel,
+                    tabularData,
+                    energyUnit,
+                    customNutrients,
+                    startDate,
+                    endDate,
+                    formatDateInUserTimezone,
+                    convertEnergy,
+                  })
+                }
+                onExportBodyMeasurements={() =>
+                  exportBodyMeasurements({
+                    loggingLevel,
+                    startDate,
+                    endDate,
+                    measurementData,
+                    defaultWeightUnit,
+                    defaultMeasurementUnit,
+                    formatDateInUserTimezone,
+                  })
+                }
+                onExportCustomMeasurements={(category: CustomCategory) =>
+                  exportCustomMeasurement({
+                    loggingLevel,
+                    startDate,
+                    endDate,
+                    category,
+                    customMeasurementsData,
+                    formatDateInUserTimezone,
+                  })
+                }
+                onExportExerciseEntries={() =>
+                  exportExerciseEntries({
+                    loggingLevel,
+                    energyUnit,
+                    exerciseEntries,
+                    startDate,
+                    endDate,
+                    formatDateInUserTimezone,
+                    convertEnergy,
+                  })
+                } // Pass export function
+                customNutrients={customNutrients} // Pass customNutrients
+              />
+            </ChartErrorBoundary>
           </TabsContent>
         </Tabs>
       )}

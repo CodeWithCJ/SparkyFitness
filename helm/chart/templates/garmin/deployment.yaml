@@ -1,0 +1,52 @@
+{{- if .Values.config.garmin.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-garmin
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: garmin
+spec:
+  replicas: {{ .Values.garmin.replicas }}
+  selector:
+    matchLabels:
+      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: garmin
+  template:
+    metadata:
+      labels:
+        {{- include "sparkyfitness.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: garmin
+    spec:
+      {{- if and .Values.global.serviceAccount.create .Values.garmin.serviceAccount.create }}
+      serviceAccountName: {{ include "sparkyfitness.fullname" . }}-garmin
+      {{- end }}
+      {{- include "sparkyfitness.imagePullSecrets" . | nindent 6 }}
+      {{- with .Values.garmin.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: garmin
+          image: {{ include "sparkyfitness.image" (dict "image" .Values.garmin.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.garmin.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.garmin.port }}
+              protocol: TCP
+          env:
+            - name: GARMIN_MICROSERVICE_URL
+              value: "http://{{ include "sparkyfitness.fullname" . }}-garmin:{{ .Values.garmin.port }}"
+            - name: GARMIN_SERVICE_PORT
+              value: {{ .Values.garmin.port | quote }}
+            - name: GARMIN_SERVICE_IS_CN
+              value: {{ .Values.config.garmin.isChinaRegion | quote }}
+          {{- with .Values.garmin.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.garmin.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

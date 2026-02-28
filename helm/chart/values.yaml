@@ -1,0 +1,347 @@
+# =============================================================================
+# Sparkyfitness Helm Chart — values.yaml
+# Community-ready defaults: bundled PostgreSQL, no external dependencies.
+# =============================================================================
+
+# ========================== 1. GLOBAL ========================================
+
+global:
+  # -- Container image registry prefix (e.g. "registry.example.com")
+  imageRegistry: ""
+  # -- Global image pull secrets, e.g. [{name: "regcred"}]
+  imagePullSecrets: []
+  # -- Default StorageClass for all PVCs (overridable per component)
+  storageClass: ""
+  # -- Master toggle: create ServiceAccounts for all services
+  serviceAccount:
+    create: true
+
+# ========================== 2. APP CONFIGURATION =============================
+# Feature toggles, non-secret runtime settings.
+
+config:
+  # -- Node.js environment mode
+  nodeEnv: "production"
+  # -- Server timezone (TZ database name)
+  timezone: "Etc/UTC"
+  # -- Log level (debug, info, warn, error)
+  logLevel: "info"
+  # -- Public URL of the frontend (fallback only — httpRoute/ingress always take priority).
+  frontendUrl: ""
+
+  # -- Disable new user registrations
+  disableSignup: false
+  # -- Email of the auto-admin user (leave empty to skip)
+  adminEmail: ""
+
+  # -- Allow CORS from private network ranges (only for self-hosted/private networks)
+  allowPrivateNetworkCors: false
+  # -- Extra trusted origins, comma-separated (e.g. "http://192.168.1.5:8080")
+  extraTrustedOrigins: ""
+
+  # -- Force email/password login to be enabled (fail-safe against OIDC lockout)
+  forceEmailLogin: true
+  # -- Hide email/password login on login page (overridden by forceEmailLogin)
+  disableEmailLogin: false
+
+  # -- OIDC authentication (OpenID Connect SSO)
+  oidc:
+    enabled: false
+    providerSlug: ""
+    providerName: ""
+    issuerUrl: ""
+    scope: "openid email profile"
+    domain: ""
+    autoRegister: true
+    autoRedirect: false
+    logoUrl: ""
+    adminGroup: ""
+    # -- Advanced (leave empty for app defaults)
+    tokenAuthMethod: ""
+    idTokenSignedAlg: ""
+    userinfoSignedAlg: ""
+    timeout: ""
+    # -- OIDC credentials
+    secrets:
+      clientId: ""
+      clientSecret: ""
+      # -- Use an existing K8s Secret (keys: client_id, client_secret)
+      existingSecret: ""
+
+  # -- Email / SMTP notifications
+  email:
+    enabled: false
+    host: ""
+    port: 587
+    secure: false
+    from: ""
+    # -- SMTP credentials
+    secrets:
+      username: ""
+      password: ""
+      # -- Use an existing K8s Secret (keys: username, password)
+      existingSecret: ""
+
+  # -- Garmin Connect integration
+  garmin:
+    enabled: false
+    isChinaRegion: false
+
+  # -- API key rate limiting (leave empty for app defaults: 100 req / 60s)
+  rateLimiting:
+    windowMs: ""
+    maxRequests: ""
+
+  # -- Developer / mock data sources (for development only)
+  developer:
+    fitbitDataSource: ""
+    withingsDataSource: ""
+    garminDataSource: ""
+    polarDataSource: ""
+    hevyDataSource: ""
+    saveMockData: false
+
+# ========================== 3. NETWORKING ====================================
+
+networkPolicy:
+  enabled: false
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: sparkyfitness.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+httpRoute:
+  enabled: false
+  hostname: ""
+  parentRef:
+    name: ""
+    namespace: ""
+    sectionName: ""
+
+# ========================== 4. DEPLOYMENTS / STATEFULSETS ====================
+
+# -- Server (Node.js backend API — node:20-slim, UID 1000)
+server:
+  image:
+    repository: codewithcj/sparkyfitness_server
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 3010
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  podSecurityContext:
+    runAsNonRoot: true
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop: [ALL]
+  # -- Application secrets (encryption keys, auth tokens)
+  secrets:
+    # -- Auto-generate random secrets on first install (set false to require explicit values)
+    generate: true
+    # -- 64-character hex API encryption key
+    apiEncryptionKey: ""
+    # -- Better Auth secret key
+    betterAuthSecret: ""
+    # -- Use an existing K8s Secret (keys: api_encryption_key, better_auth_secret)
+    existingSecret: ""
+  # -- Application database credentials (limited-privilege user for runtime queries)
+  appDatabase:
+    # -- Username for the limited-privilege app DB user
+    username: "sparkyapp"
+    # -- Password (auto-generated if empty)
+    password: ""
+    # -- Use an existing K8s Secret (keys: username, password)
+    existingSecret: ""
+  persistence:
+    backup:
+      size: 5Gi
+      accessMode: ReadWriteOnce
+    uploads:
+      size: 10Gi
+      accessMode: ReadWriteOnce
+  # -- Extra environment variables injected into the server container
+  extraEnv: {}
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: false
+    annotations: {}
+
+# -- Frontend (nginx:alpine, runs as root for port 80)
+frontend:
+  image:
+    repository: codewithcj/sparkyfitness
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  podSecurityContext:
+    runAsNonRoot: false
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop: [ALL]
+      add: [CHOWN, NET_BIND_SERVICE, SETGID, SETUID]
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: false
+    annotations: {}
+
+# -- Garmin microservice (python, USER daemon UID 1)
+# Only deployed when config.garmin.enabled=true
+garmin:
+  image:
+    repository: codewithcj/sparkyfitness_garmin
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  podSecurityContext:
+    runAsNonRoot: true
+    fsGroup: 1
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    runAsUser: 1
+    runAsGroup: 1
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop: [ALL]
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: false
+    annotations: {}
+
+# -- Bundled PostgreSQL (postgres:15-alpine, UID 999)
+# Set enabled=false and configure externalDatabase to use an existing instance.
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "15-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    database: sparkyfitness
+    username: sparky
+    password: ""
+    # -- Use an existing K8s Secret (keys: username, password)
+    existingSecret: ""
+  persistence:
+    enabled: true
+    size: 8Gi
+    accessMode: ReadWriteOnce
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# -- External database (used when postgresql.enabled=false)
+externalDatabase:
+  host: ""
+  port: 5432
+  database: ""
+  auth:
+    username: ""
+    password: ""
+    existingSecret: ""
+
+# ========================== 5. EXTERNAL SECRETS (Advanced) ===================
+# When enabled, secrets are fetched from an external provider (e.g. Vault) via ESO.
+
+externalSecrets:
+  enabled: false
+  secretStore:
+    name: sparkyfitness
+    vaultPath: sparkyfitness
+    vaultServer: ""
+    caConfigMap:
+      namespace: ""
+      name: ""
+      key: ""
+    auth:
+      mountPath: kubernetes
+      role: external-secrets
+  app:
+    enabled: false
+    remoteKey: app_secret
+    keys:
+      - secretKey: api_encryption_key
+        property: api_encryption_key
+      - secretKey: better_auth_secret
+        property: better_auth_secret
+  appdb:
+    enabled: false
+    clusterSecretStore: ""
+    remoteKey: appdb
+    keys:
+      - secretKey: username
+        property: username
+      - secretKey: password
+        property: password
+  postgres:
+    enabled: false
+    clusterSecretStore: ""
+    remoteKey: ""
+    keys:
+      - secretKey: username
+        property: username
+      - secretKey: password
+        property: password
+  oidc:
+    enabled: false
+    remoteKey: oidc
+    keys:
+      - secretKey: client_id
+        property: client_id
+      - secretKey: client_secret
+        property: client_secret
+  smtp:
+    enabled: false
+    remoteKey: smtp
+    keys:
+      - secretKey: username
+        property: username
+      - secretKey: password
+        property: password
