@@ -3,6 +3,7 @@ import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 import { SleepDebtData } from '@/types/sleepScience';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 interface SleepDebtBreakdownProps {
   data: SleepDebtData;
@@ -10,6 +11,7 @@ interface SleepDebtBreakdownProps {
 
 const SleepDebtBreakdown: React.FC<SleepDebtBreakdownProps> = ({ data }) => {
   const { t } = useTranslation();
+  const { formatDateInUserTimezone, dateFormat } = usePreferences();
 
   // Show only last 7 days for brevity
   const recentDays = data.last14Days.slice(0, 7);
@@ -47,11 +49,7 @@ const SleepDebtBreakdown: React.FC<SleepDebtBreakdownProps> = ({ data }) => {
                   className="border-b border-border/50 hover:bg-muted/30 transition-colors"
                 >
                   <td className="py-1.5 text-muted-foreground">
-                    {new Date(day.date).toLocaleDateString('en', {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                    })}
+                    {formatDateInUserTimezone(day.date, dateFormat)}
                   </td>
                   <td className="text-right py-1.5 font-mono">
                     {formatSecondsToHHMM(day.tst * 3600)}
