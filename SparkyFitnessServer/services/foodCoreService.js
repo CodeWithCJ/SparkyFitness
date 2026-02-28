@@ -67,8 +67,16 @@ async function searchFoods(
 
 async function createFood(authenticatedUserId, foodData) {
   try {
-    // The foodData object already contains all necessary fields for food and its default variant.
-    // foodRepository.createFood handles the creation of both the food and its default variant in a single transaction.
+    if (foodData.barcode) {
+      const existingFood = await foodRepository.findFoodByBarcode(
+        foodData.barcode,
+        authenticatedUserId,
+      );
+      if (existingFood) {
+        return existingFood;
+      }
+    }
+
     const newFood = await foodRepository.createFood({
       ...foodData,
       glycemic_index: foodData.glycemic_index || null,
@@ -518,92 +526,6 @@ async function getFoodVariantsByFoodId(authenticatedUserId, foodId) {
   }
 }
 
-async function createOrGetFood(authenticatedUserId, foodSuggestion) {
-  try {
-    // First, try to find an existing food (either public or user's custom food)
-    const existingFood = await foodRepository.findFoodByNameAndBrand(
-      foodSuggestion.name,
-      foodSuggestion.brand,
-      authenticatedUserId,
-    );
-
-    if (existingFood) {
-      log(
-        "info",
-        `Found existing food: ${existingFood.name} (ID: ${existingFood.id})`,
-      );
-      return existingFood;
-    }
-
-    // If not found, create a new custom food for the user
-    const foodToCreate = {
-      name: foodSuggestion.name,
-      brand: foodSuggestion.brand || null,
-      is_custom: true,
-      user_id: authenticatedUserId,
-      barcode: foodSuggestion.barcode || null,
-      provider_external_id: foodSuggestion.provider_external_id || null,
-      shared_with_public: foodSuggestion.shared_with_public || false,
-      provider_type: foodSuggestion.provider_type || null,
-      glycemic_index: foodSuggestion.glycemic_index || null,
-      custom_nutrients: sanitizeCustomNutrients(
-        foodSuggestion.custom_nutrients,
-      ),
-    };
-
-    const newFood = await foodRepository.createFood(foodToCreate);
-
-    const defaultVariantData = {
-      food_id: newFood.id,
-      serving_size: foodSuggestion.serving_size || 0,
-      serving_unit: foodSuggestion.serving_unit || "g",
-      calories: foodSuggestion.calories || 0,
-      protein: foodSuggestion.protein || 0,
-      carbs: foodSuggestion.carbs || 0,
-      fat: foodSuggestion.fat || 0,
-      saturated_fat: foodSuggestion.saturated_fat || 0,
-      polyunsaturated_fat: foodSuggestion.polyunsaturated_fat || 0,
-      monounsaturated_fat: foodSuggestion.monounsaturated_fat || 0,
-      trans_fat: foodSuggestion.trans_fat || 0,
-      cholesterol: foodSuggestion.cholesterol || 0,
-      sodium: foodSuggestion.sodium || 0,
-      potassium: foodSuggestion.potassium || 0,
-      dietary_fiber: foodSuggestion.dietary_fiber || 0,
-      sugars: foodSuggestion.sugars || 0,
-      vitamin_a: foodSuggestion.vitamin_a || 0,
-      vitamin_c: foodSuggestion.vitamin_c || 0,
-      calcium: foodSuggestion.calcium || 0,
-      iron: foodSuggestion.iron || 0,
-      glycemic_index: foodSuggestion.glycemic_index || null,
-      custom_nutrients: sanitizeCustomNutrients(
-        foodSuggestion.custom_nutrients,
-      ),
-    };
-    const newVariant = await foodRepository.createFoodVariant(
-      defaultVariantData,
-      authenticatedUserId,
-    );
-
-    // Update the food with the default_variant_id
-    await foodRepository.updateFood(newFood.id, newFood.user_id, {
-      default_variant_id: newVariant.id,
-    });
-
-    log(
-      "info",
-      `Created new food: ${newFood.name} (ID: ${newFood.id}) with default variant (ID: ${newVariant.id})`,
-    );
-    return { ...newFood, ...newVariant };
-  } catch (error) {
-    log(
-      "error",
-      `Error in createOrGetFood for user ${authenticatedUserId}:`,
-      error,
-    );
-    throw error;
-  }
-}
-
 async function bulkCreateFoodVariants(authenticatedUserId, variantsData) {
   try {
     const variantsToCreate = await Promise.all(
@@ -790,7 +712,6 @@ module.exports = {
   updateFoodVariant,
   deleteFoodVariant,
   getFoodVariantsByFoodId,
-  createOrGetFood,
   bulkCreateFoodVariants,
   getFoodDeletionImpact,
   importFoodsInBulk,
