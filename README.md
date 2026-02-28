@@ -105,6 +105,26 @@ docker compose pull && docker compose up -d
 # Access application at http://localhost:8080
 ```
 
+## Quick Start (Kubernetes)
+
+Deploy SparkyFitness on Kubernetes using the Helm chart directly from the repository.
+
+```bash
+# 1. Install with default settings (bundled PostgreSQL, no ingress)
+helm install sparkyfitness oci://ghcr.io/codewithcj/charts/sparkyfitness
+
+# -- OR install directly from source --
+git clone https://github.com/CodeWithCJ/SparkyFitness.git
+helm install sparkyfitness ./SparkyFitness/helm/chart
+
+# 2. (Optional) Customize values
+helm install sparkyfitness ./SparkyFitness/helm/chart -f my-values.yaml
+
+# 3. Access the application in browser via Ingress or HTTPRoute you've specified in values
+```
+
+For all configuration options (external database, ingress, OIDC, email, etc.) see the [Helm chart README](helm/README.md).
+
 ## Documentation
 
 For full installation guides, configuration options, and development docs, please visit our [Documentation Site](https://codewithcj.github.io/SparkyFitness/).
