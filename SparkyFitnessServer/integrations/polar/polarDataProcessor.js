@@ -11,10 +11,14 @@ const exerciseEntryRepository = require("../../models/exerciseEntry");
 const getVal = (obj, key) => {
   if (!obj || !key) return undefined;
   if (obj[key] !== undefined) return obj[key];
+  
+  // Try alternative naming conventions (underscore vs hyphen)
   const underscored = key.replace(/-/g, "_");
   if (obj[underscored] !== undefined) return obj[underscored];
+  
   const hyphenated = key.replace(/_/g, "-");
   if (obj[hyphenated] !== undefined) return obj[hyphenated];
+  
   return undefined;
 };
 
@@ -22,18 +26,21 @@ const getVal = (obj, key) => {
  * Maps Polar exercise types/names to SparkyFitness exercise entries.
  */
 async function processPolarExercises(userId, createdByUserId, exercises = []) {
-  if (!exercises || exercises.length === 0) {
+  // Normalize input: could be a direct array or a response object containing 'exercises'
+  const exerciseList = Array.isArray(exercises) ? exercises : (exercises.exercises || []);
+
+  if (!exerciseList || exerciseList.length === 0) {
     log("info", `No Polar exercise data to process for user ${userId}.`);
     return;
   }
 
   // First, delete existing Polar exercise entries for the dates covered to avoid duplicates
   const processedDates = new Set();
-  for (const exercise of exercises) {
+  for (const exercise of exerciseList) {
     const startTime = getVal(exercise, "start-time");
     if (!startTime) continue;
 
-    const entryDate = new Date(startTime).toISOString().split("T")[0];
+    const entryDate = startTime.split("T")[0];
     if (!processedDates.has(entryDate)) {
       await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(
         userId,
@@ -45,7 +52,7 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
     }
   }
 
-  for (const exercise of exercises) {
+  for (const exercise of exerciseList) {
     try {
       const exerciseId = getVal(exercise, "id");
       const startTime = getVal(exercise, "start-time");
@@ -101,7 +108,7 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
         exerciseDef = await exerciseRepository.createExercise(newExerciseData);
       }
 
-      const entryDate = new Date(startTime).toISOString().split("T")[0];
+      const entryDate = startTime.split("T")[0];
       const durationMinutes = duration
         ? Math.round(iso8601ToSeconds(duration) / 60)
         : 0;
@@ -153,13 +160,16 @@ async function processPolarPhysicalInfo(
   createdByUserId,
   physicalInfo = [],
 ) {
-  if (!physicalInfo || physicalInfo.length === 0) return;
+  // Normalize input: direct array or object containing 'physical-informations'
+  const infoList = Array.isArray(physicalInfo) ? physicalInfo : (physicalInfo['physical-informations'] || []);
+  
+  if (!infoList || infoList.length === 0) return;
 
-  for (const info of physicalInfo) {
+  for (const info of infoList) {
     const created = getVal(info, "created");
     if (!created) continue;
 
-    const entryDate = new Date(created).toISOString().split("T")[0];
+    const entryDate = created.split("T")[0];
     const measurementsToUpsert = {};
 
     const weight = getVal(info, "weight");
@@ -234,16 +244,18 @@ async function processPolarPhysicalInfo(
  * Processes Polar daily activity data.
  */
 async function processPolarActivity(userId, createdByUserId, activities = []) {
-  if (!activities || activities.length === 0) return;
+  // Normalize input: direct array or object containing 'activities'
+  const activityList = Array.isArray(activities) ? activities : (activities.activities || []);
+  
+  if (!activityList || activityList.length === 0) return;
 
-  for (const activity of activities) {
+  for (const activity of activityList) {
     // Polar activity object might have 'date' (if simple summary) or 'start_time' (if detailed).
-    // Fallback to extraction from start_time if date is missing.
     let entryDate = getVal(activity, "date");
     const startTime = getVal(activity, "start-time");
 
     if (!entryDate && startTime) {
-      entryDate = new Date(startTime).toISOString().split("T")[0];
+      entryDate = startTime.split("T")[0];
     }
 
     if (!entryDate) {
@@ -260,9 +272,6 @@ async function processPolarActivity(userId, createdByUserId, activities = []) {
 
     // Polar daily activity often contains steps and calories
     if (calories || activeCalories || steps) {
-      // We can store these as custom measurements or update a standard daily tracking table if one exists
-      // For now, mirroring Withings/Fitbit patterns of adding to custom measurements if they don't have a direct column
-
       const metrics = [
         { name: "Steps", value: steps, unit: "count", frequency: "Daily" },
         {
@@ -344,28 +353,44 @@ async function upsertCustomMeasurementLogic(
 /**
  * Processes Polar sleep data.
  */
-async function processPolarSleep(userId, createdByUserId, sleepNights = []) {
-  if (!sleepNights || sleepNights.length === 0) return;
+async function processPolarSleep(userId, createdByUserId, sleepData = []) {
+  // Normalize input: direct array or object containing 'nights'
+  const sleepNights = Array.isArray(sleepData) ? sleepData : (sleepData.nights || []);
+  
+  if (!sleepNights || sleepNights.length === 0) {
+    log("info", `No Polar sleep data to process for user ${userId}.`);
+    return;
+  }
 
   const sleepRepository = require("../../models/sleepRepository");
 
   for (const night of sleepNights) {
     try {
       const entryDate = getVal(night, "date");
-      const startTime = getVal(night, "sleep-start-time");
-      const endTime = getVal(night, "sleep-end-time");
+      const startTime = getVal(night, "sleep-start-time") || getVal(night, "start-time");
+      const endTime = getVal(night, "sleep-end-time") || getVal(night, "end-time");
 
-      if (!entryDate || !startTime || !endTime) continue;
+      if (!entryDate || !startTime || !endTime) {
+        log("warn", `[polarDataProcessor] Skipping sleep entry due to missing required fields for user ${userId}.`);
+        continue;
+      }
 
-      // Summary stats
-      const lightSleepSec =
-        (getVal(night, "light-non-rem-sleep-duration") || 0) +
-        (getVal(night, "lighter-non-rem-sleep-duration") || 0);
-      const deepSleepSec = getVal(night, "deep-non-rem-sleep-duration") || 0;
-      const remSleepSec = getVal(night, "rem-sleep-duration") || 0;
-      const awakeSec = getVal(night, "wake-duration") || 0;
-      const totalDurationSec =
-        lightSleepSec + deepSleepSec + remSleepSec + awakeSec;
+      // Summary stats - Polar uses seconds for these
+      // Handle both hyphenated and underscored keys
+      const lightSleepSec = getVal(night, "light-sleep") || 
+                           (getVal(night, "light-non-rem-sleep-duration") || 0) +
+                           (getVal(night, "lighter-non-rem-sleep-duration") || 0);
+      
+      const deepSleepSec = getVal(night, "deep-sleep") || 
+                          getVal(night, "deep-non-rem-sleep-duration") || 0;
+      
+      const remSleepSec = getVal(night, "rem-sleep") || 
+                         getVal(night, "rem-sleep-duration") || 0;
+      
+      const awakeSec = getVal(night, "wake-duration") || 
+                      getVal(night, "total-interruption-duration") || 0;
+      
+      const totalDurationSec = lightSleepSec + deepSleepSec + remSleepSec + awakeSec;
 
       const sleepEntryData = {
         entry_date: entryDate,
@@ -390,35 +415,40 @@ async function processPolarSleep(userId, createdByUserId, sleepNights = []) {
       // Process hypnogram (stages)
       const hypnogram = getVal(night, "hypnogram");
       if (hypnogram && entry) {
-        // Polar hypnogram: { "HH:MM": type, ... }
-        // types: 0=WAKE, 1=REM, 2=LIGHTER NON-REM, 3=LIGHT NON-REM, 4=DEEP NON-REM, 5=UNKNOWN
-        const sortedTimes = Object.keys(hypnogram).sort();
-        for (let i = 0; i < sortedTimes.length; i++) {
-          const timeStr = sortedTimes[i];
-          const stageCode = hypnogram[timeStr];
+        // Polar hypnogram can be:
+        // 1. A map: { "HH:MM": type }
+        // 2. An array of objects: [{ "time": "HH:MM", "value": type }]
+        const stagesArray = Array.isArray(hypnogram) 
+          ? hypnogram 
+          : Object.entries(hypnogram).map(([time, value]) => ({ time, value }));
 
-          let stageType = "Light";
-          if (stageCode === 0) stageType = "Awake";
-          else if (stageCode === 1) stageType = "REM";
-          else if (stageCode === 4) stageType = "Deep";
-          else if (stageCode === 5) stageType = "Unknown";
+        const sortedStages = stagesArray.sort((a, b) => a.time.localeCompare(b.time));
+        
+        for (let i = 0; i < sortedStages.length; i++) {
+          const current = sortedStages[i];
+          const stageCode = current.value;
+          const timeStr = current.time;
+
+          let stageType = "light";
+          if (stageCode === 0) stageType = "awake";
+          else if (stageCode === 1) stageType = "rem";
+          else if (stageCode === 4) stageType = "deep";
+          else if (stageCode === 5 || stageCode === 6) stageType = "awake"; // 6 is often interruptions/wake
 
           // Construct start time for this stage
           const stageStartTime = new Date(startTime);
           const [hours, minutes] = timeStr.split(":").map(Number);
 
-          // Note: Polar's hypnogram times are usually relative to or on the date of sleep.
-          // If time is before sleep_start_time's hour (e.g. 00:30 when sleep started at 23:00), it's next day.
+          // Adjust date if hour rolls over midnight relative to sleep start
           const startHours = stageStartTime.getHours();
           if (hours < startHours) {
             stageStartTime.setDate(stageStartTime.getDate() + 1);
           }
           stageStartTime.setHours(hours, minutes, 0, 0);
 
-          // Calculate duration by looking at next entry
-          let durationSec = 300; // Default 5 mins if last entry? NO, hypnogram is 30s epochs but samples are whenever it changes.
-          if (i < sortedTimes.length - 1) {
-            const nextTimeStr = sortedTimes[i + 1];
+          let durationSec = 0;
+          if (i < sortedStages.length - 1) {
+            const nextTimeStr = sortedStages[i + 1].time;
             const nextDate = new Date(stageStartTime);
             const [nH, nM] = nextTimeStr.split(":").map(Number);
             if (nH < hours) nextDate.setDate(nextDate.getDate() + 1);
@@ -434,9 +464,7 @@ async function processPolarSleep(userId, createdByUserId, sleepNights = []) {
             await sleepRepository.upsertSleepStageEvent(userId, entry.id, {
               stage_type: stageType,
               start_time: stageStartTime.toISOString(),
-              end_time: new Date(
-                stageStartTime.getTime() + durationSec * 1000,
-              ).toISOString(),
+              end_time: new Date(stageStartTime.getTime() + durationSec * 1000).toISOString(),
               duration_in_seconds: durationSec,
             });
           }
@@ -462,11 +490,14 @@ async function processPolarSleep(userId, createdByUserId, sleepNights = []) {
 async function processPolarNightlyRecharge(
   userId,
   createdByUserId,
-  recharges = [],
+  rechargeData = [],
 ) {
-  if (!recharges || recharges.length === 0) return;
+  // Normalize input: direct array or object containing 'recharges'
+  const rechargeList = Array.isArray(rechargeData) ? rechargeData : (rechargeData.recharges || []);
+  
+  if (!rechargeList || rechargeList.length === 0) return;
 
-  for (const recharge of recharges) {
+  for (const recharge of rechargeList) {
     const entryDate = getVal(recharge, "date");
     if (!entryDate) continue;
 
@@ -523,6 +554,7 @@ async function processPolarNightlyRecharge(
  * Helper to convert ISO 8601 duration string (e.g., PT1H30M15S) to seconds.
  */
 function iso8601ToSeconds(duration) {
+  if (!duration) return 0;
   const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
   const matches = duration.match(regex);
   if (!matches) return 0;
