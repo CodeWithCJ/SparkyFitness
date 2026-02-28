@@ -1,5 +1,4 @@
 import { apiCall } from '@/services/api';
-import { getExerciseEntriesForDate as getDailyExerciseEntries } from '@/api/Diary/dailyProgressService';
 import type { Exercise } from './exerciseSearchService';
 import { parseJsonArray } from './exerciseService';
 import type { ExerciseProgressData } from '@/api/Reports/reportsService';
@@ -66,11 +65,22 @@ export interface GroupedExerciseEntry {
   exercises?: ExerciseEntry[]; // This will hold the individual exercise entries
 }
 
+export const getExerciseEntriesForDate = async (
+  date: string
+): Promise<GroupedExerciseEntry[]> => {
+  const params = new URLSearchParams({ selectedDate: date });
+  const data = await apiCall(`/exercise-entries/by-date?${params.toString()}`, {
+    method: 'GET',
+    suppress404Toast: true,
+  });
+  return data || [];
+};
+
 export const fetchExerciseEntries = async (
   selectedDate: string
 ): Promise<GroupedExerciseEntry[]> => {
   const loggingLevel = getUserLoggingLevel();
-  const response = await getDailyExerciseEntries(selectedDate);
+  const response = await getExerciseEntriesForDate(selectedDate);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsedEntries: GroupedExerciseEntry[] = response.map((entry: any) => {
