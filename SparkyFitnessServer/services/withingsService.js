@@ -89,6 +89,13 @@ async function syncWithingsData(userId, syncType = "manual") {
           responses["raw_workouts"].data.body?.series || [],
         );
       }
+      if (responses["raw_activity"]) {
+        await withingsDataProcessor.processWithingsActivity(
+          userId,
+          userId,
+          responses["raw_activity"].data.body?.activities || [],
+        );
+      }
 
       // Update last_sync_at
       const client = await getSystemClient();
@@ -177,6 +184,13 @@ async function syncWithingsData(userId, syncType = "manual") {
           endDateYMD,
         ),
       ),
+      activity: await safeFetch("raw_activity", () =>
+        withingsIntegrationService.fetchActivityData(
+          userId,
+          startDateYMD,
+          endDateYMD,
+        ),
+      ),
     };
 
     // 2. Process EVERYTHING second (The Action Phase)
@@ -209,6 +223,13 @@ async function syncWithingsData(userId, syncType = "manual") {
         userId,
         userId,
         bundle.workouts,
+      );
+    }
+    if (bundle.activity) {
+      await withingsDataProcessor.processWithingsActivity(
+        userId,
+        userId,
+        bundle.activity,
       );
     }
 

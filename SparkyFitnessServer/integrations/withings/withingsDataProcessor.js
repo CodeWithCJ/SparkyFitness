@@ -10,52 +10,49 @@ const sleepRepository = require('../../models/sleepRepository'); // Import sleep
 // This can be extended as more Withings metrics are integrated
 const WITHINGS_METRIC_MAPPING = {
     // Measures (Weight, Blood Pressure, etc.)
-    // 'unit' is the unit from Withings API (after scaling).
-    // 'sparky_unit' is the unit expected by SparkyFitness for storage.
-    // 'frequency' is for custom measurements.
-    1: { name: 'Weight', unit: 'kg', sparky_unit: 'kg', type: 'check_in_measurement', column: 'weight', frequency: 'Daily' }, // Weight in kg
-    4: { name: 'Height', unit: 'm', sparky_unit: 'cm', type: 'check_in_measurement', column: 'height', frequency: 'Daily' }, // Height in meters from Withings, convert to cm for SparkyFitness
-    5: { name: 'Fat Free Mass', unit: 'kg', type: 'custom_measurement', categoryName: 'Fat Free Mass', frequency: 'Daily' }, // Fat Free Mass in kg
-    6: { name: 'Fat Ratio', unit: '%', sparky_unit: '%', type: 'check_in_measurement', column: 'body_fat_percentage', frequency: 'Daily' }, // Fat Ratio in percentage
-    8: { name: 'Fat Mass Weight', unit: 'kg', type: 'custom_measurement', categoryName: 'Fat Mass Weight', frequency: 'Daily' }, // Fat Mass Weight in kg
-    9: { name: 'Diastolic Blood Pressure', unit: 'mmHg', type: 'custom_measurement', categoryName: 'Diastolic Blood Pressure', frequency: 'Hourly' }, // Diastolic Blood Pressure in mmHg
-    10: { name: 'Systolic Blood Pressure', unit: 'mmHg', type: 'custom_measurement', categoryName: 'Systolic Blood Pressure', frequency: 'Hourly' }, // Systolic Blood Pressure in mmHg
-    11: { name: 'Heart Pulse', unit: 'bpm', type: 'custom_measurement', categoryName: 'Heart Pulse', frequency: 'Hourly' }, // Heart Pulse (bpm) - only for BPM and scale devices
-    12: { name: 'Body Temperature', unit: 'celsius', type: 'custom_measurement', categoryName: 'Body Temperature', frequency: 'Daily' }, // Temperature (celsius)
-    54: { name: 'SpO2', unit: '%', type: 'custom_measurement', categoryName: 'SpO2', frequency: 'Daily' }, // SP02 (%)
-    71: { name: 'Body Temperature', unit: 'celsius', type: 'custom_measurement', categoryName: 'Body Temperature', frequency: 'Daily' }, // Body Temperature (celsius) - assuming this is distinct or a more specific type
-    73: { name: 'Skin Temperature', unit: 'celsius', type: 'custom_measurement', categoryName: 'Skin Temperature', frequency: 'Daily' }, // Skin Temperature (celsius)
-    76: { name: 'Muscle Mass', unit: 'kg', type: 'custom_measurement', categoryName: 'Muscle Mass', frequency: 'Daily' }, // Muscle Mass (kg)
-    77: { name: 'Hydration', unit: 'kg', type: 'custom_measurement', categoryName: 'Hydration', frequency: 'Daily' }, // Hydration (kg)
-    88: { name: 'Bone Mass', unit: 'kg', type: 'custom_measurement', categoryName: 'Bone Mass', frequency: 'Daily' }, // Bone Mass (kg)
-    91: { name: 'Pulse Wave Velocity', unit: 'm/s', type: 'custom_measurement', categoryName: 'Pulse Wave Velocity', frequency: 'Daily' }, // Pulse Wave Velocity (m/s)
-    123: { name: 'VO2 Max', unit: 'ml/min/kg', type: 'custom_measurement', categoryName: 'VO2 Max', frequency: 'Daily' }, // VO2 max is a numerical measurement of your body’s ability to consume oxygen (ml/min/kg).
-    130: { name: 'Atrial Fibrillation Result', unit: 'boolean', type: 'custom_measurement', categoryName: 'Atrial Fibrillation Result', frequency: 'Daily' }, // Atrial fibrillation result (assuming 0/1 for boolean)
-    135: { name: 'QRS Interval Duration', unit: 'ms', type: 'custom_measurement', categoryName: 'QRS Interval Duration', frequency: 'Daily' }, // QRS interval duration based on ECG signal
-    136: { name: 'PR Interval Duration', unit: 'ms', type: 'custom_measurement', categoryName: 'PR Interval Duration', frequency: 'Daily' }, // PR interval duration based on ECG signal
-    137: { name: 'QT Interval Duration', unit: 'ms', type: 'custom_measurement', categoryName: 'QT Interval Duration', frequency: 'Daily' }, // QT interval duration based on ECG signal
-    138: { name: 'Corrected QT Interval Duration', unit: 'ms', type: 'custom_measurement', categoryName: 'Corrected QT Interval Duration', frequency: 'Daily' }, // Corrected QT interval duration based on ECG signal
-    139: { name: 'Atrial Fibrillation PPG', unit: 'boolean', type: 'custom_measurement', categoryName: 'Atrial Fibrillation PPG', frequency: 'Daily' }, // Atrial fibrillation result from PPG (assuming 0/1 for boolean)
-    155: { name: 'Vascular Age', unit: 'years', type: 'custom_measurement', categoryName: 'Vascular Age', frequency: 'Daily' }, // Vascular age
-    167: { name: 'Nerve Health Score', unit: 'µS', type: 'custom_measurement', categoryName: 'Nerve Health Score', frequency: 'Daily' }, // Nerve Health Score Conductance 2 electrodes Feet
-    168: { name: 'Extracellular Water', unit: 'kg', type: 'custom_measurement', categoryName: 'Extracellular Water', frequency: 'Daily' }, // Extracellular Water in kg
-    169: { name: 'Intracellular Water', unit: 'kg', type: 'custom_measurement', categoryName: 'Intracellular Water', frequency: 'Daily' }, // Intracellular Water in kg
-    170: { name: 'Visceral Fat', unit: 'index', type: 'custom_measurement', categoryName: 'Visceral Fat', frequency: 'Daily' }, // Visceral Fat (without unity)
-    173: { name: 'Fat Free Mass Segments', unit: 'kg', type: 'custom_measurement', categoryName: 'Fat Free Mass Segments', frequency: 'Daily' }, // Fat Free Mass for segments
-    174: { name: 'Fat Mass Segments', unit: 'kg', type: 'custom_measurement', categoryName: 'Fat Mass Segments', frequency: 'Daily' }, // Fat Mass for segments in mass unit
-    175: { name: 'Muscle Mass Segments', unit: 'kg', type: 'custom_measurement', categoryName: 'Muscle Mass Segments', frequency: 'Daily' }, // Muscle Mass for segments
-    196: { name: 'Electrodermal Activity', unit: 'µS', type: 'custom_measurement', categoryName: 'Electrodermal Activity', frequency: 'Daily' }, // Electrodermal activity feet
-    226: { name: 'Basal Metabolic Rate', unit: 'kcal', type: 'custom_measurement', categoryName: 'Basal Metabolic Rate', frequency: 'Daily' }, // Basal Metabolic Rate (BMR)
-    227: { name: 'Metabolic Age', unit: 'years', type: 'custom_measurement', categoryName: 'Metabolic Age', frequency: 'Daily' }, // Metabolic Age
-    229: { name: 'Electrochemical Skin Conductance', unit: 'µS', type: 'custom_measurement', categoryName: 'Electrochemical Skin Conductance', frequency: 'Daily' }, // Electrochemical Skin Conductance (ESC)
+    1: { name: 'Weight', unit: 'kg', sparky_unit: 'kg', type: 'check_in_measurement', column: 'weight', frequency: 'Daily' },
+    4: { name: 'Height', unit: 'm', sparky_unit: 'cm', type: 'check_in_measurement', column: 'height', frequency: 'Daily' },
+    5: { name: 'Fat Free Mass', unit: 'kg', type: 'custom_measurement', categoryName: 'Fat Free Mass', frequency: 'Daily' },
+    6: { name: 'Fat Ratio', unit: '%', sparky_unit: '%', type: 'check_in_measurement', column: 'body_fat_percentage', frequency: 'Daily' },
+    8: { name: 'Fat Mass Weight', unit: 'kg', type: 'custom_measurement', categoryName: 'Fat Mass Weight', frequency: 'Daily' },
+    9: { name: 'Diastolic Blood Pressure', unit: 'mmHg', type: 'custom_measurement', categoryName: 'Blood Pressure', frequency: 'Hourly' },
+    10: { name: 'Systolic Blood Pressure', unit: 'mmHg', type: 'custom_measurement', categoryName: 'Blood Pressure', frequency: 'Hourly' },
+    11: { name: 'Heart Pulse', unit: 'bpm', type: 'custom_measurement', categoryName: 'Heart Rate', frequency: 'Hourly' },
+    12: { name: 'Body Temperature', unit: 'celsius', type: 'custom_measurement', categoryName: 'Body Temperature', frequency: 'Daily' },
+    54: { name: 'SpO2', unit: '%', type: 'custom_measurement', categoryName: 'Blood Oxygen (SpO2)', frequency: 'Daily' },
+    71: { name: 'Body Temperature', unit: 'celsius', type: 'custom_measurement', categoryName: 'Body Temperature', frequency: 'Daily' },
+    73: { name: 'Skin Temperature', unit: 'celsius', type: 'custom_measurement', categoryName: 'Skin Temperature', frequency: 'Daily' },
+    76: { name: 'Muscle Mass', unit: 'kg', type: 'custom_measurement', categoryName: 'Muscle Mass', frequency: 'Daily' },
+    77: { name: 'Hydration', unit: 'kg', type: 'custom_measurement', categoryName: 'Hydration', frequency: 'Daily' },
+    88: { name: 'Bone Mass', unit: 'kg', type: 'custom_measurement', categoryName: 'Bone Mass', frequency: 'Daily' },
+    91: { name: 'Pulse Wave Velocity', unit: 'm/s', type: 'custom_measurement', categoryName: 'Pulse Wave Velocity', frequency: 'Daily' },
+    123: { name: 'VO2 Max', unit: 'ml/min/kg', type: 'custom_measurement', categoryName: 'VO2 Max', frequency: 'Daily' },
+    130: { name: 'Atrial Fibrillation Result', unit: 'boolean', type: 'custom_measurement', categoryName: 'Heart Health', frequency: 'Daily' },
+    135: { name: 'QRS Interval Duration', unit: 'ms', type: 'custom_measurement', categoryName: 'ECG Metrics', frequency: 'Daily' },
+    136: { name: 'PR Interval Duration', unit: 'ms', type: 'custom_measurement', categoryName: 'ECG Metrics', frequency: 'Daily' },
+    137: { name: 'QT Interval Duration', unit: 'ms', type: 'custom_measurement', categoryName: 'ECG Metrics', frequency: 'Daily' },
+    138: { name: 'Corrected QT Interval Duration', unit: 'ms', type: 'custom_measurement', categoryName: 'ECG Metrics', frequency: 'Daily' },
+    139: { name: 'Atrial Fibrillation PPG', unit: 'boolean', type: 'custom_measurement', categoryName: 'Heart Health', frequency: 'Daily' },
+    155: { name: 'Vascular Age', unit: 'years', type: 'custom_measurement', categoryName: 'Vascular Age', frequency: 'Daily' },
+    167: { name: 'Nerve Health Score', unit: 'µS', type: 'custom_measurement', categoryName: 'Nerve Health', frequency: 'Daily' },
+    168: { name: 'Extracellular Water', unit: 'kg', type: 'custom_measurement', categoryName: 'Body Water Breakdown', frequency: 'Daily' },
+    169: { name: 'Intracellular Water', unit: 'kg', type: 'custom_measurement', categoryName: 'Body Water Breakdown', frequency: 'Daily' },
+    170: { name: 'Visceral Fat', unit: 'index', type: 'custom_measurement', categoryName: 'Visceral Fat', frequency: 'Daily' },
+    173: { name: 'Fat Free Mass Segments', unit: 'kg', type: 'custom_measurement', categoryName: 'Segmental Body Comp', frequency: 'Daily' },
+    174: { name: 'Fat Mass Segments', unit: 'kg', type: 'custom_measurement', categoryName: 'Segmental Body Comp', frequency: 'Daily' },
+    175: { name: 'Muscle Mass Segments', unit: 'kg', type: 'custom_measurement', categoryName: 'Segmental Body Comp', frequency: 'Daily' },
+    196: { name: 'Electrodermal Activity', unit: 'µS', type: 'custom_measurement', categoryName: 'Stress Metrics', frequency: 'Daily' },
+    226: { name: 'Basal Metabolic Rate', unit: 'kcal', type: 'custom_measurement', categoryName: 'Metabolism', frequency: 'Daily' },
+    227: { name: 'Metabolic Age', unit: 'years', type: 'custom_measurement', categoryName: 'Metabolism', frequency: 'Daily' },
+    229: { name: 'Electrochemical Skin Conductance', unit: 'µS', type: 'custom_measurement', categoryName: 'Nerve Health', frequency: 'Daily' },
     // Heart data (from /v2/heart API)
-    'heart_rate': { name: 'Resting Heart Rate', unit: 'bpm', type: 'custom_measurement', categoryName: 'Resting Heart Rate', frequency: 'Hourly' },
+    'heart_rate': { name: 'Resting Heart Rate', unit: 'bpm', type: 'custom_measurement', categoryName: 'Heart Rate', frequency: 'Hourly' },
     // Sleep data (from /v2/sleep API)
-    'total_sleep_duration': { name: 'Total Sleep Duration', unit: 'seconds', type: 'custom_measurement', categoryName: 'Total Sleep Duration', frequency: 'Daily' },
-    'wake_up_count': { name: 'Wake Up Count', unit: 'count', type: 'custom_measurement', categoryName: 'Wake Up Count', frequency: 'Daily' },
-    'sleep_score': { name: 'Sleep Score', unit: 'score', type: 'custom_measurement', categoryName: 'Sleep Score', frequency: 'Daily' },
+    'total_sleep_duration': { name: 'Total Sleep Duration', unit: 'seconds', type: 'custom_measurement', categoryName: 'Sleep Metrics', frequency: 'Daily' },
+    'wake_up_count': { name: 'Wake Up Count', unit: 'count', type: 'custom_measurement', categoryName: 'Sleep Metrics', frequency: 'Daily' },
+    'sleep_score': { name: 'Sleep Score', unit: 'score', type: 'custom_measurement', categoryName: 'Sleep Metrics', frequency: 'Daily' },
     // ECG / Afib (from heart series)
-    'afib': { name: 'Atrial Fibrillation Result', unit: 'boolean', type: 'custom_measurement', categoryName: 'Atrial Fibrillation Result', frequency: 'Daily' },
+    'afib': { name: 'Atrial Fibrillation Result', unit: 'boolean', type: 'custom_measurement', categoryName: 'Heart Health', frequency: 'Daily' },
 };
 
 async function processWithingsMeasures(userId, createdByUserId, measuregrps) {
@@ -65,6 +62,9 @@ async function processWithingsMeasures(userId, createdByUserId, measuregrps) {
     }
 
     for (const group of measuregrps) {
+        // Only process actual measurements (category 1), skip user objectives (category 2)
+        if (group.category !== 1) continue;
+
         const timestamp = group.date || group.timestamp;
         if (!timestamp || isNaN(timestamp)) {
             log('warn', `Invalid date/timestamp in Withings measure group: ${JSON.stringify(group)}`);
@@ -167,6 +167,35 @@ async function processWithingsHeartData(userId, createdByUserId, heartSeries = [
             };
             await upsertCustomMeasurementLogic(userId, createdByUserId, customMeasurement, 'Withings');
             log('info', `Upserted Withings afib result for user ${userId} on ${entryDate}.`);
+        }
+
+        // Process Blood Pressure from Heart API (BPM Core)
+        if (series.bloodpressure) {
+            if (series.bloodpressure.systole) {
+                const systolicInfo = WITHINGS_METRIC_MAPPING[10];
+                await upsertCustomMeasurementLogic(userId, createdByUserId, {
+                    categoryName: systolicInfo.categoryName,
+                    value: series.bloodpressure.systole,
+                    unit: systolicInfo.unit,
+                    entryDate: entryDate,
+                    entryHour: entryHour,
+                    entryTimestamp: entryTimestamp,
+                    frequency: systolicInfo.frequency
+                }, 'Withings');
+            }
+            if (series.bloodpressure.diastole) {
+                const diastolicInfo = WITHINGS_METRIC_MAPPING[9];
+                await upsertCustomMeasurementLogic(userId, createdByUserId, {
+                    categoryName: diastolicInfo.categoryName,
+                    value: series.bloodpressure.diastole,
+                    unit: diastolicInfo.unit,
+                    entryDate: entryDate,
+                    entryHour: entryHour,
+                    entryTimestamp: entryTimestamp,
+                    frequency: diastolicInfo.frequency
+                }, 'Withings');
+            }
+            log('info', `Upserted Withings heart-rate-sync blood pressure for user ${userId} on ${entryDate}.`);
         }
     }
 }
@@ -392,6 +421,49 @@ async function upsertCustomMeasurementLogic(userId, createdByUserId, customMeasu
     );
 }
 
+async function processWithingsActivity(userId, createdByUserId, activities = []) {
+    if (!Array.isArray(activities) || activities.length === 0) {
+        log('info', `No Withings activity data to process for user ${userId}.`);
+        return;
+    }
+
+    for (const activity of activities) {
+        const entryDate = activity.date; // "YYYY-MM-DD"
+        
+        // 1. Process Steps
+        if (activity.steps !== undefined) {
+            await measurementRepository.upsertStepData(userId, createdByUserId, activity.steps, entryDate);
+            log('info', `Upserted Withings daily steps for user ${userId} on ${entryDate}: ${activity.steps}.`);
+        }
+
+        // 2. Process Total Calories (Active + Passive)
+        if (activity.totalcalories !== undefined) {
+            await upsertCustomMeasurementLogic(userId, createdByUserId, {
+                categoryName: 'Metabolism',
+                value: activity.totalcalories,
+                unit: 'kcal',
+                entryDate: entryDate,
+                entryHour: 0,
+                entryTimestamp: new Date(entryDate).toISOString(),
+                frequency: 'Daily'
+            }, 'Withings');
+        }
+
+        // 3. Process Elevation (Floors)
+        if (activity.elevation !== undefined) {
+            await upsertCustomMeasurementLogic(userId, createdByUserId, {
+                categoryName: 'Floors Climbed',
+                value: activity.elevation,
+                unit: 'count',
+                entryDate: entryDate,
+                entryHour: 0,
+                entryTimestamp: new Date(entryDate).toISOString(),
+                frequency: 'Daily'
+            }, 'Withings');
+        }
+    }
+}
+
 async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
     if (!Array.isArray(workouts) || workouts.length === 0) {
         log('info', `No Withings workout data to process for user ${userId}.`);
@@ -520,7 +592,8 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
                 duration_minutes: durationMinutes,
                 calories_burned: caloriesBurned,
                 entry_date: entryDate,
-                notes: `Logged from Withings workout: ${exercise.name}. Distance: ${workout.data.distance || 0}m, Steps: ${workout.data.steps || 0}.`,
+                notes: `Logged from Withings workout: ${exercise.name}. Distance: ${workout.data.distance || 0}m, Steps: ${workout.data.steps || 0}. Intensity: ${workout.data.intensity || 0}/100.`,
+                avg_heart_rate: workout.data.hr_average || null,
                 sets: [{
                     set_number: 1,
                     set_type: 'Working Set',
@@ -532,8 +605,28 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
                 }]
             };
 
-            await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, createdByUserId, 'Withings'); // Pass 'Withings' as entrySource
+            const newEntry = await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, createdByUserId, 'Withings'); 
             log('info', `Logged Withings workout entry for user ${userId}: ${exercise.name} on ${entryDate}.`);
+
+            // Add activity details (HR Zones, etc.)
+            if (newEntry && newEntry.id) {
+                const activityDetailsRepository = require('../../models/activityDetailsRepository');
+                await activityDetailsRepository.createActivityDetail(userId, {
+                    exercise_entry_id: newEntry.id,
+                    provider_name: 'Withings',
+                    detail_type: 'workout_summary',
+                    detail_data: {
+                        ...workout.data,
+                        hr_zones: {
+                            light: workout.data.hr_zone_0,
+                            moderate: workout.data.hr_zone_1,
+                            intense: workout.data.hr_zone_2,
+                            peak: workout.data.hr_zone_3
+                        }
+                    },
+                    created_by_user_id: createdByUserId
+                });
+            }
 
         } catch (error) {
             log('error', `Error processing Withings workout for user ${userId}, workout category ${workout.category}: ${error.name}: ${error.message}`);
@@ -545,5 +638,6 @@ module.exports = {
     processWithingsMeasures,
     processWithingsHeartData,
     processWithingsSleepData,
-    processWithingsWorkouts, // Export the new function
+    processWithingsActivity,
+    processWithingsWorkouts,
 };

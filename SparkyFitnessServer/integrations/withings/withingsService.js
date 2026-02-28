@@ -632,6 +632,54 @@ async function fetchSleepSummaryData(userId, startDate, endDate) {
   }
 }
 
+// Function to fetch daily activity data (steps, total calories, etc.)
+async function fetchActivityData(userId, startDateYMD, endDateYMD) {
+  const accessToken = await getValidAccessToken(userId);
+  const client = await getClient(userId);
+  try {
+    const providerResult = await client.query(
+      `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
+      [userId],
+    );
+    const withingsUserId = providerResult.rows[0].external_user_id;
+
+    const response = await axios.post(
+      `${WITHINGS_API_BASE_URL}/v2/measure`,
+      null,
+      {
+        params: {
+          action: "getactivity",
+          access_token: accessToken,
+          userid: withingsUserId,
+          startdateymd: startDateYMD,
+          enddateymd: endDateYMD,
+          data_fields: "steps,distance,elevation,soft,moderate,intense,active,calories,totalcalories,hr_average,hr_min,hr_max,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3",
+        },
+      },
+    );
+
+    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    logRawResponse("withings", "raw_activity", response.data);
+
+    if (!response.data || !response.data.body) {
+      log(
+        "warn",
+        `Withings activity API returned no body for user ${userId}. Status: ${response.data?.status || "unknown"}`,
+      );
+      return null;
+    }
+    return response.data.body.activities || [];
+  } catch (error) {
+    log(
+      "error",
+      `Error fetching Withings activity data for user ${userId}: ${error.message}`,
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 // Function to fetch workout data
 async function fetchWorkoutsData(userId, startDateYMD, endDateYMD) {
   const accessToken = await getValidAccessToken(userId);
@@ -653,6 +701,7 @@ async function fetchWorkoutsData(userId, startDateYMD, endDateYMD) {
           userid: withingsUserId,
           startdateymd: startDateYMD,
           enddateymd: endDateYMD,
+          data_fields: "calories,intensity,manual_intensity,manual_distance,manual_calories,hr_average,hr_min,hr_max,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3,pause_duration,spo2_average,steps,distance,elevation",
         },
       },
     );
@@ -828,6 +877,7 @@ module.exports = {
   fetchSleepData,
   fetchSleepSummaryData,
   fetchWorkoutsData,
+  fetchActivityData,
   fetchAndProcessMeasuresData,
   fetchAndProcessHeartData,
   fetchAndProcessSleepData,
