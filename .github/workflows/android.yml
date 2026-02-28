@@ -32,7 +32,7 @@ jobs:
       run: |
         cd SparkyFitnessMobile
         npm install
-        npx expo prebuild --platform android
+        APP_VARIANT=production npx expo prebuild --platform android
         
     - name: Cache Gradle packages
       uses: actions/cache@v4
