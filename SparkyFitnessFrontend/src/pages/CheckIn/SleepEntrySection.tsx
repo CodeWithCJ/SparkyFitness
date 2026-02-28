@@ -126,11 +126,12 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
 
     try {
       const savePromises = sleepSessions.map(async (session) => {
-        const parsedBedtime = parseISO(`${selectedDate}T${session.bedtime}`);
-        let parsedWakeTime = parseISO(`${selectedDate}T${session.wakeTime}`);
+        let parsedBedtime = parseISO(`${selectedDate}T${session.bedtime}`);
+        const parsedWakeTime = parseISO(`${selectedDate}T${session.wakeTime}`);
 
-        if (parsedWakeTime < parsedBedtime) {
-          parsedWakeTime = addDays(parsedWakeTime, 1);
+        if (parsedBedtime > parsedWakeTime) {
+          // If bedtime is later than wake time, the user went to bed the night BEFORE
+          parsedBedtime = addDays(parsedBedtime, -1);
         }
 
         const durationInMinutes = differenceInMinutes(
