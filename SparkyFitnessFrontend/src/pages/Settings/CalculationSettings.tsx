@@ -42,12 +42,11 @@ import {
   VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
-import { useQueryClient } from '@tanstack/react-query';
-import { dailyProgressKeys } from '@/api/keys/diary';
+import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
 
 const CalculationSettings = () => {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
+  const invalidateDiary = useDiaryInvalidation();
   const {
     energyUnit,
     setEnergyUnit,
@@ -187,7 +186,7 @@ const CalculationSettings = () => {
       setExerciseCaloriePercentageContext(exerciseCaloriePercentage);
       setTdeeAllowNegativeAdjustmentContext(tdeeAllowNegativeAdjustment);
       setActivityLevelContext(activityLevel);
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+      invalidateDiary();
       toast({
         title: t('calculationSettings.saveSuccess', 'Success'),
         description: t(
