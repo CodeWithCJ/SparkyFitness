@@ -53,6 +53,9 @@ interface SaveFoodPayload {
   saturated_fat?: number;
   sodium?: number;
   sugars?: number;
+  is_custom?: boolean;
+  is_quick_food?: boolean;
+  is_default?: boolean;
 }
 
 /**
