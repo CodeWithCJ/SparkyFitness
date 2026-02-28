@@ -1,11 +1,8 @@
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from './hooks/useAuth.tsx';
 import './i18n';
 import { Suspense } from 'react';
-import { PreferencesProvider } from './contexts/PreferencesContext.tsx';
 import {
   QueryClient,
   QueryCache,
@@ -109,14 +106,8 @@ const queryClient = new QueryClient({
 });
 createRoot(document.getElementById('root')!).render(
   <Suspense fallback="loading">
-    <BrowserRouter>
-      <AuthProvider>
-        <QueryClientProvider client={queryClient}>
-          <PreferencesProvider>
-            <App />
-          </PreferencesProvider>
-        </QueryClientProvider>
-      </AuthProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
   </Suspense>
 );
