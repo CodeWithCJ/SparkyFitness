@@ -1,4 +1,3 @@
-
 <div align="right">
   <details>
     <summary >🌐 Language</summary>
@@ -33,9 +32,7 @@
 
 A self-hosted, privacy-first alternative to MyFitnessPal. Track nutrition, exercise, body metrics, and health data while keeping full control of your data.
 
-
 ![Screenshot](docs/public/web_screenshot.png)
-
 
 SparkyFitness is a self-hosted fitness tracking platform made up of:
 
@@ -47,7 +44,7 @@ It stores and manages health data on infrastructure you control, without relying
 
 ## Core Features
 
-- Nutrition, exercise, hydration, sleep, fasting, mood and  body measurement tracking
+- Nutrition, exercise, hydration, sleep, fasting, mood and body measurement tracking
 - Goal setting and daily check-ins
 - Interactive charts and long-term reports
 - Multiple user profiles and family access
@@ -83,7 +80,6 @@ SparkyAI provides a conversational interface for logging data and reviewing prog
 - Retains conversation history for follow ups
 
 Note: AI features are currently in beta.
-
 
 ## Quick Start (Server)
 
