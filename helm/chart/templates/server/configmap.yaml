@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sparkyfitness.configmapName" . }}
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+data:
+  NODE_ENV: {{ .Values.config.nodeEnv | quote }}
+  TZ: {{ .Values.config.timezone | quote }}
+  SPARKY_FITNESS_LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  SPARKY_FITNESS_DB_HOST: {{ include "sparkyfitness.databaseHost" . | quote }}
+  SPARKY_FITNESS_DB_PORT: {{ include "sparkyfitness.databasePort" . | quote }}
+  SPARKY_FITNESS_DB_NAME: {{ include "sparkyfitness.databaseName" . | quote }}
+  SPARKY_FITNESS_FRONTEND_URL: {{ include "sparkyfitness.frontendUrl" . | quote }}
+  SPARKY_FITNESS_DISABLE_SIGNUP: {{ .Values.config.disableSignup | quote }}
+  {{- with .Values.config.adminEmail }}
+  SPARKY_FITNESS_ADMIN_EMAIL: {{ . | quote }}
+  {{- end }}
+  ALLOW_PRIVATE_NETWORK_CORS: {{ .Values.config.allowPrivateNetworkCors | quote }}
+  {{- with .Values.config.extraTrustedOrigins }}
+  SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS: {{ . | quote }}
+  {{- end }}
+  SPARKY_FITNESS_FORCE_EMAIL_LOGIN: {{ .Values.config.forceEmailLogin | quote }}
+  SPARKY_FITNESS_DISABLE_EMAIL_LOGIN: {{ .Values.config.disableEmailLogin | quote }}
+  {{- if .Values.config.email.enabled }}
+  SPARKY_FITNESS_EMAIL_HOST: {{ .Values.config.email.host | quote }}
+  SPARKY_FITNESS_EMAIL_PORT: {{ .Values.config.email.port | quote }}
+  SPARKY_FITNESS_EMAIL_SECURE: {{ .Values.config.email.secure | quote }}
+  SPARKY_FITNESS_EMAIL_FROM: {{ .Values.config.email.from | quote }}
+  {{- end }}
+  {{- if .Values.config.oidc.enabled }}
+  SPARKY_FITNESS_OIDC_AUTH_ENABLED: "true"
+  SPARKY_FITNESS_OIDC_PROVIDER_SLUG: {{ .Values.config.oidc.providerSlug | quote }}
+  SPARKY_FITNESS_OIDC_PROVIDER_NAME: {{ .Values.config.oidc.providerName | quote }}
+  SPARKY_FITNESS_OIDC_ISSUER_URL: {{ .Values.config.oidc.issuerUrl | quote }}
+  SPARKY_FITNESS_OIDC_SCOPE: {{ .Values.config.oidc.scope | quote }}
+  {{- with .Values.config.oidc.domain }}
+  SPARKY_FITNESS_OIDC_DOMAIN: {{ . | quote }}
+  {{- end }}
+  SPARKY_FITNESS_OIDC_AUTO_REGISTER: {{ .Values.config.oidc.autoRegister | quote }}
+  SPARKY_FITNESS_OIDC_AUTO_REDIRECT: {{ .Values.config.oidc.autoRedirect | quote }}
+  {{- with .Values.config.oidc.logoUrl }}
+  SPARKY_FITNESS_OIDC_LOGO_URL: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.oidc.adminGroup }}
+  SPARKY_FITNESS_OIDC_ADMIN_GROUP: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.oidc.tokenAuthMethod }}
+  SPARKY_FITNESS_OIDC_TOKEN_AUTH_METHOD: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.oidc.idTokenSignedAlg }}
+  SPARKY_FITNESS_OIDC_ID_TOKEN_SIGNED_ALG: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.oidc.userinfoSignedAlg }}
+  SPARKY_FITNESS_OIDC_USERINFO_SIGNED_ALG: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.oidc.timeout }}
+  SPARKY_FITNESS_OIDC_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.config.garmin.enabled }}
+  GARMIN_MICROSERVICE_URL: "http://{{ include "sparkyfitness.fullname" . }}-garmin:{{ .Values.garmin.port }}"
+  GARMIN_SERVICE_IS_CN: {{ .Values.config.garmin.isChinaRegion | quote }}
+  {{- end }}
+  {{- with .Values.config.rateLimiting.windowMs }}
+  SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.rateLimiting.maxRequests }}
+  SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.developer.fitbitDataSource }}
+  SPARKY_FITNESS_FITBIT_DATA_SOURCE: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.developer.withingsDataSource }}
+  SPARKY_FITNESS_WITHINGS_DATA_SOURCE: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.developer.garminDataSource }}
+  SPARKY_FITNESS_GARMIN_DATA_SOURCE: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.developer.polarDataSource }}
+  SPARKY_FITNESS_POLAR_DATA_SOURCE: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.config.developer.hevyDataSource }}
+  SPARKY_FITNESS_HEVY_DATA_SOURCE: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.config.developer.saveMockData }}
+  SPARKY_FITNESS_SAVE_MOCK_DATA: "true"
+  {{- end }}

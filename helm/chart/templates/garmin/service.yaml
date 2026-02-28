@@ -1,0 +1,19 @@
+{{- if .Values.config.garmin.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-garmin
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: garmin
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.garmin.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "sparkyfitness.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: garmin
+{{- end }}

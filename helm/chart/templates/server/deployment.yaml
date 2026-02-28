@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-server
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: {{ .Values.server.replicas }}
+  selector:
+    matchLabels:
+      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/server/configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "sparkyfitness.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+    spec:
+      {{- if and .Values.global.serviceAccount.create .Values.server.serviceAccount.create }}
+      serviceAccountName: {{ include "sparkyfitness.fullname" . }}-server
+      {{- end }}
+      {{- include "sparkyfitness.imagePullSecrets" . | nindent 6 }}
+      {{- with .Values.server.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: server
+          image: {{ include "sparkyfitness.image" (dict "image" .Values.server.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.server.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "sparkyfitness.configmapName" . }}
+          env:
+            # --- App secrets ---
+            - name: SPARKY_FITNESS_API_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.appSecretName" . }}
+                  key: api_encryption_key
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.appSecretName" . }}
+                  key: better_auth_secret
+            # --- App database credentials (limited-privilege user) ---
+            - name: SPARKY_FITNESS_APP_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.appDbSecretName" . }}
+                  key: username
+            - name: SPARKY_FITNESS_APP_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.appDbSecretName" . }}
+                  key: password
+            # --- Database credentials (owner) ---
+            - name: SPARKY_FITNESS_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.databaseSecretName" . }}
+                  key: username
+            - name: SPARKY_FITNESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.databaseSecretName" . }}
+                  key: password
+            {{- if .Values.config.oidc.enabled }}
+            # --- OIDC credentials ---
+            - name: SPARKY_FITNESS_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.oidcSecretName" . }}
+                  key: client_id
+            - name: SPARKY_FITNESS_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.oidcSecretName" . }}
+                  key: client_secret
+            {{- end }}
+            {{- if .Values.config.email.enabled }}
+            # --- SMTP credentials ---
+            - name: SPARKY_FITNESS_EMAIL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.smtpSecretName" . }}
+                  key: username
+            - name: SPARKY_FITNESS_EMAIL_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sparkyfitness.smtpSecretName" . }}
+                  key: password
+            {{- end }}
+            {{- range $k, $v := .Values.server.extraEnv }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
+          {{- with .Values.server.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.server.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: backup
+              mountPath: /app/SparkyFitnessServer/backup
+            - name: uploads
+              mountPath: /app/SparkyFitnessServer/uploads
+            - name: temp-uploads
+              mountPath: /app/SparkyFitnessServer/temp_uploads
+      volumes:
+        - name: backup
+          persistentVolumeClaim:
+            claimName: {{ include "sparkyfitness.fullname" . }}-server-backup
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ include "sparkyfitness.fullname" . }}-server-uploads
+        - name: temp-uploads
+          emptyDir: {}

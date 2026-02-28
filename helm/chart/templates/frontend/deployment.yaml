@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-frontend
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "sparkyfitness.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      {{- if and .Values.global.serviceAccount.create .Values.frontend.serviceAccount.create }}
+      serviceAccountName: {{ include "sparkyfitness.fullname" . }}-frontend
+      {{- end }}
+      {{- include "sparkyfitness.imagePullSecrets" . | nindent 6 }}
+      {{- with .Values.frontend.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: frontend
+          image: {{ include "sparkyfitness.image" (dict "image" .Values.frontend.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.frontend.port }}
+              protocol: TCP
+          env:
+            - name: SPARKY_FITNESS_FRONTEND_URL
+              value: {{ include "sparkyfitness.frontendUrl" . | quote }}
+            - name: SPARKY_FITNESS_SERVER_HOST
+              value: {{ include "sparkyfitness.fullname" . }}-server
+            - name: SPARKY_FITNESS_SERVER_PORT
+              value: {{ .Values.server.port | quote }}
+          {{- with .Values.frontend.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.frontend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
