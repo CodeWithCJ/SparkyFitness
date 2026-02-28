@@ -1,4 +1,3 @@
-
 <div align="right">
   <details>
     <summary >🌐 Language</summary>
@@ -33,9 +32,7 @@
 
 A self-hosted, privacy-first alternative to MyFitnessPal. Track nutrition, exercise, body metrics, and health data while keeping full control of your data.
 
-
 ![Screenshot](docs/public/web_screenshot.png)
-
 
 SparkyFitness is a self-hosted fitness tracking platform made up of:
 
@@ -47,7 +44,7 @@ It stores and manages health data on infrastructure you control, without relying
 
 ## Core Features
 
-- Nutrition, exercise, hydration, sleep, fasting, mood and  body measurement tracking
+- Nutrition, exercise, hydration, sleep, fasting, mood and body measurement tracking
 - Goal setting and daily check-ins
 - Interactive charts and long-term reports
 - Multiple user profiles and family access
@@ -84,7 +81,6 @@ SparkyAI provides a conversational interface for logging data and reviewing prog
 
 Note: AI features are currently in beta.
 
-
 ## Quick Start (Server)
 
 Get a SparkyFitness server running in minutes using Docker Compose.
@@ -104,26 +100,6 @@ docker compose pull && docker compose up -d
 
 # Access application at http://localhost:8080
 ```
-
-## Quick Start (Kubernetes)
-
-Deploy SparkyFitness on Kubernetes using the Helm chart directly from the repository.
-
-```bash
-# 1. Install with default settings (bundled PostgreSQL, no ingress)
-helm install sparkyfitness oci://ghcr.io/codewithcj/charts/sparkyfitness
-
-# -- OR install directly from source --
-git clone https://github.com/CodeWithCJ/SparkyFitness.git
-helm install sparkyfitness ./SparkyFitness/helm/chart
-
-# 2. (Optional) Customize values
-helm install sparkyfitness ./SparkyFitness/helm/chart -f my-values.yaml
-
-# 3. Access the application in browser via Ingress or HTTPRoute you've specified in values
-```
-
-For all configuration options (external database, ingress, OIDC, email, etc.) see the [Helm chart README](helm/README.md).
 
 ## Documentation
 
