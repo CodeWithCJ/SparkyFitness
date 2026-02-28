@@ -11,6 +11,15 @@ import {
 
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug } from '@/utils/logging';
+import {
+  resolveActiveOrStepsCalories,
+  computeSparkyfitnessBurned,
+  computeProjectedBurn,
+  computeTdeeAdjustment,
+  computeCaloriesRemaining,
+  computeExerciseCredited,
+  computeCalorieProgress,
+} from '@/utils/calorieCalculations';
 
 import {
   useDailyGoals,
@@ -35,13 +44,6 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     convertEnergy,
   } = usePreferences();
 
-  const ACTIVITY_MULTIPLIERS: Record<string, number> = {
-    not_much: 1.2,
-    light: 1.375,
-    moderate: 1.55,
-    heavy: 1.725,
-  };
-
   const { data: goals, isLoading: loadingGoals } = useDailyGoals(selectedDate);
   const { data: foodData, isLoading: loadingFood } =
     useDailyFoodIntake(selectedDate);
@@ -65,12 +67,10 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const stepsCalories = stepsData?.calories || 0;
   const dailySteps = stepsData?.steps || 0;
 
-  let activeOrStepsCaloriesToAdd = 0;
-  if (activeCaloriesFromExercise > 0) {
-    activeOrStepsCaloriesToAdd = activeCaloriesFromExercise;
-  } else {
-    activeOrStepsCaloriesToAdd = stepsCalories;
-  }
+  const activeOrStepsCaloriesToAdd = resolveActiveOrStepsCalories(
+    activeCaloriesFromExercise,
+    stepsCalories
+  );
 
   const bmrCalories = includeInNet && bmr ? bmr : 0;
 
@@ -80,58 +80,36 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   const netCalories = eatenCalories - totalCaloriesBurned;
 
-  // For TDEE mode:
-  // "SparkyFitness Burned" = TDEE (BMR × activity multiplier) — same every day, profile-based
-  // (mirrors MFP's own burned number which is BMR scaled by activity level using METs).
-  const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.2;
-  const sparkyfitnessBurned = Math.round((bmr || 0) * activityMultiplier);
+  const sparkyfitnessBurned = computeSparkyfitnessBurned(
+    bmr || 0,
+    activityLevel
+  );
+  const projectedBurn = computeProjectedBurn(bmr || 0, exerciseCaloriesBurned);
+  const tdeeAdjustment = computeTdeeAdjustment(
+    projectedBurn,
+    sparkyfitnessBurned,
+    tdeeAllowNegativeAdjustment
+  );
 
-  // Project current device burn rate to end of day (mirrors MFP + Apple Watch behaviour).
-  // We extrapolate based on how much of the day has elapsed.
-  // Below 5% of the day (~72 min) we don't inflate the projection — just use current data.
-  const now = new Date();
-  const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
-  const dayFraction = minutesSinceMidnight / (24 * 60);
-  const MIN_PROJECTION_FRACTION = 0.05;
-  const projectedDeviceCalories =
-    dayFraction >= MIN_PROJECTION_FRACTION && exerciseCaloriesBurned > 0
-      ? Math.round(exerciseCaloriesBurned / dayFraction)
-      : exerciseCaloriesBurned;
-  const projectedBurn = (bmr || 0) + projectedDeviceCalories;
+  const caloriesRemaining = computeCaloriesRemaining({
+    mode: calorieGoalAdjustmentMode,
+    goalCalories,
+    eatenCalories,
+    netCalories,
+    exerciseCaloriesBurned,
+    bmrCalories,
+    exerciseCaloriePercentage,
+    tdeeAdjustment,
+  });
 
-  // Adjustment = projected full-day burn minus the SparkyFitness baseline (TDEE).
-  // Positive = device projects more activity than expected; negative = less active day.
-  const rawTdeeAdjustment = projectedBurn - sparkyfitnessBurned;
-  const tdeeAdjustment = tdeeAllowNegativeAdjustment
-    ? rawTdeeAdjustment
-    : Math.max(0, rawTdeeAdjustment);
-
-  let caloriesRemaining = 0;
-  if (calorieGoalAdjustmentMode === 'tdee') {
-    // MFP-style: TDEE is fixed expected burn, adjustment = actual - TDEE
-    caloriesRemaining = goalCalories - eatenCalories + tdeeAdjustment;
-  } else if (calorieGoalAdjustmentMode === 'dynamic') {
-    // 100% of all burned calories credited
-    caloriesRemaining = goalCalories - netCalories;
-  } else if (calorieGoalAdjustmentMode === 'percentage') {
-    // Only earn back a percentage of exercise calories; BMR unchanged
-    const adjustedExerciseBurned =
-      exerciseCaloriesBurned * (exerciseCaloriePercentage / 100);
-    const adjustedTotalBurned = adjustedExerciseBurned + bmrCalories;
-    caloriesRemaining = goalCalories - (eatenCalories - adjustedTotalBurned);
-  } else {
-    // fixed: no exercise calories credited
-    caloriesRemaining = goalCalories - eatenCalories;
-  }
-
-  // effectiveConsumed represents how much of the goal is "used up"
-  const effectiveConsumed = goalCalories - caloriesRemaining;
-  const calorieProgress = Math.max(0, (effectiveConsumed / goalCalories) * 100);
-
-  // Calories credited back from exercise (MFP-style: how much exercise adds to your budget)
-  const exerciseCredited = Math.max(
-    0,
-    caloriesRemaining - (goalCalories - eatenCalories)
+  const calorieProgress = computeCalorieProgress(
+    goalCalories,
+    caloriesRemaining
+  );
+  const exerciseCredited = computeExerciseCredited(
+    caloriesRemaining,
+    goalCalories,
+    eatenCalories
   );
 
   // --- Display Conversion (to kJ or kcal) ---
