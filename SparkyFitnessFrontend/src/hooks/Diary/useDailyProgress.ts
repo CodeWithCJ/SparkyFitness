@@ -8,9 +8,9 @@ import {
   calculateFoodEntryNutrition,
   convertStepsToCalories,
 } from '@/utils/nutritionCalculations';
+import { getExerciseEntriesForDate } from '@/api/Exercises/exerciseEntryService';
 import {
   getCheckInMeasurementsForDate,
-  getExerciseEntriesForDate,
   getFoodEntriesForDate,
   getGoalsForDate,
 } from '@/api/Diary/dailyProgressService';

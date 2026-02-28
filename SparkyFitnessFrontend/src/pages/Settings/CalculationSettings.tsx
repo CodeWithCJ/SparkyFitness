@@ -42,10 +42,11 @@ import {
   VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
-import { useDailyProgressInvalidation } from '@/hooks/useInvalidateKeys';
+import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
 
 const CalculationSettings = () => {
   const { t } = useTranslation();
+  const invalidateDiary = useDiaryInvalidation();
   const {
     energyUnit,
     setEnergyUnit,
@@ -186,8 +187,7 @@ const CalculationSettings = () => {
       setExerciseCaloriePercentageContext(exerciseCaloriePercentage);
       setTdeeAllowNegativeAdjustmentContext(tdeeAllowNegativeAdjustment);
       setActivityLevelContext(activityLevel);
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-      invalidateDailyProgress();
+      invalidateDiary();
       toast({
         title: t('calculationSettings.saveSuccess', 'Success'),
         description: t(
