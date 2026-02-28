@@ -268,6 +268,49 @@ async function createFood(foodData) {
   }
 }
 
+async function findFoodByBarcode(barcode, userId) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT
+        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
+        json_build_object(
+          'id', fv.id,
+          'serving_size', fv.serving_size,
+          'serving_unit', fv.serving_unit,
+          'calories', fv.calories,
+          'protein', fv.protein,
+          'carbs', fv.carbs,
+          'fat', fv.fat,
+          'saturated_fat', fv.saturated_fat,
+          'polyunsaturated_fat', fv.polyunsaturated_fat,
+          'monounsaturated_fat', fv.monounsaturated_fat,
+          'trans_fat', fv.trans_fat,
+          'cholesterol', fv.cholesterol,
+          'sodium', fv.sodium,
+          'potassium', fv.potassium,
+          'dietary_fiber', fv.dietary_fiber,
+          'sugars', fv.sugars,
+          'vitamin_a', fv.vitamin_a,
+          'vitamin_c', fv.vitamin_c,
+          'calcium', fv.calcium,
+          'iron', fv.iron,
+          'is_default', fv.is_default,
+          'glycemic_index', fv.glycemic_index,
+          'custom_nutrients', fv.custom_nutrients
+        ) AS default_variant
+      FROM foods f
+      LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
+      WHERE f.barcode = $1 AND f.user_id = $2
+      LIMIT 1`,
+      [barcode, userId],
+    );
+    return result.rows[0] || null;
+  } finally {
+    client.release();
+  }
+}
+
 async function getFoodById(foodId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -484,50 +527,6 @@ async function countFoods(searchTerm, foodFilter, authenticatedUserId) {
     `;
     const countResult = await client.query(countQuery, countQueryParams);
     return parseInt(countResult.rows[0].count, 10);
-  } finally {
-    client.release();
-  }
-}
-
-async function findFoodByNameAndBrand(name, brand, userId) {
-  const client = await getClient(userId); // User-specific operation
-  try {
-    const result = await client.query(
-      `SELECT
-        f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
-        fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-        json_build_object(
-          'id', fv.id,
-          'serving_size', fv.serving_size,
-          'serving_unit', fv.serving_unit,
-          'calories', fv.calories,
-          'protein', fv.protein,
-          'carbs', fv.carbs,
-          'fat', fv.fat,
-          'saturated_fat', fv.saturated_fat,
-          'polyunsaturated_fat', fv.polyunsaturated_fat,
-          'monounsaturated_fat', fv.monounsaturated_fat,
-          'trans_fat', fv.trans_fat,
-          'cholesterol', fv.cholesterol,
-          'sodium', fv.sodium,
-          'potassium', fv.potassium,
-          'dietary_fiber', fv.dietary_fiber,
-          'sugars', fv.sugars,
-          'vitamin_a', fv.vitamin_a,
-          'vitamin_c', fv.vitamin_c,
-          'calcium', fv.calcium,
-          'iron', fv.iron,
-          'is_default', fv.is_default,
-          'glycemic_index', fv.glycemic_index,
-          'custom_nutrients', fv.custom_nutrients
-        ) AS default_variant
-       FROM foods f
-       LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
-       WHERE f.name ILIKE $1 AND (f.brand IS NULL OR f.brand ILIKE $2)
-         AND (f.is_custom = FALSE)`,
-      [name, brand || null],
-    );
-    return result.rows[0];
   } finally {
     client.release();
   }
@@ -1037,13 +1036,13 @@ module.exports = {
   sanitizeBoolean,
   searchFoods,
   createFood,
+  findFoodByBarcode,
   getFoodById,
   getFoodOwnerId,
   updateFood,
   deleteFood,
   getFoodsWithPagination,
   countFoods,
-  findFoodByNameAndBrand,
   getFoodDeletionImpact,
   createFoodsInBulk,
   getFoodsNeedingReview,

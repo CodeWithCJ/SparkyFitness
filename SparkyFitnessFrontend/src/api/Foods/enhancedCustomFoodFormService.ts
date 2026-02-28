@@ -25,6 +25,7 @@ export const saveFood = async (
       method: 'PUT',
       body: {
         ...foodData,
+        barcode: foodData.barcode,
         provider_external_id: foodData.provider_external_id,
         provider_type: foodData.provider_type,
       },
@@ -120,6 +121,7 @@ export const saveFood = async (
       user_id: userId,
       is_custom: true,
       is_quick_food: foodData.is_quick_food || false,
+      barcode: foodData.barcode,
       provider_external_id: foodData.provider_external_id,
       provider_type: foodData.provider_type,
       // Pass primary variant details to createFood, which will create the default variant

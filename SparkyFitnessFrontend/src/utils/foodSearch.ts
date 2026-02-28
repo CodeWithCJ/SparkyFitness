@@ -68,6 +68,7 @@ export const convertOpenFoodFactsToFood = (
     name: product.product_name,
     brand: product.brands?.split(',')[0]?.trim() || '',
     is_custom: false,
+    barcode: product.code,
     provider_external_id: product.code,
     provider_type: 'openfoodfacts',
     default_variant: defaultVariant,
