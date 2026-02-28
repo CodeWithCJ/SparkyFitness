@@ -27,8 +27,11 @@ async function updateUserPreferences(userId, preferenceData) {
         vitamin_calculation_algorithm = COALESCE($20, vitamin_calculation_algorithm),
         sugar_calculation_algorithm = COALESCE($21, sugar_calculation_algorithm),
         auto_scale_open_food_facts_imports = COALESCE($22, auto_scale_open_food_facts_imports),
+        exercise_calorie_percentage = COALESCE($23, exercise_calorie_percentage),
+        activity_level = COALESCE($24, activity_level),
+        tdee_allow_negative_adjustment = COALESCE($25, tdee_allow_negative_adjustment),
         updated_at = now()
-      WHERE user_id = $23
+      WHERE user_id = $26
       RETURNING *`,
       [
         preferenceData.date_format, preferenceData.default_weight_unit, preferenceData.default_measurement_unit, preferenceData.default_distance_unit,
@@ -38,6 +41,9 @@ async function updateUserPreferences(userId, preferenceData) {
         preferenceData.calorie_goal_adjustment_mode, preferenceData.energy_unit,
         preferenceData.fat_breakdown_algorithm, preferenceData.mineral_calculation_algorithm, preferenceData.vitamin_calculation_algorithm, preferenceData.sugar_calculation_algorithm,
         preferenceData.auto_scale_open_food_facts_imports,
+        preferenceData.exercise_calorie_percentage,
+        preferenceData.activity_level,
+        preferenceData.tdee_allow_negative_adjustment,
         userId
       ]
     );
@@ -84,7 +90,8 @@ async function upsertUserPreferences(preferenceData) {
        bmr_algorithm, body_fat_algorithm, include_bmr_in_net_calories,
        language, calorie_goal_adjustment_mode, energy_unit,
        fat_breakdown_algorithm, mineral_calculation_algorithm, vitamin_calculation_algorithm, sugar_calculation_algorithm,
-       auto_scale_open_food_facts_imports,
+       auto_scale_open_food_facts_imports, exercise_calorie_percentage, activity_level,
+       tdee_allow_negative_adjustment,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -93,7 +100,8 @@ async function upsertUserPreferences(preferenceData) {
        COALESCE($13, 'Mifflin-St Jeor'), COALESCE($14, 'U.S. Navy'), COALESCE($15, false),
        COALESCE($16, 'en'), COALESCE($17, 'dynamic'), COALESCE($18, 'kcal'),
        COALESCE($19, 'AHA Guidelines'), COALESCE($20, 'RDA Standard'), COALESCE($21, 'RDA Standard'), COALESCE($22, 'WHO Guidelines'),
-       COALESCE($23, false),
+       COALESCE($23, false), COALESCE($24, 100), COALESCE($25, 'not_much'),
+       COALESCE($26, false),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -119,6 +127,9 @@ async function upsertUserPreferences(preferenceData) {
        vitamin_calculation_algorithm = COALESCE(EXCLUDED.vitamin_calculation_algorithm, user_preferences.vitamin_calculation_algorithm),
        sugar_calculation_algorithm = COALESCE(EXCLUDED.sugar_calculation_algorithm, user_preferences.sugar_calculation_algorithm),
        auto_scale_open_food_facts_imports = COALESCE(EXCLUDED.auto_scale_open_food_facts_imports, user_preferences.auto_scale_open_food_facts_imports),
+       exercise_calorie_percentage = COALESCE(EXCLUDED.exercise_calorie_percentage, user_preferences.exercise_calorie_percentage),
+       activity_level = COALESCE(EXCLUDED.activity_level, user_preferences.activity_level),
+       tdee_allow_negative_adjustment = COALESCE(EXCLUDED.tdee_allow_negative_adjustment, user_preferences.tdee_allow_negative_adjustment),
        updated_at = now()
      RETURNING *`,
      [
@@ -128,7 +139,8 @@ async function upsertUserPreferences(preferenceData) {
        preferenceData.bmr_algorithm, preferenceData.body_fat_algorithm, preferenceData.include_bmr_in_net_calories, preferenceData.language,
        preferenceData.calorie_goal_adjustment_mode, preferenceData.energy_unit,
        preferenceData.fat_breakdown_algorithm, preferenceData.mineral_calculation_algorithm, preferenceData.vitamin_calculation_algorithm, preferenceData.sugar_calculation_algorithm,
-       preferenceData.auto_scale_open_food_facts_imports
+       preferenceData.auto_scale_open_food_facts_imports, preferenceData.exercise_calorie_percentage,
+       preferenceData.activity_level, preferenceData.tdee_allow_negative_adjustment
      ]
     );
     return result.rows[0];

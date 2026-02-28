@@ -33,6 +33,7 @@ import {
 // Function to upsert user preferences to the backend
 
 export type EnergyUnit = 'kcal' | 'kJ';
+export type ActivityLevel = 'not_much' | 'light' | 'moderate' | 'heavy';
 
 // Conversion constant
 const KCAL_TO_KJ = 4.184;
@@ -54,7 +55,7 @@ interface PreferencesContextType {
   timezone: string;
   foodDisplayLimit: number;
   itemDisplayLimit: number;
-  calorieGoalAdjustmentMode: 'dynamic' | 'fixed';
+  calorieGoalAdjustmentMode: 'dynamic' | 'fixed' | 'percentage' | 'tdee';
   energyUnit: EnergyUnit;
   autoScaleOpenFoodFactsImports: boolean;
   nutrientDisplayPreferences: NutrientPreference[];
@@ -67,6 +68,9 @@ interface PreferencesContextType {
   mineralCalculationAlgorithm: MineralCalculationAlgorithm;
   vitaminCalculationAlgorithm: VitaminCalculationAlgorithm;
   sugarCalculationAlgorithm: SugarCalculationAlgorithm;
+  exerciseCaloriePercentage: number;
+  activityLevel: ActivityLevel;
+  tdeeAllowNegativeAdjustment: boolean;
   selectedDiet: string;
   setWeightUnit: (unit: 'kg' | 'lbs') => void;
   setMeasurementUnit: (unit: 'cm' | 'inches') => void;
@@ -79,7 +83,12 @@ interface PreferencesContextType {
   setDefaultFoodDataProviderId: (id: string | null) => void;
   setTimezone: (timezone: string) => void;
   setItemDisplayLimit: (limit: number) => void;
-  setCalorieGoalAdjustmentMode: (mode: 'dynamic' | 'fixed') => void;
+  setCalorieGoalAdjustmentMode: (
+    mode: 'dynamic' | 'fixed' | 'percentage' | 'tdee'
+  ) => void;
+  setExerciseCaloriePercentage: (percentage: number) => void;
+  setActivityLevel: (level: ActivityLevel) => void;
+  setTdeeAllowNegativeAdjustment: (allow: boolean) => void;
   setEnergyUnit: (unit: EnergyUnit) => void;
   setAutoScaleOpenFoodFactsImports: (enabled: boolean) => void;
   loadNutrientDisplayPreferences: () => Promise<void>;
@@ -170,7 +179,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [itemDisplayLimit, setItemDisplayLimitState] = useState<number>(10);
   const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10);
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentModeState] =
-    useState<'dynamic' | 'fixed'>('dynamic');
+    useState<'dynamic' | 'fixed' | 'percentage' | 'tdee'>('dynamic');
+  const [exerciseCaloriePercentage, setExerciseCaloriePercentageState] =
+    useState<number>(100);
+  const [activityLevel, setActivityLevelState] =
+    useState<ActivityLevel>('not_much');
+  const [tdeeAllowNegativeAdjustment, setTdeeAllowNegativeAdjustmentState] =
+    useState<boolean>(false);
   const [energyUnit, setEnergyUnitState] = useState<EnergyUnit>('kcal');
   const [autoScaleOpenFoodFactsImports, setAutoScaleOpenFoodFactsImportsState] =
     useState<boolean>(false);
@@ -351,7 +366,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         food_display_limit: number;
         water_display_unit: 'ml' | 'oz' | 'liter';
         language: string;
-        calorie_goal_adjustment_mode: 'dynamic' | 'fixed';
+        calorie_goal_adjustment_mode:
+          | 'dynamic'
+          | 'fixed'
+          | 'percentage'
+          | 'tdee';
+        exercise_calorie_percentage: number;
+        activity_level: ActivityLevel;
+        tdee_allow_negative_adjustment: boolean;
         energy_unit: EnergyUnit;
         auto_scale_open_food_facts_imports: boolean;
         bmr_algorithm: BmrAlgorithm;
@@ -445,6 +467,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         language: newPrefs?.language ?? language,
         calorie_goal_adjustment_mode:
           newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode,
+        exercise_calorie_percentage:
+          newPrefs?.exerciseCaloriePercentage ?? exerciseCaloriePercentage,
+        activity_level: newPrefs?.activityLevel ?? activityLevel,
+        tdee_allow_negative_adjustment:
+          newPrefs?.tdeeAllowNegativeAdjustment ?? tdeeAllowNegativeAdjustment,
         energy_unit: newPrefs?.energyUnit ?? energyUnit,
         auto_scale_open_food_facts_imports:
           newPrefs?.autoScaleOpenFoodFactsImports ??
@@ -493,6 +520,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       waterDisplayUnit,
       language,
       calorieGoalAdjustmentMode,
+      exerciseCaloriePercentage,
+      activityLevel,
+      tdeeAllowNegativeAdjustment,
       energyUnit,
       autoScaleOpenFoodFactsImports,
       bmrAlgorithm,
@@ -591,6 +621,15 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setCalorieGoalAdjustmentModeState(
           data.calorie_goal_adjustment_mode || 'dynamic'
         );
+        setExerciseCaloriePercentageState(
+          data.exercise_calorie_percentage ?? 100
+        );
+        setActivityLevelState(
+          (data.activity_level as ActivityLevel) || 'not_much'
+        );
+        setTdeeAllowNegativeAdjustmentState(
+          data.tdee_allow_negative_adjustment ?? false
+        );
         setEnergyUnitState(data.energy_unit || 'kcal');
         setAutoScaleOpenFoodFactsImportsState(
           data.auto_scale_open_food_facts_imports ?? false
@@ -680,9 +719,29 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const setCalorieGoalAdjustmentMode = useCallback(
-    (mode: 'dynamic' | 'fixed') => {
+    (mode: 'dynamic' | 'fixed' | 'percentage' | 'tdee') => {
       setCalorieGoalAdjustmentModeState(mode);
       saveAllPreferences({ calorieGoalAdjustmentMode: mode });
+    },
+    [saveAllPreferences]
+  );
+
+  const setExerciseCaloriePercentage = useCallback((percentage: number) => {
+    setExerciseCaloriePercentageState(percentage);
+  }, []);
+
+  const setActivityLevel = useCallback(
+    (level: ActivityLevel) => {
+      setActivityLevelState(level);
+      saveAllPreferences({ activityLevel: level });
+    },
+    [saveAllPreferences]
+  );
+
+  const setTdeeAllowNegativeAdjustment = useCallback(
+    (allow: boolean) => {
+      setTdeeAllowNegativeAdjustmentState(allow);
+      saveAllPreferences({ tdeeAllowNegativeAdjustment: allow });
     },
     [saveAllPreferences]
   );
@@ -783,6 +842,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       itemDisplayLimit,
       foodDisplayLimit,
       calorieGoalAdjustmentMode,
+      exerciseCaloriePercentage,
+      activityLevel,
+      tdeeAllowNegativeAdjustment,
       energyUnit,
       autoScaleOpenFoodFactsImports,
       nutrientDisplayPreferences,
@@ -806,6 +868,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setTimezone,
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,
+      setExerciseCaloriePercentage,
+      setActivityLevel,
+      setTdeeAllowNegativeAdjustment,
       setEnergyUnit,
       setAutoScaleOpenFoodFactsImports,
       loadNutrientDisplayPreferences,
@@ -842,6 +907,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       itemDisplayLimit,
       foodDisplayLimit,
       calorieGoalAdjustmentMode,
+      exerciseCaloriePercentage,
+      activityLevel,
+      tdeeAllowNegativeAdjustment,
       energyUnit,
       autoScaleOpenFoodFactsImports,
       nutrientDisplayPreferences,
@@ -865,6 +933,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setTimezone,
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,
+      setExerciseCaloriePercentage,
+      setActivityLevel,
+      setTdeeAllowNegativeAdjustment,
       setEnergyUnit,
       setAutoScaleOpenFoodFactsImports,
       loadNutrientDisplayPreferences,

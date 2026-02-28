@@ -18,7 +18,15 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Save, Flame, UtensilsCrossed, Target, Sparkles } from 'lucide-react';
+import {
+  Save,
+  Flame,
+  UtensilsCrossed,
+  Target,
+  Sparkles,
+  Percent,
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { error as logError } from '@/utils/logging';
@@ -34,10 +42,11 @@ import {
   VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
-import { useDailyProgressInvalidation } from '@/hooks/useInvalidateKeys';
+import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
 
 const CalculationSettings = () => {
   const { t } = useTranslation();
+  const invalidateDiary = useDiaryInvalidation();
   const {
     energyUnit,
     setEnergyUnit,
@@ -51,14 +60,27 @@ const CalculationSettings = () => {
     saveAllPreferences,
     calorieGoalAdjustmentMode: contextCalorieGoalAdjustmentMode,
     setCalorieGoalAdjustmentMode: setCalorieGoalAdjustmentModeContext,
+    exerciseCaloriePercentage: contextExerciseCaloriePercentage,
+    setExerciseCaloriePercentage: setExerciseCaloriePercentageContext,
+    tdeeAllowNegativeAdjustment: contextTdeeAllowNegativeAdjustment,
+    setTdeeAllowNegativeAdjustment: setTdeeAllowNegativeAdjustmentContext,
+    activityLevel: contextActivityLevel,
+    setActivityLevel: setActivityLevelContext,
 
     loggingLevel,
   } = usePreferences();
 
   const invalidateDailyProgress = useDailyProgressInvalidation();
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] = useState<
-    'dynamic' | 'fixed'
+    'dynamic' | 'fixed' | 'percentage' | 'tdee'
   >(contextCalorieGoalAdjustmentMode || 'dynamic');
+  const [exerciseCaloriePercentage, setExerciseCaloriePercentage] =
+    useState<number>(contextExerciseCaloriePercentage ?? 100);
+  const [tdeeAllowNegativeAdjustment, setTdeeAllowNegativeAdjustment] =
+    useState<boolean>(contextTdeeAllowNegativeAdjustment ?? false);
+  const [activityLevel, setActivityLevel] = useState<
+    'not_much' | 'light' | 'moderate' | 'heavy'
+  >(contextActivityLevel || 'not_much');
 
   const [bmrAlgorithm, setBmrAlgorithm] = useState<BmrAlgorithm>(
     contextBmrAlgorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
@@ -117,6 +139,15 @@ const CalculationSettings = () => {
     if (contextCalorieGoalAdjustmentMode) {
       setCalorieGoalAdjustmentMode(contextCalorieGoalAdjustmentMode);
     }
+    if (contextExerciseCaloriePercentage !== undefined) {
+      setExerciseCaloriePercentage(contextExerciseCaloriePercentage);
+    }
+    if (contextTdeeAllowNegativeAdjustment !== undefined) {
+      setTdeeAllowNegativeAdjustment(contextTdeeAllowNegativeAdjustment);
+    }
+    if (contextActivityLevel) {
+      setActivityLevel(contextActivityLevel);
+    }
     // Since preferences are loaded by the PreferencesProvider at a higher level,
     // we can assume they are available by the time this component renders.
     // Set isLoading to false after initial render with context values.
@@ -130,6 +161,9 @@ const CalculationSettings = () => {
     contextVitaminCalculationAlgorithm,
     contextSugarCalculationAlgorithm,
     contextCalorieGoalAdjustmentMode,
+    contextExerciseCaloriePercentage,
+    contextTdeeAllowNegativeAdjustment,
+    contextActivityLevel,
   ]);
 
   const handleSave = async () => {
@@ -145,9 +179,15 @@ const CalculationSettings = () => {
         vitaminCalculationAlgorithm: vitaminCalculationAlgorithm,
         sugarCalculationAlgorithm: sugarCalculationAlgorithm,
         calorieGoalAdjustmentMode: calorieGoalAdjustmentMode,
+        exerciseCaloriePercentage: exerciseCaloriePercentage,
+        tdeeAllowNegativeAdjustment: tdeeAllowNegativeAdjustment,
+        activityLevel: activityLevel,
       });
       setCalorieGoalAdjustmentModeContext(calorieGoalAdjustmentMode);
-      invalidateDailyProgress();
+      setExerciseCaloriePercentageContext(exerciseCaloriePercentage);
+      setTdeeAllowNegativeAdjustmentContext(tdeeAllowNegativeAdjustment);
+      setActivityLevelContext(activityLevel);
+      invalidateDiary();
       toast({
         title: t('calculationSettings.saveSuccess', 'Success'),
         description: t(
@@ -347,10 +387,10 @@ const CalculationSettings = () => {
           </Label>
           <RadioGroup
             value={calorieGoalAdjustmentMode}
-            onValueChange={(value: 'dynamic' | 'fixed') =>
-              setCalorieGoalAdjustmentMode(value)
-            }
-            className="flex flex-col space-y-1 mb-4"
+            onValueChange={(
+              value: 'dynamic' | 'fixed' | 'percentage' | 'tdee'
+            ) => setCalorieGoalAdjustmentMode(value)}
+            className="flex flex-col space-y-2 mb-4"
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="dynamic" id="dynamic-goal" />
@@ -380,6 +420,137 @@ const CalculationSettings = () => {
                 )}
               </Label>
             </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="percentage" id="percentage-goal" />
+              <Label htmlFor="percentage-goal" className="cursor-pointer">
+                <span className="font-medium">
+                  {t(
+                    'settings.calorieGoalAdjustment.percentageGoal',
+                    'Percentage Earn-Back'
+                  )}
+                  :
+                </span>{' '}
+                {t(
+                  'settings.calorieGoalAdjustment.percentageGoalDescription',
+                  'Only earn back a set percentage of your exercise calories. For example, 50% creates a safety buffer to avoid overeating from over-estimated burns.'
+                )}
+              </Label>
+            </div>
+            {calorieGoalAdjustmentMode === 'percentage' && (
+              <div className="ml-6 flex items-center gap-3">
+                <Percent className="w-4 h-4 text-muted-foreground" />
+                <Label
+                  htmlFor="exercise-calorie-percentage"
+                  className="text-sm whitespace-nowrap"
+                >
+                  {t(
+                    'settings.calorieGoalAdjustment.percentageLabel',
+                    'Earn-back percentage:'
+                  )}
+                </Label>
+                <Input
+                  id="exercise-calorie-percentage"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={exerciseCaloriePercentage}
+                  onChange={(e) => {
+                    const val = Math.min(
+                      100,
+                      Math.max(0, Number(e.target.value))
+                    );
+                    setExerciseCaloriePercentage(val);
+                  }}
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            )}
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="tdee" id="tdee-goal" />
+              <Label htmlFor="tdee-goal" className="cursor-pointer">
+                <span className="font-medium">
+                  {t(
+                    'settings.calorieGoalAdjustment.tdeeGoal',
+                    'Device Projection'
+                  )}
+                  :
+                </span>{' '}
+                {t(
+                  'settings.calorieGoalAdjustment.tdeeGoalDescription',
+                  'Like MyFitnessPal with Apple Watch. SparkyFitness projects your full-day burn by extrapolating your current device data to midnight. The adjustment = projection − TDEE.'
+                )}
+              </Label>
+            </div>
+            {calorieGoalAdjustmentMode === 'tdee' && (
+              <div className="ml-6 flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <Label
+                    htmlFor="activity-level"
+                    className="text-sm whitespace-nowrap"
+                  >
+                    {t(
+                      'settings.calorieGoalAdjustment.activityLevel',
+                      'Activity level:'
+                    )}
+                  </Label>
+                  <Select
+                    value={activityLevel}
+                    onValueChange={(
+                      value: 'not_much' | 'light' | 'moderate' | 'heavy'
+                    ) => setActivityLevel(value)}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="not_much">
+                        {t(
+                          'settings.calorieGoalAdjustment.activityNotMuch',
+                          'Sedentary (×1.2)'
+                        )}
+                      </SelectItem>
+                      <SelectItem value="light">
+                        {t(
+                          'settings.calorieGoalAdjustment.activityLight',
+                          'Lightly active (×1.375)'
+                        )}
+                      </SelectItem>
+                      <SelectItem value="moderate">
+                        {t(
+                          'settings.calorieGoalAdjustment.activityModerate',
+                          'Moderately active (×1.55)'
+                        )}
+                      </SelectItem>
+                      <SelectItem value="heavy">
+                        {t(
+                          'settings.calorieGoalAdjustment.activityHeavy',
+                          'Very active (×1.725)'
+                        )}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="tdee-allow-negative"
+                    checked={tdeeAllowNegativeAdjustment}
+                    onCheckedChange={(checked) =>
+                      setTdeeAllowNegativeAdjustment(Boolean(checked))
+                    }
+                  />
+                  <Label
+                    htmlFor="tdee-allow-negative"
+                    className="text-sm cursor-pointer"
+                  >
+                    {t(
+                      'settings.calorieGoalAdjustment.allowNegativeAdjustment',
+                      'Allow negative adjustment (penalise for burning less than TDEE)'
+                    )}
+                  </Label>
+                </div>
+              </div>
+            )}
           </RadioGroup>
 
           {/* Dynamic Calculation Explanation Box */}
@@ -457,10 +628,21 @@ const CalculationSettings = () => {
                           'settings.calculationExplanation.remainingDynamic',
                           'Daily Goal - Net Energy (Your goal grows as you move)'
                         )
-                      : t(
-                          'settings.calculationExplanation.remainingFixed',
-                          'Daily Goal - Eaten (Activity does not change your budget)'
-                        )}
+                      : calorieGoalAdjustmentMode === 'percentage'
+                        ? t(
+                            'settings.calculationExplanation.remainingPercentage',
+                            'Daily Goal - (Eaten - {{pct}}% of Exercise Burned)',
+                            { pct: exerciseCaloriePercentage }
+                          )
+                        : calorieGoalAdjustmentMode === 'tdee'
+                          ? t(
+                              'settings.calculationExplanation.remainingTdee',
+                              'Daily Goal − Eaten + (Projected Full Day − TDEE)'
+                            )
+                          : t(
+                              'settings.calculationExplanation.remainingFixed',
+                              'Daily Goal - Eaten (Activity does not change your budget)'
+                            )}
                   </p>
                 </div>
               </div>
@@ -472,10 +654,20 @@ const CalculationSettings = () => {
                     'settings.calculationExplanation.dynamicFootnote',
                     '* Ideal for fueling workouts and active recovery.'
                   )
-                : t(
-                    'settings.calculationExplanation.fixedFootnote',
-                    '* Ideal for strict caloric deficits and weight management.'
-                  )}
+                : calorieGoalAdjustmentMode === 'percentage'
+                  ? t(
+                      'settings.calculationExplanation.percentageFootnote',
+                      '* Creates a safety buffer to avoid overeating from over-estimated calorie burns.'
+                    )
+                  : calorieGoalAdjustmentMode === 'tdee'
+                    ? t(
+                        'settings.calculationExplanation.tdeeFootnote',
+                        '* Projection converges with actual at midnight. Requires BMR to be calculable and a device syncing steps or active calories.'
+                      )
+                    : t(
+                        'settings.calculationExplanation.fixedFootnote',
+                        '* Ideal for strict caloric deficits and weight management.'
+                      )}
             </div>
           </div>
         </div>

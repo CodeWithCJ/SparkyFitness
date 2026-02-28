@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Target, Zap, Utensils, Flame, Flag } from 'lucide-react';
+import { Target, Zap, Utensils, Flame, Flag, Activity } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -11,6 +11,15 @@ import {
 
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug } from '@/utils/logging';
+import {
+  resolveActiveOrStepsCalories,
+  computeSparkyfitnessBurned,
+  computeProjectedBurn,
+  computeTdeeAdjustment,
+  computeCaloriesRemaining,
+  computeExerciseCredited,
+  computeCalorieProgress,
+} from '@/utils/calorieCalculations';
 
 import {
   useDailyGoals,
@@ -25,8 +34,15 @@ import { EnergyCircle } from './EnergyProgressCircle';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { t } = useTranslation();
-  const { loggingLevel, calorieGoalAdjustmentMode, energyUnit, convertEnergy } =
-    usePreferences();
+  const {
+    loggingLevel,
+    calorieGoalAdjustmentMode,
+    exerciseCaloriePercentage,
+    tdeeAllowNegativeAdjustment,
+    activityLevel,
+    energyUnit,
+    convertEnergy,
+  } = usePreferences();
 
   const { data: goals, isLoading: loadingGoals } = useDailyGoals(selectedDate);
   const { data: foodData, isLoading: loadingFood } =
@@ -51,30 +67,50 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const stepsCalories = stepsData?.calories || 0;
   const dailySteps = stepsData?.steps || 0;
 
-  let activeOrStepsCaloriesToAdd = 0;
-  if (activeCaloriesFromExercise > 0) {
-    activeOrStepsCaloriesToAdd = activeCaloriesFromExercise;
-  } else {
-    activeOrStepsCaloriesToAdd = stepsCalories;
-  }
+  const activeOrStepsCaloriesToAdd = resolveActiveOrStepsCalories(
+    activeCaloriesFromExercise,
+    stepsCalories
+  );
 
   const bmrCalories = includeInNet && bmr ? bmr : 0;
 
-  const totalCaloriesBurned =
-    otherExerciseCalories + activeOrStepsCaloriesToAdd + bmrCalories;
+  const exerciseCaloriesBurned =
+    otherExerciseCalories + activeOrStepsCaloriesToAdd;
+  const totalCaloriesBurned = exerciseCaloriesBurned + bmrCalories;
 
   const netCalories = eatenCalories - totalCaloriesBurned;
 
-  let caloriesRemaining = 0;
-  if (calorieGoalAdjustmentMode === 'dynamic') {
-    caloriesRemaining = goalCalories - netCalories;
-  } else {
-    caloriesRemaining = goalCalories - eatenCalories;
-  }
+  const sparkyfitnessBurned = computeSparkyfitnessBurned(
+    bmr || 0,
+    activityLevel
+  );
+  const projectedBurn = computeProjectedBurn(bmr || 0, exerciseCaloriesBurned);
+  const tdeeAdjustment = computeTdeeAdjustment(
+    projectedBurn,
+    sparkyfitnessBurned,
+    tdeeAllowNegativeAdjustment
+  );
 
-  const numerator =
-    calorieGoalAdjustmentMode === 'dynamic' ? netCalories : eatenCalories;
-  const calorieProgress = Math.max(0, (numerator / goalCalories) * 100);
+  const caloriesRemaining = computeCaloriesRemaining({
+    mode: calorieGoalAdjustmentMode,
+    goalCalories,
+    eatenCalories,
+    netCalories,
+    exerciseCaloriesBurned,
+    bmrCalories,
+    exerciseCaloriePercentage,
+    tdeeAdjustment,
+  });
+
+  const calorieProgress = computeCalorieProgress(
+    goalCalories,
+    caloriesRemaining
+  );
+  const exerciseCredited = computeExerciseCredited(
+    caloriesRemaining,
+    goalCalories,
+    eatenCalories
+  );
 
   // --- Display Conversion (to kJ or kcal) ---
   const display = {
@@ -93,6 +129,16 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     steps: Math.round(convertEnergy(stepsCalories, 'kcal', energyUnit)),
     bmr: bmr ? Math.round(convertEnergy(bmr, 'kcal', energyUnit)) : 0,
     net: Math.round(convertEnergy(netCalories, 'kcal', energyUnit)),
+    exerciseCredited: Math.round(
+      convertEnergy(exerciseCredited, 'kcal', energyUnit)
+    ),
+    projectedBurn: Math.round(convertEnergy(projectedBurn, 'kcal', energyUnit)),
+    sparkyfitnessBurned: Math.round(
+      convertEnergy(sparkyfitnessBurned, 'kcal', energyUnit)
+    ),
+    tdeeAdjustment: Math.round(
+      convertEnergy(tdeeAdjustment, 'kcal', energyUnit)
+    ),
   };
 
   debug(loggingLevel, 'DailyProgress: Calculated values', {
@@ -302,30 +348,81 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             </div>
           )}
 
-          {/* Net Energy Display */}
-          <div className="text-center p-2 dark:bg-slate-300 bg-gray-50 rounded-lg">
-            <div className="text-sm font-medium dark:text-black text-gray-700">
-              {t(
-                'exercise.dailyProgress.netEnergy',
-                'Net Energy: {{netCalories}}',
-                {
-                  netCalories: display.net,
-                  energyUnit: getEnergyUnitString(energyUnit),
-                }
-              )}
+          {/* Formula Bar */}
+          {calorieGoalAdjustmentMode === 'tdee' ? (
+            /* TDEE mode: MFP-style Expected / Actual / Adjustment */
+            <div className="p-3 bg-orange-50 dark:bg-slate-700 rounded-lg space-y-1">
+              <div className="flex items-center gap-1 mb-2">
+                <Activity className="w-3 h-3 text-orange-400 shrink-0" />
+                <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
+                  {t('exercise.dailyProgress.dailyBurn', 'Daily Burn')}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500 dark:text-slate-400">
+                  {t(
+                    'exercise.dailyProgress.projectedBurn',
+                    'Projected (Full Day)'
+                  )}
+                </span>
+                <span className="font-semibold text-gray-800 dark:text-slate-200">
+                  {display.projectedBurn} {getEnergyUnitString(energyUnit)}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-500 dark:text-slate-400">
+                  {t(
+                    'exercise.dailyProgress.sparkyfitnessBurned',
+                    'SparkyFitness Burned'
+                  )}
+                </span>
+                <span className="font-semibold text-orange-600">
+                  {display.sparkyfitnessBurned}{' '}
+                  {getEnergyUnitString(energyUnit)}
+                </span>
+              </div>
+              <div className="border-t border-orange-200 dark:border-slate-600 pt-1 flex justify-between text-xs">
+                <span className="text-gray-500 dark:text-slate-400">
+                  {t('exercise.dailyProgress.adjustment', 'Adjustment')}
+                </span>
+                <span
+                  className={`font-bold ${
+                    tdeeAdjustment >= 0
+                      ? 'text-green-600 dark:text-green-400'
+                      : 'text-red-600 dark:text-red-400'
+                  }`}
+                >
+                  {tdeeAdjustment >= 0 ? '+' : ''}
+                  {display.tdeeAdjustment} {getEnergyUnitString(energyUnit)}
+                </span>
+              </div>
             </div>
-            <div className="text-xs dark:text-black text-gray-600">
-              {t(
-                'exercise.dailyProgress.netEnergyBreakdown',
-                '{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned',
-                {
-                  dailyIntakeCalories: display.eaten,
-                  finalTotalCaloriesBurned: display.burnedTotal,
-                  energyUnit: getEnergyUnitString(energyUnit),
-                }
-              )}
+          ) : (
+            /* Dynamic / Fixed / Percentage modes: original Net Energy box */
+            <div className="text-center p-2 dark:bg-slate-300 bg-gray-50 rounded-lg">
+              <div className="text-sm font-medium dark:text-black text-gray-700">
+                {t(
+                  'exercise.dailyProgress.netEnergy',
+                  'Net Energy: {{netCalories}}',
+                  {
+                    netCalories: display.net,
+                    energyUnit: getEnergyUnitString(energyUnit),
+                  }
+                )}
+              </div>
+              <div className="text-xs dark:text-black text-gray-600">
+                {t(
+                  'exercise.dailyProgress.netEnergyBreakdown',
+                  '{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned',
+                  {
+                    dailyIntakeCalories: display.eaten,
+                    finalTotalCaloriesBurned: display.burnedTotal,
+                    energyUnit: getEnergyUnitString(energyUnit),
+                  }
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Progress Bar */}
           <div className="space-y-1">
