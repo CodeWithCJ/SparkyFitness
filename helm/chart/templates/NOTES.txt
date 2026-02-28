@@ -1,0 +1,59 @@
+
+Sparkyfitness has been deployed!
+
+Components:
+  - Server:   {{ include "sparkyfitness.fullname" . }}-server
+  - Frontend: {{ include "sparkyfitness.fullname" . }}-frontend
+{{- if .Values.config.garmin.enabled }}
+  - Garmin:   {{ include "sparkyfitness.fullname" . }}-garmin
+{{- end }}
+{{- if .Values.postgresql.enabled }}
+  - PostgreSQL: {{ include "sparkyfitness.fullname" . }}-postgresql
+{{- end }}
+
+Frontend URL: {{ include "sparkyfitness.frontendUrl" . }}
+
+{{- if and (not .Values.externalSecrets.enabled) (not .Values.server.secrets.existingSecret) }}
+
+  WARNING: SECRETS STORED AS PLAIN KUBERNETES SECRETS
+
+  Secrets were {{ if .Values.server.secrets.generate }}auto-generated{{ else }}provided via values{{ end }} and stored
+  as plain Kubernetes Secrets. This is suitable for development/testing
+  but NOT recommended for production.
+
+  For production, use one of:
+    - External Secrets Operator: set externalSecrets.enabled=true
+    - Pre-created secrets:
+        server.secrets.existingSecret          (keys: api_encryption_key, better_auth_secret)
+        server.appDatabase.existingSecret      (keys: username, password)
+        config.oidc.secrets.existingSecret      (keys: client_id, client_secret)
+        config.email.secrets.existingSecret     (keys: username, password)
+        postgresql.auth.existingSecret          (keys: username, password)
+{{- end }}
+{{- if not .Values.postgresql.enabled }}
+
+  EXTERNAL DATABASE NOTE:
+  The database owner (externalDatabase.auth.username) must have the CREATEROLE
+  privilege so the application can automatically create the limited-privilege
+  app user ({{ .Values.server.appDatabase.username }}) on first startup:
+
+    ALTER USER <owner> CREATEROLE;
+
+  After successful first startup you may revoke it:
+
+    ALTER USER <owner> NOCREATEROLE;
+
+  Required PostgreSQL extensions and grants (run as superuser):
+
+    \c {{ .Values.externalDatabase.database }}
+
+    -- Standard extensions
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+    -- Performance monitoring (requires shared_preload_libraries = 'pg_stat_statements')
+    CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
+
+    -- Grant extension functions to the DB owner so the app can delegate them
+    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO "<owner>" WITH GRANT OPTION;
+{{- end }}

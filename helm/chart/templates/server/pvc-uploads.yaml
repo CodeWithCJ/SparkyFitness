@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-server-uploads
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  accessModes:
+    - {{ .Values.server.persistence.uploads.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.server.persistence.uploads.size }}
+  {{- with .Values.global.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
