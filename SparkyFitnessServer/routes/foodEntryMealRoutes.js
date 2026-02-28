@@ -214,12 +214,13 @@ router.get("/:id", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, description, meal_type, meal_type_id, entry_date, foods, quantity, unit } =
+    const { name, description, meal_type, meal_type_id, entry_date, foods, quantity, unit, meal_template_id } =
       req.body;
     log("info", `[DEBUG] PUT /food-entry-meals/${id} Body:`, {
       quantity,
       unit,
       name,
+      meal_template_id,
     }); // DEBUG LOG
     const userId = req.userId; // From authMiddleware
 
@@ -252,7 +253,7 @@ router.put("/:id", async (req, res, next) => {
       targetUserId, // owner ID
       userId, // actingUserId
       id, // foodEntryMealId
-      { name, description, meal_type, meal_type_id, entry_date, foods, quantity, unit } // updatedMealData
+      { name, description, meal_type, meal_type_id, entry_date, foods, quantity, unit, meal_template_id } // updatedMealData
     );
     log("info", `User ${userId} updated FoodEntryMeal ${id}`);
     res.status(200).json(updatedFoodEntryMeal);
