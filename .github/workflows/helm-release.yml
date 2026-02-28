@@ -1,0 +1,46 @@
+name: Release Helm Chart
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  release-chart:
+    name: Package and push Helm chart
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Get release tag
+        id: release_tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="0.0.0-dev"
+          fi
+          # Strip leading 'v' if present (e.g. v1.2.3 -> 1.2.3)
+          CHART_VERSION="${TAG#v}"
+          echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
+          echo "app_version=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Package Helm chart
+        run: |
+          helm package helm/chart \
+            --version "${{ steps.release_tag.outputs.chart_version }}" \
+            --app-version "${{ steps.release_tag.outputs.app_version }}"
+
+      - name: Push Helm chart to GHCR
+        run: helm push sparkyfitness-${{ steps.release_tag.outputs.chart_version }}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
