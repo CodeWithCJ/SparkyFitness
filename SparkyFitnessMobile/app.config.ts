@@ -1,3 +1,4 @@
+import "tsx/cjs";
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
 const APP_NAME = 'SparkyFitnessMobile';
@@ -83,7 +84,7 @@ const devAndroidPermissions = [
   'android.permission.health.WRITE_WHEELCHAIR_PUSHES',
 ];
 
-export default ({ config }: ConfigContext): ExpoConfig => {
+export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
   const environment = process.env.APP_VARIANT || 'dev';
 
   const isDev = environment === 'dev' || environment === 'development';
@@ -91,6 +92,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   if (isDev) {
     androidPermissions.push(...devAndroidPermissions);
   }
+
+  // Plugins only included in production builds
+  const prodPlugins = [
+    './plugins/withNetworkSecurityConfig',
+  ];
 
   return {
     ...config,
@@ -105,9 +111,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ITSAppUsesNonExemptEncryption: false,
       },
       icon: './assets/icons/appicon.icon',
-      config: {
-        usesNonExemptEncryption: false,
-      },
     },
     android: {
       package: isDev
@@ -119,12 +122,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: '#FFFFFF',
       }
     },
+    plugins: [
+      ...(config.plugins ?? []),
+      ...(!isDev ? prodPlugins : []),
+    ],
     extra: {
       ...config.extra,
       APP_VARIANT: environment,
       eas: {
         projectId: "498a86c5-344f-4d2c-9033-dfd720e4a383",
       },
-    }, // expose to app at runtime
+    },
   };
 };
