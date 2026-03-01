@@ -14,7 +14,7 @@ Please check all that apply:
 - [ ] **Alignment**: I have raised a GitHub issue and it was reviewed/approved by maintainers (required for new features).
 - [ ] **Tests**: I have included automated tests for my changes.
 - [ ] **Screenshots**: I have attached "Before" vs "After" screenshots below (required for UI changes).
-- [ ] **Quality**: I have run `npm run build` (especially for Frontend).
+- [ ] **Quality**: I have run `pnpm run build` (especially for Frontend).
 - [ ] **Translations**: I have only updated the English (`en`) translation file (if applicable).
 - [ ] **Architecture**: My code follows the existing architecture standards.
 - [ ] **Database Security**: I have updated `rls_policies.sql` for any new user-specific tables.
