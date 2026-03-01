@@ -2,8 +2,12 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { searchOpenFoodFacts, searchUsda, searchFatSecret } from '../services/api/externalFoodSearchApi';
 import { externalFoodSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
+import { RateLimiter } from '../utils/rateLimiter';
 
 const SUPPORTED_PROVIDERS = new Set(['openfoodfacts', 'usda', 'fatsecret']);
+
+// Open Food Facts allows 10 req/min; use 8 for headroom
+const offRateLimiter = new RateLimiter(8, 60_000);
 
 export function useExternalFoodSearch(
   searchText: string,
@@ -17,9 +21,10 @@ export function useExternalFoodSearch(
 
   const query = useQuery({
     queryKey: externalFoodSearchQueryKey(providerType, debouncedSearch, providerId),
-    queryFn: () => {
+    queryFn: async ({ signal }) => {
       switch (providerType) {
         case 'openfoodfacts':
+          await offRateLimiter.acquire(signal);
           return searchOpenFoodFacts(debouncedSearch);
         case 'usda':
           if (!providerId) return [];
@@ -28,7 +33,7 @@ export function useExternalFoodSearch(
           if (!providerId) return [];
           return searchFatSecret(debouncedSearch, providerId);
         default:
-          return Promise.resolve([]);
+          return [];
       }
     },
     enabled: isSearchActive && isProviderSupported && enabled,
