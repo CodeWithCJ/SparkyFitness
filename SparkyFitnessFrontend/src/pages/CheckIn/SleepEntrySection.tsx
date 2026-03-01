@@ -339,6 +339,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
 
                   return (
                     <SleepTimelineEditor
+                      key={`new-session-${index}-${selectedDate}`}
                       bedtime={parsedBedtimeForEditor.toISOString()}
                       wakeTime={parsedWakeTimeForEditor.toISOString()}
                       initialStageEvents={session.stageEvents}
@@ -495,6 +496,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
 
                     return (
                       <SleepTimelineEditor
+                        key={`${entry.id}-${editingEntryId === entry.id}`}
                         bedtime={parsedBedtimeForEditor.toISOString()}
                         wakeTime={parsedWakeTimeForEditor.toISOString()}
                         initialStageEvents={entry.stage_events || []}

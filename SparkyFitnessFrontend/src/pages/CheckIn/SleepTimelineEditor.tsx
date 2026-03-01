@@ -67,7 +67,23 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
     [parsedBedtime, parsedWakeTime]
   );
 
-  const [stageEvents, setStageEvents] = useState<SleepStageEvent[]>([]);
+  const [stageEvents, setStageEvents] = useState<SleepStageEvent[]>(() => {
+    const filtered =
+      (initialStageEvents?.filter(Boolean) as SleepStageEvent[]) || [];
+    if (filtered.length > 0) return filtered;
+
+    return [
+      {
+        id: `initial-light-${Date.now()}`,
+        entry_id: '',
+        stage_type: 'light',
+        start_time: bedtime,
+        end_time: wakeTime,
+        duration_in_seconds:
+          differenceInMinutes(parseISO(wakeTime), parseISO(bedtime)) * 60,
+      },
+    ];
+  });
   const [selectedStageType, setSelectedStageType] = useState<
     'awake' | 'rem' | 'light' | 'deep' | null
   >(null);
@@ -75,39 +91,12 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartTime, setDragStartTime] = useState<Date | null>(null);
 
-  const [editableBedtime, setEditableBedtime] = useState(
-    format(parsedBedtime, 'HH:mm')
+  const [editableBedtime, setEditableBedtime] = useState(() =>
+    format(parseISO(bedtime), 'HH:mm')
   );
-  const [editableWakeTime, setEditableWakeTime] = useState(
-    format(parsedWakeTime, 'HH:mm')
+  const [editableWakeTime, setEditableWakeTime] = useState(() =>
+    format(parseISO(wakeTime), 'HH:mm')
   );
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setEditableBedtime(format(parsedBedtime, 'HH:mm'));
-    setEditableWakeTime(format(parsedWakeTime, 'HH:mm'));
-  }, [parsedBedtime, parsedWakeTime]);
-
-  useEffect(() => {
-    const filteredInitialEvents =
-      (initialStageEvents?.filter(Boolean) as SleepStageEvent[]) || [];
-    if (filteredInitialEvents.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setStageEvents(filteredInitialEvents);
-    } else {
-      const duration = totalDurationMinutes * 60;
-      setStageEvents([
-        {
-          id: `initial-light-${Date.now()}`,
-          entry_id: '',
-          stage_type: 'light',
-          start_time: parsedBedtime.toISOString(),
-          end_time: parsedWakeTime.toISOString(),
-          duration_in_seconds: duration,
-        },
-      ]);
-    }
-  }, [initialStageEvents, parsedBedtime, parsedWakeTime, totalDurationMinutes]);
 
   const getNearest15MinuteInterval = useCallback((date: Date) => {
     const minutes = date.getMinutes();
