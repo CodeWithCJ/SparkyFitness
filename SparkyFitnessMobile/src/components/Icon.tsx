@@ -69,6 +69,8 @@ const ICON_MAP = {
   'sync': { sf: 'arrow.triangle.2.circlepath', ion: 'sync' },
   'book': { sf: 'book.fill', ion: 'book' },
   'scan': { sf: 'barcode.viewfinder', ion: 'scan-outline' },
+  'flashlight-on': { sf: 'flashlight.on.fill', ion: 'flash' },
+  'flashlight-off': { sf: 'flashlight.off.fill', ion: 'flash-off' },
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

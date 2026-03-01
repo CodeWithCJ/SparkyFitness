@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
+import { useCSSVariable } from 'uniwind';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { lookupBarcode } from '../services/api/externalFoodSearchApi';
 
@@ -11,9 +12,11 @@ type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 
 const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const accentPrimary = String(useCSSVariable('--color-accent-primary'));
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [flashlight, setFlashlight] = useState(false);
   const scanLock = useRef(false);
 
   const handleBarcodeScanned = async ({ data }: BarcodeScanningResult) => {
@@ -97,6 +100,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'],
         }}
         style={StyleSheet.absoluteFillObject}
+        enableTorch={flashlight}
       />
 
       <View className="absolute left-4 right-4 flex-row items-center justify-between" style={{ top: Platform.OS === 'android' ? insets.top + 8 : 16 }}>
@@ -122,6 +126,14 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           <Button title="Tap to Scan Again" onPress={() => { scanLock.current = false; setScanned(false); }} />
         </View>
       )}
+
+      <TouchableOpacity
+        onPress={() => setFlashlight(!flashlight)}
+        className="absolute bottom-12 right-4 bg-black/50 rounded-full p-3"
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Icon name={flashlight ? 'flashlight-on' : 'flashlight-off'} size={24} color={flashlight ? accentPrimary : '#fff'} />
+      </TouchableOpacity>
     </View>
   );
 };
