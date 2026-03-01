@@ -25,6 +25,9 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
   const insets = useSafeAreaInsets();
   const [accentColor, textPrimary, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-text-primary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string, string];
 
+  const initialFood = route.params?.initialFood;
+  const barcode = route.params?.barcode;
+
   const [selectedDate, setSelectedDate] = useState(route.params?.date ?? getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
   const { mealTypes, defaultMealTypeId } = useMealTypes();
@@ -76,7 +79,12 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
         is_custom: true,
         is_quick_food: !saveToDatabase,
         is_default: true,
+        barcode: barcode ?? null,
       });
+
+      if (!saved.default_variant.id) {
+        throw new Error('Server did not return a variant ID for the saved food');
+      }
 
       return createFoodEntry({
         meal_type_id: effectiveMealId,
@@ -84,7 +92,7 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
         unit: data.servingUnit || 'serving',
         entry_date: selectedDate,
         food_id: saved.id,
-        variant_id: saved.default_variant.id!,
+        variant_id: saved.default_variant.id,
       });
     },
     onSuccess: (entry) => {
@@ -129,7 +137,7 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
         </Text>
       </View>
 
-      <FoodForm onSubmit={handleSubmit} isSubmitting={submitMutation.isPending}>
+      <FoodForm onSubmit={handleSubmit} isSubmitting={submitMutation.isPending} initialValues={initialFood}>
         {/* Logging */}
         <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
 

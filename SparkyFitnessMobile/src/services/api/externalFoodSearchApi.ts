@@ -47,6 +47,39 @@ export function transformOpenFoodFactsProduct(product: OpenFoodFactsProduct): Ex
   };
 }
 
+interface BarcodeFood {
+  id?: string;
+  name: string;
+  brand: string | null;
+  is_custom: boolean;
+  default_variant: {
+    id?: string;
+    serving_size: number;
+    serving_unit: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    saturated_fat?: number;
+    sodium?: number;
+    dietary_fiber?: number;
+    sugars?: number;
+  };
+}
+
+export type BarcodeLookupResult =
+  | { source: 'local'; food: BarcodeFood & { id: string } }
+  | { source: 'openfoodfacts'; food: BarcodeFood }
+  | { source: 'not_found'; food: null };
+
+export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
+  return apiFetch<BarcodeLookupResult>({
+    endpoint: `/api/foods/barcode/${barcode}`,
+    serviceName: 'External Food Search',
+    operation: 'barcode lookup',
+  });
+}
+
 export async function searchOpenFoodFacts(query: string): Promise<ExternalFoodItem[]> {
   const params = new URLSearchParams({ query });
   const response = await apiFetch<OpenFoodFactsResponse>({

@@ -2,6 +2,9 @@ const foodRepository = require("../models/foodRepository");
 const preferenceService = require("./preferenceService");
 const { log } = require("../config/logging");
 const { sanitizeCustomNutrients } = require("../utils/foodUtils");
+const {
+  searchOpenFoodFactsByBarcode,
+} = require("../integrations/openfoodfacts/openFoodFactsService");
 
 async function searchFoods(
   authenticatedUserId,
@@ -700,6 +703,79 @@ async function updateFoodEntriesSnapshot(
   }
 }
 
+function mapOpenFoodFactsProduct(product) {
+  const nutriments = product.nutriments || {};
+
+  const defaultVariant = {
+    serving_size: 100,
+    serving_unit: "g",
+    calories: Math.round(nutriments["energy-kcal_100g"] || 0),
+    protein:
+      Math.round((nutriments["proteins_100g"] || 0) * 10) / 10,
+    carbs:
+      Math.round((nutriments["carbohydrates_100g"] || 0) * 10) / 10,
+    fat: Math.round((nutriments["fat_100g"] || 0) * 10) / 10,
+    saturated_fat:
+      Math.round((nutriments["saturated-fat_100g"] || 0) * 10) / 10,
+    sodium: nutriments["sodium_100g"]
+      ? Math.round(nutriments["sodium_100g"] * 1000)
+      : 0,
+    dietary_fiber:
+      Math.round((nutriments["fiber_100g"] || 0) * 10) / 10,
+    sugars:
+      Math.round((nutriments["sugars_100g"] || 0) * 10) / 10,
+    polyunsaturated_fat: 0,
+    monounsaturated_fat: 0,
+    trans_fat: 0,
+    cholesterol: 0,
+    potassium: 0,
+    vitamin_a: 0,
+    vitamin_c: 0,
+    calcium: 0,
+    iron: 0,
+    is_default: true,
+  };
+
+  return {
+    name: product.product_name,
+    brand: product.brands?.split(",")[0]?.trim() || "",
+    barcode: product.code,
+    provider_external_id: product.code,
+    provider_type: "openfoodfacts",
+    is_custom: false,
+    default_variant: defaultVariant,
+  };
+}
+
+async function lookupBarcode(barcode, userId) {
+  try {
+    const localFood = await foodRepository.findFoodByBarcode(barcode, userId);
+    if (localFood) {
+      return { source: "local", food: localFood };
+    }
+
+    let offData;
+    try {
+      offData = await searchOpenFoodFactsByBarcode(barcode);
+    } catch (error) {
+      log("warn", `OpenFoodFacts lookup failed for barcode ${barcode}:`, error);
+      return { source: "not_found", food: null };
+    }
+
+    if (offData?.status === 1 && offData.product?.product_name) {
+      return {
+        source: "openfoodfacts",
+        food: mapOpenFoodFactsProduct(offData.product),
+      };
+    }
+
+    return { source: "not_found", food: null };
+  } catch (error) {
+    log("error", `Error looking up barcode ${barcode}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   searchFoods,
   createFood,
@@ -717,4 +793,6 @@ module.exports = {
   importFoodsInBulk,
   getFoodsNeedingReview,
   updateFoodEntriesSnapshot,
+  lookupBarcode,
+  mapOpenFoodFactsProduct,
 };

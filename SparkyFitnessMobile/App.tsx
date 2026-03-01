@@ -24,6 +24,7 @@ import FoodSearchScreen from './src/screens/FoodSearchScreen';
 import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import ManualFoodEntryScreen from './src/screens/ManualFoodEntryScreen';
+import FoodScanScreen from './src/screens/FoodScanScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { initializeTheme } from './src/services/themeService';
 import { initLogService } from './src/services/LogService';
@@ -200,6 +201,8 @@ function AppContent() {
             options={{
               presentation: 'modal',
               headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -214,6 +217,15 @@ function AppContent() {
           <Stack.Screen
             name="ManualFoodEntry"
             component={ManualFoodEntryScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          />
+          <Stack.Screen
+            name="FoodScan"
+            component={FoodScanScreen}
             options={{
               headerShown: false,
               gestureEnabled: true,

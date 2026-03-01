@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+
   View,
   Text,
   TouchableOpacity,
@@ -185,6 +186,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             <Icon name="close" size={16} color={textMuted} />
           </TouchableOpacity>
         )}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('FoodScan', { date })}
+          hitSlop={8}
+          className="ml-2"
+        >
+          <Icon name="scan" size={20} color={accentColor} />
+        </TouchableOpacity>
       </View>
     </View>
   );

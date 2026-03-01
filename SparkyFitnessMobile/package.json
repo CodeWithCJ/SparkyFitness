@@ -28,6 +28,7 @@
     "expo-asset": "~12.0.12",
     "expo-background-task": "~1.0.10",
     "expo-build-properties": "^1.0.10",
+    "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.13",
     "expo-dev-client": "^6.0.20",
     "expo-device": "~8.0.10",

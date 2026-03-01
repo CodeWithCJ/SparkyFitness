@@ -2,6 +2,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { FoodInfoItem } from './foodInfo';
 import type { FoodEntry } from './foodEntries';
+import type { FoodFormData } from '../components/FoodForm';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -16,7 +17,8 @@ export type RootStackParamList = {
   FoodSearch: { date?: string } | undefined;
   FoodEntryAdd: { item: FoodInfoItem; date?: string };
   FoodEntryView: { entry: FoodEntry };
-  ManualFoodEntry: { date?: string } | undefined;
+  ManualFoodEntry: { date?: string; initialFood?: Partial<FoodFormData>; barcode?: string } | undefined;
+  FoodScan: { date?: string } | undefined;
   Logs: undefined;
 };
 
