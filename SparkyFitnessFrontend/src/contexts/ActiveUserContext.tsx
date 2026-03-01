@@ -21,7 +21,6 @@ const ActiveUserContext = createContext<ActiveUserContextType | undefined>(
   undefined
 );
 
-// eslint-disable-next-line  react-refresh/only-export-components
 export const useActiveUser = () => {
   const context = useContext(ActiveUserContext);
   if (context === undefined) {
