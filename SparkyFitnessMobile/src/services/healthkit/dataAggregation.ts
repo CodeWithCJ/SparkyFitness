@@ -63,7 +63,7 @@ const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSessi
     type: 'SleepSession',
     source: 'HealthKit',
     timestamp: session.bedtime.toISOString(),
-    entry_date: toLocalDateString(session.bedtime),
+    entry_date: toLocalDateString(session.wake_time),
     bedtime: session.bedtime.toISOString(),
     wake_time: session.wake_time.toISOString(),
     duration_in_seconds: totalDuration,
