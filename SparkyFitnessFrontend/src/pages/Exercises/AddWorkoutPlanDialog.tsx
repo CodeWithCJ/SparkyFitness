@@ -104,12 +104,17 @@ const SortableSetItem = React.memo(
     set: WorkoutPresetSet;
     assignmentIndex: number;
     setIndex: number;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleSetChangeInPlan: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleDuplicateSetInPlan: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveSetInPlan: Function;
+    handleSetChangeInPlan: (
+      assignmentIndex: number,
+      setIndex: number,
+      field: keyof WorkoutPresetSet,
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
+    ) => void;
+    handleDuplicateSetInPlan: (
+      assignmentIndex: number,
+      setIndex: number
+    ) => void;
+    handleRemoveSetInPlan: (assignmentIndex: number, setIndex: number) => void;
     weightUnit: string;
   }) => {
     const { attributes, listeners, setNodeRef, transform, transition } =
@@ -313,18 +318,20 @@ const SortableAssignmentItem = React.memo(
     assignment: WorkoutPlanAssignment;
     originalIndex: number;
     workoutPresets: WorkoutPreset[];
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleCopyAssignment: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveAssignment: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleSetChangeInPlan: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleDuplicateSetInPlan: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveSetInPlan: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleAddSetInPlan: Function;
+    handleCopyAssignment: (assignment: WorkoutPlanAssignment) => void;
+    handleRemoveAssignment: (index: number) => void;
+    handleSetChangeInPlan: (
+      assignmentIndex: number,
+      setIndex: number,
+      field: keyof WorkoutPresetSet,
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
+    ) => void;
+    handleDuplicateSetInPlan: (
+      assignmentIndex: number,
+      setIndex: number
+    ) => void;
+    handleRemoveSetInPlan: (assignmentIndex: number, setIndex: number) => void;
+    handleAddSetInPlan: (assignmentIndex: number) => void;
     weightUnit: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     t: any;
