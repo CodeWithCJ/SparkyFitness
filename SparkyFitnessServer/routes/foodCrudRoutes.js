@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require("../middleware/authMiddleware");
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 const foodService = require("../services/foodService");
+const labelScanService = require("../services/labelScanService");
 const { log } = require("../config/logging");
 
 router.use(express.json());
@@ -628,6 +629,30 @@ router.get(
     try {
       const result = await foodService.lookupBarcode(barcode, req.userId);
       res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/scan-label",
+  authenticate,
+  async (req, res, next) => {
+    const { image, mime_type } = req.body;
+    if (!image || !mime_type) {
+      return res.status(400).json({ error: "image and mime_type are required." });
+    }
+    try {
+      const result = await labelScanService.extractNutritionFromLabel(
+        image,
+        mime_type,
+        req.userId,
+      );
+      if (!result.success) {
+        return res.status(422).json({ error: result.error });
+      }
+      res.status(200).json(result.nutrition);
     } catch (error) {
       next(error);
     }

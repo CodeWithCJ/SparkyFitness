@@ -222,6 +222,9 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
               thumbColor="#FFFFFF"
             />
           </View>
+          {barcode && (
+            <Text className="text-text-secondary text-base font-medium">Barcode will be saved.</Text>
+          )}
         </View>
       </FoodForm>
 
