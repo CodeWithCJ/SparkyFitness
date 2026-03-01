@@ -83,12 +83,14 @@ const SortableSetItem = React.memo(
     set: WorkoutPresetSet;
     exerciseIndex: number;
     setIndex: number;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    onSetChange: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    onDuplicateSet: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    onRemoveSet: Function;
+    onSetChange: (
+      exerciseIndex: number,
+      setIndex: number,
+      field: keyof WorkoutPresetSet,
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
+    ) => void;
+    onDuplicateSet: (exerciseIndex: number, setIndex: number) => void;
+    onRemoveSet: (exerciseIndex: number, setIndex: number) => void;
     weightUnit: string;
   }) => {
     const { attributes, listeners, setNodeRef, transform, transition } =
@@ -305,16 +307,16 @@ const SortableExerciseItem = React.memo(
   }: {
     ex: WorkoutPresetExercise;
     exerciseIndex: number;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveExercise: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleSetChange: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleDuplicateSet: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveSet: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleAddSet: Function;
+    handleRemoveExercise: (index: number) => void;
+    handleSetChange: (
+      exerciseIndex: number,
+      setIndex: number,
+      field: keyof WorkoutPresetSet,
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
+    ) => void;
+    handleDuplicateSet: (exerciseIndex: number, setIndex: number) => void;
+    handleRemoveSet: (exerciseIndex: number, setIndex: number) => void;
+    handleAddSet: (exerciseIndex: number) => void;
     weightUnit: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     t: any;
