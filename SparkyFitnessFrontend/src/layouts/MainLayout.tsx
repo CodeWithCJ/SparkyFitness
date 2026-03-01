@@ -39,7 +39,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { useCurrentVersionQuery } from '@/hooks/useGeneralQueries';
-import { getGridClass } from '@/utils/layout';
+import { getGridClassNormal } from '@/utils/layout';
 
 interface AddCompItem {
   value: string;
@@ -313,8 +313,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onShowAboutDialog }) => {
     [loggingLevel, navigate]
   );
 
-  const gridClass = getGridClass(availableTabs.length);
-  const mobileGridClass = getGridClass(availableMobileTabs.length);
+  const gridClass = getGridClassNormal(availableTabs.length);
+  const mobileGridClass = getGridClassNormal(availableMobileTabs.length);
 
   const location = useLocation();
 
