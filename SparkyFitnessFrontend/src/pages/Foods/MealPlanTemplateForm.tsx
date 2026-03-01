@@ -677,6 +677,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
 
       {selectedMeal && (
         <MealUnitSelector
+          key={`${selectedMeal?.id}-${isMealUnitSelectorOpen}`}
           meal={selectedMeal}
           open={isMealUnitSelectorOpen}
           onOpenChange={setIsMealUnitSelectorOpen}
