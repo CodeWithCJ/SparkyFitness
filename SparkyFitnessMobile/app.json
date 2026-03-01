@@ -38,7 +38,14 @@
       "expo-font",
       "expo-asset",
       "expo-background-task",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SparkyFitness needs access to your camera to scan food barcodes.",
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true

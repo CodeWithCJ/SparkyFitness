@@ -13,6 +13,7 @@ export {
   externalFoodSearchQueryKey,
   mealTypesQueryKey,
   foodVariantsQueryKey,
+  measurementsRangeQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useSyncHealthData } from './useSyncHealthData';
@@ -30,3 +31,5 @@ export { useExternalProviders } from './useExternalProviders';
 export { useExternalFoodSearch } from './useExternalFoodSearch';
 export { useMealTypes } from './useMealTypes';
 export { useDeleteFoodEntry } from './useDeleteFoodEntry';
+export { useMeasurementsRange } from './useMeasurementsRange';
+export type { StepsDataPoint, StepsRange, WeightDataPoint } from './useMeasurementsRange';

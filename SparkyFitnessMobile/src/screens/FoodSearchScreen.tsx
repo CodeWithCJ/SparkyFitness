@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+
   View,
   Text,
   TouchableOpacity,
@@ -12,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import SegmentedControl from '../components/SegmentedControl';
 import BottomSheetPicker, { type PickerOption } from '../components/BottomSheetPicker';
 import { useServerConnection, useFoods, useFoodSearch, useMeals, useMealSearch, useExternalProviders, useExternalFoodSearch } from '../hooks';
 import { fetchFatSecretNutrients } from '../services/api/externalFoodSearchApi';
@@ -35,7 +37,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'search', label: 'Search' },
   { key: 'online', label: 'Online' },
   { key: 'meal', label: 'Meals' },
-];
+] as const;
 
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
@@ -184,6 +186,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             <Icon name="close" size={16} color={textMuted} />
           </TouchableOpacity>
         )}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('FoodScan', { date })}
+          hitSlop={8}
+          className="ml-2"
+        >
+          <Icon name="scan" size={20} color={accentColor} />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -617,7 +626,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   return (
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
+      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -628,30 +637,18 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Add
         </Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ManualFoodEntry', { date })}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="z-10"
+        >
+          <Icon name="add" size={26} color={accentColor} />
+        </TouchableOpacity>
       </View>
 
       {/* Segmented control */}
       <View className="px-4 mt-2">
-        <View className="flex-row bg-raised p-1 rounded-lg">
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              onPress={() => setActiveTab(tab.key)}
-              className={`flex-1 py-2 rounded-md items-center ${
-                activeTab === tab.key ? 'bg-surface' : ''
-              }`}
-              activeOpacity={0.7}
-            >
-              <Text
-                className={`text-sm font-medium ${
-                  activeTab === tab.key ? 'text-text-primary' : 'text-text-muted'
-                }`}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <SegmentedControl segments={TABS} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
 
       {/* Search bar */}

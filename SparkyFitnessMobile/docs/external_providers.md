@@ -14,6 +14,8 @@ Most providers require an `x-provider-id` header — that's the ID of the user's
 
 
 ## Open Food Facts
+
+### Search
 ```
 curl -X GET 'http://10.0.0.75:8080/api/foods/openfoodfacts/search?query=pepper' \
   --header 'Accept: */*' \
@@ -36,6 +38,26 @@ interface OpenFoodFactsProduct {
     sugars_100g?: number;
   };
   code: string;
+}
+```
+
+### Barcode Search
+```
+curl -X GET 'http://10.0.0.75:8080/api/foods/openfoodfacts/barcode/0851953005136' \
+  --header 'Accept: */*' \
+  --header 'Authorization: Bearer {token}'
+```
+
+
+#### Response
+
+```json
+{
+  "code": "0851953005136",
+  "product": {
+    "_id": "0851953005136",
+    ...
+  }
 }
 ```
 

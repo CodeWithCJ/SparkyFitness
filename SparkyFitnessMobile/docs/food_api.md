@@ -105,3 +105,41 @@ Searches for foods based on searchTerm. foodFilter is unused.
   "meal_type_id": "d7bbfb6c-a5fb-48e0-9444-718bd20e7885"
 }
 ```
+
+
+## POST /api/foods
+
+```json
+{
+  "name": "Protein Shake",
+  "brand": "Homemade",
+  "user_id": "some-uuid-here",
+  "is_custom": true,
+  "is_quick_food": true,
+  "barcode": null,
+  "provider_external_id": null,
+  "provider_type": null,
+  "serving_size": 1,
+  "serving_unit": "serving",
+  "calories": 250,
+  "protein": 30,
+  "carbs": 15,
+  "fat": 8,
+  "saturated_fat": 2,
+  "polyunsaturated_fat": null,
+  "monounsaturated_fat": null,
+  "trans_fat": 0,
+  "cholesterol": null,
+  "sodium": null,
+  "potassium": null,
+  "dietary_fiber": null,
+  "sugars": 5,
+  "vitamin_a": null,
+  "vitamin_c": null,
+  "calcium": null,
+  "iron": null,
+  "is_default": true,
+  "glycemic_index": null,
+  "custom_nutrients": {}
+}
+```

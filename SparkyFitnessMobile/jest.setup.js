@@ -227,6 +227,27 @@ jest.mock('@shopify/react-native-skia', () => {
     },
     rect: jest.fn((x, y, width, height) => ({ x, y, width, height })),
     rrect: jest.fn((r, rx, ry) => ({ rect: r, rx, ry })),
+    matchFont: jest.fn(() => null),
+  };
+});
+
+// Mock victory-native
+jest.mock('victory-native', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    CartesianChart: ({ children, ...props }) => React.createElement(View, { testID: 'cartesian-chart', ...props }),
+    Bar: () => null,
+    useChartPressState: jest.fn(() => ({
+      state: {
+        isActive: { value: false },
+        matchedIndex: { value: -1 },
+        x: { value: { value: '' }, position: { value: 0 } },
+        y: { steps: { value: { value: 0 }, position: { value: 0 } } },
+        yIndex: { value: 0 },
+      },
+      isActive: false,
+    })),
   };
 });
 

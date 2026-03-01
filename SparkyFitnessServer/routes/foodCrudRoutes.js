@@ -589,6 +589,53 @@ router.delete(
 
 /**
  * @swagger
+ * /food-crud/barcode/{barcode}:
+ *   get:
+ *     summary: Look up a food by barcode
+ *     tags: [Nutrition & Meals]
+ *     description: Checks the local database first, then falls back to OpenFoodFacts. Returns the source so the client knows which flow to follow.
+ *     parameters:
+ *       - in: path
+ *         name: barcode
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The barcode to look up (8-14 digits).
+ *     responses:
+ *       200:
+ *         description: Barcode lookup result.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 source:
+ *                   type: string
+ *                   enum: [local, openfoodfacts, not_found]
+ *                 food:
+ *                   $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Invalid barcode format.
+ */
+router.get(
+  "/barcode/:barcode",
+  authenticate,
+  async (req, res, next) => {
+    const { barcode } = req.params;
+    if (!/^\d{8,14}$/.test(barcode)) {
+      return res.status(400).json({ error: "Invalid barcode format. Must be 8-14 digits." });
+    }
+    try {
+      const result = await foodService.lookupBarcode(barcode, req.userId);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
  * /food-crud/{foodId}:
  *   get:
  *     summary: Get a food by ID

@@ -30,6 +30,7 @@ const ICON_MAP = {
   'bookmark': { sf: 'bookmark', ion: 'bookmark-outline' },
   'bookmark-filled': { sf: 'bookmark.fill', ion: 'bookmark' },
   'checkmark-circle': { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },
+  'camera-reverse': { sf: 'camera.rotate', ion: 'camera-reverse-outline' },
 
   // Status
   'shield-checkmark': { sf: 'checkmark.shield', ion: 'shield-checkmark-outline' },
@@ -67,6 +68,9 @@ const ICON_MAP = {
   'chart-bar': { sf: 'chart.bar.fill', ion: 'bar-chart' },
   'sync': { sf: 'arrow.triangle.2.circlepath', ion: 'sync' },
   'book': { sf: 'book.fill', ion: 'book' },
+  'scan': { sf: 'barcode.viewfinder', ion: 'scan-outline' },
+  'flashlight-on': { sf: 'flashlight.on.fill', ion: 'flash' },
+  'flashlight-off': { sf: 'flashlight.off.fill', ion: 'flash-off' },
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

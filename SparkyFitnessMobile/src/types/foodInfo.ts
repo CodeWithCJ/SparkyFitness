@@ -1,6 +1,7 @@
 import type { FoodItem, TopFoodItem } from './foods';
 import type { ExternalFoodItem, ExternalFoodVariant } from './externalFoods';
 import type { Meal } from './meals';
+import type { BarcodeFood } from '../services/api/externalFoodSearchApi';
 
 export interface FoodInfoItem {
   id: string;
@@ -19,10 +20,10 @@ export interface FoodInfoItem {
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];
   source: 'local' | 'external' | 'meal';
-  originalItem: FoodItem | TopFoodItem | ExternalFoodItem | Meal;
+  originalItem: FoodItem | TopFoodItem | ExternalFoodItem | Meal | BarcodeFood;
 }
 
-export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem): FoodInfoItem => ({
+export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem => ({
   id: item.id,
   name: item.name,
   brand: item.brand,
