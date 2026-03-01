@@ -13,8 +13,6 @@
     ]
   },
   "dependencies": {
-    "@types/react-beautiful-dnd": "^13.1.8",
-    "js-yaml": "^4.1.0",
-    "react-beautiful-dnd": "^13.1.1"
+    "js-yaml": "^4.1.0"
   }
 }
