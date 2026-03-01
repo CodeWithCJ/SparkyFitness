@@ -1,9 +1,5 @@
 # Sparkyfitness Helm Chart
 
-
-> [!WARNING]
-> **Community Contribution:** This Helm chart and Kubernetes support are community-provided. The Sparkyfitness maintainers do not currently use Kubernetes and cannot provide full review or official support for this installation method.
-
 A Helm chart for deploying [Sparkyfitness](https://github.com/CodeWithCJ/SparkyFitness) on Kubernetes.
 
 ## Components

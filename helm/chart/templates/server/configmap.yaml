@@ -31,9 +31,9 @@ data:
   {{- end }}
   {{- if .Values.config.oidc.enabled }}
   SPARKY_FITNESS_OIDC_AUTH_ENABLED: "true"
-  SPARKY_FITNESS_OIDC_PROVIDER_SLUG: {{ .Values.config.oidc.providerSlug | quote }}
-  SPARKY_FITNESS_OIDC_PROVIDER_NAME: {{ .Values.config.oidc.providerName | quote }}
-  SPARKY_FITNESS_OIDC_ISSUER_URL: {{ .Values.config.oidc.issuerUrl | quote }}
+  SPARKY_FITNESS_OIDC_PROVIDER_SLUG: {{ required "config.oidc.providerSlug is required when OIDC is enabled" .Values.config.oidc.providerSlug | quote }}
+  SPARKY_FITNESS_OIDC_PROVIDER_NAME: {{ required "config.oidc.providerName is required when OIDC is enabled" .Values.config.oidc.providerName | quote }}
+  SPARKY_FITNESS_OIDC_ISSUER_URL: {{ required "config.oidc.issuerUrl is required when OIDC is enabled" .Values.config.oidc.issuerUrl | quote }}
   SPARKY_FITNESS_OIDC_SCOPE: {{ .Values.config.oidc.scope | quote }}
   {{- with .Values.config.oidc.domain }}
   SPARKY_FITNESS_OIDC_DOMAIN: {{ . | quote }}

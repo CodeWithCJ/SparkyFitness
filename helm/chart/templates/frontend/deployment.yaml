@@ -27,12 +27,24 @@ spec:
       {{- end }}
       containers:
         - name: frontend
-          image: {{ include "sparkyfitness.image" (dict "image" .Values.frontend.image "global" .Values.global) }}
+          image: {{ include "sparkyfitness.image" (dict "image" .Values.frontend.image "global" .Values.global "appVersion" .Chart.AppVersion) }}
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
             - name: http
               containerPort: {{ .Values.frontend.port }}
               protocol: TCP
+          {{- with .Values.frontend.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.frontend.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.frontend.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             - name: SPARKY_FITNESS_FRONTEND_URL
               value: {{ include "sparkyfitness.frontendUrl" . | quote }}
@@ -40,6 +52,10 @@ spec:
               value: {{ include "sparkyfitness.fullname" . }}-server
             - name: SPARKY_FITNESS_SERVER_PORT
               value: {{ .Values.server.port | quote }}
+            {{- range $k, $v := .Values.frontend.extraEnv }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
           {{- with .Values.frontend.containerSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
@@ -48,3 +64,21 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        - name: nginx-conf
+          emptyDir: {}

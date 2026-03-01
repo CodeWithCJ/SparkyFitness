@@ -7,6 +7,8 @@ metadata:
     app.kubernetes.io/component: server
 spec:
   replicas: {{ .Values.server.replicas }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
@@ -29,15 +31,26 @@ spec:
       {{- end }}
       containers:
         - name: server
-          image: {{ include "sparkyfitness.image" (dict "image" .Values.server.image "global" .Values.global) }}
+          image: {{ include "sparkyfitness.image" (dict "image" .Values.server.image "global" .Values.global "appVersion" .Chart.AppVersion) }}
           imagePullPolicy: {{ .Values.server.image.pullPolicy }}
           ports:
             - name: http
               containerPort: {{ .Values.server.port }}
               protocol: TCP
+          {{- with .Values.server.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.server.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "sparkyfitness.configmapName" . }}
+            {{- with .Values.server.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           env:
             # --- App secrets ---
             - name: SPARKY_FITNESS_API_ENCRYPTION_KEY
@@ -112,11 +125,13 @@ spec:
           {{- end }}
           volumeMounts:
             - name: backup
-              mountPath: /app/SparkyFitnessServer/backup
+              mountPath: {{ .Values.server.persistence.backup.mountPath }}
             - name: uploads
-              mountPath: /app/SparkyFitnessServer/uploads
+              mountPath: {{ .Values.server.persistence.uploads.mountPath }}
             - name: temp-uploads
-              mountPath: /app/SparkyFitnessServer/temp_uploads
+              mountPath: {{ .Values.server.persistence.tempUploads.mountPath }}
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: backup
           persistentVolumeClaim:
@@ -125,4 +140,6 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "sparkyfitness.fullname" . }}-server-uploads
         - name: temp-uploads
+          emptyDir: {}
+        - name: tmp
           emptyDir: {}
