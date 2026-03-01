@@ -126,8 +126,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const setTheme = (newTheme: ThemeSetting) => {
     info(loggingLevel, 'ThemeProvider: Setting theme to:', newTheme);
-    setTheme(newTheme);
-    setThemeState(resolveTheme(newTheme));
+    setThemeState(newTheme);
+    setResolvedTheme(resolveTheme(newTheme));
   };
 
   const toggleTheme = () => {
