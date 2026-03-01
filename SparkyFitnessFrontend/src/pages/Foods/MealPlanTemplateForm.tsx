@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -87,62 +87,65 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
 
   const queryClient = useQueryClient();
   // Helper function to fetch nutrition data for an assignment
-  const fetchNutritionForAssignment = async (
-    assignment: MealPlanTemplateAssignment
-  ): Promise<ExtendedAssignment> => {
-    try {
-      if (assignment.item_type === 'meal' && assignment.meal_id) {
-        const meal = await queryClient.fetchQuery(
-          mealViewOptions(assignment.meal_id)
-        );
-        if (meal && meal.foods) {
-          // Calculate total nutrition from meal's component foods
-          let totalCalories = 0;
-          let totalProtein = 0;
-          let totalCarbs = 0;
-          let totalFat = 0;
+  const fetchNutritionForAssignment = useCallback(
+    async (
+      assignment: MealPlanTemplateAssignment
+    ): Promise<ExtendedAssignment> => {
+      try {
+        if (assignment.item_type === 'meal' && assignment.meal_id) {
+          const meal = await queryClient.fetchQuery(
+            mealViewOptions(assignment.meal_id)
+          );
+          if (meal && meal.foods) {
+            // Calculate total nutrition from meal's component foods
+            let totalCalories = 0;
+            let totalProtein = 0;
+            let totalCarbs = 0;
+            let totalFat = 0;
 
-          meal.foods.forEach((mf) => {
-            const scale = mf.quantity / (mf.serving_size || 1);
-            totalCalories += (mf.calories || 0) * scale;
-            totalProtein += (mf.protein || 0) * scale;
-            totalCarbs += (mf.carbs || 0) * scale;
-            totalFat += (mf.fat || 0) * scale;
-          });
+            meal.foods.forEach((mf) => {
+              const scale = mf.quantity / (mf.serving_size || 1);
+              totalCalories += (mf.calories || 0) * scale;
+              totalProtein += (mf.protein || 0) * scale;
+              totalCarbs += (mf.carbs || 0) * scale;
+              totalFat += (mf.fat || 0) * scale;
+            });
 
-          return {
-            ...assignment,
-            calories: totalCalories,
-            protein: totalProtein,
-            carbs: totalCarbs,
-            fat: totalFat,
-            serving_size: meal.serving_size || 1,
-            serving_unit: meal.serving_unit || 'serving',
-          };
+            return {
+              ...assignment,
+              calories: totalCalories,
+              protein: totalProtein,
+              carbs: totalCarbs,
+              fat: totalFat,
+              serving_size: meal.serving_size || 1,
+              serving_unit: meal.serving_unit || 'serving',
+            };
+          }
+        } else if (assignment.item_type === 'food' && assignment.food_id) {
+          const food = await queryClient.fetchQuery(
+            foodViewOptions(assignment.food_id)
+          );
+
+          if (food && food.default_variant) {
+            const variant = food.default_variant;
+            return {
+              ...assignment,
+              calories: variant.calories,
+              protein: variant.protein,
+              carbs: variant.carbs,
+              fat: variant.fat,
+              serving_size: variant.serving_size,
+              serving_unit: variant.serving_unit,
+            };
+          }
         }
-      } else if (assignment.item_type === 'food' && assignment.food_id) {
-        const food = await queryClient.fetchQuery(
-          foodViewOptions(assignment.food_id)
-        );
-
-        if (food && food.default_variant) {
-          const variant = food.default_variant;
-          return {
-            ...assignment,
-            calories: variant.calories,
-            protein: variant.protein,
-            carbs: variant.carbs,
-            fat: variant.fat,
-            serving_size: variant.serving_size,
-            serving_unit: variant.serving_unit,
-          };
-        }
+      } catch (err) {
+        error(loggingLevel, `Failed to fetch nutrition for assignment:`, err);
       }
-    } catch (err) {
-      error(loggingLevel, `Failed to fetch nutrition for assignment:`, err);
-    }
-    return { ...assignment }; // Return without nutrition if fetch fails
-  };
+      return { ...assignment }; // Return without nutrition if fetch fails
+    },
+    [loggingLevel, queryClient]
+  );
 
   // Fetch nutrition data for existing assignments when template loads
   useEffect(() => {
@@ -157,8 +160,12 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     };
 
     loadNutritionForAssignments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [template?.id]); // Only run when template ID changes
+  }, [
+    template?.id,
+    setExtendedAssignments,
+    fetchNutritionForAssignment,
+    template.assignments,
+  ]); // Only run when template ID changes
 
   const handleAddFood = (day: number, mealType: string) => {
     setCurrentDay(day);

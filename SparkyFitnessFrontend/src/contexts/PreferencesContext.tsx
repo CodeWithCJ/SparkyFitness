@@ -780,8 +780,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       loggingLevel,
       'PreferencesProvider: Initializing PreferencesProvider.'
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loggingLevel]);
 
   useEffect(() => {
     if (!loading) {
