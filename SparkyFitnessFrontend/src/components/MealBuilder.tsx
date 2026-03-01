@@ -246,7 +246,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       // Check for foodEntryId
       fetchMealData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     mealId,
     activeUserId,
@@ -255,7 +254,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     initialFoods,
     foodEntryId,
     foodEntryMealType,
-  ]); // Update dependency array
+    initialServingSize,
+    initialServingUnit,
+    queryClient,
+  ]);
 
   const handleAddFoodToMeal = (food: Food) => {
     setSelectedFoodForUnitSelection(food);

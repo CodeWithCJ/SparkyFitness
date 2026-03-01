@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -71,23 +71,7 @@ const NutrientDisplaySettings: React.FC = () => {
     setPreferences(nutrientDisplayPreferences);
   }, [nutrientDisplayPreferences]);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (
-        JSON.stringify(preferences) !==
-        JSON.stringify(nutrientDisplayPreferences)
-      ) {
-        savePreferences();
-      }
-    }, 1000);
-
-    return () => {
-      clearTimeout(handler);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preferences]);
-
-  const savePreferences = async () => {
+  const savePreferences = useCallback(async () => {
     const changedPreferences = preferences.filter((p) => {
       const originalPref = nutrientDisplayPreferences.find(
         (op) => op.view_group === p.view_group && op.platform === p.platform
@@ -116,7 +100,27 @@ const NutrientDisplaySettings: React.FC = () => {
       }
     }
     loadNutrientDisplayPreferences();
-  };
+  }, [
+    nutrientDisplayPreferences,
+    preferences,
+    loadNutrientDisplayPreferences,
+    updatePreference,
+  ]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (
+        JSON.stringify(preferences) !==
+        JSON.stringify(nutrientDisplayPreferences)
+      ) {
+        savePreferences();
+      }
+    }, 1000);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [preferences, nutrientDisplayPreferences, savePreferences]);
 
   const updatePreferences = (
     viewGroup: string,

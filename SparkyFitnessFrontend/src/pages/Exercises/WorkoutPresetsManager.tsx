@@ -176,12 +176,14 @@ const WorkoutPresetsManager = () => {
         </div>
       )}
       <WorkoutPresetForm
+        key={selectedPreset?.id || (isEditDialogOpen ? 'open' : 'closed')}
         isOpen={isAddPresetDialogOpen}
         onClose={() => setIsAddPresetDialogOpen(false)}
         onSave={handleCreatePreset}
       />
       {selectedPreset && (
         <WorkoutPresetForm
+          key={selectedPreset?.id || (isEditDialogOpen ? 'open' : 'closed')}
           isOpen={isEditDialogOpen}
           onClose={() => {
             setIsEditDialogOpen(false);

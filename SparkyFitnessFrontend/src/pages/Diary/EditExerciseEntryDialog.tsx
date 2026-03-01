@@ -111,8 +111,13 @@ const EditExerciseEntryDialog = ({
       setCaloriesBurnedInput('');
       setShowCaloriesWarning(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sets]);
+  }, [
+    sets,
+    setCaloriesBurnedInput,
+    setShowCaloriesWarning,
+    entry.calories_burned,
+    loggingLevel,
+  ]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {

@@ -40,12 +40,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/*
 Build a container image string with optional global.imageRegistry prefix.
-Usage: {{ include "sparkyfitness.image" (dict "image" .Values.server.image "global" .Values.global) }}
+Usage: {{ include "sparkyfitness.image" (dict "image" .Values.server.image "global" .Values.global "appVersion" .Chart.AppVersion) }}
 */}}
 {{- define "sparkyfitness.image" -}}
 {{- $registry := .global.imageRegistry | default "" -}}
 {{- $repo := .image.repository -}}
-{{- $tag := .image.tag | default "latest" -}}
+{{- $tag := .image.tag | default .appVersion -}}
 {{- if $registry -}}
 {{- printf "%s/%s:%s" $registry $repo $tag -}}
 {{- else -}}
@@ -143,20 +143,17 @@ App database secret name (limited-privilege user): existingSecret > chart-manage
 
 {{/*
 Database credentials secret name.
+Resolves: postgresql.auth or externalDatabase.auth → existingSecret > chart-managed.
 */}}
 {{- define "sparkyfitness.databaseSecretName" -}}
+{{- $dbAuth := .Values.externalDatabase.auth -}}
 {{- if .Values.postgresql.enabled -}}
-  {{- if .Values.postgresql.auth.existingSecret -}}
-    {{- .Values.postgresql.auth.existingSecret -}}
-  {{- else -}}
-    {{- include "sparkyfitness.fullname" . }}-postgres
-  {{- end -}}
+  {{- $dbAuth = .Values.postgresql.auth -}}
+{{- end -}}
+{{- if $dbAuth.existingSecret -}}
+  {{- $dbAuth.existingSecret -}}
 {{- else -}}
-  {{- if .Values.externalDatabase.auth.existingSecret -}}
-    {{- .Values.externalDatabase.auth.existingSecret -}}
-  {{- else -}}
-    {{- include "sparkyfitness.fullname" . }}-postgres
-  {{- end -}}
+  {{- include "sparkyfitness.fullname" . }}-postgres
 {{- end -}}
 {{- end }}
 
@@ -208,18 +205,12 @@ true
 Whether the chart should create the database credentials secret.
 */}}
 {{- define "sparkyfitness.createDatabaseSecret" -}}
+{{- $dbAuth := .Values.externalDatabase.auth -}}
 {{- if .Values.postgresql.enabled -}}
-  {{- if not .Values.postgresql.auth.existingSecret -}}
-    {{- if not (and .Values.externalSecrets.enabled .Values.externalSecrets.postgres.enabled) -}}
+  {{- $dbAuth = .Values.postgresql.auth -}}
+{{- end -}}
+{{- if and (not $dbAuth.existingSecret) (not (and .Values.externalSecrets.enabled .Values.externalSecrets.postgres.enabled)) -}}
 true
-    {{- end -}}
-  {{- end -}}
-{{- else -}}
-  {{- if not .Values.externalDatabase.auth.existingSecret -}}
-    {{- if not (and .Values.externalSecrets.enabled .Values.externalSecrets.postgres.enabled) -}}
-true
-    {{- end -}}
-  {{- end -}}
 {{- end -}}
 {{- end }}
 
@@ -244,6 +235,7 @@ http://{{ $host }}
 {{- else if .Values.config.frontendUrl -}}
 {{- .Values.config.frontendUrl -}}
 {{- else -}}
+{{- /* 3004 is the SparkyFitness server's default development port */ -}}
 http://localhost:3004
 {{- end -}}
 {{- end }}

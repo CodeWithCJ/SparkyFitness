@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -37,24 +37,8 @@ const MealUnitSelector = ({
     return unit === 'kcal' ? 'kcal' : 'kJ';
   };
 
-  const [quantity, setQuantity] = useState(1.0);
-  const [unit, setUnit] = useState('serving');
-
-  useEffect(() => {
-    debug(loggingLevel, 'MealUnitSelector open/meal useEffect triggered.', {
-      open,
-      meal,
-      initialQuantity,
-      initialUnit,
-    });
-    if (open && meal) {
-      // Set initial values or defaults
-
-      setQuantity(initialQuantity !== undefined ? initialQuantity : 1.0);
-      setUnit(initialUnit || meal.serving_unit || 'serving');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, meal, initialQuantity, initialUnit]);
+  const [quantity, setQuantity] = useState(initialQuantity ?? 1.0);
+  const unit = initialUnit || meal?.serving_unit || 'serving';
 
   const handleSubmit = (event) => {
     event.preventDefault();

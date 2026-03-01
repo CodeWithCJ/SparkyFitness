@@ -1,9 +1,8 @@
 import '@testing-library/jest-dom';
+import { TextEncoder, TextDecoder } from 'util';
 
 // Polyfill for TextEncoder/TextDecoder in jsdom
 if (typeof globalThis.TextEncoder === 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { TextEncoder, TextDecoder } = require('util');
   globalThis.TextEncoder = TextEncoder;
   globalThis.TextDecoder = TextDecoder;
 }
@@ -11,7 +10,6 @@ if (typeof globalThis.TextEncoder === 'undefined') {
 // needed for useisMobile hook
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: (query: any) => ({
     matches: false,
     media: query,
@@ -60,16 +58,16 @@ if (!global.PointerEvent) {
       this.twist = params.twist || 0;
     }
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   global.PointerEvent = PointerEvent as any;
 }
 
 // Mock pointer capture methods
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 (HTMLElement.prototype as any).setPointerCapture = jest.fn();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 (HTMLElement.prototype as any).releasePointerCapture = jest.fn();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 (HTMLElement.prototype as any).hasPointerCapture = jest
   .fn()
   .mockReturnValue(false);

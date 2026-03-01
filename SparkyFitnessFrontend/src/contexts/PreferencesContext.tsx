@@ -140,7 +140,6 @@ const PreferencesContext = createContext<PreferencesContextType | undefined>(
   undefined
 );
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const usePreferences = () => {
   const context = useContext(PreferencesContext);
   if (!context) {
@@ -781,8 +780,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       loggingLevel,
       'PreferencesProvider: Initializing PreferencesProvider.'
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loggingLevel]);
 
   useEffect(() => {
     if (!loading) {

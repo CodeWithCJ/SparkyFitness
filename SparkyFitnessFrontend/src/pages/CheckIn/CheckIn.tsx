@@ -67,7 +67,7 @@ const CheckIn = () => {
         setMoodNotes={setMoodNotes}
       />
 
-      <SleepEntrySection selectedDate={selectedDate} />
+      <SleepEntrySection key={selectedDate} selectedDate={selectedDate} />
 
       <CheckInForm
         bodyFatPercentage={bodyFatPercentage}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -83,12 +83,14 @@ const SortableSetItem = React.memo(
     set: WorkoutPresetSet;
     exerciseIndex: number;
     setIndex: number;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    onSetChange: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    onDuplicateSet: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    onRemoveSet: Function;
+    onSetChange: (
+      exerciseIndex: number,
+      setIndex: number,
+      field: keyof WorkoutPresetSet,
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
+    ) => void;
+    onDuplicateSet: (exerciseIndex: number, setIndex: number) => void;
+    onRemoveSet: (exerciseIndex: number, setIndex: number) => void;
     weightUnit: string;
   }) => {
     const { attributes, listeners, setNodeRef, transform, transition } =
@@ -305,16 +307,16 @@ const SortableExerciseItem = React.memo(
   }: {
     ex: WorkoutPresetExercise;
     exerciseIndex: number;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveExercise: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleSetChange: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleDuplicateSet: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveSet: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleAddSet: Function;
+    handleRemoveExercise: (index: number) => void;
+    handleSetChange: (
+      exerciseIndex: number,
+      setIndex: number,
+      field: keyof WorkoutPresetSet,
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
+    ) => void;
+    handleDuplicateSet: (exerciseIndex: number, setIndex: number) => void;
+    handleRemoveSet: (exerciseIndex: number, setIndex: number) => void;
+    handleAddSet: (exerciseIndex: number) => void;
     weightUnit: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     t: any;
@@ -396,33 +398,27 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
   const { t } = useTranslation();
   const { loggingLevel, weightUnit, convertWeight } = usePreferences();
   const { toast } = useToast();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
-  const [exercises, setExercises] = useState<WorkoutPresetExercise[]>([]);
+  const [name, setName] = useState(initialPreset?.name || '');
+  const [description, setDescription] = useState(
+    initialPreset?.description || ''
+  );
+  const [isPublic, setIsPublic] = useState(initialPreset?.is_public ?? false);
+  const [exercises, setExercises] = useState<WorkoutPresetExercise[]>(() => {
+    return (
+      initialPreset?.exercises.map((ex) => ({
+        ...ex,
+        id: ex.id ? String(ex.id) : crypto.randomUUID(),
+        sets: ex.sets.map((set) => ({
+          ...set,
+          id: set.id ? String(set.id) : crypto.randomUUID(),
+          weight: parseFloat(
+            convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(2)
+          ),
+        })),
+      })) || []
+    );
+  });
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setName(initialPreset?.name || '');
-      setDescription(initialPreset?.description || '');
-      setIsPublic(initialPreset?.is_public || false);
-      setExercises(
-        initialPreset?.exercises.map((ex) => ({
-          ...ex,
-          id: ex.id ? String(ex.id) : crypto.randomUUID(), // Ensure stable ID for DND
-          sets: ex.sets.map((set) => ({
-            ...set,
-            id: set.id ? String(set.id) : crypto.randomUUID(), // Ensure stable ID for sets too
-            weight: parseFloat(
-              convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(2)
-            ),
-          })),
-        })) || []
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialPreset]);
 
   const handleAddExercise = (exercise: Exercise) => {
     const newExercise: WorkoutPresetExercise = {

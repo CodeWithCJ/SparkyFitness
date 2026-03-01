@@ -15,7 +15,6 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
@@ -51,6 +50,12 @@ const removeWhoopCSS = () => {
   }
 };
 
+const resolveTheme = (themeValue: ThemeSetting): ResolvedTheme => {
+  if (themeValue === 'system') return getSystemTheme();
+  if (themeValue === 'whoop') return 'dark';
+  return themeValue as ResolvedTheme;
+};
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -67,17 +72,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     return initialTheme;
   });
 
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
-    const saved = localStorage.getItem('theme') as ThemeSetting;
-    if (saved === 'light' || saved === 'dark') {
-      return saved;
-    }
-    // WHOOP resolves as dark
-    if (saved === 'whoop') {
-      return 'dark';
-    }
-    return getSystemTheme();
-  });
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
+    resolveTheme((localStorage.getItem('theme') as ThemeSetting) || 'system')
+  );
 
   // Listen for system theme changes when in 'system' mode
   useEffect(() => {
@@ -97,18 +94,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, [theme, loggingLevel]);
-
-  // Update resolved theme when theme setting changes
-  useEffect(() => {
-    if (theme === 'system') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setResolvedTheme(getSystemTheme());
-    } else if (theme === 'whoop') {
-      setResolvedTheme('dark');
-    } else {
-      setResolvedTheme(theme);
-    }
-  }, [theme]);
 
   // Apply theme to DOM
   useEffect(() => {
@@ -141,6 +126,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   const setTheme = (newTheme: ThemeSetting) => {
     info(loggingLevel, 'ThemeProvider: Setting theme to:', newTheme);
     setThemeState(newTheme);
+    setResolvedTheme(resolveTheme(newTheme));
   };
 
   const toggleTheme = () => {
@@ -154,6 +140,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
               ? 'system'
               : 'light';
       info(loggingLevel, 'ThemeProvider: Toggling theme to:', newTheme);
+      setResolvedTheme(resolveTheme(newTheme));
       return newTheme;
     });
   };

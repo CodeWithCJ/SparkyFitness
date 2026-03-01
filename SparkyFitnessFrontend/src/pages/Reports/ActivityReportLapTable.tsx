@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   FaClock,
@@ -69,32 +69,33 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
     return '';
   };
 
-  let currentCumulativeDistance = 0;
-  let currentCumulativeDuration = 0;
+  const processedLaps = useMemo(() => {
+    return lapDTOs.reduce((acc, lap) => {
+      const lapDistance = lap.distance
+        ? convertDistance(lap.distance / 1000, 'km', distanceUnit)
+        : 0;
+      const lapDurationSeconds = lap.duration || 0;
+      const lapDurationMinutes = lapDurationSeconds / 60;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const processedLaps = lapDTOs.map((lap: any) => {
-    const lapDistance = lap.distance
-      ? convertDistance(lap.distance / 1000, 'km', distanceUnit)
-      : 0;
-    const lapDurationSeconds = lap.duration || 0;
-    const lapDurationMinutes = lapDurationSeconds / 60;
+      const previousDistance =
+        acc.length > 0 ? acc[acc.length - 1].cumulativeDistance : 0;
+      const previousDuration =
+        acc.length > 0 ? acc[acc.length - 1].cumulativeDuration : 0;
 
-    // eslint-disable-next-line react-hooks/immutability
-    currentCumulativeDistance += lapDistance;
-    currentCumulativeDuration += lapDurationMinutes;
+      acc.push({
+        ...lap,
+        lapDistance: lapDistance,
+        lapDurationSeconds: lapDurationSeconds,
+        lapDurationMinutes: lapDurationMinutes,
+        cumulativeDistance: previousDistance + lapDistance,
+        cumulativeDuration: previousDuration + lapDurationMinutes,
+        movingDurationMinutes: lap.movingDuration ? lap.movingDuration / 60 : 0,
+        averageMovingSpeed: lap.averageMovingSpeed || 0,
+      });
 
-    return {
-      ...lap,
-      lapDistance: lapDistance,
-      lapDurationSeconds: lapDurationSeconds, // Add lapDurationSeconds for sorting
-      lapDurationMinutes: lapDurationMinutes,
-      cumulativeDistance: currentCumulativeDistance,
-      cumulativeDuration: currentCumulativeDuration,
-      movingDurationMinutes: lap.movingDuration ? lap.movingDuration / 60 : 0,
-      averageMovingSpeed: lap.averageMovingSpeed || 0,
-    };
-  });
+      return acc;
+    }, []);
+  }, [lapDTOs, distanceUnit, convertDistance]);
 
   const sortedLaps = [...processedLaps].sort((a, b) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

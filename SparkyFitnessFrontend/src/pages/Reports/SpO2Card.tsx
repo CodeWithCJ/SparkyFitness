@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -30,12 +30,6 @@ interface SpO2CardProps {
 const SpO2Card = ({ data }: SpO2CardProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsMounted(true);
-  }, []);
 
   // Filter out entries without SpO2 data and sort by date
   const validData = useMemo(() => {
@@ -129,66 +123,58 @@ const SpO2Card = ({ data }: SpO2CardProps) => {
 
         {/* Chart */}
         <div className="h-32">
-          {isMounted ? (
-            <ResponsiveContainer
-              width="100%"
-              height="100%"
-              minWidth={0}
-              minHeight={0}
-              debounce={100}
-            >
-              <BarChart data={chartData} barCategoryGap="20%">
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="hsl(var(--border))"
-                />
-                <XAxis
-                  dataKey="displayDate"
-                  fontSize={10}
-                  tickLine={false}
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                />
-                <YAxis
-                  domain={[80, 100]}
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={(value) => `${value}%`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--background))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                    color: 'hsl(var(--foreground))',
-                  }}
-                  formatter={(value: number) => [`${value}%`]}
-                />
-                <Bar
-                  dataKey="average"
-                  radius={[4, 4, 0, 0]}
-                  isAnimationActive={false}
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={getSpO2Color(entry.average || 0)}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-              <span className="text-xs text-muted-foreground">
-                {t('common.loading', 'Loading chart...')}
-              </span>
-            </div>
-          )}
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={0}
+            minHeight={0}
+            debounce={100}
+          >
+            <BarChart data={chartData} barCategoryGap="20%">
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="hsl(var(--border))"
+              />
+              <XAxis
+                dataKey="displayDate"
+                fontSize={10}
+                tickLine={false}
+                stroke="hsl(var(--muted-foreground))"
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              />
+              <YAxis
+                domain={[80, 100]}
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                stroke="hsl(var(--muted-foreground))"
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                tickFormatter={(value) => `${value}%`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  color: 'hsl(var(--foreground))',
+                }}
+                formatter={(value: number) => [`${value}%`]}
+              />
+              <Bar
+                dataKey="average"
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
+              >
+                {chartData.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={getSpO2Color(entry.average || 0)}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
         {/* Legend */}

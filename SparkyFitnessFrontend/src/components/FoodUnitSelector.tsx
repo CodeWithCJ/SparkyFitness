@@ -63,27 +63,7 @@ const FoodUnitSelector = ({
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    debug(loggingLevel, 'FoodUnitSelector open/food useEffect triggered.', {
-      open,
-      food,
-      initialQuantity,
-      initialUnit,
-      initialVariantId,
-    });
-    if (open && food && food.id) {
-      // Ensure food.id exists before loading variants
-      loadVariantsData();
-      setQuantity(
-        initialQuantity !== undefined
-          ? initialQuantity
-          : food.default_variant?.serving_size || 1
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, food, initialQuantity, initialUnit, initialVariantId]);
-
-  const loadVariantsData = async () => {
+  const loadVariantsData = useCallback(async () => {
     debug(loggingLevel, 'Loading food variants for food ID:', food?.id);
     setLoading(true);
     try {
@@ -192,7 +172,35 @@ const FoodUnitSelector = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [food, queryClient, loggingLevel, initialVariantId]);
+
+  useEffect(() => {
+    debug(loggingLevel, 'FoodUnitSelector open/food useEffect triggered.', {
+      open,
+      food,
+      initialQuantity,
+      initialUnit,
+      initialVariantId,
+    });
+    if (open && food && food.id) {
+      // Ensure food.id exists before loading variants
+      loadVariantsData();
+      setQuantity(
+        initialQuantity !== undefined
+          ? initialQuantity
+          : food.default_variant?.serving_size || 1
+      );
+    }
+  }, [
+    open,
+    food,
+    initialQuantity,
+    initialUnit,
+    initialVariantId,
+    loadVariantsData,
+    setQuantity,
+    loggingLevel,
+  ]);
 
   const handleSubmit = (event) => {
     event.preventDefault();

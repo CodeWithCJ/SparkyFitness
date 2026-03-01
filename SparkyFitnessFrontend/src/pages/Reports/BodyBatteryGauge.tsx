@@ -155,6 +155,4 @@ const BodyBatteryGauge: React.FC<BodyBatteryGaugeProps> = ({
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
-export { getBodyBatteryStatusInfo };
 export default BodyBatteryGauge;

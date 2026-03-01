@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 interface MagicLinkRequestDialogProps {
-  isOpen: boolean;
   onClose: () => void;
   onRequest: (email: string) => Promise<void>;
   loading: boolean;
@@ -18,7 +17,6 @@ interface MagicLinkRequestDialogProps {
 }
 
 export const MagicLinkRequestDialog: React.FC<MagicLinkRequestDialogProps> = ({
-  isOpen,
   onClose,
   onRequest,
   loading,
@@ -35,15 +33,6 @@ export const MagicLinkRequestDialog: React.FC<MagicLinkRequestDialogProps> = ({
     await onRequest(email);
     onClose();
   };
-
-  useEffect(() => {
-    if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setEmail(initialEmail || ''); // Reset email when dialog opens
-    }
-  }, [isOpen, initialEmail]);
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

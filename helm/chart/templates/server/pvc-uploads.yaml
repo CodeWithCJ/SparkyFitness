@@ -11,6 +11,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.server.persistence.uploads.size }}
-  {{- with .Values.global.storageClass }}
-  storageClassName: {{ . }}
+  {{- $sc := include "sparkyfitness.storageClass" (dict "sc" .Values.server.persistence.uploads.storageClass "global" .Values.global) }}
+  {{- if $sc }}
+  storageClassName: {{ $sc }}
   {{- end }}

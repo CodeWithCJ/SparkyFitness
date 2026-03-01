@@ -10,23 +10,33 @@ import {
 } from '@/components/ui/select';
 import { Bot, Save } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useUpdateUserAIPreferences } from '@/hooks/AI/useAIServiceSettings';
+import { useState } from 'react';
 import { UserPreferencesChat } from '@/types/settings';
 
 interface UserChatPreferencesProps {
-  preferences: UserPreferencesChat;
-  onPreferencesChange: (preferences: UserPreferencesChat) => void;
-  onSave: () => void;
   loading?: boolean;
+  defaultPreferences: UserPreferencesChat;
 }
 
 export const UserChatPreferences = ({
-  preferences,
-  onPreferencesChange,
-  onSave,
   loading = false,
+  defaultPreferences,
 }: UserChatPreferencesProps) => {
   const { t } = useTranslation();
+  const { mutateAsync: updatePreferences } = useUpdateUserAIPreferences();
+  const [preferences, setPreferences] =
+    useState<UserPreferencesChat>(defaultPreferences);
 
+  const onSave = async () => {
+    try {
+      await updatePreferences(preferences);
+      // Success toast is handled by the mutation meta
+    } catch (error) {
+      // Error toast is handled by the mutation meta
+      console.error('Error updating preferences:', error);
+    }
+  };
   return (
     <Card>
       <CardHeader>
@@ -43,7 +53,7 @@ export const UserChatPreferences = ({
           <Select
             value={preferences.auto_clear_history}
             onValueChange={(value) =>
-              onPreferencesChange({
+              setPreferences({
                 ...preferences,
                 auto_clear_history: value,
               })

@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -50,10 +50,17 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
   const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | null>(null);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const imageTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const prevExerciseIdRef = useRef<string | null>(null);
+  const [prevExerciseId, setPrevExerciseId] = useState<string | undefined>(
+    undefined
+  );
+  const [prevIsOpen, setPrevIsOpen] = useState<boolean>(false);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const instructions = exercise?.instructions || [];
+  // Ref to keep track of isPlaying state inside callbacks
+  const isPlayingRef = useRef(isPlaying);
+  const instructions = useMemo(
+    () => exercise?.instructions || [],
+    [exercise?.instructions]
+  );
   const images = exercise?.images || [];
 
   const speakInstruction = useCallback(
@@ -126,8 +133,6 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     [isMuted, selectedVoiceURI, voices, instructions, loggingLevel]
   );
 
-  // Ref to keep track of isPlaying state inside callbacks
-  const isPlayingRef = useRef(isPlaying);
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
@@ -235,52 +240,25 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     loggingLevel,
   ]);
 
-  useEffect(() => {
-    debug(
-      loggingLevel,
-      `[useEffect - isOpen/exercise] isOpen: ${isOpen}, exercise: ${exercise?.name}, prevExerciseIdRef.current: ${prevExerciseIdRef.current}`
-    );
+  if (exercise?.id !== prevExerciseId || isOpen !== prevIsOpen) {
+    setPrevExerciseId(exercise?.id);
+    setPrevIsOpen(isOpen);
+
     if (isOpen && exercise) {
-      if (exercise.id !== prevExerciseIdRef.current) {
-        info(
-          loggingLevel,
-          '[useEffect - isOpen/exercise] New exercise or modal re-opened. Resetting and starting playback.'
-        );
-        setCurrentInstructionIndex(0);
-        setCurrentImageIndex(0);
-        setIsPlaying(true);
-        startImageSlideshow(); // Start slideshow here
-      } else if (!isPlaying) {
-        info(
-          loggingLevel,
-          '[useEffect - isOpen/exercise] Same exercise, not playing. Resuming playback.'
-        );
-        setIsPlaying(true);
-        startImageSlideshow(); // Start slideshow here
-      }
-      prevExerciseIdRef.current = exercise.id;
+      setCurrentInstructionIndex(0);
+      setCurrentImageIndex(0);
+      setIsPlaying(true);
     } else {
-      info(
-        loggingLevel,
-        '[useEffect - isOpen/exercise] Modal closed or exercise changed. Stopping all playback.'
-      );
-      if (
-        'speechSynthesis' in window &&
-        typeof window.speechSynthesis.cancel === 'function'
-      ) {
-        window.speechSynthesis.cancel();
-      }
-      stopImageSlideshow();
       setIsPlaying(false);
       setCurrentInstructionIndex(0);
       setCurrentImageIndex(0);
-      prevExerciseIdRef.current = null;
     }
-    return () => {
-      debug(
-        loggingLevel,
-        '[useEffect - isOpen/exercise cleanup] Cleaning up on unmount/dependency change.'
-      );
+  }
+
+  useEffect(() => {
+    if (isOpen && exercise) {
+      startImageSlideshow();
+    } else {
       if (
         'speechSynthesis' in window &&
         typeof window.speechSynthesis.cancel === 'function'
@@ -288,10 +266,18 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
         window.speechSynthesis.cancel();
       }
       stopImageSlideshow();
-      setIsPlaying(false);
+    }
+
+    return () => {
+      if (
+        'speechSynthesis' in window &&
+        typeof window.speechSynthesis.cancel === 'function'
+      ) {
+        window.speechSynthesis.cancel();
+      }
+      stopImageSlideshow();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, exercise, stopImageSlideshow, startImageSlideshow, loggingLevel]);
+  }, [isOpen, exercise, startImageSlideshow, stopImageSlideshow]);
 
   useEffect(() => {
     debug(
@@ -415,13 +401,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     } else {
       info(loggingLevel, '[handlePrevious] Already at the first instruction.');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    currentInstructionIndex,
-    instructions.length,
-    images.length,
-    loggingLevel,
-  ]);
+  }, [currentInstructionIndex, images.length, loggingLevel]);
 
   if (!exercise) return null;
 

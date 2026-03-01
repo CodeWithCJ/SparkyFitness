@@ -28,12 +28,24 @@ spec:
       {{- end }}
       containers:
         - name: garmin
-          image: {{ include "sparkyfitness.image" (dict "image" .Values.garmin.image "global" .Values.global) }}
+          image: {{ include "sparkyfitness.image" (dict "image" .Values.garmin.image "global" .Values.global "appVersion" .Chart.AppVersion) }}
           imagePullPolicy: {{ .Values.garmin.image.pullPolicy }}
           ports:
             - name: http
               containerPort: {{ .Values.garmin.port }}
               protocol: TCP
+          {{- with .Values.garmin.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.garmin.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.garmin.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             - name: GARMIN_MICROSERVICE_URL
               value: "http://{{ include "sparkyfitness.fullname" . }}-garmin:{{ .Values.garmin.port }}"
@@ -41,6 +53,10 @@ spec:
               value: {{ .Values.garmin.port | quote }}
             - name: GARMIN_SERVICE_IS_CN
               value: {{ .Values.config.garmin.isChinaRegion | quote }}
+            {{- range $k, $v := .Values.garmin.extraEnv }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+            {{- end }}
           {{- with .Values.garmin.containerSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
@@ -49,4 +65,10 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 {{- end }}

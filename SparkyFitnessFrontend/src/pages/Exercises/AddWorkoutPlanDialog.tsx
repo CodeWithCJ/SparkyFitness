@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
@@ -104,12 +104,17 @@ const SortableSetItem = React.memo(
     set: WorkoutPresetSet;
     assignmentIndex: number;
     setIndex: number;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleSetChangeInPlan: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleDuplicateSetInPlan: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveSetInPlan: Function;
+    handleSetChangeInPlan: (
+      assignmentIndex: number,
+      setIndex: number,
+      field: keyof WorkoutPresetSet,
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
+    ) => void;
+    handleDuplicateSetInPlan: (
+      assignmentIndex: number,
+      setIndex: number
+    ) => void;
+    handleRemoveSetInPlan: (assignmentIndex: number, setIndex: number) => void;
     weightUnit: string;
   }) => {
     const { attributes, listeners, setNodeRef, transform, transition } =
@@ -313,18 +318,20 @@ const SortableAssignmentItem = React.memo(
     assignment: WorkoutPlanAssignment;
     originalIndex: number;
     workoutPresets: WorkoutPreset[];
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleCopyAssignment: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveAssignment: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleSetChangeInPlan: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleDuplicateSetInPlan: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleRemoveSetInPlan: Function;
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-    handleAddSetInPlan: Function;
+    handleCopyAssignment: (assignment: WorkoutPlanAssignment) => void;
+    handleRemoveAssignment: (index: number) => void;
+    handleSetChangeInPlan: (
+      assignmentIndex: number,
+      setIndex: number,
+      field: keyof WorkoutPresetSet,
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
+    ) => void;
+    handleDuplicateSetInPlan: (
+      assignmentIndex: number,
+      setIndex: number
+    ) => void;
+    handleRemoveSetInPlan: (assignmentIndex: number, setIndex: number) => void;
+    handleAddSetInPlan: (assignmentIndex: number) => void;
     weightUnit: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     t: any;
@@ -488,12 +495,50 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { weightUnit, loggingLevel, convertWeight } = usePreferences();
-  const [planName, setPlanName] = useState('');
-  const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [assignments, setAssignments] = useState<WorkoutPlanAssignment[]>([]);
+  const [planName, setPlanName] = useState(() => initialData?.plan_name || '');
+  const [description, setDescription] = useState(
+    () => initialData?.description || ''
+  );
+
+  const [startDate, setStartDate] = useState(() => {
+    if (initialData?.start_date) {
+      return new Date(initialData.start_date).toISOString().split('T')[0];
+    }
+    return new Date().toISOString().split('T')[0];
+  });
+
+  const [endDate, setEndDate] = useState(() => {
+    if (initialData?.end_date) {
+      return new Date(initialData.end_date).toISOString().split('T')[0];
+    }
+    const date = new Date();
+    date.setDate(date.getDate() + 7);
+    return date.toISOString().split('T')[0];
+  });
+
+  const [isActive, setIsActive] = useState(
+    () => initialData?.is_active ?? true
+  );
+
+  const [assignments, setAssignments] = useState<WorkoutPlanAssignment[]>(
+    () => {
+      return (
+        initialData?.assignments?.map((a) => ({
+          ...a,
+          id: a.id ? String(a.id) : crypto.randomUUID(),
+          sets:
+            a.sets?.map((s) => ({
+              ...s,
+              id: s.id ? String(s.id) : crypto.randomUUID(),
+              weight: parseFloat(
+                convertWeight(s.weight ?? 0, 'kg', weightUnit).toFixed(2)
+              ),
+            })) || [],
+        })) || []
+      );
+    }
+  );
+
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
   const [selectedDayForAssignment, setSelectedDayForAssignment] = useState<
     number | null
@@ -507,58 +552,6 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
     () => presetData?.pages.flatMap((page) => page.presets) ?? [],
     [presetData]
   );
-  useEffect(() => {
-    if (isOpen) {
-      if (initialData) {
-        setPlanName(initialData.plan_name);
-        setDescription(initialData.description);
-        setStartDate(
-          initialData.start_date
-            ? new Date(initialData.start_date).toISOString().split('T')[0]
-            : ''
-        );
-        setEndDate(
-          initialData.end_date
-            ? new Date(initialData.end_date).toISOString().split('T')[0]
-            : ''
-        );
-        setIsActive(initialData.is_active);
-        setAssignments(
-          initialData.assignments?.map((a) => ({
-            ...a,
-            id: a.id ? String(a.id) : crypto.randomUUID(),
-            sets:
-              a.sets?.map((s) => ({
-                ...s,
-                id: s.id ? String(s.id) : crypto.randomUUID(),
-                weight: parseFloat(
-                  convertWeight(s.weight ?? 0, 'kg', weightUnit).toFixed(2)
-                ),
-              })) || [],
-          })) || []
-        );
-      } else {
-        setPlanName('');
-        setDescription('');
-        setStartDate(new Date().toISOString().split('T')[0]);
-        const today = new Date();
-        today.setDate(today.getDate() + 7);
-        setEndDate(today.toISOString().split('T')[0]);
-        setIsActive(true);
-        setAssignments([]);
-      }
-    } else {
-      setPlanName('');
-      setDescription('');
-      setStartDate(new Date().toISOString().split('T')[0]);
-      const today = new Date();
-      today.setDate(today.getDate() + 7);
-      setEndDate(today.toISOString().split('T')[0]);
-      setIsActive(true);
-      setAssignments([]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, user?.id, initialData]);
 
   const handleRemoveAssignment = (index: number) => {
     setAssignments((prev) => prev.filter((_, i) => i !== index));
@@ -593,8 +586,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
         })
       );
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loggingLevel, weightUnit, convertWeight]
+    [loggingLevel, weightUnit, setAssignments]
   );
 
   const handleAddSetInPlan = useCallback((assignmentIndex: number) => {

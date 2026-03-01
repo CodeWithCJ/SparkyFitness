@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -45,6 +45,24 @@ interface ExerciseReportsDashboardProps {
   onDrilldown: (date: string) => void;
 }
 
+// Default layout for widgets
+const DEFAULT_LAYOUT = [
+  'keyStats',
+  'heatmap',
+  'filtersAggregation',
+  'muscleGroupRecovery',
+  'prProgression',
+  'exerciseVariety',
+  'volumeTrend',
+  'maxWeightTrend',
+  'estimated1RMTrend',
+  'bestSetRepRange',
+  'trainingVolumeByMuscleGroup',
+  'repsVsWeightScatter',
+  'setPerformance',
+  'timeUnderTension',
+  'prVisualization',
+];
 const ExerciseReportsDashboard = ({
   exerciseDashboardData,
   startDate,
@@ -54,10 +72,6 @@ const ExerciseReportsDashboard = ({
   const { t } = useTranslation();
   const { formatDateInUserTimezone, weightUnit, convertWeight } =
     usePreferences();
-  const [selectedExercisesForChart, setSelectedExercisesForChart] = useState<
-    string[]
-  >([]);
-  const [widgetLayout, setWidgetLayout] = useState<string[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(
     null
   );
@@ -65,11 +79,7 @@ const ExerciseReportsDashboard = ({
   const [selectedExercise, setSelectedExercise] = useState<string>('All');
   const [aggregationLevel, setAggregationLevel] = useState<string>('daily'); // New state for aggregation level
   const [comparisonPeriod, setComparisonPeriod] = useState<string | null>(null); // New state for comparison period
-  const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
   const { data: availableEquipment = [], isLoading: equipmentLoading } =
     useAvailableEquipment();
   const { data: availableMuscles = [], isLoading: musclesLoading } =
@@ -78,44 +88,15 @@ const ExerciseReportsDashboard = ({
     useAvailableExercises(selectedMuscle, selectedEquipment);
 
   const loading = equipmentLoading || musclesLoading || exercisesLoading;
-  // Default layout for widgets
-  const defaultLayout = [
-    'keyStats',
-    'heatmap',
-    'filtersAggregation',
-    'muscleGroupRecovery',
-    'prProgression',
-    'exerciseVariety',
-    'volumeTrend',
-    'maxWeightTrend',
-    'estimated1RMTrend',
-    'bestSetRepRange',
-    'trainingVolumeByMuscleGroup',
-    'repsVsWeightScatter',
-    'setPerformance',
-    'timeUnderTension',
-    'prVisualization',
-  ];
 
-  useEffect(() => {
-    // Load layout from local storage
-    const savedLayout = localStorage.getItem('exerciseDashboardLayout');
-    if (savedLayout) {
-      setWidgetLayout(JSON.parse(savedLayout));
-    } else {
-      setWidgetLayout(defaultLayout);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
+  const selectedExercisesForChart = useMemo(() => {
     if (selectedExercise && selectedExercise !== 'All') {
-      setSelectedExercisesForChart([selectedExercise]);
-    } else if (selectedExercise === 'All') {
-      setSelectedExercisesForChart(availableExercises.map((ex) => ex.id));
-    } else {
-      setSelectedExercisesForChart([]);
+      return [selectedExercise];
     }
+    if (selectedExercise === 'All') {
+      return availableExercises.map((ex) => ex.id);
+    }
+    return [];
   }, [selectedExercise, availableExercises]);
 
   const { mainQueries, comparisonQueries } = useExerciseProgressQueries({
@@ -615,78 +596,70 @@ const ExerciseReportsDashboard = ({
                   'Volume Trend'
                 )}
               >
-                {isMounted ? (
-                  <ResponsiveContainer
-                    width="100%"
-                    height={300}
-                    minWidth={0}
-                    minHeight={0}
-                    debounce={100}
+                <ResponsiveContainer
+                  width="100%"
+                  height={300}
+                  minWidth={0}
+                  minHeight={0}
+                  debounce={100}
+                >
+                  <BarChart
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    onClick={(e: any) =>
+                      e &&
+                      e.activePayload &&
+                      e.activePayload.length > 0 &&
+                      onDrilldown(e.activePayload[0].payload.entry_date)
+                    }
+                    data={volumeTrendData}
                   >
-                    <BarChart
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onClick={(e: any) =>
-                        e &&
-                        e.activePayload &&
-                        e.activePayload.length > 0 &&
-                        onDrilldown(e.activePayload[0].payload.entry_date)
-                      }
-                      data={volumeTrendData}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis
-                        tickFormatter={(value) => formatWeight(value)}
-                        label={{
-                          value: t(
-                            'exerciseReportsDashboard.volumeCurrent',
-                            `Volume (${weightUnit})`,
-                            { weightUnit }
-                          ),
-                          angle: -90,
-                          position: 'insideLeft',
-                          offset: 10,
-                        }}
-                      />
-                      <Tooltip
-                        formatter={(value: number) =>
-                          `${formatWeight(value)} ${weightUnit}`
-                        }
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                        }}
-                      />
-                      <Legend />
-                      <Bar
-                        dataKey="volume"
-                        fill="#8884d8"
-                        name={t(
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis
+                      tickFormatter={(value) => formatWeight(value)}
+                      label={{
+                        value: t(
                           'exerciseReportsDashboard.volumeCurrent',
-                          'Volume (Current)'
+                          `Volume (${weightUnit})`,
+                          { weightUnit }
+                        ),
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 10,
+                      }}
+                    />
+                    <Tooltip
+                      formatter={(value: number) =>
+                        `${formatWeight(value)} ${weightUnit}`
+                      }
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                      }}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="volume"
+                      fill="#8884d8"
+                      name={t(
+                        'exerciseReportsDashboard.volumeCurrent',
+                        'Volume (Current)'
+                      )}
+                      isAnimationActive={false}
+                    />
+                    {comparisonPeriod && (
+                      <Bar
+                        dataKey="comparisonVolume"
+                        fill="#8884d8"
+                        opacity={0.6}
+                        name={t(
+                          'exerciseReportsDashboard.volumeComparison',
+                          'Volume (Comparison)'
                         )}
                         isAnimationActive={false}
                       />
-                      {comparisonPeriod && (
-                        <Bar
-                          dataKey="comparisonVolume"
-                          fill="#8884d8"
-                          opacity={0.6}
-                          name={t(
-                            'exerciseReportsDashboard.volumeComparison',
-                            'Volume (Comparison)'
-                          )}
-                          isAnimationActive={false}
-                        />
-                      )}
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                    <span className="text-xs text-muted-foreground">
-                      {t('common.loading', 'Loading chart...')}
-                    </span>
-                  </div>
-                )}
+                    )}
+                  </BarChart>
+                </ResponsiveContainer>
               </ZoomableChart>
             </CardContent>
           </Card>
@@ -760,74 +733,66 @@ const ExerciseReportsDashboard = ({
                   'Max Weight Trend'
                 )}
               >
-                {isMounted ? (
-                  <ResponsiveContainer
-                    width="100%"
-                    height={300}
-                    minWidth={0}
-                    minHeight={0}
-                    debounce={100}
+                <ResponsiveContainer
+                  width="100%"
+                  height={300}
+                  minWidth={0}
+                  minHeight={0}
+                  debounce={100}
+                >
+                  <BarChart
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    onClick={(e: any) =>
+                      e &&
+                      e.activePayload &&
+                      e.activePayload.length > 0 &&
+                      onDrilldown(e.activePayload[0].payload.entry_date)
+                    }
+                    data={maxWeightTrendData}
                   >
-                    <BarChart
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onClick={(e: any) =>
-                        e &&
-                        e.activePayload &&
-                        e.activePayload.length > 0 &&
-                        onDrilldown(e.activePayload[0].payload.entry_date)
-                      }
-                      data={maxWeightTrendData}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis
-                        label={{
-                          value: t(
-                            'exerciseReportsDashboard.maxWeightCurrent',
-                            `Max Weight (${weightUnit})`,
-                            { weightUnit }
-                          ),
-                          angle: -90,
-                          position: 'insideLeft',
-                          offset: 10,
-                        }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                        }}
-                      />
-                      <Legend />
-                      <Bar
-                        dataKey="maxWeight"
-                        fill="#82ca9d"
-                        name={t(
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis
+                      label={{
+                        value: t(
                           'exerciseReportsDashboard.maxWeightCurrent',
-                          'Max Weight (Current)'
+                          `Max Weight (${weightUnit})`,
+                          { weightUnit }
+                        ),
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 10,
+                      }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                      }}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="maxWeight"
+                      fill="#82ca9d"
+                      name={t(
+                        'exerciseReportsDashboard.maxWeightCurrent',
+                        'Max Weight (Current)'
+                      )}
+                      isAnimationActive={false}
+                    />
+                    {comparisonPeriod && (
+                      <Bar
+                        dataKey="comparisonMaxWeight"
+                        fill="#82ca9d"
+                        opacity={0.6}
+                        name={t(
+                          'exerciseReportsDashboard.maxWeightComparison',
+                          'Max Weight (Comparison)'
                         )}
                         isAnimationActive={false}
                       />
-                      {comparisonPeriod && (
-                        <Bar
-                          dataKey="comparisonMaxWeight"
-                          fill="#82ca9d"
-                          opacity={0.6}
-                          name={t(
-                            'exerciseReportsDashboard.maxWeightComparison',
-                            'Max Weight (Comparison)'
-                          )}
-                          isAnimationActive={false}
-                        />
-                      )}
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                    <span className="text-xs text-muted-foreground">
-                      {t('common.loading', 'Loading chart...')}
-                    </span>
-                  </div>
-                )}
+                    )}
+                  </BarChart>
+                </ResponsiveContainer>
               </ZoomableChart>
             </CardContent>
           </Card>
@@ -909,74 +874,66 @@ const ExerciseReportsDashboard = ({
                   'Estimated 1RM Trend'
                 )}
               >
-                {isMounted ? (
-                  <ResponsiveContainer
-                    width="100%"
-                    height={300}
-                    minWidth={0}
-                    minHeight={0}
-                    debounce={100}
+                <ResponsiveContainer
+                  width="100%"
+                  height={300}
+                  minWidth={0}
+                  minHeight={0}
+                  debounce={100}
+                >
+                  <BarChart
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    onClick={(e: any) =>
+                      e &&
+                      e.activePayload &&
+                      e.activePayload.length > 0 &&
+                      onDrilldown(e.activePayload[0].payload.entry_date)
+                    }
+                    data={estimated1RMTrendData}
                   >
-                    <BarChart
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      onClick={(e: any) =>
-                        e &&
-                        e.activePayload &&
-                        e.activePayload.length > 0 &&
-                        onDrilldown(e.activePayload[0].payload.entry_date)
-                      }
-                      data={estimated1RMTrendData}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis
-                        label={{
-                          value: t(
-                            'exerciseReportsDashboard.estimated1RMCurrent',
-                            `Estimated 1RM (${weightUnit})`,
-                            { weightUnit }
-                          ),
-                          angle: -90,
-                          position: 'insideLeft',
-                          offset: 10,
-                        }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                        }}
-                      />
-                      <Legend />
-                      <Bar
-                        dataKey="estimated1RM"
-                        fill="#ffc658"
-                        name={t(
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis
+                      label={{
+                        value: t(
                           'exerciseReportsDashboard.estimated1RMCurrent',
-                          'Estimated 1RM (Current)'
+                          `Estimated 1RM (${weightUnit})`,
+                          { weightUnit }
+                        ),
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 10,
+                      }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                      }}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="estimated1RM"
+                      fill="#ffc658"
+                      name={t(
+                        'exerciseReportsDashboard.estimated1RMCurrent',
+                        'Estimated 1RM (Current)'
+                      )}
+                      isAnimationActive={false}
+                    />
+                    {comparisonPeriod && (
+                      <Bar
+                        dataKey="comparisonEstimated1RM"
+                        fill="#ffc658"
+                        opacity={0.6}
+                        name={t(
+                          'exerciseReportsDashboard.estimated1RMComparison',
+                          'Estimated 1RM (Comparison)'
                         )}
                         isAnimationActive={false}
                       />
-                      {comparisonPeriod && (
-                        <Bar
-                          dataKey="comparisonEstimated1RM"
-                          fill="#ffc658"
-                          opacity={0.6}
-                          name={t(
-                            'exerciseReportsDashboard.estimated1RMComparison',
-                            'Estimated 1RM (Comparison)'
-                          )}
-                          isAnimationActive={false}
-                        />
-                      )}
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                    <span className="text-xs text-muted-foreground">
-                      {t('common.loading', 'Loading chart...')}
-                    </span>
-                  </div>
-                )}
+                    )}
+                  </BarChart>
+                </ResponsiveContainer>
               </ZoomableChart>
             </CardContent>
           </Card>
@@ -1021,49 +978,41 @@ const ExerciseReportsDashboard = ({
                         'Best Set by Rep Range'
                       )}
                     >
-                      {isMounted ? (
-                        <ResponsiveContainer
-                          width="100%"
-                          height={300}
-                          minWidth={0}
-                          minHeight={0}
-                          debounce={100}
-                        >
-                          <BarChart data={bestSetRepRangeData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="range" />
-                            <YAxis
-                              label={{
-                                value: t(
-                                  'exerciseReportsDashboard.maxWeight',
-                                  `Weight (${weightUnit})`,
-                                  { weightUnit }
-                                ),
-                                angle: -90,
-                                position: 'insideLeft',
-                                offset: 10,
-                              }}
-                            />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: 'hsl(var(--background))',
-                              }}
-                            />
-                            <Legend />
-                            <Bar
-                              dataKey="weight"
-                              fill="#8884d8"
-                              isAnimationActive={false}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">
-                            {t('common.loading', 'Loading chart...')}
-                          </span>
-                        </div>
-                      )}
+                      <ResponsiveContainer
+                        width="100%"
+                        height={300}
+                        minWidth={0}
+                        minHeight={0}
+                        debounce={100}
+                      >
+                        <BarChart data={bestSetRepRangeData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="range" />
+                          <YAxis
+                            label={{
+                              value: t(
+                                'exerciseReportsDashboard.maxWeight',
+                                `Weight (${weightUnit})`,
+                                { weightUnit }
+                              ),
+                              angle: -90,
+                              position: 'insideLeft',
+                              offset: 10,
+                            }}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--background))',
+                            }}
+                          />
+                          <Legend />
+                          <Bar
+                            dataKey="weight"
+                            fill="#8884d8"
+                            isAnimationActive={false}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </ZoomableChart>
                   </CardContent>
                 </Card>
@@ -1095,49 +1044,41 @@ const ExerciseReportsDashboard = ({
             </CardHeader>
             <CardContent>
               <div className="h-[300px] w-full">
-                {isMounted ? (
-                  <ResponsiveContainer
-                    width="100%"
-                    height="100%"
-                    minWidth={0}
-                    minHeight={0}
-                    debounce={100}
-                  >
-                    <BarChart data={trainingVolumeByMuscleGroupData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="muscle" />
-                      <YAxis
-                        label={{
-                          value: t(
-                            'exerciseReportsDashboard.volumeCurrent',
-                            `Volume (${weightUnit})`,
-                            { weightUnit }
-                          ),
-                          angle: -90,
-                          position: 'insideLeft',
-                          offset: 10,
-                        }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                        }}
-                      />
-                      <Legend />
-                      <Bar
-                        dataKey="volume"
-                        fill="#ff7300"
-                        isAnimationActive={false}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                    <span className="text-xs text-muted-foreground">
-                      {t('common.loading', 'Loading chart...')}
-                    </span>
-                  </div>
-                )}
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  minWidth={0}
+                  minHeight={0}
+                  debounce={100}
+                >
+                  <BarChart data={trainingVolumeByMuscleGroupData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="muscle" />
+                    <YAxis
+                      label={{
+                        value: t(
+                          'exerciseReportsDashboard.volumeCurrent',
+                          `Volume (${weightUnit})`,
+                          { weightUnit }
+                        ),
+                        angle: -90,
+                        position: 'insideLeft',
+                        offset: 10,
+                      }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                      }}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="volume"
+                      fill="#ff7300"
+                      isAnimationActive={false}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
@@ -1202,57 +1143,49 @@ const ExerciseReportsDashboard = ({
                     { exerciseName: '' }
                   )}
                 >
-                  {isMounted ? (
-                    <ResponsiveContainer
-                      width="100%"
-                      height={300}
-                      minWidth={0}
-                      minHeight={0}
-                      debounce={100}
+                  <ResponsiveContainer
+                    width="100%"
+                    height={300}
+                    minWidth={0}
+                    minHeight={0}
+                    debounce={100}
+                  >
+                    <BarChart
+                      margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                      data={repsVsWeightScatterData}
                     >
-                      <BarChart
-                        margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-                        data={repsVsWeightScatterData}
-                      >
-                        <CartesianGrid />
-                        <XAxis
-                          dataKey="reps"
-                          name={t('exerciseReportsDashboard.reps', 'Reps')}
-                        />
-                        <YAxis
-                          label={{
-                            value: t(
-                              'exerciseReportsDashboard.averageWeight',
-                              `Average Weight (${weightUnit})`,
-                              { weightUnit }
-                            ),
-                            angle: -90,
-                            position: 'insideLeft',
-                            offset: 10,
-                          }}
-                        />
-                        <Tooltip
-                          cursor={{ strokeDasharray: '3 3' }}
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                          }}
-                        />
-                        <Legend />
-                        <Bar
-                          dataKey="averageWeight"
-                          name={exerciseName}
-                          fill="#a4de6c"
-                          isAnimationActive={false}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                      <span className="text-xs text-muted-foreground">
-                        {t('common.loading', 'Loading chart...')}
-                      </span>
-                    </div>
-                  )}
+                      <CartesianGrid />
+                      <XAxis
+                        dataKey="reps"
+                        name={t('exerciseReportsDashboard.reps', 'Reps')}
+                      />
+                      <YAxis
+                        label={{
+                          value: t(
+                            'exerciseReportsDashboard.averageWeight',
+                            `Average Weight (${weightUnit})`,
+                            { weightUnit }
+                          ),
+                          angle: -90,
+                          position: 'insideLeft',
+                          offset: 10,
+                        }}
+                      />
+                      <Tooltip
+                        cursor={{ strokeDasharray: '3 3' }}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                        }}
+                      />
+                      <Legend />
+                      <Bar
+                        dataKey="averageWeight"
+                        name={exerciseName}
+                        fill="#a4de6c"
+                        isAnimationActive={false}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </ZoomableChart>
               </CardContent>
             </Card>
@@ -1297,49 +1230,41 @@ const ExerciseReportsDashboard = ({
                     'Time Under Tension Trend'
                   )}
                 >
-                  {isMounted ? (
-                    <ResponsiveContainer
-                      width="100%"
-                      height={300}
-                      minWidth={0}
-                      minHeight={0}
-                      debounce={100}
-                    >
-                      <BarChart data={timeUnderTensionData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis
-                          label={{
-                            value: t(
-                              'exerciseReportsDashboard.timeUnderTensionMin',
-                              'Time Under Tension (min)'
-                            ),
-                            angle: -90,
-                            position: 'insideLeft',
-                            offset: 10,
-                          }}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                          }}
-                        />
-                        <Legend />
-                        <Bar
-                          dataKey="timeUnderTension"
-                          fill="#d0ed57"
-                          name={exerciseName}
-                          isAnimationActive={false}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                      <span className="text-xs text-muted-foreground">
-                        {t('common.loading', 'Loading chart...')}
-                      </span>
-                    </div>
-                  )}
+                  <ResponsiveContainer
+                    width="100%"
+                    height={300}
+                    minWidth={0}
+                    minHeight={0}
+                    debounce={100}
+                  >
+                    <BarChart data={timeUnderTensionData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis
+                        label={{
+                          value: t(
+                            'exerciseReportsDashboard.timeUnderTensionMin',
+                            'Time Under Tension (min)'
+                          ),
+                          angle: -90,
+                          position: 'insideLeft',
+                          offset: 10,
+                        }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                        }}
+                      />
+                      <Legend />
+                      <Bar
+                        dataKey="timeUnderTension"
+                        fill="#d0ed57"
+                        name={exerciseName}
+                        isAnimationActive={false}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </ZoomableChart>
               </CardContent>
             </Card>
@@ -1528,7 +1453,7 @@ const ExerciseReportsDashboard = ({
             {t('exerciseReportsDashboard.loadingCharts', 'Loading charts...')}
           </p>
         )}
-        {!loading && widgetLayout.map((widgetId) => renderWidget(widgetId))}
+        {!loading && DEFAULT_LAYOUT.map((widgetId) => renderWidget(widgetId))}
       </div>
 
       {!loading &&

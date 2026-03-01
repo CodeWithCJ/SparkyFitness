@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -33,50 +33,37 @@ export const ProviderDialog: React.FC<{
   const { t } = useTranslation();
   const [editedProvider, setEditedProvider] = useState<OidcProvider>(provider);
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [isManualRedirectUri, setIsManualRedirectUri] = useState(false);
-  const [baseUrlOverride, setBaseUrlOverride] = useState('');
 
   const suffix = `/api/auth/sso/callback/${editedProvider.provider_id || 'YOUR_ID'}`;
 
-  // Initialize baseUrlOverride if provider has a custom one
-  useEffect(() => {
+  const [isManualRedirectUri, setIsManualRedirectUri] = useState(() => {
     if (provider.redirect_uris?.[0]) {
       try {
         const url = new URL(provider.redirect_uris[0]);
-        const defaultOrigin = window.location.origin;
-        if (url.origin !== defaultOrigin) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          setIsManualRedirectUri(true);
-          setBaseUrlOverride(url.origin);
-        }
-      } catch (e) {
-        // Not a standard URL, might be relative or malformed
+        return url.origin !== window.location.origin;
+      } catch {
+        return false;
       }
     }
-  }, [provider]);
+    return false;
+  });
 
-  // Sync the actual provider field whenever inputs change
-  useEffect(() => {
-    const base = isManualRedirectUri
-      ? baseUrlOverride || window.location.origin
-      : window.location.origin;
-    // ensure no trailing slash
-    const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
-    const fullUri = `${cleanBase}${suffix}`;
-
-    if (editedProvider.redirect_uris?.[0] !== fullUri) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setEditedProvider((prev) => ({
-        ...prev,
-        redirect_uris: [fullUri],
-      }));
+  const [baseUrlOverride, setBaseUrlOverride] = useState(() => {
+    if (provider.redirect_uris?.[0]) {
+      try {
+        const url = new URL(provider.redirect_uris[0]);
+        if (url.origin !== window.location.origin) return url.origin;
+      } catch {
+        return '';
+      }
     }
-  }, [
-    baseUrlOverride,
-    isManualRedirectUri,
-    suffix,
-    editedProvider.redirect_uris,
-  ]);
+    return '';
+  });
+  const base = isManualRedirectUri
+    ? baseUrlOverride || window.location.origin
+    : window.location.origin;
+  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  const fullUri = `${cleanBase}${suffix}`;
 
   const handleResetToDefaults = () => {
     setEditedProvider((prev) => ({
@@ -125,7 +112,7 @@ export const ProviderDialog: React.FC<{
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSave(editedProvider, logoFile);
+            onSave({ ...editedProvider, redirect_uris: [fullUri] }, logoFile);
           }}
         >
           <DialogHeader>
