@@ -16,7 +16,7 @@
     "@bottom-tabs/react-navigation": "^1.1.0",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
-    "@kingstinct/react-native-healthkit": "^12.1.0",
+    "@kingstinct/react-native-healthkit": "^13.2.3",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-clipboard/clipboard": "^1.16.0",
     "@react-navigation/native": "^7.1.14",
@@ -42,13 +42,13 @@
     "expo-task-manager": "~14.0.9",
     "expo-web-browser": "~15.0.10",
     "react": "19.1.0",
-    "react-native": "^0.81.0",
+    "react-native": "^0.81.5",
     "react-native-bottom-tabs": "^1.1.0",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-health-connect": "^3.5.0",
     "react-native-nitro-modules": "^0.33.2",
     "react-native-reanimated": "~4.1.1",
-    "react-native-safe-area-context": "^5.5.2",
+    "react-native-safe-area-context": "^5.6.2",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-ui-datepicker": "^3.1.2",
@@ -74,9 +74,6 @@
     "tsx": "^4.21.0",
     "typescript": "^5.8.3"
   },
-  "engines": {
-    "node": ">=18"
-  },
   "jest": {
     "preset": "jest-expo",
     "testEnvironment": "jsdom",
@@ -84,7 +81,7 @@
       "./jest.setup.js"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@shopify/react-native-skia|react-native-ui-datepicker)"
+      "node_modules/(?!(?:.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo[^/]*|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@shopify/react-native-skia|react-native-ui-datepicker)/)"
     ],
     "collectCoverage": true,
     "collectCoverageFrom": [

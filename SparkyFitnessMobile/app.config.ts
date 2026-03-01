@@ -1,7 +1,7 @@
 import "tsx/cjs";
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
-const APP_NAME = 'SparkyFitnessMobile';
+const APP_NAME = 'SparkyFitness';
 const APP_SLUG = 'sparkyfitnessmobile';
 const ANDROID_PROD_BUNDLE_IDENTIFIER = 'org.SparkyApps.SparkyFitnessMobile';
 const IOS_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
@@ -108,6 +108,10 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         : IOS_PROD_BUNDLE_IDENTIFIER,
       supportsTablet: false,
       infoPlist: {
+        NSAppTransportSecurity: {
+          NSAllowsArbitraryLoads: false,
+          NSAllowsLocalNetworking: false,
+        },
         ITSAppUsesNonExemptEncryption: false,
       },
       icon: './assets/icons/appicon.icon',

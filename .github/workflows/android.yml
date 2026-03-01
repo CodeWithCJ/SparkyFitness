@@ -23,15 +23,22 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
         
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 10
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        
-    - name: Install npm dependencies
+        cache: 'pnpm'
+        cache-dependency-path: SparkyFitnessMobile/pnpm-lock.yaml
+
+    - name: Install dependencies
       run: |
         cd SparkyFitnessMobile
-        npm install
+        pnpm install --frozen-lockfile
         APP_VARIANT=production npx expo prebuild --platform android
         
     - name: Cache Gradle packages
