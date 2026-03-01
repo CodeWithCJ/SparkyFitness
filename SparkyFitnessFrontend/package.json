@@ -6,7 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "format:check": "prettier . --check",
+    "validate": "pnpm run typecheck && pnpm run lint && pnpm run format:check",
+    "build": "pnpm run validate && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
