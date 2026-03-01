@@ -1,7 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Target, Zap, Utensils, Flame, Flag, Activity } from 'lucide-react';
+import {
+  Target,
+  Zap,
+  Utensils,
+  Flame,
+  Flag,
+  Activity,
+  Info,
+} from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +35,7 @@ import {
   useDailyExerciseStats,
   useDailySteps,
   useCalculatedBMR,
+  useAdaptiveTdee,
 } from '@/hooks/Diary/useDailyProgress';
 import { DailyProgressSkeleton } from './DailyProgressSkeleton';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
@@ -42,6 +51,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     activityLevel,
     energyUnit,
     convertEnergy,
+    weightUnit,
   } = usePreferences();
 
   const { data: goals, isLoading: loadingGoals } = useDailyGoals(selectedDate);
@@ -52,14 +62,36 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { data: stepsData, isLoading: loadingSteps } =
     useDailySteps(selectedDate);
   const { bmr, includeInNet } = useCalculatedBMR();
+  const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
+    useAdaptiveTdee();
 
   const isLoading =
-    loadingGoals || loadingFood || loadingExercise || loadingSteps;
+    loadingGoals ||
+    loadingFood ||
+    loadingExercise ||
+    loadingSteps ||
+    (calorieGoalAdjustmentMode === 'adaptive' && loadingAdaptiveTdee);
 
   if (isLoading) {
     return <DailyProgressSkeleton />;
   }
-  const goalCalories = goals?.calories || 2000;
+  const rawGoalCalories = goals?.calories || 2000;
+
+  // Calculate the user's intended deficit/surplus from their manual goal vs predicted maintenance.
+  // This allows us to apply the same intention to the adaptive TDEE.
+  const sparkyfitnessBurned = computeSparkyfitnessBurned(
+    bmr || 0,
+    activityLevel
+  );
+  const calorieGoalOffset = rawGoalCalories - sparkyfitnessBurned;
+
+  // If adaptive mode is on, we use the adaptive TDEE as the baseline and apply the offset.
+  // Fallback to rawGoalCalories if not available.
+  const goalCalories =
+    calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData
+      ? Math.round(adaptiveTdeeData.tdee + calorieGoalOffset)
+      : rawGoalCalories;
+
   const eatenCalories = foodData?.totals.calories || 0;
 
   const otherExerciseCalories = exerciseData?.otherCalories || 0;
@@ -80,10 +112,6 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   const netCalories = eatenCalories - totalCaloriesBurned;
 
-  const sparkyfitnessBurned = computeSparkyfitnessBurned(
-    bmr || 0,
-    activityLevel
-  );
   const projectedBurn = computeProjectedBurn(bmr || 0, exerciseCaloriesBurned);
   const tdeeAdjustment = computeTdeeAdjustment(
     projectedBurn,
@@ -100,6 +128,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     bmrCalories,
     exerciseCaloriePercentage,
     tdeeAdjustment,
+    adaptiveTdee: adaptiveTdeeData?.tdee,
   });
 
   const calorieProgress = computeCalorieProgress(
@@ -349,6 +378,68 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           )}
 
           {/* Formula Bar */}
+          {calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && (
+            <div className="p-3 bg-green-50 dark:bg-slate-700 rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-green-500 shrink-0" />
+                  <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                    {t('exercise.dailyProgress.adaptiveTdee', 'Adaptive TDEE')}
+                  </span>
+                </div>
+                <div
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                    adaptiveTdeeData.confidence === 'HIGH'
+                      ? 'bg-green-200 text-green-800'
+                      : adaptiveTdeeData.confidence === 'MEDIUM'
+                        ? 'bg-yellow-200 text-yellow-800'
+                        : 'bg-red-200 text-red-800'
+                  }`}
+                >
+                  {t(
+                    `exercise.dailyProgress.confidence.${adaptiveTdeeData.confidence.toLowerCase()}`,
+                    adaptiveTdeeData.confidence
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="flex flex-col">
+                  <span className="text-gray-500 dark:text-slate-400">
+                    {t('exercise.dailyProgress.weightTrend', 'Weight Trend')}
+                  </span>
+                  <span className="font-semibold text-gray-800 dark:text-slate-200">
+                    {adaptiveTdeeData.weightTrend
+                      ? `${adaptiveTdeeData.weightTrend} ${t(`units.${weightUnit}`, weightUnit)}`
+                      : '--'}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-gray-500 dark:text-slate-400">
+                    {t('exercise.dailyProgress.dataPoints', 'Data Points')}
+                  </span>
+                  <span className="font-semibold text-gray-800 dark:text-slate-200">
+                    {adaptiveTdeeData.daysOfData || 0}{' '}
+                    {t('exercise.dailyProgress.days', 'days')}
+                  </span>
+                </div>
+              </div>
+
+              {adaptiveTdeeData.isFallback && (
+                <div className="flex items-start gap-1 mt-1 p-1.5 bg-yellow-100 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800">
+                  <Info className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                  <span className="text-[10px] text-yellow-700 dark:text-yellow-300">
+                    {t(
+                      'exercise.dailyProgress.fallbackReason',
+                      'Using estimation: {{reason}}',
+                      { reason: adaptiveTdeeData.fallbackReason }
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           {calorieGoalAdjustmentMode === 'tdee' ? (
             /* TDEE mode: MFP-style Expected / Actual / Adjustment */
             <div className="p-3 bg-orange-50 dark:bg-slate-700 rounded-lg space-y-1">

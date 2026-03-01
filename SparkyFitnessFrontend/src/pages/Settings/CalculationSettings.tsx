@@ -75,7 +75,7 @@ const CalculationSettings = () => {
 
   const invalidateDailyProgress = useDailyProgressInvalidation();
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] = useState<
-    'dynamic' | 'fixed' | 'percentage' | 'tdee'
+    'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive'
   >(contextCalorieGoalAdjustmentMode || 'dynamic');
   const [exerciseCaloriePercentage, setExerciseCaloriePercentage] =
     useState<number>(contextExerciseCaloriePercentage ?? 100);
@@ -392,10 +392,26 @@ const CalculationSettings = () => {
           <RadioGroup
             value={calorieGoalAdjustmentMode}
             onValueChange={(
-              value: 'dynamic' | 'fixed' | 'percentage' | 'tdee'
+              value: 'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive'
             ) => setCalorieGoalAdjustmentMode(value)}
             className="flex flex-col space-y-2 mb-4"
           >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="adaptive" id="adaptive-goal" />
+              <Label htmlFor="adaptive-goal" className="cursor-pointer">
+                <span className="font-medium">
+                  {t(
+                    'settings.calorieGoalAdjustment.adaptiveGoal',
+                    'Adaptive TDEE'
+                  )}
+                  :
+                </span>{' '}
+                {t(
+                  'settings.calorieGoalAdjustment.adaptiveGoalDescription',
+                  "The 'Gold Standard'. SparkyFitness calculates your TDEE by correlating your actual weight changes with your calorie intake over the last 35 days. It 'learns' your unique metabolism."
+                )}
+              </Label>
+            </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="dynamic" id="dynamic-goal" />
               <Label htmlFor="dynamic-goal" className="cursor-pointer">
@@ -643,10 +659,15 @@ const CalculationSettings = () => {
                               'settings.calculationExplanation.remainingTdee',
                               'Daily Goal − Eaten + (Projected Full Day − TDEE)'
                             )
-                          : t(
-                              'settings.calculationExplanation.remainingFixed',
-                              'Daily Goal - Eaten (Activity does not change your budget)'
-                            )}
+                          : calorieGoalAdjustmentMode === 'adaptive'
+                            ? t(
+                                'settings.calculationExplanation.remainingAdaptive',
+                                'Daily Goal - Eaten (Goal is your adjusted Adaptive TDEE)'
+                              )
+                            : t(
+                                'settings.calculationExplanation.remainingFixed',
+                                'Daily Goal - Eaten (Activity does not change your budget)'
+                              )}
                   </p>
                 </div>
               </div>
@@ -668,10 +689,15 @@ const CalculationSettings = () => {
                         'settings.calculationExplanation.tdeeFootnote',
                         '* Projection converges with actual at midnight. Requires BMR to be calculable and a device syncing steps or active calories.'
                       )
-                    : t(
-                        'settings.calculationExplanation.fixedFootnote',
-                        '* Ideal for strict caloric deficits and weight management.'
-                      )}
+                    : calorieGoalAdjustmentMode === 'adaptive'
+                      ? t(
+                          'settings.calculationExplanation.adaptiveFootnote',
+                          '* Dynamically adjusts your Daily Goal based on your actual metabolism. Needs consistent food and weight tracking for high accuracy.'
+                        )
+                      : t(
+                          'settings.calculationExplanation.fixedFootnote',
+                          '* Ideal for strict caloric deficits and weight management.'
+                        )}
             </div>
           </div>
         </div>

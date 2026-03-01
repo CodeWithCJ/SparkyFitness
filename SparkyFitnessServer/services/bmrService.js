@@ -8,6 +8,15 @@ const BmrAlgorithm = {
   OXFORD: 'Oxford',
 };
 
+const ActivityMultiplier = {
+  sedentary: 1.2,
+  not_much: 1.2, // Map existing value
+  lightly_active: 1.375,
+  moderately_active: 1.55,
+  very_active: 1.725,
+  extra_active: 1.9,
+};
+
 /**
  * Calculates Basal Metabolic Rate (BMR) using various algorithms.
  * @param {string} algorithm - The algorithm to use.
@@ -63,5 +72,6 @@ function calculateBmr(algorithm, weight, height, age, gender, bodyFatPercentage)
 
 module.exports = {
   BmrAlgorithm,
+  ActivityMultiplier,
   calculateBmr,
 };
