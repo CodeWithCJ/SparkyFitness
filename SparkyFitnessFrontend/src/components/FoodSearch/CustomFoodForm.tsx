@@ -483,12 +483,15 @@ const EnhancedCustomFoodForm = ({
     const currentVariant = updatedVariants[index];
     let newVariant: FormFoodVariant;
 
-    // Handle nutrient fields - allow empty string, convert to number if not empty
-    const isNutrientField = nutrientFields.includes(
-      field as NumericFoodVariantKeys
+    const isCustomNutrient = customNutrients.some(
+      (nutrient) => nutrient.name === field
     );
+    // Handle nutrient fields - allow empty string, convert to number if not empty
+    const isNutrientField =
+      nutrientFields.includes(field as NumericFoodVariantKeys) ||
+      isCustomNutrient;
 
-    if (customNutrients.some((nutrient) => nutrient.name === field)) {
+    if (isCustomNutrient) {
       // Custom nutrients - allow empty string
       const processedValue = value === '' ? '' : Number(value);
       newVariant = {
@@ -549,26 +552,7 @@ const EnhancedCustomFoodForm = ({
         const ratio = newServingSize / original;
         newVariant.is_locked = true; // Ensure is_locked is true if scaling is applied
 
-        const nutrientFields: NumericFoodVariantKeys[] = [
-          'calories', // This will be in kcal
-          'protein',
-          'carbs',
-          'fat',
-          'saturated_fat',
-          'polyunsaturated_fat',
-          'monounsaturated_fat',
-          'trans_fat',
-          'cholesterol',
-          'sodium',
-          'potassium',
-          'dietary_fiber',
-          'sugars',
-          'vitamin_a',
-          'vitamin_c',
-          'calcium',
-          'iron',
-        ];
-
+        // Scale standard nutrients
         nutrientFields.forEach((nutrientField) => {
           const originalNutrientValue = originalVariant[
             nutrientField
@@ -577,13 +561,33 @@ const EnhancedCustomFoodForm = ({
             (originalNutrientValue * ratio).toFixed(2)
           );
         });
+
+        // Scale custom nutrients
+        if (
+          originalVariant.custom_nutrients &&
+          Object.keys(originalVariant.custom_nutrients).length > 0
+        ) {
+          const scaledCustomNutrients = { ...newVariant.custom_nutrients };
+          Object.keys(originalVariant.custom_nutrients).forEach(
+            (nutrientName) => {
+              const originalVal = Number(
+                originalVariant.custom_nutrients?.[nutrientName]
+              );
+              if (!isNaN(originalVal)) {
+                scaledCustomNutrients[nutrientName] = Number(
+                  (originalVal * ratio).toFixed(2)
+                );
+              }
+            }
+          );
+          newVariant.custom_nutrients = scaledCustomNutrients;
+        }
       }
-    } else if (nutrientFields.includes(field as NumericFoodVariantKeys)) {
-      // If a nutrient field is manually edited, update its value in originalVariants as well
-      // This ensures manual overrides are preserved as the new "original"
-      const originalToUpdate = { ...updatedOriginalVariants[index] };
-      (originalToUpdate[field as NumericFoodVariantKeys] as number) =
-        newVariant[field as NumericFoodVariantKeys] as number; // Use the potentially converted newVariant value
+    } else {
+      // For any manual change (not a scaling event), update the baseline
+      // This includes changing serving_size when NOT locked, or changing any nutrient field
+      // Special case: if is_locked is true and a nutrient is edited, update the baseline with the new nutrient AND current serving_size
+      const originalToUpdate = JSON.parse(JSON.stringify(newVariant));
       updatedOriginalVariants[index] = originalToUpdate;
       setOriginalVariants(updatedOriginalVariants);
     }
