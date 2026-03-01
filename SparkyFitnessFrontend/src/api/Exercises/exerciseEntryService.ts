@@ -5,6 +5,7 @@ import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
 import type { ExerciseEntry } from '@/types/diary';
 import type { GroupedExerciseEntry } from '@/types/exercises';
+import type { ExerciseProgressData } from '@/types/reports';
 
 export const getExerciseEntriesForDate = async (
   date: string

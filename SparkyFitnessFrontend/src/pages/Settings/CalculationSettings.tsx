@@ -42,7 +42,10 @@ import {
   VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithmLabels,
 } from '@/types/nutrientAlgorithms';
-import { useDiaryInvalidation } from '@/hooks/Diary/useDiaryInvalidation';
+import {
+  useDiaryInvalidation,
+  useDailyProgressInvalidation,
+} from '@/hooks/useInvalidateKeys';
 
 const CalculationSettings = () => {
   const { t } = useTranslation();
