@@ -2,15 +2,18 @@
 FROM node:20-slim AS builder
 WORKDIR /app/SparkyFitnessFrontend
 
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # Copy package files and install dependencies
-COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/package-lock.json ./
-RUN npm install
+COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the application source code
 COPY SparkyFitnessFrontend .
 
 # Build the application
-RUN npm run build
+RUN pnpm run build
 
 # Stage 2: Serve the application with Nginx
 FROM nginx:alpine3.22
