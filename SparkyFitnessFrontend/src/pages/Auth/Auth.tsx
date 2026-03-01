@@ -739,13 +739,14 @@ const Auth = () => {
           </Card>
         )}
       </div>
-      <MagicLinkRequestDialog
-        key={isMagicLinkRequestDialogOpen ? 'open' : 'closed'}
-        onClose={() => setIsMagicLinkRequestDialogOpen(false)}
-        onRequest={handleRequestMagicLink}
-        loading={loading}
-        initialEmail={email} // Pass the email from the main Auth component
-      />
+      {isMagicLinkRequestDialogOpen && (
+        <MagicLinkRequestDialog
+          onClose={() => setIsMagicLinkRequestDialogOpen(false)}
+          onRequest={handleRequestMagicLink}
+          loading={loading}
+          initialEmail={email}
+        />
+      )}
     </>
   );
 };

@@ -3,7 +3,7 @@ FROM node:20-slim
 WORKDIR /app/SparkyFitnessFrontend
 
 # Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
 COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/pnpm-lock.yaml SparkyFitnessFrontend/pnpm-workspace.yaml ./
 RUN pnpm install
