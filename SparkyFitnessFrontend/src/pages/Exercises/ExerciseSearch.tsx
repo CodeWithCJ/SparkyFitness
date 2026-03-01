@@ -98,109 +98,127 @@ const ExerciseSearch = ({
   const { data: availableEquipment = [] } = useFreeExerciseDBEquipment();
   const { mutateAsync: addExercise } = useAddExerciseMutation();
 
-  const handleSearch = async (query: string, isInitialLoad = false) => {
-    debug(
-      loggingLevel,
-      `ExerciseSearch: Searching exercises with query: "${query}" from source: "${searchSource}" and provider ID: "${selectedProviderId}", type: "${selectedProviderType}", equipment: "${equipmentFilter.join(',')}", muscles: "${muscleGroupFilter.join(',')}"`
-    );
-    const hasSearchTerm = query.trim().length > 0;
-    const hasFilters =
-      equipmentFilter.length > 0 || muscleGroupFilter.length > 0;
+  const handleSearch = useCallback(
+    async (query: string, isInitialLoad = false) => {
+      debug(
+        loggingLevel,
+        `ExerciseSearch: Searching exercises with query: "${query}" from source: "${searchSource}" and provider ID: "${selectedProviderId}", type: "${selectedProviderType}", equipment: "${equipmentFilter.join(',')}", muscles: "${muscleGroupFilter.join(',')}"`
+      );
+      const hasSearchTerm = query.trim().length > 0;
+      const hasFilters =
+        equipmentFilter.length > 0 || muscleGroupFilter.length > 0;
 
-    if (
-      searchSource === 'external' &&
-      !hasSearchTerm &&
-      !hasFilters &&
-      !isInitialLoad
-    ) {
-      debug(
-        loggingLevel,
-        'ExerciseSearch: External search query and filters are empty, clearing exercises.'
-      );
-      setExercises([]);
-      return;
-    }
-    // For internal search, allow to proceed even with empty search term to show all exercises
-    if (
-      searchSource === 'internal' &&
-      !hasSearchTerm &&
-      !hasFilters &&
-      !isInitialLoad
-    ) {
-      debug(
-        loggingLevel,
-        'ExerciseSearch: Internal search query and filters are empty, performing a broad search.'
-      );
-      // If no search term and no filters, fetch recent and top exercises
-      try {
-        const recent = await queryClient.fetchQuery(
-          recentExercisesOptions(user?.id || '', itemDisplayLimit)
-        );
-        const top = await queryClient.fetchQuery(
-          topExercisesOptions(user?.id || '', itemDisplayLimit)
-        );
-        // Combine and deduplicate
-        setRecentExercises(recent);
-        setTopExercises(top);
-        setExercises([]); // Clear the main exercises list
-      } catch (err) {
-        error(
+      if (
+        searchSource === 'external' &&
+        !hasSearchTerm &&
+        !hasFilters &&
+        !isInitialLoad
+      ) {
+        debug(
           loggingLevel,
-          'ExerciseSearch: Error fetching recent/top exercises:',
-          err
+          'ExerciseSearch: External search query and filters are empty, clearing exercises.'
         );
+        setExercises([]);
+        return;
       }
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      let data: Exercise[] = [];
-      if (searchSource === 'internal') {
-        setRecentExercises([]);
-        setTopExercises([]);
-        data = await queryClient.fetchQuery(
-          internalSearchOptions(query, equipmentFilter, muscleGroupFilter)
+      // For internal search, allow to proceed even with empty search term to show all exercises
+      if (
+        searchSource === 'internal' &&
+        !hasSearchTerm &&
+        !hasFilters &&
+        !isInitialLoad
+      ) {
+        debug(
+          loggingLevel,
+          'ExerciseSearch: Internal search query and filters are empty, performing a broad search.'
         );
-      } else {
-        if (!selectedProviderId || !selectedProviderType) {
-          warn(
-            loggingLevel,
-            'ExerciseSearch: No external provider selected (ID or Type missing).'
+        // If no search term and no filters, fetch recent and top exercises
+        try {
+          const recent = await queryClient.fetchQuery(
+            recentExercisesOptions(user?.id || '', itemDisplayLimit)
           );
-          setLoading(false);
-          return;
+          const top = await queryClient.fetchQuery(
+            topExercisesOptions(user?.id || '', itemDisplayLimit)
+          );
+          // Combine and deduplicate
+          setRecentExercises(recent);
+          setTopExercises(top);
+          setExercises([]); // Clear the main exercises list
+        } catch (err) {
+          error(
+            loggingLevel,
+            'ExerciseSearch: Error fetching recent/top exercises:',
+            err
+          );
         }
-        data = await queryClient.fetchQuery(
-          externalSearchOptions(
-            query,
-            selectedProviderId,
-            selectedProviderType,
-            equipmentFilter,
-            muscleGroupFilter,
-            itemDisplayLimit
-          )
-        ); // Pass ID, Type, filters, and itemDisplayLimit
+        setLoading(false);
+        return;
       }
-      info(loggingLevel, 'ExerciseSearch: Exercises search results:', data);
-      setExercises(data || []);
-    } catch (err) {
-      error(loggingLevel, 'ExerciseSearch: Error searching exercises:', err);
-      toast({
-        title: t('common.errorOccurred', 'Error'),
-        description: t(
-          'exercise.exerciseSearch.failedToSearchExercises',
-          'Failed to search exercises: {{errorMessage}}',
-          { errorMessage: err instanceof Error ? err.message : String(err) }
-        ),
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-      debug(loggingLevel, 'ExerciseSearch: Loading state set to false.');
-    }
-  };
+
+      setLoading(true);
+      try {
+        let data: Exercise[] = [];
+        if (searchSource === 'internal') {
+          setRecentExercises([]);
+          setTopExercises([]);
+          data = await queryClient.fetchQuery(
+            internalSearchOptions(query, equipmentFilter, muscleGroupFilter)
+          );
+        } else {
+          if (!selectedProviderId || !selectedProviderType) {
+            warn(
+              loggingLevel,
+              'ExerciseSearch: No external provider selected (ID or Type missing).'
+            );
+            setLoading(false);
+            return;
+          }
+          data = await queryClient.fetchQuery(
+            externalSearchOptions(
+              query,
+              selectedProviderId,
+              selectedProviderType,
+              equipmentFilter,
+              muscleGroupFilter,
+              itemDisplayLimit
+            )
+          ); // Pass ID, Type, filters, and itemDisplayLimit
+        }
+        info(loggingLevel, 'ExerciseSearch: Exercises search results:', data);
+        setExercises(data || []);
+      } catch (err) {
+        error(loggingLevel, 'ExerciseSearch: Error searching exercises:', err);
+        toast({
+          title: t('common.errorOccurred', 'Error'),
+          description: t(
+            'exercise.exerciseSearch.failedToSearchExercises',
+            'Failed to search exercises: {{errorMessage}}',
+            { errorMessage: err instanceof Error ? err.message : String(err) }
+          ),
+          variant: 'destructive',
+        });
+      } finally {
+        setLoading(false);
+        debug(loggingLevel, 'ExerciseSearch: Loading state set to false.');
+      }
+    },
+    [
+      queryClient,
+      setRecentExercises,
+      setTopExercises,
+      setExercises,
+      equipmentFilter,
+      itemDisplayLimit,
+      loggingLevel,
+      muscleGroupFilter,
+      searchSource,
+      selectedProviderId,
+      t,
+      user?.id,
+      selectedProviderType,
+      toast,
+    ]
+  );
 
   const handleAddExternalExercise = async (
     exercise: Exercise
@@ -246,8 +264,7 @@ const ExerciseSearch = ({
     if (searchSource === 'internal' && user?.id) {
       handleSearch('', true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchSource, user?.id]);
+  }, [searchSource, user?.id, handleSearch]);
 
   // Effect for handling search logic
   useEffect(() => {
@@ -269,8 +286,13 @@ const ExerciseSearch = ({
     return () => {
       clearTimeout(handler);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, equipmentFilter, muscleGroupFilter, searchSource]);
+  }, [
+    searchTerm,
+    equipmentFilter,
+    muscleGroupFilter,
+    searchSource,
+    handleSearch,
+  ]);
 
   const fetchProviders = useCallback(async () => {
     debug(

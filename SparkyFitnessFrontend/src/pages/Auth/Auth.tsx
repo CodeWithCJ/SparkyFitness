@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -113,8 +113,14 @@ const Auth = () => {
       }
     };
     fetchAuthSettings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loggingLevel, authUser, authLoading, navigate, loginSettings]);
+  }, [
+    loggingLevel,
+    authUser,
+    authLoading,
+    navigate,
+    loginSettings,
+    initiateOidcLogin,
+  ]);
 
   // Passkey Conditional UI (Autofill)
   useEffect(() => {
@@ -181,57 +187,60 @@ const Auth = () => {
     }
   }, [authUser, authLoading, loggingLevel, navigate]);
 
-  const triggerMfaChallenge = async (
-    authResponse: AuthResponse,
-    currentUserEmail: string,
-    handlers: { onMfaSuccess: () => void; onMfaCancel: () => void }
-  ) => {
-    // CRITICAL: If twoFactorRedirect is true, we MUST show the challenge
-    // Even if factor flags are missing, we default to showing the challenge
-    const shouldShowChallenge =
-      authResponse.mfa_totp_enabled ||
-      authResponse.mfa_email_enabled ||
-      authResponse.needs_mfa_setup ||
-      authResponse.twoFactorRedirect;
+  const triggerMfaChallenge = useCallback(
+    async (
+      authResponse: AuthResponse,
+      currentUserEmail: string,
+      handlers: { onMfaSuccess: () => void; onMfaCancel: () => void }
+    ) => {
+      // CRITICAL: If twoFactorRedirect is true, we MUST show the challenge
+      // Even if factor flags are missing, we default to showing the challenge
+      const shouldShowChallenge =
+        authResponse.mfa_totp_enabled ||
+        authResponse.mfa_email_enabled ||
+        authResponse.needs_mfa_setup ||
+        authResponse.twoFactorRedirect;
 
-    if (shouldShowChallenge) {
-      info(loggingLevel, 'Auth: MFA required. Displaying MFA challenge.');
+      if (shouldShowChallenge) {
+        info(loggingLevel, 'Auth: MFA required. Displaying MFA challenge.');
 
-      // Proactively fetch MFA factors if missing
-      let mfaEmail = authResponse.mfa_email_enabled;
-      let mfaTotp = authResponse.mfa_totp_enabled;
-      const userEmail = authResponse.email || currentUserEmail;
+        // Proactively fetch MFA factors if missing
+        let mfaEmail = authResponse.mfa_email_enabled;
+        let mfaTotp = authResponse.mfa_totp_enabled;
+        const userEmail = authResponse.email || currentUserEmail;
 
-      if ((mfaEmail === undefined || mfaTotp === undefined) && userEmail) {
-        try {
-          const factors = await queryClient.fetchQuery(
-            mfaFactorsOptions(userEmail)
-          );
-          mfaEmail = factors.mfa_email_enabled;
-          mfaTotp = factors.mfa_totp_enabled;
-        } catch (e) {
-          error(loggingLevel, 'Auth: Failed to fetch MFA factors:', e);
-          // Default to TOTP if we can't fetch factors but MFA is required
-          mfaTotp = true;
+        if ((mfaEmail === undefined || mfaTotp === undefined) && userEmail) {
+          try {
+            const factors = await queryClient.fetchQuery(
+              mfaFactorsOptions(userEmail)
+            );
+            mfaEmail = factors.mfa_email_enabled;
+            mfaTotp = factors.mfa_totp_enabled;
+          } catch (e) {
+            error(loggingLevel, 'Auth: Failed to fetch MFA factors:', e);
+            // Default to TOTP if we can't fetch factors but MFA is required
+            mfaTotp = true;
+          }
         }
+
+        setMfaChallengeProps({
+          userId: authResponse.userId,
+          email: userEmail,
+          mfaTotpEnabled: mfaTotp ?? true,
+          mfaEmailEnabled: mfaEmail ?? false,
+          needsMfaSetup: authResponse.needs_mfa_setup,
+          mfaToken: authResponse.mfaToken,
+          ...handlers,
+        });
+        setShowMfaChallenge(true);
+        return true;
       }
 
-      setMfaChallengeProps({
-        userId: authResponse.userId,
-        email: userEmail,
-        mfaTotpEnabled: mfaTotp ?? true,
-        mfaEmailEnabled: mfaEmail ?? false,
-        needsMfaSetup: authResponse.needs_mfa_setup,
-        mfaToken: authResponse.mfaToken,
-        ...handlers,
-      });
-      setShowMfaChallenge(true);
-      return true;
-    }
-
-    info(loggingLevel, 'Auth: MFA not required. Bypassing.');
-    return false;
-  };
+      info(loggingLevel, 'Auth: MFA not required. Bypassing.');
+      return false;
+    },
+    [loggingLevel, queryClient]
+  );
 
   const hasAttemptedMagicLinkLogin = useRef(false);
 
@@ -324,8 +333,14 @@ const Auth = () => {
       };
       handleMagicLinkLogin();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loggingLevel, navigate, signIn, email]); // Add email to dependencies if it's used in mfaChallengeProps and might change.
+  }, [
+    loggingLevel,
+    navigate,
+    signIn,
+    email,
+    triggerMfaChallenge,
+    verifyMagicLink,
+  ]);
 
   const validatePassword = (pwd: string) => {
     if (pwd.length < 6) {

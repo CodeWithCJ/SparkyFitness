@@ -139,8 +139,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     if (isActive) {
       getCameras();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, cameraFacing]); // Re-check when active toggles
+  }, [isActive, cameraFacing, selectedCameraId]); // Re-check when active toggles
 
   const turnOffTorch = useCallback(async () => {
     if (!currentTrack.current || !torchSupported || !torchEnabled) return;

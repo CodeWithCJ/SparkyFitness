@@ -586,8 +586,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
         })
       );
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loggingLevel, weightUnit, convertWeight]
+    [loggingLevel, weightUnit, setAssignments]
   );
 
   const handleAddSetInPlan = useCallback((assignmentIndex: number) => {

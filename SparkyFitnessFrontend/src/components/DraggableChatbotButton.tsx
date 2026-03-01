@@ -23,11 +23,33 @@ interface ButtonState {
 
 const DraggableChatbotButton: React.FC = () => {
   const { toggleChat, isChatOpen } = useChatbotVisibility();
-  const { user, loading } = useAuth();
-  const [buttonState, setButtonState] = useState<ButtonState>({
-    y: 0,
-    edge: 'right',
-    minimized: false,
+  const { user } = useAuth();
+  const [buttonState, setButtonState] = useState<ButtonState>(() => {
+    const bottomOffset = window.innerWidth < 768 ? BOTTOM_NAV_HEIGHT : 0; // Quick check based on typical mobile breakpoint
+    const defaultY =
+      window.innerHeight - BUTTON_SIZE - EDGE_MARGIN - bottomOffset;
+
+    const defaultState: ButtonState = {
+      y: defaultY,
+      edge: 'right',
+      minimized: false,
+    };
+
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as ButtonState;
+        const maxY = window.innerHeight - BUTTON_SIZE - EDGE_MARGIN;
+        return {
+          ...parsed,
+          y: Math.min(Math.max(EDGE_MARGIN, parsed.y), maxY),
+        };
+      } catch {
+        return defaultState;
+      }
+    }
+
+    return defaultState;
   });
   const [isDragging, setIsDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
@@ -38,8 +60,7 @@ const DraggableChatbotButton: React.FC = () => {
   const dragOffset = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  const { data: activeService, isLoading: serviceLoading } =
-    useActiveAIService(!!user);
+  const { data: activeService } = useActiveAIService(!!user);
 
   // Berechneter Wert statt State
   const hasAiProvider = !!(
@@ -60,36 +81,6 @@ const DraggableChatbotButton: React.FC = () => {
       y: buttonState.y,
     };
   }, [buttonState, isDragging, dragPosition]);
-
-  // Initialize position from localStorage or default to bottom-right
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as ButtonState;
-        // Ensure y is within bounds
-        const maxY = window.innerHeight - BUTTON_SIZE - EDGE_MARGIN;
-        setButtonState({
-          ...parsed,
-          y: Math.min(Math.max(EDGE_MARGIN, parsed.y), maxY),
-        });
-      } catch {
-        setDefaultPosition();
-      }
-    } else {
-      setDefaultPosition();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const setDefaultPosition = () => {
-    const bottomOffset = isMobile ? BOTTOM_NAV_HEIGHT : 0;
-    setButtonState({
-      y: window.innerHeight - BUTTON_SIZE - EDGE_MARGIN - bottomOffset,
-      edge: 'right',
-      minimized: false,
-    });
-  };
 
   // Calculate max Y position (respects bottom nav on mobile)
   const getMaxY = useCallback(
@@ -199,12 +190,12 @@ const DraggableChatbotButton: React.FC = () => {
     }
   };
 
-  const handleInteractionEnd = () => {
+  const handleInteractionEnd = useCallback(() => {
     if (isDragging && hasDragged.current) {
       snapToEdge(dragPosition.x, dragPosition.y);
     }
     setIsDragging(false);
-  };
+  }, [isDragging, hasDragged, snapToEdge, dragPosition, setIsDragging]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     handleInteractionStart(e.clientX, e.clientY);
@@ -220,8 +211,7 @@ const DraggableChatbotButton: React.FC = () => {
 
   const handleMouseUp = useCallback(() => {
     handleInteractionEnd();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDragging, hasDragged, dragPosition, snapToEdge]);
+  }, [handleInteractionEnd]);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     if (e.touches.length === 1) {
@@ -239,17 +229,7 @@ const DraggableChatbotButton: React.FC = () => {
     [updatePosition]
   );
 
-  const handleTouchEnd = useCallback(() => {
-    if (isDragging) {
-      handleInteractionEnd();
-      if (!hasDragged.current) {
-        handleClick();
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDragging, hasDragged, dragPosition, snapToEdge]);
-
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     if (!hasDragged.current) {
       if (buttonState.minimized) {
         // Restore from minimized with animation
@@ -264,7 +244,15 @@ const DraggableChatbotButton: React.FC = () => {
       }
     }
     hasDragged.current = false;
-  };
+  }, [setIsRestoring, setButtonState, toggleChat, buttonState]);
+  const handleTouchEnd = useCallback(() => {
+    if (isDragging) {
+      handleInteractionEnd();
+      if (!hasDragged.current) {
+        handleClick();
+      }
+    }
+  }, [isDragging, hasDragged, handleClick, handleInteractionEnd]);
 
   const handleMinimize = (e: React.MouseEvent) => {
     e.stopPropagation();

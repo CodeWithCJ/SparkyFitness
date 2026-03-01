@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -214,87 +214,7 @@ const EnhancedCustomFoodForm = ({
     is_quick_food: false,
   });
 
-  useEffect(() => {
-    if (food) {
-      setFormData({
-        name: food.name || '',
-        brand: food.brand || '',
-        is_quick_food: food.is_quick_food || false,
-      });
-      if (food.variants && food.variants.length > 0) {
-        const mappedVariants = food.variants.map((v) =>
-          foodVariantToFormVariant({
-            ...v,
-            is_locked: false,
-            glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
-          })
-        );
-        setVariants(mappedVariants);
-        setOriginalVariants(JSON.parse(JSON.stringify(mappedVariants))); // Deep copy for original values
-        setVariantErrors(new Array(food.variants.length).fill(null)); // Initialize errors for existing variants
-      } else {
-        loadExistingVariants();
-      }
-    } else if (initialVariants && initialVariants.length > 0) {
-      setFormData({
-        name: '',
-        brand: '',
-        is_quick_food: false,
-      });
-      const mappedInitialVariants = initialVariants.map(
-        foodVariantToFormVariant
-      );
-      setVariants(mappedInitialVariants);
-      setOriginalVariants(JSON.parse(JSON.stringify(mappedInitialVariants))); // Deep copy for original values
-      setVariantErrors(new Array(initialVariants.length).fill(null)); // Initialize errors for initial variants
-    } else {
-      setFormData({
-        name: '',
-        brand: '',
-        is_quick_food: false,
-      });
-      const defaultVariant: FormFoodVariant = {
-        serving_size: 100,
-        serving_unit: 'g',
-        calories: '',
-        protein: '',
-        carbs: '',
-        fat: '',
-        saturated_fat: '',
-        polyunsaturated_fat: '',
-        monounsaturated_fat: '',
-        trans_fat: '',
-        cholesterol: '',
-        sodium: '',
-        potassium: '',
-        dietary_fiber: '',
-        sugars: '',
-        vitamin_a: '',
-        vitamin_c: '',
-        calcium: '',
-        iron: '',
-        is_default: true,
-        is_locked: false,
-        glycemic_index: 'None' as GlycemicIndex,
-        custom_nutrients: {},
-      };
-
-      if (customNutrients && customNutrients.length > 0) {
-        customNutrients.forEach((nutrient) => {
-          if (defaultVariant.custom_nutrients) {
-            defaultVariant.custom_nutrients[nutrient.name] = '';
-          }
-        });
-      }
-
-      setVariants([defaultVariant]);
-      setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
-      setVariantErrors([null]); // Initialize error for the single default variant
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [food, initialVariants, customNutrients]);
-
-  const loadExistingVariants = async () => {
+  const loadExistingVariants = useCallback(async () => {
     if (!food?.id || !isUUID(food.id)) return; // Ensure food.id is a valid UUID
 
     try {
@@ -396,7 +316,86 @@ const EnhancedCustomFoodForm = ({
       setVariants([defaultVariant]);
       setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy for original values
     }
-  };
+  }, [food.default_variant, food.id, queryClient]);
+
+  useEffect(() => {
+    if (food) {
+      setFormData({
+        name: food.name || '',
+        brand: food.brand || '',
+        is_quick_food: food.is_quick_food || false,
+      });
+      if (food.variants && food.variants.length > 0) {
+        const mappedVariants = food.variants.map((v) =>
+          foodVariantToFormVariant({
+            ...v,
+            is_locked: false,
+            glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
+          })
+        );
+        setVariants(mappedVariants);
+        setOriginalVariants(JSON.parse(JSON.stringify(mappedVariants))); // Deep copy for original values
+        setVariantErrors(new Array(food.variants.length).fill(null)); // Initialize errors for existing variants
+      } else {
+        loadExistingVariants();
+      }
+    } else if (initialVariants && initialVariants.length > 0) {
+      setFormData({
+        name: '',
+        brand: '',
+        is_quick_food: false,
+      });
+      const mappedInitialVariants = initialVariants.map(
+        foodVariantToFormVariant
+      );
+      setVariants(mappedInitialVariants);
+      setOriginalVariants(JSON.parse(JSON.stringify(mappedInitialVariants))); // Deep copy for original values
+      setVariantErrors(new Array(initialVariants.length).fill(null)); // Initialize errors for initial variants
+    } else {
+      setFormData({
+        name: '',
+        brand: '',
+        is_quick_food: false,
+      });
+      const defaultVariant: FormFoodVariant = {
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: '',
+        protein: '',
+        carbs: '',
+        fat: '',
+        saturated_fat: '',
+        polyunsaturated_fat: '',
+        monounsaturated_fat: '',
+        trans_fat: '',
+        cholesterol: '',
+        sodium: '',
+        potassium: '',
+        dietary_fiber: '',
+        sugars: '',
+        vitamin_a: '',
+        vitamin_c: '',
+        calcium: '',
+        iron: '',
+        is_default: true,
+        is_locked: false,
+        glycemic_index: 'None' as GlycemicIndex,
+        custom_nutrients: {},
+      };
+
+      if (customNutrients && customNutrients.length > 0) {
+        customNutrients.forEach((nutrient) => {
+          if (defaultVariant.custom_nutrients) {
+            defaultVariant.custom_nutrients[nutrient.name] = '';
+          }
+        });
+      }
+
+      setVariants([defaultVariant]);
+      setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
+      setVariantErrors([null]); // Initialize error for the single default variant
+    }
+  }, [food, initialVariants, customNutrients, loadExistingVariants]);
 
   const addVariant = () => {
     const newVariant: FormFoodVariant = {
