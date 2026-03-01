@@ -1,6 +1,6 @@
 // BarcodeScanner component with selectable scanning engine and camera switching
 import type React from 'react';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Scan,
@@ -56,15 +56,23 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       return 'zxing';
     }
   });
-  const [engineInstance, setEngineInstance] =
-    useState<BarcodeScannerEngine | null>(null);
-
+  const engineInstance: BarcodeScannerEngine = useMemo(() => {
+    switch (selectedEngine) {
+      case 'zxing':
+        return new ZxingEngine();
+      case 'html5-qrcode':
+        return new Html5QrcodeEngine();
+      case 'quagga2':
+        return new QuaggaEngine();
+      default:
+        return new ZxingEngine();
+    }
+  }, [selectedEngine]);
   // Camera Selection
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
 
   // Scanning State
-  const [isScanning, setIsScanning] = useState(false);
   const [scanLine, setScanLine] = useState(false);
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
@@ -134,26 +142,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, cameraFacing]); // Re-check when active toggles
 
-  const createEngine = (name: string): BarcodeScannerEngine => {
-    switch (name) {
-      case 'zxing':
-        return new ZxingEngine();
-      case 'html5-qrcode':
-        return new Html5QrcodeEngine();
-      case 'quagga2':
-        return new QuaggaEngine();
-      default:
-        return new ZxingEngine();
-    }
-  };
-
-  useEffect(() => {
-    const engine = createEngine(selectedEngine);
-
-    setEngineInstance(engine);
-    localStorage.setItem('barcodeScannerEngine', selectedEngine);
-  }, [selectedEngine]);
-
   const turnOffTorch = useCallback(async () => {
     if (!currentTrack.current || !torchSupported || !torchEnabled) return;
     try {
@@ -190,7 +178,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     ) {
       engineInstance?.stop();
 
-      setIsScanning(false);
       return;
     }
 
@@ -224,7 +211,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             lastDetectedBarcode.current = code;
             turnOffTorch();
             if (!internalContinuousMode) {
-              setIsScanning(false);
               engineInstance.stop();
             }
           }
@@ -233,7 +219,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
         // Pass selectedCameraId explicitly if engine supports it better that way,
         // OR rely on constraints. Our interface update sends both.
         await engineInstance.start(constraints, selectedCameraId);
-        setIsScanning(true);
 
         if (engineInstance.getMediaTrack) {
           const track = engineInstance.getMediaTrack();
@@ -247,7 +232,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
         }
       } catch (e) {
         console.error('Error starting scanner engine:', e);
-        setIsScanning(false);
       }
     };
 
@@ -259,7 +243,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     return () => {
       clearTimeout(timer);
       engineInstance.stop();
-      setIsScanning(false);
     };
   }, [
     isActive,
@@ -312,13 +295,22 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     []
   );
 
+  const handleEngineChange = (newEngine: string) => {
+    setSelectedEngine(newEngine);
+    try {
+      localStorage.setItem('barcodeScannerEngine', newEngine);
+    } catch (e) {
+      console.error('Failed to save engine selection to localStorage', e);
+    }
+  };
+
   return (
     <div className="relative bg-black rounded-lg overflow-hidden shadow-lg w-full max-w-lg mx-auto flex flex-col">
       {/* Height controlled here via inline style or class. Returning to h-80 (320px) or similar */}
       <div className="relative w-full h-[400px] bg-black">
         {/* Header Controls (Engine & Camera) */}
         <div className="absolute top-4 left-4 right-16 z-20 flex flex-col gap-2 pointer-events-auto">
-          <Select value={selectedEngine} onValueChange={setSelectedEngine}>
+          <Select value={selectedEngine} onValueChange={handleEngineChange}>
             <SelectTrigger className="w-full max-w-[150px] bg-black/60 text-white border-gray-600 h-8 text-xs">
               <SelectValue placeholder="Engine" />
             </SelectTrigger>
