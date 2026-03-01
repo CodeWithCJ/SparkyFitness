@@ -6,7 +6,7 @@ WORKDIR /app/SparkyFitnessFrontend
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy package files and install dependencies
-COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/pnpm-lock.yaml ./
+COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/pnpm-lock.yaml SparkyFitnessFrontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the application source code
