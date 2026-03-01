@@ -97,6 +97,7 @@ export default tseslint.config(
   {
     files: ['src/tests/**/*.{ts,tsx}'],
     rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
       'no-restricted-imports': [
         'error',
         {

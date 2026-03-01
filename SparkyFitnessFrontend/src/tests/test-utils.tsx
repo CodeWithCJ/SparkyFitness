@@ -9,7 +9,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 
 // helper function to allow variables in toast messages
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const resolveMessage = (message: any, ...args: any[]): string | undefined => {
   if (typeof message === 'function') {
     return message(...args);
