@@ -316,7 +316,7 @@ const EnhancedCustomFoodForm = ({
       setVariants([defaultVariant]);
       setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy for original values
     }
-  }, [food.default_variant, food.id, queryClient]);
+  }, [food?.default_variant, food?.id, queryClient]);
 
   useEffect(() => {
     if (food) {
