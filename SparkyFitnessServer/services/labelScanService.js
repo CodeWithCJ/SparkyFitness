@@ -1,6 +1,7 @@
 const chatRepository = require("../models/chatRepository");
 const { log } = require("../config/logging");
-const { getDefaultModel } = require("../ai/config");
+const { Agent } = require("undici");
+const { getDefaultVisionModel } = require("../ai/config");
 
 async function extractNutritionFromLabel(base64Image, mimeType, userId) {
   try {
@@ -18,7 +19,7 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
       return { success: false, error: "API key missing for selected AI service." };
     }
 
-    const model = aiService.model_name || getDefaultModel(aiService.service_type);
+    const model = aiService.model_name || getDefaultVisionModel(aiService.service_type);
     const apiKey = aiService.api_key;
 
     const prompt =
@@ -148,21 +149,44 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
         });
         break;
 
-      case "ollama":
-        response = await fetch(`${aiService.custom_url}/api/chat`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "user", content: prompt, images: [base64Image] },
-            ],
-            stream: false,
-          }),
+      case "ollama": {
+        const timeout = aiService.timeout || 120000;
+        const ollamaAgent = new Agent({
+          headersTimeout: timeout,
+          bodyTimeout: timeout,
         });
+        try {
+          response = await fetch(`${aiService.custom_url}/api/chat`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model,
+              messages: [
+                { role: "user", content: prompt, images: [base64Image] },
+              ],
+              stream: false,
+            }),
+            dispatcher: ollamaAgent,
+          });
+        } catch (error) {
+          if (
+            error.name === "HeadersTimeoutError" ||
+            error.name === "BodyTimeoutError"
+          ) {
+            throw new Error(
+              `Ollama label scan request timed out after ${timeout}ms.`,
+            );
+          }
+          throw new Error(
+            `AI service API call error: 502 - Ollama fetch error: ${error.message}`,
+          );
+        } finally {
+          ollamaAgent.destroy();
+        }
         break;
+      }
 
       default:
         return {
