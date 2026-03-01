@@ -120,6 +120,4 @@ const SpO2Gauge = ({ value, size = 160, strokeWidth = 12 }: SpO2GaugeProps) => {
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
-export { getSpO2StatusInfo };
 export default SpO2Gauge;

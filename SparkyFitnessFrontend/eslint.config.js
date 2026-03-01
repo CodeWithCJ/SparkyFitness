@@ -81,6 +81,7 @@ export default tseslint.config(
   {
     files: ['src/hooks/**/*.{ts,tsx}'],
     rules: {
+      'react-refresh/only-export-components': 'off',
       'no-restricted-imports': [
         'error',
         {
@@ -118,6 +119,12 @@ export default tseslint.config(
   },
   {
     files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['src/contexts/**/*.{ts,tsx}'],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
