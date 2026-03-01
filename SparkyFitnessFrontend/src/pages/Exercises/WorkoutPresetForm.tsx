@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -398,33 +398,27 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
   const { t } = useTranslation();
   const { loggingLevel, weightUnit, convertWeight } = usePreferences();
   const { toast } = useToast();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
-  const [exercises, setExercises] = useState<WorkoutPresetExercise[]>([]);
+  const [name, setName] = useState(initialPreset?.name || '');
+  const [description, setDescription] = useState(
+    initialPreset?.description || ''
+  );
+  const [isPublic, setIsPublic] = useState(initialPreset?.is_public ?? false);
+  const [exercises, setExercises] = useState<WorkoutPresetExercise[]>(() => {
+    return (
+      initialPreset?.exercises.map((ex) => ({
+        ...ex,
+        id: ex.id ? String(ex.id) : crypto.randomUUID(),
+        sets: ex.sets.map((set) => ({
+          ...set,
+          id: set.id ? String(set.id) : crypto.randomUUID(),
+          weight: parseFloat(
+            convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(2)
+          ),
+        })),
+      })) || []
+    );
+  });
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setName(initialPreset?.name || '');
-      setDescription(initialPreset?.description || '');
-      setIsPublic(initialPreset?.is_public || false);
-      setExercises(
-        initialPreset?.exercises.map((ex) => ({
-          ...ex,
-          id: ex.id ? String(ex.id) : crypto.randomUUID(), // Ensure stable ID for DND
-          sets: ex.sets.map((set) => ({
-            ...set,
-            id: set.id ? String(set.id) : crypto.randomUUID(), // Ensure stable ID for sets too
-            weight: parseFloat(
-              convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(2)
-            ),
-          })),
-        })) || []
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, initialPreset]);
 
   const handleAddExercise = (exercise: Exercise) => {
     const newExercise: WorkoutPresetExercise = {

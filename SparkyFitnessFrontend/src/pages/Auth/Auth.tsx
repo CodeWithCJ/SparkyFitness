@@ -740,7 +740,7 @@ const Auth = () => {
         )}
       </div>
       <MagicLinkRequestDialog
-        isOpen={isMagicLinkRequestDialogOpen}
+        key={isMagicLinkRequestDialogOpen ? 'open' : 'closed'}
         onClose={() => setIsMagicLinkRequestDialogOpen(false)}
         onRequest={handleRequestMagicLink}
         loading={loading}

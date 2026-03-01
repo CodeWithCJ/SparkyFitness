@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -27,10 +27,9 @@ import {
   useAddAIService,
   useUpdateAIService,
   useDeleteAIService,
-  useUpdateUserAIPreferences,
 } from '@/hooks/AI/useAIServiceSettings';
 import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
-import { AIService, UserPreferencesChat } from '@/types/settings';
+import { AIService } from '@/types/settings';
 
 const AIServiceSettings = () => {
   const { t } = useTranslation();
@@ -49,42 +48,8 @@ const AIServiceSettings = () => {
     useUpdateAIService();
   const { mutateAsync: deleteService, isPending: isDeleting } =
     useDeleteAIService();
-  const { mutateAsync: updatePreferences, isPending: isUpdatingPreferences } =
-    useUpdateUserAIPreferences();
 
-  const loading = isAdding || isUpdating || isDeleting || isUpdatingPreferences;
-
-  // Use derived state for preferences, but allow local editing
-  // Initialize from query data using lazy initializer
-  const defaultPreferences = useMemo(
-    () => ({
-      auto_clear_history: preferencesData?.auto_clear_history || 'never',
-    }),
-    [preferencesData?.auto_clear_history]
-  );
-  const [preferences, setPreferences] =
-    useState<UserPreferencesChat>(defaultPreferences);
-
-  // Update local state when server data changes (user hasn't made local changes)
-  // This handles the case where preferences are loaded asynchronously
-  // We need to sync server data to local state for form editing
-  useEffect(() => {
-    if (preferencesData?.auto_clear_history) {
-      setPreferences((prev) => {
-        // Only update if user hasn't changed it locally (still has default)
-        if (
-          prev.auto_clear_history === 'never' ||
-          prev.auto_clear_history === defaultPreferences.auto_clear_history
-        ) {
-          return {
-            auto_clear_history: preferencesData.auto_clear_history,
-          };
-        }
-        return prev;
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preferencesData?.auto_clear_history]);
+  const loading = isAdding || isUpdating || isDeleting;
 
   const [newService, setNewService] = useState({
     service_name: '',
@@ -495,18 +460,6 @@ const AIServiceSettings = () => {
     }
   };
 
-  const handleUpdatePreferences = async () => {
-    if (!user) return;
-
-    try {
-      await updatePreferences(preferences);
-      // Success toast is handled by the mutation meta
-    } catch (error) {
-      // Error toast is handled by the mutation meta
-      console.error('Error updating preferences:', error);
-    }
-  };
-
   const startEditing = (service: AIService) => {
     if (!isUserConfigAllowed) {
       toast({
@@ -561,9 +514,10 @@ const AIServiceSettings = () => {
   return (
     <div className="space-y-6">
       <UserChatPreferences
-        preferences={preferences}
-        onPreferencesChange={setPreferences}
-        onSave={handleUpdatePreferences}
+        key={preferencesData?.auto_clear_history ?? 'inital'}
+        defaultPreferences={{
+          auto_clear_history: preferencesData?.auto_clear_history || 'never',
+        }}
         loading={loading}
       />
 
