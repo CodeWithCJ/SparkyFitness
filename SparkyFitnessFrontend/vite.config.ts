@@ -69,7 +69,6 @@ export default defineConfig(({ mode }) => {
             if (id.includes('node_modules')) {
               // Large independent packages in their own chunks
               if (id.includes('recharts')) return 'vendor-recharts';
-              if (id.includes('leaflet')) return 'vendor-leaflet';
               if (id.includes('@radix-ui')) return 'vendor-radix';
               if (
                 id.includes('@ericblade/quagga2') ||
