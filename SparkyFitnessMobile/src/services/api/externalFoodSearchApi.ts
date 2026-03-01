@@ -47,7 +47,7 @@ export function transformOpenFoodFactsProduct(product: OpenFoodFactsProduct): Ex
   };
 }
 
-interface BarcodeFood {
+export interface BarcodeFood {
   id?: string;
   name: string;
   brand: string | null;

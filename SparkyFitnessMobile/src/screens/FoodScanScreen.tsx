@@ -46,7 +46,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           sugars: dv.sugars,
           variantId: dv.id,
           source: 'local',
-          originalItem: result.food as any,
+          originalItem: result.food,
         };
         navigation.replace('FoodEntryAdd', { item, date: route.params?.date });
       } else if (result.source === 'openfoodfacts') {

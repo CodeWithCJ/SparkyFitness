@@ -1,8 +1,6 @@
-
-
 ### `GET /api/measurements/custom-categories`
 
-Returns all custom categories. You need the `id` for the heart_rate category. Response:
+Returns all custom categories. 
 
 ```json
 [
@@ -19,9 +17,10 @@ Returns all custom categories. You need the `id` for the heart_rate category. Re
   ...
 ]
 ```
+
 ### `GET /api/measurements/custom-measurements-range/{categoryId}/{startDate}/{endDate}`
 
-Using the heart_rate category UUID from above. Response:
+Response:
 
 ```json
 [
@@ -36,10 +35,7 @@ Using the heart_rate category UUID from above. Response:
 ]
 ```
 
-Ordered by `entry_date, entry_timestamp`. Note that `value` comes back as a string — you'll need to parse it to a number for charting.
-
-
-
+Ordered by `entry_date, entry_timestamp`
 
 ### `GET /api/measurements/check-in-measurements-range/{startDate}/{endDate}`
 
@@ -62,5 +58,3 @@ Returns all fields. Takes a date range and returns way too much. Exercise, sleep
   ...
 ]
 ```
-
-Ordered by `entry_date DESC, updated_at DESC`. All columns from `check_in_measurements` are returned (`SELECT *`), 
