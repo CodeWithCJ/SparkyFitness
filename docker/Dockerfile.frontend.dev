@@ -5,7 +5,7 @@ WORKDIR /app/SparkyFitnessFrontend
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/pnpm-lock.yaml ./
+COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/pnpm-lock.yaml SparkyFitnessFrontend/pnpm-workspace.yaml ./
 RUN pnpm install
 
 EXPOSE 8080
