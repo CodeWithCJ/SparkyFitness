@@ -254,7 +254,7 @@ describe('aggregateSleepSessions', () => {
     expect(result[0].duration_in_seconds).toBe(8 * 60 * 60);
   });
 
-  test('sets entry_date to the local bedtime date', () => {
+  test('sets entry_date to the local wake time date', () => {
     // Use a local time by creating a Date at 10pm local time
     const bedtime = new Date();
     bedtime.setHours(22, 0, 0, 0);
@@ -265,8 +265,8 @@ describe('aggregateSleepSessions', () => {
     ];
     const result = aggregateSleepSessions(records);
 
-    // entry_date should match the local date of bedtime
-    const expectedDate = toLocalDateString(bedtime);
+    // entry_date should match the local date of wake time
+    const expectedDate = toLocalDateString(wakeTime);
     expect(result[0].entry_date).toBe(expectedDate);
   });
 });

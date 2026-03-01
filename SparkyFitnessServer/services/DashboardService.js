@@ -90,28 +90,43 @@ async function getDashboardStats(userId, date) {
 
     const activeOrStepsToAdd =
       activeCalories > 0 ? activeCalories : stepsCalories;
+    const exerciseCalories = otherCalories + activeOrStepsToAdd;
     const bmrToAdd = includeInNet ? bmr : 0;
-    const totalBurned = otherCalories + activeOrStepsToAdd + bmrToAdd;
+    const totalBurned = exerciseCalories + bmrToAdd;
 
     const netCalories = eatenCalories - totalBurned;
 
     let remaining = 0;
     const adjustmentMode =
-      userPreferences?.calorie_goal_adjustment_mode || "static";
+      userPreferences?.calorie_goal_adjustment_mode || "dynamic";
+    const exerciseCaloriePercentage =
+      userPreferences?.exercise_calorie_percentage ?? 100;
+
     if (adjustmentMode === "dynamic") {
+      // 100% of all burned calories credited
       remaining = goalCalories - netCalories;
+    } else if (adjustmentMode === "percentage") {
+      // Only a percentage of exercise calories are credited (BMR unchanged)
+      const adjustedExerciseBurned = exerciseCalories * (exerciseCaloriePercentage / 100);
+      const adjustedTotalBurned = adjustedExerciseBurned + bmrToAdd;
+      remaining = goalCalories - (eatenCalories - adjustedTotalBurned);
+    } else if (adjustmentMode === "smart") {
+      // MFP-style: only earn back exercise calories above what's already built into the daily goal.
+      // The activity portion already assumed in the goal = goal - BMR.
+      // (If BMR is 0/unavailable, this falls back to no exercise credit, like fixed mode.)
+      const activityAlreadyInGoal = Math.max(0, goalCalories - bmr);
+      const exerciseAdjustment = Math.max(0, exerciseCalories - activityAlreadyInGoal);
+      remaining = goalCalories - eatenCalories + exerciseAdjustment;
     } else {
+      // fixed: no exercise calories credited
       remaining = goalCalories - eatenCalories;
     }
 
+    // effectiveConsumed = goalCalories - remaining (how much of the goal is "used up")
+    const effectiveConsumed = goalCalories - remaining;
     const progress =
       goalCalories > 0
-        ? Math.min(
-            ((adjustmentMode === "dynamic" ? netCalories : eatenCalories) /
-              goalCalories) *
-              100,
-            100,
-          )
+        ? Math.min((effectiveConsumed / goalCalories) * 100, 100)
         : 0;
 
     return {

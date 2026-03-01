@@ -1,18 +1,28 @@
 import { apiCall } from '@/api/api';
-import { getExerciseEntriesForDate as getDailyExerciseEntries } from '@/api/Diary/dailyProgressService';
 import { parseJsonArray } from './exerciseService';
 import type { WorkoutPresetSet } from '@/types/workout';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
-import { ExerciseEntry } from '@/types/diary';
-import { GroupedExerciseEntry } from '@/types/exercises';
-import { ExerciseProgressData } from '@/types/reports';
+import type { ExerciseEntry } from '@/types/diary';
+import type { GroupedExerciseEntry } from '@/types/exercises';
+import type { ExerciseProgressData } from '@/types/reports';
+
+export const getExerciseEntriesForDate = async (
+  date: string
+): Promise<GroupedExerciseEntry[]> => {
+  const params = new URLSearchParams({ selectedDate: date });
+  const data = await apiCall(`/exercise-entries/by-date?${params.toString()}`, {
+    method: 'GET',
+    suppress404Toast: true,
+  });
+  return data || [];
+};
 
 export const fetchExerciseEntries = async (
   selectedDate: string
 ): Promise<GroupedExerciseEntry[]> => {
   const loggingLevel = getUserLoggingLevel();
-  const response = await getDailyExerciseEntries(selectedDate);
+  const response = await getExerciseEntriesForDate(selectedDate);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsedEntries: GroupedExerciseEntry[] = response.map((entry: any) => {

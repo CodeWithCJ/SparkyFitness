@@ -383,7 +383,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     if (isNaN(start) || isNaN(end)) return;
 
     const durationInSeconds = (end - start) / 1000;
-    const recordDate = toLocalDateString(rec.startTime as string);
+    const recordDate = toLocalDateString(rec.endTime as string);
 
     const sleepSession: AggregatedSleepSession = {
       type: 'SleepSession',
