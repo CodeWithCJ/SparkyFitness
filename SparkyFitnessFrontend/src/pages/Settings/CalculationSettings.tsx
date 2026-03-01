@@ -191,6 +191,7 @@ const CalculationSettings = () => {
       setTdeeAllowNegativeAdjustmentContext(tdeeAllowNegativeAdjustment);
       setActivityLevelContext(activityLevel);
       invalidateDiary();
+      invalidateDailyProgress();
       toast({
         title: t('calculationSettings.saveSuccess', 'Success'),
         description: t(
