@@ -57,6 +57,7 @@ interface SaveFoodPayload {
   is_quick_food?: boolean;
   is_default?: boolean;
   barcode?: string | null;
+  provider_type?: string | null;
 }
 
 /**

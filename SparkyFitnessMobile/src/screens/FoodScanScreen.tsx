@@ -54,6 +54,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         navigation.replace('ManualFoodEntry', {
           date: route.params?.date,
           barcode: data,
+          providerType: result.source,
           initialFood: {
             name: result.food.name,
             brand: result.food.brand ?? '',

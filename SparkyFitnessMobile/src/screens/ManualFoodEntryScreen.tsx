@@ -27,6 +27,7 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
 
   const initialFood = route.params?.initialFood;
   const barcode = route.params?.barcode;
+  const providerType = route.params?.providerType;
 
   const [selectedDate, setSelectedDate] = useState(route.params?.date ?? getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
@@ -80,6 +81,7 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
         is_quick_food: !saveToDatabase,
         is_default: true,
         barcode: barcode ?? null,
+        provider_type: providerType ?? null,
       });
 
       if (!saved.default_variant.id) {

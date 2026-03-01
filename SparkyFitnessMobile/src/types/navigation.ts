@@ -17,7 +17,7 @@ export type RootStackParamList = {
   FoodSearch: { date?: string } | undefined;
   FoodEntryAdd: { item: FoodInfoItem; date?: string };
   FoodEntryView: { entry: FoodEntry };
-  ManualFoodEntry: { date?: string; initialFood?: Partial<FoodFormData>; barcode?: string } | undefined;
+  ManualFoodEntry: { date?: string; initialFood?: Partial<FoodFormData>; barcode?: string; providerType?: string } | undefined;
   FoodScan: { date?: string } | undefined;
   Logs: undefined;
 };
