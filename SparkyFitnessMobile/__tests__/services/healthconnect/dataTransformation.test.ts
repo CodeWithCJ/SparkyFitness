@@ -236,6 +236,7 @@ describe('transformHealthRecords', () => {
       expect(result[0]).toMatchObject({
         type: 'SleepSession',
         source: 'Health Connect',
+        entry_date: '2024-01-16',
         bedtime: '2024-01-15T22:00:00Z',
         wake_time: '2024-01-16T06:00:00Z',
         duration_in_seconds: 28800, // 8 hours
