@@ -16,8 +16,17 @@ import {
 } from '@/api/Diary/dailyProgressService';
 import { userManagementService } from '@/api/Admin/userManagementService';
 import { getMostRecentMeasurement } from '@/api/CheckIn/checkInService';
+import { adaptiveTdeeService } from '@/api/Settings/adaptiveTdeeService';
 import { calculateBmr } from '@/services/bmrService';
 import { GroupedExerciseEntry } from '@/types/exercises';
+
+export const useAdaptiveTdee = () => {
+  return useQuery({
+    queryKey: dailyProgressKeys.adaptiveTdee(),
+    queryFn: () => adaptiveTdeeService.getAdaptiveTdee(),
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+};
 
 export const useDailyGoals = (date: string) => {
   const { t } = useTranslation();
