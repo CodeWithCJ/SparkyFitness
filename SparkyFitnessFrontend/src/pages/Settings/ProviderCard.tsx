@@ -47,8 +47,13 @@ export const ProviderCard = ({
   startEditing,
 }: ProviderCardProps) => {
   const { user } = useAuth();
-  const { defaultFoodDataProviderId, setDefaultFoodDataProviderId } =
-    usePreferences();
+  const {
+    defaultFoodDataProviderId,
+    setDefaultFoodDataProviderId,
+    defaultBarcodeProviderId,
+    setDefaultBarcodeProviderId,
+    saveAllPreferences,
+  } = usePreferences();
 
   const { mutate: handleConnectFitbit, isPending: isConnectFitbitPending } =
     useConnectFitbitMutation();
@@ -134,11 +139,16 @@ export const ProviderCard = ({
           data.provider_type === 'nutritionix' ||
           data.provider_type === 'fatsecret' ||
           data.provider_type === 'mealie' ||
-          data.provider_type === 'tandoor')
+          data.provider_type === 'tandoor' ||
+          data.provider_type === 'usda')
       ) {
         setDefaultFoodDataProviderId(data.id);
       } else if (data && defaultFoodDataProviderId === data.id) {
         setDefaultFoodDataProviderId(null);
+      }
+      if (data && !data.is_active && defaultBarcodeProviderId === data.id) {
+        setDefaultBarcodeProviderId(null);
+        saveAllPreferences({ defaultBarcodeProviderId: null });
       }
     } catch (error: unknown) {
       console.error(error);
@@ -155,6 +165,11 @@ export const ProviderCard = ({
       await deleteExternalProvider(providerId);
       if (defaultFoodDataProviderId === providerId) {
         setDefaultFoodDataProviderId(null);
+        saveAllPreferences({ defaultFoodDataProviderId: null });
+      }
+      if (defaultBarcodeProviderId === providerId) {
+        setDefaultBarcodeProviderId(null);
+        saveAllPreferences({ defaultBarcodeProviderId: null });
       }
     } catch (error: unknown) {
       console.error(error);

@@ -52,6 +52,7 @@ interface PreferencesContextType {
   autoClearHistory: string;
   loggingLevel: LoggingLevel;
   defaultFoodDataProviderId: string | null;
+  defaultBarcodeProviderId: string | null;
   timezone: string;
   foodDisplayLimit: number;
   itemDisplayLimit: number;
@@ -86,6 +87,7 @@ interface PreferencesContextType {
     level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT'
   ) => void;
   setDefaultFoodDataProviderId: (id: string | null) => void;
+  setDefaultBarcodeProviderId: (id: string | null) => void;
   setTimezone: (timezone: string) => void;
   setItemDisplayLimit: (limit: number) => void;
   setCalorieGoalAdjustmentMode: (
@@ -177,6 +179,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   >('ERROR');
   const [defaultFoodDataProviderId, setDefaultFoodDataProviderIdState] =
     useState<string | null>(null);
+  const [defaultBarcodeProviderId, setDefaultBarcodeProviderIdState] = useState<
+    string | null
+  >(null);
   const [timezone, setTimezoneState] = useState<string>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
@@ -428,6 +433,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setDefaultFoodDataProviderIdState(
           data.default_food_data_provider_id || null
         );
+        setDefaultBarcodeProviderIdState(
+          data.default_barcode_provider_id || null
+        );
         setTimezoneState(
           data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
         );
@@ -519,6 +527,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         auto_clear_history: string;
         logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT';
         default_food_data_provider_id: string | null;
+        default_barcode_provider_id: string | null;
         timezone: string;
         item_display_limit: number;
         food_display_limit: number;
@@ -619,6 +628,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         logging_level: newPrefs?.loggingLevel ?? loggingLevel,
         default_food_data_provider_id:
           newPrefs?.defaultFoodDataProviderId ?? defaultFoodDataProviderId,
+        default_barcode_provider_id:
+          newPrefs?.defaultBarcodeProviderId ?? defaultBarcodeProviderId,
         timezone: newPrefs?.timezone ?? timezone,
         item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
         food_display_limit: foodDisplayLimit,
@@ -674,6 +685,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       dateFormat,
       autoClearHistory,
       defaultFoodDataProviderId,
+      defaultBarcodeProviderId,
       timezone,
       itemDisplayLimit,
       foodDisplayLimit,
@@ -757,6 +769,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const setDefaultFoodDataProviderId = useCallback((id: string | null) => {
     setDefaultFoodDataProviderIdState(id);
+  }, []);
+
+  const setDefaultBarcodeProviderId = useCallback((id: string | null) => {
+    setDefaultBarcodeProviderIdState(id);
   }, []);
 
   const setTimezone = useCallback((newTimezone: string) => {
@@ -846,6 +862,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       autoClearHistory,
       loggingLevel,
       defaultFoodDataProviderId,
+      defaultBarcodeProviderId,
       timezone,
       itemDisplayLimit,
       foodDisplayLimit,
@@ -873,6 +890,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setAutoClearHistory,
       setLoggingLevel,
       setDefaultFoodDataProviderId,
+      setDefaultBarcodeProviderId,
       setTimezone,
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,
@@ -911,6 +929,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       autoClearHistory,
       loggingLevel,
       defaultFoodDataProviderId,
+      defaultBarcodeProviderId,
       timezone,
       itemDisplayLimit,
       foodDisplayLimit,
@@ -938,6 +957,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setAutoClearHistory,
       setLoggingLevel,
       setDefaultFoodDataProviderId,
+      setDefaultBarcodeProviderId,
       setTimezone,
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,

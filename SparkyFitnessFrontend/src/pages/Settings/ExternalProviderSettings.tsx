@@ -1,10 +1,22 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+
 import { Database } from 'lucide-react';
 import AddExternalProviderForm from './AddExternalProviderForm';
 import ExternalProviderList from './ExternalProviderList';
 import GarminConnectSettings from './GarminConnectSettings';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useExternalProviders } from '@/hooks/Settings/useExternalProviderSettings';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface ExternalDataProvider {
   id: string;
@@ -50,12 +62,25 @@ export interface ExternalDataProvider {
   is_strictly_private?: boolean;
 }
 
+const BARCODE_PROVIDER_TYPES = ['openfoodfacts', 'usda'];
+
 const ExternalProviderSettings = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showGarminMfaInputFromAddForm, setShowGarminMfaInputFromAddForm] =
     useState(false);
   const [garminClientStateFromAddForm, setGarminClientStateFromAddForm] =
     useState<string | null>(null);
+  const { user } = useAuth();
+  const {
+    defaultBarcodeProviderId,
+    setDefaultBarcodeProviderId,
+    saveAllPreferences,
+  } = usePreferences();
+  const { data: providers = [] } = useExternalProviders(user.activeUserId);
+
+  const barcodeProviders = providers.filter(
+    (p) => p.is_active && BARCODE_PROVIDER_TYPES.includes(p.provider_type)
+  );
 
   const handleAddProviderSuccess = () => {
     setShowAddForm(false);
@@ -100,6 +125,35 @@ const ExternalProviderSettings = () => {
             )}
 
             <ExternalProviderList showAddForm={showAddForm} />
+
+            {barcodeProviders.length > 0 && (
+              <>
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label htmlFor="barcode-provider">Barcode (mobile app)</Label>
+                  <Select
+                    value={defaultBarcodeProviderId ?? ''}
+                    onValueChange={(value) => {
+                      const id = value || null;
+                      setDefaultBarcodeProviderId(id);
+                      saveAllPreferences({ defaultBarcodeProviderId: id });
+                    }}
+                  >
+                    <SelectTrigger id="barcode-provider">
+                      <SelectValue placeholder="Select a barcode provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {barcodeProviders.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.provider_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

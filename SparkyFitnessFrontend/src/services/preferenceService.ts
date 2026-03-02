@@ -41,6 +41,7 @@ export interface UserPreferences {
   system_prompt: string;
   item_display_limit: number;
   default_food_data_provider_id: string | null;
+  default_barcode_provider_id: string | null;
 }
 
 export const updateUserPreferences = async (

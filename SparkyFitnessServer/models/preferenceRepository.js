@@ -30,8 +30,9 @@ async function updateUserPreferences(userId, preferenceData) {
         exercise_calorie_percentage = COALESCE($23, exercise_calorie_percentage),
         activity_level = COALESCE($24, activity_level),
         tdee_allow_negative_adjustment = COALESCE($25, tdee_allow_negative_adjustment),
+        default_barcode_provider_id = CASE WHEN $27 THEN $26 ELSE default_barcode_provider_id END,
         updated_at = now()
-      WHERE user_id = $26
+      WHERE user_id = $28
       RETURNING *`,
       [
         preferenceData.date_format, preferenceData.default_weight_unit, preferenceData.default_measurement_unit, preferenceData.default_distance_unit,
@@ -44,6 +45,8 @@ async function updateUserPreferences(userId, preferenceData) {
         preferenceData.exercise_calorie_percentage,
         preferenceData.activity_level,
         preferenceData.tdee_allow_negative_adjustment,
+        preferenceData.default_barcode_provider_id,
+        'default_barcode_provider_id' in preferenceData,
         userId
       ]
     );
@@ -91,7 +94,7 @@ async function upsertUserPreferences(preferenceData) {
        language, calorie_goal_adjustment_mode, energy_unit,
        fat_breakdown_algorithm, mineral_calculation_algorithm, vitamin_calculation_algorithm, sugar_calculation_algorithm,
        auto_scale_open_food_facts_imports, exercise_calorie_percentage, activity_level,
-       tdee_allow_negative_adjustment,
+       tdee_allow_negative_adjustment, default_barcode_provider_id,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -102,6 +105,7 @@ async function upsertUserPreferences(preferenceData) {
        COALESCE($19, 'AHA Guidelines'), COALESCE($20, 'RDA Standard'), COALESCE($21, 'RDA Standard'), COALESCE($22, 'WHO Guidelines'),
        COALESCE($23, false), COALESCE($24, 100), COALESCE($25, 'not_much'),
        COALESCE($26, false),
+       $27,
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -130,6 +134,7 @@ async function upsertUserPreferences(preferenceData) {
        exercise_calorie_percentage = COALESCE(EXCLUDED.exercise_calorie_percentage, user_preferences.exercise_calorie_percentage),
        activity_level = COALESCE(EXCLUDED.activity_level, user_preferences.activity_level),
        tdee_allow_negative_adjustment = COALESCE(EXCLUDED.tdee_allow_negative_adjustment, user_preferences.tdee_allow_negative_adjustment),
+       default_barcode_provider_id = CASE WHEN $28 THEN EXCLUDED.default_barcode_provider_id ELSE user_preferences.default_barcode_provider_id END,
        updated_at = now()
      RETURNING *`,
      [
@@ -140,7 +145,9 @@ async function upsertUserPreferences(preferenceData) {
        preferenceData.calorie_goal_adjustment_mode, preferenceData.energy_unit,
        preferenceData.fat_breakdown_algorithm, preferenceData.mineral_calculation_algorithm, preferenceData.vitamin_calculation_algorithm, preferenceData.sugar_calculation_algorithm,
        preferenceData.auto_scale_open_food_facts_imports, preferenceData.exercise_calorie_percentage,
-       preferenceData.activity_level, preferenceData.tdee_allow_negative_adjustment
+       preferenceData.activity_level, preferenceData.tdee_allow_negative_adjustment,
+       preferenceData.default_barcode_provider_id,
+       'default_barcode_provider_id' in preferenceData
      ]
     );
     return result.rows[0];
