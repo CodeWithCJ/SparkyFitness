@@ -15,6 +15,7 @@ import {
   useSyncTotpMutation,
   useToggleEmailMfaMutation,
 } from '@/hooks/Settings/useProfile';
+import { getErrorMessage } from '@/utils/api';
 
 const MFASettings = () => {
   const { t } = useTranslation();
@@ -102,12 +103,12 @@ const MFASettings = () => {
       setShowPasswordPrompt(false);
       setConfirmPassword(''); // Clear password after use
       setPendingAction(null);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
       log(loggingLevel, 'ERROR', 'MFA Action Error:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to perform action',
+        description: message || 'Failed to perform action',
         variant: 'destructive',
       });
     } finally {
@@ -127,12 +128,12 @@ const MFASettings = () => {
       await refetch();
       setOtpAuthUrl(null); // Clear OTP URL after successful verification
       setTotpCode(''); // Clear TOTP code after successful verification
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
       log(loggingLevel, 'ERROR', 'Error verifying TOTP:', error);
       toast({
         title: 'Error',
-        description: `Failed to verify TOTP: ${error.message}`,
+        description: `Failed to verify TOTP: ${message}`,
         variant: 'destructive',
       });
     } finally {
@@ -146,11 +147,11 @@ const MFASettings = () => {
       await toggleEmailMfa(true);
       toast({ title: 'Success', description: 'Email MFA enabled!' });
       await refetch();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to enable Email MFA',
+        description: message || 'Failed to enable Email MFA',
         variant: 'destructive',
       });
     } finally {
@@ -164,11 +165,11 @@ const MFASettings = () => {
       await toggleEmailMfa(false);
       toast({ title: 'Success', description: 'Email MFA disabled.' });
       await refetch();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to disable Email MFA',
+        description: message || 'Failed to disable Email MFA',
         variant: 'destructive',
       });
     } finally {

@@ -5,6 +5,7 @@ import type { GroupedExerciseEntry } from '@/types/exercises';
 import { loadGoals } from '@/api/Goals/goals';
 import { loadFoodEntries } from '@/api/Diary/foodEntryService';
 import { loadExistingCheckInMeasurements } from '@/api/CheckIn/checkInService';
+import { getErrorMessage } from '@/utils/api';
 
 export { getExerciseEntriesForDate } from '../Exercises/exerciseEntryService';
 
@@ -25,9 +26,9 @@ export const getCheckInMeasurementsForDate = async (
   try {
     const measurement = await loadExistingCheckInMeasurements(date);
     return measurement || null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    if (error.message.includes('404')) {
+  } catch (error: unknown) {
+    const message = getErrorMessage(error);
+    if (message.includes('404')) {
       return null;
     }
     throw error;

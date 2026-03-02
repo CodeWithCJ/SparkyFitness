@@ -1,5 +1,6 @@
 import { apiCall } from '@/api/api';
 import { AIService, UserPreferencesChat } from '@/types/settings';
+import { getErrorMessage } from '@/utils/api';
 
 export const getAIServices = async (): Promise<AIService[]> => {
   try {
@@ -8,11 +9,11 @@ export const getAIServices = async (): Promise<AIService[]> => {
       suppress404Toast: true, // Suppress toast for 404
     });
     return services || []; // Return empty array if 404 (no services found)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = getErrorMessage(err);
     // If it's a 404, it means no services are found, which is a valid scenario.
     // We return an empty array in this case, and the calling function will handle it.
-    if (err.message && err.message.includes('404')) {
+    if (message && message.includes('404')) {
       return [];
     }
     throw err;
@@ -26,11 +27,11 @@ export const getPreferences = async (): Promise<UserPreferencesChat> => {
       suppress404Toast: true, // Suppress toast for 404
     });
     return preferences;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = getErrorMessage(err);
     // If it's a 404, it means no preferences are found, which is a valid scenario.
     // We return null in this case, and the calling function will handle it.
-    if (err.message && err.message.includes('404')) {
+    if (message && message.includes('404')) {
       return null;
     }
     throw err;
@@ -45,9 +46,9 @@ export const getActiveAiServiceSetting =
         suppress404Toast: true, // Suppress toast for 404
       });
       return setting;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      if (err.message && err.message.includes('404')) {
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      if (message && message.includes('404')) {
         return null;
       }
       throw err;
@@ -112,9 +113,9 @@ export const getGlobalAIServices = async (): Promise<AIService[]> => {
       suppress404Toast: true,
     });
     return services || [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
-    if (err.message && err.message.includes('404')) {
+  } catch (err: unknown) {
+    const message = getErrorMessage(err);
+    if (message && message.includes('404')) {
       return [];
     }
     throw err;

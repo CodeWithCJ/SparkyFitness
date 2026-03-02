@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '../lib/auth-client';
 import { useAuth } from '../hooks/useAuth';
+import { getErrorMessage } from '@/utils/api';
 
 const OidcCallback: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
@@ -45,11 +46,10 @@ const OidcCallback: React.FC = () => {
         } else {
           setError('No active session found after OIDC redirect.');
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = getErrorMessage(err);
         setError(
-          err.message ||
-            'An unexpected error occurred during OIDC verification.'
+          message || 'An unexpected error occurred during OIDC verification.'
         );
       }
     };

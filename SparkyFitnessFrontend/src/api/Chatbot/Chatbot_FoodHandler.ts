@@ -107,8 +107,7 @@ export const processFoodInput = async (
           method: 'GET',
         }
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
       error(
         userLoggingLevel,
         '❌ [Nutrition Coach] Error searching for exact food match:',
@@ -136,8 +135,7 @@ export const processFoodInput = async (
             method: 'GET',
           }
         );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
+      } catch (err: unknown) {
         error(
           userLoggingLevel,
           '❌ [Nutrition Coach] Error searching for broad food match:',
@@ -197,8 +195,7 @@ export const processFoodInput = async (
             variant_id: food.default_variant.id, // Populate variant_id
           },
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
+      } catch (err: unknown) {
         error(
           userLoggingLevel,
           '❌ [Nutrition Coach] Error adding food entry:',
@@ -301,8 +298,7 @@ export const addFoodOption = async (
           method: 'GET',
         }
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
       error(
         userLoggingLevel,
         `[${transactionId}] Error fetching existing food:`,
@@ -340,8 +336,7 @@ export const addFoodOption = async (
               method: 'GET',
             }
           );
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
+        } catch (err: unknown) {
           error(
             userLoggingLevel,
             `[${transactionId}] Error fetching existing variant:`,
@@ -396,8 +391,7 @@ export const addFoodOption = async (
                 iron: selectedOption.iron,
               },
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } catch (err: any) {
+          } catch (err: unknown) {
             error(
               userLoggingLevel,
               `[${transactionId}] Error creating food variant:`,
@@ -447,8 +441,7 @@ export const addFoodOption = async (
             is_custom: true,
           },
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
+      } catch (err: unknown) {
         error(userLoggingLevel, `[${transactionId}] Error creating food:`, err);
         return {
           action: 'none',
@@ -485,8 +478,7 @@ export const addFoodOption = async (
           variant_id: variantId,
         },
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
       error(
         userLoggingLevel,
         `[${transactionId}] Error creating food entry:`,

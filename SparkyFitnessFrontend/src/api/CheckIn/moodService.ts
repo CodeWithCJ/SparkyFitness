@@ -1,5 +1,6 @@
 import { api } from '@/api/api';
 import type { MoodEntry } from '@/types/mood';
+import { getErrorMessage } from '@/utils/api';
 import { debug, info, error } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
 
@@ -71,9 +72,9 @@ export const getMoodEntryByDate = async (
     });
     debug(userLoggingLevel, 'Response from getMoodEntryByDate API:', response);
     return response;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
-    if (err.message && err.message.includes('404')) {
+  } catch (err: unknown) {
+    const message = getErrorMessage(err);
+    if (message && message.includes('404')) {
       info(getUserLoggingLevel(), `No mood entry found for date ${entryDate}.`);
       return null;
     }

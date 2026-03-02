@@ -16,6 +16,7 @@ import { debug, info } from '@/utils/logging';
 import useToggle from '@/hooks/use-toggle';
 import PasswordToggle from '@/components/PasswordToggle';
 import { useResetPasswordMutation } from '@/hooks/Auth/useAuth';
+import { getErrorMessage } from '@/utils/api';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -96,9 +97,9 @@ const ResetPassword = () => {
         'Your password has been reset successfully. You can now sign in with your new password.'
       );
       navigate('/'); // Redirect to root
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      setMessage(err.message || 'An unexpected error occurred.');
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      setMessage(message || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }
