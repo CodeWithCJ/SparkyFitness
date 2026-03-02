@@ -211,5 +211,88 @@ describe('apiClient', () => {
         expect.anything()
       );
     });
+
+    describe('HTTPS enforcement', () => {
+      const originalDev = (global as any).__DEV__;
+
+      afterEach(() => {
+        (global as any).__DEV__ = originalDev;
+      });
+
+      test('rejects HTTP URLs in production', async () => {
+        (global as any).__DEV__ = false;
+        mockGetActiveServerConfig.mockResolvedValue({
+          ...testConfig,
+          url: 'http://example.com',
+        });
+
+        await expect(
+          apiFetch({
+            endpoint: '/api/test',
+            serviceName: 'Test API',
+            operation: 'fetch test',
+          })
+        ).rejects.toThrow('HTTPS is required');
+
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      test('rejects HTTP URLs regardless of casing in production', async () => {
+        (global as any).__DEV__ = false;
+        mockGetActiveServerConfig.mockResolvedValue({
+          ...testConfig,
+          url: 'HTTP://example.com',
+        });
+
+        await expect(
+          apiFetch({
+            endpoint: '/api/test',
+            serviceName: 'Test API',
+            operation: 'fetch test',
+          })
+        ).rejects.toThrow('HTTPS is required');
+
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+
+      test('allows HTTP URLs in development mode', async () => {
+        (global as any).__DEV__ = true;
+        mockGetActiveServerConfig.mockResolvedValue({
+          ...testConfig,
+          url: 'http://localhost:3000',
+        });
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+        const result = await apiFetch({
+          endpoint: '/api/test',
+          serviceName: 'Test API',
+          operation: 'fetch test',
+        });
+
+        expect(result).toEqual({ success: true });
+        expect(mockFetch).toHaveBeenCalled();
+      });
+
+      test('allows HTTPS URLs in production', async () => {
+        (global as any).__DEV__ = false;
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+        const result = await apiFetch({
+          endpoint: '/api/test',
+          serviceName: 'Test API',
+          operation: 'fetch test',
+        });
+
+        expect(result).toEqual({ success: true });
+        expect(mockFetch).toHaveBeenCalled();
+      });
+    });
   });
 });

@@ -110,7 +110,6 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       infoPlist: {
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: false,
-          NSAllowsLocalNetworking: false,
         },
         ITSAppUsesNonExemptEncryption: false,
       },

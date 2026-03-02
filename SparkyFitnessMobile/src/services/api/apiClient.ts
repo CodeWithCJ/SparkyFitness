@@ -24,6 +24,10 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
 
   const baseUrl = normalizeUrl(config.url);
 
+  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+    throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
+  }
+
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, {
       method,

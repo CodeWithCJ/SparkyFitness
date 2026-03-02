@@ -133,6 +133,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       Alert.alert('Error', 'Please enter both a server URL and an API key.');
       return;
     }
+    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+      Alert.alert('Error', 'HTTPS is required for server connections.');
+      return;
+    }
     try {
       const normalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
       const configToSave: ServerConfig = {
@@ -156,6 +160,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   const handleSetActiveConfig = async (configId: string): Promise<void> => {
+    if (!__DEV__) {
+      const config = serverConfigs.find((c) => c.id === configId);
+      if (config?.url.toLowerCase().startsWith('http://')) {
+        Alert.alert('Error', 'HTTPS is required for server connections. Please edit this configuration to use HTTPS.');
+        return;
+      }
+    }
     try {
       await setActiveServerConfig(configId);
       await loadConfig();
