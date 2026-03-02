@@ -10,11 +10,27 @@ import {
 import {
   processFoodInput,
   addFoodOption,
+  FoodInput,
 } from '@/api/Chatbot/Chatbot_FoodHandler';
-import { processExerciseInput } from '@/api/Chatbot/Chatbot_ExerciseHandler';
-import { processMeasurementInput } from '@/api/Chatbot/Chatbot_MeasurementHandler';
-import { processWaterInput } from '@/api/Chatbot/Chatbot_WaterHandler';
-import { CoachResponse, FoodOption, Message } from '@/types/Chatbot_types';
+import {
+  ExerciseInput,
+  processExerciseInput,
+} from '@/api/Chatbot/Chatbot_ExerciseHandler';
+import {
+  MeasurementInputData,
+  processMeasurementInput,
+} from '@/api/Chatbot/Chatbot_MeasurementHandler';
+import {
+  processWaterInput,
+  WaterInput,
+} from '@/api/Chatbot/Chatbot_WaterHandler';
+import {
+  CoachResponse,
+  FoodOption,
+  Message,
+  MessageMetadata,
+  RawFoodOption,
+} from '@/types/Chatbot_types';
 import { processChatInput } from '@/utils/Chatbot_utils';
 import { AIService } from '@/types/settings';
 import { getErrorMessage } from '@/utils/api';
@@ -22,6 +38,59 @@ import { getErrorMessage } from '@/utils/api';
 export interface UserPreferences {
   auto_clear_history: 'never' | '7days' | 'all';
   logging_level: 'INFO' | 'DEBUG' | 'WARN' | 'ERROR';
+}
+
+interface ChatHistory extends Message {
+  message_type: string;
+  created_at: string;
+}
+
+interface BaseAIResponse {
+  response?: string;
+  entryDate?: string;
+}
+
+interface LogFoodIntent extends BaseAIResponse {
+  intent: 'log_food';
+  data: FoodInput;
+}
+
+interface LogExerciseIntent extends BaseAIResponse {
+  intent: 'log_exercise';
+  data: ExerciseInput;
+}
+
+interface LogMeasurementIntent extends BaseAIResponse {
+  intent: 'log_measurement' | 'log_measurements';
+  data: MeasurementInputData;
+}
+
+interface LogWaterIntent extends BaseAIResponse {
+  intent: 'log_water';
+  data: WaterInput;
+}
+
+interface ChatIntent extends BaseAIResponse {
+  intent: 'ask_question' | 'chat';
+  data: Record<string, unknown>;
+}
+
+type ParsedAIResponse =
+  | LogFoodIntent
+  | LogExerciseIntent
+  | LogMeasurementIntent
+  | LogWaterIntent
+  | ChatIntent;
+
+interface MessagesToSend {
+  role: string;
+  content: MessageContent[];
+}
+
+interface MessageContent {
+  type: string;
+  text?: string;
+  image_url?: { url: string };
 }
 
 export const loadUserPreferences = async (): Promise<UserPreferences> => {
@@ -42,11 +111,14 @@ export const loadChatHistory = async (
   const params = new URLSearchParams({
     autoClearHistory,
   });
-  const data = await apiCall(`/chat/sparky-chat-history?${params.toString()}`, {
-    method: 'GET',
-  });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data || []).map((item: any) => {
+  const data: ChatHistory[] = await apiCall(
+    `/chat/sparky-chat-history?${params.toString()}`,
+    {
+      method: 'GET',
+    }
+  );
+
+  return (data || []).map((item) => {
     const timestamp = new Date(item.created_at);
     if (isNaN(timestamp.getTime())) {
       error('ERROR', `Invalid timestamp from DB: ${item.created_at}`); // Changed UserLoggingLevel.ERROR to 'ERROR'
@@ -64,8 +136,7 @@ export const loadChatHistory = async (
 export const saveMessageToHistory = async (
   content: string,
   messageType: 'user' | 'assistant',
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  metadata?: any
+  metadata?: MessageMetadata
 ): Promise<void> => {
   await apiCall(`/chat/save-history`, {
     method: 'POST',
@@ -89,8 +160,7 @@ export const processUserInput = async (
   input: string,
   image: File | null,
   transactionId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  lastBotMessageMetadata: any,
+  lastBotMessageMetadata: MessageMetadata,
   userLoggingLevel: UserLoggingLevel,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
   activeAIServiceSetting: AIService | null,
@@ -143,13 +213,7 @@ export const processUserInput = async (
       return aiResponse;
     }
 
-    let parsedResponse: {
-      intent: string;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      data: any;
-      response?: string;
-      entryDate?: string;
-    };
+    let parsedResponse: ParsedAIResponse;
     try {
       const jsonMatch = aiResponse.response.match(/```json\n([\s\S]*?)\n```/);
       let jsonString = jsonMatch ? jsonMatch[1] : aiResponse.response;
@@ -287,18 +351,23 @@ export const processUserInput = async (
           parsedResponse.response,
           userLoggingLevel
         );
-      default:
+      default: {
+        const unknownResponse = parsedResponse as {
+          intent?: string;
+          response?: string;
+        };
         warn(
           userLoggingLevel,
           `[${transactionId}] Unrecognized AI intent:`,
-          parsedResponse.intent
+          unknownResponse.intent
         );
         return {
           action: 'none',
           response:
-            parsedResponse.response ||
+            unknownResponse.response ||
             "I'm not sure how to handle that request. Can you please rephrase?",
         };
+      }
     }
   } catch (err) {
     error(
@@ -354,8 +423,7 @@ const getAIResponse = async (
       input
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const messagesToSend: any[] = [];
+    const messagesToSend: MessagesToSend[] = [];
     // Add previous messages for context, limiting to the last 10 for brevity
     const historyLimit = 10;
     const recentMessages = messages.slice(-historyLimit);
@@ -375,8 +443,7 @@ const getAIResponse = async (
     });
 
     // Add the current user message
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userMessageContent: any[] = [];
+    const userMessageContent: MessageContent[] = [];
     if (input.trim()) {
       userMessageContent.push({ type: 'text', text: input.trim() });
     }
@@ -458,38 +525,36 @@ const callAIForFoodOptions = async (
 
       const foodOptions: FoodOption[] = (
         Array.isArray(rawFoodOptions) ? rawFoodOptions : []
-      )
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((rawOption: any) => {
-          debug(userLoggingLevel, 'Raw AI food option received:', rawOption);
-          const mappedOption: FoodOption = {
-            name: rawOption.food_name || rawOption.name || 'Unknown Food',
-            calories: rawOption.calories || 0,
-            protein: rawOption.macros?.protein || rawOption.protein || 0,
-            carbs: rawOption.macros?.carbs || rawOption.carbs || 0,
-            fat: rawOption.macros?.fat || rawOption.fat || 0,
-            serving_size: parseFloat(rawOption.serving_size) || 1,
-            serving_unit: rawOption.serving_unit || 'serving',
-            saturated_fat:
-              rawOption.macros?.saturated_fat || rawOption.saturated_fat,
-            polyunsaturated_fat:
-              rawOption.polyunsaturated_fat || rawOption.polyunsaturated_fat,
-            monounsaturated_fat:
-              rawOption.monounsaturated_fat || rawOption.monounsaturated_fat,
-            trans_fat: rawOption.trans_fat || rawOption.trans_fat,
-            cholesterol: rawOption.cholesterol,
-            sodium: rawOption.sodium,
-            potassium: rawOption.potassium,
-            dietary_fiber: rawOption.dietary_fiber,
-            sugars: rawOption.sugars,
-            vitamin_a: rawOption.vitamin_a,
-            vitamin_c: rawOption.vitamin_c,
-            calcium: rawOption.calcium,
-            iron: rawOption.iron,
-          };
-          debug(userLoggingLevel, 'Mapped food option:', mappedOption);
-          return mappedOption;
-        });
+      ).map((rawOption: RawFoodOption) => {
+        debug(userLoggingLevel, 'Raw AI food option received:', rawOption);
+        const mappedOption: FoodOption = {
+          name: rawOption.food_name || rawOption.name || 'Unknown Food',
+          calories: rawOption.calories || 0,
+          protein: rawOption.macros?.protein || rawOption.protein || 0,
+          carbs: rawOption.macros?.carbs || rawOption.carbs || 0,
+          fat: rawOption.macros?.fat || rawOption.fat || 0,
+          serving_size: parseFloat(rawOption.serving_size.toString()) || 1,
+          serving_unit: rawOption.serving_unit || 'serving',
+          saturated_fat:
+            rawOption.macros?.saturated_fat || rawOption.saturated_fat,
+          polyunsaturated_fat:
+            rawOption.polyunsaturated_fat || rawOption.polyunsaturated_fat,
+          monounsaturated_fat:
+            rawOption.monounsaturated_fat || rawOption.monounsaturated_fat,
+          trans_fat: rawOption.trans_fat || rawOption.trans_fat,
+          cholesterol: rawOption.cholesterol,
+          sodium: rawOption.sodium,
+          potassium: rawOption.potassium,
+          dietary_fiber: rawOption.dietary_fiber,
+          sugars: rawOption.sugars,
+          vitamin_a: rawOption.vitamin_a,
+          vitamin_c: rawOption.vitamin_c,
+          calcium: rawOption.calcium,
+          iron: rawOption.iron,
+        };
+        debug(userLoggingLevel, 'Mapped food option:', mappedOption);
+        return mappedOption;
+      });
 
       if (
         foodOptions.every(

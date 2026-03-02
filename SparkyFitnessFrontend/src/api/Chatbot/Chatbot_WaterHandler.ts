@@ -4,8 +4,13 @@ import { debug, info, error, type UserLoggingLevel } from '@/utils/logging';
 import { apiCall } from '@/api/api';
 import { getPrimaryWaterContainer } from '../../api/Settings/waterContainerService';
 
+export interface WaterInput {
+  quantity: number;
+  unit?: 'oz' | 'cup' | 'glass';
+  glasses_consumed?: number;
+}
 export const processWaterInput = async (
-  data: { quantity: number; unit?: 'oz' | 'cup' | 'glass' },
+  data: WaterInput,
   entryDate: string | undefined,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
   userLoggingLevel: UserLoggingLevel,

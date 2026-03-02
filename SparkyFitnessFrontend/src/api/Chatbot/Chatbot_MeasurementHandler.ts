@@ -9,9 +9,41 @@ import {
 import { apiCall } from '@/api/api';
 import { getErrorMessage } from '@/utils/api';
 
+interface CheckInPayload {
+  entry_date: string;
+  weight?: number;
+  neck?: number;
+  waist?: number;
+  hips?: number;
+  steps?: number;
+}
+
+interface MeasurementItem {
+  measurement_type?: string;
+  type?: string;
+  value?: number;
+  unit?: string;
+  name?: string;
+  systolic?: number;
+}
+
+export interface MeasurementInputData {
+  measurements?: MeasurementItem[];
+  measurement_type?: string;
+  type?: string;
+  value?: number;
+  unit?: string;
+  name?: string;
+  systolic?: number;
+}
+
+interface ApiError {
+  code?: string;
+  message?: string;
+}
+
 // Function to upsert check-in measurements
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const upsertCheckInMeasurement = async (payload: any) => {
+const upsertCheckInMeasurement = async (payload: CheckInPayload) => {
   try {
     const data = await apiCall('/measurements/check-in', {
       method: 'POST',
@@ -86,8 +118,7 @@ const insertCustomMeasurement = async (payload: {
 
 // Function to process measurement input
 export const processMeasurementInput = async (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any,
+  data: MeasurementInputData,
   entryDate: string | undefined,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
   userLoggingLevel: UserLoggingLevel
@@ -123,8 +154,7 @@ export const processMeasurementInput = async (
       if (
         ['weight', 'neck', 'waist', 'hips', 'steps'].includes(measurementType)
       ) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const updateData: any = {
+        const updateData: CheckInPayload = {
           entry_date: dateToUse,
         };
         updateData[measurementType] = measurement.value;
@@ -156,8 +186,7 @@ export const processMeasurementInput = async (
 
         let categoryId: string;
         let existingCategory = null;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let categorySearchError: any = null;
+        let categorySearchError: ApiError = null;
         try {
           existingCategory = await searchCustomCategory(customMeasurementName);
         } catch (err: unknown) {
@@ -189,8 +218,7 @@ export const processMeasurementInput = async (
             `Custom category "${customMeasurementName}" not found, creating...`
           );
           let newCategory = null;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          let categoryCreateError: any = null;
+          let categoryCreateError: ApiError = null;
           try {
             newCategory = await createCustomCategory({
               name: customMeasurementName,
@@ -215,8 +243,7 @@ export const processMeasurementInput = async (
 
         // Now insert the custom measurement entry
         const valueToLog = measurement.value ?? measurement.systolic;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let customEntryError: any = null;
+        let customEntryError: ApiError = null;
 
         if (valueToLog === undefined || valueToLog === null) {
           error(

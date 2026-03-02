@@ -54,11 +54,50 @@ export interface FoodOption {
   iron?: number;
 }
 
+export interface RawFoodOption {
+  food_name?: string;
+  name?: string;
+  calories: number;
+  macros: {
+    protein: number;
+    carbs: number;
+    fat: number;
+    saturated_fat?: number;
+  };
+  protein: number;
+  carbs: number;
+  fat: number;
+  saturated_fat?: number;
+  serving_size: number | string;
+  serving_unit: string;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+}
+
+export interface MessageMetadata {
+  foodOptions?: FoodOption[];
+  mealType?: string;
+  quantity?: number;
+  unit?: string;
+  entryDate?: string;
+  imageUrl?: string;
+  is_fallback?: boolean;
+}
+
 export interface Message {
   id: string;
   content: string;
   isUser: boolean;
   timestamp: Date;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  metadata?: any;
+  metadata?: MessageMetadata;
 }
