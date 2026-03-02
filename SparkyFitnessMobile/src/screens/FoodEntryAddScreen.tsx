@@ -142,14 +142,17 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
 
   const adjustQuantity = (delta: number) => {
     const step = activeVariant.servingSize;
-    const minQuantity = step * 0.5;
-    // Snap to the nearest step boundary in the direction of travel.
-    // If already on a boundary, move one full step.
+    const increment = step * 0.5;
+    const minQuantity = increment;
+    if (quantity < minQuantity) {
+      if (delta > 0) setQuantityText(String(minQuantity));
+      return;
+    }
     const boundary =
       delta > 0
-        ? Math.ceil(quantity / step) * step
-        : Math.floor(quantity / step) * step;
-    const next = boundary !== quantity ? boundary : quantity + delta * step;
+        ? Math.ceil(quantity / increment) * increment
+        : Math.floor(quantity / increment) * increment;
+    const next = boundary !== quantity ? boundary : quantity + delta * increment;
     setQuantityText(String(Math.max(minQuantity, next)));
   };
 
