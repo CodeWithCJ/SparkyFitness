@@ -39,7 +39,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     try {
       const result = await lookupBarcode(data);
 
-      if (result.source === 'local') {
+      if (!result.food) {
+        setNotFoundBarcode(data);
+      } else if (result.food.id) {
         const dv = result.food.default_variant;
         const item: FoodInfoItem = {
           id: result.food.id,
@@ -60,7 +62,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           originalItem: result.food,
         };
         navigation.replace('FoodEntryAdd', { item, date: route.params?.date });
-      } else if (result.source === 'openfoodfacts') {
+      } else {
         const dv = result.food.default_variant;
         navigation.replace('ManualFoodEntry', {
           date: route.params?.date,
@@ -81,8 +83,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             sugars: dv.sugars != null ? String(dv.sugars) : '',
           },
         });
-      } else {
-        setNotFoundBarcode(data);
       }
     } catch {
       Alert.alert('Error', 'Something went wrong looking up this barcode.');

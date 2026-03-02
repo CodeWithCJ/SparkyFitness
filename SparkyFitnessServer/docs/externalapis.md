@@ -40,11 +40,11 @@ curl -X GET 'http://10.0.0.75:8080/api/foods/barcode/094395000172?providerId={pr
       "polyunsaturated_fat": 0,
       "monounsaturated_fat": 0,
       "trans_fat": 0,
-      "cholesterol": 0,
+      "cholesterol": 25,
       "potassium": 0,
-      "vitamin_a": 0,
+      "vitamin_a": 120,
       "vitamin_c": 0,
-      "calcium": 0,
+      "calcium": 200,
       "iron": 0,
       "is_default": true
     }

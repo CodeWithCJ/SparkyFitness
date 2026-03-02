@@ -10,6 +10,21 @@ function sanitizeCustomNutrients(customNutrients) {
   return sanitized;
 }
 
+const SERVING_UNIT_ALIASES = {
+  g: "g", grm: "g", gm: "g", gram: "g", grams: "g",
+  ml: "ml", milliliter: "ml", millilitre: "ml",
+  oz: "oz", ounce: "oz", ounces: "oz",
+  tbsp: "tbsp", tablespoon: "tbsp",
+  tsp: "tsp", teaspoon: "tsp",
+  cup: "cup", cups: "cup",
+};
+
+function normalizeServingUnit(unit) {
+  if (!unit) return "g";
+  const key = unit.toLowerCase().trim();
+  return SERVING_UNIT_ALIASES[key] || key;
+}
+
 function normalizeBarcode(barcode) {
   if (typeof barcode === "string" && barcode.length === 12) {
     return "0" + barcode;
@@ -19,5 +34,6 @@ function normalizeBarcode(barcode) {
 
 module.exports = {
   sanitizeCustomNutrients,
+  normalizeServingUnit,
   normalizeBarcode,
 };

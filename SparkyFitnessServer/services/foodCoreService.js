@@ -2,7 +2,7 @@ const foodRepository = require("../models/foodRepository");
 const preferenceService = require("./preferenceService");
 const externalProviderService = require("./externalProviderService");
 const { log } = require("../config/logging");
-const { sanitizeCustomNutrients, normalizeBarcode } = require("../utils/foodUtils");
+const { sanitizeCustomNutrients, normalizeBarcode, normalizeServingUnit } = require("../utils/foodUtils");
 const {
   searchOpenFoodFactsByBarcodeFields,
 } = require("../integrations/openfoodfacts/openFoodFactsService");
@@ -778,7 +778,7 @@ function mapUsdaBarcodeProduct(food) {
 
   const defaultVariant = {
     serving_size: servingSize,
-    serving_unit: (food.servingSizeUnit || "g").toLowerCase(),
+    serving_unit: normalizeServingUnit(food.servingSizeUnit),
     calories: Math.round((nutrients[1008] || 0) * scale),
     protein: Math.round((nutrients[1003] || 0) * scale * 10) / 10,
     carbs: Math.round((nutrients[1005] || 0) * scale * 10) / 10,

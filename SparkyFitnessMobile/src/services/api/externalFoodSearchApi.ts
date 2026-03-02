@@ -51,6 +51,9 @@ export interface BarcodeFood {
   id?: string;
   name: string;
   brand: string | null;
+  barcode?: string;
+  provider_external_id?: string | null;
+  provider_type?: string;
   is_custom: boolean;
   default_variant: {
     id?: string;
@@ -69,7 +72,7 @@ export interface BarcodeFood {
 
 export type BarcodeLookupResult =
   | { source: 'local'; food: BarcodeFood & { id: string } }
-  | { source: 'openfoodfacts'; food: BarcodeFood }
+  | { source: string; food: BarcodeFood }
   | { source: 'not_found'; food: null };
 
 export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
