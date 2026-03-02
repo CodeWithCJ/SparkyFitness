@@ -102,11 +102,9 @@ export function computeCaloriesRemaining({
   switch (mode) {
     case 'adaptive':
       // Adaptive mode uses the calculated TDEE as the base goal.
-      // If user has a specific weight goal (loss/gain), they should probably
-      // have that reflected in their goal setting, or we can apply
-      // the same deficit/surplus to the adaptive TDEE.
-      // For now, we use adaptiveTdee as the dynamic goal.
-      return (adaptiveTdee ?? goalCalories) - eatenCalories;
+      // goalCalories already includes the user's intended deficit/surplus offset
+      // relative to their predicted maintenance (BMR * Activity Multiplier).
+      return goalCalories - eatenCalories;
     case 'tdee':
       return goalCalories - eatenCalories + tdeeAdjustment;
     case 'dynamic':

@@ -354,196 +354,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [loggingLevel]
   );
 
-  // --- Persistence and Updates ---
-
-  const updatePreferences = useCallback(
-    async (
-      updates: Partial<{
-        default_weight_unit: string;
-        default_measurement_unit: string;
-        default_distance_unit: string;
-        date_format: string;
-        system_prompt: string;
-        auto_clear_history: string;
-        logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT';
-        default_food_data_provider_id: string | null;
-        timezone: string;
-        item_display_limit: number;
-        food_display_limit: number;
-        water_display_unit: 'ml' | 'oz' | 'liter';
-        language: string;
-        calorie_goal_adjustment_mode:
-          | 'dynamic'
-          | 'fixed'
-          | 'percentage'
-          | 'tdee'
-          | 'adaptive';
-        exercise_calorie_percentage: number;
-        activity_level: ActivityLevel;
-        tdee_allow_negative_adjustment: boolean;
-        energy_unit: EnergyUnit;
-        auto_scale_open_food_facts_imports: boolean;
-        bmr_algorithm: BmrAlgorithm;
-        body_fat_algorithm: BodyFatAlgorithm;
-        include_bmr_in_net_calories: boolean;
-        fat_breakdown_algorithm: FatBreakdownAlgorithm;
-        mineral_calculation_algorithm: MineralCalculationAlgorithm;
-        vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
-        sugar_calculation_algorithm: SugarCalculationAlgorithm;
-        selected_diet: string;
-      }>
-    ) => {
-      debug(
-        loggingLevel,
-        'PreferencesProvider: Attempting to update preferences with:',
-        updates
-      );
-      if (!user) {
-        if (updates.default_weight_unit)
-          localStorage.setItem('weightUnit', updates.default_weight_unit);
-        if (updates.default_measurement_unit)
-          localStorage.setItem(
-            'measurementUnit',
-            updates.default_measurement_unit
-          );
-        if (updates.default_distance_unit)
-          localStorage.setItem('distanceUnit', updates.default_distance_unit);
-        if (updates.date_format)
-          localStorage.setItem('dateFormat', updates.date_format);
-        if (updates.language)
-          localStorage.setItem('language', updates.language);
-        if (updates.calorie_goal_adjustment_mode)
-          localStorage.setItem(
-            'calorieGoalAdjustmentMode',
-            updates.calorie_goal_adjustment_mode
-          );
-        if (updates.energy_unit)
-          localStorage.setItem('energyUnit', updates.energy_unit);
-        if (updates.auto_scale_open_food_facts_imports !== undefined) {
-          localStorage.setItem(
-            'autoScaleOpenFoodFactsImports',
-            String(updates.auto_scale_open_food_facts_imports)
-          );
-        }
-        return;
-      }
-
-      try {
-        const updateData = {
-          user_id: user.id,
-          ...updates,
-          updated_at: new Date().toISOString(),
-        };
-        await upsertUserPreferences(updateData);
-        info(
-          loggingLevel,
-          'PreferencesContext: Preferences updated successfully.'
-        );
-      } catch (err) {
-        error(
-          loggingLevel,
-          'PreferencesContext: Unexpected error updating preferences:',
-          err
-        );
-        throw err;
-      }
-    },
-    [user, loggingLevel, upsertUserPreferences]
-  );
-
-  const saveAllPreferences = useCallback(
-    async (newPrefs?: Partial<PreferencesContextType>) => {
-      info(
-        loggingLevel,
-        'PreferencesProvider: Saving all preferences to backend.'
-      );
-
-      const prefsToSave = {
-        default_weight_unit: newPrefs?.weightUnit ?? weightUnit,
-        default_measurement_unit: newPrefs?.measurementUnit ?? measurementUnit,
-        default_distance_unit: newPrefs?.distanceUnit ?? distanceUnit,
-        date_format: newPrefs?.dateFormat ?? dateFormat,
-        auto_clear_history: newPrefs?.autoClearHistory ?? autoClearHistory,
-        logging_level: newPrefs?.loggingLevel ?? loggingLevel,
-        default_food_data_provider_id:
-          newPrefs?.defaultFoodDataProviderId ?? defaultFoodDataProviderId,
-        timezone: newPrefs?.timezone ?? timezone,
-        item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
-        food_display_limit: foodDisplayLimit,
-        water_display_unit: newPrefs?.water_display_unit ?? waterDisplayUnit,
-        language: newPrefs?.language ?? language,
-        calorie_goal_adjustment_mode:
-          newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode,
-        exercise_calorie_percentage:
-          newPrefs?.exerciseCaloriePercentage ?? exerciseCaloriePercentage,
-        activity_level: newPrefs?.activityLevel ?? activityLevel,
-        tdee_allow_negative_adjustment:
-          newPrefs?.tdeeAllowNegativeAdjustment ?? tdeeAllowNegativeAdjustment,
-        energy_unit: newPrefs?.energyUnit ?? energyUnit,
-        auto_scale_open_food_facts_imports:
-          newPrefs?.autoScaleOpenFoodFactsImports ??
-          autoScaleOpenFoodFactsImports,
-        bmr_algorithm: newPrefs?.bmrAlgorithm ?? bmrAlgorithm,
-        body_fat_algorithm: newPrefs?.bodyFatAlgorithm ?? bodyFatAlgorithm,
-        include_bmr_in_net_calories:
-          newPrefs?.includeBmrInNetCalories ?? includeBmrInNetCalories,
-        fat_breakdown_algorithm:
-          newPrefs?.fatBreakdownAlgorithm ?? fatBreakdownAlgorithm,
-        mineral_calculation_algorithm:
-          newPrefs?.mineralCalculationAlgorithm ?? mineralCalculationAlgorithm,
-        vitamin_calculation_algorithm:
-          newPrefs?.vitaminCalculationAlgorithm ?? vitaminCalculationAlgorithm,
-        sugar_calculation_algorithm:
-          newPrefs?.sugarCalculationAlgorithm ?? sugarCalculationAlgorithm,
-        selected_diet: newPrefs?.selectedDiet ?? selectedDiet,
-      };
-
-      try {
-        await updatePreferences(prefsToSave);
-        info(
-          loggingLevel,
-          'PreferencesProvider: All preferences saved successfully.'
-        );
-      } catch (err) {
-        error(
-          loggingLevel,
-          'PreferencesContext: Error saving all preferences:',
-          err
-        );
-        throw err;
-      }
-    },
-    [
-      loggingLevel,
-      weightUnit,
-      measurementUnit,
-      distanceUnit,
-      dateFormat,
-      autoClearHistory,
-      defaultFoodDataProviderId,
-      timezone,
-      itemDisplayLimit,
-      foodDisplayLimit,
-      waterDisplayUnit,
-      language,
-      calorieGoalAdjustmentMode,
-      exerciseCaloriePercentage,
-      activityLevel,
-      tdeeAllowNegativeAdjustment,
-      energyUnit,
-      autoScaleOpenFoodFactsImports,
-      bmrAlgorithm,
-      bodyFatAlgorithm,
-      includeBmrInNetCalories,
-      fatBreakdownAlgorithm,
-      mineralCalculationAlgorithm,
-      vitaminCalculationAlgorithm,
-      sugarCalculationAlgorithm,
-      selectedDiet,
-      updatePreferences,
-    ]
-  );
-
   // --- Creation and Loading ---
 
   const createDefaultPreferences = useCallback(async () => {
@@ -696,6 +506,198 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [user, queryClient]);
 
+  // --- Persistence and Updates ---
+
+  const updatePreferences = useCallback(
+    async (
+      updates: Partial<{
+        default_weight_unit: string;
+        default_measurement_unit: string;
+        default_distance_unit: string;
+        date_format: string;
+        system_prompt: string;
+        auto_clear_history: string;
+        logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT';
+        default_food_data_provider_id: string | null;
+        timezone: string;
+        item_display_limit: number;
+        food_display_limit: number;
+        water_display_unit: 'ml' | 'oz' | 'liter';
+        language: string;
+        calorie_goal_adjustment_mode:
+          | 'dynamic'
+          | 'fixed'
+          | 'percentage'
+          | 'tdee'
+          | 'adaptive';
+        exercise_calorie_percentage: number;
+        activity_level: ActivityLevel;
+        tdee_allow_negative_adjustment: boolean;
+        energy_unit: EnergyUnit;
+        auto_scale_open_food_facts_imports: boolean;
+        bmr_algorithm: BmrAlgorithm;
+        body_fat_algorithm: BodyFatAlgorithm;
+        include_bmr_in_net_calories: boolean;
+        fat_breakdown_algorithm: FatBreakdownAlgorithm;
+        mineral_calculation_algorithm: MineralCalculationAlgorithm;
+        vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
+        sugar_calculation_algorithm: SugarCalculationAlgorithm;
+        selected_diet: string;
+      }>
+    ) => {
+      debug(
+        loggingLevel,
+        'PreferencesProvider: Attempting to update preferences with:',
+        updates
+      );
+      if (!user) {
+        if (updates.default_weight_unit)
+          localStorage.setItem('weightUnit', updates.default_weight_unit);
+        if (updates.default_measurement_unit)
+          localStorage.setItem(
+            'measurementUnit',
+            updates.default_measurement_unit
+          );
+        if (updates.default_distance_unit)
+          localStorage.setItem('distanceUnit', updates.default_distance_unit);
+        if (updates.date_format)
+          localStorage.setItem('dateFormat', updates.date_format);
+        if (updates.language)
+          localStorage.setItem('language', updates.language);
+        if (updates.calorie_goal_adjustment_mode)
+          localStorage.setItem(
+            'calorieGoalAdjustmentMode',
+            updates.calorie_goal_adjustment_mode
+          );
+        if (updates.energy_unit)
+          localStorage.setItem('energyUnit', updates.energy_unit);
+        if (updates.auto_scale_open_food_facts_imports !== undefined) {
+          localStorage.setItem(
+            'autoScaleOpenFoodFactsImports',
+            String(updates.auto_scale_open_food_facts_imports)
+          );
+        }
+        return;
+      }
+
+      try {
+        const updateData = {
+          user_id: user.id,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        };
+        await upsertUserPreferences(updateData);
+        info(
+          loggingLevel,
+          'PreferencesContext: Preferences updated successfully.'
+        );
+      } catch (err) {
+        error(
+          loggingLevel,
+          'PreferencesContext: Unexpected error updating preferences:',
+          err
+        );
+        throw err;
+      }
+    },
+    [user, loggingLevel, upsertUserPreferences]
+  );
+
+  const saveAllPreferences = useCallback(
+    async (newPrefs?: Partial<PreferencesContextType>) => {
+      info(
+        loggingLevel,
+        'PreferencesProvider: Saving all preferences to backend.'
+      );
+
+      const prefsToSave = {
+        default_weight_unit: newPrefs?.weightUnit ?? weightUnit,
+        default_measurement_unit: newPrefs?.measurementUnit ?? measurementUnit,
+        default_distance_unit: newPrefs?.distanceUnit ?? distanceUnit,
+        date_format: newPrefs?.dateFormat ?? dateFormat,
+        auto_clear_history: newPrefs?.autoClearHistory ?? autoClearHistory,
+        logging_level: newPrefs?.loggingLevel ?? loggingLevel,
+        default_food_data_provider_id:
+          newPrefs?.defaultFoodDataProviderId ?? defaultFoodDataProviderId,
+        timezone: newPrefs?.timezone ?? timezone,
+        item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
+        food_display_limit: foodDisplayLimit,
+        water_display_unit: newPrefs?.water_display_unit ?? waterDisplayUnit,
+        language: newPrefs?.language ?? language,
+        calorie_goal_adjustment_mode:
+          newPrefs?.calorieGoalAdjustmentMode ?? calorieGoalAdjustmentMode,
+        exercise_calorie_percentage:
+          newPrefs?.exerciseCaloriePercentage ?? exerciseCaloriePercentage,
+        activity_level: newPrefs?.activityLevel ?? activityLevel,
+        tdee_allow_negative_adjustment:
+          newPrefs?.tdeeAllowNegativeAdjustment ?? tdeeAllowNegativeAdjustment,
+        energy_unit: newPrefs?.energyUnit ?? energyUnit,
+        auto_scale_open_food_facts_imports:
+          newPrefs?.autoScaleOpenFoodFactsImports ??
+          autoScaleOpenFoodFactsImports,
+        bmr_algorithm: newPrefs?.bmrAlgorithm ?? bmrAlgorithm,
+        body_fat_algorithm: newPrefs?.bodyFatAlgorithm ?? bodyFatAlgorithm,
+        include_bmr_in_net_calories:
+          newPrefs?.includeBmrInNetCalories ?? includeBmrInNetCalories,
+        fat_breakdown_algorithm:
+          newPrefs?.fatBreakdownAlgorithm ?? fatBreakdownAlgorithm,
+        mineral_calculation_algorithm:
+          newPrefs?.mineralCalculationAlgorithm ?? mineralCalculationAlgorithm,
+        vitamin_calculation_algorithm:
+          newPrefs?.vitaminCalculationAlgorithm ?? vitaminCalculationAlgorithm,
+        sugar_calculation_algorithm:
+          newPrefs?.sugarCalculationAlgorithm ?? sugarCalculationAlgorithm,
+        selected_diet: newPrefs?.selectedDiet ?? selectedDiet,
+      };
+
+      try {
+        await updatePreferences(prefsToSave);
+        await loadPreferences(); // Refresh local state from the newly saved data
+        info(
+          loggingLevel,
+          'PreferencesProvider: All preferences saved successfully.'
+        );
+      } catch (err) {
+        error(
+          loggingLevel,
+          'PreferencesContext: Error saving all preferences:',
+          err
+        );
+        throw err;
+      }
+    },
+    [
+      loggingLevel,
+      weightUnit,
+      measurementUnit,
+      distanceUnit,
+      dateFormat,
+      autoClearHistory,
+      defaultFoodDataProviderId,
+      timezone,
+      itemDisplayLimit,
+      foodDisplayLimit,
+      waterDisplayUnit,
+      language,
+      calorieGoalAdjustmentMode,
+      exerciseCaloriePercentage,
+      activityLevel,
+      tdeeAllowNegativeAdjustment,
+      energyUnit,
+      autoScaleOpenFoodFactsImports,
+      bmrAlgorithm,
+      bodyFatAlgorithm,
+      includeBmrInNetCalories,
+      fatBreakdownAlgorithm,
+      mineralCalculationAlgorithm,
+      vitaminCalculationAlgorithm,
+      sugarCalculationAlgorithm,
+      selectedDiet,
+      updatePreferences,
+      loadPreferences,
+    ]
+  );
+
   // --- Setters ---
 
   const setWeightUnit = useCallback((unit: 'kg' | 'lbs') => {
@@ -809,7 +811,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         const savedLanguage = localStorage.getItem('language');
         const savedCalorieGoalAdjustmentMode = localStorage.getItem(
           'calorieGoalAdjustmentMode'
-        ) as 'dynamic' | 'fixed';
+        ) as 'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive';
         const savedEnergyUnit = localStorage.getItem(
           'energyUnit'
         ) as EnergyUnit;
