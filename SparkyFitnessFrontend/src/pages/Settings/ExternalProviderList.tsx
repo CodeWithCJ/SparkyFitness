@@ -117,8 +117,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
         setDefaultBarcodeProviderId(null);
         saveAllPreferences({ defaultBarcodeProviderId: null });
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating external data provider:', error);
     }
   };
