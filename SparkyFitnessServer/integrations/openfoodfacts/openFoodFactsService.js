@@ -29,6 +29,10 @@ async function searchOpenFoodFactsByBarcode(barcode) {
     const searchUrl = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`;
     const response = await fetch(searchUrl, { method: 'GET', headers: OFF_HEADERS });
     if (!response.ok) {
+      if (response.status === 404) {
+        log('debug', `OpenFoodFacts product not found for barcode "${barcode}"`);
+        return { status: 0, status_verbose: 'product not found' };
+      }
       const errorText = await response.text();
       log('error', "OpenFoodFacts Barcode Search API error:", errorText);
       throw new Error(`OpenFoodFacts API error: ${errorText}`);
@@ -47,6 +51,10 @@ async function searchOpenFoodFactsByBarcodeFields(barcode, fields = ['product_na
     const searchUrl = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=${fieldsParam}`;
     const response = await fetch(searchUrl, { method: 'GET', headers: OFF_HEADERS });
     if (!response.ok) {
+      if (response.status === 404) {
+        log('debug', `OpenFoodFacts product not found for barcode "${barcode}"`);
+        return { status: 0, status_verbose: 'product not found' };
+      }
       const errorText = await response.text();
       log('error', "OpenFoodFacts Barcode Fields Search API error:", errorText);
       throw new Error(`OpenFoodFacts API error: ${errorText}`);
