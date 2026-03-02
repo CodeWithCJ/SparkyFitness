@@ -18,8 +18,13 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<ExternalDataProvider>>({});
   const { user } = useAuth();
-  const { defaultFoodDataProviderId, setDefaultFoodDataProviderId } =
-    usePreferences();
+  const {
+    defaultFoodDataProviderId,
+    setDefaultFoodDataProviderId,
+    defaultBarcodeProviderId,
+    setDefaultBarcodeProviderId,
+    saveAllPreferences,
+  } = usePreferences();
   const { data: providers = [], isLoading: providersLoading } =
     useExternalProviders(user.activeUserId);
 
@@ -101,11 +106,16 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
           data.provider_type === 'nutritionix' ||
           data.provider_type === 'fatsecret' ||
           data.provider_type === 'mealie' ||
-          data.provider_type === 'tandoor')
+          data.provider_type === 'tandoor' ||
+          data.provider_type === 'usda')
       ) {
         setDefaultFoodDataProviderId(data.id);
       } else if (data && defaultFoodDataProviderId === data.id) {
         setDefaultFoodDataProviderId(null);
+      }
+      if (data && !data.is_active && defaultBarcodeProviderId === data.id) {
+        setDefaultBarcodeProviderId(null);
+        saveAllPreferences({ defaultBarcodeProviderId: null });
       }
     } catch (error: unknown) {
       console.error('Error updating external data provider:', error);

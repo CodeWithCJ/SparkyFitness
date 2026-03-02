@@ -37,21 +37,46 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
   const [saveToDatabase, setSaveToDatabase] = useState(true);
-  const [servingsText, setServingsText] = useState('1');
-  const servings = parseFloat(servingsText) || 0;
+  const initialServingSize = parseFloat(initialFood?.servingSize ?? '') || 100;
+  const [formServingSize, setFormServingSize] = useState(initialServingSize);
+  const [formServingUnit, setFormServingUnit] = useState(initialFood?.servingUnit ?? 'g');
+  const [quantityText, setQuantityText] = useState(String(initialServingSize));
+  const quantity = parseFloat(quantityText) || 0;
+  const servings = formServingSize > 0 ? quantity / formServingSize : 0;
 
-  const updateServingsText = (text: string) => {
-    if (/^\d*\.?\d*$/.test(text)) setServingsText(text);
+  const handleServingChange = (sizeStr: string, unit: string) => {
+    const size = parseFloat(sizeStr) || 0;
+    setFormServingSize(size);
+    setFormServingUnit(unit);
+    if (size > 0) setQuantityText(String(size));
   };
 
-  const clampServings = () => {
-    const clamped = Math.max(0.5, servings);
-    setServingsText(String(clamped));
+  const updateQuantityText = (text: string) => {
+    if (/^\d*\.?\d*$/.test(text)) setQuantityText(text);
   };
 
-  const adjustServings = (delta: number) => {
-    const next = Math.max(0.5, servings + delta);
-    setServingsText(String(next));
+  const clampQuantity = () => {
+    const step = formServingSize > 0 ? formServingSize : 1;
+    const fallbackQuantity = step * 0.5;
+    if (quantity <= 0) {
+      setQuantityText(String(fallbackQuantity));
+    }
+  };
+
+  const adjustQuantity = (delta: number) => {
+    const step = formServingSize > 0 ? formServingSize : 1;
+    const increment = step * 0.5;
+    const minQuantity = increment;
+    if (quantity < minQuantity) {
+      if (delta > 0) setQuantityText(String(minQuantity));
+      return;
+    }
+    const boundary =
+      delta > 0
+        ? Math.ceil(quantity / increment) * increment
+        : Math.floor(quantity / increment) * increment;
+    const next = boundary !== quantity ? boundary : quantity + delta * increment;
+    setQuantityText(String(Math.max(minQuantity, next)));
   };
 
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
@@ -61,13 +86,11 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
   const submitMutation = useMutation({
     mutationFn: async (data: FoodFormData) => {
       if (!effectiveMealId) throw new Error('No meal type selected');
-      const servingSize = parseFloat(data.servingSize) || 0;
-      const quantity = servingSize * servings;
 
       const saved = await saveFood({
         name: data.name,
         brand: data.brand || null,
-        serving_size: servingSize,
+        serving_size: parseFloat(data.servingSize) || 0,
         serving_unit: data.servingUnit || 'serving',
         calories: parseFloat(data.calories) || 0,
         protein: parseFloat(data.protein) || 0,
@@ -116,7 +139,7 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
       Alert.alert('Invalid serving size', 'Serving size must be greater than zero.');
       return;
     }
-    if (!servings) {
+    if (!quantity) {
       Alert.alert('Invalid amount', 'Amount must be greater than zero.');
       return;
     }
@@ -139,7 +162,7 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
         </Text>
       </View>
 
-      <FoodForm onSubmit={handleSubmit} isSubmitting={submitMutation.isPending} initialValues={initialFood}>
+      <FoodForm onSubmit={handleSubmit} onServingChange={handleServingChange} isSubmitting={submitMutation.isPending} initialValues={initialFood}>
         {/* Logging */}
         <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
 
@@ -183,34 +206,41 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
             )}
           </View>
           {/* Amount */}
-          <View className="flex-row items-center">
-            <Text className="text-text-secondary text-base mr-3">Amount</Text>
-            <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
-              <TouchableOpacity
-                onPress={() => adjustServings(-0.5)}
-                className="w-10 h-10 items-center justify-center border-r border-border-subtle"
-                activeOpacity={0.7}
-              >
-                <Icon name="remove" size={20} color={accentColor} />
-              </TouchableOpacity>
-              <TextInput
-                value={servingsText}
-                onChangeText={updateServingsText}
-                onBlur={clampServings}
-                keyboardType="decimal-pad"
-                selectTextOnFocus
-                className="text-text-primary text-base text-center w-14 h-10"
-                style={{ fontSize: 20, lineHeight: 22 }}
-              />
-              <TouchableOpacity
-                onPress={() => adjustServings(0.5)}
-                className="w-10 h-10 items-center justify-center border-l border-border-subtle"
-                activeOpacity={0.7}
-              >
-                <Icon name="add" size={20} color={accentColor} />
-              </TouchableOpacity>
+          <View>
+            <View className="flex-row items-center">
+              <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
+                <TouchableOpacity
+                  onPress={() => adjustQuantity(-1)}
+                  className="w-10 h-10 items-center justify-center border-r border-border-subtle"
+                  activeOpacity={0.7}
+                >
+                  <Icon name="remove" size={20} color={accentColor} />
+                </TouchableOpacity>
+                <TextInput
+                  value={quantityText}
+                  onChangeText={updateQuantityText}
+                  onBlur={clampQuantity}
+                  keyboardType="decimal-pad"
+                  selectTextOnFocus
+                  className="text-text-primary text-base text-center w-14 h-10"
+                  style={{ fontSize: 20, lineHeight: 22 }}
+                />
+                <TouchableOpacity
+                  onPress={() => adjustQuantity(1)}
+                  className="w-10 h-10 items-center justify-center border-l border-border-subtle"
+                  activeOpacity={0.7}
+                >
+                  <Icon name="add" size={20} color={accentColor} />
+                </TouchableOpacity>
+              </View>
+              <Text className="text-text-primary text-base font-medium ml-2">
+                {formServingUnit}
+              </Text>
             </View>
-            {/* <Text className="text-text-secondary text-base ml-3">serving</Text> */}
+            <Text className="text-text-secondary text-sm mt-2">
+              {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? 'serving' : 'servings'}
+              {' · '}{formServingSize} {formServingUnit} per serving
+            </Text>
           </View>
           {/* Save to Database */}
           <View className="flex-row items-center justify-between">
@@ -222,6 +252,9 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
               thumbColor="#FFFFFF"
             />
           </View>
+          {barcode && (
+            <Text className="text-text-secondary text-base font-medium">Barcode will be saved.</Text>
+          )}
         </View>
       </FoodForm>
 

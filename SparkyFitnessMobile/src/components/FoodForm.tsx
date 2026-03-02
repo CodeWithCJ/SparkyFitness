@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from './BottomSheetPicker';
@@ -22,6 +22,7 @@ export interface FoodFormData {
 export interface FoodFormProps {
   initialValues?: Partial<FoodFormData>;
   onSubmit: (data: FoodFormData) => void;
+  onServingChange?: (servingSize: string, servingUnit: string) => void;
   submitLabel?: string;
   isSubmitting?: boolean;
   children?: React.ReactNode;
@@ -51,6 +52,7 @@ const EMPTY_FORM: FoodFormData = {
 const FoodForm: React.FC<FoodFormProps> = ({
   initialValues,
   onSubmit,
+  onServingChange,
   submitLabel = 'Add Food',
   isSubmitting = false,
   children,
@@ -80,6 +82,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
   const update = (field: keyof FoodFormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
+
+  useEffect(() => {
+    if (form.servingSize || form.servingUnit) {
+      onServingChange?.(form.servingSize, form.servingUnit);
+    }
+  }, [form.servingSize, form.servingUnit]);
 
   const renderTextField = (
     label: string,
@@ -209,6 +217,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
           <TouchableOpacity
             onPress={() => setShowMoreNutrients((prev) => !prev)}
             activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Text style={{ color: accentColor }} className="text-sm font-medium">
               {showMoreNutrients ? 'Hide extra nutrients ▴' : 'Show more nutrients ▾'}

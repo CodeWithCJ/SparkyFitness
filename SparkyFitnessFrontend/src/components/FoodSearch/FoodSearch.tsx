@@ -67,7 +67,7 @@ export interface OpenFoodFactsProduct {
   product_name: string;
   brands?: string;
   serving_quantity?: number;
-  nutriments: {
+  nutriments?: {
     'energy-kcal_100g'?: number;
     proteins_100g?: number;
     carbohydrates_100g?: number;

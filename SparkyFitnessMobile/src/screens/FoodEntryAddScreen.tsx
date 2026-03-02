@@ -112,23 +112,48 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
     return [];
   }, [variants, externalVariantOptions]);
 
-  const [servingsText, setServingsText] = useState('1');
-  const servings = parseFloat(servingsText) || 0;
+  const [quantityText, setQuantityText] = useState(String(activeVariant.servingSize));
+  const quantity = parseFloat(quantityText) || 0;
+  const servings = activeVariant.servingSize > 0 ? quantity / activeVariant.servingSize : 0;
 
-  const updateServingsText = (text: string) => {
-    if (/^\d*\.?\d*$/.test(text)) {
-      setServingsText(text);
+  const handleVariantChange = (variantId: string) => {
+    setSelectedVariantId(variantId);
+    if (variants) {
+      const v = variants.find((v) => v.id === variantId);
+      if (v) { setQuantityText(String(v.serving_size)); return; }
+    }
+    if (externalVariantOptions) {
+      const ev = externalVariantOptions.find((v) => v.id === variantId);
+      if (ev) { setQuantityText(String(ev.servingSize)); return; }
     }
   };
 
-  const clampServings = () => {
-    const clamped = Math.max(0.5, servings);
-    setServingsText(String(clamped));
+  const updateQuantityText = (text: string) => {
+    if (/^\d*\.?\d*$/.test(text)) {
+      setQuantityText(text);
+    }
   };
 
-  const adjustServings = (delta: number) => {
-    const next = Math.max(0.5, servings + delta);
-    setServingsText(String(next));
+  const clampQuantity = () => {
+    const minQuantity = activeVariant.servingSize * 0.5;
+    const clamped = Math.max(minQuantity, quantity);
+    setQuantityText(String(clamped));
+  };
+
+  const adjustQuantity = (delta: number) => {
+    const step = activeVariant.servingSize;
+    const increment = step * 0.5;
+    const minQuantity = increment;
+    if (quantity < minQuantity) {
+      if (delta > 0) setQuantityText(String(minQuantity));
+      return;
+    }
+    const boundary =
+      delta > 0
+        ? Math.ceil(quantity / increment) * increment
+        : Math.floor(quantity / increment) * increment;
+    const next = boundary !== quantity ? boundary : quantity + delta * increment;
+    setQuantityText(String(Math.max(minQuantity, next)));
   };
 
   const scaled = (value: number) => value * servings;
@@ -164,7 +189,6 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   });
 
   const buildFoodEntryPayload = (savedFood?: { id: string; variantId: string }): CreateFoodEntryPayload => {
-    const quantity = activeVariant.servingSize * servings;
     const base = {
       meal_type_id: effectiveMealId!,
       quantity,
@@ -364,57 +388,67 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
               ))}
           </View>
         )}
-        {/* Servings control */}
-        <View className="flex-row justify-start mt-2">
-          <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
-            <TouchableOpacity
-              onPress={() => adjustServings(-0.5)}
-              className="w-10 h-10 items-center justify-center border-r border-border-subtle"
-              activeOpacity={0.7}
-            >
-              <Icon name="remove" size={20} color={accentColor} />
-            </TouchableOpacity>
-            <TextInput
-              value={servingsText}
-              onChangeText={updateServingsText}
-              onBlur={clampServings}
-              keyboardType="decimal-pad"
-              selectTextOnFocus
-              className="text-text-primary text-base text-center w-14 h-10"
-              style={{ fontSize: 20, lineHeight: 22 }}
-            />
-            <TouchableOpacity
-              onPress={() => adjustServings(0.5)}
-              className="w-10 h-10 items-center justify-center border-l border-border-subtle"
-              activeOpacity={0.7}
-            >
-              <Icon name="add" size={20} color={accentColor} />
-            </TouchableOpacity>
-          </View>
-          {variantPickerOptions.length > 1 ? (
-            <BottomSheetPicker
-              value={selectedVariantId!}
-              options={variantPickerOptions}
-              onSelect={setSelectedVariantId}
-              title="Select Serving"
-              renderTrigger={({ onPress }) => (
-                <TouchableOpacity
-                  onPress={onPress}
-                  activeOpacity={0.7}
-                  className="flex-row items-center mt-1 ml-3"
-                >
-                  <Text className="text-text-primary text-base font-medium">
-                    {activeVariant.servingSize} {activeVariant.servingUnit} per serving
-                  </Text>
-                  <Icon name="chevron-down" size={14} color={textPrimary} style={{ marginLeft: 4 }} weight="medium" />
-                </TouchableOpacity>
-              )}
-            />
-          ) : (
-            <Text className="text-text-secondary text-base mt-2 ml-3">
-              {activeVariant.servingSize} {activeVariant.servingUnit} per serving
+        {/* Quantity control */}
+        <View className="mt-2">
+          <View className="flex-row items-center">
+            <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
+              <TouchableOpacity
+                onPress={() => adjustQuantity(-1)}
+                className="w-10 h-10 items-center justify-center border-r border-border-subtle"
+                activeOpacity={0.7}
+              >
+                <Icon name="remove" size={20} color={accentColor} />
+              </TouchableOpacity>
+              <TextInput
+                value={quantityText}
+                onChangeText={updateQuantityText}
+                onBlur={clampQuantity}
+                keyboardType="decimal-pad"
+                selectTextOnFocus
+                className="text-text-primary text-base text-center w-14 h-10"
+                style={{ fontSize: 20, lineHeight: 22 }}
+              />
+              <TouchableOpacity
+                onPress={() => adjustQuantity(1)}
+                className="w-10 h-10 items-center justify-center border-l border-border-subtle"
+                activeOpacity={0.7}
+              >
+                <Icon name="add" size={20} color={accentColor} />
+              </TouchableOpacity>
+            </View>
+            <Text className="text-text-primary text-base font-medium ml-2">
+              {activeVariant.servingUnit}
             </Text>
-          )}
+          </View>
+          <View className="flex-row items-center mt-2">
+            <Text className="text-text-secondary text-sm">
+              {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? 'serving' : 'servings'}
+            </Text>
+            {variantPickerOptions.length > 1 ? (
+              <BottomSheetPicker
+                value={selectedVariantId!}
+                options={variantPickerOptions}
+                onSelect={handleVariantChange}
+                title="Select Serving"
+                renderTrigger={({ onPress }) => (
+                  <TouchableOpacity
+                    onPress={onPress}
+                    activeOpacity={0.7}
+                    className="flex-row items-center ml-1"
+                  >
+                    <Text className="text-text-secondary text-sm">
+                      {' · '}{activeVariant.servingSize} {activeVariant.servingUnit} per serving
+                    </Text>
+                    <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 4 }} weight="medium" />
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <Text className="text-text-secondary text-sm">
+                {' · '}{activeVariant.servingSize} {activeVariant.servingUnit} per serving
+              </Text>
+            )}
+          </View>
         </View>
 
         {/* Date selector */}

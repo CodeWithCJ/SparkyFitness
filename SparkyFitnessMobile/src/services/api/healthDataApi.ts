@@ -22,6 +22,10 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
   const { apiKey } = config;
   const url = normalizeUrl(config.url);
 
+  if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+    throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
+  }
+
   console.log(`[API Service] Attempting to sync to URL: ${url}/health-data`);
   console.log(`[API Service] Using API Key (first 5 chars): ${apiKey ? apiKey.substring(0, 5) + '...' : 'N/A'}`);
 
@@ -66,6 +70,11 @@ export const checkServerConnection = async (): Promise<boolean> => {
 
   const { apiKey } = config;
   const url = normalizeUrl(config.url);
+
+  if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+    addLog('[API] Connection check blocked: HTTPS is required', 'WARNING');
+    return false;
+  }
 
   try {
     const response = await fetch(`${url}/identity/user`, {

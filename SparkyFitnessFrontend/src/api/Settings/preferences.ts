@@ -25,6 +25,7 @@ interface UserPreferences {
   auto_clear_history: string;
   logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT';
   default_food_data_provider_id: string | null;
+  default_barcode_provider_id: string | null;
   timezone: string;
   item_display_limit: number;
   food_display_limit: number;

@@ -22,6 +22,7 @@ const {
 const {
   searchUsdaFoods,
   getUsdaFoodDetails,
+  searchUsdaFoodsByBarcode,
 } = require("../integrations/usda/usdaService");
 
 router.use(express.json());
@@ -741,7 +742,21 @@ router.get("/usda/search", authenticate, async (req, res, next) => {
   }
 });
 
+router.get("/usda/barcode/:barcode", authenticate, async (req, res, next) => {
+  const { barcode } = req.params;
+  const { usdaApiKey } = req;
 
+  if (!barcode) {
+    return res.status(400).json({ error: "Missing barcode" });
+  }
+
+  try {
+    const data = await searchUsdaFoodsByBarcode(barcode, usdaApiKey);
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+});
 /**
  * @swagger
  * /food-integration/usda/details:

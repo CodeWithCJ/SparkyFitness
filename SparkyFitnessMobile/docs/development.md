@@ -24,7 +24,7 @@
 - You can run `npx expo install --check` to check for incompatible dependencies in your project. You can run it with `--fix` to automatically fix any issues found.
 - Use `npx expo-doctor` to diagnose and fix common issues in your Expo project.
 - Prebuild after changing anything in `app.json`
-- Delete node_modules and run `npm install` again to reinstall all dependencies. Follow up with `npx expo-doctor`
+- Delete node_modules and run `pnpm install` again to reinstall all dependencies. Follow up with `npx expo-doctor`
 - Clear metro cache with `npx expo start -c` if you encounter strange issues.
 
 ## Prebuild

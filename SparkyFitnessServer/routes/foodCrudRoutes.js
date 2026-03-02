@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require("../middleware/authMiddleware");
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 const foodService = require("../services/foodService");
+const labelScanService = require("../services/labelScanService");
 const { log } = require("../config/logging");
 
 router.use(express.json());
@@ -593,7 +594,7 @@ router.delete(
  *   get:
  *     summary: Look up a food by barcode
  *     tags: [Nutrition & Meals]
- *     description: Checks the local database first, then falls back to OpenFoodFacts. Returns the source so the client knows which flow to follow.
+ *     description: Checks the local database first, then queries an external barcode provider (USDA or OpenFoodFacts). The provider can be specified via the providerId query parameter or the user's default_barcode_provider_id preference. If the chosen provider returns no results, OpenFoodFacts is tried as a fallback.
  *     parameters:
  *       - in: path
  *         name: barcode
@@ -601,6 +602,12 @@ router.delete(
  *           type: string
  *         required: true
  *         description: The barcode to look up (8-14 digits).
+ *       - in: query
+ *         name: providerId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional external data provider ID to use for barcode lookup (e.g. a USDA provider). Falls back to the user's default barcode provider preference if not specified.
  *     responses:
  *       200:
  *         description: Barcode lookup result.
@@ -611,7 +618,7 @@ router.delete(
  *               properties:
  *                 source:
  *                   type: string
- *                   enum: [local, openfoodfacts, not_found]
+ *                   enum: [local, openfoodfacts, usda, not_found]
  *                 food:
  *                   $ref: '#/components/schemas/Food'
  *       400:
@@ -626,8 +633,32 @@ router.get(
       return res.status(400).json({ error: "Invalid barcode format. Must be 8-14 digits." });
     }
     try {
-      const result = await foodService.lookupBarcode(barcode, req.userId);
+      const result = await foodService.lookupBarcode(barcode, req.userId, req.query.providerId);
       res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/scan-label",
+  authenticate,
+  async (req, res, next) => {
+    const { image, mime_type } = req.body;
+    if (!image || !mime_type) {
+      return res.status(400).json({ error: "image and mime_type are required." });
+    }
+    try {
+      const result = await labelScanService.extractNutritionFromLabel(
+        image,
+        mime_type,
+        req.userId,
+      );
+      if (!result.success) {
+        return res.status(422).json({ error: result.error });
+      }
+      res.status(200).json(result.nutrition);
     } catch (error) {
       next(error);
     }

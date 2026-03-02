@@ -51,6 +51,9 @@ export interface BarcodeFood {
   id?: string;
   name: string;
   brand: string | null;
+  barcode?: string;
+  provider_external_id?: string | null;
+  provider_type?: string;
   is_custom: boolean;
   default_variant: {
     id?: string;
@@ -69,7 +72,7 @@ export interface BarcodeFood {
 
 export type BarcodeLookupResult =
   | { source: 'local'; food: BarcodeFood & { id: string } }
-  | { source: 'openfoodfacts'; food: BarcodeFood }
+  | { source: string; food: BarcodeFood }
   | { source: 'not_found'; food: null };
 
 export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
@@ -336,4 +339,31 @@ export async function fetchFatSecretNutrients(foodId: string, providerId: string
     source: 'fatsecret',
     variants: variants.length > 0 ? variants : undefined,
   };
+}
+
+// --- Nutrition Label Scanning ---
+
+export interface LabelScanResult {
+  name: string;
+  brand: string;
+  serving_size: number;
+  serving_unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number | null;
+  saturated_fat: number | null;
+  sodium: number | null;
+  sugars: number | null;
+}
+
+export async function scanNutritionLabel(base64Image: string, mimeType: string): Promise<LabelScanResult> {
+  return apiFetch<LabelScanResult>({
+    endpoint: '/api/foods/scan-label',
+    serviceName: 'Label Scan',
+    operation: 'scan nutrition label',
+    method: 'POST',
+    body: { image: base64Image, mime_type: mimeType },
+  });
 }
