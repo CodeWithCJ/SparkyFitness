@@ -138,6 +138,9 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
                           'Open Food Facts API'
                         )}
                       </li>
+                      <li>
+                        {t('aboutDialog.usdaApi', 'USDA Food Database API')}
+                      </li>
                     </ul>
                   </li>
                 </ul>

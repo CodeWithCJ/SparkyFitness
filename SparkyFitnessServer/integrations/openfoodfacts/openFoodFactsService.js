@@ -1,9 +1,16 @@
 const { log } = require('../../config/logging');
+const { name, version } = require('../../package.json');
+
+const USER_AGENT = `${name}/${version} (https://github.com/CodeWithCJ/SparkyFitness)`;
+
+const OFF_HEADERS = {
+  'User-Agent': USER_AGENT,
+};
 
 async function searchOpenFoodFacts(query) {
   try {
     const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20`;
-    const response = await fetch(searchUrl, { method: 'GET' });
+    const response = await fetch(searchUrl, { method: 'GET', headers: OFF_HEADERS });
     if (!response.ok) {
       const errorText = await response.text();
       log('error', "OpenFoodFacts Search API error:", errorText);
@@ -20,7 +27,7 @@ async function searchOpenFoodFacts(query) {
 async function searchOpenFoodFactsByBarcode(barcode) {
   try {
     const searchUrl = `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`;
-    const response = await fetch(searchUrl, { method: 'GET' });
+    const response = await fetch(searchUrl, { method: 'GET', headers: OFF_HEADERS });
     if (!response.ok) {
       const errorText = await response.text();
       log('error', "OpenFoodFacts Barcode Search API error:", errorText);
@@ -38,7 +45,7 @@ async function searchOpenFoodFactsByBarcodeFields(barcode, fields = ['product_na
   try {
     const fieldsParam = fields.join(',');
     const searchUrl = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=${fieldsParam}`;
-    const response = await fetch(searchUrl, { method: 'GET' });
+    const response = await fetch(searchUrl, { method: 'GET', headers: OFF_HEADERS });
     if (!response.ok) {
       const errorText = await response.text();
       log('error', "OpenFoodFacts Barcode Fields Search API error:", errorText);
