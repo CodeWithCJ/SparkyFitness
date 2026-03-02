@@ -440,6 +440,18 @@ describe("mapUsdaBarcodeProduct", () => {
     expect(result.default_variant.fat).toBe(5);
   });
 
+  it("should use servingSizeUnit when provided", () => {
+    const usdaFood = makeUsdaFood({ servingSizeUnit: "ml" });
+    const result = mapUsdaBarcodeProduct(usdaFood);
+    expect(result.default_variant.serving_unit).toBe("ml");
+  });
+
+  it("should normalize non-standard servingSizeUnit values", () => {
+    const usdaFood = makeUsdaFood({ servingSizeUnit: "GRM" });
+    const result = mapUsdaBarcodeProduct(usdaFood);
+    expect(result.default_variant.serving_unit).toBe("g");
+  });
+
   it("should normalize a 12-digit gtinUpc to 13 digits", () => {
     const usdaFood = makeUsdaFood({ gtinUpc: "094395000172" });
     const result = mapUsdaBarcodeProduct(usdaFood);
@@ -509,7 +521,7 @@ describe("lookupBarcode", () => {
     expect(result).toEqual({ source: "not_found", food: null });
   });
 
-  it("should return openfoodfacts result when OFF product has no energy-kcal_100g", async () => {
+  it("should accept OFF product with missing nutrient fields and default them to 0", async () => {
     foodRepository.findFoodByBarcode.mockResolvedValue(null);
     searchOpenFoodFactsByBarcodeFields.mockResolvedValue({
       status: 1,

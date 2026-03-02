@@ -17,37 +17,29 @@ export const convertOpenFoodFactsToFood = (
     product.serving_quantity > 0;
   const servingSize = shouldScale ? product.serving_quantity! : 100;
   const scaleFactor = shouldScale ? servingSize / 100 : 1; // Scale from 100g to actual serving size, or 1 if disabled
+  const nutriments = product.nutriments || {};
 
   const defaultVariant: FoodVariant = {
     id: 'default', // Assign a default ID for now
     serving_size: servingSize,
     serving_unit: 'g',
-    calories: Math.round(
-      (product.nutriments['energy-kcal_100g'] || 0) * scaleFactor
-    ), // Assumed to be in kcal, and scaled from 100g to serving
+    calories: Math.round((nutriments['energy-kcal_100g'] || 0) * scaleFactor), // Assumed to be in kcal, and scaled from 100g to serving
     protein:
-      Math.round(
-        (product.nutriments['proteins_100g'] || 0) * scaleFactor * 10
-      ) / 10,
+      Math.round((nutriments['proteins_100g'] || 0) * scaleFactor * 10) / 10,
     carbs:
-      Math.round(
-        (product.nutriments['carbohydrates_100g'] || 0) * scaleFactor * 10
-      ) / 10,
-    fat:
-      Math.round((product.nutriments['fat_100g'] || 0) * scaleFactor * 10) / 10,
+      Math.round((nutriments['carbohydrates_100g'] || 0) * scaleFactor * 10) /
+      10,
+    fat: Math.round((nutriments['fat_100g'] || 0) * scaleFactor * 10) / 10,
     saturated_fat:
-      Math.round(
-        (product.nutriments['saturated-fat_100g'] || 0) * scaleFactor * 10
-      ) / 10,
-    sodium: product.nutriments['sodium_100g']
-      ? Math.round(product.nutriments['sodium_100g'] * 1000 * scaleFactor)
+      Math.round((nutriments['saturated-fat_100g'] || 0) * scaleFactor * 10) /
+      10,
+    sodium: nutriments['sodium_100g']
+      ? Math.round(nutriments['sodium_100g'] * 1000 * scaleFactor)
       : 0,
     dietary_fiber:
-      Math.round((product.nutriments['fiber_100g'] || 0) * scaleFactor * 10) /
-      10,
+      Math.round((nutriments['fiber_100g'] || 0) * scaleFactor * 10) / 10,
     sugars:
-      Math.round((product.nutriments['sugars_100g'] || 0) * scaleFactor * 10) /
-      10,
+      Math.round((nutriments['sugars_100g'] || 0) * scaleFactor * 10) / 10,
     // Initialize other nutrients to 0 or appropriate defaults
     polyunsaturated_fat: 0,
     monounsaturated_fat: 0,
