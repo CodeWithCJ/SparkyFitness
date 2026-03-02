@@ -9,7 +9,11 @@ import {
   Flag,
   Activity,
   Info,
+  AlertCircle,
 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import {
   Tooltip,
   TooltipContent,
@@ -43,6 +47,7 @@ import { EnergyCircle } from './EnergyProgressCircle';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     loggingLevel,
     calorieGoalAdjustmentMode,
@@ -63,7 +68,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     useDailySteps(selectedDate);
   const { bmr, includeInNet } = useCalculatedBMR();
   const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
-    useAdaptiveTdee();
+    useAdaptiveTdee(selectedDate);
 
   const isLoading =
     loadingGoals ||
@@ -83,13 +88,14 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     bmr || 0,
     activityLevel
   );
-  const calorieGoalOffset = rawGoalCalories - sparkyfitnessBurned;
+  // Only calculate offset if BMR is available, otherwise fallback to 0.
+  const calorieGoalOffset = bmr > 0 ? rawGoalCalories - sparkyfitnessBurned : 0;
 
   // If adaptive mode is on, we use the adaptive TDEE as the baseline and apply the offset.
-  // Fallback to rawGoalCalories if not available.
+  // We apply a 1200 kcal "Safety Floor" to ensure the goal never drops to dangerous levels.
   const goalCalories =
-    calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData
-      ? Math.round(adaptiveTdeeData.tdee + calorieGoalOffset)
+    calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0
+      ? Math.max(1200, Math.round(adaptiveTdeeData.tdee + calorieGoalOffset))
       : rawGoalCalories;
 
   const eatenCalories = foodData?.totals.calories || 0;
@@ -377,6 +383,38 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             </div>
           )}
 
+          {/* Profile Setup Warning Alert (Visible if BMR is 0) */}
+          {bmr === 0 && (
+            <Alert variant="destructive" className="bg-red-50 border-red-200">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <div className="flex flex-col">
+                <AlertTitle className="text-red-800 font-bold mb-1">
+                  {t(
+                    'exercise.dailyProgress.profileIncompleteTitle',
+                    'Profile Incomplete'
+                  )}
+                </AlertTitle>
+                <AlertDescription className="text-red-700 text-xs leading-relaxed">
+                  {t(
+                    'exercise.dailyProgress.profileIncompleteDesc',
+                    'Weight, Height, and Age are missing. Calorie goals may be inaccurate.'
+                  )}
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="p-0 h-auto text-red-800 font-bold ml-1 underline decoration-2 underline-offset-2"
+                    onClick={() => navigate('/settings')}
+                  >
+                    {t(
+                      'exercise.dailyProgress.updateProfile',
+                      'Update Profile'
+                    )}
+                  </Button>
+                </AlertDescription>
+              </div>
+            </Alert>
+          )}
+
           {/* Formula Bar */}
           {calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && (
             <div className="p-3 bg-green-50 dark:bg-slate-700 rounded-lg space-y-2">
@@ -411,7 +449,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                   <span className="font-semibold text-gray-800 dark:text-slate-200">
                     {adaptiveTdeeData.weightTrend
                       ? `${adaptiveTdeeData.weightTrend} ${t(`units.${weightUnit}`, weightUnit)}`
-                      : '--'}
+                      : t('common.calculating', 'Calculating...')}
                   </span>
                 </div>
                 <div className="flex flex-col">

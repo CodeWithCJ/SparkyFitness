@@ -21,18 +21,18 @@ const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
  * Adaptive TDEE Service
  * Calculates TDEE based on historical weight and calorie intake data.
  */
-async function calculateAdaptiveTdee(userId) {
-  const cacheKey = `adaptive_tdee_${userId}`;
+async function calculateAdaptiveTdee(userId, dateParam) {
+  const calculationDate = dateParam ? startOfDay(parseISO(dateParam)) : startOfDay(new Date());
+  const cacheKey = `adaptive_tdee_${userId}_${format(calculationDate, 'yyyy-MM-dd')}`;
   const cachedResult = tdeeCache.get(cacheKey);
   if (cachedResult) {
     return cachedResult;
   }
 
   try {
-    const today = startOfDay(new Date());
-    const startDate = subDays(today, 35); // 35 days to allow for 7-day smoothing startup
+    const startDate = subDays(calculationDate, 35); // 35 days to allow for 7-day smoothing startup
     const startDateStr = format(startDate, 'yyyy-MM-dd');
-    const endDateStr = format(today, 'yyyy-MM-dd');
+    const endDateStr = format(calculationDate, 'yyyy-MM-dd');
 
     // Fetch all necessary data in parallel
     const [
@@ -59,24 +59,24 @@ async function calculateAdaptiveTdee(userId) {
     let age = 30;
     if (userProfile?.date_of_birth) {
       const dob = new Date(userProfile.date_of_birth);
-      age = today.getFullYear() - dob.getFullYear();
-      const m = today.getMonth() - dob.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+      age = calculationDate.getFullYear() - dob.getFullYear();
+      const m = calculationDate.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && calculationDate.getDate() < dob.getDate())) {
         age--;
       }
     }
     const gender = userProfile?.gender || 'male';
 
-    const fallbackTdee = bmrService.calculateBmr(
+    const fallbackTdee = Math.max(1200, (bmrService.calculateBmr(
       bmrAlgorithm,
       weightKg,
       heightCm,
       age,
       gender,
       latestMeasurement?.body_fat_percentage
-    ) * multiplier;
+    ) || (10 * weightKg + 6.25 * heightCm - 5 * age + (gender === 'male' ? 5 : -161))) * multiplier);
 
-    // Check if we have enough data (at least 2 weight entries separated by > 7 days)
+    // Check if we have enough data (at least 2 weight entries separated by 7 days)
     const weightEntries = checkInMeasurements
       .filter(m => m.weight !== null)
       .sort((a, b) => new Date(a.entry_date) - new Date(b.entry_date));
@@ -96,19 +96,19 @@ async function calculateAdaptiveTdee(userId) {
     // --- ALGORITHM START ---
 
     // 1. Interpolation & Calorie Mapping
-    const dayInterval = eachDayOfInterval({ start: startDate, end: today });
-    const dailyData = dayInterval.map(date => {
-      const dateStr = format(date, 'yyyy-MM-dd');
+    const dayInterval = eachDayOfInterval({ start: startDate, end: calculationDate });
+    const dailyData = dayInterval.map(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
       
       // Find actual weight or null
-      const actualWeightEntry = weightEntries.find(we => isSameDay(new Date(we.entry_date), date));
+      const actualWeightEntry = weightEntries.find(we => isSameDay(new Date(we.entry_date), day));
       const actualWeight = actualWeightEntry ? parseFloat(actualWeightEntry.weight) : null;
 
       // Find calories
       const nutritionEntry = nutritionData.find(nd => nd.date === dateStr);
       const calories = nutritionEntry ? parseFloat(nutritionEntry.calories) : 0;
 
-      return { date, dateStr, actualWeight, calories };
+      return { date: day, dateStr, actualWeight, calories };
     });
 
     // Linear Interpolation for weight
@@ -157,13 +157,26 @@ async function calculateAdaptiveTdee(userId) {
     }
 
     // 3. TDEE Calculation Window (Last 28 days)
-    const calculationWindow = dailyData.slice(-28);
-    const filteredCalories = calculationWindow
-      .filter(d => d.calories >= 200) // Filter days with < 200 kcal
+    // We look at the 28 days leading up to the calculationDate
+    const calorieWindowStart = subDays(calculationDate, 27);
+    const calorieWindowInterval = eachDayOfInterval({ start: calorieWindowStart, end: calculationDate });
+    
+    const calorieWindowData = calorieWindowInterval.map(day => {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const nutritionEntry = nutritionData.find(nd => nd.date === dateStr);
+      return { date: day, calories: nutritionEntry ? parseFloat(nutritionEntry.calories) : 0 };
+    });
+
+    const filteredCalories = calorieWindowData
+      .filter(d => d.calories >= 200) // Filter days with at least 200 kcal
       .map(d => d.calories);
 
-    if (filteredCalories.length < 7) {
-      return returnFallback(fallbackTdee, 'LOW', 'Insufficient calorie logs (need at least 7 days with > 200 kcal)');
+    const calorieDays = filteredCalories.length;
+    const currentWeightTrend = dailyData.length > 0 ? Math.round(dailyData[dailyData.length - 1].weightTrend * 10) / 10 : null;
+
+    if (calorieDays < 7) {
+      const reason = 'Insufficient calorie logs (need at least 7 days with at least 200 kcal)';
+      return returnFallback(fallbackTdee, 'LOW', reason, currentWeightTrend, calorieDays);
     }
 
     const avgDailyIntake = filteredCalories.reduce((a, b) => a + b, 0) / filteredCalories.length;
@@ -205,12 +218,14 @@ async function calculateAdaptiveTdee(userId) {
   }
 }
 
-function returnFallback(tdee, confidence, reason) {
+function returnFallback(tdee, confidence, reason, weightTrend, daysOfData) {
   return {
     tdee: Math.round(tdee),
     confidence,
+    weightTrend,
     isFallback: true,
     fallbackReason: reason,
+    daysOfData: daysOfData || 0,
     lastCalculated: new Date().toISOString()
   };
 }

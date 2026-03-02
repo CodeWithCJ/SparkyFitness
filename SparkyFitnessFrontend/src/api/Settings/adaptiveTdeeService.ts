@@ -12,7 +12,7 @@ export interface AdaptiveTdeeResult {
 }
 
 export const adaptiveTdeeService = {
-  getAdaptiveTdee: async (): Promise<AdaptiveTdeeResult> => {
-    return api.get('/adaptive-tdee');
+  getAdaptiveTdee: async (date: string): Promise<AdaptiveTdeeResult> => {
+    return api.get(`/adaptive-tdee?date=${date}`);
   },
 };

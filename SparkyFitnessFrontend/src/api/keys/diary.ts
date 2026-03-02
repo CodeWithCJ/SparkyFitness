@@ -13,7 +13,8 @@ export const dailyProgressKeys = {
     mostRecent: (type: string) =>
       [...dailyProgressKeys.all, 'measurements', 'recent', type] as const,
   },
-  adaptiveTdee: () => [...dailyProgressKeys.all, 'adaptiveTdee'] as const,
+  adaptiveTdee: (date: string) =>
+    [...dailyProgressKeys.all, 'adaptiveTdee', date] as const,
 };
 
 export const foodEntryKeys = {

@@ -32,11 +32,17 @@ function calculateBmr(algorithm, weight, height, age, gender, bodyFatPercentage)
 
   switch (algorithm) {
     case BmrAlgorithm.MIFFLIN_ST_JEOR:
-      if (!weight || !height || !age || !gender) throw new Error('Mifflin-St Jeor requires weight, height, age, and gender.');
+      if (!weight || !height || !age || !gender) {
+        log('warn', 'BMR calculation skipped: Missing weight, height, age, or gender.');
+        return 0;
+      }
       return 10 * weight + 6.25 * height - 5 * age + (gender === 'male' ? 5 : -161);
 
     case BmrAlgorithm.REVISED_HARRIS_BENEDICT:
-      if (!weight || !height || !age || !gender) throw new Error('Revised Harris-Benedict requires weight, height, age, and gender.');
+      if (!weight || !height || !age || !gender) {
+        log('warn', 'BMR calculation skipped: Missing weight, height, age, or gender.');
+        return 0;
+      }
       if (gender === 'male') {
         return 13.397 * weight + 4.799 * height - 5.677 * age + 88.362;
       } else {
@@ -44,12 +50,18 @@ function calculateBmr(algorithm, weight, height, age, gender, bodyFatPercentage)
       }
 
     case BmrAlgorithm.KATCH_MCARDLE:
-      if (!weight || !bodyFatPercentage) throw new Error('Katch-McArdle requires weight and body fat percentage.');
+      if (!weight || !bodyFatPercentage) {
+        log('warn', 'BMR calculation skipped: Missing weight or body fat percentage.');
+        return 0;
+      }
       const lbmKatch = weight * (1 - bodyFatPercentage / 100);
       return 370 + 21.6 * lbmKatch;
 
     case BmrAlgorithm.CUNNINGHAM:
-      if (!weight || !bodyFatPercentage) throw new Error('Cunningham requires weight and body fat percentage.');
+      if (!weight || !bodyFatPercentage) {
+        log('warn', 'BMR calculation skipped: Missing weight or body fat percentage.');
+        return 0;
+      }
       const lbmCunningham = weight * (1 - bodyFatPercentage / 100);
       return 500 + 22 * lbmCunningham;
 

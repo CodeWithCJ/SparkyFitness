@@ -186,10 +186,6 @@ const CalculationSettings = () => {
         tdeeAllowNegativeAdjustment: tdeeAllowNegativeAdjustment,
         activityLevel: activityLevel,
       });
-      setCalorieGoalAdjustmentModeContext(calorieGoalAdjustmentMode);
-      setExerciseCaloriePercentageContext(exerciseCaloriePercentage);
-      setTdeeAllowNegativeAdjustmentContext(tdeeAllowNegativeAdjustment);
-      setActivityLevelContext(activityLevel);
       invalidateDiary();
       invalidateDailyProgress();
       toast({
@@ -502,7 +498,8 @@ const CalculationSettings = () => {
                 )}
               </Label>
             </div>
-            {calorieGoalAdjustmentMode === 'tdee' && (
+            {(calorieGoalAdjustmentMode === 'tdee' ||
+              calorieGoalAdjustmentMode === 'adaptive') && (
               <div className="ml-6 flex flex-col gap-3">
                 <div className="flex items-center gap-3">
                   <Label
@@ -551,24 +548,26 @@ const CalculationSettings = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="tdee-allow-negative"
-                    checked={tdeeAllowNegativeAdjustment}
-                    onCheckedChange={(checked) =>
-                      setTdeeAllowNegativeAdjustment(Boolean(checked))
-                    }
-                  />
-                  <Label
-                    htmlFor="tdee-allow-negative"
-                    className="text-sm cursor-pointer"
-                  >
-                    {t(
-                      'settings.calorieGoalAdjustment.allowNegativeAdjustment',
-                      'Allow negative adjustment (penalise for burning less than TDEE)'
-                    )}
-                  </Label>
-                </div>
+                {calorieGoalAdjustmentMode === 'tdee' && (
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="tdee-allow-negative"
+                      checked={tdeeAllowNegativeAdjustment}
+                      onCheckedChange={(checked) =>
+                        setTdeeAllowNegativeAdjustment(Boolean(checked))
+                      }
+                    />
+                    <Label
+                      htmlFor="tdee-allow-negative"
+                      className="text-sm cursor-pointer"
+                    >
+                      {t(
+                        'settings.calorieGoalAdjustment.allowNegativeAdjustment',
+                        'Allow negative adjustment (penalise for burning less than TDEE)'
+                      )}
+                    </Label>
+                  </div>
+                )}
               </div>
             )}
           </RadioGroup>
