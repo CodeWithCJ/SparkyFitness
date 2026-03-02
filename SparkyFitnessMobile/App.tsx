@@ -24,6 +24,7 @@ import FoodSearchScreen from './src/screens/FoodSearchScreen';
 import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import ManualFoodEntryScreen from './src/screens/ManualFoodEntryScreen';
+import EditFoodScreen from './src/screens/EditFoodScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { initializeTheme } from './src/services/themeService';
@@ -217,6 +218,15 @@ function AppContent() {
           <Stack.Screen
             name="ManualFoodEntry"
             component={ManualFoodEntryScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          />
+          <Stack.Screen
+            name="EditFood"
+            component={EditFoodScreen}
             options={{
               headerShown: false,
               gestureEnabled: true,

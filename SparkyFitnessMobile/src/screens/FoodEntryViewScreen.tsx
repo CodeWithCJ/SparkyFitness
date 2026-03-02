@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -6,6 +6,7 @@ import Icon from '../components/Icon';
 import { formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
+import { useProfile } from '../hooks/useProfile';
 import type { FoodEntry } from '../types/foodEntries';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -17,8 +18,11 @@ const scaledValue = (value: number | undefined, entry: FoodEntry): number => {
 };
 
 const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, route }) => {
-  const { entry } = route.params;
+  const [entry, setEntry] = useState<FoodEntry>(route.params.entry);
   const insets = useSafeAreaInsets();
+  const { profile } = useProfile();
+
+  const canEdit = !!(entry.food_id && entry.variant_id && entry.user_id && profile?.id === entry.user_id);
 
   const { confirmAndDelete, isPending, invalidateCache } = useDeleteFoodEntry({
     entryId: entry.id,
@@ -69,6 +73,15 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         >
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
+        {canEdit && (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('EditFood', { entry, onEdited: setEntry })}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            className="ml-auto z-10"
+          >
+            <Icon name="pencil" size={20} color={accentColor} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">

@@ -10,6 +10,7 @@ export interface FoodEntry {
   food_id?: string; // Make optional as it might be a meal_id
   meal_id?: string; // New field for aggregated meals - will be deprecated/null for new meal component entries
   food_entry_meal_id?: string; // New field to link to food_entry_meals parent
+  user_id?: string;
   meal_type: string;
   quantity: number;
   unit: string;
