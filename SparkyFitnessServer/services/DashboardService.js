@@ -4,6 +4,7 @@ const measurementRepository = require("../models/measurementRepository");
 const userRepository = require("../models/userRepository");
 const preferenceRepository = require("../models/preferenceRepository");
 const bmrService = require("./bmrService");
+const adaptiveTdeeService = require("./AdaptiveTdeeService");
 const { log } = require("../config/logging");
 
 /**
@@ -20,6 +21,7 @@ async function getDashboardStats(userId, date) {
       userPreferences,
       latestMeasurements,
       checkInMeasurements,
+      adaptiveTdeeData,
     ] = await Promise.all([
       goalRepository.getMostRecentGoalBeforeDate(userId, date),
       reportRepository.getNutritionData(userId, date, date, []),
@@ -28,10 +30,11 @@ async function getDashboardStats(userId, date) {
       preferenceRepository.getUserPreferences(userId),
       measurementRepository.getLatestMeasurement(userId),
       measurementRepository.getCheckInMeasurementsByDate(userId, date),
+      adaptiveTdeeService.calculateAdaptiveTdee(userId),
     ]);
 
-    // 1. Goal Calories
-    const goalCalories = parseFloat(goals?.calories) || 2000;
+    // 1. Goal Calories (Base)
+    const rawGoalCalories = parseFloat(goals?.calories) || 2000;
 
     // 2. Eaten Calories
     const eatenCalories =
@@ -54,9 +57,11 @@ async function getDashboardStats(userId, date) {
     let weightKg = parseFloat(latestMeasurements?.weight) || 70;
     const stepsCalories = Math.round(stepsCount * 0.04 * (weightKg / 70));
 
-    // 5. BMR
+    // 5. BMR & Activity Baselines
     let bmr = 0;
     const includeInNet = userPreferences?.include_bmr_in_net_calories || false;
+    const activityLevel = userPreferences?.activity_level || "not_much";
+    const multiplier = bmrService.ActivityMultiplier[activityLevel] || 1.2;
 
     if (userProfile && userPreferences) {
       const dob = userProfile.date_of_birth;
@@ -88,6 +93,9 @@ async function getDashboardStats(userId, date) {
       }
     }
 
+    const sparkyfitnessBurned = Math.round(bmr * multiplier);
+    const calorieGoalOffset = bmr > 0 ? rawGoalCalories - sparkyfitnessBurned : 0;
+
     const activeOrStepsToAdd =
       activeCalories > 0 ? activeCalories : stepsCalories;
     const exerciseCalories = otherCalories + activeOrStepsToAdd;
@@ -96,44 +104,68 @@ async function getDashboardStats(userId, date) {
 
     const netCalories = eatenCalories - totalBurned;
 
+    // 6. Goal Adjustment Logic
     let remaining = 0;
+    let finalGoalCalories = rawGoalCalories;
     const adjustmentMode =
       userPreferences?.calorie_goal_adjustment_mode || "dynamic";
     const exerciseCaloriePercentage =
       userPreferences?.exercise_calorie_percentage ?? 100;
+    const allowNegativeAdjustment =
+      userPreferences?.tdee_allow_negative_adjustment ?? false;
+
+    // Apply Adaptive TDEE baseline if mode is active and BMR is available
+    if (adjustmentMode === "adaptive" && adaptiveTdeeData && bmr > 0) {
+      finalGoalCalories = Math.round(adaptiveTdeeData.tdee + calorieGoalOffset);
+    }
 
     if (adjustmentMode === "dynamic") {
       // 100% of all burned calories credited
-      remaining = goalCalories - netCalories;
+      remaining = finalGoalCalories - netCalories;
     } else if (adjustmentMode === "percentage") {
-      // Only a percentage of exercise calories are credited (BMR unchanged)
-      const adjustedExerciseBurned = exerciseCalories * (exerciseCaloriePercentage / 100);
+      // Only a percentage of exercise calories are credited
+      const adjustedExerciseBurned =
+        exerciseCalories * (exerciseCaloriePercentage / 100);
       const adjustedTotalBurned = adjustedExerciseBurned + bmrToAdd;
-      remaining = goalCalories - (eatenCalories - adjustedTotalBurned);
-    } else if (adjustmentMode === "smart") {
-      // MFP-style: only earn back exercise calories above what's already built into the daily goal.
-      // The activity portion already assumed in the goal = goal - BMR.
-      // (If BMR is 0/unavailable, this falls back to no exercise credit, like fixed mode.)
-      const activityAlreadyInGoal = Math.max(0, goalCalories - bmr);
-      const exerciseAdjustment = Math.max(0, exerciseCalories - activityAlreadyInGoal);
-      remaining = goalCalories - eatenCalories + exerciseAdjustment;
+      remaining = finalGoalCalories - (eatenCalories - adjustedTotalBurned);
+    } else if (adjustmentMode === "tdee" || adjustmentMode === "smart") {
+      // Device Projection (TDEE adjustment)
+      // For dashboard, we assume current time is "now" for projection
+      const now = new Date();
+      const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+      const dayFraction = minutesSinceMidnight / (24 * 60);
+
+      const projectedDeviceCalories =
+        dayFraction >= 0.05 && exerciseCalories > 0
+          ? Math.round(exerciseCalories / dayFraction)
+          : exerciseCalories;
+
+      const projectedBurn = bmr + projectedDeviceCalories;
+      let tdeeAdjustment = projectedBurn - sparkyfitnessBurned;
+      if (!allowNegativeAdjustment) {
+        tdeeAdjustment = Math.max(0, tdeeAdjustment);
+      }
+
+      remaining = finalGoalCalories - eatenCalories + tdeeAdjustment;
+    } else if (adjustmentMode === "adaptive") {
+      remaining = finalGoalCalories - eatenCalories;
     } else {
       // fixed: no exercise calories credited
-      remaining = goalCalories - eatenCalories;
+      remaining = finalGoalCalories - eatenCalories;
     }
 
     // effectiveConsumed = goalCalories - remaining (how much of the goal is "used up")
-    const effectiveConsumed = goalCalories - remaining;
+    const effectiveConsumed = finalGoalCalories - remaining;
     const progress =
-      goalCalories > 0
-        ? Math.min((effectiveConsumed / goalCalories) * 100, 100)
+      finalGoalCalories > 0
+        ? Math.min((effectiveConsumed / finalGoalCalories) * 100, 100)
         : 0;
 
     return {
       eaten: Math.round(eatenCalories),
       burned: Math.round(totalBurned),
       remaining: Math.round(remaining),
-      goal: Math.round(goalCalories),
+      goal: Math.round(finalGoalCalories),
       net: Math.round(netCalories),
       progress: Math.round(progress),
       steps: stepsCount,

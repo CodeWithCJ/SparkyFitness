@@ -16,8 +16,17 @@ import {
 } from '@/api/Diary/dailyProgressService';
 import { userManagementService } from '@/api/Admin/userManagementService';
 import { getMostRecentMeasurement } from '@/api/CheckIn/checkInService';
-import { calculateBmr } from '@/services/bmrService';
+import { adaptiveTdeeService } from '@/api/Settings/adaptiveTdeeService';
+import { calculateBmr, BmrAlgorithm } from '@/services/bmrService';
 import { GroupedExerciseEntry } from '@/types/exercises';
+
+export const useAdaptiveTdee = (date: string) => {
+  return useQuery({
+    queryKey: dailyProgressKeys.adaptiveTdee(date),
+    queryFn: () => adaptiveTdeeService.getAdaptiveTdee(date),
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+};
 
 export const useDailyGoals = (date: string) => {
   const { t } = useTranslation();
@@ -185,7 +194,7 @@ export const useCalculatedBMR = () => {
     !heightData?.height ||
     !userProfile.gender
   ) {
-    return { bmr: null, includeInNet: false };
+    return { bmr: 0, includeInNet: false };
   }
 
   const age = userProfile.date_of_birth
@@ -195,11 +204,11 @@ export const useCalculatedBMR = () => {
 
   try {
     const bmr = calculateBmr(
-      bmrAlgorithm,
+      bmrAlgorithm as BmrAlgorithm,
       weightData.weight,
       heightData.height,
       age,
-      userProfile.gender,
+      userProfile.gender as 'male' | 'female',
       bodyFatData?.body_fat_percentage
     );
 
@@ -208,6 +217,6 @@ export const useCalculatedBMR = () => {
       includeInNet: includeBmrInNetCalories || false,
     };
   } catch (err) {
-    return { bmr: null, includeInNet: false };
+    return { bmr: 0, includeInNet: false };
   }
 };

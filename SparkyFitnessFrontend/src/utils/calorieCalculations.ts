@@ -2,7 +2,8 @@ export type CalorieGoalAdjustmentMode =
   | 'dynamic'
   | 'fixed'
   | 'percentage'
-  | 'tdee';
+  | 'tdee'
+  | 'adaptive';
 
 export const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   not_much: 1.2,
@@ -81,6 +82,7 @@ export interface CaloriesRemainingParams {
   bmrCalories: number;
   exerciseCaloriePercentage: number;
   tdeeAdjustment: number;
+  adaptiveTdee?: number;
 }
 
 /**
@@ -95,8 +97,14 @@ export function computeCaloriesRemaining({
   bmrCalories,
   exerciseCaloriePercentage,
   tdeeAdjustment,
+  adaptiveTdee,
 }: CaloriesRemainingParams): number {
   switch (mode) {
+    case 'adaptive':
+      // Adaptive mode uses the calculated TDEE as the base goal.
+      // goalCalories already includes the user's intended deficit/surplus offset
+      // relative to their predicted maintenance (BMR * Activity Multiplier).
+      return goalCalories - eatenCalories;
     case 'tdee':
       return goalCalories - eatenCalories + tdeeAdjustment;
     case 'dynamic':

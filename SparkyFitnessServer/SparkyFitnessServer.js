@@ -51,6 +51,7 @@ const stravaRoutes = require("./routes/stravaRoutes"); // Import Strava routes
 const hevyRoutes = require("./routes/hevyRoutes"); // Import Hevy routes
 const moodRoutes = require("./routes/moodRoutes"); // Import Mood routes
 const fastingRoutes = require("./routes/fastingRoutes"); // Import Fasting routes
+const adaptiveTdeeRoutes = require("./routes/adaptiveTdeeRoutes"); // Import Adaptive TDEE routes
 const adminRoutes = require("./routes/adminRoutes"); // Import admin routes
 const adminAuthRoutes = require("./routes/adminAuthRoutes"); // Import new admin auth routes
 const globalSettingsRoutes = require("./routes/globalSettingsRoutes");
@@ -373,6 +374,7 @@ app.use(
 );
 app.use("/api/review", reviewRoutes);
 app.use("/api/custom-nutrients", customNutrientRoutes);
+app.use("/api/adaptive-tdee", adaptiveTdeeRoutes);
 app.use("/api/meal-types", mealTypeRoutes);
 
 // Swagger

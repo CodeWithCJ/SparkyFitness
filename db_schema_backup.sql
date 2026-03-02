@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict WW9hayY1U2sVbFsaTYnW1ce66g9FjLcXJaiCqguBGZmNOCkioo9CfqpnllKOiix
+\restrict t9CuSs2YnePO9KyLZUL4yxaa8ne4crxjv0739eZzBTIfhVpDBH5oyhlh0uNFcjC
 
 -- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
@@ -2268,6 +2268,9 @@ CREATE TABLE public.user_preferences (
     vitamin_calculation_algorithm text DEFAULT 'RDA_STANDARD'::text NOT NULL,
     sugar_calculation_algorithm text DEFAULT 'WHO_GUIDELINES'::text NOT NULL,
     auto_scale_open_food_facts_imports boolean DEFAULT false,
+    exercise_calorie_percentage integer DEFAULT 100,
+    activity_level character varying(20) DEFAULT 'not_much'::character varying,
+    tdee_allow_negative_adjustment boolean DEFAULT false,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
 );
@@ -4704,6 +4707,26 @@ ALTER TABLE ONLY public.workout_presets
 
 
 --
+-- Name: admin_activity_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_activity_logs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: admin_activity_logs admin_only_insert; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY admin_only_insert ON public.admin_activity_logs FOR INSERT WITH CHECK (((admin_user_id = public.current_user_id()) AND public.is_admin()));
+
+
+--
+-- Name: admin_activity_logs admin_only_select; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY admin_only_select ON public.admin_activity_logs FOR SELECT USING (((admin_user_id = public.current_user_id()) OR public.is_admin()));
+
+
+--
 -- Name: ai_service_settings; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4738,6 +4761,12 @@ CREATE POLICY ai_service_settings_update_policy ON public.ai_service_settings FO
 
 
 --
+-- Name: api_key; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.api_key ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: check_in_measurements; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4756,16 +4785,47 @@ ALTER TABLE public.custom_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.custom_measurements ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: daily_sleep_need; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.daily_sleep_need ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: day_classification_cache; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.day_classification_cache ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: food_entries delete_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY delete_policy ON public.food_entries FOR DELETE USING (public.has_diary_access(user_id));
+
+
+--
 -- Name: exercise_entries; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.exercise_entries ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: exercise_entry_activity_details; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.exercise_entry_activity_details ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: exercise_entry_sets; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.exercise_entry_sets ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: exercise_preset_entries; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.exercise_preset_entries ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: exercises; Type: ROW SECURITY; Schema: public; Owner: -
@@ -4784,6 +4844,12 @@ ALTER TABLE public.external_data_providers ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.family_access ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: fasting_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.fasting_logs ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: food_entries; Type: ROW SECURITY; Schema: public; Owner: -
@@ -4826,9 +4892,11 @@ CREATE POLICY insert_policy ON public.family_access FOR INSERT WITH CHECK ((publ
 -- Name: food_entries insert_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY insert_policy ON public.food_entries FOR INSERT WITH CHECK ((public.has_diary_access(user_id) AND (EXISTS ( SELECT 1
+CREATE POLICY insert_policy ON public.food_entries FOR INSERT WITH CHECK ((public.has_diary_access(user_id) AND (((food_id IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM public.foods f
-  WHERE (f.id = food_entries.food_id)))));
+  WHERE (f.id = food_entries.food_id)))) OR ((meal_id IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM public.meals m
+  WHERE (m.id = food_entries.meal_id)))))));
 
 
 --
@@ -4854,6 +4922,12 @@ ALTER TABLE public.meal_plan_templates ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.meal_plans ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: meal_types; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.meal_types ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: meals; Type: ROW SECURITY; Schema: public; Owner: -
@@ -4887,6 +4961,21 @@ CREATE POLICY modify_policy ON public.custom_measurements USING (public.has_diar
 --
 
 CREATE POLICY modify_policy ON public.exercise_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: exercise_entry_activity_details modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.exercise_entry_activity_details USING ((((exercise_entry_id IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM public.exercise_entries ee
+  WHERE ((ee.id = exercise_entry_activity_details.exercise_entry_id) AND (public.current_user_id() = ee.user_id))))) OR ((exercise_preset_entry_id IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM public.exercise_preset_entries epe
+  WHERE ((epe.id = exercise_entry_activity_details.exercise_preset_entry_id) AND (public.current_user_id() = epe.user_id))))))) WITH CHECK ((((exercise_entry_id IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM public.exercise_entries ee
+  WHERE ((ee.id = exercise_entry_activity_details.exercise_entry_id) AND (public.current_user_id() = ee.user_id))))) OR ((exercise_preset_entry_id IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM public.exercise_preset_entries epe
+  WHERE ((epe.id = exercise_entry_activity_details.exercise_preset_entry_id) AND (public.current_user_id() = epe.user_id)))))));
 
 
 --
@@ -4929,13 +5018,6 @@ CREATE POLICY modify_policy ON public.family_access USING ((public.current_user_
 
 
 --
--- Name: food_entries modify_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY modify_policy ON public.food_entries USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
-
-
---
 -- Name: food_entry_meals modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -4969,6 +5051,13 @@ CREATE POLICY modify_policy ON public.meal_foods USING ((EXISTS ( SELECT 1
 --
 
 CREATE POLICY modify_policy ON public.meal_plan_templates USING ((public.current_user_id() = user_id)) WITH CHECK ((public.current_user_id() = user_id));
+
+
+--
+-- Name: meal_types modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.meal_types USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
 
 
 --
@@ -5018,6 +5107,18 @@ CREATE POLICY modify_policy ON public.workout_presets USING ((public.current_use
 --
 
 ALTER TABLE public.mood_entries ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: onboarding_data; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.onboarding_data ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: onboarding_status; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.onboarding_status ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: api_key owner_policy; Type: POLICY; Schema: public; Owner: -
@@ -5088,6 +5189,20 @@ CREATE POLICY owner_policy ON public.mood_entries USING ((user_id = public.curre
 
 
 --
+-- Name: onboarding_data owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.onboarding_data USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: onboarding_status owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.onboarding_status USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
 -- Name: profiles owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5127,6 +5242,13 @@ CREATE POLICY owner_policy ON public.user_goals USING ((user_id = public.current
 --
 
 CREATE POLICY owner_policy ON public.user_ignored_updates USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+
+
+--
+-- Name: user_meal_visibilities owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.user_meal_visibilities USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
 
 
 --
@@ -5263,6 +5385,17 @@ CREATE POLICY select_policy ON public.exercise_entries FOR SELECT USING (public.
 
 
 --
+-- Name: exercise_entry_activity_details select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.exercise_entry_activity_details FOR SELECT USING ((((exercise_entry_id IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM public.exercise_entries ee
+  WHERE ((ee.id = exercise_entry_activity_details.exercise_entry_id) AND public.has_diary_access(ee.user_id))))) OR ((exercise_preset_entry_id IS NOT NULL) AND (EXISTS ( SELECT 1
+   FROM public.exercise_preset_entries epe
+  WHERE ((epe.id = exercise_entry_activity_details.exercise_preset_entry_id) AND public.has_diary_access(epe.user_id)))))));
+
+
+--
 -- Name: exercise_entry_sets select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5339,6 +5472,13 @@ CREATE POLICY select_policy ON public.meal_plan_templates FOR SELECT USING (publ
 
 
 --
+-- Name: meal_types select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.meal_types FOR SELECT USING (((user_id IS NULL) OR public.has_diary_access(user_id)));
+
+
+--
 -- Name: meals select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5381,10 +5521,41 @@ CREATE POLICY select_policy ON public.workout_presets FOR SELECT USING (public.h
 
 
 --
+-- Name: sleep_entries; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sleep_entries ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sleep_entry_stages; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sleep_entry_stages ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: sleep_need_calculations; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.sleep_need_calculations ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: sparky_chat_history; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.sparky_chat_history ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: food_entries update_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY update_policy ON public.food_entries FOR UPDATE USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: user_custom_nutrients; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_custom_nutrients ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_goals; Type: ROW SECURITY; Schema: public; Owner: -
@@ -5397,6 +5568,12 @@ ALTER TABLE public.user_goals ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.user_ignored_updates ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: user_meal_visibilities; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.user_meal_visibilities ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: user_nutrient_display_preferences; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7013,5 +7190,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict WW9hayY1U2sVbFsaTYnW1ce66g9FjLcXJaiCqguBGZmNOCkioo9CfqpnllKOiix
+\unrestrict t9CuSs2YnePO9KyLZUL4yxaa8ne4crxjv0739eZzBTIfhVpDBH5oyhlh0uNFcjC
 

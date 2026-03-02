@@ -6,61 +6,55 @@ export enum BmrAlgorithm {
   OXFORD = 'Oxford',
 }
 
+/**
+ * Calculates Basal Metabolic Rate (BMR) using various algorithms.
+ * Synchronized with backend to ensure consistent results.
+ * Returns 0 if critical data is missing to allow for UI warning instead of crash.
+ */
 export const calculateBmr = (
   algorithm: BmrAlgorithm,
-  weight: number, // in kg
-  height: number, // in cm
-  age: number, // in years
-  gender: 'male' | 'female',
-  bodyFatPercentage?: number
+  weightKg?: number | null,
+  heightCm?: number | null,
+  age?: number | null,
+  gender?: 'male' | 'female' | null,
+  bodyFatPercentage?: number | null
 ): number => {
-  switch (algorithm) {
-    case BmrAlgorithm.MIFFLIN_ST_JEOR:
-      if (!weight || !height || !age || !gender)
-        throw new Error(
-          'Mifflin-St Jeor requires weight, height, age, and gender.'
-        );
-      return (
-        10 * weight + 6.25 * height - 5 * age + (gender === 'male' ? 5 : -161)
+  if (
+    algorithm === BmrAlgorithm.KATCH_MCARDLE ||
+    algorithm === BmrAlgorithm.CUNNINGHAM
+  ) {
+    if (!weightKg || !bodyFatPercentage) {
+      console.warn(
+        `BMR calculation skipped: ${algorithm} requires weight and body fat.`
       );
-
-    case BmrAlgorithm.REVISED_HARRIS_BENEDICT:
-      if (!weight || !height || !age || !gender)
-        throw new Error(
-          'Revised Harris-Benedict requires weight, height, age, and gender.'
-        );
-      if (gender === 'male') {
-        return 13.397 * weight + 4.799 * height - 5.677 * age + 88.362;
-      } else {
-        return 9.247 * weight + 3.098 * height - 4.33 * age + 447.593;
-      }
-
-    case BmrAlgorithm.KATCH_MCARDLE: {
-      if (!weight || !bodyFatPercentage)
-        throw new Error(
-          'Katch-McArdle requires weight and body fat percentage.'
-        );
-      const lbmKatch = weight * (1 - bodyFatPercentage / 100);
-      return 370 + 21.6 * lbmKatch;
+      return 0;
     }
-
-    case BmrAlgorithm.CUNNINGHAM: {
-      if (!weight || !bodyFatPercentage)
-        throw new Error('Cunningham requires weight and body fat percentage.');
-      const lbmCunningham = weight * (1 - bodyFatPercentage / 100);
-      return 500 + 22 * lbmCunningham;
-    }
-
-    case BmrAlgorithm.OXFORD:
-      if (!weight || !height || !age || !gender)
-        throw new Error('Oxford requires weight, height, age, and gender.');
-      if (gender === 'male') {
-        return 14.2 * weight + 593;
-      } else {
-        return 10.9 * weight + 677;
-      }
-
-    default:
-      throw new Error('Unknown BMR algorithm');
+    const lbm = weightKg * (1 - bodyFatPercentage / 100);
+    return algorithm === BmrAlgorithm.KATCH_MCARDLE
+      ? 370 + 21.6 * lbm
+      : 500 + 22 * lbm;
   }
+
+  if (!weightKg || !heightCm || !age || !gender) {
+    console.warn(
+      `BMR calculation skipped: ${algorithm} requires weight, height, age, and gender.`
+    );
+    return 0;
+  }
+
+  if (algorithm === BmrAlgorithm.REVISED_HARRIS_BENEDICT) {
+    if (gender === 'male') {
+      return 13.397 * weightKg + 4.799 * heightCm - 5.677 * age + 88.362;
+    } else {
+      return 9.247 * weightKg + 3.098 * heightCm - 4.33 * age + 447.593;
+    }
+  }
+
+  if (algorithm === BmrAlgorithm.OXFORD) {
+    return gender === 'male' ? 14.2 * weightKg + 593 : 10.9 * weightKg + 677;
+  }
+
+  // Default: Mifflin-St Jeor
+  const genderOffset = gender === 'male' ? 5 : -161;
+  return 10 * weightKg + 6.25 * heightCm - 5 * age + genderOffset;
 };

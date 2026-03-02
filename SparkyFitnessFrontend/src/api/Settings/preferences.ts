@@ -30,7 +30,12 @@ interface UserPreferences {
   food_display_limit: number;
   water_display_unit: 'ml' | 'oz' | 'liter';
   language: string;
-  calorie_goal_adjustment_mode: 'dynamic' | 'fixed';
+  calorie_goal_adjustment_mode:
+    | 'dynamic'
+    | 'fixed'
+    | 'percentage'
+    | 'tdee'
+    | 'adaptive';
   energy_unit: EnergyUnit;
   auto_scale_open_food_facts_imports: boolean;
   bmr_algorithm: BmrAlgorithm;
