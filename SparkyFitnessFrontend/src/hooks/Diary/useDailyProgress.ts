@@ -9,16 +9,17 @@ import {
   convertStepsToCalories,
 } from '@/utils/nutritionCalculations';
 import { getExerciseEntriesForDate } from '@/api/Exercises/exerciseEntryService';
-import {
-  getCheckInMeasurementsForDate,
-  getFoodEntriesForDate,
-  getGoalsForDate,
-} from '@/api/Diary/dailyProgressService';
 import { userManagementService } from '@/api/Admin/userManagementService';
-import { getMostRecentMeasurement } from '@/api/CheckIn/checkInService';
+import {
+  getMostRecentMeasurement,
+  loadExistingCheckInMeasurements,
+} from '@/api/CheckIn/checkInService';
 import { adaptiveTdeeService } from '@/api/Settings/adaptiveTdeeService';
 import { calculateBmr, BmrAlgorithm } from '@/services/bmrService';
 import { GroupedExerciseEntry } from '@/types/exercises';
+import { userKeys } from '@/api/keys/admin';
+import { exerciseEntryKeys } from '@/api/keys/exercises';
+import { loadFoodEntries } from '@/api/Diary/foodEntryService';
 
 export const useAdaptiveTdee = (date: string) => {
   return useQuery({
@@ -28,26 +29,11 @@ export const useAdaptiveTdee = (date: string) => {
   });
 };
 
-export const useDailyGoals = (date: string) => {
-  const { t } = useTranslation();
-  return useQuery({
-    queryKey: dailyProgressKeys.goals(date),
-    queryFn: () => getGoalsForDate(date),
-    enabled: !!date,
-    meta: {
-      errorMessage: t(
-        'dailyProgress.goalsLoadError',
-        'Failed to load daily goals.'
-      ),
-    },
-  });
-};
-
 export const useDailyFoodIntake = (date: string) => {
   const { t } = useTranslation();
   return useQuery({
-    queryKey: foodEntryKeys.byDate(date),
-    queryFn: () => getFoodEntriesForDate(date),
+    queryKey: foodEntryKeys.foodIntake(date),
+    queryFn: () => loadFoodEntries(date),
     enabled: !!date,
     select: (entries: FoodEntry[]) => {
       const totals = entries.reduce(
@@ -86,7 +72,7 @@ export const useDailyFoodIntake = (date: string) => {
 export const useDailyExerciseStats = (date: string) => {
   const { t } = useTranslation();
   return useQuery({
-    queryKey: dailyProgressKeys.exercises(date),
+    queryKey: exerciseEntryKeys.dailyStats(date),
     queryFn: () => getExerciseEntriesForDate(date),
     enabled: !!date,
     select: (data: GroupedExerciseEntry[]) => {
@@ -129,7 +115,7 @@ export const useDailyExerciseStats = (date: string) => {
 export const useDailySteps = (date: string) => {
   return useQuery({
     queryKey: dailyProgressKeys.steps(date),
-    queryFn: () => getCheckInMeasurementsForDate(date),
+    queryFn: () => loadExistingCheckInMeasurements(date),
     enabled: !!date,
     select: (data) => {
       const steps = data?.steps || 0;
@@ -176,7 +162,7 @@ export const useCalculatedBMR = () => {
   const { bmrAlgorithm, includeBmrInNetCalories } = usePreferences();
 
   const { data: userProfile } = useQuery({
-    queryKey: ['user', 'profile', user?.id],
+    queryKey: userKeys.profile(user?.id),
     queryFn: () => userManagementService.getUserProfile(user!.id),
     enabled: !!user?.id,
   });

@@ -23,7 +23,11 @@ import {
 } from '@/api/Diary/foodEntryService';
 
 import { goalKeys } from '@/api/keys/goals';
-import { foodEntryKeys, foodEntryMealKeys } from '@/api/keys/diary';
+import {
+  dailyProgressKeys,
+  foodEntryKeys,
+  foodEntryMealKeys,
+} from '@/api/keys/diary';
 import i18n from '@/i18n';
 
 export const useFoodEntries = (date: string) => {
@@ -81,10 +85,10 @@ export const useCreateFoodEntryMutation = () => {
 
   return useMutation({
     mutationFn: createFoodEntry,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: foodEntryKeys.byDate(variables.entry_date),
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
+      queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
     meta: {
       successMessage: t('diary.addSuccess', 'Food added successfully.'),
@@ -102,6 +106,8 @@ export const useUpdateFoodEntryMutation = () => {
       updateFoodEntry(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+      queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
     },
     meta: {
       successMessage: t('diary.updateSuccess', 'Entry updated.'),
@@ -118,6 +124,7 @@ export const useDeleteFoodEntryMutation = () => {
     mutationFn: removeFoodEntry,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
     meta: {
       successMessage: t('diary.deleteSuccess', 'Entry deleted.'),
@@ -147,6 +154,7 @@ export const useCopyFoodEntriesMutation = () => {
       queryClient.invalidateQueries({
         queryKey: foodEntryKeys.byDate(variables.targetDate),
       });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
     meta: {
       successMessage: t('diary.copySuccess', 'Entries copied successfully.'),
@@ -171,6 +179,7 @@ export const useCopyFoodEntriesFromYesterdayMutation = () => {
       queryClient.invalidateQueries({
         queryKey: foodEntryKeys.byDate(variables.targetDate),
       });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
     meta: {
       successMessage: t('diary.copySuccess', 'Entries copied from yesterday.'),
@@ -192,6 +201,7 @@ export const useCreateFoodEntryMealMutation = () => {
       queryClient.invalidateQueries({
         queryKey: foodEntryKeys.byDate(variables.entry_date),
       });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
     meta: {
       successMessage: t('diary.mealAddSuccess', 'Meal added successfully.'),
@@ -210,6 +220,7 @@ export const useUpdateFoodEntryMealMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
       queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
     meta: {
       successMessage: t(
@@ -230,6 +241,7 @@ export const useDeleteFoodEntryMealMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
       queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
     meta: {
       successMessage: t('diary.mealDeleteSuccess', 'Meal deleted.'),

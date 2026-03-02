@@ -1,4 +1,4 @@
-import { profileKeys } from '@/api/keys/settings';
+import { userKeys } from '@/api/keys/admin';
 import {
   fetchAvatarBlob,
   UpdateProfilePayload,
@@ -10,17 +10,17 @@ import {
 } from '@/api/Settings/profileService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-export const useAvatarQuery = (url?: string | null) => {
+export const useAvatarQuery = (url: string | null) => {
   return useQuery({
-    queryKey: profileKeys.avatar(url!),
-    queryFn: () => fetchAvatarBlob(url!),
+    queryKey: userKeys.avatar(url),
+    queryFn: () => fetchAvatarBlob(url),
     enabled: !!url,
   });
 };
 
 export const useProfileQuery = (userId?: string) => {
   return useQuery({
-    queryKey: profileKeys.all,
+    queryKey: userKeys.profile(userId),
     queryFn: getProfileData,
     enabled: !!userId,
     meta: {
@@ -29,14 +29,14 @@ export const useProfileQuery = (userId?: string) => {
   });
 };
 
-export const useUpdateProfileMutation = () => {
+export const useUpdateProfileMutation = (userId?: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (payload: Partial<UpdateProfilePayload>) =>
       updateProfileData(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: profileKeys.all });
+      queryClient.invalidateQueries({ queryKey: userKeys.profile(userId) });
     },
     meta: {
       successMessage: 'Profile updated successfully',
@@ -45,13 +45,13 @@ export const useUpdateProfileMutation = () => {
   });
 };
 
-export const useUploadAvatarMutation = () => {
+export const useUploadAvatarMutation = (userId?: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (formData: FormData) => uploadAvatarImage(formData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: profileKeys.all });
+      queryClient.invalidateQueries({ queryKey: userKeys.profile(userId) });
     },
     meta: {
       successMessage: 'Profile picture updated successfully',

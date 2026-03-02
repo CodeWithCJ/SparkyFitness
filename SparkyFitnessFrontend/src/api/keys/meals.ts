@@ -33,7 +33,8 @@ export const providerKeys = {
 };
 
 export const mealPlanKeys = {
-  all: (userId: string) => [userId, 'mealplan'] as const,
+  all: ['mealPlans'] as const,
+  byUser: (userId: string) => [...mealPlanKeys.all, userId] as const,
 };
 
 export const customNutrientsKeys = {

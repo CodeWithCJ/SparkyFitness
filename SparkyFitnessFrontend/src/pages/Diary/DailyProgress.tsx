@@ -34,7 +34,6 @@ import {
 } from '@/utils/calorieCalculations';
 
 import {
-  useDailyGoals,
   useDailyFoodIntake,
   useDailyExerciseStats,
   useDailySteps,
@@ -44,6 +43,7 @@ import {
 import { DailyProgressSkeleton } from './DailyProgressSkeleton';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { EnergyCircle } from './EnergyProgressCircle';
+import { useDailyGoals } from '@/hooks/Goals/useGoals';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { t } = useTranslation();

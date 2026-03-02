@@ -3,11 +3,6 @@ export const externalProviderKeys = {
   lists: () => [...externalProviderKeys.all, 'list'] as const,
 };
 
-export const customCategoryKeys = {
-  all: ['customCategories'] as const,
-  lists: () => [...customCategoryKeys.all, 'list'] as const,
-};
-
 export const familyAccessKeys = {
   all: ['familyAccess'] as const,
   lists: () => [...familyAccessKeys.all, 'list'] as const,
@@ -29,11 +24,6 @@ export const waterContainerKeys = {
 export const apiKeyKeys = {
   all: ['apiKeys'] as const,
   lists: () => [...apiKeyKeys.all, 'list'] as const,
-};
-
-export const profileKeys = {
-  all: ['profile'] as const,
-  avatar: (url: string) => [...profileKeys.all, 'avatar', url] as const,
 };
 
 export const preferencesKeys = {

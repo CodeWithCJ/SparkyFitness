@@ -6,6 +6,7 @@ import { checkInKeys, sleepKeys } from '@/api/keys/checkin';
 import { chatbotKeys } from '@/api/keys/ai';
 import { mealKeys } from '@/api/keys/meals';
 import { userAiConfigKeys } from '@/api/keys/admin';
+import { goalKeys } from '@/api/keys/goals';
 
 export const useDiaryInvalidation = () => {
   const queryClient = useQueryClient();
@@ -16,6 +17,7 @@ export const useDiaryInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: checkInKeys.all });
     queryClient.invalidateQueries({ queryKey: sleepKeys.all });
+    queryClient.invalidateQueries({ queryKey: goalKeys.all });
   }, [queryClient]);
 };
 

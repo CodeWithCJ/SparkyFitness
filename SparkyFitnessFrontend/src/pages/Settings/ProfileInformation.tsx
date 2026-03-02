@@ -36,7 +36,7 @@ export const ProfileInformation = () => {
     return URL.createObjectURL(avatarBlob);
   }, [avatarBlob]);
   const { mutateAsync: uploadAvatar, isPending: uploadingImage } =
-    useUploadAvatarMutation();
+    useUploadAvatarMutation(user.activeUserId);
 
   useEffect(() => {
     return () => {

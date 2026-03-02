@@ -5,10 +5,7 @@ export const mealTypeKeys = {
 
 export const dailyProgressKeys = {
   all: ['dailyProgress'] as const,
-  goals: (date: string) => [...dailyProgressKeys.all, 'goals', date] as const,
   steps: (date: string) => [...dailyProgressKeys.all, 'steps', date] as const,
-  exercises: (date: string) =>
-    [...dailyProgressKeys.all, 'exercises', date] as const,
   measurements: {
     mostRecent: (type: string) =>
       [...dailyProgressKeys.all, 'measurements', 'recent', type] as const,
@@ -20,6 +17,8 @@ export const dailyProgressKeys = {
 export const foodEntryKeys = {
   all: ['foodEntries'] as const,
   byDate: (date: string) => [...foodEntryKeys.all, 'date', date] as const,
+  foodIntake: (date: string) =>
+    [...foodEntryKeys.all, 'foodIntake', date] as const,
 };
 
 export const foodEntryMealKeys = {
