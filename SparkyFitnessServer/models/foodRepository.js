@@ -12,7 +12,6 @@ module.exports = {
   ...foodMiscDb,
   getFoodOwnerId: foodDb.getFoodOwnerId,
   getFoodsNeedingReview: foodDb.getFoodsNeedingReview,
-  updateFoodEntriesSnapshot: foodDb.updateFoodEntriesSnapshot,
   clearUserIgnoredUpdate: foodDb.clearUserIgnoredUpdate,
   getFoodEntryById: foodEntryDb.getFoodEntryById,
   deleteFoodAndDependencies: foodDb.deleteFoodAndDependencies,
