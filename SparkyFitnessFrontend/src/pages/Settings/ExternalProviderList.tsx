@@ -107,8 +107,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
       } else if (data && defaultFoodDataProviderId === data.id) {
         setDefaultFoodDataProviderId(null);
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating external data provider:', error);
     }
   };

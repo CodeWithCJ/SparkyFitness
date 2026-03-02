@@ -47,8 +47,7 @@ export const processExerciseInput = async (
           method: 'GET',
         }
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
       searchError = err; // Assign error to searchError
       error(
         userLoggingLevel,
@@ -96,8 +95,7 @@ export const processExerciseInput = async (
           body: formData,
           isFormData: true,
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (err: any) {
+      } catch (err: unknown) {
         error(
           userLoggingLevel,
           '❌ [Nutrition Coach] Error creating exercise:',
@@ -131,8 +129,7 @@ export const processExerciseInput = async (
             : undefined,
         },
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
       error(
         userLoggingLevel,
         '❌ [Nutrition Coach] Error adding exercise entry:',

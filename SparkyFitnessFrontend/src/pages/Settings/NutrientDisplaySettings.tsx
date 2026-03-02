@@ -11,6 +11,7 @@ import {
   useResetNutrientPreferenceMutation,
   useUpdateNutrientPreferenceMutation,
 } from '@/hooks/Settings/useNutrientPreferences';
+import { getErrorMessage } from '@/utils/api';
 
 const baseNutrients = [
   'calories',
@@ -90,11 +91,11 @@ const NutrientDisplaySettings: React.FC = () => {
           platform: pref.platform,
           visibleNutrients: pref.visible_nutrients,
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = getErrorMessage(error);
         toast({
           title: 'Error',
-          description: `Failed to save ${pref.view_group} (${pref.platform}) preferences: ${error.message}`,
+          description: `Failed to save ${pref.view_group} (${pref.platform}) preferences: ${message}`,
           variant: 'destructive',
         });
       }
@@ -222,11 +223,11 @@ const NutrientDisplaySettings: React.FC = () => {
             defaultPreference.visible_nutrients
           );
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const message = getErrorMessage(error);
         toast({
           title: 'Error',
-          description: `Failed to reset ${viewGroup} (${pform}) preferences: ${error.message}`,
+          description: `Failed to reset ${viewGroup} (${pform}) preferences: ${message}`,
           variant: 'destructive',
         });
       }

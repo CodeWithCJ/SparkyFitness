@@ -32,8 +32,7 @@ const StravaCallback = () => {
       try {
         await linkStravaAccount({ code, state });
         setMessage('Strava account successfully linked!');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error processing Strava callback:', error);
         setMessage('Error linking Strava account.');
       } finally {

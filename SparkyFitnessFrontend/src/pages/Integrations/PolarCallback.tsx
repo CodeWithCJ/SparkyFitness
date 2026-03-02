@@ -32,8 +32,7 @@ const PolarCallback = () => {
       try {
         await linkPolarAccount({ code, state });
         setMessage('Polar account successfully linked!');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error processing Polar callback:', error);
         setMessage('Error linking Polar account.');
       } finally {

@@ -27,6 +27,7 @@ import {
   useCreateWaterContainerMutation,
   useSetPrimaryWaterContainerMutation,
 } from '@/hooks/Settings/useWaterContainers';
+import { getErrorMessage } from '@/utils/api';
 
 // Function to fetch user preferences from the backend
 
@@ -229,9 +230,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const data = await queryClient.fetchQuery(preferencesOptions.user());
       return data;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      if (err.message && err.message.includes('404')) {
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      if (message && message.includes('404')) {
         return null;
       }
       console.error('Error fetching user preferences:', err);
@@ -500,8 +501,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const data = await queryClient.fetchQuery(preferencesOptions.nutrients());
       setNutrientDisplayPreferences(data);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching nutrient display preferences:', err);
     }
   }, [user, queryClient]);

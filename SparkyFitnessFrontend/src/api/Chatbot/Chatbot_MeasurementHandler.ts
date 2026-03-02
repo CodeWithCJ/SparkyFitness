@@ -7,6 +7,7 @@ import {
   type UserLoggingLevel,
 } from '@/utils/logging';
 import { apiCall } from '@/api/api';
+import { getErrorMessage } from '@/utils/api';
 
 // Function to upsert check-in measurements
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,11 +35,11 @@ const searchCustomCategory = async (name: string) => {
       }
     );
     return data;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = getErrorMessage(err);
     // If it's a 404, it means no category is found, which is a valid scenario.
     // We return null in this case, and the calling function will handle it.
-    if (err.message && err.message.includes('404')) {
+    if (message && message.includes('404')) {
       return null;
     }
     console.error('Error searching custom category:', err);
@@ -131,8 +132,7 @@ export const processMeasurementInput = async (
         let upsertError = null;
         try {
           await upsertCheckInMeasurement(updateData);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
+        } catch (err: unknown) {
           upsertError = err;
         }
 
@@ -160,8 +160,7 @@ export const processMeasurementInput = async (
         let categorySearchError: any = null;
         try {
           existingCategory = await searchCustomCategory(customMeasurementName);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
+        } catch (err: unknown) {
           categorySearchError = err;
         }
 
@@ -198,8 +197,7 @@ export const processMeasurementInput = async (
               frequency: 'Daily',
               measurement_type: 'numeric',
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } catch (err: any) {
+          } catch (err: unknown) {
             categoryCreateError = err;
           }
 
@@ -236,8 +234,7 @@ export const processMeasurementInput = async (
             value: valueToLog,
             entry_timestamp: new Date().toISOString(),
           });
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
+        } catch (err: unknown) {
           customEntryError = err;
         }
 
