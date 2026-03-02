@@ -70,7 +70,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   }, [selectedEngine]);
   // Camera Selection
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+  const [selectedCameraId, setSelectedCameraId] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem('barcodeCameraId');
+      return stored || '';
+    } catch {
+      return '';
+    }
+  });
 
   // Scanning State
   const [scanLine, setScanLine] = useState(false);
@@ -294,6 +301,15 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     []
   );
 
+  const handleCameraChange = (id: string) => {
+    setSelectedCameraId(id);
+    try {
+      localStorage.setItem('barcodeCameraId', id);
+    } catch (e) {
+      console.error('Failed to save camera selection to localStorage', e);
+    }
+  };
+
   const handleEngineChange = (newEngine: string) => {
     setSelectedEngine(newEngine);
     try {
@@ -323,10 +339,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           </Select>
 
           {cameras.length > 0 && (
-            <Select
-              value={selectedCameraId}
-              onValueChange={setSelectedCameraId}
-            >
+            <Select value={selectedCameraId} onValueChange={handleCameraChange}>
               <SelectTrigger className="w-full max-w-[150px] bg-black/60 text-white border-gray-600 h-8 text-xs">
                 <Camera className="w-3 h-3 mr-2" />
                 <SelectValue placeholder="Camera" />
