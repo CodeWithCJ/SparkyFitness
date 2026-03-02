@@ -33,6 +33,7 @@ import {
 import { MagicLinkRequestDialog } from './MagicLinkRequestDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { AuthResponse } from '@/types/auth';
+import { getErrorMessage } from '@/utils/api';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -166,10 +167,8 @@ const Auth = () => {
                 },
               },
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } catch (err: any) {
-            // Silently fail for autofill, especially for AbortError
-            if (err.name === 'AbortError') {
+          } catch (err: unknown) {
+            if (err instanceof Error && err.name === 'AbortError') {
               debug(loggingLevel, 'Auth: Passkey autofill aborted.');
             } else {
               debug(
@@ -318,12 +317,12 @@ const Auth = () => {
               data.fullName
             );
           }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const message = getErrorMessage(err);
           error(loggingLevel, 'Auth: Magic link login failed:', err);
           toast({
             title: 'Error',
-            description: err.message || 'Magic link is invalid or has expired.',
+            description: message || 'Magic link is invalid or has expired.',
             variant: 'destructive',
           });
           window.location.replace('/'); // Force a full page reload to clear state
@@ -437,8 +436,7 @@ const Auth = () => {
         true,
         data.fullName
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
       error(loggingLevel, 'Auth: Sign in failed:', err);
     }
 
@@ -456,13 +454,13 @@ const Auth = () => {
       info(loggingLevel, 'Auth: Passkey sign-in successful.');
       toast({ title: 'Success', description: 'Logged in with Passkey!' });
       navigate('/');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
       error(loggingLevel, 'Auth: Passkey sign-in failed:', err);
       toast({
         title: 'Passkey Error',
         description:
-          err.message ||
+          message ||
           'Failed to sign in with Passkey. Ensure your device supports it.',
         variant: 'destructive',
       });

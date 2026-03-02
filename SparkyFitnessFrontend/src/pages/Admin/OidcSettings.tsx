@@ -90,8 +90,7 @@ const OidcSettings: React.FC = () => {
           'OIDC provider deleted successfully.'
         ),
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch {
       toast({
         title: t('admin.oidcSettings.error', 'Error'),
         description: t(
@@ -173,8 +172,7 @@ const OidcSettings: React.FC = () => {
       }
 
       setIsDialogOpen(false);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch {
       toast({
         title: t('admin.oidcSettings.error', 'Error'),
         description: t(

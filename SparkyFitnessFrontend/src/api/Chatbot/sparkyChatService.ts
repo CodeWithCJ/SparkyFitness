@@ -17,6 +17,7 @@ import { processWaterInput } from '@/api/Chatbot/Chatbot_WaterHandler';
 import { CoachResponse, FoodOption, Message } from '@/types/Chatbot_types';
 import { processChatInput } from '@/utils/Chatbot_utils';
 import { AIService } from '@/types/settings';
+import { getErrorMessage } from '@/utils/api';
 
 export interface UserPreferences {
   auto_clear_history: 'never' | '7days' | 'all';
@@ -408,10 +409,10 @@ const getAIResponse = async (
       action: 'advice',
       response: response.content,
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = getErrorMessage(err);
     error(userLoggingLevel, `[${transactionId}] Error in getAIResponse:`, err);
-    if (err.message && err.message.includes('503')) {
+    if (message && message.includes('503')) {
       return {
         action: 'none',
         response:
@@ -421,7 +422,7 @@ const getAIResponse = async (
     return {
       action: 'none',
       response:
-        err.message ||
+        message ||
         'An unexpected error occurred while trying to get an AI response.',
     };
   }
@@ -520,8 +521,7 @@ const callAIForFoodOptions = async (
       );
       return [];
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
+  } catch (err: unknown) {
     error(userLoggingLevel, 'Error in callAIForFoodOptions:', err);
     return [];
   }

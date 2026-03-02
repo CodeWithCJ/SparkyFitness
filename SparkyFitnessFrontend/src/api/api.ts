@@ -175,8 +175,7 @@ export async function apiCall(
     );
     //console.log(`API Call: Returning JSON response for ${url}:`, jsonResponse); // Added console.log
     return jsonResponse;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (err: any) {
+  } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     logging.error(userLoggingLevel, 'API call network error:', err); // Log the raw error object for better debugging
     toast({

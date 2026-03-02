@@ -16,6 +16,7 @@ import { Mail, QrCode, KeyRound, Loader2 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { getErrorMessage } from '@/utils/api';
 
 interface MfaChallengeProps {
   userId: string;
@@ -85,16 +86,15 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
       } else if (error) {
         throw error;
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
       toast({
         title: t(
           'mfaChallenge.error.verificationFailed',
           'Verification Failed'
         ),
         description:
-          err.message ||
-          t('mfaChallenge.error.totpInvalid', 'Invalid TOTP code.'),
+          message || t('mfaChallenge.error.totpInvalid', 'Invalid TOTP code.'),
         variant: 'destructive',
       });
     } finally {
@@ -113,11 +113,11 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
         title: 'Code Sent',
         description: 'A verification code has been sent to your email.',
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
       toast({
         title: 'Error',
-        description: err.message || 'Failed to send code.',
+        description: message || 'Failed to send code.',
         variant: 'destructive',
       });
     } finally {
@@ -147,11 +147,11 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
       } else if (error) {
         throw error;
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
       toast({
         title: 'Error',
-        description: err.message || 'Invalid email code.',
+        description: message || 'Invalid email code.',
         variant: 'destructive',
       });
     } finally {
@@ -181,15 +181,15 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
       } else if (error) {
         throw error;
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
       toast({
         title: t(
           'mfaChallenge.error.verificationFailed',
           'Verification Failed'
         ),
         description:
-          err.message ||
+          message ||
           t('mfaChallenge.error.recoveryCodeInvalid', 'Invalid recovery code.'),
         variant: 'destructive',
       });

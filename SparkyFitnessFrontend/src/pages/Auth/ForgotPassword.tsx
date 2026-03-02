@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info } from '@/utils/logging';
 import { useRequestPasswordResetMutation } from '@/hooks/Auth/useAuth';
+import { getErrorMessage } from '@/utils/api';
 
 const ForgotPassword = () => {
   const { loggingLevel } = usePreferences();
@@ -34,9 +35,9 @@ const ForgotPassword = () => {
       setMessage(
         'If an account with that email exists, a password reset link has been sent.'
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      setMessage(err.message || 'An unexpected error occurred.');
+    } catch (err: unknown) {
+      const message = getErrorMessage(err);
+      setMessage(message || 'An unexpected error occurred.');
     } finally {
       setLoading(false);
     }

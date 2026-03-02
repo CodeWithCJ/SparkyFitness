@@ -32,6 +32,7 @@ import {
 import { useImportExerciseHistoryMutation } from '@/hooks/Exercises/useExercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { HistoryImportEntry } from '@/types/exercises';
+import { isObject } from '@/utils/api';
 
 // Define the shape of a single row from the CSV
 interface CsvRow {
@@ -424,24 +425,28 @@ const ExerciseEntryHistoryImportCSV = ({
 
       await importAsCsv(entries);
       onImportComplete();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      const errorMessage = error.details?.failedEntries
-        ? t(
-            'exercise.importHistoryCSV.partialImportError',
-            'Some entries failed to import: {{details}}',
-            {
-              details: error.details.failedEntries
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .map((e: any) => e.entry.exercise_name + ' - ' + e.reason)
-                .join(', '),
-            }
+    } catch (error: unknown) {
+      let errorMessage = t('exercise.importHistoryCSV.importError');
+
+      if (
+        isObject(error) &&
+        isObject(error.details) &&
+        Array.isArray(error.details.failedEntries)
+      ) {
+        const details = error.details.failedEntries
+          .map(
+            (e: { entry: { exercise_name: string }; reason: string }) =>
+              `${e.entry.exercise_name} - ${e.reason}`
           )
-        : error.message ||
-          t(
-            'exercise.importHistoryCSV.importError',
-            'Failed to import historical exercise entries. Please try again.'
-          );
+          .join(', ');
+
+        errorMessage = t('exercise.importHistoryCSV.partialImportError', {
+          details,
+        });
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
       toast({
         title: t('common.error', 'Error'),
         description: errorMessage,
