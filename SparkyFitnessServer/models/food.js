@@ -42,6 +42,7 @@
  */
 const { getClient, getSystemClient } = require("../db/poolManager");
 const { log } = require("../config/logging");
+const { normalizeBarcode } = require("../utils/foodUtils");
 
 function sanitizeGlycemicIndex(gi) {
   const allowedGICategories = [
@@ -186,7 +187,7 @@ async function createFood(foodData) {
         sanitizeBoolean(foodData.is_custom) ?? true,
         foodData.user_id,
         foodData.brand,
-        foodData.barcode,
+        foodData.barcode ? normalizeBarcode(foodData.barcode) : foodData.barcode,
         foodData.provider_external_id,
         sanitizeBoolean(foodData.shared_with_public) ?? false,
         foodData.provider_type,
@@ -269,6 +270,7 @@ async function createFood(foodData) {
 }
 
 async function findFoodByBarcode(barcode, userId) {
+  barcode = normalizeBarcode(barcode);
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -388,7 +390,7 @@ async function updateFood(id, userId, foodData) {
         foodData.name,
         foodData.is_custom,
         foodData.brand,
-        foodData.barcode,
+        foodData.barcode ? normalizeBarcode(foodData.barcode) : foodData.barcode,
         foodData.provider_external_id,
         foodData.shared_with_public,
         foodData.provider_type,
@@ -856,7 +858,7 @@ async function createFoodsInBulk(userId, foodDataArray) {
           food.user_id,
           sanitizeBoolean(food.shared_with_public) ?? false,
           sanitizeBoolean(food.is_quick_food) ?? false,
-          food.barcode || null,
+          (food.barcode && normalizeBarcode(food.barcode)) || null,
           food.provider_external_id || null,
           food.provider_type || null,
         ],

@@ -1,10 +1,14 @@
 const foodRepository = require("../models/foodRepository");
 const preferenceService = require("./preferenceService");
+const externalProviderService = require("./externalProviderService");
 const { log } = require("../config/logging");
-const { sanitizeCustomNutrients } = require("../utils/foodUtils");
+const { sanitizeCustomNutrients, normalizeBarcode } = require("../utils/foodUtils");
 const {
-  searchOpenFoodFactsByBarcode,
+  searchOpenFoodFactsByBarcodeFields,
 } = require("../integrations/openfoodfacts/openFoodFactsService");
+const {
+  searchUsdaFoodsByBarcode,
+} = require("../integrations/usda/usdaService");
 
 async function searchFoods(
   authenticatedUserId,
@@ -705,41 +709,58 @@ async function updateFoodEntriesSnapshot(
 
 function mapOpenFoodFactsProduct(product) {
   const nutriments = product.nutriments || {};
+  const servingSize = product.serving_quantity > 0 ? product.serving_quantity : 100;
+  const scale = servingSize / 100;
 
   const defaultVariant = {
-    serving_size: 100,
+    serving_size: servingSize,
     serving_unit: "g",
-    calories: Math.round(nutriments["energy-kcal_100g"] || 0),
+    calories: Math.round((nutriments["energy-kcal_100g"] || 0) * scale),
     protein:
-      Math.round((nutriments["proteins_100g"] || 0) * 10) / 10,
+      Math.round((nutriments["proteins_100g"] || 0) * scale * 10) / 10,
     carbs:
-      Math.round((nutriments["carbohydrates_100g"] || 0) * 10) / 10,
-    fat: Math.round((nutriments["fat_100g"] || 0) * 10) / 10,
+      Math.round((nutriments["carbohydrates_100g"] || 0) * scale * 10) / 10,
+    fat: Math.round((nutriments["fat_100g"] || 0) * scale * 10) / 10,
     saturated_fat:
-      Math.round((nutriments["saturated-fat_100g"] || 0) * 10) / 10,
+      Math.round((nutriments["saturated-fat_100g"] || 0) * scale * 10) / 10,
     sodium: nutriments["sodium_100g"]
-      ? Math.round(nutriments["sodium_100g"] * 1000)
+      ? Math.round(nutriments["sodium_100g"] * 1000 * scale)
       : 0,
     dietary_fiber:
-      Math.round((nutriments["fiber_100g"] || 0) * 10) / 10,
+      Math.round((nutriments["fiber_100g"] || 0) * scale * 10) / 10,
     sugars:
-      Math.round((nutriments["sugars_100g"] || 0) * 10) / 10,
-    polyunsaturated_fat: 0,
-    monounsaturated_fat: 0,
-    trans_fat: 0,
-    cholesterol: 0,
-    potassium: 0,
-    vitamin_a: 0,
-    vitamin_c: 0,
-    calcium: 0,
-    iron: 0,
+      Math.round((nutriments["sugars_100g"] || 0) * scale * 10) / 10,
+    polyunsaturated_fat:
+      Math.round((nutriments["polyunsaturated-fat_100g"] || 0) * scale * 10) / 10,
+    monounsaturated_fat:
+      Math.round((nutriments["monounsaturated-fat_100g"] || 0) * scale * 10) / 10,
+    trans_fat:
+      Math.round((nutriments["trans-fat_100g"] || 0) * scale * 10) / 10,
+    cholesterol: nutriments["cholesterol_100g"]
+      ? Math.round(nutriments["cholesterol_100g"] * 1000 * scale)
+      : 0,
+    potassium: nutriments["potassium_100g"]
+      ? Math.round(nutriments["potassium_100g"] * 1000 * scale)
+      : 0,
+    vitamin_a: nutriments["vitamin-a_100g"]
+      ? Math.round(nutriments["vitamin-a_100g"] * 1000000 * scale)
+      : 0,
+    vitamin_c: nutriments["vitamin-c_100g"]
+      ? Math.round(nutriments["vitamin-c_100g"] * 1000 * scale * 10) / 10
+      : 0,
+    calcium: nutriments["calcium_100g"]
+      ? Math.round(nutriments["calcium_100g"] * 1000 * scale)
+      : 0,
+    iron: nutriments["iron_100g"]
+      ? Math.round(nutriments["iron_100g"] * 1000 * scale * 10) / 10
+      : 0,
     is_default: true,
   };
 
   return {
     name: product.product_name,
     brand: product.brands?.split(",")[0]?.trim() || "",
-    barcode: product.code,
+    barcode: normalizeBarcode(product.code),
     provider_external_id: product.code,
     provider_type: "openfoodfacts",
     is_custom: false,
@@ -747,16 +768,107 @@ function mapOpenFoodFactsProduct(product) {
   };
 }
 
-async function lookupBarcode(barcode, userId) {
+function mapUsdaBarcodeProduct(food) {
+  const nutrients = {};
+  for (const n of food.foodNutrients || []) {
+    nutrients[n.nutrientId] = n.value || 0;
+  }
+  const servingSize = food.servingSize > 0 ? food.servingSize : 100;
+  const scale = servingSize / 100;
+
+  const defaultVariant = {
+    serving_size: servingSize,
+    serving_unit: (food.servingSizeUnit || "g").toLowerCase(),
+    calories: Math.round((nutrients[1008] || 0) * scale),
+    protein: Math.round((nutrients[1003] || 0) * scale * 10) / 10,
+    carbs: Math.round((nutrients[1005] || 0) * scale * 10) / 10,
+    fat: Math.round((nutrients[1004] || 0) * scale * 10) / 10,
+    saturated_fat: Math.round((nutrients[1258] || 0) * scale * 10) / 10,
+    trans_fat: Math.round((nutrients[1257] || 0) * scale * 10) / 10,
+    cholesterol: Math.round((nutrients[1253] || 0) * scale),
+    sodium: Math.round((nutrients[1093] || 0) * scale),
+    potassium: Math.round((nutrients[1092] || 0) * scale),
+    dietary_fiber: Math.round((nutrients[1079] || 0) * scale * 10) / 10,
+    sugars: Math.round((nutrients[2000] || 0) * scale * 10) / 10,
+    calcium: Math.round((nutrients[1087] || 0) * scale),
+    iron: Math.round((nutrients[1089] || 0) * scale * 10) / 10,
+    polyunsaturated_fat: Math.round((nutrients[1293] || 0) * scale * 10) / 10,
+    monounsaturated_fat: Math.round((nutrients[1292] || 0) * scale * 10) / 10,
+    vitamin_a: Math.round((nutrients[1104] || 0) * 0.3 * scale),
+    vitamin_c: Math.round((nutrients[1162] || 0) * scale * 10) / 10,
+    is_default: true,
+  };
+
+  return {
+    name: food.description,
+    brand: food.brandName || food.brandOwner || "",
+    barcode: normalizeBarcode(food.gtinUpc),
+    provider_external_id: String(food.fdcId),
+    provider_type: "usda",
+    is_custom: false,
+    default_variant: defaultVariant,
+  };
+}
+
+async function lookupBarcode(barcode, userId, providerId) {
   try {
     const localFood = await foodRepository.findFoodByBarcode(barcode, userId);
     if (localFood) {
       return { source: "local", food: localFood };
     }
 
+    // Resolve the barcode provider (explicit param or user preference)
+    let provider = null;
+    try {
+      let resolvedProviderId = providerId;
+      if (!resolvedProviderId) {
+        const prefs = await preferenceService.getUserPreferences(userId, userId);
+        resolvedProviderId = prefs?.default_barcode_provider_id;
+      }
+      if (resolvedProviderId) {
+        const details = await externalProviderService.getExternalDataProviderDetails(userId, resolvedProviderId);
+        if (details?.is_active) {
+          provider = details;
+        }
+      }
+    } catch (providerError) {
+      log("warn", `Barcode provider resolution failed for user ${userId}:`, providerError);
+    }
+
+    // Try USDA if provider is configured
+    if (provider?.provider_type === "usda" && provider.app_key) {
+      try {
+        // Determine which barcode forms to search USDA with.
+        // USDA uses text search and may store UPC-A (12) or EAN-13 (13),
+        // so we try the alternate form if the first search doesn't match.
+        const normalizedBarcode = normalizeBarcode(barcode);
+        const alternateBarcodes = [barcode];
+        if (barcode.length === 12) {
+          alternateBarcodes.push("0" + barcode);
+        } else if (barcode.length === 13 && barcode.startsWith("0")) {
+          alternateBarcodes.push(barcode.slice(1));
+        }
+
+        let match = null;
+        for (const searchBarcode of alternateBarcodes) {
+          const usdaData = await searchUsdaFoodsByBarcode(searchBarcode, provider.app_key);
+          match = (usdaData?.foods || []).find(
+            (f) => normalizeBarcode(f.gtinUpc) === normalizedBarcode && f.description,
+          );
+          if (match) break;
+        }
+        if (match) {
+          return { source: "usda", food: mapUsdaBarcodeProduct(match) };
+        }
+      } catch (usdaError) {
+        log("warn", `USDA barcode lookup failed for ${barcode}:`, usdaError);
+      }
+    }
+
+    // Fall back to OpenFoodFacts
     let offData;
     try {
-      offData = await searchOpenFoodFactsByBarcode(barcode);
+      offData = await searchOpenFoodFactsByBarcodeFields(barcode);
     } catch (error) {
       log("warn", `OpenFoodFacts lookup failed for barcode ${barcode}:`, error);
       return { source: "not_found", food: null };
@@ -795,4 +907,5 @@ module.exports = {
   updateFoodEntriesSnapshot,
   lookupBarcode,
   mapOpenFoodFactsProduct,
+  mapUsdaBarcodeProduct,
 };

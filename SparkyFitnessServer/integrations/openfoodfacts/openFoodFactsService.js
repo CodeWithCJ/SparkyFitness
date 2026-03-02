@@ -34,7 +34,25 @@ async function searchOpenFoodFactsByBarcode(barcode) {
   }
 }
 
+async function searchOpenFoodFactsByBarcodeFields(barcode, fields = ['product_name','brands','code','serving_size','serving_quantity','nutriments']) {
+  try {
+    const fieldsParam = fields.join(',');
+    const searchUrl = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=${fieldsParam}`;
+    const response = await fetch(searchUrl, { method: 'GET' });
+    if (!response.ok) {
+      const errorText = await response.text();
+      log('error', "OpenFoodFacts Barcode Fields Search API error:", errorText);
+      throw new Error(`OpenFoodFacts API error: ${errorText}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    log('error', `Error searching OpenFoodFacts with barcode "${barcode}" and fields "${fields.join(',')}" in foodService:`, error);
+    throw error;
+  }
+}
 module.exports = {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcode,
+  searchOpenFoodFactsByBarcodeFields,
 };

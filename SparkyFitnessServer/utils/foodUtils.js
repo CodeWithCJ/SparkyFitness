@@ -10,6 +10,14 @@ function sanitizeCustomNutrients(customNutrients) {
   return sanitized;
 }
 
+function normalizeBarcode(barcode) {
+  if (typeof barcode === "string" && barcode.length === 12) {
+    return "0" + barcode;
+  }
+  return barcode;
+}
+
 module.exports = {
   sanitizeCustomNutrients,
+  normalizeBarcode,
 };

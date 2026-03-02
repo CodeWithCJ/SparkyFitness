@@ -64,6 +64,7 @@ describe("GET /food-crud/barcode/:barcode", () => {
     expect(foodService.lookupBarcode).toHaveBeenCalledWith(
       "12345678",
       "user-123",
+      undefined,
     );
   });
 
@@ -78,6 +79,7 @@ describe("GET /food-crud/barcode/:barcode", () => {
     expect(foodService.lookupBarcode).toHaveBeenCalledWith(
       "12345678901234",
       "user-123",
+      undefined,
     );
   });
 
@@ -143,5 +145,24 @@ describe("GET /food-crud/barcode/:barcode", () => {
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toMatch(/Invalid barcode format/);
     expect(foodService.lookupBarcode).not.toHaveBeenCalled();
+  });
+
+  it("should pass providerId query param to lookupBarcode", async () => {
+    foodService.lookupBarcode.mockResolvedValue({
+      source: "usda",
+      food: { name: "Test USDA Food" },
+    });
+
+    const providerId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const res = await request(app).get(
+      `/food-crud/barcode/3017620422003?providerId=${providerId}`,
+    );
+    expect(res.statusCode).toBe(200);
+    expect(foodService.lookupBarcode).toHaveBeenCalledWith(
+      "3017620422003",
+      "user-123",
+      providerId,
+    );
+    expect(res.body.source).toBe("usda");
   });
 });
