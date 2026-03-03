@@ -4,7 +4,6 @@ import {
   requestMagicLink,
   registerUser,
   loginUser,
-  verifyMagicLink,
   getLoginSettings,
   initiateOidcLogin,
   resetPassword,
@@ -68,23 +67,6 @@ export const useRequestMagicLinkMutation = () => {
         'Magic link sent! Check your inbox.'
       ),
       errorMessage: t('auth.magicLinkError', 'Failed to request magic link.'),
-    },
-  });
-};
-
-export const useVerifyMagicLinkMutation = () => {
-  const { t } = useTranslation();
-  return useMutation({
-    mutationFn: verifyMagicLink,
-    meta: {
-      successMessage: t(
-        'auth.magicLinkVerifySuccess',
-        'Logged in via magic link!'
-      ),
-      errorMessage: t(
-        'auth.magicLinkVerifyError',
-        'Magic link is invalid or expired.'
-      ),
     },
   });
 };

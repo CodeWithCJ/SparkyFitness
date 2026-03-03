@@ -2,6 +2,36 @@ import { authClient } from '@/lib/auth-client';
 import type { AccessibleUser, AuthResponse, LoginSettings } from '@/types/auth';
 import { apiCall } from '../api';
 
+interface AuthError extends Error {
+  code?: string;
+  status?: number;
+}
+
+interface BetterAuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role?: string;
+  twoFactorEnabled?: boolean;
+  mfaEmailEnabled?: boolean;
+}
+
+interface BetterAuthResponse {
+  user: BetterAuthUser;
+  twoFactorRedirect?: boolean;
+}
+
+export interface IdentityUserResponse {
+  activeUserId: string;
+  fullName: string | null;
+  activeUserFullName?: string;
+  activeUserEmail: string;
+}
+
+export interface SwitchContextResponse {
+  activeUserId?: string;
+}
+
 export const requestMagicLink = async (email: string): Promise<void> => {
   const { error } = await authClient.signIn.magicLink({
     email,
@@ -23,22 +53,28 @@ export const registerUser = async (
 
   if (error) {
     if (error.status === 409) {
-      const err = new Error('User with this email already exists.');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (err as any).code = '23505';
+      const err = new Error(
+        'User with this email already exists.'
+      ) as AuthError;
+      err.code = '23505';
       throw err;
     }
     throw error;
   }
 
+  const authData = data as BetterAuthResponse | null;
+
+  if (!authData?.user) {
+    throw new Error(
+      'Registration succeeded but no user data was received from the server.'
+    );
+  }
+
   return {
     message: 'User registered successfully',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    userId: (data as any)?.user?.id,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    role: ((data as any)?.user as any)?.role || 'user',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    fullName: (data as any)?.user?.name || '',
+    userId: authData?.user?.id,
+    role: authData?.user?.role || 'user',
+    fullName: authData?.user?.name || '',
   } as AuthResponse;
 };
 
@@ -58,31 +94,31 @@ export const loginUser = async (
     throw error;
   }
 
+  const authData = data as BetterAuthResponse | null;
+
+  if (!authData?.user) {
+    throw new Error(
+      'Login succeeded but no user data was received from the server.'
+    );
+  }
+
   // Better Auth native 2FA handling
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((data as any)?.twoFactorRedirect) {
+  if (authData?.twoFactorRedirect) {
     return {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      userId: (data as any)?.user?.id || '',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      email: (data as any)?.user?.email || email,
+      userId: authData?.user?.id || '',
+      email: authData?.user?.email || email,
       status: 'MFA_REQUIRED',
       twoFactorRedirect: true,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mfa_totp_enabled: (data as any)?.user?.twoFactorEnabled,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mfa_email_enabled: (data as any)?.user?.mfaEmailEnabled,
+      mfa_totp_enabled: authData?.user?.twoFactorEnabled,
+      mfa_email_enabled: authData?.user?.mfaEmailEnabled,
     } as AuthResponse;
   }
 
   return {
     message: 'Login successful',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    userId: (data as any)?.user?.id,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    role: ((data as any)?.user as any)?.role || 'user',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    fullName: (data as any)?.user?.name || '',
+    userId: authData?.user?.id,
+    role: authData?.user?.role || 'user',
+    fullName: authData?.user?.name || '',
   } as AuthResponse;
 };
 
@@ -141,60 +177,11 @@ export const getLoginSettings = async (): Promise<LoginSettings> => {
   }
 };
 
-export const verifyMagicLink = async (token: string): Promise<AuthResponse> => {
-  // In Better Auth 1.0, verification can also be done via signIn.magicLink token property
-  // if the plugin is configured to support manual verification.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (authClient as any).signIn.magicLink({
-    token,
-  });
-
-  if (error) throw error;
-
-  // Better Auth native 2FA handling after Magic Link
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if ((data as any)?.twoFactorRedirect) {
-    return {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      userId: (data as any)?.user?.id || '',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      email: (data as any)?.user?.email || '',
-      status: 'MFA_REQUIRED',
-      twoFactorRedirect: true,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mfa_totp_enabled: (data as any)?.user?.twoFactorEnabled,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mfa_email_enabled: (data as any)?.user?.mfaEmailEnabled,
-    } as AuthResponse;
-  }
-
-  return {
-    message: 'Magic link login successful',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    userId: (data as any)?.user?.id,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    role: ((data as any)?.user as any)?.role || 'user',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    fullName: (data as any)?.user?.name || '',
-  } as AuthResponse;
-};
-
 export const getMfaFactors = async (email: string) => {
   return await apiCall(`/auth/mfa-factors?email=${encodeURIComponent(email)}`, {
     method: 'GET',
   });
 };
-
-export interface IdentityUserResponse {
-  activeUserId: string;
-  fullName: string | null;
-  activeUserFullName?: string;
-  activeUserEmail: string;
-}
-
-export interface SwitchContextResponse {
-  activeUserId?: string;
-}
 
 export const fetchIdentityUser = async (): Promise<IdentityUserResponse> => {
   return apiCall('/identity/user', {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,6 @@ import {
   useLoginUserMutation,
   useRegisterUserMutation,
   useRequestMagicLinkMutation,
-  useVerifyMagicLinkMutation,
 } from '@/hooks/Auth/useAuth';
 import { MagicLinkRequestDialog } from './MagicLinkRequestDialog';
 import { useQueryClient } from '@tanstack/react-query';
@@ -61,7 +60,6 @@ const Auth = () => {
   const { mutateAsync: loginUser } = useLoginUserMutation();
   const { mutateAsync: registerUser } = useRegisterUserMutation();
   const { mutateAsync: requestMagicLink } = useRequestMagicLinkMutation();
-  const { mutateAsync: verifyMagicLink } = useVerifyMagicLinkMutation();
   const { mutateAsync: initiateOidcLogin } = useInitiateOidcLoginMutation();
 
   useEffect(() => {
@@ -240,106 +238,6 @@ const Auth = () => {
     },
     [loggingLevel, queryClient]
   );
-
-  const hasAttemptedMagicLinkLogin = useRef(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const magicLinkToken = params.get('token');
-    const authError = params.get('error');
-    const path = window.location.pathname;
-
-    // Handle authentication errors from redirects
-    if (authError) {
-      const errorMsg =
-        authError === 'signup disabled'
-          ? 'New registrations are currently disabled for this provider.'
-          : `Authentication failed: ${authError}`;
-
-      toast({
-        title: 'Login Error',
-        description: errorMsg,
-        variant: 'destructive',
-      });
-      // Clear the error from URL by redirecting to base path
-      navigate('/');
-    }
-
-    if (
-      path === '/login/magic-link' &&
-      magicLinkToken &&
-      !hasAttemptedMagicLinkLogin.current
-    ) {
-      hasAttemptedMagicLinkLogin.current = true;
-      info(loggingLevel, 'Auth: Attempting magic link login.');
-      setLoading(true);
-      const handleMagicLinkLogin = async () => {
-        try {
-          const data: AuthResponse = await verifyMagicLink(magicLinkToken);
-
-          if (data.status === 'MFA_REQUIRED') {
-            const mfaShown = await triggerMfaChallenge(data, email, {
-              onMfaSuccess: () => {
-                setShowMfaChallenge(false);
-                navigate('/');
-              },
-              onMfaCancel: () => {
-                setShowMfaChallenge(false);
-                setLoading(false);
-                navigate('/'); // Redirect back to home page on cancel
-              },
-            });
-
-            if (!mfaShown) {
-              signIn(
-                data.userId,
-                data.userId,
-                data.email || email,
-                data.role || 'user',
-                'magic_link',
-                true,
-                data.fullName
-              );
-            }
-          } else {
-            info(loggingLevel, 'Auth: Magic link login successful.');
-            toast({
-              title: 'Success',
-              description: 'Logged in successfully via magic link!',
-            });
-            signIn(
-              data.userId,
-              data.userId,
-              data.email || email,
-              data.role || 'user',
-              'magic_link',
-              true,
-              data.fullName
-            );
-          }
-        } catch (err: unknown) {
-          const message = getErrorMessage(err);
-          error(loggingLevel, 'Auth: Magic link login failed:', err);
-          toast({
-            title: 'Error',
-            description: message || 'Magic link is invalid or has expired.',
-            variant: 'destructive',
-          });
-          window.location.replace('/'); // Force a full page reload to clear state
-        } finally {
-          setLoading(false);
-        }
-      };
-      handleMagicLinkLogin();
-    }
-  }, [
-    loggingLevel,
-    navigate,
-    signIn,
-    email,
-    triggerMfaChallenge,
-    verifyMagicLink,
-  ]);
 
   const validatePassword = (pwd: string) => {
     if (pwd.length < 6) {
