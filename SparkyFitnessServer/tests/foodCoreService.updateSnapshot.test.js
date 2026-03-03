@@ -223,4 +223,84 @@ describe("foodCoreService.updateFoodEntriesSnapshot", () => {
       "clearUserIgnoredUpdate",
     ]);
   });
+
+  // --- No variantId: update all variants for the food ---
+
+  it("should fetch all variants and update each one when variantId is not provided", async () => {
+    const variantA = makeVariant({ id: "variant-aaa" });
+    const variantB = makeVariant({ id: "variant-bbb", calories: 200 });
+    foodRepository.getFoodById.mockResolvedValue(makeFood());
+    foodRepository.getFoodVariantsByFoodId.mockResolvedValue([variantA, variantB]);
+    foodRepository.updateFoodEntriesSnapshot.mockResolvedValue(1);
+    foodRepository.clearUserIgnoredUpdate.mockResolvedValue();
+
+    const result = await foodCoreService.updateFoodEntriesSnapshot(
+      TEST_USER_ID,
+      FOOD_ID,
+    );
+
+    expect(result).toEqual({ message: "Food entries updated successfully." });
+    expect(foodRepository.getFoodVariantsByFoodId).toHaveBeenCalledWith(
+      FOOD_ID,
+      TEST_USER_ID,
+    );
+    expect(foodRepository.getFoodVariantById).not.toHaveBeenCalled();
+    expect(foodRepository.updateFoodEntriesSnapshot).toHaveBeenCalledTimes(2);
+    expect(foodRepository.clearUserIgnoredUpdate).toHaveBeenCalledTimes(2);
+    expect(foodRepository.clearUserIgnoredUpdate).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      "variant-aaa",
+    );
+    expect(foodRepository.clearUserIgnoredUpdate).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      "variant-bbb",
+    );
+  });
+
+  it("should pass correct snapshot data for each variant when variantId is not provided", async () => {
+    const food = makeFood();
+    const variantA = makeVariant({ id: "variant-aaa", calories: 100 });
+    const variantB = makeVariant({ id: "variant-bbb", calories: 250 });
+    foodRepository.getFoodById.mockResolvedValue(food);
+    foodRepository.getFoodVariantsByFoodId.mockResolvedValue([variantA, variantB]);
+    foodRepository.updateFoodEntriesSnapshot.mockResolvedValue(1);
+    foodRepository.clearUserIgnoredUpdate.mockResolvedValue();
+
+    await foodCoreService.updateFoodEntriesSnapshot(TEST_USER_ID, FOOD_ID);
+
+    const firstCall = foodRepository.updateFoodEntriesSnapshot.mock.calls[0];
+    expect(firstCall[2]).toBe("variant-aaa");
+    expect(firstCall[3].calories).toBe(100);
+    expect(firstCall[3].food_name).toBe(food.name);
+
+    const secondCall = foodRepository.updateFoodEntriesSnapshot.mock.calls[1];
+    expect(secondCall[2]).toBe("variant-bbb");
+    expect(secondCall[3].calories).toBe(250);
+    expect(secondCall[3].food_name).toBe(food.name);
+  });
+
+  it("should succeed with no updates when food has no variants and variantId is not provided", async () => {
+    foodRepository.getFoodById.mockResolvedValue(makeFood());
+    foodRepository.getFoodVariantsByFoodId.mockResolvedValue([]);
+
+    const result = await foodCoreService.updateFoodEntriesSnapshot(
+      TEST_USER_ID,
+      FOOD_ID,
+    );
+
+    expect(result).toEqual({ message: "Food entries updated successfully." });
+    expect(foodRepository.updateFoodEntriesSnapshot).not.toHaveBeenCalled();
+    expect(foodRepository.clearUserIgnoredUpdate).not.toHaveBeenCalled();
+  });
+
+  it('should throw "Food not found." when food is null and variantId is not provided', async () => {
+    foodRepository.getFoodById.mockResolvedValue(null);
+
+    await expect(
+      foodCoreService.updateFoodEntriesSnapshot(TEST_USER_ID, FOOD_ID),
+    ).rejects.toThrow("Food not found.");
+
+    expect(foodRepository.getFoodVariantsByFoodId).not.toHaveBeenCalled();
+    expect(foodRepository.updateFoodEntriesSnapshot).not.toHaveBeenCalled();
+  });
 });
