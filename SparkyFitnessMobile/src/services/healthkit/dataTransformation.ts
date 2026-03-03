@@ -214,13 +214,14 @@ QUALITATIVE_TYPES.forEach(type => {
 // Direct Transformers - handle complex records that push directly to output
 // ============================================================================
 
-// HKWorkoutActivityType Mapping
+// HKWorkoutActivityType Mapping — matches WorkoutActivityType enum from @kingstinct/react-native-healthkit
 // Source: https://developer.apple.com/documentation/healthkit/hkworkoutactivitytype
 const ACTIVITY_MAP: Record<number, string> = {
   1: 'American Football', 2: 'Archery', 3: 'Australian Football', 4: 'Badminton',
   5: 'Baseball', 6: 'Basketball', 7: 'Bowling', 8: 'Boxing', 9: 'Climbing',
   10: 'Cricket', 11: 'Cross Training', 12: 'Curling', 13: 'Cycling',
-  14: 'Dance', 16: 'Elliptical', 17: 'Equestrian Sports', 18: 'Fencing',
+  14: 'Dance', 15: 'Dance Inspired Training', 16: 'Elliptical',
+  17: 'Equestrian Sports', 18: 'Fencing',
   19: 'Fishing', 20: 'Functional Strength Training', 21: 'Golf', 22: 'Gymnastics',
   23: 'Handball', 24: 'Hiking', 25: 'Hockey', 26: 'Hunting', 27: 'Lacrosse',
   28: 'Martial Arts', 29: 'Mind and Body', 30: 'Mixed Cardio', 31: 'Paddle Sports',
@@ -235,7 +236,10 @@ const ACTIVITY_MAP: Record<number, string> = {
   63: 'High Intensity Interval Training', 64: 'Jump Rope', 65: 'Kickboxing',
   66: 'Pilates', 67: 'Snowboarding', 68: 'Stairs', 69: 'Step Training',
   70: 'Wheelchair Walk Pace', 71: 'Wheelchair Run Pace', 72: 'Tai Chi',
-  73: 'Mixed Metabolic Cardio Training', 74: 'Hand Cycling'
+  73: 'Mixed Cardio', 74: 'Hand Cycling', 75: 'Disc Sports',
+  76: 'Fitness Gaming', 77: 'Cardio Dance', 78: 'Social Dance',
+  79: 'Pickleball', 80: 'Cooldown', 82: 'Swim Bike Run',
+  83: 'Transition', 84: 'Underwater Diving',
 } as const;
 
 const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
