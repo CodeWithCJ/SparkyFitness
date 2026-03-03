@@ -58,8 +58,7 @@ export const updateCheckInMeasurementField = async (payload: {
 
 export const loadExistingCheckInMeasurements = async (
   selectedDate: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any> => {
+): Promise<CheckInMeasurement> => {
   return apiCall(`/measurements/check-in/${selectedDate}`, {
     method: 'GET',
     suppress404Toast: true,
@@ -68,24 +67,25 @@ export const loadExistingCheckInMeasurements = async (
 
 export const loadExistingCustomMeasurements = async (
   selectedDate: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any> => {
+): Promise<CustomMeasurement[]> => {
   return apiCall(`/measurements/custom-entries/${selectedDate}`, {
     method: 'GET',
     suppress404Toast: true,
   });
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const saveCheckInMeasurements = async (payload: any): Promise<void> => {
+export const saveCheckInMeasurements = async (
+  payload: Partial<CheckInMeasurement>
+): Promise<void> => {
   await apiCall('/measurements/check-in', {
     method: 'POST',
     body: payload,
   });
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const saveCustomMeasurement = async (payload: any): Promise<void> => {
+export const saveCustomMeasurement = async (
+  payload: Partial<CustomMeasurement>
+): Promise<void> => {
   await apiCall('/measurements/custom-entries', {
     method: 'POST',
     body: payload,

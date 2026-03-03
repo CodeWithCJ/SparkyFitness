@@ -26,6 +26,12 @@ export const saveMoodEntry = async (
   }
 };
 
+interface MoodEntryParams {
+  startDate: string;
+  endDate: string;
+  userId?: string;
+}
+
 export const getMoodEntries = async (
   startDate: string,
   endDate: string,
@@ -38,8 +44,7 @@ export const getMoodEntries = async (
       startDate,
       endDate,
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const params: any = { startDate, endDate };
+    const params: MoodEntryParams = { startDate, endDate };
     if (userId) params.userId = userId;
     const response = await api.get('/mood', {
       params,
