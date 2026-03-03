@@ -67,8 +67,7 @@ interface ReportsTablesProps {
   measurementData: CheckInMeasurement[];
   customCategories: CustomCategory[];
   customMeasurementsData: Record<string, CustomMeasurement[]>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  prData: any; // Add prData to props
+  prData: unknown; // Add prData to props
   showWeightInKg: boolean;
   showMeasurementsInCm: boolean;
   onExportFoodDiary: () => void;
@@ -184,7 +183,7 @@ const ReportsTables = ({
           const customNutrientsSum = customNutrients.reduce(
             (sumAcc, cn) => {
               sumAcc[cn.name] =
-                (acc[cn.name] || 0) + (Number(entry[cn.name]) || 0);
+                (Number(acc[cn.name]) || 0) + (Number(entry[cn.name]) || 0);
               return sumAcc;
             },
             {} as Record<string, number>
@@ -192,28 +191,38 @@ const ReportsTables = ({
 
           return {
             ...acc,
-            calories: (acc.calories || 0) + (entry.calories || 0),
-            protein: (acc.protein || 0) + (entry.protein || 0),
-            carbs: (acc.carbs || 0) + (entry.carbs || 0),
-            fat: (acc.fat || 0) + (entry.fat || 0),
+            calories:
+              (Number(acc.calories) || 0) + (Number(entry.calories) || 0),
+            protein: (Number(acc.protein) || 0) + (Number(entry.protein) || 0),
+            carbs: (Number(acc.carbs) || 0) + (Number(entry.carbs) || 0),
+            fat: (Number(acc.fat) || 0) + (Number(entry.fat) || 0),
             saturated_fat:
-              (acc.saturated_fat || 0) + (entry.saturated_fat || 0),
+              (Number(acc.saturated_fat) || 0) +
+              (Number(entry.saturated_fat) || 0),
             polyunsaturated_fat:
-              (acc.polyunsaturated_fat || 0) + (entry.polyunsaturated_fat || 0),
+              (Number(acc.polyunsaturated_fat) || 0) +
+              (Number(entry.polyunsaturated_fat) || 0),
             monounsaturated_fat:
-              (acc.monounsaturated_fat || 0) + (entry.monounsaturated_fat || 0),
-            trans_fat: (acc.trans_fat || 0) + (entry.trans_fat || 0),
-            cholesterol: (acc.cholesterol || 0) + (entry.cholesterol || 0),
-            sodium: (acc.sodium || 0) + (entry.sodium || 0),
-            potassium: (acc.potassium || 0) + (entry.potassium || 0),
+              (Number(acc.monounsaturated_fat) || 0) +
+              (Number(entry.monounsaturated_fat) || 0),
+            trans_fat:
+              (Number(acc.trans_fat) || 0) + (Number(entry.trans_fat) || 0),
+            cholesterol:
+              (Number(acc.cholesterol) || 0) + (Number(entry.cholesterol) || 0),
+            sodium: (Number(acc.sodium) || 0) + (Number(entry.sodium) || 0),
+            potassium:
+              (Number(acc.potassium) || 0) + (Number(entry.potassium) || 0),
             dietary_fiber:
-              (acc.dietary_fiber || 0) + (entry.dietary_fiber || 0),
-            sugars: (acc.sugars || 0) + (entry.sugars || 0),
-            vitamin_a: (acc.vitamin_a || 0) + (entry.vitamin_a || 0),
-            vitamin_c: (acc.vitamin_c || 0) + (entry.vitamin_c || 0),
-            calcium: (acc.calcium || 0) + (entry.calcium || 0),
-            iron: (acc.iron || 0) + (entry.iron || 0),
-            glycemic_index: 'None', // GI is not aggregated in daily totals
+              (Number(acc.dietary_fiber) || 0) +
+              (Number(entry.dietary_fiber) || 0),
+            sugars: (Number(acc.sugars) || 0) + (Number(entry.sugars) || 0),
+            vitamin_a:
+              (Number(acc.vitamin_a) || 0) + (Number(entry.vitamin_a) || 0),
+            vitamin_c:
+              (Number(acc.vitamin_c) || 0) + (Number(entry.vitamin_c) || 0),
+            calcium: (Number(acc.calcium) || 0) + (Number(entry.calcium) || 0),
+            iron: (Number(acc.iron) || 0) + (Number(entry.iron) || 0),
+            glycemic_index: 'None',
             ...customNutrientsSum,
           };
         },
@@ -418,11 +427,13 @@ const ReportsTables = ({
                         {!entry.isTotal && (
                           <div>
                             <div className="font-medium">
-                              {entry.food_name || entry.foods?.name}
+                              {(entry.food_name as string) ||
+                                (entry.foods?.name as string)}
                             </div>
                             {(entry.brand_name || entry.foods?.brand) && (
                               <div className="text-sm text-gray-500">
-                                {entry.brand_name || entry.foods?.brand}
+                                {(entry.brand_name as string) ||
+                                  (entry.foods?.brand as string)}
                               </div>
                             )}
                           </div>
@@ -436,8 +447,8 @@ const ReportsTables = ({
                         if (nutrient === 'glycemic_index') {
                           const giValue = entry.isTotal
                             ? ''
-                            : entry.glycemic_index ||
-                              entry.foods?.glycemic_index ||
+                            : (entry.glycemic_index as string) ||
+                              (entry.foods?.glycemic_index as string) ||
                               'None';
                           return (
                             <TableCell key={nutrient}>{giValue}</TableCell>

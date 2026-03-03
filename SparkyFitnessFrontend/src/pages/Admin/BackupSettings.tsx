@@ -1,7 +1,6 @@
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
   AccordionItem,
@@ -21,7 +20,6 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 
 const BackupSettings: React.FC = () => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const { signOut } = useAuth();
   const { loggingLevel } = usePreferences();
   const { data: settings, isLoading } = useBackupSettings();
@@ -30,42 +28,6 @@ const BackupSettings: React.FC = () => {
   const { mutate: runManualBackup, isPending: isRunningBackup } =
     useTriggerManualBackup();
   const { mutate: restoreBackup, isPending: isRestoring } = useRestoreBackup();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleSave = (newSettings: any) => {
-    saveSettings(newSettings, {
-      onSuccess: () =>
-        toast({
-          title: t('success', 'Success'),
-          description: t('admin.backupSettings.backupSettingsSaved', 'Saved.'),
-        }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onError: (err: any) =>
-        toast({
-          title: t('error', 'Error'),
-          description: err.message,
-          variant: 'destructive',
-        }),
-    });
-  };
-
-  const handleManualBackup = () => {
-    runManualBackup(undefined, {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onSuccess: (res: any) =>
-        toast({
-          title: t('success', 'Success'),
-          description: res?.message || 'Backup done.',
-        }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onError: (err: any) =>
-        toast({
-          title: t('error', 'Error'),
-          description: err.message,
-          variant: 'destructive',
-        }),
-    });
-  };
 
   const handleRestore = (file: File) => {
     if (
@@ -82,19 +44,8 @@ const BackupSettings: React.FC = () => {
 
     restoreBackup(formData, {
       onSuccess: async () => {
-        toast({
-          title: t('success', 'Success'),
-          description: 'Restored. Logging out...',
-        });
         await signOut();
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onError: (err: any) =>
-        toast({
-          title: t('error', 'Error'),
-          description: err.message,
-          variant: 'destructive',
-        }),
     });
   };
 
@@ -119,8 +70,8 @@ const BackupSettings: React.FC = () => {
           ) : settings ? (
             <BackupSettingsForm
               initialSettings={settings}
-              onSave={handleSave}
-              onManualBackup={handleManualBackup}
+              onSave={saveSettings}
+              onManualBackup={runManualBackup}
               onRestore={handleRestore}
               isSaving={isSaving}
               isRunningBackup={isRunningBackup}

@@ -127,14 +127,12 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
     marginPercent: config.marginPercent,
     minRangeThreshold: config.minRangeThreshold,
     useZeroBaseline: true,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }) as any;
+  }) as [number, number];
   const trendDomain = calculateSmartYAxisDomain(trendData, 'avg', {
     marginPercent: config.marginPercent,
     minRangeThreshold: config.minRangeThreshold,
     useZeroBaseline: false,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  }) as any;
+  }) as [number, number];
 
   return (
     <div className="space-y-6">
@@ -221,16 +219,18 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                           }}
                           tickFormatter={(val) => {
                             if (val === null || val === undefined) return '';
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            const num = Number(val as any);
+                            const num = Number(
+                              Array.isArray(val) ? val[0] : val
+                            );
                             return Number.isNaN(num)
                               ? String(val)
                               : num.toFixed(2);
                           }}
                         />
                         <Tooltip
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          formatter={(value: any) => {
+                          formatter={(
+                            value: string | number | (string | number)[]
+                          ) => {
                             if (value === null || value === undefined)
                               return '';
                             const num = Number(value);
@@ -360,16 +360,19 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                           }}
                           tickFormatter={(val) => {
                             if (val === null || val === undefined) return '';
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            const num = Number(val as any);
+
+                            const num = Number(
+                              Array.isArray(val) ? val[0] : val
+                            );
                             return Number.isNaN(num)
                               ? String(val)
                               : num.toFixed(2);
                           }}
                         />
                         <Tooltip
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          formatter={(value: any) => {
+                          formatter={(
+                            value: string | number | (string | number)[]
+                          ) => {
                             if (value === null || value === undefined)
                               return '';
                             const num = Number(value);

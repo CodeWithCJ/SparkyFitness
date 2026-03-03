@@ -1,82 +1,11 @@
 import { apiCall } from '@/api/api';
+import {
+  RawUsdaNutrient,
+  UsdaFoodDetails,
+  UsdaFoodSearchItem,
+  UsdaNutrientMap,
+} from '@/types/exercises';
 
-interface UsdaFoodSearchItem {
-  fdcId: number;
-  description: string;
-  brandOwner?: string;
-  dataType: string;
-  foodCategory: string;
-  publicationDate: string;
-  foodNutrients: UsdaFoodNutrient[];
-  servingSize?: number;
-  servingSizeUnit?: string;
-}
-
-interface UsdaFoodNutrient {
-  nutrientId: number;
-  nutrientName: string;
-  nutrientNumber: string;
-  unitName: string;
-  value: number;
-}
-
-interface UsdaFoodDetails {
-  fdcId: number;
-  description: string;
-  brandOwner?: string;
-  servingSize?: number;
-  servingSizeUnit?: string;
-  calories: number;
-  protein: number;
-  fat: number;
-  carbohydrates: number;
-  sugars?: number;
-  fiber?: number;
-  sodium?: number;
-  cholesterol?: number;
-  saturatedFat?: number;
-  transFat?: number;
-  monounsaturatedFat?: number;
-  polyunsaturatedFat?: number;
-  potassium?: number;
-  vitaminA?: number;
-  vitaminC?: number;
-  calcium?: number;
-  iron?: number;
-}
-
-interface RawUsdaNutrient {
-  nutrient?: {
-    id?: number;
-    name?: string;
-    unitName?: string;
-  };
-  nutrientName?: string;
-  nutrientId?: number;
-  unitName?: string;
-  amount?: number;
-  value?: number;
-}
-
-interface NutrientMap {
-  calories?: number;
-  protein?: number;
-  fat?: number;
-  carbohydrates?: number;
-  sugars?: number;
-  fiber?: number;
-  sodium?: number;
-  cholesterol?: number;
-  saturatedFat?: number;
-  transFat?: number;
-  monounsaturatedFat?: number;
-  polyunsaturatedFat?: number;
-  potassium?: number;
-  vitaminA?: number;
-  vitaminC?: number;
-  calcium?: number;
-  iron?: number;
-}
 export const searchUsdaFoods = async (
   query: string,
   providerId: string,
@@ -107,7 +36,7 @@ export const getUsdaFoodDetails = async (
 
     if (!response) return null;
 
-    const nutrientMap: NutrientMap = {};
+    const nutrientMap: UsdaNutrientMap = {};
     if (response.foodNutrients) {
       response.foodNutrients.forEach((n: RawUsdaNutrient) => {
         // USDA returns various spellings, try to normalize or check multiple

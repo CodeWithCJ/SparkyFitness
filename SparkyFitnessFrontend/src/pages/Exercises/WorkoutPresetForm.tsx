@@ -57,6 +57,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Exercise } from '@/types/exercises';
+import { TFunction } from 'i18next';
 
 interface WorkoutPresetFormProps {
   isOpen: boolean;
@@ -78,8 +79,7 @@ const SortableSetItem = React.memo(
     onRemoveSet,
     weightUnit,
   }: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    t: any;
+    t: TFunction;
     set: WorkoutPresetSet;
     exerciseIndex: number;
     setIndex: number;
@@ -318,8 +318,7 @@ const SortableExerciseItem = React.memo(
     handleRemoveSet: (exerciseIndex: number, setIndex: number) => void;
     handleAddSet: (exerciseIndex: number) => void;
     weightUnit: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    t: any;
+    t: TFunction;
   }) => {
     const {
       attributes,
@@ -451,8 +450,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
       exerciseIndex: number,
       setIndex: number,
       field: keyof WorkoutPresetSet,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      value: any
+      value: string | number
     ) => {
       setExercises((prev) =>
         prev.map((exercise, eIndex) => {

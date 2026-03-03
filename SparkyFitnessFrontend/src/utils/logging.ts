@@ -1,68 +1,65 @@
-// Define logging levels with a numerical value for comparison
 const LOGGING_LEVELS = {
   DEBUG: 0,
   INFO: 1,
   WARN: 2,
   ERROR: 3,
   SILENT: 4,
-};
+} as const;
 
 type LogLevel = keyof typeof LOGGING_LEVELS;
-export type UserLoggingLevel = LogLevel; // Export for use with usePreferences
+export type UserLoggingLevel = LogLevel;
 
 export const log = (
   userLoggingLevel: UserLoggingLevel,
   level: LogLevel,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  message: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...optionalParams: any[]
+  message: unknown,
+  ...optionalParams: unknown[]
 ) => {
   const userLevelValue = LOGGING_LEVELS[userLoggingLevel];
   const messageLevelValue = LOGGING_LEVELS[level];
 
   if (messageLevelValue >= userLevelValue) {
-    // Use appropriate console method based on level
-    if (level === 'ERROR') {
-      console.error(`[${level}]`, message, ...optionalParams);
-    } else if (level === 'WARN') {
-      console.warn(`[${level}]`, message, ...optionalParams);
-    } else if (level === 'INFO') {
-      console.info(`[${level}]`, message, ...optionalParams);
-    } else if (level === 'DEBUG') {
-      console.debug(`[${level}]`, message, ...optionalParams);
-    } else {
-      console.log(`[${level}]`, message, ...optionalParams);
+    const prefix = `[${level}]`;
+
+    switch (level) {
+      case 'ERROR':
+        console.error(prefix, message, ...optionalParams);
+        break;
+      case 'WARN':
+        console.warn(prefix, message, ...optionalParams);
+        break;
+      case 'INFO':
+        console.info(prefix, message, ...optionalParams);
+        break;
+      case 'DEBUG':
+        console.debug(prefix, message, ...optionalParams);
+        break;
+      default:
+        console.log(prefix, message, ...optionalParams);
     }
   }
 };
 
-// Helper functions for each level, now accepting loggingLevel
 export const debug = (
   userLoggingLevel: UserLoggingLevel,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  message: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...optionalParams: any[]
+  message: unknown,
+  ...optionalParams: unknown[]
 ) => log(userLoggingLevel, 'DEBUG', message, ...optionalParams);
+
 export const info = (
   userLoggingLevel: UserLoggingLevel,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  message: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...optionalParams: any[]
+  message: unknown,
+  ...optionalParams: unknown[]
 ) => log(userLoggingLevel, 'INFO', message, ...optionalParams);
+
 export const warn = (
   userLoggingLevel: UserLoggingLevel,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  message: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...optionalParams: any[]
+  message: unknown,
+  ...optionalParams: unknown[]
 ) => log(userLoggingLevel, 'WARN', message, ...optionalParams);
+
 export const error = (
   userLoggingLevel: UserLoggingLevel,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  message: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...optionalParams: any[]
+  message: unknown,
+  ...optionalParams: unknown[]
 ) => log(userLoggingLevel, 'ERROR', message, ...optionalParams);

@@ -1,7 +1,6 @@
 import type React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useToast } from '@/hooks/use-toast';
 import { Search, Edit, Trash2, UserCog, KeyRound, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,6 @@ import {
 
 const UserManagement: React.FC = () => {
   const { t } = useTranslation();
-  const { toast } = useToast();
 
   // Local State
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,23 +93,8 @@ const UserManagement: React.FC = () => {
       { userId, fullName: newFullName },
       {
         onSuccess: () => {
-          toast({
-            title: t('success', 'Success'),
-            description: t(
-              'admin.userManagement.fullNameUpdated',
-              'Name updated.'
-            ),
-          });
           setEditingUserId(null);
           setEditedUser(null);
-        },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onError: (err: any) => {
-          toast({
-            title: t('error', 'Error'),
-            description: err.message,
-            variant: 'destructive',
-          });
         },
       }
     );
@@ -128,20 +111,7 @@ const UserManagement: React.FC = () => {
     )
       return;
 
-    deleteUser(userId, {
-      onSuccess: () =>
-        toast({
-          title: t('success', 'Success'),
-          description: t('admin.userManagement.deleteSuccess', 'User deleted.'),
-        }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onError: (err: any) =>
-        toast({
-          title: t('error', 'Error'),
-          description: err.message,
-          variant: 'destructive',
-        }),
-    });
+    deleteUser(userId);
   };
 
   const handleResetPassword = (userId: string, userName: string) => {
@@ -155,23 +125,7 @@ const UserManagement: React.FC = () => {
     )
       return;
 
-    resetPassword(userId, {
-      onSuccess: () =>
-        toast({
-          title: t('success', 'Success'),
-          description: t(
-            'admin.userManagement.resetPasswordInitiated',
-            'Password reset initiated.'
-          ),
-        }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onError: (err: any) =>
-        toast({
-          title: t('error', 'Error'),
-          description: err.message,
-          variant: 'destructive',
-        }),
-    });
+    resetPassword(userId);
   };
 
   const handleToggleUserStatus = (
@@ -190,26 +144,7 @@ const UserManagement: React.FC = () => {
     )
       return;
 
-    updateStatus(
-      { userId, isActive: newCheckedState },
-      {
-        onSuccess: () =>
-          toast({
-            title: t('success', 'Success'),
-            description: t(
-              'admin.userManagement.userStatusUpdated',
-              `User ${action}d.`
-            ),
-          }),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onError: (err: any) =>
-          toast({
-            title: t('error', 'Error'),
-            description: err.message,
-            variant: 'destructive',
-          }),
-      }
-    );
+    updateStatus({ userId, isActive: newCheckedState });
   };
 
   const handleToggleUserRole = (userId: string, currentRole: string) => {
@@ -224,26 +159,7 @@ const UserManagement: React.FC = () => {
     )
       return;
 
-    updateRole(
-      { userId, role: newRole },
-      {
-        onSuccess: () =>
-          toast({
-            title: t('success', 'Success'),
-            description: t(
-              'admin.userManagement.userRoleUpdated',
-              `Role updated to ${newRole}.`
-            ),
-          }),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onError: (err: any) =>
-          toast({
-            title: t('error', 'Error'),
-            description: err.message,
-            variant: 'destructive',
-          }),
-      }
-    );
+    updateRole({ userId, role: newRole });
   };
 
   const handleResetMfa = (userId: string, userName: string) => {
@@ -254,20 +170,7 @@ const UserManagement: React.FC = () => {
     )
       return;
 
-    resetMfa(userId, {
-      onSuccess: () =>
-        toast({
-          title: t('success', 'Success'),
-          description: t('admin.userManagement.resetMfaSuccess', 'MFA reset.'),
-        }),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onError: (err: any) =>
-        toast({
-          title: t('error', 'Error'),
-          description: err.message,
-          variant: 'destructive',
-        }),
-    });
+    resetMfa(userId);
   };
 
   const handleSortChange = (column: keyof User) => {
@@ -292,14 +195,16 @@ const UserManagement: React.FC = () => {
       const aValue = a[sortBy];
       const bValue = b[sortBy];
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const compare = (valA: any, valB: any) => {
+      const compare = (valA: string | boolean, valB: string | boolean) => {
+        if (sortBy.includes('_at'))
+          return (
+            new Date(valA as string).getTime() -
+            new Date(valB as string).getTime()
+          );
         if (typeof valA === 'string' && typeof valB === 'string')
           return valA.localeCompare(valB);
         if (typeof valA === 'boolean' && typeof valB === 'boolean')
           return valA === valB ? 0 : valA ? -1 : 1;
-        if (sortBy.includes('_at'))
-          return new Date(valA).getTime() - new Date(valB).getTime();
         return String(valA).localeCompare(String(valB));
       };
 
@@ -541,8 +446,21 @@ const UserManagement: React.FC = () => {
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const SortableHead = ({ label, col, currentSort, sortOrder, onSort }: any) => (
+interface SortableHeadProps {
+  label: string;
+  col: string;
+  currentSort: string;
+  sortOrder: 'asc' | 'desc';
+  onSort: (col: string) => void;
+}
+
+const SortableHead = ({
+  label,
+  col,
+  currentSort,
+  sortOrder,
+  onSort,
+}: SortableHeadProps) => (
   <TableHead
     className="cursor-pointer select-none"
     onClick={(e) => {
@@ -554,8 +472,25 @@ const SortableHead = ({ label, col, currentSort, sortOrder, onSort }: any) => (
   </TableHead>
 );
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const ActionButton = ({ icon, onClick, tooltip, variant = 'outline' }: any) => (
+interface ActionButtonProps {
+  icon: ReactNode;
+  onClick: () => void;
+  tooltip: string;
+  variant?:
+    | 'default'
+    | 'destructive'
+    | 'outline'
+    | 'secondary'
+    | 'ghost'
+    | 'link';
+}
+
+const ActionButton = ({
+  icon,
+  onClick,
+  tooltip,
+  variant = 'outline',
+}: ActionButtonProps) => (
   <TooltipProvider>
     <Tooltip>
       <TooltipTrigger asChild>

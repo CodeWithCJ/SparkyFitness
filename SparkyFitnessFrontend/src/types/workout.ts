@@ -36,8 +36,7 @@ export interface WorkoutPresetExercise {
   exercise_id: string;
   image_url?: string;
   exercise_name: string; // Populated from backend join
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exercise: any; // Full exercise object
+  exercise: Exercise; // Full exercise object
   sets: WorkoutPresetSet[];
 }
 

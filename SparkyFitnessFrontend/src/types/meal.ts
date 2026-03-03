@@ -161,8 +161,7 @@ export interface MealTotals {
   iron: number;
   calcium: number;
   custom_nutrients?: Record<string, number>; // Add custom_nutrients support
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any; // Allow custom nutrients
+  [key: string]: number | string | Record<string, number> | null | undefined;
 }
 
 export type MealFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';

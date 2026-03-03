@@ -15,6 +15,7 @@ import {
   CustomMeasurement,
 } from '@/types/checkin';
 import { DailyExerciseEntry, DailyFoodEntry } from '@/types/reports';
+import { FoodEntry } from '@/types/food';
 
 interface StressDataPoint {
   time: string;
@@ -27,10 +28,10 @@ export const calculateTotalTonnage = (
     return (
       totalTonnage +
       entry.sets.reduce((entryTonnage, set) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const weight = parseFloat(set.weight as any) || 0;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const reps = parseInt(set.reps as any) || 0;
+        const weight =
+          typeof set.weight === 'string' ? parseFloat(set.weight) : set.weight;
+        const reps =
+          typeof set.reps === 'string' ? parseInt(set.reps, 10) : set.reps;
         return entryTonnage + weight * reps;
       }, 0)
     );
@@ -347,9 +348,8 @@ export const exportFoodDiary = async ({
       return entries.reduce(
         (total, entry) => {
           const calculatedNutrition = calculateFoodEntryNutrition(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            entry as any
-          ); // Cast to any for now
+            entry as unknown as FoodEntry
+          );
 
           const customNutrientTotals = customNutrients.reduce(
             (acc, nutrient) => {
@@ -426,9 +426,8 @@ export const exportFoodDiary = async ({
         // Add individual entries
         entries.forEach((entry) => {
           const calculatedNutrition = calculateFoodEntryNutrition(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            entry as any
-          ); // Cast to any for now
+            entry as unknown as FoodEntry
+          );
 
           csvRows.push([
             formatDateInUserTimezone(entry.entry_date, 'MMM dd, yyyy'), // Format date for display
@@ -730,10 +729,8 @@ export const exportBodyMeasurements = async ({
           measurement.waist ||
           measurement.hips ||
           measurement.steps ||
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (measurement as any).height ||
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (measurement as any).body_fat_percentage
+          measurement.height ||
+          measurement.body_fat_percentage
       )
       .map((measurement) => [
         formatDateInUserTimezone(measurement.entry_date, 'MMM dd, yyyy'), // Format date for display
@@ -742,15 +739,9 @@ export const exportBodyMeasurements = async ({
         measurement.waist ? measurement.waist.toFixed(1) : '',
         measurement.hips ? measurement.hips.toFixed(1) : '',
         measurement.steps || '',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (measurement as any).height
-          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (measurement as any).height.toFixed(1)
-          : '',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (measurement as any).body_fat_percentage
-          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (measurement as any).body_fat_percentage.toFixed(1)
+        measurement.height ? measurement.height.toFixed(1) : '',
+        measurement.body_fat_percentage
+          ? measurement.body_fat_percentage.toFixed(1)
           : '',
       ]);
 

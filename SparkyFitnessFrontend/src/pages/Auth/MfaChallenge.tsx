@@ -17,8 +17,9 @@ import { authClient } from '@/lib/auth-client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { getErrorMessage } from '@/utils/api';
+import { BetterAuthUser } from '@/types/auth';
 
-interface MfaChallengeProps {
+export interface MfaChallengeProps {
   userId: string;
   email: string;
   mfaTotpEnabled?: boolean;
@@ -71,20 +72,22 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
         code: totpCode,
       });
 
-      if (data?.user) {
+      if (error) {
+        throw error;
+      }
+
+      const user = data?.user as unknown as BetterAuthUser;
+      if (user) {
         signIn(
-          data.user.id,
-          data.user.id,
-          data.user.email,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (data.user as any).role || 'user',
+          user.id,
+          user.id,
+          user.email,
+          user.role || 'user',
           'password',
           true,
-          data.user.name
+          user.name
         );
         onMfaSuccess();
-      } else if (error) {
-        throw error;
       }
     } catch (err: unknown) {
       const message = getErrorMessage(err);
@@ -132,20 +135,23 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
         code: emailOtpCode,
       });
 
-      if (data?.user) {
+      if (error) {
+        throw error;
+      }
+
+      const user = data?.user as unknown as BetterAuthUser;
+
+      if (user) {
         signIn(
-          data.user.id,
-          data.user.id,
-          data.user.email,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (data.user as any).role || 'user',
+          user.id,
+          user.id,
+          user.email,
+          user.role || 'user',
           'password',
           true,
-          data.user.name
+          user.name
         );
         onMfaSuccess();
-      } else if (error) {
-        throw error;
       }
     } catch (err: unknown) {
       const message = getErrorMessage(err);
@@ -166,20 +172,23 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
         code: recoveryCode,
       });
 
-      if (data?.user) {
+      if (error) {
+        throw error;
+      }
+
+      const user = data?.user as unknown as BetterAuthUser;
+
+      if (user) {
         signIn(
-          data.user.id,
-          data.user.id,
-          data.user.email,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (data.user as any).role || 'user',
+          user.id,
+          user.id,
+          user.email,
+          user.role || 'user',
           'password',
           true,
-          data.user.name
+          user.name
         );
         onMfaSuccess();
-      } else if (error) {
-        throw error;
       }
     } catch (err: unknown) {
       const message = getErrorMessage(err);

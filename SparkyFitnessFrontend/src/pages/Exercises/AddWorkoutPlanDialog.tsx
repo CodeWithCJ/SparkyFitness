@@ -64,6 +64,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug } from '@/utils/logging';
 import { useWorkoutPresets } from '@/hooks/Exercises/useWorkoutPresets';
 import { Exercise } from '@/types/exercises';
+import { TFunction } from 'i18next';
 
 interface AddWorkoutPlanDialogProps {
   isOpen: boolean;
@@ -333,8 +334,7 @@ const SortableAssignmentItem = React.memo(
     handleRemoveSetInPlan: (assignmentIndex: number, setIndex: number) => void;
     handleAddSetInPlan: (assignmentIndex: number) => void;
     weightUnit: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    t: any;
+    t: TFunction;
   }) => {
     const {
       attributes,
@@ -562,8 +562,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
       assignmentIndex: number,
       setIndex: number,
       field: keyof WorkoutPresetSet,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      value: any
+      value: string | number
     ) => {
       debug(
         loggingLevel,

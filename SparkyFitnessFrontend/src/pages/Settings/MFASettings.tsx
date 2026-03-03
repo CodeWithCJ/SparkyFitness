@@ -16,6 +16,7 @@ import {
   useToggleEmailMfaMutation,
 } from '@/hooks/Settings/useProfile';
 import { getErrorMessage } from '@/utils/api';
+import { BetterAuthUser } from '@/types/auth';
 
 const MFASettings = () => {
   const { t } = useTranslation();
@@ -45,10 +46,8 @@ const MFASettings = () => {
 
   useEffect(() => {
     if (session?.user) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setTotpEnabled(!!(session.user as any).mfaTotpEnabled);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setEmailMfaEnabled(!!(session.user as any).mfaEmailEnabled);
+      setTotpEnabled(!!(session.user as BetterAuthUser).mfaTotpEnabled);
+      setEmailMfaEnabled(!!(session.user as BetterAuthUser).mfaEmailEnabled);
     }
   }, [session]);
 

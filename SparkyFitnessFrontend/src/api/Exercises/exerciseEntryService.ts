@@ -4,40 +4,9 @@ import type { WorkoutPresetSet } from '@/types/workout';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
 import type { ExerciseEntry } from '@/types/diary';
-import type { GroupedExerciseEntry } from '@/types/exercises';
+import type { GroupedExerciseEntry, LapDTO } from '@/types/exercises';
 import type { ExerciseProgressData } from '@/types/reports';
-
-interface RawActivityDetail {
-  id?: string;
-  detail_type: string;
-  detail_data: unknown;
-  provider_name?: string;
-}
-
-interface RawExerciseSnapshot {
-  equipment?: string;
-  primary_muscles?: string;
-  secondary_muscles?: string;
-  instructions?: string;
-  images?: string;
-  [key: string]: unknown;
-}
-
-interface RawExercise {
-  sets?: string | unknown[];
-  exercise_snapshot?: RawExerciseSnapshot;
-  activity_details?: RawActivityDetail[];
-  [key: string]: unknown;
-}
-
-interface RawGroupedEntry {
-  type?: string;
-  exercises?: RawExercise[];
-  sets?: string | unknown[];
-  exercise_snapshot?: RawExerciseSnapshot;
-  activity_details?: RawActivityDetail[];
-  [key: string]: unknown;
-}
+import { ActivityDetailMetric } from '@/pages/Reports/ActivityReportVisualizer';
 
 export const getExerciseEntriesForDate = async (
   date: string
@@ -83,7 +52,7 @@ export const fetchExerciseEntries = async (
                     value:
                       typeof detail.detail_data === 'object'
                         ? JSON.stringify(detail.detail_data, null, 2)
-                        : detail.detail_data,
+                        : String(detail.detail_data),
                     provider_name: detail.provider_name,
                     detail_type: detail.detail_type,
                   }))
@@ -114,7 +83,7 @@ export const fetchExerciseEntries = async (
               value:
                 typeof detail.detail_data === 'object'
                   ? JSON.stringify(detail.detail_data, null, 2)
-                  : detail.detail_data,
+                  : String(detail.detail_data),
               provider_name: detail.provider_name,
               detail_type: detail.detail_type,
             }))
@@ -327,7 +296,7 @@ export interface ActivityDetailsResponse {
   activity?: {
     details?: {
       metricDescriptors?: unknown[];
-      activityDetailMetrics?: unknown[];
+      activityDetailMetrics?: ActivityDetailMetric[];
       geoPolylineDTO?: {
         polyline: { lat: number; lon: number }[];
       };
@@ -335,7 +304,7 @@ export interface ActivityDetailsResponse {
     };
     hr_in_timezones?: unknown[];
     splits?: {
-      lapDTOs: unknown[];
+      lapDTOs: LapDTO[];
       [key: string]: unknown;
     };
     activity?: {

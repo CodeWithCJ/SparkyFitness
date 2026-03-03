@@ -25,35 +25,64 @@ export const useUsers = (
 
 export const useUpdateUserFullName = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: ({ userId, fullName }: { userId: string; fullName: string }) =>
       userManagementService.updateUserFullName(userId, fullName),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
+    meta: {
+      errorMessage: t('error', 'Error'),
+      successMessage: t(
+        'admin.userManagement.fullNameUpdated',
+        'Name updated.'
+      ),
+    },
   });
 };
 
 export const useDeleteUser = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: (userId: string) => userManagementService.deleteUser(userId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
+    meta: {
+      errorMessage: t('error', 'Error'),
+      successMessage: t('admin.userManagement.deleteSuccess', 'User deleted.'),
+    },
   });
 };
 
 // Mutation: Passwort zurücksetzen
 export const useResetUserPassword = () => {
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: (userId: string) =>
       userManagementService.resetUserPassword(userId),
+    meta: {
+      errorMessage: t('error', 'Error'),
+      successMessage: t(
+        'admin.userManagement.resetPasswordInitiated',
+        'Password reset initiated.'
+      ),
+    },
   });
 };
 
 export const useUpdateUserStatus = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
       userManagementService.updateUserStatus(userId, isActive),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
+    meta: {
+      errorMessage: t('error', 'Error'),
+      successMessage: t(
+        'admin.userManagement.userStatusUpdated',
+        'User status updated.'
+      ),
+    },
   });
 };
 

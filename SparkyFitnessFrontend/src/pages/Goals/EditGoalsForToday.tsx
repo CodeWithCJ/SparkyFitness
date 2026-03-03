@@ -226,7 +226,7 @@ const EditGoalsForm = ({
               value={
                 macroInputType === 'grams'
                   ? (goals[m] ?? 0).toFixed(1)
-                  : (
+                  : Number(
                       goals[`${m}_percentage` as keyof ExpandedGoals] ?? 0
                     ).toFixed(1)
               }

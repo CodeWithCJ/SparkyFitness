@@ -17,7 +17,11 @@ import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { info, error } from '@/utils/logging';
 import { parseISO } from 'date-fns';
-import { calculateSmartYAxisDomain, getChartConfig } from '@/utils/chartUtils';
+import {
+  calculateSmartYAxisDomain,
+  ChartDataPoint,
+  getChartConfig,
+} from '@/utils/chartUtils';
 
 interface MeasurementData {
   entry_date: string; // Changed from 'date' to 'entry_date'
@@ -59,7 +63,7 @@ const MeasurementChartsGrid = ({
   // Helper function to get smart Y-axis domain for measurements
   const getYAxisDomain = (data: MeasurementData[], dataKey: string) => {
     const config = getChartConfig(dataKey);
-    return calculateSmartYAxisDomain(data, dataKey, {
+    return calculateSmartYAxisDomain(data as ChartDataPoint[], dataKey, {
       marginPercent: config.marginPercent,
       minRangeThreshold: config.minRangeThreshold,
       useZeroBaseline: config.useZeroBaseline, // Pass useZeroBaseline from config

@@ -14,35 +14,68 @@ import {
   FaChartLine,
 } from 'react-icons/fa';
 
+interface WorkoutEndCondition {
+  conditionTypeKey?: string;
+}
+
+interface WorkoutWeightUnit {
+  unitKey?: string;
+}
+
+interface WorkoutStep {
+  type?: string;
+  workoutSteps?: WorkoutStep[];
+  weightValue?: number;
+  endCondition?: WorkoutEndCondition;
+  endConditionValue?: number;
+  exerciseName?: string;
+  category?: string;
+  weightUnit?: WorkoutWeightUnit;
+}
+
+interface WorkoutSegment {
+  segmentOrder?: number;
+  workoutSteps?: WorkoutStep[];
+}
+
 interface WorkoutReportVisualizerProps {
   workoutData: WorkoutData;
 }
+
+interface SetPerformanceData {
+  setName: string;
+  avgWeight: number;
+  avgReps: number;
+}
+
+interface PrProgressionData {
+  date: string;
+  oneRM: number;
+  weight: number;
+  reps: number;
+}
+
+type AllowedWeightUnit = 'kg' | 'lbs';
 
 const WorkoutReportVisualizer = ({
   workoutData,
 }: WorkoutReportVisualizerProps) => {
   const { t } = useTranslation();
-  const { weightUnit, convertWeight } = usePreferences(); // Destructure convertWeight
+  const { weightUnit, convertWeight } = usePreferences();
 
   if (!workoutData) return null;
 
   const { description, sportType, estimatedDurationInSecs, workoutSegments } =
     workoutData;
 
-  // Helper function to flatten workout steps, handling nested RepeatGroupDTOs
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getAllExecutableSteps = (segments: any[]) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const executableSteps: any[] = [];
+  const getAllExecutableSteps = (segments: WorkoutSegment[]): WorkoutStep[] => {
+    const executableSteps: WorkoutStep[] = [];
     segments?.forEach((segment) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      segment.workoutSteps?.forEach((step: any) => {
+      segment.workoutSteps?.forEach((step: WorkoutStep) => {
         if (step.type === 'ExecutableStepDTO') {
           executableSteps.push(step);
         } else if (step.type === 'RepeatGroupDTO' && step.workoutSteps) {
-          // Recursively get executable steps from nested repeat groups
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          step.workoutSteps.forEach((nestedStep: any) => {
+          step.workoutSteps.forEach((nestedStep: WorkoutStep) => {
             if (nestedStep.type === 'ExecutableStepDTO') {
               executableSteps.push(nestedStep);
             }
@@ -53,7 +86,9 @@ const WorkoutReportVisualizer = ({
     return executableSteps;
   };
 
-  const allExecutableSteps = getAllExecutableSteps(workoutSegments || []);
+  const allExecutableSteps = getAllExecutableSteps(
+    (workoutSegments as unknown as WorkoutSegment[]) || []
+  );
 
   const totalVolume =
     allExecutableSteps.reduce((total, step) => {
@@ -73,13 +108,9 @@ const WorkoutReportVisualizer = ({
       return total;
     }, 0) || 0;
 
-  // Process data for SetPerformanceAnalysisChart
-  const setPerformanceData: Record<
-    string,
-    { setName: string; avgWeight: number; avgReps: number }[]
-  > = {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  allExecutableSteps.forEach((step: any, stepIndex: number) => {
+  const setPerformanceData: Record<string, SetPerformanceData[]> = {};
+
+  allExecutableSteps.forEach((step: WorkoutStep, stepIndex: number) => {
     if (step.exerciseName) {
       const exerciseName = step.exerciseName;
       const setName = `Set ${stepIndex + 1}`;
@@ -97,12 +128,9 @@ const WorkoutReportVisualizer = ({
     }
   });
 
-  // Process data for PrProgressionChart (simplified for a single workout)
-  const prProgressionData: Record<
-    string,
-    { date: string; oneRM: number; weight: number; reps: number }[]
-  > = {};
+  const prProgressionData: Record<string, PrProgressionData[]> = {};
   const today = new Date().toISOString().split('T')[0];
+
   allExecutableSteps.forEach((step) => {
     if (step.exerciseName) {
       const exerciseName = step.exerciseName;
@@ -134,8 +162,7 @@ const WorkoutReportVisualizer = ({
               <CardTitle className="text-sm font-medium">
                 {t('workoutReport.sport', 'Sport')}
               </CardTitle>
-              <FaDumbbell className="h-5 w-5 text-blue-500" />{' '}
-              {/* Icon for Sport */}
+              <FaDumbbell className="h-5 w-5 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -148,8 +175,7 @@ const WorkoutReportVisualizer = ({
               <CardTitle className="text-sm font-medium">
                 {t('workoutReport.estDuration', 'Est. Duration')}
               </CardTitle>
-              <FaClock className="h-5 w-5 text-green-500" />{' '}
-              {/* Icon for Duration */}
+              <FaClock className="h-5 w-5 text-green-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -164,14 +190,12 @@ const WorkoutReportVisualizer = ({
               <CardTitle className="text-sm font-medium">
                 {t('workoutReport.totalVolume', 'Total Volume')}
               </CardTitle>
-              <FaWeightHanging className="h-5 w-5 text-purple-500" />{' '}
-              {/* Icon for Total Volume */}
+              <FaWeightHanging className="h-5 w-5 text-purple-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {formatNumber(Math.round(totalVolume))}
-              </div>{' '}
-              {/* Rounded to whole number */}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -179,14 +203,12 @@ const WorkoutReportVisualizer = ({
               <CardTitle className="text-sm font-medium">
                 {t('workoutReport.totalReps', 'Total Reps')}
               </CardTitle>
-              <FaRedo className="h-5 w-5 text-orange-500" />{' '}
-              {/* Icon for Total Reps */}
+              <FaRedo className="h-5 w-5 text-orange-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {formatNumber(Math.round(totalReps))}
-              </div>{' '}
-              {/* Rounded to whole number */}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -232,14 +254,12 @@ const WorkoutReportVisualizer = ({
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    {t('workoutReport.weight', 'Weight')} ({weightUnit}){' '}
-                    {/* Moved unit to header */}
+                    {t('workoutReport.weight', 'Weight')} ({weightUnit})
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {allExecutableSteps.map((step: any, index: number) => (
+                {allExecutableSteps.map((step: WorkoutStep, index: number) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {index + 1}
@@ -255,9 +275,19 @@ const WorkoutReportVisualizer = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {step.weightValue
-                        ? `${formatNumber(Math.round(convertWeight(step.weightValue, step.weightUnit?.unitKey === 'pound' ? 'lbs' : step.weightUnit?.unitKey, weightUnit)))}`
-                        : t('common.notApplicable', 'N/A')}{' '}
-                      {/* Converted and rounded */}
+                        ? `${formatNumber(
+                            Math.round(
+                              convertWeight(
+                                step.weightValue,
+                                (step.weightUnit?.unitKey === 'pound'
+                                  ? 'lbs'
+                                  : step.weightUnit?.unitKey ||
+                                    'kg') as AllowedWeightUnit,
+                                weightUnit as AllowedWeightUnit
+                              )
+                            )
+                          )}`
+                        : t('common.notApplicable', 'N/A')}
                     </td>
                   </tr>
                 ))}
@@ -281,8 +311,12 @@ const WorkoutReportVisualizer = ({
               setPerformanceData={data.map((d) => ({
                 setName: d.setName,
                 avgWeight: Math.round(
-                  convertWeight(d.avgWeight, 'lbs', weightUnit)
-                ), // Converted and rounded
+                  convertWeight(
+                    d.avgWeight,
+                    'lbs',
+                    weightUnit as AllowedWeightUnit
+                  )
+                ),
                 avgReps: d.avgReps,
               }))}
               exerciseName={exerciseName}
@@ -314,11 +348,16 @@ const WorkoutReportVisualizer = ({
                       <FaTrophy className="h-5 w-5 text-yellow-500 mb-1" />
                       <span className="text-lg font-bold">
                         {formatNumber(
-                          Math.round(convertWeight(pr.oneRM, 'lbs', weightUnit))
+                          Math.round(
+                            convertWeight(
+                              pr.oneRM,
+                              'lbs',
+                              weightUnit as AllowedWeightUnit
+                            )
+                          )
                         )}{' '}
                         {weightUnit}
-                      </span>{' '}
-                      {/* Converted and rounded */}
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         {t('workoutReport.estimated1RM', 'Estimated 1RM')}
                       </span>
@@ -328,12 +367,15 @@ const WorkoutReportVisualizer = ({
                       <span className="text-lg font-bold">
                         {formatNumber(
                           Math.round(
-                            convertWeight(pr.weight, 'lbs', weightUnit)
+                            convertWeight(
+                              pr.weight,
+                              'lbs',
+                              weightUnit as AllowedWeightUnit
+                            )
                           )
                         )}{' '}
                         {weightUnit}
-                      </span>{' '}
-                      {/* Converted and rounded */}
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         {t('workoutReport.maxWeight', 'Max Weight')}
                       </span>
@@ -343,8 +385,7 @@ const WorkoutReportVisualizer = ({
                       <span className="text-lg font-bold">
                         {formatNumber(Math.round(pr.reps))}{' '}
                         {t('workoutReport.maxReps', 'reps')}
-                      </span>{' '}
-                      {/* Rounded */}
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         {t('workoutReport.maxReps', 'Max Reps')}
                       </span>

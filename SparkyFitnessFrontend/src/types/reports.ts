@@ -1,4 +1,5 @@
 import { Exercise } from './exercises';
+import { Food, FoodVariant } from './food';
 
 export interface NutritionData {
   date: string;
@@ -27,54 +28,19 @@ export interface DailyFoodEntry {
   meal_type: string;
   quantity: number;
   unit: string;
-  foods?: {
-    name: string;
-    brand?: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    saturated_fat?: number;
-    polyunsaturated_fat?: number;
-    monounsaturated_fat?: number;
-    trans_fat?: number;
-    cholesterol?: number;
-    sodium?: number;
-    potassium?: number;
-    dietary_fiber?: number;
-    sugars?: number;
-    vitamin_a?: number;
-    vitamin_c?: number;
-    calcium?: number;
-    iron?: number;
-    serving_size: number;
-    glycemic_index?: string;
-  };
-  food_variants?: {
-    id: string;
-    serving_size: number;
-    serving_unit: string;
-    calories?: number;
-    protein?: number;
-    carbs?: number;
-    fat?: number;
-    saturated_fat?: number;
-    polyunsaturated_fat?: number;
-    monounsaturated_fat?: number;
-    trans_fat?: number;
-    cholesterol?: number;
-    sodium?: number;
-    potassium?: number;
-    dietary_fiber?: number;
-    sugars?: number;
-    vitamin_a?: number;
-    vitamin_c?: number;
-    calcium?: number;
-    iron?: number;
-  };
+  foods?: Food;
+  food_variants?: FoodVariant;
   custom_nutrients?: Record<string, number>; // Add custom_nutrients
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any; // Add index signature to allow for custom nutrient properties
+  isTotal?: boolean;
+  [key: string]:
+    | string
+    | number
+    | Record<string, number>
+    | boolean
+    | Food
+    | FoodVariant
+    | null
+    | undefined;
 }
 
 export interface DailyExerciseEntry {

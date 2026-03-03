@@ -32,7 +32,7 @@ import {
 import { useImportExerciseHistoryMutation } from '@/hooks/Exercises/useExercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { HistoryImportEntry } from '@/types/exercises';
-import { isObject } from '@/utils/api';
+import { getErrorMessage, isObject } from '@/utils/api';
 
 // Define the shape of a single row from the CSV
 interface CsvRow {
@@ -205,15 +205,15 @@ const ExerciseEntryHistoryImportCSV = ({
         groupAndValidateData(rows);
         setLoading(false);
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      error: (error: any) => {
+      error: (error: unknown) => {
+        const message = getErrorMessage(error);
         console.error('CSV parsing error:', error);
         toast({
           title: t('common.error', 'Error'),
           description: t(
             'exercise.importHistoryCSV.parseError',
             'Failed to parse CSV: {{error}}',
-            { error: error.message }
+            { error: message }
           ),
           variant: 'destructive',
         });

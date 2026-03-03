@@ -131,11 +131,7 @@ const WaterContainerManager: React.FC = () => {
               <div>
                 <p className="font-semibold">
                   {c.name} -{' '}
-                  {convertMlToSelectedUnit(
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    parseFloat(c.volume as any),
-                    c.unit
-                  ).toFixed(2)}{' '}
+                  {convertMlToSelectedUnit(c.volume, c.unit).toFixed(2)}{' '}
                   {c.unit} ({c.servings_per_container} servings)
                 </p>
                 {c.is_primary && (

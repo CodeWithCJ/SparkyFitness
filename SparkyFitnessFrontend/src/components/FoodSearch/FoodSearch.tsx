@@ -49,6 +49,7 @@ import {
   convertNutritionixToFood,
   convertOpenFoodFactsToFood,
   convertUsdaToFood,
+  mapUsdaItemToDetails,
 } from '@/utils/foodSearch.ts';
 import FoodResultCard from './FoodResultCard.tsx';
 import { BarcodeScannerDialog } from './BarcodeScannerDialog.tsx';
@@ -116,7 +117,7 @@ export interface NutritionixItem {
   glycemic_index?: GlycemicIndex;
 }
 
-interface UsdaItem {
+export interface UsdaItem {
   fdcId: number;
   description: string;
   brandOwner?: string;
@@ -157,6 +158,7 @@ const EnhancedFoodSearch = ({
     convertEnergy,
     getEnergyUnitString,
     autoScaleOpenFoodFactsImports,
+    loggingLevel,
   } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
@@ -354,7 +356,7 @@ const EnhancedFoodSearch = ({
         data.map((item) => ({
           provider_type: 'fatsecret',
           raw: item,
-          food: convertFatSecretToFood(item, item),
+          food: convertFatSecretToFood(item),
         }))
       );
     },
@@ -366,7 +368,10 @@ const EnhancedFoodSearch = ({
         data.map((item) => ({
           provider_type: 'usda',
           raw: item,
-          food: convertUsdaToFood(item, item),
+          food: convertUsdaToFood(
+            item,
+            mapUsdaItemToDetails(item, loggingLevel)
+          ),
         }))
       );
     },

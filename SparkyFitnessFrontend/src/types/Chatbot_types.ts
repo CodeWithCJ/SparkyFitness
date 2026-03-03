@@ -26,8 +26,7 @@ export interface CoachResponse {
     | 'chat'
     | 'water_added';
   response: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  metadata?: any;
+  metadata?: MessageMetadata;
   entryDate?: string; // Optional date for the entry (YYYY-MM-DD)
 }
 
@@ -92,6 +91,7 @@ export interface MessageMetadata {
   entryDate?: string;
   imageUrl?: string;
   is_fallback?: boolean;
+  foodName?: string;
 }
 
 export interface Message {
