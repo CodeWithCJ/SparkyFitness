@@ -194,7 +194,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
         width: { ideal: 1280 }, // Lowering ideal might help mobile performance/compatibility
         frameRate: { ideal: 30 },
         focusMode: { ideal: 'continuous' },
-      }, // Cast to allow custom properties
+      },
     };
 
     const start = async () => {

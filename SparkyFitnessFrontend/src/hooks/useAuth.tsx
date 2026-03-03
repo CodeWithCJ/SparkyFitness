@@ -57,7 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [isSyncing, setIsSyncing] = useState(true); // Track initial hydration
   const navigate = useNavigate();
-  const prevSessionRef = React.useRef(null);
+  const prevSessionRef = React.useRef<typeof session>(null);
 
   // Only show global loading during initial hydration (isSyncing).
   // Ignoring sessionLoading avoids unmounting components (like Auth/MFA) during background re-fetches.
