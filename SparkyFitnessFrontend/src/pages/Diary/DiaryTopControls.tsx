@@ -12,15 +12,6 @@ import EditGoalsForToday from '@/pages/Goals/EditGoalsForToday';
 import { useMemo } from 'react';
 import { DEFAULT_GOALS } from '@/constants/goals';
 
-interface Goals {
-  calories: number; // Stored internally as kcal
-  protein: number;
-  carbs: number;
-  fat: number;
-  dietary_fiber: number;
-  [key: string]: number; // Allow custom nutrients
-}
-
 interface DayTotals {
   calories: number; // Stored internally as kcal
   protein: number;
@@ -47,6 +38,7 @@ import {
   getNutrientMetadata,
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
+import { Goals } from '@/types/diary';
 
 const DiaryTopControls = ({
   selectedDate,

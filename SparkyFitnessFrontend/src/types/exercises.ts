@@ -39,6 +39,7 @@ export interface GroupedExerciseEntry {
   description?: string;
   // Array of individual exercise entries within this preset
   exercises?: ExerciseEntry[]; // This will hold the individual exercise entries
+  activity_details?: ActivityDetailKeyValuePair[];
 }
 
 export interface ExerciseEntry {

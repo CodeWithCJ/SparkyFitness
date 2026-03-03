@@ -1,8 +1,7 @@
 import { debug, error } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let cachedSchema: any = null;
+let cachedSchema: unknown = null;
 
 const GITHUB_RAW_BASE_URL =
   'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main';

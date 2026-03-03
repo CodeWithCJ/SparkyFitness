@@ -6,19 +6,15 @@ export const getCategories = async (): Promise<CustomCategory[]> => {
     method: 'GET',
     suppress404Toast: true,
   });
-  return (
-    response
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((cat: any) => {
-        const id = cat && cat.id ? String(cat.id) : '';
-        if (!id) {
-          return false; // Filter out categories without a valid ID
-        }
-        return true;
-      })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((cat: any) => ({ ...cat, id: String(cat.id) }))
-  ); // Ensure ID is string for valid categories
+  return response
+    .filter((cat: CustomCategory) => {
+      const id = cat && cat.id ? String(cat.id) : '';
+      if (!id) {
+        return false; // Filter out categories without a valid ID
+      }
+      return true;
+    })
+    .map((cat: CustomCategory) => ({ ...cat, id: String(cat.id) })); // Ensure ID is string for valid categories
 };
 
 export const addCategory = async (categoryData: {

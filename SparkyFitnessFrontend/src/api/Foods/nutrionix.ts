@@ -1,6 +1,27 @@
 import { toast } from '@/hooks/use-toast';
 import { apiCall } from '@/api/api';
 
+interface NutritionixFood {
+  food_name: string;
+  brand_name?: string | null;
+  nf_calories: number;
+  nf_protein: number;
+  nf_total_carbohydrate: number;
+  nf_total_fat: number;
+  nf_saturated_fat: number;
+  nf_cholesterol: number;
+  nf_sodium: number;
+  nf_potassium: number;
+  nf_dietary_fiber: number;
+  nf_sugars: number;
+  serving_qty: number;
+  serving_unit: string;
+}
+
+interface NutritionixResponse {
+  foods?: NutritionixFood[];
+}
+
 // Function to fetch food data provider details from your backend
 const fetchFoodDataProvider = async (providerId: string) => {
   try {
@@ -138,8 +159,7 @@ export const getNutritionixNutrients = async (
   };
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data: any = await apiCall(
+    const data: NutritionixResponse = await apiCall(
       `${NUTRITIONIX_API_BASE_URL}/natural/nutrients`,
       {
         method: 'POST',
@@ -213,13 +233,15 @@ export const getNutritionixBrandedNutrients = async (
   };
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data: any = await apiCall(`${NUTRITIONIX_API_BASE_URL}/search/item`, {
-      method: 'GET',
-      headers,
-      params: { nix_item_id: nixItemId },
-      externalApi: true,
-    });
+    const data: NutritionixResponse = await apiCall(
+      `${NUTRITIONIX_API_BASE_URL}/search/item`,
+      {
+        method: 'GET',
+        headers,
+        params: { nix_item_id: nixItemId },
+        externalApi: true,
+      }
+    );
     if (data && data.foods && data.foods.length > 0) {
       const food = data.foods[0];
       return {
