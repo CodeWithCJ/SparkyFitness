@@ -31,6 +31,9 @@ interface BarcodeScannerProps {
   cameraFacing: 'front' | 'back';
 }
 
+interface AdvancedMediaTrackConstraints extends MediaTrackConstraintSet {
+  torch?: boolean;
+}
 const ENGINE_OPTIONS = [
   { value: 'zxing', label: '@zxing/library' },
   { value: 'html5-qrcode', label: 'html5-qrcode' },
@@ -152,8 +155,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     if (!currentTrack.current || !torchSupported || !torchEnabled) return;
     try {
       await currentTrack.current.applyConstraints({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        advanced: [{ torch: false } as any],
+        advanced: [{ torch: false } as AdvancedMediaTrackConstraints],
       });
       setTorchEnabled(false);
     } catch (error) {
@@ -165,8 +167,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     if (!currentTrack.current || !torchSupported) return;
     try {
       await currentTrack.current.applyConstraints({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        advanced: [{ torch: !torchEnabled } as any],
+        advanced: [{ torch: !torchEnabled } as AdvancedMediaTrackConstraints],
       });
       setTorchEnabled(!torchEnabled);
     } catch (error) {
@@ -193,8 +194,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
         width: { ideal: 1280 }, // Lowering ideal might help mobile performance/compatibility
         frameRate: { ideal: 30 },
         focusMode: { ideal: 'continuous' },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any, // Cast to allow custom properties
+      }, // Cast to allow custom properties
     };
 
     const start = async () => {

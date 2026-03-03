@@ -46,8 +46,10 @@ export const OnboardingSteps = ({
 }: OnboardingStepsProps) => {
   const { t } = useTranslation();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleSelect = (field: keyof FormData, value: any) => {
+  const handleSelect = (
+    field: keyof FormData,
+    value: string | boolean | number
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setTimeout(() => nextStep(), 250);
   };

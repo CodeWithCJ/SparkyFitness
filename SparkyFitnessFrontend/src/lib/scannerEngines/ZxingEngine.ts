@@ -50,8 +50,7 @@ export class ZxingEngine implements BarcodeScannerEngine {
     this.codeReader.decodeFromVideoDevice(
       this.currentDeviceId,
       this.videoElement,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (result: Result | null, err: any) => {
+      (result: Result | null, err: unknown) => {
         if (result) {
           const text = result.getText();
           if (this.callback) this.callback(text);

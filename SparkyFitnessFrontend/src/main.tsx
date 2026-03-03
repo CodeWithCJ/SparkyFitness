@@ -29,10 +29,8 @@ declare module '@tanstack/react-query' {
 }
 // helper function to allow variables in toast messages
 const resolveMessage = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  message: string | ((...args: any[]) => string) | undefined,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...args: any[]
+  message: string | ((...args: unknown[]) => string) | undefined,
+  ...args: unknown[]
 ): string | undefined => {
   if (typeof message === 'function') {
     return message(...args);

@@ -115,15 +115,21 @@ export const useToggleApiKeyMutation = () => {
   });
 };
 
+interface ApiKeyPlugin {
+  deleteAllExpiredApiKeys: (
+    options: Record<string, unknown>
+  ) => Promise<{ error: unknown }>;
+}
+
 export const useCleanupApiKeysMutation = () => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
   return useMutation({
     mutationFn: async () => {
-      const { error } =
-        await // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (authClient.apiKey as any).deleteAllExpiredApiKeys({});
+      const { error } = await (
+        authClient.apiKey as unknown as ApiKeyPlugin
+      ).deleteAllExpiredApiKeys({});
       if (error) throw error;
     },
     onSuccess: () => {
