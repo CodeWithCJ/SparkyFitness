@@ -1,12 +1,11 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import React from 'react';
 import { Alert } from 'react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEditFood } from '../../src/hooks/useEditFood';
 import { updateFood, updateFoodVariant, updateFoodSnapshot } from '../../src/services/api/foodsApi';
 import { dailySummaryQueryKey, foodsQueryKey, foodVariantsQueryKey } from '../../src/hooks/queryKeys';
 import type { FoodEntry } from '../../src/types/foodEntries';
 import type { FoodFormData } from '../../src/components/FoodForm';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/foodsApi', () => ({
   updateFood: jest.fn(),
@@ -64,21 +63,9 @@ const mockFormData: FoodFormData = {
 describe('useEditFood', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -92,7 +79,7 @@ describe('useEditFood', () => {
 
     const { result } = renderHook(
       () => useEditFood({ entry: mockEntry }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await act(async () => {
@@ -138,7 +125,7 @@ describe('useEditFood', () => {
 
     const { result } = renderHook(
       () => useEditFood({ entry: mockEntry }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await act(async () => {
@@ -161,7 +148,7 @@ describe('useEditFood', () => {
 
     const { result } = renderHook(
       () => useEditFood({ entry: mockEntry, onSuccess }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await act(async () => {
@@ -197,7 +184,7 @@ describe('useEditFood', () => {
 
     const { result } = renderHook(
       () => useEditFood({ entry: mockEntry, onSuccess }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await act(async () => {
@@ -214,7 +201,7 @@ describe('useEditFood', () => {
 
     const { result } = renderHook(
       () => useEditFood({ entry: mockEntry }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await act(async () => {
@@ -231,7 +218,7 @@ describe('useEditFood', () => {
 
     const { result } = renderHook(
       () => useEditFood({ entry: mockEntry }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await act(async () => {
@@ -251,7 +238,7 @@ describe('useEditFood', () => {
 
     const { result } = renderHook(
       () => useEditFood({ entry: mockEntry }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     act(() => {
@@ -289,7 +276,7 @@ describe('useEditFood', () => {
     const onSuccess = jest.fn();
     const { result } = renderHook(
       () => useEditFood({ entry: mockEntry, onSuccess }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await act(async () => {

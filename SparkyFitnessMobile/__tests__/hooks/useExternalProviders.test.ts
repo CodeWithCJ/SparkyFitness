@@ -1,9 +1,8 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useExternalProviders } from '../../src/hooks/useExternalProviders';
 import { fetchExternalProviders } from '../../src/services/api/externalProvidersApi';
 import { ExternalProvider, FOOD_PROVIDER_TYPES } from '../../src/types/externalProviders';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/externalProvidersApi', () => ({
   fetchExternalProviders: jest.fn(),
@@ -21,23 +20,9 @@ const makeProvider = (overrides: Partial<ExternalProvider> & { id: string }): Ex
 describe('useExternalProviders', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: 0,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -53,7 +38,7 @@ describe('useExternalProviders', () => {
       ]);
 
       const { result } = renderHook(() => useExternalProviders(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -74,7 +59,7 @@ describe('useExternalProviders', () => {
       ]);
 
       const { result } = renderHook(() => useExternalProviders(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -92,7 +77,7 @@ describe('useExternalProviders', () => {
       ]);
 
       const { result } = renderHook(() => useExternalProviders(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -111,7 +96,7 @@ describe('useExternalProviders', () => {
       );
 
       const { result } = renderHook(() => useExternalProviders(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -125,7 +110,7 @@ describe('useExternalProviders', () => {
   describe('query behavior', () => {
     test('does not fetch when disabled', async () => {
       const { result } = renderHook(() => useExternalProviders({ enabled: false }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       expect(mockFetchExternalProviders).not.toHaveBeenCalled();
@@ -136,7 +121,7 @@ describe('useExternalProviders', () => {
       mockFetchExternalProviders.mockRejectedValue(new Error('Network error'));
 
       const { result } = renderHook(() => useExternalProviders(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {

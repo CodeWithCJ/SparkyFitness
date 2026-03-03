@@ -1,11 +1,10 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import React from 'react';
 import { Alert } from 'react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useWaterIntakeMutation } from '../../src/hooks/useWaterIntakeMutation';
 import { fetchWaterContainers, changeWaterIntake } from '../../src/services/api/measurementsApi';
 import type { DailySummaryRawData } from '../../src/hooks/useDailySummary';
 import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchWaterContainers: jest.fn(),
@@ -50,21 +49,9 @@ describe('useWaterIntakeMutation', () => {
   let queryClient: QueryClient;
   const testDate = '2024-06-15';
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -75,7 +62,7 @@ describe('useWaterIntakeMutation', () => {
     mockFetchWaterContainers.mockReturnValue(new Promise(() => {})); // never resolves
 
     const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     expect(result.current.isReady).toBe(false);
@@ -85,7 +72,7 @@ describe('useWaterIntakeMutation', () => {
     mockFetchWaterContainers.mockResolvedValue([primaryContainer]);
 
     const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     await waitFor(() => {
@@ -99,7 +86,7 @@ describe('useWaterIntakeMutation', () => {
     ]);
 
     const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     await waitFor(() => {
@@ -113,7 +100,7 @@ describe('useWaterIntakeMutation', () => {
     mockFetchWaterContainers.mockResolvedValue([]);
 
     const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     await waitFor(() => {
@@ -135,7 +122,7 @@ describe('useWaterIntakeMutation', () => {
     mockFetchWaterContainers.mockResolvedValue([]);
 
     const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     await waitFor(() => {
@@ -162,7 +149,7 @@ describe('useWaterIntakeMutation', () => {
       mockChangeWaterIntake.mockResolvedValue({ id: '1', water_ml: 750, entry_date: testDate });
 
       const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -186,7 +173,7 @@ describe('useWaterIntakeMutation', () => {
       mockChangeWaterIntake.mockResolvedValue({ id: '1', water_ml: 250, entry_date: testDate });
 
       const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -217,7 +204,7 @@ describe('useWaterIntakeMutation', () => {
       );
 
       const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -253,7 +240,7 @@ describe('useWaterIntakeMutation', () => {
       mockChangeWaterIntake.mockResolvedValue({ id: '1', water_ml: 1300, entry_date: testDate });
 
       const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -279,7 +266,7 @@ describe('useWaterIntakeMutation', () => {
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
       const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -314,7 +301,7 @@ describe('useWaterIntakeMutation', () => {
       );
 
       const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -347,7 +334,7 @@ describe('useWaterIntakeMutation', () => {
       });
 
       const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {

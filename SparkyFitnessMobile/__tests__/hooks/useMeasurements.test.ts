@@ -1,9 +1,8 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useMeasurements } from '../../src/hooks/useMeasurements';
 import { measurementsQueryKey } from '../../src/hooks/queryKeys';
 import { fetchMeasurements } from '../../src/services/api/measurementsApi';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchMeasurements: jest.fn(),
@@ -20,23 +19,9 @@ const mockFetchMeasurements = fetchMeasurements as jest.MockedFunction<typeof fe
 describe('useMeasurements', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientProviderWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: 0,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -53,7 +38,7 @@ describe('useMeasurements', () => {
       });
 
       renderHook(() => useMeasurements({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -73,7 +58,7 @@ describe('useMeasurements', () => {
       mockFetchMeasurements.mockResolvedValue(measurementsData);
 
       const { result } = renderHook(() => useMeasurements({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -93,7 +78,7 @@ describe('useMeasurements', () => {
       });
 
       renderHook(() => useMeasurements({ date: testDate, enabled: false }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       // Wait a bit to ensure no fetch occurs
@@ -109,7 +94,7 @@ describe('useMeasurements', () => {
       });
 
       renderHook(() => useMeasurements({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -126,7 +111,7 @@ describe('useMeasurements', () => {
       });
 
       const { result } = renderHook(() => useMeasurements({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -143,7 +128,7 @@ describe('useMeasurements', () => {
       });
 
       const { result } = renderHook(() => useMeasurements({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {

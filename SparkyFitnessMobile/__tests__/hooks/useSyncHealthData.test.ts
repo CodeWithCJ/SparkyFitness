@@ -1,11 +1,10 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import React from 'react';
 import { Alert } from 'react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSyncHealthData } from '../../src/hooks/useSyncHealthData';
 import { syncHealthData as healthConnectSyncData } from '../../src/services/healthConnectService';
 import { saveLastSyncedTime } from '../../src/services/storage';
 import { addLog } from '../../src/services/LogService';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/healthConnectService', () => ({
   syncHealthData: jest.fn(),
@@ -32,25 +31,9 @@ const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 describe('useSyncHealthData', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -68,7 +51,7 @@ describe('useSyncHealthData', () => {
       mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
 
       const { result } = renderHook(() => useSyncHealthData(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -88,7 +71,7 @@ describe('useSyncHealthData', () => {
       mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
 
       const { result } = renderHook(() => useSyncHealthData(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -105,7 +88,7 @@ describe('useSyncHealthData', () => {
       mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
 
       const { result } = renderHook(() => useSyncHealthData(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -125,7 +108,7 @@ describe('useSyncHealthData', () => {
       mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
 
       const { result } = renderHook(() => useSyncHealthData({ showAlerts: false }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -145,7 +128,7 @@ describe('useSyncHealthData', () => {
       mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
 
       const { result } = renderHook(() => useSyncHealthData({ onSuccess }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -167,7 +150,7 @@ describe('useSyncHealthData', () => {
       });
 
       const { result } = renderHook(() => useSyncHealthData(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -187,7 +170,7 @@ describe('useSyncHealthData', () => {
       });
 
       const { result } = renderHook(() => useSyncHealthData(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -210,7 +193,7 @@ describe('useSyncHealthData', () => {
       });
 
       const { result } = renderHook(() => useSyncHealthData({ showAlerts: false }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -232,7 +215,7 @@ describe('useSyncHealthData', () => {
       });
 
       const { result } = renderHook(() => useSyncHealthData(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -256,7 +239,7 @@ describe('useSyncHealthData', () => {
       });
 
       const { result } = renderHook(() => useSyncHealthData({ onError }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -276,7 +259,7 @@ describe('useSyncHealthData', () => {
       });
 
       const { result } = renderHook(() => useSyncHealthData(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {
@@ -301,7 +284,7 @@ describe('useSyncHealthData', () => {
       mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
 
       const { result } = renderHook(() => useSyncHealthData(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       // Initially not pending
@@ -333,7 +316,7 @@ describe('useSyncHealthData', () => {
       mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
 
       const { result } = renderHook(() => useSyncHealthData(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await act(async () => {

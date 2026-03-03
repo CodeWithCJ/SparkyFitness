@@ -1,9 +1,8 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useServerConnection } from '../../src/hooks/useServerConnection';
 import { serverConnectionQueryKey } from '../../src/hooks/queryKeys';
 import { checkServerConnection } from '../../src/services/api/healthDataApi';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/healthDataApi', () => ({
   checkServerConnection: jest.fn(),
@@ -23,23 +22,9 @@ const mockCheckServerConnection = checkServerConnection as jest.MockedFunction<
 describe('useServerConnection', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: 0,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -51,7 +36,7 @@ describe('useServerConnection', () => {
       mockCheckServerConnection.mockResolvedValue(false);
 
       const { result } = renderHook(() => useServerConnection(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -65,7 +50,7 @@ describe('useServerConnection', () => {
       mockCheckServerConnection.mockResolvedValue(true);
 
       const { result } = renderHook(() => useServerConnection(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -79,7 +64,7 @@ describe('useServerConnection', () => {
       mockCheckServerConnection.mockResolvedValue(true);
 
       renderHook(() => useServerConnection(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -91,7 +76,7 @@ describe('useServerConnection', () => {
       mockCheckServerConnection.mockResolvedValue(true);
 
       const { result } = renderHook(() => useServerConnection(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       // Wait for loading to complete
@@ -108,7 +93,7 @@ describe('useServerConnection', () => {
       mockCheckServerConnection.mockResolvedValue(true);
 
       const { result } = renderHook(() => useServerConnection({ enablePolling: true }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -120,7 +105,7 @@ describe('useServerConnection', () => {
       mockCheckServerConnection.mockResolvedValue(true);
 
       const { result } = renderHook(() => useServerConnection(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -134,7 +119,7 @@ describe('useServerConnection', () => {
       mockCheckServerConnection.mockResolvedValue(true);
 
       const { result } = renderHook(() => useServerConnection(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -148,7 +133,7 @@ describe('useServerConnection', () => {
       mockCheckServerConnection.mockResolvedValue(false);
 
       const { result } = renderHook(() => useServerConnection(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {

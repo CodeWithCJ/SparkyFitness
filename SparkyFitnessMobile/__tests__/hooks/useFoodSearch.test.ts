@@ -1,9 +1,8 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFoodSearch } from '../../src/hooks/useFoodSearch';
 import { foodSearchQueryKey } from '../../src/hooks/queryKeys';
 import { searchFoods } from '../../src/services/api/foodsApi';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/foodsApi', () => ({
   searchFoods: jest.fn(),
@@ -14,23 +13,9 @@ const mockSearchFoods = searchFoods as jest.MockedFunction<typeof searchFoods>;
 describe('useFoodSearch', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: 0,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -39,7 +24,7 @@ describe('useFoodSearch', () => {
 
   test('does not fetch when search text is empty', () => {
     renderHook(() => useFoodSearch(''), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     expect(mockSearchFoods).not.toHaveBeenCalled();
@@ -47,7 +32,7 @@ describe('useFoodSearch', () => {
 
   test('does not fetch when search text is less than 2 characters', () => {
     renderHook(() => useFoodSearch('a'), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     expect(mockSearchFoods).not.toHaveBeenCalled();
@@ -57,7 +42,7 @@ describe('useFoodSearch', () => {
     mockSearchFoods.mockResolvedValue({ foods: [], totalCount: 0 });
 
     renderHook(() => useFoodSearch('ch'), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     await waitFor(() => {
@@ -88,7 +73,7 @@ describe('useFoodSearch', () => {
     mockSearchFoods.mockResolvedValue(searchData);
 
     const { result } = renderHook(() => useFoodSearch('chicken'), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     await waitFor(() => {
@@ -98,7 +83,7 @@ describe('useFoodSearch', () => {
 
   test('isSearchActive is false when under 2 characters', () => {
     const { result } = renderHook(() => useFoodSearch('a'), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     expect(result.current.isSearchActive).toBe(false);
@@ -108,7 +93,7 @@ describe('useFoodSearch', () => {
     mockSearchFoods.mockResolvedValue({ foods: [], totalCount: 0 });
 
     const { result } = renderHook(() => useFoodSearch('ab'), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     expect(result.current.isSearchActive).toBe(true);
@@ -118,7 +103,7 @@ describe('useFoodSearch', () => {
     mockSearchFoods.mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(() => useFoodSearch('test'), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     await waitFor(() => {
@@ -130,7 +115,7 @@ describe('useFoodSearch', () => {
     mockSearchFoods.mockResolvedValue({ foods: [], totalCount: 0 });
 
     renderHook(() => useFoodSearch('  ch  '), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     await waitFor(() => {

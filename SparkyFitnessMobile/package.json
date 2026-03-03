@@ -80,6 +80,9 @@
     "setupFilesAfterEnv": [
       "./jest.setup.js"
     ],
+    "testPathIgnorePatterns": [
+      "__tests__/hooks/queryTestUtils\\.ts$"
+    ],
     "transformIgnorePatterns": [
       "node_modules/(?!(?:.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo[^/]*|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@shopify/react-native-skia|react-native-ui-datepicker)/)"
     ],

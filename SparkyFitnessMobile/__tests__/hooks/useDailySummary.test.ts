@@ -1,12 +1,11 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDailySummary } from '../../src/hooks/useDailySummary';
 import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
 import { fetchDailyGoals } from '../../src/services/api/goalsApi';
 import { fetchFoodEntries } from '../../src/services/api/foodEntriesApi';
 import { fetchExerciseEntries } from '../../src/services/api/exerciseApi';
 import { fetchWaterIntake } from '../../src/services/api/measurementsApi';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/goalsApi', () => ({
   fetchDailyGoals: jest.fn(),
@@ -53,24 +52,10 @@ const mockFetchWaterIntake = fetchWaterIntake as jest.MockedFunction<typeof fetc
 describe('useDailySummary', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientProviderWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetchWaterIntake.mockResolvedValue({ water_ml: 0 });
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: 0,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -92,7 +77,7 @@ describe('useDailySummary', () => {
       mockFetchExerciseEntries.mockResolvedValue([]);
 
       renderHook(() => useDailySummary({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -118,7 +103,7 @@ describe('useDailySummary', () => {
       ]);
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -146,7 +131,7 @@ describe('useDailySummary', () => {
       mockFetchWaterIntake.mockResolvedValue({ water_ml: 1500 });
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -170,7 +155,7 @@ describe('useDailySummary', () => {
       mockFetchWaterIntake.mockResolvedValue({ water_ml: 750 });
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -194,7 +179,7 @@ describe('useDailySummary', () => {
       mockFetchWaterIntake.mockRejectedValue(new Error('Not Found'));
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -221,7 +206,7 @@ describe('useDailySummary', () => {
       ]);
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -249,7 +234,7 @@ describe('useDailySummary', () => {
       mockFetchExerciseEntries.mockResolvedValue([]);
 
       renderHook(() => useDailySummary({ date: testDate, enabled: false }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       // Wait a bit to ensure no fetch occurs
@@ -274,7 +259,7 @@ describe('useDailySummary', () => {
       mockFetchExerciseEntries.mockResolvedValue([]);
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
