@@ -98,7 +98,7 @@ export const loginUser = async (
 
   if (!authData?.user) {
     throw new Error(
-      'Registration succeeded but no user data was received from the server.'
+      'Login succeeded but no user data was received from the server.'
     );
   }
 
