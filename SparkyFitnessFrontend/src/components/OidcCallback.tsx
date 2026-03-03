@@ -5,6 +5,13 @@ import { authClient } from '../lib/auth-client';
 import { useAuth } from '../hooks/useAuth';
 import { getErrorMessage } from '@/utils/api';
 
+interface ExtendedAuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role?: string;
+}
+
 const OidcCallback: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -31,16 +38,16 @@ const OidcCallback: React.FC = () => {
         }
 
         if (session?.user) {
+          const user = session.user as unknown as ExtendedAuthUser;
           // Synchronize local AuthContext with Better Auth session
           signIn(
-            session.user.id,
-            session.user.id, // Better Auth user is always the active user initially
-            session.user.email,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (session.user as any).role || 'user',
+            user.id,
+            user.id,
+            user.email,
+            user.role || 'user',
             'oidc',
-            false, // Don't navigate automatically, we do it below
-            session.user.name
+            false,
+            user.name
           );
           navigate('/');
         } else {

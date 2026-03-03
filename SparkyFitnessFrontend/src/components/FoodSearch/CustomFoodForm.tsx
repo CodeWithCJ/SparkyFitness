@@ -134,8 +134,7 @@ const sanitizeGlycemicIndexFrontend = (
 };
 
 interface EnhancedCustomFoodFormProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onSave: (foodData: any) => void;
+  onSave: (foodData: Food) => void;
   food?: Food;
   initialVariants?: FoodVariant[]; // New prop for pre-populating variants
   visibleNutrients?: string[];

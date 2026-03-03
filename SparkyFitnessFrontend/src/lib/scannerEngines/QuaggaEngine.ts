@@ -1,5 +1,11 @@
-import Quagga from '@ericblade/quagga2';
+import Quagga, { InputStreamType } from '@ericblade/quagga2';
 import type { BarcodeScannerEngine } from './EngineInterface';
+
+interface QuaggaInputStreamConfig {
+  type: InputStreamType;
+  target: HTMLElement;
+  constraints?: MediaTrackConstraints;
+}
 
 export class QuaggaEngine implements BarcodeScannerEngine {
   private containerElement: HTMLElement | null = null;
@@ -18,8 +24,7 @@ export class QuaggaEngine implements BarcodeScannerEngine {
 
     this.isScanning = true;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const liveStreamConfig: any = {
+    const liveStreamConfig: QuaggaInputStreamConfig = {
       type: 'LiveStream',
       target: this.containerElement!,
     };

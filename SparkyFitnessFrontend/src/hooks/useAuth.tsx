@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { authClient } from '../lib/auth-client';
 import { fetchIdentityUser, switchUserContext } from '@/api/Auth/auth';
 
-interface User {
+export interface User {
   id: string;
   activeUserId: string;
   email: string;
@@ -19,6 +19,16 @@ interface User {
   role: string;
   twoFactorEnabled: boolean;
   mfaEmailEnabled: boolean;
+}
+
+interface ExtendedSessionUser {
+  id: string;
+  email: string;
+  name: string | null;
+  activeUserId?: string;
+  role?: string;
+  twoFactorEnabled?: boolean;
+  mfaEmailEnabled?: boolean;
 }
 
 interface AuthContextType {
@@ -47,8 +57,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [isSyncing, setIsSyncing] = useState(true); // Track initial hydration
   const navigate = useNavigate();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const prevSessionRef = React.useRef<any>(null);
+  const prevSessionRef = React.useRef<typeof session>(null);
 
   // Only show global loading during initial hydration (isSyncing).
   // Ignoring sessionLoading avoids unmounting components (like Auth/MFA) during background re-fetches.
@@ -60,34 +69,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     // Log when session changes to identify refresh triggers
     if (session !== prevSessionRef.current) {
-      const prevUser = prevSessionRef.current?.user?.id;
-      const newUser = session?.user?.id;
-      const isSameUser = prevUser === newUser;
-
-      // console.log('[Auth Hook] Session update detected:', {
-      //   timestamp: new Date().toLocaleTimeString(),
-      //   isSameUser,
-      //   prevUserId: prevUser,
-      //   newUserId: newUser,
-      //   trigger: isSameUser ? 'POTENTIAL UNWANTED REFRESH' : 'USER CHANGED',
-      // });
-
       prevSessionRef.current = session;
     }
 
     // Only process if session has actual user data AND it's different from what we have
     if (session?.user && (!user || user.id !== session.user.id)) {
-      const sessionUser = {
-        id: session.user.id,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        activeUserId: (session.user as any).activeUserId || session.user.id,
-        email: session.user.email,
-        fullName: session.user.name || null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        role: (session.user as any).role || 'user',
-        twoFactorEnabled: !!session.user.twoFactorEnabled,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        mfaEmailEnabled: !!(session.user as any).mfaEmailEnabled,
+      const extUser = session.user as unknown as ExtendedSessionUser;
+
+      const sessionUser: User = {
+        id: extUser.id,
+        activeUserId: extUser.activeUserId || extUser.id,
+        email: extUser.email,
+        fullName: extUser.name || null,
+        role: extUser.role || 'user',
+        twoFactorEnabled: !!extUser.twoFactorEnabled,
+        mfaEmailEnabled: !!extUser.mfaEmailEnabled,
       };
 
       //console.log('[Auth Hook] Setting user state from session:', sessionUser.id);
@@ -96,8 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       // Fetch Authoritative Data (Active Context)
       // This runs on every session update to ensure we are strictly in sync with the backend.
       fetchIdentityUser()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .then((realUserData: any) => {
+        .then((realUserData) => {
           setUser((prev) => {
             if (!prev) return prev;
             if (
@@ -127,7 +122,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       setIsSyncing(false);
     } else if (session?.user && user && user.id === session.user.id) {
       // Same user - just update 2FA status if changed
-      // console.log('[Auth Hook] Session re-poll detected, skipping unnecessary update for same user');
       setIsSyncing(false);
     }
   }, [session, user]);
