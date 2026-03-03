@@ -32,12 +32,12 @@ export const useCreateExerciseEntryMutation = () => {
 
   return useMutation({
     mutationFn: createExerciseEntry,
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: exerciseEntryKeys.byDate(variables.entry_date),
+        queryKey: exerciseEntryKeys.all,
       });
       queryClient.invalidateQueries({
-        queryKey: exerciseEntryKeys.history(variables.exercise_id),
+        queryKey: dailyProgressKeys.all,
       });
     },
     meta: {
@@ -94,6 +94,9 @@ export const useDeleteExerciseEntryMutation = () => {
     mutationFn: deleteExerciseEntry,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: dailyProgressKeys.all,
+      });
     },
     meta: {
       successMessage: t(
@@ -124,6 +127,9 @@ export const useLogWorkoutPresetMutation = () => {
       queryClient.invalidateQueries({
         queryKey: exerciseEntryKeys.byDate(variables.date),
       });
+      queryClient.invalidateQueries({
+        queryKey: dailyProgressKeys.all,
+      });
     },
     meta: {
       successMessage: t(
@@ -146,6 +152,9 @@ export const useDeleteExercisePresetEntryMutation = () => {
     mutationFn: deleteExercisePresetEntry,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
+      queryClient.invalidateQueries({
+        queryKey: dailyProgressKeys.all,
+      });
     },
     meta: {
       successMessage: t(

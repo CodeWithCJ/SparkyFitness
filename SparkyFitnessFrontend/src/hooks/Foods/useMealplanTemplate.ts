@@ -13,7 +13,7 @@ export const useMealPlanTemplates = (userId: string) => {
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: mealPlanKeys.all(userId),
+    queryKey: mealPlanKeys.byUser(userId),
     queryFn: () => getMealPlanTemplates(userId),
     meta: {
       errorTitle: t('common.error', 'Error'),
@@ -39,7 +39,7 @@ export const useCreateMealPlanMutation = () => {
     }) => createMealPlanTemplate(userId, templateData, currentClientDate),
     onSuccess: (_data, variables) => {
       return queryClient.invalidateQueries({
-        queryKey: mealPlanKeys.all(variables.userId),
+        queryKey: mealPlanKeys.byUser(variables.userId),
       });
     },
     meta: {
@@ -75,7 +75,7 @@ export const useUpdateMealPlanMutation = () => {
       ),
     onSuccess: (_data, variables) => {
       return queryClient.invalidateQueries({
-        queryKey: mealPlanKeys.all(variables.userId),
+        queryKey: mealPlanKeys.byUser(variables.userId),
       });
     },
     meta: {
@@ -103,7 +103,7 @@ export const useDeleteMealPlanMutation = () => {
     }) => deleteMealPlanTemplate(userId, templateId),
     onSuccess: (_data, variables) => {
       return queryClient.invalidateQueries({
-        queryKey: mealPlanKeys.all(variables.userId),
+        queryKey: mealPlanKeys.byUser(variables.userId),
       });
     },
     meta: {

@@ -6,17 +6,17 @@ import {
   updateCategory,
   deleteCategory,
 } from '@/api/Settings/customCategoryService';
-import { customCategoryKeys } from '@/api/keys/settings';
+import { checkInKeys } from '@/api/keys/checkin';
 
 export const useCustomCategories = (userId?: string) => {
   return useQuery({
-    queryKey: customCategoryKeys.lists(),
+    queryKey: checkInKeys.customCategories(userId),
     queryFn: () => getCategories(),
     enabled: !!userId,
   });
 };
 
-export const useAddCategoryMutation = () => {
+export const useAddCategoryMutation = (userId?: string) => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
@@ -31,7 +31,7 @@ export const useAddCategoryMutation = () => {
     }) => addCategory(categoryData),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: customCategoryKeys.lists(),
+        queryKey: checkInKeys.customCategories(userId),
       });
     },
     meta: {
@@ -47,7 +47,7 @@ export const useAddCategoryMutation = () => {
   });
 };
 
-export const useUpdateCategoryMutation = () => {
+export const useUpdateCategoryMutation = (userId?: string) => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
@@ -67,7 +67,7 @@ export const useUpdateCategoryMutation = () => {
     }) => updateCategory(categoryId, categoryData),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: customCategoryKeys.lists(),
+        queryKey: checkInKeys.customCategories(userId),
       });
     },
     meta: {
@@ -83,7 +83,7 @@ export const useUpdateCategoryMutation = () => {
   });
 };
 
-export const useDeleteCategoryMutation = () => {
+export const useDeleteCategoryMutation = (userId?: string) => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
@@ -91,7 +91,7 @@ export const useDeleteCategoryMutation = () => {
     mutationFn: deleteCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: customCategoryKeys.lists(),
+        queryKey: checkInKeys.customCategories(userId),
       });
     },
     meta: {

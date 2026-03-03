@@ -14,6 +14,7 @@ import {
   getMostRecentMeasurement,
 } from '@/api/CheckIn/checkInService';
 import { checkInKeys } from '@/api/keys/checkin';
+import { dailyProgressKeys } from '@/api/keys/diary';
 
 export const useCustomCategories = (userId?: string) => {
   return useQuery({
@@ -102,7 +103,8 @@ export const useDeleteCustomMeasurementMutation = () => {
   return useMutation({
     mutationFn: (id: string) => deleteCustomMeasurement(id),
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: checkInKeys.all });
+      queryClient.invalidateQueries({ queryKey: checkInKeys.all });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
     meta: {
       errorMessage: t(
@@ -123,7 +125,8 @@ export const useUpdateCheckInMeasurementFieldMutation = () => {
   return useMutation({
     mutationFn: updateCheckInMeasurementField,
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: checkInKeys.all });
+      queryClient.invalidateQueries({ queryKey: checkInKeys.all });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
     meta: {
       errorMessage: t(
@@ -144,7 +147,8 @@ export const useSaveCheckInMeasurementsMutation = () => {
   return useMutation({
     mutationFn: saveCheckInMeasurements,
     onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: checkInKeys.all });
+      queryClient.invalidateQueries({ queryKey: checkInKeys.all });
+      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
     meta: {
       errorMessage: t(

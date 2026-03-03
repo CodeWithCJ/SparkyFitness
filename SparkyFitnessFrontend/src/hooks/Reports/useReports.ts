@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useCustomCategories } from '../CheckIn/useCheckIn';
 
-export const useRawStressData = (userId?: string) => {
+export const useRawStressData = (userId: string) => {
   const { data: categories } = useCustomCategories(userId);
   const { t } = useTranslation();
   const categoryId = categories?.find(
@@ -18,7 +18,7 @@ export const useRawStressData = (userId?: string) => {
   )?.id;
 
   return useQuery({
-    queryKey: [...checkInKeys.all, 'rawStressData', categoryId, userId],
+    queryKey: checkInKeys.rawStressData(userId, categoryId),
     queryFn: async () => {
       const customMeasurements = await fetchCustomEntries(
         categoryId as string,

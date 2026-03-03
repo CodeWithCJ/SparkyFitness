@@ -109,6 +109,8 @@ export const exerciseEntryKeys = {
       entryId,
       providerName,
     ] as const,
+  dailyStats: (date: string) =>
+    [...exerciseEntryKeys.all, 'dailyStats', date] as const,
 };
 export const suggestedExercisesKeys = {
   all: ['exercises', 'suggested'] as const,
