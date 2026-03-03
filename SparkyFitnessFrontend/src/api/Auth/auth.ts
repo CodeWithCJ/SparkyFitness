@@ -64,6 +64,12 @@ export const registerUser = async (
 
   const authData = data as BetterAuthResponse | null;
 
+  if (!authData?.user) {
+    throw new Error(
+      'Registration succeeded but no user data was received from the server.'
+    );
+  }
+
   return {
     message: 'User registered successfully',
     userId: authData?.user?.id,
@@ -89,6 +95,13 @@ export const loginUser = async (
   }
 
   const authData = data as BetterAuthResponse | null;
+
+  if (!authData?.user) {
+    throw new Error(
+      'Registration succeeded but no user data was received from the server.'
+    );
+  }
+
   // Better Auth native 2FA handling
   if (authData?.twoFactorRedirect) {
     return {
