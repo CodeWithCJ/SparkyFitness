@@ -3,14 +3,16 @@ import type { CoachResponse } from '../../types/Chatbot_types';
 import { debug, error, type UserLoggingLevel } from '@/utils/logging';
 import { apiCall } from '@/api/api';
 
+export interface ExerciseInput {
+  exercise_name: string;
+  duration_minutes: number | null;
+  distance: number | null;
+  distance_unit: string | null;
+}
+
 // Function to process exercise input
 export const processExerciseInput = async (
-  data: {
-    exercise_name: string;
-    duration_minutes: number | null;
-    distance: number | null;
-    distance_unit: string | null;
-  },
+  data: ExerciseInput,
   entryDate: string | undefined,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
   userLoggingLevel: UserLoggingLevel

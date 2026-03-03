@@ -1,5 +1,9 @@
 import { parseISO } from 'date-fns';
-import type { CoachResponse, FoodOption } from '../../types/Chatbot_types';
+import type {
+  CoachResponse,
+  FoodOption,
+  MessageMetadata,
+} from '../../types/Chatbot_types';
 import {
   debug,
   info,
@@ -9,32 +13,34 @@ import {
 } from '@/utils/logging';
 import { apiCall } from '@/api/api';
 
+export interface FoodInput {
+  food_name: string;
+  quantity: number;
+  unit: string;
+  meal_type: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  foodOptions?: FoodOption[]; // Add foodOptions here
+}
+
 // Function to process food input
 export const processFoodInput = async (
-  data: {
-    food_name: string;
-    quantity: number;
-    unit: string;
-    meal_type: string;
-    calories?: number;
-    protein?: number;
-    carbs?: number;
-    fat?: number;
-    saturated_fat?: number;
-    polyunsaturated_fat?: number;
-    monounsaturated_fat?: number;
-    trans_fat?: number;
-    cholesterol?: number;
-    sodium?: number;
-    potassium?: number;
-    dietary_fiber?: number;
-    sugars?: number;
-    vitamin_a?: number;
-    vitamin_c?: number;
-    calcium?: number;
-    iron?: number;
-    foodOptions?: FoodOption[]; // Add foodOptions here
-  },
+  data: FoodInput,
   entryDate: string | undefined,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
   userLoggingLevel: UserLoggingLevel,
@@ -257,8 +263,7 @@ export const processFoodInput = async (
 // Function to add a selected food option to the diary
 export const addFoodOption = async (
   optionIndex: number,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  originalMetadata: any,
+  originalMetadata: MessageMetadata,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
   userLoggingLevel: UserLoggingLevel,
   transactionId: string
