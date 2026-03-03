@@ -37,8 +37,7 @@ export const updateMealType = async (
   return response;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const deleteMealType = async (id: string): Promise<any> => {
+export const deleteMealType = async (id: string): Promise<unknown> => {
   const response = await apiCall(`/meal-types/${id}`, {
     method: 'DELETE',
   });

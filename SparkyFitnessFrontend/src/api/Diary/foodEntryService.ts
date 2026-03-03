@@ -2,7 +2,7 @@ import { apiCall } from '../api';
 import type { MealFood } from '@/types/meal';
 import type { FoodEntryMeal } from '@/types/meal';
 import type { FoodEntry } from '@/types/food';
-import { DayData } from '@/types/diary';
+import { DayData, Goals } from '@/types/diary';
 
 export interface FoodEntryUpdateData {
   quantity?: number;
@@ -22,8 +22,7 @@ export interface FoodEntryCreateData {
 export const updateFoodEntry = async (
   id: string,
   data: FoodEntryUpdateData
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any> => {
+): Promise<unknown> => {
   const response = await apiCall(`/food-entries/${id}`, {
     method: 'PUT',
     body: data,
@@ -53,8 +52,7 @@ export const loadMiniNutritionTrendData = async (
 
 export const createFoodEntry = async (
   data: FoodEntryCreateData
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any> => {
+): Promise<unknown> => {
   const response = await apiCall('/food-entries', {
     method: 'POST',
     body: data,
@@ -62,8 +60,7 @@ export const createFoodEntry = async (
   return response;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const removeFoodEntry = async (id: string): Promise<any> => {
+export const removeFoodEntry = async (id: string): Promise<void> => {
   const response = await apiCall(`/food-entries/${id}`, {
     method: 'DELETE',
   });
@@ -77,8 +74,7 @@ export const loadFoodEntries = async (date: string): Promise<FoodEntry[]> => {
   return response;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const loadDiaryGoals = async (date: string): Promise<any> => {
+export const loadDiaryGoals = async (date: string): Promise<Goals> => {
   // Adjust return type as needed
   const response = await apiCall(`/goals/by-date/${date}`, {
     method: 'GET',
@@ -173,8 +169,7 @@ export const getFoodEntryMealsByDate = async (
 
 export const deleteFoodEntryMeal = async (
   foodEntryMealId: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any> => {
+): Promise<unknown> => {
   const response = await apiCall(`/food-entry-meals/${foodEntryMealId}`, {
     method: 'DELETE',
   });

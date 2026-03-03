@@ -6,8 +6,7 @@ export const searchExercises = async (
   equipmentFilter: string[] = [],
   muscleGroupFilter: string[] = []
 ): Promise<Exercise[]> => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const params: Record<string, any> = {
+  const params: Record<string, string> = {
     searchTerm: query,
   };
   if (equipmentFilter.length > 0) {
@@ -31,8 +30,7 @@ export const searchExternalExercises = async (
   muscleGroupFilter: string[] = [],
   limit?: number
 ): Promise<Exercise[]> => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const params: Record<string, any> = {
+  const params: Record<string, string | number> = {
     query: query,
     providerId: providerId,
     providerType: providerType,

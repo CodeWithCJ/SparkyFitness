@@ -16,8 +16,7 @@ export const getMeals = async (
   searchTerm: string = ''
 ): Promise<Meal[]> => {
   let url = `/meals`;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const params: { [key: string]: any } = { filter };
+  const params: { [key: string]: string } = { filter };
 
   if (searchTerm) {
     url = `/meals/search`;
@@ -86,17 +85,6 @@ export const updateMealPlanEntry = async (
 
 export const deleteMealPlanEntry = async (planId: string): Promise<void> => {
   await apiCall(`/meals/plan/${planId}`, { method: 'DELETE' });
-};
-
-export const logMealPlanEntryToDiary = async (
-  mealPlanId: string,
-  targetDate?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any[]> => {
-  return await apiCall(`/meals/plan/${mealPlanId}/log-to-diary`, {
-    method: 'POST',
-    body: { target_date: targetDate },
-  });
 };
 
 export const createMealFromDiary = async (

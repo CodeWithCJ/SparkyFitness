@@ -45,6 +45,38 @@ interface UsdaFoodDetails {
   iron?: number;
 }
 
+interface RawUsdaNutrient {
+  nutrient?: {
+    id?: number;
+    name?: string;
+    unitName?: string;
+  };
+  nutrientName?: string;
+  nutrientId?: number;
+  unitName?: string;
+  amount?: number;
+  value?: number;
+}
+
+interface NutrientMap {
+  calories?: number;
+  protein?: number;
+  fat?: number;
+  carbohydrates?: number;
+  sugars?: number;
+  fiber?: number;
+  sodium?: number;
+  cholesterol?: number;
+  saturatedFat?: number;
+  transFat?: number;
+  monounsaturatedFat?: number;
+  polyunsaturatedFat?: number;
+  potassium?: number;
+  vitaminA?: number;
+  vitaminC?: number;
+  calcium?: number;
+  iron?: number;
+}
 export const searchUsdaFoods = async (
   query: string,
   providerId: string,
@@ -75,11 +107,9 @@ export const getUsdaFoodDetails = async (
 
     if (!response) return null;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const nutrientMap: any = {};
+    const nutrientMap: NutrientMap = {};
     if (response.foodNutrients) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      response.foodNutrients.forEach((n: any) => {
+      response.foodNutrients.forEach((n: RawUsdaNutrient) => {
         // USDA returns various spellings, try to normalize or check multiple
         const name =
           n.nutrient?.name?.toLowerCase() ||

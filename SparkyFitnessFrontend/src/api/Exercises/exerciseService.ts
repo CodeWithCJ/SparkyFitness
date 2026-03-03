@@ -96,8 +96,7 @@ export const loadExercises = async (
     method: 'GET',
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const parsedExercises = response.exercises.map((exercise: any) => ({
+  const parsedExercises = response.exercises.map((exercise: Exercise) => ({
     ...exercise,
     equipment: parseJsonArray(exercise.equipment),
     primary_muscles: parseJsonArray(exercise.primary_muscles),
@@ -229,8 +228,7 @@ export const importExercisesFromCSV = async (
   created: number;
   updated: number;
   failed: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  failedRows: any[];
+  failedRows: unknown[];
 }> => {
   return apiCall('/exercises/import', {
     method: 'POST',

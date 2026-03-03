@@ -7,6 +7,38 @@ import type { ExerciseEntry } from '@/types/diary';
 import type { GroupedExerciseEntry } from '@/types/exercises';
 import type { ExerciseProgressData } from '@/types/reports';
 
+interface RawActivityDetail {
+  id?: string;
+  detail_type: string;
+  detail_data: unknown;
+  provider_name?: string;
+}
+
+interface RawExerciseSnapshot {
+  equipment?: string;
+  primary_muscles?: string;
+  secondary_muscles?: string;
+  instructions?: string;
+  images?: string;
+  [key: string]: unknown;
+}
+
+interface RawExercise {
+  sets?: string | unknown[];
+  exercise_snapshot?: RawExerciseSnapshot;
+  activity_details?: RawActivityDetail[];
+  [key: string]: unknown;
+}
+
+interface RawGroupedEntry {
+  type?: string;
+  exercises?: RawExercise[];
+  sets?: string | unknown[];
+  exercise_snapshot?: RawExerciseSnapshot;
+  activity_details?: RawActivityDetail[];
+  [key: string]: unknown;
+}
+
 export const getExerciseEntriesForDate = async (
   date: string
 ): Promise<GroupedExerciseEntry[]> => {
@@ -24,16 +56,14 @@ export const fetchExerciseEntries = async (
   const loggingLevel = getUserLoggingLevel();
   const response = await getExerciseEntriesForDate(selectedDate);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const parsedEntries: GroupedExerciseEntry[] = response.map((entry: any) => {
+  const parsedEntries: GroupedExerciseEntry[] = response.map((entry) => {
     if (entry.type === 'preset') {
       return {
-        ...entry,
+        ...(entry as unknown as GroupedExerciseEntry),
         exercises: entry.exercises
-          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            entry.exercises.map((ex: any) => ({
+          ? entry.exercises.map((ex) => ({
               ...ex,
-              sets: ex.sets ? parseJsonArray(ex.sets) : [], // Parse sets if it's a JSON string
+              sets: ex.sets ? ex.sets : [], // Parse sets if it's a JSON string
               exercise_snapshot: {
                 ...ex.exercise_snapshot, // Use the existing snapshot
                 equipment: parseJsonArray(ex.exercise_snapshot.equipment),
@@ -47,8 +77,7 @@ export const fetchExerciseEntries = async (
                 images: parseJsonArray(ex.exercise_snapshot.images),
               },
               activity_details: ex.activity_details
-                ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  ex.activity_details.map((detail: any) => ({
+                ? ex.activity_details.map((detail) => ({
                     id: detail.id,
                     key: detail.detail_type,
                     value:
@@ -65,7 +94,7 @@ export const fetchExerciseEntries = async (
     } else {
       return {
         ...entry,
-        sets: entry.sets ? parseJsonArray(entry.sets) : [], // Parse sets if it's a JSON string
+        sets: entry.sets ? entry.sets : [], // Parse sets if it's a JSON string
         exercise_snapshot: {
           ...entry.exercise_snapshot, // Use the existing snapshot
           equipment: parseJsonArray(entry.exercise_snapshot.equipment),
@@ -79,8 +108,7 @@ export const fetchExerciseEntries = async (
           images: parseJsonArray(entry.exercise_snapshot.images),
         },
         activity_details: entry.activity_details
-          ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            entry.activity_details.map((detail: any) => ({
+          ? entry.activity_details.map((detail) => ({
               id: detail.id,
               key: detail.detail_type,
               value:
@@ -127,8 +155,7 @@ export const createExerciseEntry = async (payload: {
 
     // Append other data from the payload to formData
     Object.keys(entryData).forEach((key) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const value = (entryData as any)[key];
+      const value = entryData[key];
       if (value !== undefined && value !== null) {
         if (key === 'sets' && Array.isArray(value)) {
           // The backend expects 'sets' to be a JSON string if it's part of FormData
@@ -215,8 +242,7 @@ export const updateExerciseEntry = async (
     formData.append('image', imageFile);
 
     Object.keys(entryData).forEach((key) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const value = (entryData as any)[key];
+      const value = entryData[key];
       if (value !== undefined && value !== null) {
         if (key === 'sets' && Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
@@ -298,8 +324,41 @@ export const fetchExerciseDetails = async (
 
 export interface ActivityDetailsResponse {
   id?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
+  activity?: {
+    details?: {
+      metricDescriptors?: unknown[];
+      activityDetailMetrics?: unknown[];
+      geoPolylineDTO?: {
+        polyline: { lat: number; lon: number }[];
+      };
+      [key: string]: unknown;
+    };
+    hr_in_timezones?: unknown[];
+    splits?: {
+      lapDTOs: unknown[];
+      [key: string]: unknown;
+    };
+    activity?: {
+      duration?: number;
+      calories?: number;
+      totalAscent?: number;
+      averageHR?: number;
+      averageRunCadence?: number;
+      distance?: number;
+      averagePace?: number;
+      activityName?: string;
+      eventType?: unknown;
+      course?: unknown;
+      gear?: unknown;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
+  workout?: {
+    workoutName: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
 }
 
 export const getActivityDetails = async (

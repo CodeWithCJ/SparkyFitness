@@ -22,41 +22,44 @@ export const loadFamilyAccess = async (): Promise<FamilyAccess[]> => {
     method: 'GET',
     suppress404Toast: true,
   });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const transformedData: FamilyAccess[] = (data || []).map((item: any) => ({
-    id: item.id,
-    owner_user_id: item.owner_user_id,
-    owner_email: item.owner_email, // Map owner_email
-    family_email: item.family_email,
-    family_user_id: item.family_user_id,
-    family_user_email: item.family_user_email, // Map family_user_email
-    access_permissions:
-      typeof item.access_permissions === 'object'
-        ? {
-            can_manage_diary: item.access_permissions.can_manage_diary || false,
-            can_view_food_library:
-              item.access_permissions.can_view_food_library || false,
-            can_view_exercise_library:
-              item.access_permissions.can_view_exercise_library || false,
-            can_manage_checkin:
-              item.access_permissions.can_manage_checkin || false, // Map can_manage_checkin
-            can_view_reports: item.access_permissions.can_view_reports || false, // Map can_view_reports
-            share_external_providers:
-              item.access_permissions.share_external_providers || false,
-          }
-        : {
-            can_manage_diary: false,
-            can_view_food_library: false,
-            can_view_exercise_library: false,
-            can_manage_checkin: false,
-            can_view_reports: false,
-            share_external_providers: false,
-          },
-    access_end_date: item.access_end_date,
-    is_active: item.is_active,
-    status: item.status || 'pending',
-    created_at: item.created_at,
-  }));
+  const transformedData: FamilyAccess[] = (data || []).map(
+    (item: FamilyAccess) => ({
+      id: item.id,
+      owner_user_id: item.owner_user_id,
+      owner_email: item.owner_email, // Map owner_email
+      family_email: item.family_email,
+      family_user_id: item.family_user_id,
+      family_user_email: item.family_user_email, // Map family_user_email
+      access_permissions:
+        typeof item.access_permissions === 'object'
+          ? {
+              can_manage_diary:
+                item.access_permissions.can_manage_diary || false,
+              can_view_food_library:
+                item.access_permissions.can_view_food_library || false,
+              can_view_exercise_library:
+                item.access_permissions.can_view_exercise_library || false,
+              can_manage_checkin:
+                item.access_permissions.can_manage_checkin || false, // Map can_manage_checkin
+              can_view_reports:
+                item.access_permissions.can_view_reports || false, // Map can_view_reports
+              share_external_providers:
+                item.access_permissions.share_external_providers || false,
+            }
+          : {
+              can_manage_diary: false,
+              can_view_food_library: false,
+              can_view_exercise_library: false,
+              can_manage_checkin: false,
+              can_view_reports: false,
+              share_external_providers: false,
+            },
+      access_end_date: item.access_end_date,
+      is_active: item.is_active,
+      status: item.status || 'pending',
+      created_at: item.created_at,
+    })
+  );
   return transformedData;
 };
 
