@@ -183,8 +183,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       returnTo: 'FoodEntryView',
       returnKey: route.key,
       initialValues: {
-        name: entry.food_name || '',
-        brand: entry.brand_name ?? '',
+        name: adjustedValues?.name || entry.food_name || '',
+        brand: adjustedValues?.brand ?? entry.brand_name ?? '',
         servingSize: String(displayValues.servingSize),
         servingUnit: displayValues.servingUnit,
         calories: String(displayValues.calories),
@@ -353,9 +353,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
         {/* Food name & brand */}
         <Animated.View layout={LinearTransition.duration(300)} className="pb-4">
-          <Text className="text-text-primary text-3xl font-bold">{entry.food_name || 'Unknown food'}</Text>
-          {entry.brand_name && (
-            <Text className="text-text-muted mt-1 font-semibold">{entry.brand_name}</Text>
+          <Text className="text-text-primary text-3xl font-bold">
+            {(isEditing && adjustedValues?.name) || entry.food_name || 'Unknown food'}
+          </Text>
+          {((isEditing && adjustedValues?.brand) || entry.brand_name) && (
+            <Text className="text-text-muted mt-1 font-semibold">
+              {(isEditing && adjustedValues?.brand) || entry.brand_name}
+            </Text>
           )}
           {isEditing ? (
             <Animated.View key="edit-serving" entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)}>
