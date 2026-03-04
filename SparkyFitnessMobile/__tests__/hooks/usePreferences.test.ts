@@ -1,9 +1,8 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import { preferencesQueryKey } from '../../src/hooks/queryKeys';
 import { fetchPreferences } from '../../src/services/api/preferencesApi';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/preferencesApi', () => ({
   fetchPreferences: jest.fn(),
@@ -14,23 +13,9 @@ const mockFetchPreferences = fetchPreferences as jest.MockedFunction<typeof fetc
 describe('usePreferences', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: 0,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -44,7 +29,7 @@ describe('usePreferences', () => {
       });
 
       renderHook(() => usePreferences(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -63,7 +48,7 @@ describe('usePreferences', () => {
       mockFetchPreferences.mockResolvedValue(preferencesData);
 
       const { result } = renderHook(() => usePreferences(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -77,7 +62,7 @@ describe('usePreferences', () => {
       mockFetchPreferences.mockRejectedValue(new Error('Network error'));
 
       const { result } = renderHook(() => usePreferences(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -95,7 +80,7 @@ describe('usePreferences', () => {
       });
 
       const { result } = renderHook(() => usePreferences(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -111,7 +96,7 @@ describe('usePreferences', () => {
       });
 
       const { result } = renderHook(() => usePreferences(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {

@@ -638,7 +638,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           Add
         </Text>
         <TouchableOpacity
-          onPress={() => navigation.navigate('ManualFoodEntry', { date })}
+          onPress={() => navigation.navigate('FoodForm', { mode: 'create-food', date })}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10"
         >

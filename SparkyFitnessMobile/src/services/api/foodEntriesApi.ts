@@ -39,6 +39,40 @@ export const createFoodEntry = async (payload: CreateFoodEntryPayload): Promise<
   });
 };
 
+export interface UpdateFoodEntryPayload {
+  quantity?: number;
+  unit?: string;
+  meal_type_id?: string;
+  variant_id?: string;
+  entry_date?: string;
+  // Nutrition snapshot overrides (server applies to entry snapshot)
+  food_name?: string;
+  brand_name?: string;
+  serving_size?: number;
+  serving_unit?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  saturated_fat?: number;
+  sodium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+}
+
+/**
+ * Updates a food entry by ID.
+ */
+export const updateFoodEntry = async (id: string, payload: UpdateFoodEntryPayload): Promise<FoodEntry> => {
+  return apiFetch<FoodEntry>({
+    endpoint: `/api/food-entries/${id}`,
+    serviceName: 'Food Entries API',
+    operation: 'update food entry',
+    method: 'PUT',
+    body: payload,
+  });
+};
+
 /**
  * Deletes a food entry by ID.
  */

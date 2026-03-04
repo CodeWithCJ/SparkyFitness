@@ -6,7 +6,7 @@ import { UserProfile } from '../../types/profile';
  */
 export const fetchProfile = async (): Promise<UserProfile> => {
   return apiFetch<UserProfile>({
-    endpoint: '/api/auth/profiles',
+    endpoint: '/api/identity/profiles',
     serviceName: 'Profile API',
     operation: 'fetch profile',
   });

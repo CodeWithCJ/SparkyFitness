@@ -31,6 +31,7 @@ const ICON_MAP = {
   'bookmark-filled': { sf: 'bookmark.fill', ion: 'bookmark' },
   'checkmark-circle': { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },
   'camera-reverse': { sf: 'camera.rotate', ion: 'camera-reverse-outline' },
+  'pencil': { sf: 'pencil', ion: 'create-outline' },
 
   // Status
   'shield-checkmark': { sf: 'checkmark.shield', ion: 'shield-checkmark-outline' },

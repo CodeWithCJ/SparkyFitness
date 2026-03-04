@@ -64,7 +64,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         navigation.replace('FoodEntryAdd', { item, date: route.params?.date });
       } else {
         const dv = result.food.default_variant;
-        navigation.replace('ManualFoodEntry', {
+        navigation.replace('FoodForm', { mode: 'create-food',
           date: route.params?.date,
           barcode: data,
           providerType: result.source,
@@ -110,7 +110,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     setLabelProcessing(true);
     try {
       const result = await scanNutritionLabel(capturedPhoto.base64, 'image/jpeg');
-      navigation.replace('ManualFoodEntry', {
+      navigation.replace('FoodForm', { mode: 'create-food',
         date: route.params?.date,
         initialFood: {
           name: result.name || '',
@@ -219,7 +219,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               <Text className="text-white font-semibold text-sm">Scan Nutrition Label</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => navigation.replace('ManualFoodEntry', {
+              onPress={() => navigation.replace('FoodForm', { mode: 'create-food',
                 date: route.params?.date,
                 barcode: notFoundBarcode,
               })}

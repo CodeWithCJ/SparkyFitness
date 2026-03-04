@@ -1,9 +1,8 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useExternalFoodSearch } from '../../src/hooks/useExternalFoodSearch';
 import { externalFoodSearchQueryKey } from '../../src/hooks/queryKeys';
 import { searchOpenFoodFacts, searchUsda } from '../../src/services/api/externalFoodSearchApi';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
   searchOpenFoodFacts: jest.fn(),
@@ -16,23 +15,9 @@ const mockSearchUsda = searchUsda as jest.MockedFunction<typeof searchUsda>;
 describe('useExternalFoodSearch', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: 0,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -41,7 +26,7 @@ describe('useExternalFoodSearch', () => {
 
   test('does not fetch when search text is less than 3 characters', () => {
     renderHook(() => useExternalFoodSearch('ab', 'openfoodfacts'), {
-      wrapper: createWrapper(),
+      wrapper: createQueryWrapper(queryClient),
     });
 
     expect(mockSearchOpenFoodFacts).not.toHaveBeenCalled();
@@ -50,7 +35,7 @@ describe('useExternalFoodSearch', () => {
   test('does not fetch when enabled is false', () => {
     renderHook(
       () => useExternalFoodSearch('chicken', 'openfoodfacts', { enabled: false }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     expect(mockSearchOpenFoodFacts).not.toHaveBeenCalled();
@@ -74,7 +59,7 @@ describe('useExternalFoodSearch', () => {
 
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'openfoodfacts'),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await waitFor(() => {
@@ -86,7 +71,7 @@ describe('useExternalFoodSearch', () => {
   test('returns empty array for unsupported provider type', async () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'unknown_provider'),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await waitFor(() => {
@@ -99,7 +84,7 @@ describe('useExternalFoodSearch', () => {
   test('isSearchActive is false when under 3 characters', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('ab', 'openfoodfacts'),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     expect(result.current.isSearchActive).toBe(false);
@@ -110,7 +95,7 @@ describe('useExternalFoodSearch', () => {
 
     const { result } = renderHook(
       () => useExternalFoodSearch('test', 'openfoodfacts'),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await waitFor(() => {
@@ -121,7 +106,7 @@ describe('useExternalFoodSearch', () => {
   test('reports usda as a supported provider', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'usda'),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     expect(result.current.isProviderSupported).toBe(true);
@@ -145,7 +130,7 @@ describe('useExternalFoodSearch', () => {
 
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'usda', { providerId: 'provider-1' }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     await waitFor(() => {

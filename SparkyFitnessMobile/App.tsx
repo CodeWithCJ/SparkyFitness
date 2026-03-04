@@ -23,7 +23,7 @@ import LogScreen from './src/screens/LogScreen';
 import FoodSearchScreen from './src/screens/FoodSearchScreen';
 import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
-import ManualFoodEntryScreen from './src/screens/ManualFoodEntryScreen';
+import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { initializeTheme } from './src/services/themeService';
@@ -215,8 +215,8 @@ function AppContent() {
             }}
           />
           <Stack.Screen
-            name="ManualFoodEntry"
-            component={ManualFoodEntryScreen}
+            name="FoodForm"
+            component={FoodFormScreen}
             options={{
               headerShown: false,
               gestureEnabled: true,

@@ -254,8 +254,7 @@ async function updateFoodEntriesSnapshot(
           calcium = $20,
           iron = $21,
           glycemic_index = $22,
-          custom_nutrients = $23,
-          updated_at = now()
+          custom_nutrients = $23
        WHERE user_id = $24 AND food_id = $25 AND variant_id = $26
        RETURNING id`,
       [

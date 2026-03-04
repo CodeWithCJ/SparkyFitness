@@ -282,7 +282,7 @@ describe('transformHealthRecords', () => {
         {
           startTime: '2024-01-15T08:00:00Z',
           endTime: '2024-01-15T09:00:00Z',
-          exerciseType: 8, // Running
+          exerciseType: 56, // Running
           title: 'Morning Run',
           notes: 'Felt great!',
         },
@@ -302,12 +302,14 @@ describe('transformHealthRecords', () => {
 
     test('maps known exercise type codes to names', () => {
       const exerciseTypes = [
-        { code: 1, name: 'Biking' },
-        { code: 8, name: 'Running' },
+        { code: 8, name: 'Biking' },
+        { code: 56, name: 'Running' },
         { code: 79, name: 'Walking' },
         { code: 37, name: 'Hiking' },
-        { code: 84, name: 'Strength Training' },
-        { code: 87, name: 'Yoga' },
+        { code: 70, name: 'Strength Training' },
+        { code: 83, name: 'Yoga' },
+        { code: 54, name: 'Rowing Machine' },
+        { code: 53, name: 'Rowing' },
       ];
 
       exerciseTypes.forEach(({ code, name }) => {
@@ -339,7 +341,7 @@ describe('transformHealthRecords', () => {
 
     test('uses activityType as title when no explicit title', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 8 },
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 56 },
       ];
       const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
 
@@ -511,7 +513,7 @@ describe('transformHealthRecords', () => {
         {
           startTime: '2024-01-15T08:00:00Z',
           endTime: '2024-01-15T09:00:00Z',
-          exerciseType: 8,
+          exerciseType: 56,
           title: 'Morning Run',
           energy: { inKilocalories: 450 },
           distance: { inMeters: 7500 },

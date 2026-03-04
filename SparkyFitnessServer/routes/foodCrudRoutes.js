@@ -986,15 +986,15 @@ router.get(
  *       200:
  *         description: The result of the snapshot update.
  *       400:
- *         description: foodId and variantId are required.
+ *         description: foodId is required.
  */
 router.post(
   "/update-snapshot",
   authenticate,
   async (req, res, next) => {
     const { foodId, variantId } = req.body;
-    if (!foodId || !variantId) {
-      return res.status(400).json({ error: "foodId and variantId are required." });
+    if (!foodId) {
+      return res.status(400).json({ error: "foodId is required." });
     }
     try {
       const result = await foodService.updateFoodEntriesSnapshot(req.userId, foodId, variantId);

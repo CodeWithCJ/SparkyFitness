@@ -42,7 +42,7 @@ describe('profileApi', () => {
       );
     });
 
-    test('sends GET request to /api/auth/profiles', async () => {
+    test('sends GET request to /api/identity/profiles', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -52,7 +52,7 @@ describe('profileApi', () => {
       await fetchProfile();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/auth/profiles',
+        'https://example.com/api/identity/profiles',
         expect.objectContaining({
           method: 'GET',
           headers: {
@@ -75,7 +75,7 @@ describe('profileApi', () => {
       await fetchProfile();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/auth/profiles',
+        'https://example.com/api/identity/profiles',
         expect.anything()
       );
     });

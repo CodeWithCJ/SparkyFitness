@@ -1,6 +1,7 @@
 const { getClient } = require("../db/poolManager");
 const { log } = require("../config/logging");
 const format = require("pg-format");
+const { sanitizeCustomNutrients } = require("../utils/foodUtils");
 
 /**
  * @swagger
@@ -157,6 +158,26 @@ async function createFoodEntry(entryData, createdByUserId) {
         throw new Error("Food or variant not found for snapshotting.");
       }
       snapshot = foodSnapshotQuery.rows[0];
+
+      // Apply inline nutrition overrides if provided by the client.
+      // The DB snapshot uses 'name'/'brand' keys while entryData uses 'food_name'/'brand_name'.
+      const nutritionOverrideFields = [
+        'calories', 'protein', 'carbs', 'fat', 'saturated_fat',
+        'polyunsaturated_fat', 'monounsaturated_fat', 'trans_fat',
+        'cholesterol', 'sodium', 'potassium', 'dietary_fiber',
+        'sugars', 'vitamin_a', 'vitamin_c', 'calcium', 'iron',
+        'glycemic_index', 'serving_size', 'serving_unit',
+      ];
+      for (const field of nutritionOverrideFields) {
+        if (entryData[field] !== undefined) {
+          snapshot[field] = entryData[field];
+        }
+      }
+      if (entryData.food_name !== undefined) snapshot.name = entryData.food_name;
+      if (entryData.brand_name !== undefined) snapshot.brand = entryData.brand_name;
+      if (entryData.custom_nutrients !== undefined) {
+        snapshot.custom_nutrients = sanitizeCustomNutrients(entryData.custom_nutrients);
+      }
     } else {
       // This means it's an entry where snapshot data is already prepared (e.g., from migration or meal components)
       // We expect snapshot data to be present in entryData
@@ -424,38 +445,39 @@ async function getFoodEntriesByDate(userId, selectedDate) {
   try {
     const result = await client.query(
       `SELECT
-        fe.id, 
-        fe.food_id, 
-        fe.meal_id, 
+        fe.id,
+        fe.user_id,
+        fe.food_id,
+        fe.meal_id,
         mt.name as meal_type, fe.meal_type_id,
         fe.quantity, -- Note: quantity is already scaled when created for meal components
-        fe.unit, 
-        fe.variant_id, 
-        fe.entry_date, 
+        fe.unit,
+        fe.variant_id,
+        fe.entry_date,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
-        fe.food_name, 
-        fe.brand_name, 
-        fe.serving_size, 
-        fe.serving_unit, 
-        fe.calories, 
-        fe.protein, 
-        fe.carbs, 
+        fe.food_name,
+        fe.brand_name,
+        fe.serving_size,
+        fe.serving_unit,
+        fe.calories,
+        fe.protein,
+        fe.carbs,
         fe.fat,
-        fe.saturated_fat, 
-        fe.polyunsaturated_fat, 
-        fe.monounsaturated_fat, 
-        fe.trans_fat, 
-        fe.cholesterol, 
+        fe.saturated_fat,
+        fe.polyunsaturated_fat,
+        fe.monounsaturated_fat,
+        fe.trans_fat,
+        fe.cholesterol,
         fe.sodium,
-        fe.potassium, 
-        fe.dietary_fiber, 
-        fe.sugars, 
-        fe.vitamin_a, 
-        fe.vitamin_c, 
-        fe.calcium, 
-        fe.iron, 
-        fe.glycemic_index, 
+        fe.potassium,
+        fe.dietary_fiber,
+        fe.sugars,
+        fe.vitamin_a,
+        fe.vitamin_c,
+        fe.calcium,
+        fe.iron,
+        fe.glycemic_index,
         fe.custom_nutrients
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id

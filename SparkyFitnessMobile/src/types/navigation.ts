@@ -15,15 +15,18 @@ export type TabParamList = {
 export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabParamList>;
   FoodSearch: { date?: string } | undefined;
-  FoodEntryAdd: { item: FoodInfoItem; date?: string };
-  FoodEntryView: { entry: FoodEntry };
-  ManualFoodEntry: { date?: string; initialFood?: Partial<FoodFormData>; barcode?: string; providerType?: string } | undefined;
+  FoodEntryAdd: { item: FoodInfoItem; date?: string; adjustedValues?: FoodFormData };
+  FoodEntryView: { entry: FoodEntry; adjustedValues?: FoodFormData };
+  FoodForm:
+    | { mode: 'create-food'; date?: string; initialFood?: Partial<FoodFormData>; barcode?: string; providerType?: string }
+    | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string };
   FoodScan: { date?: string } | undefined;
   Logs: undefined;
 };
 
 declare global {
   namespace ReactNavigation {
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface RootParamList extends RootStackParamList {}
   }
 }

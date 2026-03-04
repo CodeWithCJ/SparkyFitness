@@ -31,5 +31,6 @@ export { useExternalProviders } from './useExternalProviders';
 export { useExternalFoodSearch } from './useExternalFoodSearch';
 export { useMealTypes } from './useMealTypes';
 export { useDeleteFoodEntry } from './useDeleteFoodEntry';
+export { useUpdateFoodEntry } from './useUpdateFoodEntry';
 export { useMeasurementsRange } from './useMeasurementsRange';
 export type { StepsDataPoint, StepsRange, WeightDataPoint } from './useMeasurementsRange';

@@ -1,9 +1,8 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFoods } from '../../src/hooks/useFoods';
 import { foodsQueryKey } from '../../src/hooks/queryKeys';
 import { fetchFoods } from '../../src/services/api/foodsApi';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/foodsApi', () => ({
   fetchFoods: jest.fn(),
@@ -14,23 +13,9 @@ const mockFetchFoods = fetchFoods as jest.MockedFunction<typeof fetchFoods>;
 describe('useFoods', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: 0,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -45,7 +30,7 @@ describe('useFoods', () => {
       });
 
       renderHook(() => useFoods(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -92,7 +77,7 @@ describe('useFoods', () => {
       mockFetchFoods.mockResolvedValue(foodsData);
 
       const { result } = renderHook(() => useFoods(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -110,7 +95,7 @@ describe('useFoods', () => {
       });
 
       const { result } = renderHook(() => useFoods(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -125,7 +110,7 @@ describe('useFoods', () => {
       mockFetchFoods.mockRejectedValue(new Error('Network error'));
 
       const { result } = renderHook(() => useFoods(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -144,7 +129,7 @@ describe('useFoods', () => {
       });
 
       const { result } = renderHook(() => useFoods(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -161,7 +146,7 @@ describe('useFoods', () => {
       });
 
       const { result } = renderHook(() => useFoods(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {

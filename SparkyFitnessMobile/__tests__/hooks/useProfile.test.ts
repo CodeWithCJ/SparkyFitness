@@ -1,9 +1,8 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useProfile } from '../../src/hooks/useProfile';
 import { profileQueryKey } from '../../src/hooks/queryKeys';
 import { fetchProfile } from '../../src/services/api/profileApi';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/profileApi', () => ({
   fetchProfile: jest.fn(),
@@ -14,23 +13,9 @@ const mockFetchProfile = fetchProfile as jest.MockedFunction<typeof fetchProfile
 describe('useProfile', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: 0,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -50,7 +35,7 @@ describe('useProfile', () => {
       });
 
       renderHook(() => useProfile(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -71,7 +56,7 @@ describe('useProfile', () => {
       mockFetchProfile.mockResolvedValue(profileData);
 
       const { result } = renderHook(() => useProfile(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -85,7 +70,7 @@ describe('useProfile', () => {
       mockFetchProfile.mockRejectedValue(new Error('Network error'));
 
       const { result } = renderHook(() => useProfile(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -109,7 +94,7 @@ describe('useProfile', () => {
       });
 
       const { result } = renderHook(() => useProfile(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
@@ -131,7 +116,7 @@ describe('useProfile', () => {
       });
 
       const { result } = renderHook(() => useProfile(), {
-        wrapper: createWrapper(),
+        wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {

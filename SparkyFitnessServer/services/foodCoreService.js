@@ -639,62 +639,74 @@ async function getFoodsNeedingReview(authenticatedUserId) {
   }
 }
 
+async function updateSnapshotForVariant(authenticatedUserId, food, variant) {
+  const newSnapshotData = {
+    food_name: food.name,
+    brand_name: food.brand,
+    serving_size: variant.serving_size,
+    serving_unit: variant.serving_unit,
+    calories: variant.calories,
+    protein: variant.protein,
+    carbs: variant.carbs,
+    fat: variant.fat,
+    saturated_fat: variant.saturated_fat,
+    polyunsaturated_fat: variant.polyunsaturated_fat,
+    monounsaturated_fat: variant.monounsaturated_fat,
+    trans_fat: variant.trans_fat,
+    cholesterol: variant.cholesterol,
+    sodium: variant.sodium,
+    potassium: variant.potassium,
+    dietary_fiber: variant.dietary_fiber,
+    sugars: variant.sugars,
+    vitamin_a: variant.vitamin_a,
+    vitamin_c: variant.vitamin_c,
+    calcium: variant.calcium,
+    iron: variant.iron,
+    glycemic_index: variant.glycemic_index,
+    custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
+  };
+
+  await foodRepository.updateFoodEntriesSnapshot(
+    authenticatedUserId,
+    food.id,
+    variant.id,
+    newSnapshotData,
+  );
+
+  await foodRepository.clearUserIgnoredUpdate(authenticatedUserId, variant.id);
+}
+
 async function updateFoodEntriesSnapshot(
   authenticatedUserId,
   foodId,
   variantId,
 ) {
   try {
-    // Fetch the latest food and variant details
     const food = await foodRepository.getFoodById(foodId, authenticatedUserId);
     if (!food) {
       throw new Error("Food not found.");
     }
-    const variant = await foodRepository.getFoodVariantById(
-      variantId,
-      authenticatedUserId,
-    );
-    if (!variant) {
-      throw new Error("Food variant not found.");
+
+    if (variantId) {
+      // Single variant path
+      const variant = await foodRepository.getFoodVariantById(
+        variantId,
+        authenticatedUserId,
+      );
+      if (!variant) {
+        throw new Error("Food variant not found.");
+      }
+      await updateSnapshotForVariant(authenticatedUserId, food, variant);
+    } else {
+      // All variants path
+      const variants = await foodRepository.getFoodVariantsByFoodId(
+        foodId,
+        authenticatedUserId,
+      );
+      for (const variant of variants) {
+        await updateSnapshotForVariant(authenticatedUserId, food, variant);
+      }
     }
-
-    // Construct the new snapshot data
-    const newSnapshotData = {
-      food_name: food.name,
-      brand_name: food.brand,
-      serving_size: variant.serving_size,
-      serving_unit: variant.serving_unit,
-      calories: variant.calories,
-      protein: variant.protein,
-      carbs: variant.carbs,
-      fat: variant.fat,
-      saturated_fat: variant.saturated_fat,
-      polyunsaturated_fat: variant.polyunsaturated_fat,
-      monounsaturated_fat: variant.monounsaturated_fat,
-      trans_fat: variant.trans_fat,
-      cholesterol: variant.cholesterol,
-      sodium: variant.sodium,
-      potassium: variant.potassium,
-      dietary_fiber: variant.dietary_fiber,
-      sugars: variant.sugars,
-      vitamin_a: variant.vitamin_a,
-      vitamin_c: variant.vitamin_c,
-      calcium: variant.calcium,
-      iron: variant.iron,
-      glycemic_index: variant.glycemic_index,
-      custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
-    };
-
-    // Update all relevant food entries for the authenticated user
-    await foodRepository.updateFoodEntriesSnapshot(
-      authenticatedUserId,
-      foodId,
-      variantId,
-      newSnapshotData,
-    );
-
-    // Clear any ignored updates for this variant for this user
-    await foodRepository.clearUserIgnoredUpdate(authenticatedUserId, variantId);
 
     return { message: "Food entries updated successfully." };
   } catch (error) {

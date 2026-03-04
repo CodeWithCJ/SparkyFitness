@@ -956,70 +956,6 @@ async function getFoodsNeedingReview(userId) {
   }
 }
 
-async function updateFoodEntriesSnapshot(userId, foodId, newSnapshotData) {
-  const client = await getClient(userId); // User-specific operation
-  try {
-    const result = await client.query(
-      `UPDATE food_entries
-       SET
-          food_name = $1,
-          serving_size = $2,
-          serving_unit = $3,
-          calories = $4,
-          protein = $5,
-          carbs = $6,
-          fat = $7,
-          saturated_fat = $8,
-          polyunsaturated_fat = $9,
-          monounsaturated_fat = $10,
-          trans_fat = $11,
-          cholesterol = $12,
-          sodium = $13,
-          potassium = $14,
-          dietary_fiber = $15,
-          sugars = $16,
-          vitamin_a = $17,
-          vitamin_c = $18,
-          calcium = $19,
-          iron = $20,
-          glycemic_index = $21,
-          custom_nutrients = $22
-       WHERE user_id = $23 AND food_id = $24 AND variant_id = $25
-       RETURNING id`,
-      [
-        newSnapshotData.food_name,
-        sanitizeNumeric(newSnapshotData.serving_size),
-        newSnapshotData.serving_unit,
-        sanitizeNumeric(newSnapshotData.calories),
-        sanitizeNumeric(newSnapshotData.protein),
-        sanitizeNumeric(newSnapshotData.carbs),
-        sanitizeNumeric(newSnapshotData.fat),
-        sanitizeNumeric(newSnapshotData.saturated_fat),
-        sanitizeNumeric(newSnapshotData.polyunsaturated_fat),
-        sanitizeNumeric(newSnapshotData.monounsaturated_fat),
-        sanitizeNumeric(newSnapshotData.trans_fat),
-        sanitizeNumeric(newSnapshotData.cholesterol),
-        sanitizeNumeric(newSnapshotData.sodium),
-        sanitizeNumeric(newSnapshotData.potassium),
-        sanitizeNumeric(newSnapshotData.dietary_fiber),
-        sanitizeNumeric(newSnapshotData.sugars),
-        sanitizeNumeric(newSnapshotData.vitamin_a),
-        sanitizeNumeric(newSnapshotData.vitamin_c),
-        sanitizeNumeric(newSnapshotData.calcium),
-        sanitizeNumeric(newSnapshotData.iron),
-        sanitizeGlycemicIndex(newSnapshotData.glycemic_index),
-        newSnapshotData.custom_nutrients || {},
-        userId,
-        foodId,
-        newSnapshotData.variant_id,
-      ],
-    );
-    return result.rowCount;
-  } finally {
-    client.release();
-  }
-}
-
 async function clearUserIgnoredUpdate(userId, variantId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -1048,7 +984,6 @@ module.exports = {
   getFoodDeletionImpact,
   createFoodsInBulk,
   getFoodsNeedingReview,
-  updateFoodEntriesSnapshot,
   clearUserIgnoredUpdate,
   deleteFoodAndDependencies,
 };

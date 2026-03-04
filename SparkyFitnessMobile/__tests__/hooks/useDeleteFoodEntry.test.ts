@@ -1,10 +1,9 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import React from 'react';
 import { Alert } from 'react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDeleteFoodEntry } from '../../src/hooks/useDeleteFoodEntry';
 import { deleteFoodEntry } from '../../src/services/api/foodEntriesApi';
 import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
   deleteFoodEntry: jest.fn(),
@@ -21,21 +20,9 @@ const mockDeleteFoodEntry = deleteFoodEntry as jest.MockedFunction<typeof delete
 describe('useDeleteFoodEntry', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -50,7 +37,7 @@ describe('useDeleteFoodEntry', () => {
         entryId: 'entry-123',
         entryDate: '2026-02-26T00:00:00.000Z',
       }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     // Trigger the confirmation dialog
@@ -80,7 +67,7 @@ describe('useDeleteFoodEntry', () => {
         entryDate: '2026-02-26T00:00:00.000Z',
         onSuccess,
       }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     act(() => {
@@ -106,7 +93,7 @@ describe('useDeleteFoodEntry', () => {
         entryId: 'entry-123',
         entryDate: '2026-02-26T00:00:00.000Z',
       }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     act(() => {
@@ -128,7 +115,7 @@ describe('useDeleteFoodEntry', () => {
         entryId: 'entry-123',
         entryDate: '2026-02-26T00:00:00.000Z',
       }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     act(() => {
@@ -152,7 +139,7 @@ describe('useDeleteFoodEntry', () => {
         entryId: 'entry-123',
         entryDate: '2026-02-26T00:00:00.000Z',
       }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     act(() => {
@@ -175,7 +162,7 @@ describe('useDeleteFoodEntry', () => {
         entryId: 'entry-123',
         entryDate: '2026-02-26T00:00:00.000Z',
       }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     act(() => {
@@ -198,7 +185,7 @@ describe('useDeleteFoodEntry', () => {
         entryId: 'entry-123',
         entryDate: '2026-03-15T14:30:00.000Z',
       }),
-      { wrapper: createWrapper() },
+      { wrapper: createQueryWrapper(queryClient) },
     );
 
     act(() => {

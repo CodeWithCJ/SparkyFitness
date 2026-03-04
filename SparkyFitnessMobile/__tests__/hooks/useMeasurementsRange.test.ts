@@ -1,11 +1,10 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
-import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useMeasurementsRange } from '../../src/hooks/useMeasurementsRange';
 import { measurementsRangeQueryKey } from '../../src/hooks/queryKeys';
 import { fetchMeasurementsRange } from '../../src/services/api/measurementsApi';
 import { getTodayDate, addDays } from '../../src/utils/dateUtils';
 import type { CheckInMeasurementRange } from '../../src/types/measurements';
+import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchMeasurementsRange: jest.fn(),
@@ -30,23 +29,9 @@ const makeMeasurement = (entry_date: string, steps?: number): CheckInMeasurement
 describe('useMeasurementsRange', () => {
   let queryClient: QueryClient;
 
-  const createWrapper = () => {
-    const Wrapper = ({ children }: { children: React.ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children);
-    Wrapper.displayName = 'QueryClientProviderWrapper';
-    return Wrapper;
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-          staleTime: 0,
-        },
-      },
-    });
+    queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
@@ -59,7 +44,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await waitFor(() => {
@@ -74,7 +59,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '30d' }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await waitFor(() => {
@@ -89,7 +74,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '90d' }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await waitFor(() => {
@@ -107,7 +92,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await waitFor(() => {
@@ -133,7 +118,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await waitFor(() => {
@@ -154,7 +139,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await waitFor(() => {
@@ -180,7 +165,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await waitFor(() => {
@@ -200,7 +185,7 @@ describe('useMeasurementsRange', () => {
 
       renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await waitFor(() => {
@@ -215,7 +200,7 @@ describe('useMeasurementsRange', () => {
 
       renderHook(
         () => useMeasurementsRange({ range: '30d' }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await waitFor(() => {
@@ -230,7 +215,7 @@ describe('useMeasurementsRange', () => {
 
       renderHook(
         () => useMeasurementsRange({ range: '7d', enabled: false }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -243,7 +228,7 @@ describe('useMeasurementsRange', () => {
 
       renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createWrapper() },
+        { wrapper: createQueryWrapper(queryClient) },
       );
 
       await waitFor(() => {
