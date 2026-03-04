@@ -25,7 +25,7 @@ const createTestQueryClient = () =>
       },
     },
     queryCache: new QueryCache({
-      onError: (e, query) => {
+      onError: (_e, query) => {
         if (query.meta?.errorMessage) {
           toast({
             title: (query.meta.errorTitle as string) || 'Error',

@@ -16,6 +16,10 @@ const GlobalNotificationIcon = () => {
     !!user && reviewCount > 0
   );
 
+  if (isDialogOpen) {
+    console.log(reviewItems);
+    setIsDialogOpen(false);
+  }
   return null;
 };
 

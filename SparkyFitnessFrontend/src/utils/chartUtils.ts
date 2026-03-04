@@ -27,12 +27,7 @@ export function calculateSmartYAxisDomain(
     forceMin?: number; // Force a specific minimum value for the Y-axis
   } = {}
 ): [number, number] | [number, string] | undefined {
-  const {
-    marginPercent = 0.1,
-    useZeroBaseline = false,
-    minRangeThreshold = 0.3,
-    forceMin,
-  } = options;
+  const { marginPercent = 0.1, useZeroBaseline = false, forceMin } = options;
 
   if (!data || data.length === 0) {
     return undefined;

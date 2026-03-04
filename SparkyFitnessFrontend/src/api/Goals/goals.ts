@@ -159,7 +159,7 @@ export const saveGoals = async (
   cascade: boolean
 ): Promise<void> => {
   const unflattened = unflattenCustomNutrients(goals);
-  const { custom_nutrients, ...rest } = unflattened;
+  const { custom_nutrients } = unflattened;
 
   await apiCall('/goals/manage-timeline', {
     method: 'POST',

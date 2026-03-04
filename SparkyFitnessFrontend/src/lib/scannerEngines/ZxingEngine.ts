@@ -21,7 +21,7 @@ export class ZxingEngine implements BarcodeScannerEngine {
   }
 
   async start(
-    constraints: MediaStreamConstraints,
+    _constraints: MediaStreamConstraints,
     deviceId?: string
   ): Promise<void> {
     if (!this.containerElement) return;

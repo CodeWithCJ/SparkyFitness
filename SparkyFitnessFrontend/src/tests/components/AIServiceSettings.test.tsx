@@ -387,10 +387,6 @@ describe('AIServiceSettings', () => {
       expect(screen.getByText('My OpenAI')).toBeInTheDocument();
     });
 
-    // Wait for service to be visible
-    const serviceName = await screen.findByText('My OpenAI');
-    const serviceCard = serviceName.closest('.border');
-
     // Find the edit button inside the card using accessible label
     const editButton = await screen.findByRole('button', {
       name: 'Edit Service',

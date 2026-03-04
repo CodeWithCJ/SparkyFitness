@@ -59,7 +59,7 @@ export const userManagementService = {
     await api.post(`/admin/users/${userId}/mfa/reset`);
   },
 
-  getUserProfile: async (userId: string): Promise<UserProfile> => {
+  getUserProfile: async (): Promise<UserProfile> => {
     try {
       const response = await api.get(`/identity/profiles`);
       return response;

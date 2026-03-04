@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -127,31 +127,6 @@ const NutritionChartsGrid = ({
         reportChartPreferences.visible_nutrients.includes(chart.key)
       )
     : allNutritionCharts;
-
-  const [isMounted, setIsMounted] = useState(true);
-
-  if (!isMounted) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">
-        {visibleCharts.map((chart) => (
-          <Card key={chart.key}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">
-                {chart.label} ({chart.unit})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                <span className="text-xs text-muted-foreground">
-                  {t('common.loading', 'Loading...')}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">

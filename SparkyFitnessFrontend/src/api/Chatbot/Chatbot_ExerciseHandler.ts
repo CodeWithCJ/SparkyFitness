@@ -117,9 +117,8 @@ export const processExerciseInput = async (
     const caloriesBurned = Math.round((caloriesPerHour / 60) * duration);
 
     // Add exercise entry
-    let exerciseEntry = null;
     try {
-      exerciseEntry = await apiCall('/exercise-entries', {
+      await apiCall('/exercise-entries', {
         method: 'POST',
         body: {
           exercise_id: exerciseId,

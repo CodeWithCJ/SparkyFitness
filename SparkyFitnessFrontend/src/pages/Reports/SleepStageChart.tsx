@@ -273,7 +273,7 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
 
   return (
     <ZoomableChart title={t('sleepReport.sleepHypnogram', 'Sleep Hypnogram')}>
-      {(isMaximized, zoomLevel) => (
+      {(isMaximized) => (
         <Card>
           <CardHeader>
             <CardTitle>

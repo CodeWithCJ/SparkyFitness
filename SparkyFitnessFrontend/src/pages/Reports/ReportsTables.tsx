@@ -303,7 +303,6 @@ const ReportsTables = ({
       });
     }
     return sortableItems.filter((entry) => {
-      const entryDate = parseISO(entry.entry_date);
       if (
         exerciseNameFilter &&
         !entry.exercises.name

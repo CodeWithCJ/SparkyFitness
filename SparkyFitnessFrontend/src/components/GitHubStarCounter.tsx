@@ -9,8 +9,6 @@ interface GitHubStarCounterProps {
   className?: string;
 }
 
-const CACHE_KEY_PREFIX = 'github_stars_';
-
 const GitHubStarCounter: React.FC<GitHubStarCounterProps> = ({
   owner,
   repo,

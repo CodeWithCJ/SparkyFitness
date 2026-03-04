@@ -557,8 +557,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     if (!currentUserId) return;
 
     try {
-      const userProfile =
-        await userManagementService.getUserProfile(currentUserId);
+      const userProfile = await userManagementService.getUserProfile();
 
       if (!userProfile) {
         toast({

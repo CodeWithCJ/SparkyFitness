@@ -284,7 +284,6 @@ const Auth = () => {
       data.userId,
       email,
       data.role || 'user',
-      'password',
       true,
       fullName
     );
@@ -333,7 +332,6 @@ const Auth = () => {
         data.userId,
         email,
         data.role || 'user',
-        'password',
         true,
         data.fullName
       );
