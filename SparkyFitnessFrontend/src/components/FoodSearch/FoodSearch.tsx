@@ -268,34 +268,45 @@ const EnhancedFoodSearch = ({
   };
 
   const searchOpenFoodFactsByBarcode = async (barcode: string) => {
-    const data = await queryClient.fetchQuery(
-      searchOpenFoodFactsBarcodeOptions(barcode)
-    );
+    setIsOnlineLoading(true);
 
-    if (data.status === 1 && data.product) {
-      const mapped: ExternalResultWrapper = {
-        provider_type: 'openfoodfacts',
-        raw: data.product,
-        food: convertOpenFoodFactsToFood(
-          data.product,
-          autoScaleOpenFoodFactsImports
-        ),
-      };
+    toast({
+      title: 'Searching barcode',
+      description: `Looking up: ${barcode}...`,
+    });
 
-      setExternalResults([mapped]);
-      setActiveTab('online');
+    try {
+      const data = await queryClient.fetchQuery(
+        searchOpenFoodFactsBarcodeOptions(barcode)
+      );
 
-      toast({
-        title: 'Barcode scanned successfully',
-        description: `Found product: ${data.product.product_name}`,
-      });
-    } else {
-      setExternalResults([]);
-      toast({
-        title: 'Product not found',
-        description: 'No product found for this barcode on OpenFoodFacts.',
-        variant: 'destructive',
-      });
+      if (data.status === 1 && data.product) {
+        const mapped: ExternalResultWrapper = {
+          provider_type: 'openfoodfacts',
+          raw: data.product,
+          food: convertOpenFoodFactsToFood(
+            data.product,
+            autoScaleOpenFoodFactsImports
+          ),
+        };
+
+        setExternalResults([mapped]);
+        setActiveTab('online');
+
+        toast({
+          title: 'Barcode scanned successfully',
+          description: `Found product: ${data.product.product_name}`,
+        });
+      } else {
+        setExternalResults([]);
+        toast({
+          title: 'Product not found',
+          description: 'No product found for this barcode on OpenFoodFacts.',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setIsOnlineLoading(false);
     }
   };
 
