@@ -57,8 +57,10 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
       });
     },
     onError: () => {
-      queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(date) });
       Alert.alert('Error', 'Failed to update water intake. Please try again.');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(date) });
     },
   });
 

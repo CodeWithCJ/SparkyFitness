@@ -3,15 +3,13 @@ import { View, Text, TouchableOpacity, Pressable, ScrollView, TextInput } from '
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useQuery } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { fetchFoodVariants } from '../services/api/foodsApi';
 import { formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
-import { foodVariantsQueryKey } from '../hooks/queryKeys';
 import { useMealTypes } from '../hooks';
+import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import { useProfile } from '../hooks/useProfile';
@@ -51,12 +49,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
   // Fetch variants if entry has a food_id
-  const { data: variants } = useQuery({
-    queryKey: foodVariantsQueryKey(entry.food_id!),
-    queryFn: () => fetchFoodVariants(entry.food_id!),
-    enabled: !!entry.food_id,
-    staleTime: 1000 * 60 * 5,
-  });
+  const { variants } = useFoodVariants(entry.food_id!, { enabled: !!entry.food_id });
 
   // Active variant: the currently selected variant's data, or fallback to entry snapshot
   const activeVariant = useMemo(() => {
