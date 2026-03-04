@@ -90,15 +90,11 @@ export const loginUser = async (
     throw error;
   }
 
-  const authData = data as BetterAuthResponse | null;
+  const authData = data as
+    | (BetterAuthResponse & { twoFactorRedirect?: boolean })
+    | null;
 
-  if (!authData?.user) {
-    throw new Error(
-      'Login succeeded but no user data was received from the server.'
-    );
-  }
-
-  // Better Auth native 2FA handling
+  // Better Auth native 2FA handling - Check this BEFORE checking for user data
   if (authData?.twoFactorRedirect) {
     return {
       userId: authData?.user?.id || '',
@@ -108,6 +104,12 @@ export const loginUser = async (
       mfa_totp_enabled: authData?.user?.twoFactorEnabled,
       mfa_email_enabled: authData?.user?.mfaEmailEnabled,
     } as AuthResponse;
+  }
+
+  if (!authData?.user) {
+    throw new Error(
+      'Login succeeded but no user data was received from the server.'
+    );
   }
 
   return {
