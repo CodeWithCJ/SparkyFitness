@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Platform, ScrollView, TextInput, Alert } from 'react-native';
 import { StackActions, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,7 @@ import { getMealTypeLabel } from '../constants/meals';
 import { dailySummaryQueryKey, foodsQueryKey, goalsQueryKey, foodVariantsQueryKey } from '../hooks/queryKeys';
 import { useMealTypes } from '../hooks';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import type { FoodInfoItem } from '../types/foodInfo';
+import type { FoodFormData } from '../components/FoodForm';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type FoodEntryAddScreenProps = RootStackScreenProps<'FoodEntryAdd'>;
@@ -26,6 +26,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   const calendarRef = useRef<CalendarSheetRef>(null);
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
+  const [adjustedValues, setAdjustedValues] = useState<FoodFormData | null>(null);
   const effectiveMealId = selectedMealId ?? defaultMealTypeId;
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
@@ -96,6 +97,22 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
     };
   }, [variants, externalVariantOptions, selectedVariantId, item]);
 
+  const displayValues = useMemo(() => {
+    if (!adjustedValues) return activeVariant;
+    return {
+      servingSize: parseFloat(adjustedValues.servingSize) || activeVariant.servingSize,
+      servingUnit: adjustedValues.servingUnit || activeVariant.servingUnit,
+      calories: parseFloat(adjustedValues.calories) || 0,
+      protein: parseFloat(adjustedValues.protein) || 0,
+      carbs: parseFloat(adjustedValues.carbs) || 0,
+      fat: parseFloat(adjustedValues.fat) || 0,
+      fiber: adjustedValues.fiber ? parseFloat(adjustedValues.fiber) : undefined,
+      saturatedFat: adjustedValues.saturatedFat ? parseFloat(adjustedValues.saturatedFat) : undefined,
+      sodium: adjustedValues.sodium ? parseFloat(adjustedValues.sodium) : undefined,
+      sugars: adjustedValues.sugars ? parseFloat(adjustedValues.sugars) : undefined,
+    };
+  }, [adjustedValues, activeVariant]);
+
   const variantPickerOptions = useMemo(() => {
     if (variants && variants.length > 0) {
       return variants.map((v) => ({
@@ -114,10 +131,30 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
 
   const [quantityText, setQuantityText] = useState(String(activeVariant.servingSize));
   const quantity = parseFloat(quantityText) || 0;
-  const servings = activeVariant.servingSize > 0 ? quantity / activeVariant.servingSize : 0;
+  const servings = displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
+  const servingSizeRef = useRef(displayValues.servingSize);
+
+  const adjustedFromNav = route.params?.adjustedValues;
+  useEffect(() => {
+    servingSizeRef.current = displayValues.servingSize;
+  }, [displayValues.servingSize]);
+
+  useEffect(() => {
+    if (adjustedFromNav) {
+      const previousServingSize = servingSizeRef.current;
+      const newServingSize = parseFloat(adjustedFromNav.servingSize) || previousServingSize;
+      setAdjustedValues(adjustedFromNav);
+      if (newServingSize !== previousServingSize) {
+        setQuantityText(String(newServingSize));
+      }
+      // Clear route params so variant changes don't replay stale overrides
+      navigation.setParams({ adjustedValues: undefined });
+    }
+  }, [adjustedFromNav, navigation]);
 
   const handleVariantChange = (variantId: string) => {
     setSelectedVariantId(variantId);
+    setAdjustedValues(null);
     if (variants) {
       const v = variants.find((v) => v.id === variantId);
       if (v) { setQuantityText(String(v.serving_size)); return; }
@@ -135,13 +172,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   };
 
   const clampQuantity = () => {
-    const minQuantity = activeVariant.servingSize * 0.5;
+    const minQuantity = displayValues.servingSize * 0.5;
     const clamped = Math.max(minQuantity, quantity);
     setQuantityText(String(clamped));
   };
 
   const adjustQuantity = (delta: number) => {
-    const step = activeVariant.servingSize;
+    const step = displayValues.servingSize;
     const increment = step * 0.5;
     const minQuantity = increment;
     if (quantity < minQuantity) {
@@ -168,21 +205,26 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
     '--color-macro-fat',
   ]) as [string, string, string, string, string];
 
+  const buildSaveFoodPayload = () => {
+    const source = adjustedValues ? displayValues : activeVariant;
+    return {
+      name: adjustedValues?.name || item.name,
+      brand: adjustedValues?.brand ?? item.brand,
+      serving_size: source.servingSize,
+      serving_unit: source.servingUnit,
+      calories: source.calories,
+      protein: source.protein,
+      carbs: source.carbs,
+      fat: source.fat,
+      dietary_fiber: source.fiber,
+      saturated_fat: source.saturatedFat,
+      sodium: source.sodium,
+      sugars: source.sugars,
+    };
+  };
+
   const saveFoodMutation = useMutation({
-    mutationFn: () => saveFood({
-      name: item.name,
-      brand: item.brand,
-      serving_size: activeVariant.servingSize,
-      serving_unit: activeVariant.servingUnit,
-      calories: activeVariant.calories,
-      protein: activeVariant.protein,
-      carbs: activeVariant.carbs,
-      fat: activeVariant.fat,
-      dietary_fiber: activeVariant.fiber,
-      saturated_fat: activeVariant.saturatedFat,
-      sodium: activeVariant.sodium,
-      sugars: activeVariant.sugars,
-    }),
+    mutationFn: () => saveFood(buildSaveFoodPayload()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
     },
@@ -192,13 +234,32 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
     const base = {
       meal_type_id: effectiveMealId!,
       quantity,
-      unit: activeVariant.servingUnit,
+      unit: displayValues.servingUnit,
       entry_date: selectedDate,
     };
 
     switch (item.source) {
       case 'local':
         if (!selectedVariantId) throw new Error('Missing variant ID for local food');
+        if (adjustedValues) {
+          return {
+            ...base,
+            food_id: item.id,
+            variant_id: selectedVariantId,
+            food_name: adjustedValues.name || item.name,
+            brand_name: adjustedValues.brand ?? item.brand,
+            serving_size: displayValues.servingSize,
+            serving_unit: displayValues.servingUnit,
+            calories: displayValues.calories,
+            protein: displayValues.protein,
+            carbs: displayValues.carbs,
+            fat: displayValues.fat,
+            dietary_fiber: displayValues.fiber,
+            saturated_fat: displayValues.saturatedFat,
+            sodium: displayValues.sodium,
+            sugars: displayValues.sugars,
+          };
+        }
         return { ...base, food_id: item.id, variant_id: selectedVariantId };
       case 'external':
         if (!savedFood) throw new Error('External food must be saved before creating entry');
@@ -223,20 +284,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
       if (!effectiveMealId) throw new Error('No meal type selected');
 
       if (item.source === 'external') {
-        const saved = await saveFood({
-          name: item.name,
-          brand: item.brand,
-          serving_size: activeVariant.servingSize,
-          serving_unit: activeVariant.servingUnit,
-          calories: activeVariant.calories,
-          protein: activeVariant.protein,
-          carbs: activeVariant.carbs,
-          fat: activeVariant.fat,
-          dietary_fiber: activeVariant.fiber,
-          saturated_fat: activeVariant.saturatedFat,
-          sodium: activeVariant.sodium,
-          sugars: activeVariant.sugars,
-        });
+        const saved = await saveFood(buildSaveFoodPayload());
         return createFoodEntry(buildFoodEntryPayload({
           id: saved.id,
           variantId: saved.default_variant.id!,
@@ -266,15 +314,15 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
     return Math.round((value / goalValue) * 100);
   };
 
-  const calorieGoalPct = goalPercent(scaled(activeVariant.calories), goals?.calories);
-  const proteinGoalPct = goalPercent(scaled(activeVariant.protein), goals?.protein);
-  const carbsGoalPct = goalPercent(scaled(activeVariant.carbs), goals?.carbs);
-  const fatGoalPct = goalPercent(scaled(activeVariant.fat), goals?.fat);
+  const calorieGoalPct = goalPercent(scaled(displayValues.calories), goals?.calories);
+  const proteinGoalPct = goalPercent(scaled(displayValues.protein), goals?.protein);
+  const carbsGoalPct = goalPercent(scaled(displayValues.carbs), goals?.carbs);
+  const fatGoalPct = goalPercent(scaled(displayValues.fat), goals?.fat);
 
   // Macro bar proportions by calorie contribution (ratios stay the same regardless of servings)
-  const proteinCals = activeVariant.protein * 4;
-  const carbsCals = activeVariant.carbs * 4;
-  const fatCals = activeVariant.fat * 9;
+  const proteinCals = displayValues.protein * 4;
+  const carbsCals = displayValues.carbs * 4;
+  const fatCals = displayValues.fat * 9;
   const totalMacroCals = proteinCals + carbsCals + fatCals;
 
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
@@ -291,34 +339,65 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
 
-        {item.source === 'external' && (
-          <TouchableOpacity
-            onPress={() => saveFoodMutation.mutate()}
-            disabled={saveFoodMutation.isPending || saveFoodMutation.isSuccess}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="ml-auto z-10"
-            activeOpacity={0.7}
-          >
-            {saveFoodMutation.isPending ? (
-              <ActivityIndicator size="small" color={accentColor} />
-            ) : (
-              <Icon
-                name={saveFoodMutation.isSuccess ? 'bookmark-filled' : 'bookmark'}
-                size={22}
-                color={accentColor}
-              />
+        {item.source !== 'meal' && (
+          <View className="flex-row items-center ml-auto gap-4 z-10">
+            <TouchableOpacity
+              onPress={() => {
+                navigation.navigate('FoodForm', {
+                  mode: 'adjust-entry-nutrition',
+                  returnTo: 'FoodEntryAdd',
+                  returnKey: route.key,
+                  initialValues: {
+                    name: adjustedValues?.name || item.name,
+                    brand: adjustedValues?.brand ?? item.brand ?? '',
+                    servingSize: String(displayValues.servingSize),
+                    servingUnit: displayValues.servingUnit,
+                    calories: String(displayValues.calories),
+                    protein: String(displayValues.protein),
+                    carbs: String(displayValues.carbs),
+                    fat: String(displayValues.fat),
+                    fiber: displayValues.fiber != null ? String(displayValues.fiber) : '',
+                    saturatedFat: displayValues.saturatedFat != null ? String(displayValues.saturatedFat) : '',
+                    sodium: displayValues.sodium != null ? String(displayValues.sodium) : '',
+                    sugars: displayValues.sugars != null ? String(displayValues.sugars) : '',
+                  },
+                });
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.7}
+            >
+              <Icon name="pencil" size={20} color={accentColor} />
+            </TouchableOpacity>
+
+            {item.source === 'external' && (
+              <TouchableOpacity
+                onPress={() => saveFoodMutation.mutate()}
+                disabled={saveFoodMutation.isPending || saveFoodMutation.isSuccess}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.7}
+              >
+                {saveFoodMutation.isPending ? (
+                  <ActivityIndicator size="small" color={accentColor} />
+                ) : (
+                  <Icon
+                    name={saveFoodMutation.isSuccess ? 'bookmark-filled' : 'bookmark'}
+                    size={22}
+                    color={accentColor}
+                  />
+                )}
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </View>
         )}
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
         {/* Food name & brand */}
         <View className="">
-          <Text className="text-text-primary text-3xl font-bold">{item.name}</Text>
-          {item.brand && (
-            <Text className="text-text-secondary text-base mt-1">{item.brand}</Text>
-          )}
+          <Text className="text-text-primary text-3xl font-bold">{adjustedValues?.name || item.name}</Text>
+          {(adjustedValues?.brand ?? item.brand) ? (
+            <Text className="text-text-secondary text-base mt-1">{adjustedValues?.brand ?? item.brand}</Text>
+          ) : null}
 
         </View>
 
@@ -326,7 +405,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
         <View className="bg-surface rounded-xl p-4 flex-row items-center">
           {/* Calories — left half */}
           <View className="flex-1 items-center pr-10">
-            <Text className="text-text-primary text-3xl font-medium">{Math.round(scaled(activeVariant.calories))}</Text>
+            <Text className="text-text-primary text-3xl font-medium">{Math.round(scaled(displayValues.calories))}</Text>
             <Text className="text-text-secondary text-base mt-2">calories</Text>
             {isGoalsLoading ? (
               <ActivityIndicator size="small" color={accentColor} className="mt-2" />
@@ -340,9 +419,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
           {/* Macro bars — right half */}
           <View className="flex-1 gap-3">
             {[
-              { label: 'Protein', value: activeVariant.protein, color: proteinColor, pct: proteinGoalPct },
-              { label: 'Carbs', value: activeVariant.carbs, color: carbsColor, pct: carbsGoalPct },
-              { label: 'Fat', value: activeVariant.fat, color: fatColor, pct: fatGoalPct },
+              { label: 'Protein', value: displayValues.protein, color: proteinColor, pct: proteinGoalPct },
+              { label: 'Carbs', value: displayValues.carbs, color: carbsColor, pct: carbsGoalPct },
+              { label: 'Fat', value: displayValues.fat, color: fatColor, pct: fatGoalPct },
             ].map((macro) => (
               <View key={macro.label}>
                 <View className="flex-row justify-between mb-1">
@@ -369,13 +448,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
         </View>
 
         {/* Additional nutrition details */}
-        {(activeVariant.fiber != null || activeVariant.saturatedFat != null || activeVariant.sodium != null || activeVariant.sugars != null) && (
+        {(displayValues.fiber != null || displayValues.saturatedFat != null || displayValues.sodium != null || displayValues.sugars != null) && (
           <View className="rounded-xl">
             {[
-              { label: 'Fiber', value: activeVariant.fiber, unit: 'g' },
-              { label: 'Sugars', value: activeVariant.sugars, unit: 'g' },
-              { label: 'Saturated Fat', value: activeVariant.saturatedFat, unit: 'g' },
-              { label: 'Sodium', value: activeVariant.sodium, unit: 'mg' },
+              { label: 'Fiber', value: displayValues.fiber, unit: 'g' },
+              { label: 'Sugars', value: displayValues.sugars, unit: 'g' },
+              { label: 'Saturated Fat', value: displayValues.saturatedFat, unit: 'g' },
+              { label: 'Sodium', value: displayValues.sodium, unit: 'mg' },
             ]
               .filter((n) => n.value != null)
               .map((n, i, arr) => (
@@ -417,7 +496,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
               </TouchableOpacity>
             </View>
             <Text className="text-text-primary text-base font-medium ml-2">
-              {activeVariant.servingUnit}
+              {displayValues.servingUnit}
             </Text>
           </View>
           <View className="flex-row items-center mt-2">
@@ -437,7 +516,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
                     className="flex-row items-center ml-1"
                   >
                     <Text className="text-text-secondary text-sm">
-                      {' · '}{activeVariant.servingSize} {activeVariant.servingUnit} per serving
+                      {' · '}{displayValues.servingSize} {displayValues.servingUnit} per serving
                     </Text>
                     <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 4 }} weight="medium" />
                   </TouchableOpacity>
@@ -445,7 +524,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
               />
             ) : (
               <Text className="text-text-secondary text-sm">
-                {' · '}{activeVariant.servingSize} {activeVariant.servingUnit} per serving
+                {' · '}{displayValues.servingSize} {displayValues.servingUnit} per serving
               </Text>
             )}
           </View>

@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Platform, Text, TextInput, Switch, Alert } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { StackActions } from '@react-navigation/native';
+import { CommonActions, StackActions } from '@react-navigation/native';
 import Icon from '../components/Icon';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -19,17 +19,20 @@ import type { RootStackScreenProps } from '../types/navigation';
 const parseOptional = (s: string): number | undefined =>
   s === '' ? undefined : (parseFloat(s) || 0);
 
-type ManualFoodEntryScreenProps = RootStackScreenProps<'ManualFoodEntry'>;
+type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 
-const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigation, route }) => {
+type CreateFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'create-food' }>;
+type AdjustNutritionParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'adjust-entry-nutrition' }>;
+
+function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
   const insets = useSafeAreaInsets();
   const [accentColor, textPrimary, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-text-primary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string, string];
 
-  const initialFood = route.params?.initialFood;
-  const barcode = route.params?.barcode;
-  const providerType = route.params?.providerType;
+  const initialFood = params.initialFood;
+  const barcode = params.barcode;
+  const providerType = params.providerType;
 
-  const [selectedDate, setSelectedDate] = useState(route.params?.date ?? getTodayDate());
+  const [selectedDate, setSelectedDate] = useState(params.date ?? getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
@@ -261,6 +264,58 @@ const ManualFoodEntryScreen: React.FC<ManualFoodEntryScreenProps> = ({ navigatio
       <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
     </View>
   );
+}
+
+function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionParams; navigation: FoodFormScreenProps['navigation'] }) {
+  const { initialValues, returnKey } = params;
+  const insets = useSafeAreaInsets();
+  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
+
+  const handleSubmit = (data: FoodFormData) => {
+    if (!data.name.trim()) {
+      Alert.alert('Missing name', 'Please enter a food name.');
+      return;
+    }
+    if (!parseFloat(data.servingSize)) {
+      Alert.alert('Invalid serving size', 'Serving size must be greater than zero.');
+      return;
+    }
+    navigation.dispatch({
+      ...CommonActions.setParams({ adjustedValues: data }),
+      source: returnKey,
+    });
+    navigation.goBack();
+  };
+
+  return (
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="z-10"
+        >
+          <Icon name="chevron-back" size={22} color={accentColor} />
+        </TouchableOpacity>
+        <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
+          Adjust Nutrition
+        </Text>
+      </View>
+
+      <FoodForm
+        onSubmit={handleSubmit}
+        initialValues={initialValues}
+        submitLabel="Update Values"
+      />
+    </View>
+  );
+}
+
+const FoodFormScreen: React.FC<FoodFormScreenProps> = ({ route, navigation }) => {
+  if (route.params.mode === 'adjust-entry-nutrition') {
+    return <AdjustNutritionMode params={route.params} navigation={navigation} />;
+  }
+  return <CreateFoodMode params={route.params} navigation={navigation} />;
 };
 
-export default ManualFoodEntryScreen;
+export default FoodFormScreen;

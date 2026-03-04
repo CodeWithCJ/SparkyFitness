@@ -102,48 +102,98 @@ async function updateFoodEntry(
     const foodIdToUse = existingEntry.food_id;
     const variantIdToUse = entryData.variant_id || existingEntry.variant_id;
 
-    // Fetch the latest food and variant details for the snapshot
-    const food = await foodRepository.getFoodById(
-      foodIdToUse,
-      authenticatedUserId,
-    );
-    if (!food) {
-      throw new Error("Food not found for snapshotting.");
-    }
-    const variant = await foodRepository.getFoodVariantById(
-      variantIdToUse,
-      authenticatedUserId,
-    );
-    if (!variant) {
-      throw new Error("Food variant not found for snapshotting.");
+    let newSnapshotData;
+
+    const variantChanged = entryData.variant_id && entryData.variant_id !== existingEntry.variant_id;
+
+    if (foodIdToUse && variantChanged) {
+      // Variant changed — rebuild snapshot from the new food/variant
+      const food = await foodRepository.getFoodById(
+        foodIdToUse,
+        authenticatedUserId,
+      );
+      if (!food) {
+        throw new Error("Food not found for snapshotting.");
+      }
+      const variant = await foodRepository.getFoodVariantById(
+        variantIdToUse,
+        authenticatedUserId,
+      );
+      if (!variant) {
+        throw new Error("Food variant not found for snapshotting.");
+      }
+
+      newSnapshotData = {
+        food_name: food.name,
+        brand_name: food.brand,
+        serving_size: variant.serving_size,
+        serving_unit: variant.serving_unit,
+        calories: variant.calories,
+        protein: variant.protein,
+        carbs: variant.carbs,
+        fat: variant.fat,
+        saturated_fat: variant.saturated_fat,
+        polyunsaturated_fat: variant.polyunsaturated_fat,
+        monounsaturated_fat: variant.monounsaturated_fat,
+        trans_fat: variant.trans_fat,
+        cholesterol: variant.cholesterol,
+        sodium: variant.sodium,
+        potassium: variant.potassium,
+        dietary_fiber: variant.dietary_fiber,
+        sugars: variant.sugars,
+        vitamin_a: variant.vitamin_a,
+        vitamin_c: variant.vitamin_c,
+        calcium: variant.calcium,
+        iron: variant.iron,
+        glycemic_index: variant.glycemic_index,
+        custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
+      };
+    } else {
+      // No variant change or no linked food — preserve existing entry's snapshot
+      newSnapshotData = {
+        food_name: existingEntry.food_name,
+        brand_name: existingEntry.brand_name,
+        serving_size: existingEntry.serving_size,
+        serving_unit: existingEntry.serving_unit,
+        calories: existingEntry.calories,
+        protein: existingEntry.protein,
+        carbs: existingEntry.carbs,
+        fat: existingEntry.fat,
+        saturated_fat: existingEntry.saturated_fat,
+        polyunsaturated_fat: existingEntry.polyunsaturated_fat,
+        monounsaturated_fat: existingEntry.monounsaturated_fat,
+        trans_fat: existingEntry.trans_fat,
+        cholesterol: existingEntry.cholesterol,
+        sodium: existingEntry.sodium,
+        potassium: existingEntry.potassium,
+        dietary_fiber: existingEntry.dietary_fiber,
+        sugars: existingEntry.sugars,
+        vitamin_a: existingEntry.vitamin_a,
+        vitamin_c: existingEntry.vitamin_c,
+        calcium: existingEntry.calcium,
+        iron: existingEntry.iron,
+        glycemic_index: existingEntry.glycemic_index,
+        custom_nutrients: sanitizeCustomNutrients(existingEntry.custom_nutrients),
+      };
     }
 
-    // Construct the new snapshot data
-    const newSnapshotData = {
-      food_name: food.name,
-      brand_name: food.brand,
-      serving_size: variant.serving_size,
-      serving_unit: variant.serving_unit,
-      calories: variant.calories,
-      protein: variant.protein,
-      carbs: variant.carbs,
-      fat: variant.fat,
-      saturated_fat: variant.saturated_fat,
-      polyunsaturated_fat: variant.polyunsaturated_fat,
-      monounsaturated_fat: variant.monounsaturated_fat,
-      trans_fat: variant.trans_fat,
-      cholesterol: variant.cholesterol,
-      sodium: variant.sodium,
-      potassium: variant.potassium,
-      dietary_fiber: variant.dietary_fiber,
-      sugars: variant.sugars,
-      vitamin_a: variant.vitamin_a,
-      vitamin_c: variant.vitamin_c,
-      calcium: variant.calcium,
-      iron: variant.iron,
-      glycemic_index: variant.glycemic_index,
-      custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
-    };
+    // Apply inline nutrition overrides if provided by the client
+    const nutritionOverrideFields = [
+      'food_name', 'brand_name', 'serving_size', 'serving_unit',
+      'calories', 'protein', 'carbs', 'fat', 'saturated_fat',
+      'polyunsaturated_fat', 'monounsaturated_fat', 'trans_fat',
+      'cholesterol', 'sodium', 'potassium', 'dietary_fiber',
+      'sugars', 'vitamin_a', 'vitamin_c', 'calcium', 'iron',
+      'glycemic_index',
+    ];
+    for (const field of nutritionOverrideFields) {
+      if (entryData[field] !== undefined) {
+        newSnapshotData[field] = entryData[field];
+      }
+    }
+    if (entryData.custom_nutrients !== undefined) {
+      newSnapshotData.custom_nutrients = sanitizeCustomNutrients(entryData.custom_nutrients);
+    }
 
     const updatedEntry = await foodRepository.updateFoodEntry(
       entryId,
@@ -151,7 +201,7 @@ async function updateFoodEntry(
       actingUserId,
       {
         ...entryData,
-        meal_type_id: existingEntry.meal_type_id,
+        meal_type_id: entryData.meal_type_id ?? existingEntry.meal_type_id,
         variant_id: variantIdToUse,
       }, // Ensure meal_type_id and correct variant_id are passed
       newSnapshotData, // Pass the new snapshot data

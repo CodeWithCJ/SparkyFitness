@@ -12,6 +12,7 @@ export interface FoodEntry {
   food_entry_meal_id?: string; // New field to link to food_entry_meals parent
   user_id?: string;
   meal_type: string;
+  meal_type_id?: string;
   quantity: number;
   unit: string;
   variant_id?: string;

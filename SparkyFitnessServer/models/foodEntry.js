@@ -1,6 +1,7 @@
 const { getClient } = require("../db/poolManager");
 const { log } = require("../config/logging");
 const format = require("pg-format");
+const { sanitizeCustomNutrients } = require("../utils/foodUtils");
 
 /**
  * @swagger
@@ -157,6 +158,26 @@ async function createFoodEntry(entryData, createdByUserId) {
         throw new Error("Food or variant not found for snapshotting.");
       }
       snapshot = foodSnapshotQuery.rows[0];
+
+      // Apply inline nutrition overrides if provided by the client.
+      // The DB snapshot uses 'name'/'brand' keys while entryData uses 'food_name'/'brand_name'.
+      const nutritionOverrideFields = [
+        'calories', 'protein', 'carbs', 'fat', 'saturated_fat',
+        'polyunsaturated_fat', 'monounsaturated_fat', 'trans_fat',
+        'cholesterol', 'sodium', 'potassium', 'dietary_fiber',
+        'sugars', 'vitamin_a', 'vitamin_c', 'calcium', 'iron',
+        'glycemic_index', 'serving_size', 'serving_unit',
+      ];
+      for (const field of nutritionOverrideFields) {
+        if (entryData[field] !== undefined) {
+          snapshot[field] = entryData[field];
+        }
+      }
+      if (entryData.food_name !== undefined) snapshot.name = entryData.food_name;
+      if (entryData.brand_name !== undefined) snapshot.brand = entryData.brand_name;
+      if (entryData.custom_nutrients !== undefined) {
+        snapshot.custom_nutrients = sanitizeCustomNutrients(entryData.custom_nutrients);
+      }
     } else {
       // This means it's an entry where snapshot data is already prepared (e.g., from migration or meal components)
       // We expect snapshot data to be present in entryData

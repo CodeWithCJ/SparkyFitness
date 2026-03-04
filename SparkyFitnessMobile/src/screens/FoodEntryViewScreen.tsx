@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Pressable, ScrollView, TextInput } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { useQuery } from '@tanstack/react-query';
 import Icon from '../components/Icon';
+import BottomSheetPicker from '../components/BottomSheetPicker';
+import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import { fetchFoodVariants } from '../services/api/foodsApi';
 import { formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
+import { foodVariantsQueryKey } from '../hooks/queryKeys';
+import { useMealTypes } from '../hooks';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
+import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import { useProfile } from '../hooks/useProfile';
+import type { UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
+import type { FoodFormData } from '../components/FoodForm';
+import type { FoodVariantDetail } from '../types/foods';
 import type { FoodEntry } from '../types/foodEntries';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -18,49 +29,291 @@ const scaledValue = (value: number | undefined, entry: FoodEntry): number => {
 };
 
 const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, route }) => {
-  const [entry, setEntry] = useState<FoodEntry>(route.params.entry);
+  const [entry, setEntry] = useState(route.params.entry);
   const insets = useSafeAreaInsets();
   const { profile } = useProfile();
+  const calendarRef = useRef<CalendarSheetRef>(null);
 
-  const canEdit = !!(entry.food_id && entry.variant_id && entry.user_id && profile?.id === entry.user_id);
+  const canEdit = !!(entry.user_id && profile?.id === entry.user_id && !entry.food_entry_meal_id);
 
-  const { confirmAndDelete, isPending, invalidateCache } = useDeleteFoodEntry({
+  const [isEditing, setIsEditing] = useState(false);
+
+  // --- Edit state (called unconditionally per React rules) ---
+  const initialDate = entry.entry_date.split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [selectedMealId, setSelectedMealId] = useState<string | undefined>(entry.meal_type_id);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(entry.variant_id);
+  const [quantityText, setQuantityText] = useState(String(entry.quantity));
+  const [adjustedValues, setAdjustedValues] = useState<FoodFormData | null>(null);
+
+  const { mealTypes, defaultMealTypeId } = useMealTypes();
+  const effectiveMealId = selectedMealId ?? defaultMealTypeId;
+  const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
+
+  // Fetch variants if entry has a food_id
+  const { data: variants } = useQuery({
+    queryKey: foodVariantsQueryKey(entry.food_id!),
+    queryFn: () => fetchFoodVariants(entry.food_id!),
+    enabled: !!entry.food_id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Active variant: the currently selected variant's data, or fallback to entry snapshot
+  const activeVariant = useMemo(() => {
+    if (variants && selectedVariantId) {
+      const v = variants.find((v: FoodVariantDetail) => v.id === selectedVariantId);
+      if (v) {
+        return {
+          servingSize: v.serving_size,
+          servingUnit: v.serving_unit,
+          calories: v.calories,
+          protein: v.protein,
+          carbs: v.carbs,
+          fat: v.fat,
+          fiber: v.dietary_fiber,
+          saturatedFat: v.saturated_fat,
+          sodium: v.sodium,
+          sugars: v.sugars,
+        };
+      }
+    }
+    return {
+      servingSize: entry.serving_size,
+      servingUnit: entry.unit,
+      calories: entry.calories,
+      protein: entry.protein ?? 0,
+      carbs: entry.carbs ?? 0,
+      fat: entry.fat ?? 0,
+      fiber: entry.dietary_fiber,
+      saturatedFat: entry.saturated_fat,
+      sodium: entry.sodium,
+      sugars: entry.sugars,
+    };
+  }, [variants, selectedVariantId, entry]);
+
+  const displayValues = useMemo(() => {
+    if (!adjustedValues) return activeVariant;
+    return {
+      servingSize: parseFloat(adjustedValues.servingSize) || activeVariant.servingSize,
+      servingUnit: adjustedValues.servingUnit || activeVariant.servingUnit,
+      calories: parseFloat(adjustedValues.calories) || 0,
+      protein: parseFloat(adjustedValues.protein) || 0,
+      carbs: parseFloat(adjustedValues.carbs) || 0,
+      fat: parseFloat(adjustedValues.fat) || 0,
+      fiber: adjustedValues.fiber ? parseFloat(adjustedValues.fiber) : undefined,
+      saturatedFat: adjustedValues.saturatedFat ? parseFloat(adjustedValues.saturatedFat) : undefined,
+      sodium: adjustedValues.sodium ? parseFloat(adjustedValues.sodium) : undefined,
+      sugars: adjustedValues.sugars ? parseFloat(adjustedValues.sugars) : undefined,
+    };
+  }, [adjustedValues, activeVariant]);
+
+  const quantity = parseFloat(quantityText) || 0;
+  const editServings = displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
+  const scaled = (value: number) => value * editServings;
+  const servingSizeRef = useRef(displayValues.servingSize);
+
+  // Variant picker options
+  const variantPickerOptions = useMemo(() => {
+    if (!variants || variants.length <= 1) return [];
+    return variants.map((v: FoodVariantDetail) => ({
+      label: `${v.serving_size} ${v.serving_unit} (${v.calories} cal)`,
+      value: v.id,
+    }));
+  }, [variants]);
+
+  // Watch for adjusted values returned from FoodForm
+  const adjustedFromNav = route.params?.adjustedValues;
+  useEffect(() => {
+    servingSizeRef.current = displayValues.servingSize;
+  }, [displayValues.servingSize]);
+
+  useEffect(() => {
+    if (adjustedFromNav) {
+      const previousServingSize = servingSizeRef.current;
+      const newServingSize = parseFloat(adjustedFromNav.servingSize) || previousServingSize;
+      setAdjustedValues(adjustedFromNav);
+      if (newServingSize !== previousServingSize) {
+        setQuantityText(String(newServingSize));
+      }
+      // Clear route params so variant changes don't replay stale overrides
+      navigation.setParams({ adjustedValues: undefined });
+    }
+  }, [adjustedFromNav, navigation]);
+
+  const handleVariantChange = (variantId: string) => {
+    setSelectedVariantId(variantId);
+    setAdjustedValues(null);
+    if (variants) {
+      const v = variants.find((v: FoodVariantDetail) => v.id === variantId);
+      if (v) { setQuantityText(String(v.serving_size)); return; }
+    }
+  };
+
+  const updateQuantityText = (text: string) => {
+    if (/^\d*\.?\d*$/.test(text)) {
+      setQuantityText(text);
+    }
+  };
+
+  const clampQuantity = () => {
+    const minQuantity = displayValues.servingSize * 0.5;
+    const clamped = Math.max(minQuantity, quantity);
+    setQuantityText(String(clamped));
+  };
+
+  const adjustQuantity = (delta: number) => {
+    const step = displayValues.servingSize;
+    const increment = step * 0.5;
+    const minQuantity = increment;
+    if (quantity < minQuantity) {
+      if (delta > 0) setQuantityText(String(minQuantity));
+      return;
+    }
+    const boundary =
+      delta > 0
+        ? Math.ceil(quantity / increment) * increment
+        : Math.floor(quantity / increment) * increment;
+    const next = boundary !== quantity ? boundary : quantity + delta * increment;
+    setQuantityText(String(Math.max(minQuantity, next)));
+  };
+
+  const navigateToNutritionForm = () => {
+    navigation.navigate('FoodForm', {
+      mode: 'adjust-entry-nutrition',
+      returnTo: 'FoodEntryView',
+      returnKey: route.key,
+      initialValues: {
+        name: entry.food_name || '',
+        brand: entry.brand_name ?? '',
+        servingSize: String(displayValues.servingSize),
+        servingUnit: displayValues.servingUnit,
+        calories: String(displayValues.calories),
+        protein: String(displayValues.protein),
+        carbs: String(displayValues.carbs),
+        fat: String(displayValues.fat),
+        fiber: displayValues.fiber != null ? String(displayValues.fiber) : '',
+        saturatedFat: displayValues.saturatedFat != null ? String(displayValues.saturatedFat) : '',
+        sodium: displayValues.sodium != null ? String(displayValues.sodium) : '',
+        sugars: displayValues.sugars != null ? String(displayValues.sugars) : '',
+      },
+    });
+  };
+
+  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
+
+  // --- Update mutation ---
+  const { updateEntry, isPending: isUpdatePending, invalidateCache: invalidateUpdateCache } = useUpdateFoodEntry({
+    entryId: entry.id,
+    entryDate: entry.entry_date,
+    onSuccess: (updatedEntry) => {
+      invalidateUpdateCache(selectedDate);
+      // Merge with current entry to preserve fields the API doesn't return (e.g. meal_type name)
+      const mergedEntry = { ...entry, ...updatedEntry };
+      // If meal type changed, update the name from our local mealTypes list
+      if (updatedEntry.meal_type_id && updatedEntry.meal_type_id !== entry.meal_type_id) {
+        const mt = mealTypes.find((m) => m.id === updatedEntry.meal_type_id);
+        if (mt) mergedEntry.meal_type = mt.name;
+      }
+      setEntry(mergedEntry);
+      // Reset edit state to match the saved entry
+      setSelectedDate(mergedEntry.entry_date.split('T')[0]);
+      setSelectedMealId(mergedEntry.meal_type_id);
+      setSelectedVariantId(mergedEntry.variant_id);
+      setQuantityText(String(mergedEntry.quantity));
+      setAdjustedValues(null);
+      setIsEditing(false);
+    },
+  });
+
+  const handleSave = () => {
+    const payload: UpdateFoodEntryPayload = {};
+    if (quantity !== entry.quantity) payload.quantity = quantity;
+    if (displayValues.servingUnit !== entry.unit) payload.unit = displayValues.servingUnit;
+    if (selectedVariantId !== entry.variant_id) {
+      payload.variant_id = selectedVariantId;
+      payload.unit = displayValues.servingUnit;
+    }
+    if (selectedDate !== initialDate) payload.entry_date = selectedDate;
+    if (effectiveMealId && effectiveMealId !== entry.meal_type_id) payload.meal_type_id = effectiveMealId;
+
+    if (adjustedValues) {
+      payload.food_name = adjustedValues.name;
+      payload.brand_name = adjustedValues.brand;
+      payload.serving_size = displayValues.servingSize;
+      payload.serving_unit = displayValues.servingUnit;
+      payload.calories = displayValues.calories;
+      payload.protein = displayValues.protein;
+      payload.carbs = displayValues.carbs;
+      payload.fat = displayValues.fat;
+      payload.saturated_fat = displayValues.saturatedFat;
+      payload.sodium = displayValues.sodium;
+      payload.dietary_fiber = displayValues.fiber;
+      payload.sugars = displayValues.sugars;
+    }
+
+    // Nothing changed — just exit edit mode
+    if (Object.keys(payload).length === 0) {
+      setIsEditing(false);
+      return;
+    }
+
+    updateEntry(payload);
+  };
+
+  // --- Delete mutation ---
+  const { confirmAndDelete, isPending: isDeletePending, invalidateCache: invalidateDeleteCache } = useDeleteFoodEntry({
     entryId: entry.id,
     entryDate: entry.entry_date,
     onSuccess: () => {
-      invalidateCache();
+      invalidateDeleteCache();
       navigation.goBack();
     },
   });
 
-  const [accentColor, proteinColor, carbsColor, fatColor] = useCSSVariable([
+  // --- CSS variables ---
+  const [accentColor, textPrimary, proteinColor, carbsColor, fatColor] = useCSSVariable([
     '--color-accent-primary',
+    '--color-text-primary',
     '--color-macro-protein',
     '--color-macro-carbs',
     '--color-macro-fat',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string, string, string];
 
-  const calories = Math.round(scaledValue(entry.calories, entry));
-  const protein = Math.round(scaledValue(entry.protein, entry));
-  const carbs = Math.round(scaledValue(entry.carbs, entry));
-  const fat = Math.round(scaledValue(entry.fat, entry));
+  // --- View mode computed values ---
+  const viewCalories = Math.round(scaledValue(entry.calories, entry));
+  const viewProtein = Math.round(scaledValue(entry.protein, entry));
+  const viewCarbs = Math.round(scaledValue(entry.carbs, entry));
+  const viewFat = Math.round(scaledValue(entry.fat, entry));
 
-  const proteinCals = protein * 4;
-  const carbsCals = carbs * 4;
-  const fatCals = fat * 9;
-  const totalMacroCals = proteinCals + carbsCals + fatCals;
+  const viewProteinCals = viewProtein * 4;
+  const viewCarbsCals = viewCarbs * 4;
+  const viewFatCals = viewFat * 9;
+  const viewTotalMacroCals = viewProteinCals + viewCarbsCals + viewFatCals;
+
+  // --- Edit mode computed values ---
+  const editProteinCals = displayValues.protein * 4;
+  const editCarbsCals = displayValues.carbs * 4;
+  const editFatCals = displayValues.fat * 9;
+  const editTotalMacroCals = editProteinCals + editCarbsCals + editFatCals;
 
   const servings = entry.serving_size ? entry.quantity / entry.serving_size : entry.quantity;
   const servingsDisplay = servings === 1
-    ? `1 serving · ${entry.serving_size}${entry.unit} per serving`
-    : `${servings % 1 === 0 ? servings : servings.toFixed(1)} servings · ${entry.serving_size}${entry.unit} per serving`;
+    ? `1 serving · ${entry.serving_size} ${entry.unit} per serving`
+    : `${servings % 1 === 0 ? servings : servings.toFixed(1)} servings · ${entry.serving_size} ${entry.unit} per serving`;
 
-  const otherNutrients = [
-    { label: 'Fiber', value: entry.dietary_fiber, unit: 'g' },
-    { label: 'Sugars', value: entry.sugars, unit: 'g' },
-    { label: 'Saturated Fat', value: entry.saturated_fat, unit: 'g' },
-    { label: 'Sodium', value: entry.sodium, unit: 'mg' },
-  ].filter((n) => n.value != null);
+  const otherNutrients = isEditing
+    ? [
+        { label: 'Fiber', value: displayValues.fiber, unit: 'g' },
+        { label: 'Sugars', value: displayValues.sugars, unit: 'g' },
+        { label: 'Saturated Fat', value: displayValues.saturatedFat, unit: 'g' },
+        { label: 'Sodium', value: displayValues.sodium, unit: 'mg' },
+      ].filter((n) => n.value != null)
+    : [
+        { label: 'Fiber', value: entry.dietary_fiber, unit: 'g' },
+        { label: 'Sugars', value: entry.sugars, unit: 'g' },
+        { label: 'Saturated Fat', value: entry.saturated_fat, unit: 'g' },
+        { label: 'Sodium', value: entry.sodium, unit: 'mg' },
+      ].filter((n) => n.value != null);
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
@@ -73,106 +326,246 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         >
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
-        {canEdit && (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('EditFood', { entry, onEdited: setEntry })}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="ml-auto z-10"
-          >
-            <Icon name="pencil" size={20} color={accentColor} />
-          </TouchableOpacity>
+        {canEdit && !isEditing && (
+          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={{ marginLeft: 'auto', zIndex: 10 }}>
+            <TouchableOpacity
+              onPress={() => setIsEditing(true)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text className="text-accent-primary text-base font-medium">Edit</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+        {isEditing && (
+          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={{ marginLeft: 'auto', zIndex: 10 }}>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={isUpdatePending || editServings < 0.5}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={editServings < 0.5 ? { opacity: 0.5 } : undefined}
+            >
+              <Text className="text-accent-primary text-base font-semibold">Done</Text>
+            </TouchableOpacity>
+          </Animated.View>
         )}
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
         {/* Food name & brand */}
-        <View className="pb-4">
+        <Animated.View layout={LinearTransition.duration(300)} className="pb-4">
           <Text className="text-text-primary text-3xl font-bold">{entry.food_name || 'Unknown food'}</Text>
           {entry.brand_name && (
             <Text className="text-text-muted mt-1 font-semibold">{entry.brand_name}</Text>
           )}
-          <Text className="text-text-secondary text-sm mt-3">{servingsDisplay}</Text>
-        </View>
+          {isEditing ? (
+            <Animated.View key="edit-serving" entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)}>
+            <View className="mt-3">
+              <View className="flex-row items-center">
+                <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
+                  <TouchableOpacity
+                    onPress={() => adjustQuantity(-1)}
+                    className="w-10 h-10 items-center justify-center border-r border-border-subtle"
+                    activeOpacity={0.7}
+                  >
+                    <Icon name="remove" size={20} color={accentColor} />
+                  </TouchableOpacity>
+                  <TextInput
+                    value={quantityText}
+                    onChangeText={updateQuantityText}
+                    onBlur={clampQuantity}
+                    keyboardType="decimal-pad"
+                    selectTextOnFocus
+                    className="text-text-primary text-base text-center w-14 h-10"
+                    style={{ fontSize: 20, lineHeight: 22 }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => adjustQuantity(1)}
+                    className="w-10 h-10 items-center justify-center border-l border-border-subtle"
+                    activeOpacity={0.7}
+                  >
+                    <Icon name="add" size={20} color={accentColor} />
+                  </TouchableOpacity>
+                </View>
+                <Text className="text-text-primary text-base font-medium ml-2">
+                  {displayValues.servingUnit}
+                </Text>
+              </View>
+              <View className="flex-row items-center mt-2">
+                <Text className="text-text-secondary text-sm">
+                  {editServings % 1 === 0 ? editServings : editServings.toFixed(1)} {editServings === 1 ? 'serving' : 'servings'}
+                </Text>
+                {variantPickerOptions.length > 1 ? (
+                  <BottomSheetPicker
+                    value={selectedVariantId!}
+                    options={variantPickerOptions}
+                    onSelect={handleVariantChange}
+                    title="Select Serving"
+                    renderTrigger={({ onPress }) => (
+                      <TouchableOpacity
+                        onPress={onPress}
+                        activeOpacity={0.7}
+                        className="flex-row items-center ml-1"
+                      >
+                        <Text className="text-text-secondary text-sm">
+                          {' · '}{displayValues.servingSize} {displayValues.servingUnit} per serving
+                        </Text>
+                        <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 4 }} weight="medium" />
+                      </TouchableOpacity>
+                    )}
+                  />
+                ) : (
+                  <Text className="text-text-secondary text-sm">
+                    {' · '}{displayValues.servingSize} {displayValues.servingUnit} per serving
+                  </Text>
+                )}
+              </View>
+            </View>
+            </Animated.View>
+          ) : (
+            <Animated.View key="view-serving" entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)}>
+              <Text className="text-text-secondary text-sm mt-3">{servingsDisplay}</Text>
+            </Animated.View>
+          )}
+        </Animated.View>
 
         {/* Calories & Macros */}
-        <View className="bg-surface rounded-xl p-4 flex-row items-center">
-          {/* Calories — left half */}
-          <View className="flex-1 items-center pr-10">
-            <Text className="text-text-primary text-3xl font-medium">{calories}</Text>
-            <Text className="text-text-secondary text-base mt-1">calories</Text>
-          </View>
-
-          {/* Macro bars — right half */}
-          <View className="flex-1 gap-3">
-            {[
-              { label: 'Protein', value: protein, color: proteinColor, calFactor: 4 },
-              { label: 'Carbs', value: carbs, color: carbsColor, calFactor: 4 },
-              { label: 'Fat', value: fat, color: fatColor, calFactor: 9 },
-            ].map((macro) => (
-              <View key={macro.label}>
-                <View className="flex-row justify-between mb-1">
-                  <Text className="text-text-secondary text-sm">{macro.label}</Text>
-                  <Text className="text-text-primary text-sm font-medium">{macro.value}g</Text>
+        <Pressable
+          onPress={isEditing ? navigateToNutritionForm : undefined}
+          disabled={!isEditing}
+          className="bg-surface rounded-xl p-4"
+        >
+          <Animated.View layout={LinearTransition.duration(300)} className="flex-row items-center">
+            <View className="flex-1 items-center pr-10">
+              <Text className="text-text-primary text-3xl font-medium">
+                {isEditing ? Math.round(scaled(displayValues.calories)) : viewCalories}
+              </Text>
+              <Text className="text-text-secondary text-base mt-1">calories</Text>
+            </View>
+            <Animated.View layout={LinearTransition.duration(300)} className="flex-2 gap-3">
+              {(isEditing
+                ? [
+                    { label: 'Protein', value: displayValues.protein, color: proteinColor, calFactor: 4, totalCals: editTotalMacroCals, displayValue: Math.round(scaled(displayValues.protein)) },
+                    { label: 'Carbs', value: displayValues.carbs, color: carbsColor, calFactor: 4, totalCals: editTotalMacroCals, displayValue: Math.round(scaled(displayValues.carbs)) },
+                    { label: 'Fat', value: displayValues.fat, color: fatColor, calFactor: 9, totalCals: editTotalMacroCals, displayValue: Math.round(scaled(displayValues.fat)) },
+                  ]
+                : [
+                    { label: 'Protein', value: viewProtein, color: proteinColor, calFactor: 4, totalCals: viewTotalMacroCals, displayValue: viewProtein },
+                    { label: 'Carbs', value: viewCarbs, color: carbsColor, calFactor: 4, totalCals: viewTotalMacroCals, displayValue: viewCarbs },
+                    { label: 'Fat', value: viewFat, color: fatColor, calFactor: 9, totalCals: viewTotalMacroCals, displayValue: viewFat },
+                  ]
+              ).map((macro) => (
+                <View key={macro.label} className="flex-row items-center">
+                  <Text className="text-text-secondary text-sm w-14">{macro.label}</Text>
+                  <View className="flex-1 h-2 rounded-full bg-progress-track overflow-hidden mx-2">
+                    {macro.totalCals > 0 && (
+                      <View
+                        className="h-full rounded-full"
+                        style={{
+                          backgroundColor: macro.color,
+                          width: `${Math.round((macro.value * macro.calFactor / macro.totalCals) * 100)}%`,
+                        }}
+                      />
+                    )}
+                  </View>
+                  <Text className="text-text-primary text-sm font-medium w-10 text-right">{macro.displayValue}g</Text>
                 </View>
-                <View className="h-2 rounded-full bg-progress-track overflow-hidden">
-                  {totalMacroCals > 0 && (
-                    <View
-                      className="h-full rounded-full"
-                      style={{
-                        backgroundColor: macro.color,
-                        width: `${Math.round((macro.value * macro.calFactor / totalMacroCals) * 100)}%`,
-                      }}
-                    />
-                  )}
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
+              ))}
+            </Animated.View>
+            {isEditing && (
+              <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                <Icon name="chevron-forward" size={16} color={textPrimary} style={{ marginLeft: 8 }} />
+              </Animated.View>
+            )}
+          </Animated.View>
+        </Pressable>
 
         {/* Other Nutrients */}
         {otherNutrients.length > 0 && (
-          <View className="rounded-xl my-2">
-            <Text className="text-text-secondary text-sm font-medium mb-2">Other Nutrients</Text>
+          <Animated.View layout={LinearTransition.duration(300)} className="rounded-xl my-2">
             {otherNutrients.map((n, i) => (
               <View key={n.label} className={`flex-row justify-between py-1 ${i < otherNutrients.length - 1 ? 'border-b border-border-subtle' : ''}`}>
                 <Text className="text-text-secondary text-sm">{n.label}</Text>
                 <Text className="text-text-primary text-sm">
-                  {Math.round(scaledValue(n.value!, entry))}{n.unit}
+                  {isEditing
+                    ? `${Math.round(scaled(n.value!))}${n.unit}`
+                    : `${Math.round(scaledValue(n.value!, entry))}${n.unit}`
+                  }
                 </Text>
               </View>
             ))}
-          </View>
+          </Animated.View>
         )}
 
         {/* Date & Meal type */}
-        <View className="mt-2 gap-2">
-          <View className="flex-row items-center">
-            <Text className="text-text-secondary text-sm">Date</Text>
-            <Text className="text-text-primary text-sm font-medium mx-1.5">
-              {formatDateLabel(entry.entry_date.split('T')[0])}
+        <Animated.View layout={LinearTransition.duration(300)} className="mt-2 gap-2">
+          {/* Date */}
+          <TouchableOpacity
+            onPress={isEditing ? () => calendarRef.current?.present() : undefined}
+            activeOpacity={isEditing ? 0.7 : 1}
+            disabled={!isEditing}
+            className="flex-row items-center"
+          >
+            <Text className="text-text-secondary text-base">Date</Text>
+            <Text className="text-text-primary text-base font-medium mx-1.5">
+              {formatDateLabel(isEditing ? selectedDate : entry.entry_date.split('T')[0])}
             </Text>
-          </View>
+            {isEditing && (
+              <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
+              </Animated.View>
+            )}
+          </TouchableOpacity>
+
+          {/* Meal type */}
           <View className="flex-row items-center">
-            <Text className="text-text-secondary text-sm">Meal</Text>
-            <Text className="text-text-primary text-sm font-medium mx-1.5">
-              {getMealTypeLabel(entry.meal_type)}
-            </Text>
+            <Text className="text-text-secondary text-base">Meal</Text>
+            {isEditing && selectedMealType ? (
+              <BottomSheetPicker
+                value={effectiveMealId!}
+                options={mealPickerOptions}
+                onSelect={setSelectedMealId}
+                title="Select Meal"
+                renderTrigger={({ onPress }) => (
+                  <TouchableOpacity
+                    onPress={onPress}
+                    activeOpacity={0.7}
+                    className="flex-row items-center"
+                  >
+                    <Text className="text-text-primary text-base font-medium mx-1.5">
+                      {getMealTypeLabel(selectedMealType.name)}
+                    </Text>
+                    <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                      <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
+                    </Animated.View>
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <Text className="text-text-primary text-base font-medium mx-1.5">
+                {getMealTypeLabel(entry.meal_type)}
+              </Text>
+            )}
           </View>
-        </View>
+        </Animated.View>
 
         {/* Delete button */}
-        <TouchableOpacity
-          onPress={confirmAndDelete}
-          disabled={isPending}
-          className="items-center py-3 mt-2 "
-          activeOpacity={0.6}
-        >
-          <Text className="text-bg-danger text-base font-medium">
-            {isPending ? 'Deleting...' : 'Delete Entry'}
-          </Text>
-        </TouchableOpacity>
+        <Animated.View layout={LinearTransition.duration(300)}>
+          <TouchableOpacity
+            onPress={confirmAndDelete}
+            disabled={isDeletePending}
+            className="items-center py-3 mt-2"
+            activeOpacity={0.6}
+          >
+            <Text className="text-bg-danger text-base font-medium">
+              {isDeletePending ? 'Deleting...' : 'Delete Entry'}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
+
+      {isEditing && (
+        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+      )}
     </View>
   );
 };

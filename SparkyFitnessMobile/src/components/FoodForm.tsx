@@ -29,9 +29,9 @@ export interface FoodFormProps {
 }
 
 const SERVING_UNIT_OPTIONS = [
-  'g', 'kg', 'mg', 'oz', 'lb', 'ml', 'l', 'cup', 'tbsp', 'tsp',
-  'piece', 'slice', 'serving', 'can', 'bottle', 'packet', 'bag',
-  'bowl', 'plate', 'handful', 'scoop', 'bar', 'stick',
+  'serving', 'g', 'oz', 'cup', 'piece', 'slice', 'scoop', 'tbsp', 'tsp',
+  'bowl', 'plate', 'handful', 'bar', 'stick', 'can', 'bottle', 'packet', 'bag',
+  'ml', 'l', 'kg', 'lb', 'mg',
 ].map((u) => ({ label: u, value: u }));
 
 const EMPTY_FORM: FoodFormData = {
@@ -87,7 +87,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (form.servingSize || form.servingUnit) {
       onServingChange?.(form.servingSize, form.servingUnit);
     }
-  }, [form.servingSize, form.servingUnit]);
+  }, [form.servingSize, form.servingUnit, onServingChange]);
 
   const renderTextField = (
     label: string,
