@@ -58,7 +58,7 @@ export const registerUser = async (
     throw error;
   }
 
-  const authData = data as BetterAuthResponse | null;
+  const authData = data as Partial<BetterAuthResponse> | null;
 
   if (!authData?.user) {
     throw new Error(
@@ -90,9 +90,7 @@ export const loginUser = async (
     throw error;
   }
 
-  const authData = data as
-    | (BetterAuthResponse & { twoFactorRedirect?: boolean })
-    | null;
+  const authData = data as Partial<BetterAuthResponse> | null;
 
   // Better Auth native 2FA handling - Check this BEFORE checking for user data
   if (authData?.twoFactorRedirect) {
