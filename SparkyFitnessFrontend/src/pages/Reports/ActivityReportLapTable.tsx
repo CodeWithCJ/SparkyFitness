@@ -13,12 +13,29 @@ import {
   FaFlag,
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
+import { LapDTO } from '@/types/exercises';
 
 interface LapTableProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  lapDTOs: any[];
+  lapDTOs: LapDTO[];
   isMaximized?: boolean; // Added for ZoomableChart integration
   zoomLevel?: number; // Added for ZoomableChart integration
+}
+
+interface ProcessedLap extends LapDTO {
+  lapIndex?: number;
+  averageSpeed?: number;
+  averageHR?: number;
+  maxHR?: number;
+  averageRunCadence?: number;
+  maxRunCadence?: number;
+  calories?: number;
+  lapDistance: number;
+  lapDurationSeconds: number;
+  lapDurationMinutes: number;
+  cumulativeDistance: number;
+  cumulativeDuration: number;
+  movingDurationMinutes: number;
+  averageMovingSpeed: number;
 }
 
 const ActivityReportLapTable: React.FC<LapTableProps> = ({
@@ -98,10 +115,12 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
   }, [lapDTOs, distanceUnit, convertDistance]);
 
   const sortedLaps = [...processedLaps].sort((a, b) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let aValue = (a as any)[sortColumn];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let bValue = (b as any)[sortColumn];
+    let aValue: number | string | undefined = a[
+      sortColumn as keyof ProcessedLap
+    ] as number | string | undefined;
+    let bValue: number | string | undefined = b[
+      sortColumn as keyof ProcessedLap
+    ] as number | string | undefined;
 
     // Special handling for pace columns which are formatted strings
     if (sortColumn === 'averageSpeed' || sortColumn === 'averageMovingSpeed') {
@@ -298,8 +317,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {sortedLaps.map((lap: any, index: number) => (
+            {sortedLaps.map((lap: ProcessedLap, index: number) => (
               <tr key={index} className="hover:bg-muted">
                 <td className="py-2 px-4 border-b border-border text-left">
                   {lap.lapIndex}

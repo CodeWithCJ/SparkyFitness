@@ -27,21 +27,33 @@ export const useBackupSettings = () => {
 
 export const useUpdateBackupSettings = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: (data: Partial<BackupSettingsResponse>) =>
       saveBackupSettings(data),
     onSuccess: () => {
       return queryClient.invalidateQueries({ queryKey: backupKeys.all });
     },
+    meta: {
+      successMessage: t('admin.backupSettings.backupSettingsSaved', 'Saved'),
+      errorMessage: t('error', 'Error'),
+    },
   });
 };
 
 export const useTriggerManualBackup = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: triggerManualBackup,
     onSuccess: () => {
       return queryClient.invalidateQueries({ queryKey: backupKeys.all });
+    },
+    meta: {
+      successMessage: (_data, variables) => {
+        const typedVars = variables as { message: string };
+        return typedVars.message ? typedVars.message : 'Backup done';
+      },
     },
   });
 };
@@ -49,5 +61,8 @@ export const useTriggerManualBackup = () => {
 export const useRestoreBackup = () => {
   return useMutation({
     mutationFn: restoreBackup,
+    meta: {
+      successMessage: 'Restored. Logging out..',
+    },
   });
 };

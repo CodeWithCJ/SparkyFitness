@@ -5,8 +5,7 @@ import { type UserLoggingLevel } from './logging';
 
 // Function to handle conversational intents (ask_question, chat)
 export const processChatInput = async (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any,
+  data: Record<string, unknown>,
   aiResponseText: string,
   userLoggingLevel: UserLoggingLevel
 ): Promise<CoachResponse> => {

@@ -1,9 +1,21 @@
 import { debug } from '@/utils/logging';
-import type { FatSecretFoodItem, Food, FoodVariant } from '@/types/food';
+import type {
+  FatSecretFoodItem,
+  Food,
+  FoodVariant,
+  GlycemicIndex,
+} from '@/types/food';
 import {
   NutritionixItem,
   OpenFoodFactsProduct,
+  UsdaItem,
 } from '@/components/FoodSearch/FoodSearch';
+import {
+  RawUsdaNutrient,
+  UsdaFoodDetails,
+  UsdaFoodNutrient,
+} from '@/types/exercises';
+import { LoggingLevel } from '@/contexts/PreferencesContext';
 
 export const convertOpenFoodFactsToFood = (
   product: OpenFoodFactsProduct,
@@ -71,9 +83,8 @@ export const convertOpenFoodFactsToFood = (
 };
 
 export const formatUsdaNutrientsForDisplay = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  usdaItem: any,
-  loggingLevel: string
+  usdaItem: { foodNutrients: UsdaFoodNutrient[] | RawUsdaNutrient[] },
+  loggingLevel: LoggingLevel
 ): Partial<FoodVariant> => {
   const nutrients: Partial<FoodVariant> = {
     calories: 0,
@@ -97,15 +108,13 @@ export const formatUsdaNutrientsForDisplay = (
   };
 
   if (usdaItem.foodNutrients) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    usdaItem.foodNutrients.forEach((nutrient: any) => {
+    usdaItem.foodNutrients.forEach((nutrient) => {
       const nutrientName = nutrient.nutrientName.toLowerCase();
       const value = nutrient.value;
       const unitName = nutrient.unitName?.toLowerCase() || '';
 
       debug(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        loggingLevel as any,
+        loggingLevel,
         `Processing USDA nutrient: ${nutrient.nutrientName} (value: ${value}, unit: ${nutrient.unitName})`
       );
 
@@ -182,8 +191,10 @@ export const formatUsdaNutrientsForDisplay = (
   return nutrients;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const convertUsdaToFood = (item: any, nutrientData: any): Food => {
+export const convertUsdaToFood = (
+  item: { fdcId: number | string },
+  nutrientData: UsdaFoodDetails
+): Food => {
   const defaultVariant: FoodVariant = {
     id: 'default', // Assign a default ID for now
     serving_size: nutrientData.servingSize,
@@ -266,46 +277,71 @@ export const convertNutritionixToFood = (
   };
 };
 
+interface FatSecretNutrientData {
+  serving_size: number;
+  serving_unit?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  glycemic_index?: GlycemicIndex;
+  name: string;
+  brand?: string;
+}
 export const convertFatSecretToFood = (
   item: FatSecretFoodItem,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  nutrientData: any
+  nutrientOverride?: Partial<FatSecretFoodItem>
 ): Food => {
+  const data = { ...item, ...nutrientOverride };
+
   const defaultVariant: FoodVariant = {
-    id: 'default', // Assign a default ID for now
-    serving_size: nutrientData.serving_qty,
-    serving_unit: nutrientData.serving_unit,
-    calories: nutrientData.calories, // Assumed to be in kcal
-    protein: nutrientData.protein,
-    carbs: nutrientData.carbohydrates,
-    fat: nutrientData.fat,
-    saturated_fat: nutrientData.saturated_fat,
-    polyunsaturated_fat: nutrientData.polyunsaturated_fat || 0,
-    monounsaturated_fat: nutrientData.monounsaturated_fat || 0,
-    trans_fat: nutrientData.trans_fat || 0,
-    cholesterol: nutrientData.cholesterol || 0,
-    sodium: nutrientData.sodium,
-    potassium: nutrientData.potassium || 0,
-    dietary_fiber: nutrientData.dietary_fiber || 0,
-    sugars: nutrientData.sugars || 0,
-    vitamin_a: nutrientData.vitamin_a || 0,
-    vitamin_c: nutrientData.vitamin_c || 0,
-    calcium: nutrientData.calcium || 0,
-    iron: nutrientData.iron || 0,
+    id: 'default',
+    serving_size: data.serving_size ?? 100,
+    serving_unit: data.serving_unit ?? 'g',
+    calories: data.calories ?? 0,
+    protein: data.protein ?? 0,
+    carbs: data.carbs ?? 0,
+    fat: data.fat ?? 0,
+    saturated_fat: data.saturated_fat ?? 0,
+    polyunsaturated_fat: data.polyunsaturated_fat ?? 0,
+    monounsaturated_fat: data.monounsaturated_fat ?? 0,
+    trans_fat: data.trans_fat ?? 0,
+    cholesterol: data.cholesterol ?? 0,
+    sodium: data.sodium ?? 0,
+    potassium: data.potassium ?? 0,
+    dietary_fiber: data.dietary_fiber ?? 0,
+    sugars: data.sugars ?? 0,
+    vitamin_a: data.vitamin_a ?? 0,
+    vitamin_c: data.vitamin_c ?? 0,
+    calcium: data.calcium ?? 0,
+    iron: data.iron ?? 0,
     is_default: true,
-    glycemic_index: nutrientData.glycemic_index || 'None',
+    glycemic_index: data.glycemic_index ?? 'None',
   };
 
   return {
-    id: undefined, // ID will be generated by the backend
-    name: nutrientData.name,
-    brand: nutrientData.brand || item.brand_name || null, // Use detailed brand if available, else from search
+    id: undefined as unknown as string,
+    name: data.food_name || data.name,
+    brand: data.brand_name || data.brand || null,
     is_custom: false,
-    provider_external_id: item.food_id, // Use food_id from FatSecretFoodItem
+    provider_external_id: data.food_id,
     provider_type: 'fatsecret',
     default_variant: defaultVariant,
     variants: [defaultVariant],
-    glycemic_index: nutrientData.glycemic_index || 'None',
+    glycemic_index: data.glycemic_index ?? 'None',
   };
 };
 
@@ -313,4 +349,35 @@ export const isUUID = (uuid: string) => {
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
+};
+
+export const mapUsdaItemToDetails = (
+  item: UsdaItem,
+  loggingLevel: LoggingLevel
+): UsdaFoodDetails => {
+  const nutrients = formatUsdaNutrientsForDisplay(item, loggingLevel);
+  return {
+    fdcId: item.fdcId,
+    description: item.description,
+    brandOwner: item.brandOwner,
+    servingSize: item.servingSize,
+    servingSizeUnit: item.servingSizeUnit,
+    calories: nutrients.calories || 0,
+    protein: nutrients.protein || 0,
+    fat: nutrients.fat || 0,
+    carbohydrates: nutrients.carbs || 0,
+    sugars: nutrients.sugars,
+    fiber: nutrients.dietary_fiber,
+    sodium: nutrients.sodium,
+    cholesterol: nutrients.cholesterol,
+    saturatedFat: nutrients.saturated_fat,
+    transFat: nutrients.trans_fat,
+    monounsaturatedFat: nutrients.monounsaturated_fat,
+    polyunsaturatedFat: nutrients.polyunsaturated_fat,
+    potassium: nutrients.potassium,
+    vitaminA: nutrients.vitamin_a,
+    vitaminC: nutrients.vitamin_c,
+    calcium: nutrients.calcium,
+    iron: nutrients.iron,
+  };
 };

@@ -9,8 +9,7 @@ import { BackupSettingsResponse } from '@/types/admin';
 
 interface BackupSettingsFormProps {
   initialSettings: BackupSettingsResponse;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onSave: (settings: any) => void;
+  onSave: (settings: BackupSettingsResponse) => void;
   onManualBackup: () => void;
   onRestore: (file: File) => void;
   isSaving: boolean;

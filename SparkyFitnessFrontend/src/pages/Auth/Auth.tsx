@@ -20,7 +20,7 @@ import { authClient } from '@/lib/auth-client';
 import { useAuth } from '@/hooks/useAuth';
 import useToggle from '@/hooks/use-toggle';
 import PasswordToggle from '../../components/PasswordToggle';
-import MfaChallenge from './MfaChallenge';
+import MfaChallenge, { MfaChallengeProps } from './MfaChallenge';
 import {
   mfaFactorsOptions,
   useAuthSettings,
@@ -49,8 +49,8 @@ const Auth = () => {
     useToggle();
   // State for MFA challenge
   const [showMfaChallenge, setShowMfaChallenge] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [mfaChallengeProps, setMfaChallengeProps] = useState<any>(null); // Store MFA data
+  const [mfaChallengeProps, setMfaChallengeProps] =
+    useState<MfaChallengeProps>(null); // Store MFA data
   // State for Magic Link Request Dialog
   const [isMagicLinkRequestDialogOpen, setIsMagicLinkRequestDialogOpen] =
     useState(false);
@@ -273,8 +273,11 @@ const Auth = () => {
 
     setLoading(true);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data: any = await registerUser({ email, password, fullName });
+    const data: AuthResponse = await registerUser({
+      email,
+      password,
+      fullName,
+    });
     info(loggingLevel, 'Auth: Sign up successful.');
     signIn(
       data.userId,

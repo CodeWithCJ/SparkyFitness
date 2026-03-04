@@ -13,7 +13,7 @@ import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import DiaryTopControls from './DiaryTopControls';
+import DiaryTopControls, { DayTotals } from './DiaryTopControls';
 import MealCard from './MealCard';
 import ExerciseCard from './ExerciseCard';
 import EditFoodEntryDialog from './EditFoodEntryDialog';
@@ -387,7 +387,7 @@ const Diary = () => {
         <>
           <DiaryTopControls
             selectedDate={selectedDate}
-            dayTotals={dayTotals}
+            dayTotals={dayTotals as unknown as DayTotals}
             goals={goals}
             energyUnit={energyUnit}
             convertEnergy={convertEnergy}

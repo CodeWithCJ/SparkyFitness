@@ -32,38 +32,27 @@ import { useActivityDetailsQuery } from '@/hooks/Exercises/useExercises';
 
 interface ActivityReportVisualizerProps {
   exerciseEntryId: string;
-  providerName: string; // e.g., 'garmin', 'withings'
+  providerName: string;
 }
 
 type XAxisMode = 'timeOfDay' | 'activityDuration' | 'distance';
 
-interface ActivityDetails {
-  activityName: string;
-  eventType?: string;
-  course?: string;
-  gear?: string;
-  totalAscent?: number;
-  calories?: number;
-  distance?: number;
-  duration?: number;
-  averagePace?: number;
-  averageHR?: number;
-  averageRunCadence?: number;
+interface MetricDescriptor {
+  key: string;
 }
 
-interface ActivityMetrics {
-  geoPolylineDTO?: {
-    polyline: { lat: number; lon: number }[];
-  };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  activityDetailMetrics: any[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  metricDescriptors: any[];
+export interface ActivityDetailMetric {
+  metrics: string[];
 }
 
-interface ActivitySplits {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  lapDTOs: any[];
+interface HeartRateZone {
+  zoneNumber: number;
+  zoneLowBoundary: number;
+  secsInZone: number;
+}
+
+interface WorkoutStep {
+  [key: string]: unknown;
 }
 
 export interface WorkoutData {
@@ -73,21 +62,19 @@ export interface WorkoutData {
   estimatedDurationInSecs?: number;
   workoutSegments?: {
     segmentOrder: number;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    workoutSteps: any[];
+    workoutSteps: WorkoutStep[];
   }[];
-  // Add other workout-specific fields as needed
 }
 
-interface ActivityData {
-  activity: {
-    activity: ActivityDetails;
-    details: ActivityMetrics;
-    splits: ActivitySplits;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    hr_in_timezones: any[];
-  } | null;
-  workout: WorkoutData | null;
+interface ChartDataPoint {
+  timestamp: number;
+  activityDuration: number;
+  distance: number;
+  speed: number;
+  pace: number;
+  heartRate: number | null;
+  runCadence: number;
+  elevation: number | null;
 }
 
 const ActivityReportVisualizer = ({
@@ -95,16 +82,18 @@ const ActivityReportVisualizer = ({
   providerName,
 }: ActivityReportVisualizerProps) => {
   const { t } = useTranslation();
-  const [xAxisMode, setXAxisMode] = useState<XAxisMode>('timeOfDay'); // Default to time of day
+  const [xAxisMode, setXAxisMode] = useState<XAxisMode>('timeOfDay');
   const [isMounted, setIsMounted] = useState(false);
   const {
     data: activityData,
     isLoading: loading,
     isError: error,
   } = useActivityDetailsQuery(exerciseEntryId, providerName);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
   const {
     distanceUnit,
     convertDistance,
@@ -126,7 +115,7 @@ const ActivityReportVisualizer = ({
   if (error) {
     return (
       <div className="text-red-500">
-        {t('reports.activityReport.error', { error: error })}
+        {t('reports.activityReport.error', { error: String(error) })}
       </div>
     );
   }
@@ -135,12 +124,9 @@ const ActivityReportVisualizer = ({
     return <div>{t('reports.activityReport.noActivityDataAvailable')}</div>;
   }
 
-  // Data processing for charts (Garmin specific for now)
-  // This section will need to be refactored to be more generic or use helper functions
-  // based on the providerName if other providers have different data structures.
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const processChartData = (metrics: any[]) => {
+  const processChartData = (
+    metrics: ActivityDetailMetric[]
+  ): ChartDataPoint[] => {
     if (!metrics || metrics.length === 0) return [];
 
     const metricDescriptors =
@@ -154,15 +140,12 @@ const ActivityReportVisualizer = ({
     }
 
     const timestampDescriptor = metricDescriptors.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (d: any) => d.key === 'directTimestamp'
+      (d: MetricDescriptor) => d.key === 'directTimestamp'
     );
     const distanceDescriptor = metricDescriptors.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (d: any) => d.key === 'sumDistance'
+      (d: MetricDescriptor) => d.key === 'sumDistance'
     );
 
-    // Add a defensive check to ensure metricDescriptors is not missing keys
     if (!timestampDescriptor || !distanceDescriptor) {
       logError(
         loggingLevel,
@@ -170,35 +153,15 @@ const ActivityReportVisualizer = ({
       );
       return [];
     }
-    const speedDescriptor = metricDescriptors.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (d: any) => d.key === 'directSpeed'
-    );
+
     const heartRateDescriptor = metricDescriptors.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (d: any) => d.key === 'directHeartRate'
-    );
-    const runCadenceDescriptor = metricDescriptors.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (d: any) => d.key === 'directRunCadence'
-    );
-    const elevationDescriptor = metricDescriptors.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (d: any) => d.key === 'directElevation'
+      (d: MetricDescriptor) => d.key === 'directHeartRate'
     );
 
     const metricKeyToDataIndexMap: { [key: string]: number } = {};
     let currentDataIndex = 0;
 
-    // Build a map of metric key to its actual index in the 'metrics' array
-    // by iterating through metricDescriptors and assigning sequential indices
-    // to the metrics that are actually present in the 'metrics' array.
-    // This assumes that the order of metrics in the 'metrics' array corresponds
-    // to the order of the relevant descriptors in 'metricDescriptors'.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    metricDescriptors.forEach((descriptor: any) => {
-      // Only map the keys we are interested in for the chart
-      // This list should match the order of metrics in activityDetailMetrics[0].metrics
+    metricDescriptors.forEach((descriptor: MetricDescriptor) => {
       if (descriptor.key === 'directHeartRate') {
         metricKeyToDataIndexMap['directHeartRate'] = currentDataIndex;
         currentDataIndex++;
@@ -233,7 +196,6 @@ const ActivityReportVisualizer = ({
     const runCadenceIndex = metricKeyToDataIndexMap['directRunCadence'];
     const elevationIndex = metricKeyToDataIndexMap['directElevation'];
 
-    // Add a defensive check for heartRateDescriptor
     if (!heartRateDescriptor) {
       warn(
         loggingLevel,
@@ -245,7 +207,6 @@ const ActivityReportVisualizer = ({
         `Heart Rate Descriptor found at index: ${heartRateIndex}`
       );
     }
-    // Removed redundant runCadenceIndex declaration
 
     if (timestampIndex === undefined || distanceIndex === undefined) {
       logError(
@@ -258,9 +219,8 @@ const ActivityReportVisualizer = ({
     let activityStartTime: number = 0;
     let initialDistance: number = 0;
 
-    const REFERENCE_UNIX_EPOCH_START = 1000000000000; // Roughly 2001-09-09 01:46:40 UTC
+    const REFERENCE_UNIX_EPOCH_START = 1000000000000;
 
-    // Separate timestamps into potential relative and absolute groups
     const relativeTimestamps: number[] = [];
     const absoluteTimestamps: number[] = [];
 
@@ -276,13 +236,10 @@ const ActivityReportVisualizer = ({
     }
 
     if (absoluteTimestamps.length > 0) {
-      // If absolute timestamps exist, use the minimum absolute timestamp as the start
       activityStartTime = Math.min(...absoluteTimestamps);
     } else if (relativeTimestamps.length > 0) {
-      // If only relative timestamps exist, use 0 as the start (relative to the first data point)
-      activityStartTime = Math.min(...relativeTimestamps); // This will be the smallest relative offset
+      activityStartTime = Math.min(...relativeTimestamps);
     } else {
-      // No valid timestamps found
       logError(
         loggingLevel,
         t('reports.activityReport.noValidTimestampsFound')
@@ -290,7 +247,6 @@ const ActivityReportVisualizer = ({
       return [];
     }
 
-    // Find the initial distance corresponding to the determined activityStartTime
     const firstDataPoint = metrics.find(
       (metric) =>
         parseFloat(metric.metrics[timestampIndex]) === activityStartTime
@@ -299,56 +255,48 @@ const ActivityReportVisualizer = ({
       const dist = parseFloat(firstDataPoint.metrics[distanceIndex]);
       initialDistance = !isNaN(dist) ? dist : 0;
     } else if (metrics.length > 0) {
-      // Fallback for initialDistance if activityStartTime doesn't directly match a metric's timestamp
-      // This can happen if activityStartTime is 0 (for relative timestamps) but the first metric's timestamp is not 0.
       const firstMetricDistance = parseFloat(metrics[0].metrics[distanceIndex]);
       initialDistance = !isNaN(firstMetricDistance) ? firstMetricDistance : 0;
     }
 
     const processedMetrics = metrics
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((metric: any) => {
+      .map((metric: ActivityDetailMetric): ChartDataPoint | null => {
         const currentTimestamp = parseFloat(metric.metrics[timestampIndex]);
         const currentDistance = parseFloat(metric.metrics[distanceIndex]);
 
-        // Handle cases where a metric might not have all data points
         if (isNaN(currentTimestamp) || isNaN(currentDistance)) {
-          return null; // Filtered out later
+          return null;
         }
 
         const speed =
           speedIndex !== undefined && metric.metrics[speedIndex] !== undefined
-            ? metric.metrics[speedIndex]
+            ? Number(metric.metrics[speedIndex])
             : 0;
         const heartRate =
           heartRateIndex !== undefined &&
           metric.metrics[heartRateIndex] !== undefined
-            ? metric.metrics[heartRateIndex]
+            ? Number(metric.metrics[heartRateIndex])
             : null;
         const runCadence =
           runCadenceIndex !== undefined &&
           metric.metrics[runCadenceIndex] !== undefined
-            ? metric.metrics[runCadenceIndex]
+            ? Number(metric.metrics[runCadenceIndex])
             : 0;
         const elevation =
           elevationIndex !== undefined &&
           metric.metrics[elevationIndex] !== undefined
-            ? metric.metrics[elevationIndex]
+            ? Number(metric.metrics[elevationIndex])
             : null;
 
-        if (heartRate !== null) {
-          //info(loggingLevel, `Extracted Heart Rate: ${heartRate} at timestamp: ${currentTimestamp}`);
-        }
-
-        const paceMinutesPerKm = speed > 0 ? 1000 / (speed * 60) : 0; // Convert m/s to min/km
+        const paceMinutesPerKm = speed > 0 ? 1000 / (speed * 60) : 0;
         const activityDurationSeconds =
-          (currentTimestamp - activityStartTime) / 1000; // Duration in seconds (assuming directTimestamp is in milliseconds)
-        const relativeDistanceMeters = currentDistance - initialDistance; // Distance in meters
+          (currentTimestamp - activityStartTime) / 1000;
+        const relativeDistanceMeters = currentDistance - initialDistance;
 
         return {
-          timestamp: currentTimestamp, // Store raw numerical timestamp (in milliseconds)
-          activityDuration: activityDurationSeconds / 60, // in minutes
-          distance: relativeDistanceMeters, // in meters
+          timestamp: currentTimestamp,
+          activityDuration: activityDurationSeconds / 60,
+          distance: relativeDistanceMeters,
           speed: speed ? parseFloat(speed.toFixed(2)) : 0,
           pace:
             paceMinutesPerKm > 0 ? parseFloat(paceMinutesPerKm.toFixed(2)) : 0,
@@ -357,16 +305,12 @@ const ActivityReportVisualizer = ({
           elevation: elevation,
         };
       })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter(Boolean) as any[]; // Filter out null entries and assert type
+      .filter((metric): metric is ChartDataPoint => metric !== null);
 
-    // Sort by timestamp to ensure chronological order
     processedMetrics.sort((a, b) => a.timestamp - b.timestamp);
 
-    // Downsampling
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sampledData: any[] = [];
-    const maxPoints = 50; // Maximum number of points to display on the chart
+    const sampledData: ChartDataPoint[] = [];
+    const maxPoints = 50;
     const samplingRate = Math.max(
       1,
       Math.floor(processedMetrics.length / maxPoints)
@@ -374,65 +318,57 @@ const ActivityReportVisualizer = ({
 
     for (let i = 0; i < processedMetrics.length; i++) {
       if (i % samplingRate === 0 || i === processedMetrics.length - 1) {
-        // Always include the last point
         sampledData.push(processedMetrics[i]);
       }
     }
 
     return sampledData.map((dataPoint) => ({
       ...dataPoint,
-      distance: convertDistance(dataPoint.distance / 1000, 'km', distanceUnit), // Convert distance from meters to km, then to user's preferred unit
+      distance: convertDistance(dataPoint.distance / 1000, 'km', distanceUnit),
     }));
   };
 
   const allChartData = processChartData(
-    activityData.activity?.details?.activityDetailMetrics
+    activityData.activity?.details?.activityDetailMetrics || []
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const paceData = allChartData.filter((data: any) => data.speed > 0); // Filter out zero speeds for meaningful pace
+  const paceData = allChartData.filter(
+    (data: ChartDataPoint) => data.speed > 0
+  );
   const heartRateData = allChartData.filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (data: any) => data.heartRate !== null && data.heartRate > 0
+    (data: ChartDataPoint) => data.heartRate !== null && data.heartRate > 0
   );
   const runCadenceData = allChartData.filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (data: any) => data.runCadence > 0
+    (data: ChartDataPoint) => data.runCadence > 0
   );
   const elevationData = allChartData.filter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (data: any) => data.elevation !== null
+    (data: ChartDataPoint) => data.elevation !== null
   );
 
   info(
     loggingLevel,
     'Pace Data Timestamps:',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    paceData.map((d: any) => d.timestamp)
+    paceData.map((d: ChartDataPoint) => d.timestamp)
   );
   info(
     loggingLevel,
     'Heart Rate Data Timestamps:',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    heartRateData.map((d: any) => d.timestamp)
+    heartRateData.map((d: ChartDataPoint) => d.timestamp)
   );
   info(
     loggingLevel,
     'Elevation Data Timestamps:',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    elevationData.map((d: any) => d.timestamp)
+    elevationData.map((d: ChartDataPoint) => d.timestamp)
   );
   info(loggingLevel, 'Filtered Heart Rate Data:', heartRateData);
 
   const hrInTimezonesData = activityData.activity?.hr_in_timezones?.map(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (zone: any) => ({
+    (zone: HeartRateZone) => ({
       name: `Zone ${zone.zoneNumber} (${zone.zoneLowBoundary} bpm)`,
-      'Time in Zone (s)': zone.secsInZone,
+      [t('reports.activityReport.timeInZoneS')]: zone.secsInZone,
     })
   );
 
-  // Extract summary data
   const totalActivityDurationSeconds =
     activityData.activity?.activity?.duration || 0;
   const totalActivityCalories = activityData.activity?.activity?.calories || 0;
@@ -444,17 +380,13 @@ const ActivityReportVisualizer = ({
   let totalActivityDistanceForDisplay: number = 0;
   let averagePaceForDisplay: number = 0;
 
-  // Determine total activity distance
   if (allChartData.length > 0) {
-    // Prioritize the last point from chart data, which is already in the preferred unit
     totalActivityDistanceForDisplay =
       allChartData[allChartData.length - 1].distance;
   } else if (
     activityData.activity?.activity?.distance &&
     activityData.activity.activity.distance > 0
   ) {
-    // Fallback to activityData.activity.distance if chart data is not available
-    // activityData.activity.distance is in meters, convert to km then to preferred unit
     totalActivityDistanceForDisplay = convertDistance(
       activityData.activity.activity.distance / 1000,
       'km',
@@ -462,27 +394,23 @@ const ActivityReportVisualizer = ({
     );
   }
 
-  // Determine average pace
   if (
     activityData.activity?.activity?.averagePace &&
     activityData.activity.activity.averagePace > 0
   ) {
-    // activityData.activity.averagePace is assumed to be in min/km from the backend.
     averagePaceForDisplay = activityData.activity.activity.averagePace;
     if (distanceUnit === 'miles') {
-      averagePaceForDisplay = averagePaceForDisplay * 1.60934; // Convert min/km to min/mi
+      averagePaceForDisplay = averagePaceForDisplay * 1.60934;
     }
   } else if (paceData.length > 0) {
     const totalPaceKm = paceData.reduce(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (sum: number, dataPoint: any) => sum + dataPoint.pace,
+      (sum: number, dataPoint: ChartDataPoint) => sum + dataPoint.pace,
       0
-    ); // pace is min/km
+    );
     if (paceData.length > 0) {
-      let calculatedPace = totalPaceKm / paceData.length; // This is in min/km
-      // If the preferred unit is miles, convert min/km to min/mi
+      let calculatedPace = totalPaceKm / paceData.length;
       if (distanceUnit === 'miles') {
-        calculatedPace = calculatedPace * 1.60934; // min/mi = min/km * km/mi
+        calculatedPace = calculatedPace * 1.60934;
       }
       averagePaceForDisplay = calculatedPace;
     }
@@ -557,31 +485,37 @@ const ActivityReportVisualizer = ({
             {activityData.activity?.activity.eventType && (
               <span>
                 {t('reports.activityReport.event')}{' '}
-                {typeof activityData.activity.activity.eventType === 'object'
-                  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (activityData.activity.activity.eventType as any).typeKey ||
-                    t('common.notApplicable')
-                  : activityData.activity.activity.eventType}
+                {typeof activityData.activity.activity.eventType === 'object' &&
+                activityData.activity.activity.eventType !== null
+                  ? (
+                      activityData.activity.activity.eventType as {
+                        typeKey: string;
+                      }
+                    ).typeKey || t('common.notApplicable')
+                  : String(activityData.activity.activity.eventType)}
               </span>
             )}
             {activityData.activity?.activity.course && (
               <span className="mr-4">
                 {t('reports.activityReport.course')}{' '}
-                {typeof activityData.activity.activity.course === 'object'
-                  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (activityData.activity.activity.course as any).typeKey ||
-                    t('common.notApplicable')
-                  : activityData.activity.activity.course}
+                {typeof activityData.activity.activity.course === 'object' &&
+                activityData.activity.activity.course !== null
+                  ? (
+                      activityData.activity.activity.course as {
+                        typeKey: string;
+                      }
+                    ).typeKey || t('common.notApplicable')
+                  : String(activityData.activity.activity.course)}
               </span>
             )}
             {activityData.activity?.activity.gear && (
               <span className="mr-4">
                 {t('reports.activityReport.gear')}{' '}
-                {typeof activityData.activity.activity.gear === 'object'
-                  ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (activityData.activity.activity.gear as any).typeKey ||
-                    t('common.notApplicable')
-                  : activityData.activity.activity.gear}
+                {typeof activityData.activity.activity.gear === 'object' &&
+                activityData.activity.activity.gear !== null
+                  ? (activityData.activity.activity.gear as { typeKey: string })
+                      .typeKey || t('common.notApplicable')
+                  : String(activityData.activity.activity.gear)}
               </span>
             )}
           </div>
@@ -761,12 +695,12 @@ const ActivityReportVisualizer = ({
                               }}
                               tickFormatter={(value) => {
                                 if (xAxisMode === 'activityDuration')
-                                  return `${value.toFixed(0)} ${t('common.min')}`;
+                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
                                 if (xAxisMode === 'distance')
-                                  return `${value.toFixed(2)}`;
+                                  return `${Number(value).toFixed(2)}`;
                                 if (xAxisMode === 'timeOfDay')
                                   return new Date(value).toLocaleTimeString();
-                                return value;
+                                return String(value);
                               }}
                               interval="preserveStartEnd"
                             />
@@ -874,12 +808,12 @@ const ActivityReportVisualizer = ({
                               }}
                               tickFormatter={(value) => {
                                 if (xAxisMode === 'activityDuration')
-                                  return `${value.toFixed(0)} ${t('common.min')}`;
+                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
                                 if (xAxisMode === 'distance')
-                                  return `${value.toFixed(2)}`;
+                                  return `${Number(value).toFixed(2)}`;
                                 if (xAxisMode === 'timeOfDay')
                                   return new Date(value).toLocaleTimeString();
-                                return value;
+                                return String(value);
                               }}
                               interval="preserveStartEnd"
                             />
@@ -967,12 +901,12 @@ const ActivityReportVisualizer = ({
                               }}
                               tickFormatter={(value) => {
                                 if (xAxisMode === 'activityDuration')
-                                  return `${value.toFixed(0)} ${t('common.min')}`;
+                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
                                 if (xAxisMode === 'distance')
-                                  return `${value.toFixed(2)}`;
+                                  return `${Number(value).toFixed(2)}`;
                                 if (xAxisMode === 'timeOfDay')
                                   return new Date(value).toLocaleTimeString();
-                                return value;
+                                return String(value);
                               }}
                               interval="preserveStartEnd"
                             />
@@ -1060,12 +994,12 @@ const ActivityReportVisualizer = ({
                               }}
                               tickFormatter={(value) => {
                                 if (xAxisMode === 'activityDuration')
-                                  return `${value.toFixed(0)} ${t('common.min')}`;
+                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
                                 if (xAxisMode === 'distance')
-                                  return `${value.toFixed(2)}`;
+                                  return `${Number(value).toFixed(2)}`;
                                 if (xAxisMode === 'timeOfDay')
                                   return new Date(value).toLocaleTimeString();
-                                return value;
+                                return String(value);
                               }}
                               interval="preserveStartEnd"
                             />
@@ -1184,7 +1118,7 @@ const ActivityReportVisualizer = ({
               <ZoomableChart title={t('reports.activityReport.lapsTable')}>
                 {(isMaximized, zoomLevel) => (
                   <ActivityReportLapTable
-                    lapDTOs={activityData.activity.splits.lapDTOs}
+                    lapDTOs={activityData.activity!.splits.lapDTOs}
                     isMaximized={isMaximized}
                     zoomLevel={zoomLevel}
                   />

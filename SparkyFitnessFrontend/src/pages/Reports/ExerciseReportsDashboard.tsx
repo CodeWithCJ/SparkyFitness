@@ -604,13 +604,17 @@ const ExerciseReportsDashboard = ({
                   debounce={100}
                 >
                   <BarChart
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    onClick={(e: any) =>
-                      e &&
-                      e.activePayload &&
-                      e.activePayload.length > 0 &&
-                      onDrilldown(e.activePayload[0].payload.entry_date)
-                    }
+                    onClick={(e) => {
+                      const event = e as unknown as {
+                        activePayload?: { payload: { entry_date: string } }[];
+                      };
+                      if (
+                        event?.activePayload &&
+                        event.activePayload.length > 0
+                      ) {
+                        onDrilldown(event.activePayload[0].payload.entry_date);
+                      }
+                    }}
                     data={volumeTrendData}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -741,13 +745,17 @@ const ExerciseReportsDashboard = ({
                   debounce={100}
                 >
                   <BarChart
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    onClick={(e: any) =>
-                      e &&
-                      e.activePayload &&
-                      e.activePayload.length > 0 &&
-                      onDrilldown(e.activePayload[0].payload.entry_date)
-                    }
+                    onClick={(e) => {
+                      const event = e as unknown as {
+                        activePayload?: { payload: { entry_date: string } }[];
+                      };
+                      if (
+                        event?.activePayload &&
+                        event.activePayload.length > 0
+                      ) {
+                        onDrilldown(event.activePayload[0].payload.entry_date);
+                      }
+                    }}
                     data={maxWeightTrendData}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -882,13 +890,17 @@ const ExerciseReportsDashboard = ({
                   debounce={100}
                 >
                   <BarChart
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    onClick={(e: any) =>
-                      e &&
-                      e.activePayload &&
-                      e.activePayload.length > 0 &&
-                      onDrilldown(e.activePayload[0].payload.entry_date)
-                    }
+                    onClick={(e) => {
+                      const event = e as unknown as {
+                        activePayload?: { payload: { entry_date: string } }[];
+                      };
+                      if (
+                        event?.activePayload &&
+                        event.activePayload.length > 0
+                      ) {
+                        onDrilldown(event.activePayload[0].payload.entry_date);
+                      }
+                    }}
                     data={estimated1RMTrendData}
                   >
                     <CartesianGrid strokeDasharray="3 3" />

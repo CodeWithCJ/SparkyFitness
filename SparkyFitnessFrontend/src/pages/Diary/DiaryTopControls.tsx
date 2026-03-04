@@ -6,13 +6,17 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { debug } from '@/utils/logging';
 import { useTranslation } from 'react-i18next';
-
+import {
+  getNutrientMetadata,
+  formatNutrientValue,
+} from '@/utils/nutrientUtils';
+import { Goals } from '@/types/diary';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import EditGoalsForToday from '@/pages/Goals/EditGoalsForToday';
 import { useMemo } from 'react';
 import { DEFAULT_GOALS } from '@/constants/goals';
 
-interface DayTotals {
+export interface DayTotals {
   calories: number; // Stored internally as kcal
   protein: number;
   carbs: number;
@@ -33,12 +37,6 @@ interface DiaryTopControlsProps {
   ) => number;
   customNutrients?: UserCustomNutrient[]; // Add customNutrients prop
 }
-
-import {
-  getNutrientMetadata,
-  formatNutrientValue,
-} from '@/utils/nutrientUtils';
-import { Goals } from '@/types/diary';
 
 const DiaryTopControls = ({
   selectedDate,

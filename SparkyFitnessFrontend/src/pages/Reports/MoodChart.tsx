@@ -19,6 +19,16 @@ interface MoodChartProps {
   title: string;
 }
 
+interface FormattedMoodEntry {
+  date: string;
+  moodValue: number;
+  moodDisplay: {
+    emoji: string;
+    label: string;
+  };
+  notes?: string;
+}
+
 const MoodChart = ({ data, title }: MoodChartProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
@@ -120,9 +130,15 @@ const MoodChart = ({ data, title }: MoodChartProps) => {
 
 export default MoodChart;
 
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: {
+    payload: FormattedMoodEntry;
+  }[];
+}
+
 // Custom Tooltip for Mood Chart
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
 

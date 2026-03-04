@@ -519,7 +519,7 @@ export const NutrientGoals = ({
                       <Input
                         type="number"
                         step={0.1}
-                        value={(editedPlan?.[cn.name] ?? 0).toFixed(1)}
+                        value={Number(editedPlan?.[cn.name] ?? 0).toFixed(1)}
                         onChange={(e) =>
                           setEditedPlan((prev) =>
                             prev

@@ -1,6 +1,7 @@
 import { getDietTemplate } from '@/constants/dietTemplates';
 import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
 import i18n from '@/i18n';
+import { Goals } from '@/types/diary';
 import type { FoodEntry, FoodVariant } from '@/types/food';
 import { FoodEntryMeal, MealTotals } from '@/types/meal';
 
@@ -349,8 +350,7 @@ export const calculateDayTotals = (
 
         // Safely add numbers, ignoring other types
         if (typeof val === 'number') {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (acc as any)[key] += val;
+          (acc[key] as number) += val;
         }
       });
 
@@ -418,8 +418,7 @@ export const getMealTotals = (
         const val = itemNutrition[k];
 
         if (typeof val === 'number') {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (acc as any)[key] += val;
+          (acc[key] as number) += val;
         }
       });
 
@@ -502,8 +501,7 @@ export const getMealData = (
   mealType: string,
   foodEntries: FoodEntry[],
   foodEntryMeals: FoodEntryMeal[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  goals: any
+  goals: Goals
 ): {
   name: string;
   type: string;

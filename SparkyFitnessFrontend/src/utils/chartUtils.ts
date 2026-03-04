@@ -5,8 +5,7 @@
  */
 
 export interface ChartDataPoint {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
+  [key: string]: number | string | boolean | null | undefined;
   date?: string;
   entry_date?: string;
 }

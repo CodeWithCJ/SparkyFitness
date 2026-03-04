@@ -135,8 +135,7 @@ const EditExerciseEntryDialog = ({
   const handleSetChange = (
     setIndex: number,
     field: keyof WorkoutPresetSet,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    value: any
+    value: string | number
   ) => {
     debug(
       loggingLevel,

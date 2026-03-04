@@ -1,19 +1,15 @@
 import { authClient } from '@/lib/auth-client';
-import type { AccessibleUser, AuthResponse, LoginSettings } from '@/types/auth';
+import type {
+  AccessibleUser,
+  AuthResponse,
+  BetterAuthUser,
+  LoginSettings,
+} from '@/types/auth';
 import { apiCall } from '../api';
 
 interface AuthError extends Error {
   code?: string;
   status?: number;
-}
-
-interface BetterAuthUser {
-  id: string;
-  email: string;
-  name: string;
-  role?: string;
-  twoFactorEnabled?: boolean;
-  mfaEmailEnabled?: boolean;
 }
 
 interface BetterAuthResponse {

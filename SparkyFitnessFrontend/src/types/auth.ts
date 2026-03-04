@@ -41,3 +41,12 @@ export interface AccessibleUser {
   };
   access_end_date: string | null;
 }
+export interface BetterAuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role?: string;
+  twoFactorEnabled?: boolean;
+  mfaEmailEnabled?: boolean;
+  mfaTotpEnabled?: boolean;
+}
