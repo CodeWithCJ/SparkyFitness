@@ -1,4 +1,9 @@
-import { EnergyUnit, LoggingLevel } from '@/contexts/PreferencesContext';
+import {
+  EnergyUnit,
+  LoggingLevel,
+  MeasurementUnit,
+  WeightUnit,
+} from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import i18n from '@/i18n';
 import { debug, info, warn, error } from '@/utils/logging';
@@ -664,8 +669,8 @@ export const exportBodyMeasurements = async ({
   startDate: string | null;
   endDate: string | null;
   measurementData: CheckInMeasurement[];
-  defaultWeightUnit: string;
-  defaultMeasurementUnit: string;
+  defaultWeightUnit: WeightUnit;
+  defaultMeasurementUnit: MeasurementUnit;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
 }) => {
   info(loggingLevel, 'Reports: Attempting to export body measurements.');
@@ -899,8 +904,12 @@ export const formatCustomChartData = (
   category: CustomCategory,
   data: CustomMeasurement[],
   loggingLevel: LoggingLevel,
-  convertMeasurement: (val: number, from: string, to: string) => number,
-  defaultMeasurementUnit: string
+  convertMeasurement: (
+    val: number,
+    from: MeasurementUnit,
+    to: MeasurementUnit
+  ) => number,
+  defaultMeasurementUnit: MeasurementUnit
 ) => {
   debug(
     loggingLevel,

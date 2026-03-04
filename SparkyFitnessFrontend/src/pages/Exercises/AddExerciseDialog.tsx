@@ -33,6 +33,13 @@ import {
 } from '@/hooks/Exercises/useExercises';
 import { Exercise } from '@/types/exercises';
 
+interface ImportConflictError {
+  status?: number;
+  data?: {
+    duplicates?: Array<{ name: string }>;
+  };
+}
+
 interface AddExerciseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -245,7 +252,8 @@ const AddExerciseDialog = ({
     try {
       await importExerciseFromJson(exerciseDataArray);
       onOpenChange(false);
-    } catch (error) {
+    } catch (err: unknown) {
+      const error = err as ImportConflictError;
       if (error?.status === 409 && error.data?.duplicates) {
         const duplicateList = error.data.duplicates
           .map((d: { name: string }) => `"${d.name}"`)

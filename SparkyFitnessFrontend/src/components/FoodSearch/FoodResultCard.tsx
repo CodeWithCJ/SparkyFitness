@@ -7,12 +7,13 @@ import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { useTranslation } from 'react-i18next';
+import { EnergyUnit } from '@/contexts/PreferencesContext';
 
 interface NutrientGridConfig {
   visibleNutrients: string[];
-  energyUnit: 'kcal' | 'kJ';
-  convertEnergy: (val: number, from: string, to: string) => number;
-  getEnergyUnitString: (unit: string) => string;
+  energyUnit: EnergyUnit;
+  convertEnergy: (val: number, from: EnergyUnit, to: EnergyUnit) => number;
+  getEnergyUnitString: (unit: EnergyUnit) => string;
   customNutrients: UserCustomNutrient[];
 }
 

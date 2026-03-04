@@ -129,9 +129,9 @@ const ActivityReportVisualizer = ({
   ): ChartDataPoint[] => {
     if (!metrics || metrics.length === 0) return [];
 
-    const metricDescriptors =
+    const rawMetricDescriptors =
       activityData?.activity?.details?.metricDescriptors;
-    if (!metricDescriptors) {
+    if (!rawMetricDescriptors) {
       logError(
         loggingLevel,
         t('reports.activityReport.metricDescriptorsNotFound')
@@ -139,6 +139,7 @@ const ActivityReportVisualizer = ({
       return [];
     }
 
+    const metricDescriptors = rawMetricDescriptors as MetricDescriptor[];
     const timestampDescriptor = metricDescriptors.find(
       (d: MetricDescriptor) => d.key === 'directTimestamp'
     );
@@ -362,12 +363,13 @@ const ActivityReportVisualizer = ({
   );
   info(loggingLevel, 'Filtered Heart Rate Data:', heartRateData);
 
-  const hrInTimezonesData = activityData.activity?.hr_in_timezones?.map(
-    (zone: HeartRateZone) => ({
-      name: `Zone ${zone.zoneNumber} (${zone.zoneLowBoundary} bpm)`,
-      [t('reports.activityReport.timeInZoneS')]: zone.secsInZone,
-    })
-  );
+  const rawHrZones = activityData.activity?.hr_in_timezones as
+    | HeartRateZone[]
+    | undefined;
+  const hrInTimezonesData = rawHrZones?.map((zone) => ({
+    name: `Zone ${zone.zoneNumber} (${zone.zoneLowBoundary} bpm)`,
+    [t('reports.activityReport.timeInZoneS')]: zone.secsInZone,
+  }));
 
   const totalActivityDurationSeconds =
     activityData.activity?.activity?.duration || 0;

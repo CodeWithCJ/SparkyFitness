@@ -36,7 +36,10 @@ const WorkoutPresetsManager = () => {
   const presets = data?.pages.flatMap((page) => page.presets) ?? [];
 
   const handleCreatePreset = async (
-    newPresetData: Omit<WorkoutPreset, 'id' | 'created_at' | 'updated_at'>
+    newPresetData: Omit<
+      WorkoutPreset,
+      'id' | 'created_at' | 'updated_at' | 'user_id'
+    >
   ) => {
     if (!user?.id) return;
     await createPreset({ ...newPresetData, user_id: user.id });

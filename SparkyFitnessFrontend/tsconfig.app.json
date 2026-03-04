@@ -20,6 +20,11 @@
     "noUnusedParameters": true,
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": true,
+    "alwaysStrict": true,
+    "noImplicitThis": true,
+    "strictBindCallApply": true,
+    "useUnknownInCatchVariables": true,
+    "strictFunctionTypes": true,
 
     "paths": {
       "@/*": ["./src/*"]

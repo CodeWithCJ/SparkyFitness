@@ -1,5 +1,6 @@
 import { toast } from '@/hooks/use-toast';
 import { apiCall } from '@/api/api';
+import { getErrorMessage } from '@/utils/api';
 
 interface NutritionixFood {
   food_name: string;
@@ -27,11 +28,12 @@ const fetchFoodDataProvider = async (providerId: string) => {
   try {
     const data = await apiCall(`/external-providers/${providerId}`);
     return data;
-  } catch (error) {
+  } catch (error: unknown) {
+    const message = getErrorMessage(error);
     console.error('Error fetching food data provider:', error);
     toast({
       title: 'Error',
-      description: `Failed to retrieve food data provider details: ${error.message}`,
+      description: `Failed to retrieve food data provider details: ${message}`,
       variant: 'destructive',
     });
     return null;

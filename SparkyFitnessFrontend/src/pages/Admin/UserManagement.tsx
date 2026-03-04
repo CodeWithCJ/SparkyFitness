@@ -448,10 +448,10 @@ const UserManagement: React.FC = () => {
 
 interface SortableHeadProps {
   label: string;
-  col: string;
+  col: keyof User;
   currentSort: string;
   sortOrder: 'asc' | 'desc';
-  onSort: (col: string) => void;
+  onSort: (col: keyof User) => void;
 }
 
 const SortableHead = ({
