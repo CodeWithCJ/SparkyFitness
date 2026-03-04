@@ -16,6 +16,7 @@ interface CheckInPayload {
   waist?: number;
   hips?: number;
   steps?: number;
+  [key: string]: string | number | undefined;
 }
 
 interface MeasurementItem {
@@ -159,7 +160,7 @@ export const processMeasurementInput = async (
         };
         updateData[measurementType] = measurement.value;
 
-        let upsertError = null;
+        let upsertError: unknown = null;
         try {
           await upsertCheckInMeasurement(updateData);
         } catch (err: unknown) {
@@ -167,12 +168,13 @@ export const processMeasurementInput = async (
         }
 
         if (upsertError) {
+          const message = getErrorMessage(upsertError);
           error(
             userLoggingLevel,
             `❌ [Nutrition Coach] Error saving ${measurement.type} measurement:`,
-            upsertError.message
+            message
           );
-          response += `⚠️ Failed to save ${measurement.type}: ${upsertError.message}\n`;
+          response += `⚠️ Failed to save ${measurement.type}: ${message}\n`;
         } else {
           response += `✅ ${measurementType.charAt(0).toUpperCase() + measurementType.slice(1)}: ${measurement.value}${measurement.unit || ''}\n`;
           measurementsLogged = true;

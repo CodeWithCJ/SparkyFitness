@@ -123,8 +123,7 @@ export const createExerciseEntry = async (payload: {
     formData.append('image', imageFile);
 
     // Append other data from the payload to formData
-    Object.keys(entryData).forEach((key) => {
-      const value = entryData[key];
+    Object.entries(entryData).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         if (key === 'sets' && Array.isArray(value)) {
           // The backend expects 'sets' to be a JSON string if it's part of FormData
@@ -134,7 +133,7 @@ export const createExerciseEntry = async (payload: {
         } else if (key === 'activity_details' && Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else {
-          formData.append(key, value);
+          formData.append(key, String(value));
         }
       }
     });
@@ -210,8 +209,7 @@ export const updateExerciseEntry = async (
     const formData = new FormData();
     formData.append('image', imageFile);
 
-    Object.keys(entryData).forEach((key) => {
-      const value = entryData[key];
+    Object.entries(entryData).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         if (key === 'sets' && Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
@@ -220,7 +218,7 @@ export const updateExerciseEntry = async (
         } else if (key === 'activity_details' && Array.isArray(value)) {
           formData.append(key, JSON.stringify(value));
         } else {
-          formData.append(key, value);
+          formData.append(key, String(value));
         }
       }
     });

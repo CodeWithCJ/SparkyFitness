@@ -22,7 +22,10 @@ import {
 } from '@/utils/nutrientUtils';
 import { formatWeight } from '@/utils/numberFormatting';
 import type { UserCustomNutrient } from '@/types/customNutrient';
-import type { DailyFoodEntry as BaseDailyFoodEntry } from '@/types/reports';
+import type {
+  DailyFoodEntry as BaseDailyFoodEntry,
+  DailyExerciseEntry,
+} from '@/types/reports';
 import {
   CheckInMeasurement,
   CustomCategory,
@@ -33,41 +36,17 @@ interface DailyFoodEntry extends BaseDailyFoodEntry {
   isTotal?: boolean;
 }
 
-interface DailyExerciseEntry {
-  id: string;
-  entry_date: string;
-  duration_minutes: number;
-  calories_burned: number;
-  notes?: string;
-  exercises: {
-    id: string;
-    name: string;
-    category: string;
-    calories_per_hour: number;
-    equipment?: string[];
-    primary_muscles?: string[];
-    secondary_muscles?: string[];
-  };
-  sets: {
-    // Define the structure of sets
-    id: string;
-    set_number: number;
-    set_type: string;
-    reps: number;
-    weight: number;
-    duration?: number;
-    rest_time?: number;
-    notes?: string;
-  }[];
+interface PersonalRecord {
+  date: string;
 }
-
+type PersonalRecordsMap = Record<string, PersonalRecord>;
 interface ReportsTablesProps {
   tabularData: DailyFoodEntry[];
   exerciseEntries: DailyExerciseEntry[]; // New prop for exercise entries
   measurementData: CheckInMeasurement[];
   customCategories: CustomCategory[];
   customMeasurementsData: Record<string, CustomMeasurement[]>;
-  prData: unknown; // Add prData to props
+  prData: PersonalRecordsMap;
   showWeightInKg: boolean;
   showMeasurementsInCm: boolean;
   onExportFoodDiary: () => void;

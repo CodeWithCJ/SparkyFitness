@@ -57,6 +57,20 @@ interface NutritionixInstantSearchResponse {
   }[];
 }
 
+interface NutritionixMappedItem {
+  id: string;
+  name: string;
+  brand: string | null;
+  image?: string;
+  source: string;
+  serving_size: number;
+  serving_unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 const NUTRITIONIX_API_BASE_URL = 'https://trackapi.nutritionix.com/v2';
 
 export const searchNutritionixFoods = async (
@@ -93,20 +107,22 @@ export const searchNutritionixFoods = async (
         externalApi: true,
       }
     );
-    const commonFoods = (data.common || []).slice(0, 10).map((item) => ({
-      id: item.food_name, // Use food_name as a temporary ID for common foods
-      name: item.food_name,
-      brand: null,
-      image: item.photo?.thumb,
-      source: 'Nutritionix',
-      // Basic info, full nutrients will be fetched on selection
-      serving_size: 0,
-      serving_unit: 'g',
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-    }));
+    const commonFoods = (data.common || []).slice(0, 10).map(
+      (item): NutritionixMappedItem => ({
+        id: item.food_name, // Use food_name as a temporary ID for common foods
+        name: item.food_name,
+        brand: null,
+        image: item.photo?.thumb,
+        source: 'Nutritionix',
+        // Basic info, full nutrients will be fetched on selection
+        serving_size: 0,
+        serving_unit: 'g',
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      })
+    );
 
     const brandedFoods = (data.branded || []).slice(0, 10).map((item) => ({
       id: item.nix_item_id,

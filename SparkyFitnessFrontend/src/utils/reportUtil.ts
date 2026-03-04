@@ -26,6 +26,7 @@ interface StressDataPoint {
   time: string;
   stress_level: number;
 }
+
 export const calculateTotalTonnage = (
   entries: { sets: { weight: number | string; reps: number | string }[] }[]
 ) => {
@@ -357,10 +358,17 @@ export const exportFoodDiary = async ({
           );
 
           const customNutrientTotals = customNutrients.reduce(
-            (acc, nutrient) => {
-              acc[nutrient.name] =
-                (acc[nutrient.name] || 0) +
-                (calculatedNutrition.custom_nutrients?.[nutrient.name] || 0);
+            (acc: Record<string, number>, nutrient) => {
+              const customNutrientsSource =
+                calculatedNutrition.custom_nutrients as
+                  | Record<string, number>
+                  | undefined;
+
+              const nutrientValue = Number(
+                customNutrientsSource?.[nutrient.name] || 0
+              );
+
+              acc[nutrient.name] = (acc[nutrient.name] || 0) + nutrientValue;
               return acc;
             },
             {} as Record<string, number>
@@ -433,7 +441,10 @@ export const exportFoodDiary = async ({
           const calculatedNutrition = calculateFoodEntryNutrition(
             entry as unknown as FoodEntry
           );
-
+          const custom = calculatedNutrition.custom_nutrients as Record<
+            string,
+            string | number
+          >;
           csvRows.push([
             formatDateInUserTimezone(entry.entry_date, 'MMM dd, yyyy'), // Format date for display
             entry.meal_type,
@@ -461,15 +472,13 @@ export const exportFoodDiary = async ({
             (calculatedNutrition.calcium || 0).toFixed(2), // mg
             (calculatedNutrition.iron || 0).toFixed(2), // mg
             ...customNutrients.map((nutrient) =>
-              (
-                calculatedNutrition.custom_nutrients?.[nutrient.name] || 0
-              ).toFixed(1)
+              Number(custom?.[nutrient.name] || 0).toFixed(1)
             ),
           ]);
         });
 
         // Add total row
-        const totals = calculateFoodDayTotal(entries);
+        const totals = calculateFoodDayTotal(entries) as Record<string, number>;
         csvRows.push([
           formatDateInUserTimezone(date, 'MMM dd, yyyy'), // Format date for display
           i18n.t('reports.foodDiaryExportTotals.total', 'Total'),

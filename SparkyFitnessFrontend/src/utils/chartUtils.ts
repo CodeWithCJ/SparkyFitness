@@ -143,7 +143,7 @@ export function getChartConfig(dataKey: string) {
       useZeroBaseline: false, // Explicitly set to false for weight charts
       marginPercent: 0.05, // Smaller margin for body measurements
       minRangeThreshold: 0.2, // More likely to use min-max scaling
-      forceMin: undefined, // Will be set dynamically in MeasurementChartsGrid
+      forceMin: undefined as unknown, // Will be set dynamically in MeasurementChartsGrid
     };
   }
 

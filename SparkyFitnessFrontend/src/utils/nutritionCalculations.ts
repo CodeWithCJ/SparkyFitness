@@ -342,6 +342,7 @@ export const calculateDayTotals = (
 
   const totals = combinedItems.reduce(
     (acc, item) => {
+      const typedAcc = acc as Record<string, number | object | undefined>;
       Object.keys(acc).forEach((key) => {
         if (key === 'custom_nutrients') return; // Handle separately
 
@@ -350,7 +351,7 @@ export const calculateDayTotals = (
 
         // Safely add numbers, ignoring other types
         if (typeof val === 'number') {
-          (acc[key] as number) += val;
+          (typedAcc[key] as number) += val;
         }
       });
 
@@ -411,6 +412,7 @@ export const getMealTotals = (
   const totals = combinedItems.reduce(
     (acc, item) => {
       const itemNutrition = getEntryNutrition(item);
+      const accRecord = acc as Record<string, unknown>;
       Object.keys(acc).forEach((key) => {
         if (key === 'custom_nutrients') return; // Handle separately
 
@@ -418,7 +420,7 @@ export const getMealTotals = (
         const val = itemNutrition[k];
 
         if (typeof val === 'number') {
-          (acc[key] as number) += val;
+          (accRecord[key] as number) += val;
         }
       });
 

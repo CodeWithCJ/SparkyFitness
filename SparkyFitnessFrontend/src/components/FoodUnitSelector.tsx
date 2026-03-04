@@ -202,7 +202,7 @@ const FoodUnitSelector = ({
     loggingLevel,
   ]);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     debug(loggingLevel, 'Handling submit.');
     if (selectedVariant) {
@@ -278,7 +278,7 @@ const FoodUnitSelector = ({
   };
 
   const nutrition = calculateNutrition();
-  const focusAndSelect = useCallback((e) => {
+  const focusAndSelect = useCallback((e: HTMLInputElement) => {
     if (e) {
       e.focus();
       e.select();

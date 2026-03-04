@@ -1,6 +1,16 @@
+import { EnergyUnit } from '@/contexts/PreferencesContext';
 import { UserCustomNutrient } from '@/types/customNutrient';
 import { FoodVariant } from '@/types/food';
 import { getGridClass } from '@/utils/layout';
+
+interface NutrientGridProps {
+  food: Partial<FoodVariant> | null;
+  visibleNutrients: string[];
+  energyUnit: EnergyUnit;
+  convertEnergy: (value: number, from: EnergyUnit, to: EnergyUnit) => number;
+  getEnergyUnitString: (unit: EnergyUnit) => string;
+  customNutrients?: UserCustomNutrient[];
+}
 
 export const NutrientGrid = ({
   food,
@@ -9,7 +19,7 @@ export const NutrientGrid = ({
   convertEnergy,
   getEnergyUnitString,
   customNutrients = [],
-}) => {
+}: NutrientGridProps) => {
   const nutrientDetails: {
     [key: string]: { color: string; label: string; unit: string };
   } = {

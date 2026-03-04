@@ -86,7 +86,10 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   const [scanLine, setScanLine] = useState(false);
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
-  const [scanAreaSize, setScanAreaSize] = useState(() => {
+  const [scanAreaSize, setScanAreaSize] = useState<{
+    width: number;
+    height: number;
+  }>(() => {
     try {
       const storedSize = localStorage.getItem('barcodeScanAreaSize');
       return storedSize ? JSON.parse(storedSize) : { width: 280, height: 140 };
@@ -98,14 +101,16 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   // UI State
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualBarcodeValue, setManualBarcodeValue] = useState('');
-  const [internalContinuousMode, setInternalContinuousMode] = useState(() => {
-    try {
-      const storedMode = localStorage.getItem('barcodeContinuousMode');
-      return storedMode ? JSON.parse(storedMode) : true;
-    } catch {
-      return true;
+  const [internalContinuousMode, setInternalContinuousMode] = useState<boolean>(
+    () => {
+      try {
+        const storedMode = localStorage.getItem('barcodeContinuousMode');
+        return storedMode ? JSON.parse(storedMode) : true;
+      } catch {
+        return true;
+      }
     }
-  });
+  );
 
   const lastScanTime = useRef(0);
   const scanCooldown = 2000;
@@ -272,7 +277,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     );
   }, [internalContinuousMode]);
 
-  const handleManualBarcodeSubmit = (e: React.FormEvent) => {
+  const handleManualBarcodeSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
     if (manualBarcodeValue.trim()) {
       onBarcodeDetected(manualBarcodeValue.trim());
