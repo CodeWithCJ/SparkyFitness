@@ -53,10 +53,13 @@ interface UseLatestReleaseOptions {
   enabled: boolean;
 }
 
-export const useLatestReleaseQuery = ({ enabled }: UseLatestReleaseOptions) => {
+export const useLatestReleaseQuery = ({
+  enabled = true,
+}: UseLatestReleaseOptions) => {
   return useQuery({
     queryKey: generalKeys.githubVersion,
     queryFn: getLatestGithubRelease,
     staleTime: 1000 * 60 * 60,
+    enabled,
   });
 };

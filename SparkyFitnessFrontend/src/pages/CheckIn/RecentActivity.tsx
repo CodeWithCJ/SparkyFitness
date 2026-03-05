@@ -9,17 +9,25 @@ import { Button } from '@/components/ui/button';
 import { Trash2, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { Timer, Activity } from 'lucide-react';
-import { usePreferences } from '@/contexts/PreferencesContext';
+import {
+  MeasurementUnit,
+  usePreferences,
+  WeightUnit,
+} from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
 import { CombinedMeasurement } from '@/types/checkin';
 
 interface RecentActivityProps {
   convertMeasurement: (
     value: number,
-    fromUnit: string,
-    toUnit: string
+    fromUnit: MeasurementUnit,
+    toUnit: MeasurementUnit
   ) => number;
-  convertWeight: (value: number, fromUnit: string, toUnit: string) => number;
+  convertWeight: (
+    value: number,
+    fromUnit: WeightUnit,
+    toUnit: WeightUnit
+  ) => number;
   handleDeleteMeasurementClick: (
     measurement: CombinedMeasurement
   ) => Promise<void>;

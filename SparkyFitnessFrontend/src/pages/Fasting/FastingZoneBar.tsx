@@ -65,7 +65,6 @@ const FastingZoneBar: React.FC<FastingZoneBarProps> = ({ hoursFasted }) => {
         {ZONES.map((zone, index) => {
           const isPassed = index < activeIndex;
           const isActive = index === activeIndex;
-          const isFuture = index > activeIndex;
 
           let width = '0%';
           // Simplified visual width distribution for demo

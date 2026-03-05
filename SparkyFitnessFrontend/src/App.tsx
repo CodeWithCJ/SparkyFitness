@@ -96,7 +96,7 @@ const PermissionRoute = ({
   return <Navigate to="/" />;
 };
 export const ComponentFallback = () => {
-  return null;
+  return <></>;
 };
 const Root = () => {
   const [showAboutDialog, setShowAboutDialog] = useState(false);

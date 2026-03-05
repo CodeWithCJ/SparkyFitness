@@ -40,7 +40,6 @@ interface AuthContextType {
     activeUserId: string,
     userEmail: string,
     userRole: string,
-    authType: 'oidc' | 'password' | 'magic_link',
     navigateOnSuccess?: boolean,
     userFullName?: string
   ) => void;
@@ -171,7 +170,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       activeUserId: string,
       userEmail: string,
       userRole: string,
-      authType: 'oidc' | 'password' | 'magic_link',
       navigateOnSuccess = true,
       userFullName?: string
     ) => {

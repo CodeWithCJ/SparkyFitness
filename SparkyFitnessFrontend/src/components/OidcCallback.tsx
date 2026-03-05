@@ -45,7 +45,6 @@ const OidcCallback: React.FC = () => {
             user.id,
             user.email,
             user.role || 'user',
-            'oidc',
             false,
             user.name
           );

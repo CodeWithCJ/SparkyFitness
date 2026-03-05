@@ -5,7 +5,7 @@ import {
   useNeedsReviewItemsQuery,
 } from '@/hooks/Foods/useReview';
 
-const GlobalNotificationIcon = () => {
+const GlobalNotificationIcon = (): null => {
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -16,6 +16,10 @@ const GlobalNotificationIcon = () => {
     !!user && reviewCount > 0
   );
 
+  if (isDialogOpen) {
+    console.log(reviewItems);
+    setIsDialogOpen(false);
+  }
   return null;
 };
 

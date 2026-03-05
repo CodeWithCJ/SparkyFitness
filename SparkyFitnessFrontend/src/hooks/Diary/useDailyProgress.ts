@@ -163,7 +163,7 @@ export const useCalculatedBMR = () => {
 
   const { data: userProfile } = useQuery({
     queryKey: userKeys.profile(user?.id),
-    queryFn: () => userManagementService.getUserProfile(user!.id),
+    queryFn: () => userManagementService.getUserProfile(),
     enabled: !!user?.id,
   });
 

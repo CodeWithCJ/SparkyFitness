@@ -63,6 +63,7 @@ export interface DailyExerciseEntry {
     rest_time?: number;
     notes?: string;
   }[];
+  [key: string]: string | number | boolean | object | undefined;
 }
 
 export interface ExerciseProgressData {

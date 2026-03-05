@@ -1,10 +1,5 @@
 import { debug } from '@/utils/logging';
-import type {
-  FatSecretFoodItem,
-  Food,
-  FoodVariant,
-  GlycemicIndex,
-} from '@/types/food';
+import type { FatSecretFoodItem, Food, FoodVariant } from '@/types/food';
 import {
   NutritionixItem,
   OpenFoodFactsProduct,
@@ -277,30 +272,6 @@ export const convertNutritionixToFood = (
   };
 };
 
-interface FatSecretNutrientData {
-  serving_size: number;
-  serving_unit?: string;
-  calories?: number;
-  protein?: number;
-  carbs?: number;
-  fat?: number;
-  saturated_fat?: number;
-  polyunsaturated_fat?: number;
-  monounsaturated_fat?: number;
-  trans_fat?: number;
-  cholesterol?: number;
-  sodium?: number;
-  potassium?: number;
-  dietary_fiber?: number;
-  sugars?: number;
-  vitamin_a?: number;
-  vitamin_c?: number;
-  calcium?: number;
-  iron?: number;
-  glycemic_index?: GlycemicIndex;
-  name: string;
-  brand?: string;
-}
 export const convertFatSecretToFood = (
   item: FatSecretFoodItem,
   nutrientOverride?: Partial<FatSecretFoodItem>

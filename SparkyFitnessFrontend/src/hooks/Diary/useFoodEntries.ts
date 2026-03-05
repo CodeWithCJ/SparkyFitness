@@ -1,9 +1,4 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  queryOptions,
-} from '@tanstack/react-query';
+import { useQuery, useMutation, queryOptions } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   loadFoodEntries,
@@ -23,12 +18,9 @@ import {
 } from '@/api/Diary/foodEntryService';
 
 import { goalKeys } from '@/api/keys/goals';
-import {
-  dailyProgressKeys,
-  foodEntryKeys,
-  foodEntryMealKeys,
-} from '@/api/keys/diary';
+import { foodEntryKeys, foodEntryMealKeys } from '@/api/keys/diary';
 import i18n from '@/i18n';
+import { useFoodEntryInvalidation } from '../useInvalidateKeys';
 
 export const useFoodEntries = (date: string) => {
   const { t } = useTranslation();
@@ -80,16 +72,12 @@ export const foodEntryMealDetailsOptions = (id: string) =>
   });
 
 export const useCreateFoodEntryMutation = () => {
-  const queryClient = useQueryClient();
+  const invalidate = useFoodEntryInvalidation();
   const { t } = useTranslation();
 
   return useMutation({
     mutationFn: createFoodEntry,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
-      queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-    },
+    onSuccess: () => invalidate(),
     meta: {
       successMessage: t('diary.addSuccess', 'Food added successfully.'),
       errorMessage: t('diary.addError', 'Failed to add food.'),
@@ -98,17 +86,13 @@ export const useCreateFoodEntryMutation = () => {
 };
 
 export const useUpdateFoodEntryMutation = () => {
-  const queryClient = useQueryClient();
+  const invalidate = useFoodEntryInvalidation();
   const { t } = useTranslation();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: FoodEntryUpdateData }) =>
       updateFoodEntry(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-      queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
-    },
+    onSuccess: () => invalidate(),
     meta: {
       successMessage: t('diary.updateSuccess', 'Entry updated.'),
       errorMessage: t('diary.updateError', 'Failed to update entry.'),
@@ -117,15 +101,12 @@ export const useUpdateFoodEntryMutation = () => {
 };
 
 export const useDeleteFoodEntryMutation = () => {
-  const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
 
   return useMutation({
     mutationFn: removeFoodEntry,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-    },
+    onSuccess: () => invalidate(),
     meta: {
       successMessage: t('diary.deleteSuccess', 'Entry deleted.'),
       errorMessage: t('diary.deleteError', 'Failed to delete entry.'),
@@ -134,8 +115,8 @@ export const useDeleteFoodEntryMutation = () => {
 };
 
 export const useCopyFoodEntriesMutation = () => {
-  const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
 
   return useMutation({
     mutationFn: ({
@@ -150,12 +131,7 @@ export const useCopyFoodEntriesMutation = () => {
       targetMealType: string;
     }) =>
       copyFoodEntries(sourceDate, sourceMealType, targetDate, targetMealType),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: foodEntryKeys.byDate(variables.targetDate),
-      });
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-    },
+    onSuccess: () => invalidate(),
     meta: {
       successMessage: t('diary.copySuccess', 'Entries copied successfully.'),
       errorMessage: t('diary.copyError', 'Failed to copy entries.'),
@@ -164,8 +140,8 @@ export const useCopyFoodEntriesMutation = () => {
 };
 
 export const useCopyFoodEntriesFromYesterdayMutation = () => {
-  const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
 
   return useMutation({
     mutationFn: ({
@@ -175,12 +151,7 @@ export const useCopyFoodEntriesFromYesterdayMutation = () => {
       mealType: string;
       targetDate: string;
     }) => copyFoodEntriesFromYesterday(mealType, targetDate),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: foodEntryKeys.byDate(variables.targetDate),
-      });
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-    },
+    onSuccess: () => invalidate(),
     meta: {
       successMessage: t('diary.copySuccess', 'Entries copied from yesterday.'),
       errorMessage: t('diary.copyError', 'Failed to copy entries.'),
@@ -189,20 +160,12 @@ export const useCopyFoodEntriesFromYesterdayMutation = () => {
 };
 
 export const useCreateFoodEntryMealMutation = () => {
-  const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
 
   return useMutation({
     mutationFn: createFoodEntryMeal,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: foodEntryMealKeys.byDate(variables.entry_date),
-      });
-      queryClient.invalidateQueries({
-        queryKey: foodEntryKeys.byDate(variables.entry_date),
-      });
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-    },
+    onSuccess: () => invalidate(),
     meta: {
       successMessage: t('diary.mealAddSuccess', 'Meal added successfully.'),
       errorMessage: t('diary.mealAddError', 'Failed to add meal.'),
@@ -211,17 +174,13 @@ export const useCreateFoodEntryMealMutation = () => {
 };
 
 export const useUpdateFoodEntryMealMutation = () => {
-  const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: FoodEntryMealUpdateData }) =>
       updateFoodEntryMeal(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
-      queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-    },
+    onSuccess: () => invalidate(),
     meta: {
       successMessage: t(
         'diary.mealUpdateSuccess',
@@ -233,16 +192,12 @@ export const useUpdateFoodEntryMealMutation = () => {
 };
 
 export const useDeleteFoodEntryMealMutation = () => {
-  const queryClient = useQueryClient();
   const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
 
   return useMutation({
     mutationFn: deleteFoodEntryMeal,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
-      queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
-      queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
-    },
+    onSuccess: () => invalidate(),
     meta: {
       successMessage: t('diary.mealDeleteSuccess', 'Meal deleted.'),
       errorMessage: t('diary.mealDeleteError', 'Failed to delete meal.'),

@@ -38,6 +38,10 @@ export interface AccessibleUser {
     reports: boolean;
     food_list: boolean;
     calorie: boolean;
+    can_manage_diary?: boolean;
+    can_manage_checkin?: boolean;
+    can_view_reports?: boolean;
+    can_view_food_library?: boolean;
   };
   access_end_date: string | null;
 }

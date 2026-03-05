@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/tooltip';
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
-import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
 import {
   Exercise,
@@ -51,7 +50,6 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
-  const { loggingLevel } = usePreferences();
   const [isExpanded, setIsExpanded] = useState(false); // State to manage expansion
 
   const toggleExpansion = useCallback(() => {

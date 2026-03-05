@@ -168,7 +168,7 @@ export const useDeleteFoodMutation = () => {
       force?: boolean;
     }) => deleteFood(foodId, force),
     onSuccess: () => {
-      return queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: foodKeys.all,
       });
     },
@@ -189,7 +189,7 @@ export const useCreateFoodMutation = () => {
     mutationFn: ({ foodData }: { foodData: FoodEntryCreateData }) =>
       createFoodEntry(foodData),
     onSuccess: () => {
-      return queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: foodKeys.all,
       });
     },

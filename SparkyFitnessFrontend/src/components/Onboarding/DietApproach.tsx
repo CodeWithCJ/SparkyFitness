@@ -21,7 +21,7 @@ export interface DietApproachProps {
   setCustomPercentages: React.Dispatch<
     React.SetStateAction<{ carbs: number; protein: number; fat: number }>
   >;
-  setLocalSelectedDiet: React.Dispatch<React.SetStateAction<string>>;
+  setLocalSelectedDiet: (newDiet: string) => void;
   setLockedMacros: React.Dispatch<
     React.SetStateAction<{ carbs: boolean; protein: boolean; fat: boolean }>
   >;

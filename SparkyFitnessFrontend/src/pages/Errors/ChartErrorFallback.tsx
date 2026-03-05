@@ -1,10 +1,8 @@
 import { AlertCircle, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ErrorBoundary } from 'react-error-boundary';
-interface FallbackProps {
-  error: Error;
-  resetErrorBoundary: () => void;
-}
+import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
+import { getErrorMessage } from '@/utils/api';
+
 const ChartErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[300px] p-6 text-center border border-dashed rounded-lg bg-muted/10 border-border">
@@ -13,7 +11,7 @@ const ChartErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
         Failed to load component
       </h3>
       <p className="max-w-sm mt-2 mb-6 text-sm text-muted-foreground">
-        {error.message}
+        {getErrorMessage(error)}
       </p>
       <Button
         variant="outline"

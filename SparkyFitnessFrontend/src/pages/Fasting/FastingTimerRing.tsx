@@ -7,7 +7,6 @@ interface FastingTimerRingProps {
   startTime: Date;
   targetEndTime: Date;
   size?: number;
-  showZone?: boolean;
 }
 
 const milestoneHours = [0, 16, 24, 72];
@@ -16,7 +15,6 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
   startTime,
   targetEndTime,
   size = 220,
-  showZone = true,
 }) => {
   const [now, setNow] = useState<Date>(new Date());
 

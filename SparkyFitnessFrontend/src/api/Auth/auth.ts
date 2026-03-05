@@ -199,7 +199,7 @@ export const getAccessibleUsers = async (): Promise<AccessibleUser[]> => {
     method: 'GET',
   });
 
-  return (data || []).map((item) => ({
+  return (data || []).map((item: AccessibleUser) => ({
     user_id: item.user_id,
     full_name: item.full_name,
     email: item.email,

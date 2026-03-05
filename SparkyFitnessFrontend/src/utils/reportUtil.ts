@@ -1,4 +1,9 @@
-import { EnergyUnit, LoggingLevel } from '@/contexts/PreferencesContext';
+import {
+  EnergyUnit,
+  LoggingLevel,
+  MeasurementUnit,
+  WeightUnit,
+} from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import i18n from '@/i18n';
 import { debug, info, warn, error } from '@/utils/logging';
@@ -21,6 +26,7 @@ interface StressDataPoint {
   time: string;
   stress_level: number;
 }
+
 export const calculateTotalTonnage = (
   entries: { sets: { weight: number | string; reps: number | string }[] }[]
 ) => {
@@ -352,10 +358,17 @@ export const exportFoodDiary = async ({
           );
 
           const customNutrientTotals = customNutrients.reduce(
-            (acc, nutrient) => {
-              acc[nutrient.name] =
-                (acc[nutrient.name] || 0) +
-                (calculatedNutrition.custom_nutrients?.[nutrient.name] || 0);
+            (acc: Record<string, number>, nutrient) => {
+              const customNutrientsSource =
+                calculatedNutrition.custom_nutrients as
+                  | Record<string, number>
+                  | undefined;
+
+              const nutrientValue = Number(
+                customNutrientsSource?.[nutrient.name] || 0
+              );
+
+              acc[nutrient.name] = (acc[nutrient.name] || 0) + nutrientValue;
               return acc;
             },
             {} as Record<string, number>
@@ -428,7 +441,10 @@ export const exportFoodDiary = async ({
           const calculatedNutrition = calculateFoodEntryNutrition(
             entry as unknown as FoodEntry
           );
-
+          const custom = calculatedNutrition.custom_nutrients as Record<
+            string,
+            string | number
+          >;
           csvRows.push([
             formatDateInUserTimezone(entry.entry_date, 'MMM dd, yyyy'), // Format date for display
             entry.meal_type,
@@ -456,15 +472,13 @@ export const exportFoodDiary = async ({
             (calculatedNutrition.calcium || 0).toFixed(2), // mg
             (calculatedNutrition.iron || 0).toFixed(2), // mg
             ...customNutrients.map((nutrient) =>
-              (
-                calculatedNutrition.custom_nutrients?.[nutrient.name] || 0
-              ).toFixed(1)
+              Number(custom?.[nutrient.name] || 0).toFixed(1)
             ),
           ]);
         });
 
         // Add total row
-        const totals = calculateFoodDayTotal(entries);
+        const totals = calculateFoodDayTotal(entries) as Record<string, number>;
         csvRows.push([
           formatDateInUserTimezone(date, 'MMM dd, yyyy'), // Format date for display
           i18n.t('reports.foodDiaryExportTotals.total', 'Total'),
@@ -664,8 +678,8 @@ export const exportBodyMeasurements = async ({
   startDate: string | null;
   endDate: string | null;
   measurementData: CheckInMeasurement[];
-  defaultWeightUnit: string;
-  defaultMeasurementUnit: string;
+  defaultWeightUnit: WeightUnit;
+  defaultMeasurementUnit: MeasurementUnit;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
 }) => {
   info(loggingLevel, 'Reports: Attempting to export body measurements.');
@@ -899,8 +913,12 @@ export const formatCustomChartData = (
   category: CustomCategory,
   data: CustomMeasurement[],
   loggingLevel: LoggingLevel,
-  convertMeasurement: (val: number, from: string, to: string) => number,
-  defaultMeasurementUnit: string
+  convertMeasurement: (
+    val: number,
+    from: MeasurementUnit,
+    to: MeasurementUnit
+  ) => number,
+  defaultMeasurementUnit: MeasurementUnit
 ) => {
   debug(
     loggingLevel,

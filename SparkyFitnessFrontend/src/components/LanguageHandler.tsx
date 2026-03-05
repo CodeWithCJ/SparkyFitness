@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
-const LanguageHandler = () => {
+const LanguageHandler = (): null => {
   const { i18n } = useTranslation();
   const { language } = usePreferences();
 

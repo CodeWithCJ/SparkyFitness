@@ -40,7 +40,7 @@ const MealUnitSelector = ({
   const [quantity, setQuantity] = useState(initialQuantity ?? 1.0);
   const unit = initialUnit || meal?.serving_unit || 'serving';
 
-  const handleSubmit = (event) => {
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     debug(loggingLevel, 'Handling meal unit selector submit.');
 
@@ -101,7 +101,7 @@ const MealUnitSelector = ({
 
   const nutrition = calculateNutrition();
 
-  const focusAndSelect = useCallback((e) => {
+  const focusAndSelect = useCallback((e: HTMLInputElement) => {
     if (e) {
       e.focus();
       e.select();

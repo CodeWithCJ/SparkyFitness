@@ -89,7 +89,7 @@ interface EnhancedFoodSearchProps {
 }
 
 export interface NutritionixItem {
-  id: string;
+  id?: string;
   name: string;
   food_name?: string;
   brand?: string;
@@ -664,7 +664,7 @@ const EnhancedFoodSearch = ({
 
         {!loading && activeTab === 'database' && searchTerm.trim() === '' && (
           <>
-            {recentFoods.map((food) => (
+            {recentFoods.map((food: Food) => (
               <FoodResultCard
                 key={food.id}
                 item={food}
@@ -674,7 +674,7 @@ const EnhancedFoodSearch = ({
               />
             ))}
 
-            {topFoods.map((food) => (
+            {topFoods.map((food: Food) => (
               <FoodResultCard
                 key={food.id}
                 item={food}
@@ -776,7 +776,7 @@ const EnhancedFoodSearch = ({
 
         {activeTab === 'database' &&
           searchTerm.trim() !== '' &&
-          foods.map((food) => (
+          foods.map((food: Food) => (
             <FoodResultCard
               key={food.id}
               item={food}

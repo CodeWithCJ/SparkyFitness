@@ -97,7 +97,6 @@ export function computeCaloriesRemaining({
   bmrCalories,
   exerciseCaloriePercentage,
   tdeeAdjustment,
-  adaptiveTdee,
 }: CaloriesRemainingParams): number {
   switch (mode) {
     case 'adaptive':

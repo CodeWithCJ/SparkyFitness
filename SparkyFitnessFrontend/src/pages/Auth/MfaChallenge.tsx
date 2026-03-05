@@ -83,7 +83,6 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
           user.id,
           user.email,
           user.role || 'user',
-          'password',
           true,
           user.name
         );
@@ -147,7 +146,6 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
           user.id,
           user.email,
           user.role || 'user',
-          'password',
           true,
           user.name
         );
@@ -184,7 +182,6 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
           user.id,
           user.email,
           user.role || 'user',
-          'password',
           true,
           user.name
         );

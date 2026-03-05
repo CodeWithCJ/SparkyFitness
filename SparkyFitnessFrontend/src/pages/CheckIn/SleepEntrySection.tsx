@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn, error } from '@/utils/logging';
-import { toast as sonnerToast } from 'sonner';
 import { Trash2, Edit, Save, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { formatSecondsToHHMM } from '@/utils/timeFormatters';
@@ -168,51 +167,6 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     const updatedSessions = [...sleepSessions];
     updatedSessions[index] = { ...updatedSessions[index], stageEvents: events };
     setSleepSessions(updatedSessions);
-  };
-
-  const handleSaveNewSessionStageEvents = (
-    index: number,
-    events: SleepStageEvent[],
-    newBedtime: string,
-    newWakeTime: string
-  ) => {
-    debug(
-      loggingLevel,
-      `SleepEntrySection: handleSaveNewSessionStageEvents for new session ${index}`,
-      events,
-      newBedtime,
-      newWakeTime
-    );
-    const updatedSessions = [...sleepSessions];
-    updatedSessions[index] = {
-      ...updatedSessions[index],
-      stageEvents: events,
-      bedtime: newBedtime,
-      wakeTime: newWakeTime,
-    };
-    setSleepSessions(updatedSessions);
-    sonnerToast.success(
-      t(
-        'sleepEntrySection.newSessionStagesUpdatedLocally',
-        'Sleep stages and times for new session updated locally. Remember to save the main sleep entry.'
-      )
-    );
-  };
-
-  const handleDiscardNewSessionStageEvents = (index: number) => {
-    debug(
-      loggingLevel,
-      `SleepEntrySection: handleDiscardNewSessionStageEvents for new session ${index}`
-    );
-    const updatedSessions = [...sleepSessions];
-    updatedSessions[index] = { ...updatedSessions[index], stageEvents: [] }; // Or revert to a default state if needed
-    setSleepSessions(updatedSessions);
-    sonnerToast.info(
-      t(
-        'sleepEntrySection.newSessionStagesDiscarded',
-        'Sleep stage changes for new session discarded.'
-      )
-    );
   };
 
   const handleSaveExistingEntryStageEvents = async (

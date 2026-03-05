@@ -18,7 +18,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 import { warn, error } from '@/utils/logging';
 import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
-import type { Meal, MealFood, MealPayload } from '@/types/meal';
+import type { MealFood, MealPayload } from '@/types/meal';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import FoodSearchDialog from './FoodSearch/FoodSearchDialog';
 import { useQueryClient } from '@tanstack/react-query';
@@ -446,11 +446,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       };
 
       try {
-        let resultMeal: Meal;
         if (mealId) {
-          resultMeal = await updateMeal({ mealId, mealPayload: mealData });
+          await updateMeal({ mealId, mealPayload: mealData });
         } else {
-          resultMeal = await createMeal({ mealPayload: mealData });
+          await createMeal({ mealPayload: mealData });
         }
         onSave();
       } catch (err) {

@@ -62,13 +62,9 @@ const CalculationSettings = () => {
     sugarCalculationAlgorithm: contextSugarCalculationAlgorithm,
     saveAllPreferences,
     calorieGoalAdjustmentMode: contextCalorieGoalAdjustmentMode,
-    setCalorieGoalAdjustmentMode: setCalorieGoalAdjustmentModeContext,
     exerciseCaloriePercentage: contextExerciseCaloriePercentage,
-    setExerciseCaloriePercentage: setExerciseCaloriePercentageContext,
     tdeeAllowNegativeAdjustment: contextTdeeAllowNegativeAdjustment,
-    setTdeeAllowNegativeAdjustment: setTdeeAllowNegativeAdjustmentContext,
     activityLevel: contextActivityLevel,
-    setActivityLevel: setActivityLevelContext,
 
     loggingLevel,
   } = usePreferences();

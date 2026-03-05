@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTheme } from '@/contexts/ThemeContext';
 import { EnergyCurveData } from '@/types/sleepScience';
 import type React from 'react';
-import { useMemo } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -158,7 +158,9 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
                   `${t('sleepScience.energy', 'Energy')}${zoneName ? ` (${zoneName})` : ''}`,
                 ];
               }}
-              labelFormatter={(hour: number) => formatHour(hour)}
+              labelFormatter={(label: ReactNode) =>
+                formatHour(Number(String(label)))
+              }
             />
             {/* Melatonin window */}
             {data.melatoninWindow && (

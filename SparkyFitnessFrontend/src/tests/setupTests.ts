@@ -13,7 +13,7 @@ Object.defineProperty(window, 'matchMedia', {
   value: (query: any) => ({
     matches: false,
     media: query,
-    onchange: null,
+    onchange: null as unknown,
     addListener: () => {},
     removeListener: () => {},
     addEventListener: () => {},

@@ -13,9 +13,10 @@ import { Plus, Download, Upload, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Textarea } from '@/components/ui/textarea';
+import { FoodDataForBackend } from '@/types/food';
 
 interface ImportFromCSVProps {
-  onSave: (foodData: Omit<CSVData, 'id'>[]) => Promise<void>;
+  onSave: (foodData: FoodDataForBackend[]) => Promise<void>;
 }
 
 export interface CSVData {
@@ -45,10 +46,11 @@ export interface CSVData {
   calcium: number;
   iron: number;
   is_default: boolean;
+  [key: string]: string | number | boolean;
 }
 
 const generateUniqueId = () =>
-  `temp_${Math.random().toString(36).substr(2, 9)}`;
+  `temp_${Math.random().toString(36).slice(2, 11)}`;
 
 const servingUnitOptions = [
   'g',
@@ -344,7 +346,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     const invalidRow = csvData.find(
       (row) => !row.name || String(row.name).trim() === ''

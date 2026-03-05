@@ -9,6 +9,7 @@ import { parseStressMeasurement } from '@/utils/reportUtil';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useCustomCategories } from '../CheckIn/useCheckIn';
+import { MeasurementUnit, WeightUnit } from '@/contexts/PreferencesContext';
 
 export const useRawStressData = (userId: string) => {
   const { data: categories } = useCustomCategories(userId);
@@ -50,10 +51,14 @@ export const useReportsData = (
   endDate: string,
   userId: string,
   converters: {
-    convertWeight: (val: number, from: string, to: string) => number;
-    convertMeasurement: (val: number, from: string, to: string) => number;
-    defaultWeightUnit: string;
-    defaultMeasurementUnit: string;
+    convertWeight: (val: number, from: WeightUnit, to: WeightUnit) => number;
+    convertMeasurement: (
+      val: number,
+      from: MeasurementUnit,
+      to: MeasurementUnit
+    ) => number;
+    defaultWeightUnit: WeightUnit;
+    defaultMeasurementUnit: MeasurementUnit;
   }
 ) => {
   const { t } = useTranslation();

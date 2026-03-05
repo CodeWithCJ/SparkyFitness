@@ -17,7 +17,7 @@ interface AppSetupProps {
 const AppSetup = ({
   setLatestRelease,
   setShowNewReleaseDialog,
-}: AppSetupProps) => {
+}: AppSetupProps): null => {
   const { user, loading } = useAuth();
   const { loggingLevel } = usePreferences();
 
