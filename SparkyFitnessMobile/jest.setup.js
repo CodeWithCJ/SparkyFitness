@@ -261,6 +261,17 @@ jest.mock('react-native-ui-datepicker', () => {
   };
 });
 
+// Mock uniwind
+jest.mock('uniwind', () => ({
+  useCSSVariable: jest.fn((vars) =>
+    Array.isArray(vars) ? vars.map(() => '#888888') : '#888888'
+  ),
+  useUniwind: jest.fn(() => ({ theme: 'light', hasAdaptiveThemes: false })),
+  Uniwind: {
+    setTheme: jest.fn(),
+  },
+}));
+
 // Mock @gorhom/bottom-sheet
 jest.mock('@gorhom/bottom-sheet', () => {
   const React = require('react');

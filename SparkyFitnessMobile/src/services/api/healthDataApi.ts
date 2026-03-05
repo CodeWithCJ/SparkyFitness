@@ -77,7 +77,7 @@ export const checkServerConnection = async (): Promise<boolean> => {
   }
 
   try {
-    const response = await fetch(`${url}/identity/user`, {
+    const response = await fetch(`${url}/api/identity/user`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,

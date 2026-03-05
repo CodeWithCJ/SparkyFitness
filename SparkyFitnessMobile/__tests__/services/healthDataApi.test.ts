@@ -296,14 +296,14 @@ describe('healthDataApi', () => {
       );
     });
 
-    test('sends GET request to /identity/user endpoint', async () => {
+    test('sends GET request to /api/identity/user endpoint', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({ ok: true });
 
       await checkServerConnection();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/identity/user',
+        'https://example.com/api/identity/user',
         expect.objectContaining({
           method: 'GET',
         })
@@ -364,7 +364,7 @@ describe('healthDataApi', () => {
       await checkServerConnection();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/identity/user',
+        'https://example.com/api/identity/user',
         expect.anything()
       );
     });

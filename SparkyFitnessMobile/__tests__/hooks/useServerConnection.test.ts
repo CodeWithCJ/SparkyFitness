@@ -9,10 +9,7 @@ jest.mock('../../src/services/api/healthDataApi', () => ({
 }));
 
 jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: jest.fn((callback) => {
-    // Execute callback immediately for testing
-    callback();
-  }),
+  useFocusEffect: jest.fn(),
 }));
 
 const mockCheckServerConnection = checkServerConnection as jest.MockedFunction<
