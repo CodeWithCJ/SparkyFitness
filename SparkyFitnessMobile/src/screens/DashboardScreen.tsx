@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -145,9 +145,21 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     // Loading state
     if (isLoading || isConnectionLoading || isPreferencesLoading || isMeasurementsLoading) {
       return (
-        <View className="flex-1 items-center justify-center p-8 shadow-sm">
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text className="text-text-muted text-base mt-4">Loading summary...</Text>
+        <View className="flex-1">
+          {!isConnectionLoading && isConnected && (
+            <DateNavigator
+              title="Dashboard"
+              selectedDate={selectedDate}
+              onPreviousDay={goToPreviousDay}
+              onNextDay={goToNextDay}
+              onToday={goToToday}
+              onDatePress={openCalendar}
+            />
+          )}
+          <View className="flex-1 items-center justify-center p-8 shadow-sm">
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text className="text-text-muted text-base mt-4">Loading summary...</Text>
+          </View>
         </View>
       );
     }
@@ -155,20 +167,30 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     // Error state
     if (isError || isPreferencesError || isMeasurementsError) {
       return (
-        <View className="flex-1 items-center justify-center p-8 shadow-sm">
-          <Icon name="alert-circle" size={64} color="#EF4444" />
-          <Text className="text-text-muted text-lg text-center mt-4">
-            Failed to load summary
-          </Text>
-          <Text className="text-text-muted text-sm text-center mt-2">
-            Please check your connection and try again.
-          </Text>
-          <TouchableOpacity
-            className="bg-accent-primary rounded-xl py-3 px-6 mt-6"
-            onPress={() => refetch()}
-          >
-            <Text className="text-white font-semibold">Retry</Text>
-          </TouchableOpacity>
+        <View className="flex-1">
+          <DateNavigator
+            title="Dashboard"
+            selectedDate={selectedDate}
+            onPreviousDay={goToPreviousDay}
+            onNextDay={goToNextDay}
+            onToday={goToToday}
+            onDatePress={openCalendar}
+          />
+          <View className="flex-1 items-center justify-center p-8 shadow-sm">
+            <Icon name="alert-circle" size={64} color="#EF4444" />
+            <Text className="text-text-muted text-lg text-center mt-4">
+              Failed to load summary
+            </Text>
+            <Text className="text-text-muted text-sm text-center mt-2">
+              Please check your connection and try again.
+            </Text>
+            <TouchableOpacity
+              className="bg-accent-primary rounded-xl py-3 px-6 mt-6"
+              onPress={() => refetch()}
+            >
+              <Text className="text-white font-semibold">Retry</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
@@ -195,8 +217,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor || '#3B82F6'} />
         }
       >
         <DateNavigator
@@ -206,6 +229,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           onNextDay={goToNextDay}
           onToday={goToToday}
           onDatePress={openCalendar}
+          skipSafeAreaTop
         />
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (
           <CalorieRingCard
@@ -218,7 +242,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         )}
         {/* Macros Section - 2x2 grid */}
         {summary.foodEntries.length > 0 ? (
-          
           <View className="flex-row flex-wrap justify-between">
             <MacroCard
               label="Protein"
@@ -250,6 +273,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             />
           </View>
         ) : null}
+
+        {summary.foodEntries.length === 0 && (
+          <Pressable
+            className="bg-surface rounded-xl p-4 mb-2 shadow-sm"
+            onPress={() => navigation.navigate('FoodSearch', { date: selectedDate })}
+          >
+            <Text className="text-md font-bold text-text-primary mb-4">Food</Text>
+            <Text className="text-text-muted text-sm text-center mb-4">Tap to add food</Text>
+          </Pressable>
+        )}
 
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0) &&
           (summary.exerciseMinutesGoal > 0 || summary.exerciseCaloriesGoal > 0 || summary.exerciseMinutes > 0 || summary.otherExerciseCalories > 0) && (

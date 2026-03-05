@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { FoodEntry } from '../types/foodEntries';
 import Icon, { type IconName } from './Icon';
@@ -8,6 +8,7 @@ import SwipeableFoodRow from './SwipeableFoodRow';
 
 interface FoodSummaryProps {
   foodEntries: FoodEntry[];
+  onAddFood?: () => void;
 }
 
 function groupByMealType(entries: FoodEntry[]): Record<string, FoodEntry[]> {
@@ -85,12 +86,12 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
   );
 };
 
-const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries }) => {
+const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood }) => {
   if (foodEntries.length === 0) {
     return (
-      <View className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
-        <Text className="text-text-muted text-base">No food entries yet</Text>
-      </View>
+      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
+        <Text className="text-text-muted text-base">Tap to add food</Text>
+      </Pressable>
     );
   }
 
@@ -100,9 +101,9 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries }) => {
 
   if (mealTypesWithEntries.length === 0 && !hasOther) {
     return (
-      <View className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
-        <Text className="text-text-muted text-base">No food entries yet</Text>
-      </View>
+      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
+        <Text className="text-text-muted text-base">Tap to add food</Text>
+      </Pressable>
     );
   }
 

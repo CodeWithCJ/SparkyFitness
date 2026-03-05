@@ -426,10 +426,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         </Animated.View>
 
         {/* Calories & Macros */}
+        <Animated.View layout={LinearTransition.duration(300)} className="bg-surface rounded-xl p-4 shadow-sm">
         <Pressable
           onPress={isEditing ? navigateToNutritionForm : undefined}
           disabled={!isEditing}
-          className="bg-surface rounded-xl p-4"
         >
           <Animated.View layout={LinearTransition.duration(300)} className="flex-row items-center">
             <View className="flex-1 items-center pr-10">
@@ -474,7 +474,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
               </Animated.View>
             )}
           </Animated.View>
+          {isEditing && (
+            <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+              <Text className="text-text-muted text-xs text-center mt-4">Tap to edit nutrition</Text>
+            </Animated.View>
+          )}
         </Pressable>
+        </Animated.View>
 
         {/* Other Nutrients */}
         {otherNutrients.length > 0 && (

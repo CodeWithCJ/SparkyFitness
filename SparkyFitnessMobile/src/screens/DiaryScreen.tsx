@@ -134,10 +134,18 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         }
       >
         {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 ? (
-          <EmptyDayIllustration />
+          <>
+            <EmptyDayIllustration />
+            <TouchableOpacity
+              className="bg-accent-primary rounded-xl py-3 px-6 mt-4 self-center"
+              onPress={() => navigation.navigate('FoodSearch', { date: selectedDate })}
+            >
+              <Text className="text-white font-semibold">Add Food</Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <>
-            <FoodSummary foodEntries={summary.foodEntries} />
+            <FoodSummary foodEntries={summary.foodEntries} onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })} />
             <ExerciseSummary exerciseEntries={summary.exerciseEntries} />
           </>
         )}

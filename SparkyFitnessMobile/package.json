@@ -7,8 +7,8 @@
     "ios": "expo run:ios",
     "lint": "expo lint",
     "start": "expo start",
-    "test": "jest --watchAll",
-    "test:run": "jest",
+    "test": "jest",
+    "test:watch": "jest --watchAll",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2"
   },
