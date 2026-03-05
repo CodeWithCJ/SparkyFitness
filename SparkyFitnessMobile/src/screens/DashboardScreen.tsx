@@ -92,7 +92,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
-  const { increment: incrementWater, decrement: decrementWater, isReady: isWaterReady, unit: waterUnit } = useWaterIntakeMutation({
+  const { increment: incrementWater, decrement: decrementWater, unit: waterUnit, servingVolume, isContainersLoaded } = useWaterIntakeMutation({
     date: selectedDate,
     enabled: isConnected,
   });
@@ -265,8 +265,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           consumed={summary.waterConsumed}
           goal={summary.waterGoal}
           unit={waterUnit}
-          onIncrement={isWaterReady ? incrementWater : undefined}
-          onDecrement={isWaterReady ? decrementWater : undefined}
+          containerVolume={servingVolume}
+          onIncrement={isContainersLoaded ? incrementWater : undefined}
+          onDecrement={isContainersLoaded ? decrementWater : undefined}
           disableDecrement={summary.waterConsumed <= 0}
         />
 

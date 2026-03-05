@@ -12,14 +12,15 @@ interface UseWaterIntakeMutationOptions {
 export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeMutationOptions) {
   const queryClient = useQueryClient();
 
-  const { data: containers } = useQuery({
+  const { data: containers, isSuccess: isContainersLoaded } = useQuery({
     queryKey: [...waterContainersQueryKey],
     queryFn: fetchWaterContainers,
     staleTime: Infinity,
     enabled,
   });
 
-  const primaryContainer = containers?.find(c => c.is_primary);
+  const primaryContainer = containers?.find(c => c.is_primary)
+    ?? (containers?.length === 1 ? containers[0] : undefined);
 
   const mutation = useMutation({
     mutationFn: async (changeDrinks: number) => {
@@ -42,7 +43,7 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
         return {
           ...old,
           waterIntake: {
-            water_ml: Math.max(0, (old.waterIntake.water_ml || 0) + changeDrinks * primaryContainer.volume),
+            water_ml: Math.max(0, (old.waterIntake.water_ml || 0) + changeDrinks * primaryContainer.volume / (primaryContainer.servings_per_container || 1)),
           },
         };
       });
@@ -64,19 +65,23 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
     },
   });
 
+  const noContainerAlert = () => {
+    const hasMultiple = containers && containers.length > 1;
+    Alert.alert(
+      hasMultiple ? 'No Primary Container' : 'No Water Containers',
+      hasMultiple
+        ? 'You have multiple water containers but none is marked as primary. Please set one as primary on the server.'
+        : 'Please configure a water container on the server to track hydration.',
+    );
+  };
+
   const increment = () => {
-    if (!primaryContainer) {
-      Alert.alert('Error', 'No primary water container configured on the server.');
-      return;
-    }
+    if (!primaryContainer) { noContainerAlert(); return; }
     mutation.mutate(1);
   };
 
   const decrement = () => {
-    if (!primaryContainer) {
-      Alert.alert('Error', 'No primary water container configured on the server.');
-      return;
-    }
+    if (!primaryContainer) { noContainerAlert(); return; }
     mutation.mutate(-1);
   };
 
@@ -84,6 +89,8 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
     increment,
     decrement,
     isReady: !!primaryContainer,
+    isContainersLoaded,
     unit: primaryContainer?.unit,
+    servingVolume: primaryContainer ? primaryContainer.volume / (primaryContainer.servings_per_container || 1) : undefined,
   };
 }

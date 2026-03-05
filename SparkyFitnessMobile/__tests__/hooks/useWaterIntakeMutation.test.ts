@@ -80,9 +80,58 @@ describe('useWaterIntakeMutation', () => {
     });
   });
 
-  test('isReady is false when no container is primary', async () => {
+  test('isReady is true when single container exists but is not primary', async () => {
     mockFetchWaterContainers.mockResolvedValue([
       { ...primaryContainer, is_primary: false },
+    ]);
+
+    const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+    });
+  });
+
+  test('increment uses the only container when it is not marked primary', async () => {
+    mockFetchWaterContainers.mockResolvedValue([
+      {
+        ...primaryContainer,
+        id: 9,
+        is_primary: false,
+        volume: 600,
+        servings_per_container: 2,
+      },
+    ]);
+    mockChangeWaterIntake.mockResolvedValue({ id: '1', water_ml: 800, entry_date: testDate });
+
+    const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isReady).toBe(true);
+      expect(result.current.servingVolume).toBe(300);
+    });
+
+    await act(async () => {
+      result.current.increment();
+    });
+
+    await waitFor(() => {
+      expect(mockChangeWaterIntake).toHaveBeenCalledWith({
+        entryDate: testDate,
+        changeDrinks: 1,
+        containerId: 9,
+      });
+    });
+  });
+
+  test('isReady is false when multiple containers exist but none is primary', async () => {
+    mockFetchWaterContainers.mockResolvedValue([
+      { ...primaryContainer, id: 1, is_primary: false },
+      { ...primaryContainer, id: 2, is_primary: false },
     ]);
 
     const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
@@ -112,8 +161,8 @@ describe('useWaterIntakeMutation', () => {
     });
 
     expect(Alert.alert).toHaveBeenCalledWith(
-      'Error',
-      'No primary water container configured on the server.'
+      'No Water Containers',
+      'Please configure a water container on the server to track hydration.'
     );
     expect(mockChangeWaterIntake).not.toHaveBeenCalled();
   });
@@ -134,8 +183,8 @@ describe('useWaterIntakeMutation', () => {
     });
 
     expect(Alert.alert).toHaveBeenCalledWith(
-      'Error',
-      'No primary water container configured on the server.'
+      'No Water Containers',
+      'Please configure a water container on the server to track hydration.'
     );
     expect(mockChangeWaterIntake).not.toHaveBeenCalled();
   });
