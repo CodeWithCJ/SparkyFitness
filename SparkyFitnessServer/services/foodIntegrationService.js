@@ -8,12 +8,13 @@ const {
 const MealieService = require("../integrations/mealie/mealieService"); // Import MealieService
 const TandoorService = require("../integrations/tandoor/tandoorService"); // Import TandoorService
 
-async function searchFatSecretFoods(query, clientId, clientSecret) {
+async function searchFatSecretFoods(query, clientId, clientSecret, page = 1) {
   try {
     const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
     const searchUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams({
       method: "foods.search",
       search_expression: query,
+      page_number: page - 1,
       format: "json",
     }).toString()}`;
     log("info", `FatSecret Search URL: ${searchUrl}`);
@@ -33,7 +34,19 @@ async function searchFatSecretFoods(query, clientId, clientSecret) {
     }
 
     const data = await response.json();
-    return data;
+    const foods = data.foods || {};
+    const totalCount = Number(foods.total_results || 0);
+    const pageNum = Number(foods.page_number || 0) + 1;
+    const maxResults = Number(foods.max_results || 20);
+    return {
+      foods: foods,
+      pagination: {
+        page: pageNum,
+        pageSize: maxResults,
+        totalCount: totalCount,
+        hasMore: totalCount > 0 && pageNum * maxResults < totalCount,
+      },
+    };
   } catch (error) {
     log(
       "error",

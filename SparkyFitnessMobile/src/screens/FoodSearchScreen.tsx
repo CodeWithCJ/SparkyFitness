@@ -92,6 +92,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     isSearchActive: isOnlineSearchActive,
     isSearchError: isOnlineSearchError,
     isProviderSupported,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
   } = useExternalFoodSearch(searchText, selectedProviderType, {
     enabled: isConnected && activeTab === 'online' && selectedProvider !== null,
     providerId: selectedProvider ?? undefined,
@@ -496,14 +500,30 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     return (
       <FlatList
         data={onlineSearchResults}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => `${item.source}-${item.id}-${index}`}
         renderItem={renderExternalFoodItem}
         keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={
-          isOnlineSearching ? (
-            <View className="py-2 items-center">
+        ListFooterComponent={
+          isFetchNextPageError ? (
+            <TouchableOpacity
+              onPress={() => fetchNextPage()}
+              className="py-3 items-center"
+            >
+              <Text className="text-accent-primary text-sm font-medium">
+                Failed to load more. Tap to retry
+              </Text>
+            </TouchableOpacity>
+          ) : isFetchingNextPage ? (
+            <View className="py-3 items-center">
               <ActivityIndicator size="small" color={accentColor} />
             </View>
+          ) : hasNextPage ? (
+            <TouchableOpacity
+              onPress={() => fetchNextPage()}
+              className="py-4 mb-4 items-center"
+            >
+              <Text className="text-accent-primary text-sm font-medium">Load More</Text>
+            </TouchableOpacity>
           ) : null
         }
       />

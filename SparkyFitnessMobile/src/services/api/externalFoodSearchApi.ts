@@ -1,5 +1,5 @@
 import { apiFetch } from './apiClient';
-import type { ExternalFoodItem, ExternalFoodVariant } from '../../types/externalFoods';
+import type { ExternalFoodItem, ExternalFoodVariant, ExternalFoodSearchPagination, PaginatedExternalFoodSearchResult } from '../../types/externalFoods';
 
 interface OpenFoodFactsProduct {
   product_name: string;
@@ -19,12 +19,8 @@ interface OpenFoodFactsProduct {
 }
 
 interface OpenFoodFactsResponse {
-  count: number;
-  page: number;
-  page_count: number;
-  page_size: number;
   products: OpenFoodFactsProduct[];
-  skip: number;
+  pagination: ExternalFoodSearchPagination;
 }
 
 export function transformOpenFoodFactsProduct(product: OpenFoodFactsProduct): ExternalFoodItem {
@@ -83,17 +79,20 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResul
   });
 }
 
-export async function searchOpenFoodFacts(query: string): Promise<ExternalFoodItem[]> {
-  const params = new URLSearchParams({ query });
+export async function searchOpenFoodFacts(query: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+  const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<OpenFoodFactsResponse>({
     endpoint: `/api/foods/openfoodfacts/search?${params.toString()}`,
     serviceName: 'External Food Search',
     operation: 'search OpenFoodFacts',
   });
 
-  return response.products
-    .filter((p) => p.product_name)
-    .map(transformOpenFoodFactsProduct);
+  return {
+    items: response.products
+      .filter((p) => p.product_name)
+      .map(transformOpenFoodFactsProduct),
+    pagination: response.pagination,
+  };
 }
 
 // --- USDA FoodData Central ---
@@ -116,6 +115,7 @@ interface UsdaFoodSearchItem {
 
 interface UsdaFoodSearchResponse {
   foods: UsdaFoodSearchItem[];
+  pagination: ExternalFoodSearchPagination;
 }
 
 const USDA_NUTRIENT_IDS = {
@@ -153,8 +153,8 @@ export function transformUsdaFoodItem(item: UsdaFoodSearchItem): ExternalFoodIte
   };
 }
 
-export async function searchUsda(query: string, providerId: string): Promise<ExternalFoodItem[]> {
-  const params = new URLSearchParams({ query });
+export async function searchUsda(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+  const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<UsdaFoodSearchResponse>({
     endpoint: `/api/foods/usda/search?${params.toString()}`,
     serviceName: 'External Food Search',
@@ -162,9 +162,12 @@ export async function searchUsda(query: string, providerId: string): Promise<Ext
     headers: { 'x-provider-id': providerId },
   });
 
-  return response.foods
-    .filter((item) => item.description)
-    .map(transformUsdaFoodItem);
+  return {
+    items: response.foods
+      .filter((item) => item.description)
+      .map(transformUsdaFoodItem),
+    pagination: response.pagination,
+  };
 }
 
 // --- FatSecret ---
@@ -177,6 +180,7 @@ interface FatSecretSearchFood {
 
 interface FatSecretSearchResponse {
   foods?: { food?: FatSecretSearchFood | FatSecretSearchFood[] };
+  pagination: ExternalFoodSearchPagination;
 }
 
 interface FatSecretServing {
@@ -250,8 +254,8 @@ export function selectFatSecretServing(servings: FatSecretServing[]): FatSecretS
   return preferred ?? servings[0];
 }
 
-export async function searchFatSecret(query: string, providerId: string): Promise<ExternalFoodItem[]> {
-  const params = new URLSearchParams({ query });
+export async function searchFatSecret(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+  const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<FatSecretSearchResponse>({
     endpoint: `/api/foods/fatsecret/search?${params.toString()}`,
     serviceName: 'External Food Search',
@@ -262,9 +266,12 @@ export async function searchFatSecret(query: string, providerId: string): Promis
   const rawFood = response.foods?.food;
   const foods = rawFood == null ? [] : Array.isArray(rawFood) ? rawFood : [rawFood];
 
-  return foods
-    .filter((item) => item.food_name)
-    .map(transformFatSecretSearchItem);
+  return {
+    items: foods
+      .filter((item) => item.food_name)
+      .map(transformFatSecretSearchItem),
+    pagination: response.pagination,
+  };
 }
 
 export function hasMetricServing(serving: FatSecretServing): boolean {

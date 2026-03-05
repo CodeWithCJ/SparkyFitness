@@ -1,4 +1,4 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import { searchOpenFoodFacts, searchUsda, searchFatSecret } from '../services/api/externalFoodSearchApi';
 import { externalFoodSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
@@ -19,33 +19,46 @@ export function useExternalFoodSearch(
   const isSearchActive = debouncedSearch.length >= 3;
   const isProviderSupported = SUPPORTED_PROVIDERS.has(providerType);
 
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: externalFoodSearchQueryKey(providerType, debouncedSearch, providerId),
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal, pageParam }) => {
       switch (providerType) {
         case 'openfoodfacts':
           await offRateLimiter.acquire(signal);
-          return searchOpenFoodFacts(debouncedSearch);
+          return searchOpenFoodFacts(debouncedSearch, pageParam);
         case 'usda':
-          if (!providerId) return [];
-          return searchUsda(debouncedSearch, providerId);
+          if (!providerId) return { items: [], pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false } };
+          return searchUsda(debouncedSearch, providerId, pageParam);
         case 'fatsecret':
-          if (!providerId) return [];
-          return searchFatSecret(debouncedSearch, providerId);
+          if (!providerId) return { items: [], pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false } };
+          return searchFatSecret(debouncedSearch, providerId, pageParam);
         default:
-          return [];
+          return { items: [], pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false } };
       }
     },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasMore ? lastPage.pagination.page + 1 : undefined,
     enabled: isSearchActive && isProviderSupported && enabled,
     staleTime: 1000 * 60 * 5,
     placeholderData: keepPreviousData,
   });
 
+  const searchResults = query.data?.pages.flatMap((p) => p.items) ?? [];
+  // When keepPreviousData is active, isPlaceholderData is true and data belongs
+  // to the previous query key. Only treat the error as a load-more error when
+  // the current query has real (non-placeholder) pages loaded.
+  const hasCurrentData = !query.isPlaceholderData && (query.data?.pages.length ?? 0) > 0;
+
   return {
-    searchResults: query.data ?? [],
-    isSearching: query.isFetching,
+    searchResults,
+    isSearching: query.isFetching && !query.isFetchingNextPage,
     isSearchActive,
-    isSearchError: query.isError,
+    isSearchError: query.isError && !hasCurrentData,
     isProviderSupported,
+    fetchNextPage: query.fetchNextPage,
+    hasNextPage: query.hasNextPage,
+    isFetchingNextPage: query.isFetchingNextPage,
+    isFetchNextPageError: query.isError && hasCurrentData,
   };
 }

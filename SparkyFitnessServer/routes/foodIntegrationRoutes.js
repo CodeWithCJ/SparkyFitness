@@ -12,7 +12,7 @@ const {
 } = require("../integrations/fatsecret/fatsecretService");
 const {
   searchOpenFoodFacts,
-  searchOpenFoodFactsByBarcode,
+  searchOpenFoodFactsByBarcodeFields,
 } = require("../integrations/openfoodfacts/openFoodFactsService");
 const {
   searchNutritionixFoods,
@@ -186,32 +186,13 @@ router.use("/usda", authenticate, async (req, res, next) => {
  *           type: string
  *         required: true
  *         description: The search query.
- *       - in: header
- *         name: x-provider-id
- *         schema:
- *           type: string
- *         required: true
- *         description: The ID of the FatSecret data provider.
- *     responses:
- *       200:
- *         description: A list of foods from FatSecret.
- *       400:
- *         description: Missing search query or x-provider-id header.
- */
-/**
- * @swagger
- * /food-integration/fatsecret/search:
- *   get:
- *     summary: Search for foods on FatSecret
- *     tags: [External Integrations]
- *     description: Searches for foods using the FatSecret API.
- *     parameters:
  *       - in: query
- *         name: query
+ *         name: page
  *         schema:
- *           type: string
- *         required: true
- *         description: The search query.
+ *           type: integer
+ *           default: 1
+ *         required: false
+ *         description: The page number for paginated results (defaults to 1).
  *       - in: header
  *         name: x-provider-id
  *         schema:
@@ -220,7 +201,7 @@ router.use("/usda", authenticate, async (req, res, next) => {
  *         description: The ID of the FatSecret data provider.
  *     responses:
  *       200:
- *         description: A list of foods from FatSecret.
+ *         description: A list of foods from FatSecret with pagination metadata.
  *       400:
  *         description: Missing search query or x-provider-id header.
  */
@@ -232,11 +213,14 @@ router.get("/fatsecret/search", authenticate, async (req, res, next) => {
     return res.status(400).json({ error: "Missing search query" });
   }
 
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+
   try {
     const data = await foodService.searchFatSecretFoods(
       query,
       clientId,
-      clientSecret
+      clientSecret,
+      page
     );
     res.json(data);
   } catch (error) {
@@ -308,9 +292,16 @@ router.get(
  *           type: string
  *         required: true
  *         description: The search query.
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         required: false
+ *         description: The page number for paginated results (defaults to 1).
  *     responses:
  *       200:
- *         description: A list of foods from Open Food Facts.
+ *         description: A list of foods from Open Food Facts with pagination metadata.
  *       400:
  *         description: Missing search query.
  */
@@ -322,8 +313,9 @@ router.get(
     if (!query) {
       return res.status(400).json({ error: "Missing search query" });
     }
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     try {
-      const data = await searchOpenFoodFacts(query);
+      const data = await searchOpenFoodFacts(query, page);
       res.json(data);
     } catch (error) {
       next(error);
@@ -360,7 +352,7 @@ router.get(
       return res.status(400).json({ error: "Missing barcode" });
     }
     try {
-      const data = await searchOpenFoodFactsByBarcode(barcode);
+      const data = await searchOpenFoodFactsByBarcodeFields(barcode);
       res.json(data);
     } catch (error) {
       next(error);
@@ -714,6 +706,20 @@ router.get(
  *           type: string
  *         required: true
  *         description: The search query.
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         required: false
+ *         description: The page number for paginated results (defaults to 1).
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         required: false
+ *         description: The number of results per page (max 200, defaults to 50).
  *       - in: header
  *         name: x-provider-id
  *         schema:
@@ -722,7 +728,7 @@ router.get(
  *         description: The ID of the USDA data provider.
  *     responses:
  *       200:
- *         description: A list of foods from USDA FoodData Central.
+ *         description: A list of foods from USDA FoodData Central with pagination metadata.
  *       400:
  *         description: Missing search query or x-provider-id header.
  */
@@ -734,8 +740,11 @@ router.get("/usda/search", authenticate, async (req, res, next) => {
     return res.status(400).json({ error: "Missing search query" });
   }
 
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const pageSize = Math.min(200, Math.max(1, parseInt(req.query.pageSize, 10) || 50));
+
   try {
-    const data = await searchUsdaFoods(query, usdaApiKey);
+    const data = await searchUsdaFoods(query, usdaApiKey, page, pageSize);
     res.json(data);
   } catch (error) {
     next(error);

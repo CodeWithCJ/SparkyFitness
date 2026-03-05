@@ -8,6 +8,7 @@
     "lint": "expo lint",
     "start": "expo start",
     "test": "jest",
+    "test:run": "jest",
     "test:watch": "jest --watchAll",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2"
