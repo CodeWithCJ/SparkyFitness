@@ -269,6 +269,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           processedResults.push({ type, status: "success", data: result });
           break;
         case "Active Calories":
+        case "active_calories":
+        case "ActiveCaloriesBurned":
           const activeCaloriesValue = parseFloat(value);
           if (isNaN(activeCaloriesValue) || activeCaloriesValue < 0) {
             errors.push({
