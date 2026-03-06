@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
@@ -95,10 +95,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
-  const { stepsData, weightData, isLoading: isStepsLoading, isError: isStepsError, refetch: refetchSteps } = useMeasurementsRange({
+  const { stepsData, weightData: rawWeightData, isLoading: isStepsLoading, isError: isStepsError, refetch: refetchSteps } = useMeasurementsRange({
     range: stepsRange,
     enabled: isConnected,
   });
+
+  const weightUnit = preferences?.default_weight_unit ?? 'kg';
+  const weightData = useMemo(() => {
+    if (weightUnit === 'kg') return rawWeightData;
+    const KG_TO_LBS = 2.20462;
+    return rawWeightData.map(p => ({ ...p, weight: p.weight * KG_TO_LBS }));
+  }, [rawWeightData, weightUnit]);
 
   // Get macro colors from CSS variables (theme-aware)
   const [proteinColor, carbsColor, fatColor, fiberColor, progressTrackOverfillColor] = useCSSVariable([
@@ -313,7 +320,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           isLoading={isStepsLoading}
           isError={isStepsError}
           range={stepsRange}
-          weightUnit={preferences?.default_weight_unit ?? 'kg'}
+          weightUnit={weightUnit}
           activePage={chartPage}
           onPageSelected={setChartPage}
         />

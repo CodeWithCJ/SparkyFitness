@@ -509,15 +509,15 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         )}
 
         {/* Date & Meal type */}
-        <Animated.View layout={LinearTransition.duration(300)} className="mt-2 gap-2">
+        <Animated.View layout={LinearTransition.duration(300)} className="mt-2 flex-row items-center">
           {/* Date */}
-          <View className="flex-row items-center">
-            <Text className="text-text-secondary text-base w-12">Date</Text>
+          <View className="flex-1 flex-row items-center">
+            <Text className="text-text-secondary text-base mr-2">Date</Text>
             {isEditing ? (
               <TouchableOpacity
                 onPress={() => calendarRef.current?.present()}
                 activeOpacity={0.7}
-                className="flex-row items-center bg-raised border border-border-subtle rounded-lg px-3 py-1.5"
+                className="flex-row items-center"
               >
                 <Text className="text-text-primary text-base font-medium">
                   {formatDateLabel(selectedDate)}
@@ -532,8 +532,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           </View>
 
           {/* Meal type */}
-          <View className="flex-row items-center">
-            <Text className="text-text-secondary text-base w-12">Meal</Text>
+          <View className="flex-1 flex-row items-center">
+            <Text className="text-text-secondary text-base mr-2">Meal</Text>
             {isEditing && selectedMealType ? (
               <BottomSheetPicker
                 value={effectiveMealId!}
@@ -544,7 +544,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
                   <TouchableOpacity
                     onPress={onPress}
                     activeOpacity={0.7}
-                    className="flex-row items-center bg-raised border border-border-subtle rounded-lg px-3 py-1.5"
+                    className="flex-row items-center"
                   >
                     <Text className="text-text-primary text-base font-medium">
                       {getMealTypeLabel(selectedMealType.name)}
