@@ -502,7 +502,7 @@ export const addFoodOption = async (
 
     const calories = Math.round(
       (selectedOption.calories || 0) *
-        (quantity ?? 0 / (selectedOption.serving_size || 100))
+        ((quantity ?? 0) / (selectedOption.serving_size || 100))
     );
 
     return {

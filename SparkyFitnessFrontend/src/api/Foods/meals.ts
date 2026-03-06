@@ -31,7 +31,7 @@ export const getMeals = async (
   return await apiCall(url, { method: 'GET', params });
 };
 
-export const getMealById = async (mealId?: string): Promise<Meal> => {
+export const getMealById = async (mealId: string): Promise<Meal> => {
   return await apiCall(`/meals/${mealId}`, { method: 'GET' });
 };
 

@@ -630,7 +630,7 @@ const extractDateFromInput = (
 
       if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
         const date = new Date(year, month - 1, day);
-        if (!dateMatch[3] && date > today) {
+        if (!yearStr && date > today) {
           date.setFullYear(year - 1);
         }
         return date.toISOString().split('T')[0];
