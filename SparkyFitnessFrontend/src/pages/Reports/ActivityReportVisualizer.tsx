@@ -226,7 +226,7 @@ const ActivityReportVisualizer = ({
     const absoluteTimestamps: number[] = [];
 
     for (const metric of metrics) {
-      const ts = parseFloat(metric.metrics[timestampIndex]);
+      const ts = parseFloat(metric.metrics[timestampIndex] ?? '0');
       if (!isNaN(ts)) {
         if (ts < REFERENCE_UNIX_EPOCH_START) {
           relativeTimestamps.push(ts);
@@ -250,20 +250,26 @@ const ActivityReportVisualizer = ({
 
     const firstDataPoint = metrics.find(
       (metric) =>
-        parseFloat(metric.metrics[timestampIndex]) === activityStartTime
+        parseFloat(metric.metrics[timestampIndex] ?? '0') === activityStartTime
     );
     if (firstDataPoint) {
-      const dist = parseFloat(firstDataPoint.metrics[distanceIndex]);
+      const dist = parseFloat(firstDataPoint.metrics[distanceIndex] ?? '0');
       initialDistance = !isNaN(dist) ? dist : 0;
     } else if (metrics.length > 0) {
-      const firstMetricDistance = parseFloat(metrics[0].metrics[distanceIndex]);
+      const firstMetricDistance = parseFloat(
+        metrics[0]?.metrics[distanceIndex] ?? '0'
+      );
       initialDistance = !isNaN(firstMetricDistance) ? firstMetricDistance : 0;
     }
 
     const processedMetrics = metrics
       .map((metric: ActivityDetailMetric): ChartDataPoint | null => {
-        const currentTimestamp = parseFloat(metric.metrics[timestampIndex]);
-        const currentDistance = parseFloat(metric.metrics[distanceIndex]);
+        const currentTimestamp = parseFloat(
+          metric.metrics[timestampIndex] ?? '0'
+        );
+        const currentDistance = parseFloat(
+          metric.metrics[distanceIndex] ?? '0'
+        );
 
         if (isNaN(currentTimestamp) || isNaN(currentDistance)) {
           return null;
@@ -319,7 +325,10 @@ const ActivityReportVisualizer = ({
 
     for (let i = 0; i < processedMetrics.length; i++) {
       if (i % samplingRate === 0 || i === processedMetrics.length - 1) {
-        sampledData.push(processedMetrics[i]);
+        const processedMetric = processedMetrics[i];
+        if (processedMetric) {
+          sampledData.push(processedMetric);
+        }
       }
     }
 
@@ -384,7 +393,7 @@ const ActivityReportVisualizer = ({
 
   if (allChartData.length > 0) {
     totalActivityDistanceForDisplay =
-      allChartData[allChartData.length - 1].distance;
+      allChartData[allChartData.length - 1]?.distance ?? 0;
   } else if (
     activityData.activity?.activity?.distance &&
     activityData.activity.activity.distance > 0

@@ -56,7 +56,7 @@ const MoodMeter = ({
             min={10}
             max={100}
             step={10}
-            onValueChange={(vals) => onMoodChange(vals[0])}
+            onValueChange={(vals) => onMoodChange(vals[0] ?? 0)}
             className="w-full"
           />
         </div>

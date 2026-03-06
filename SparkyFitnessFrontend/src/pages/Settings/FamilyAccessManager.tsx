@@ -99,7 +99,7 @@ const FamilyAccessManager = () => {
       share_external_providers:
         access.access_permissions.share_external_providers,
       access_end_date: access.access_end_date
-        ? access.access_end_date.split('T')[0]
+        ? (access.access_end_date.split('T')[0] ?? '')
         : '',
     });
     setEditingAccess(access);

@@ -142,7 +142,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 : d.label.toLowerCase().includes('back')
             );
             setSelectedCameraId(
-              preferred?.deviceId || videoDevices[0].deviceId
+              preferred?.deviceId || videoDevices[0]?.deviceId || '0'
             );
           }
         }
@@ -537,7 +537,9 @@ const ResizableCorner: React.FC<ResizableCornerProps> = ({
   const handleTouchStart = (e: React.TouchEvent) => {
     setIsDragging(true);
     const touch = e.touches[0];
-    lastPos.current = { x: touch.clientX, y: touch.clientY };
+    if (touch) {
+      lastPos.current = { x: touch.clientX, y: touch.clientY };
+    }
     e.preventDefault();
   };
 
@@ -553,7 +555,9 @@ const ResizableCorner: React.FC<ResizableCornerProps> = ({
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
     const handleTouchMove = (e: TouchEvent) => {
       const touch = e.touches[0];
-      handleMove(touch.clientX, touch.clientY);
+      if (touch) {
+        handleMove(touch.clientX, touch.clientY);
+      }
     };
 
     const handleEnd = () => setIsDragging(false);

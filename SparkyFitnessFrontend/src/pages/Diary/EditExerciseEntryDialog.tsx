@@ -162,6 +162,9 @@ const EditExerciseEntryDialog = ({
               reps: 10,
               weight: 0,
             };
+      if (!lastSet) {
+        return [...prev];
+      }
       const newSet: WorkoutPresetSet = {
         ...lastSet,
         set_number: prev.length + 1,
@@ -173,6 +176,9 @@ const EditExerciseEntryDialog = ({
   const handleDuplicateSet = (setIndex: number) => {
     setSets((prev) => {
       const setToDuplicate = prev[setIndex];
+      if (!setToDuplicate) {
+        return [...prev];
+      }
       const newSets = [
         ...prev.slice(0, setIndex + 1),
         { ...setToDuplicate },

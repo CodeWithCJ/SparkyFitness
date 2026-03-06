@@ -127,15 +127,15 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     const lines = text.split('\n').filter((line) => line.trim() !== '');
     if (lines.length < 2) return [];
 
-    const parsedHeaders = lines[0].split(',').map((header) => header.trim());
+    const parsedHeaders = lines[0]?.split(',').map((header) => header.trim());
     const data: CSVData[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map((value) => value.trim());
+      const values = lines[i]?.split(',').map((value) => value.trim());
       const row: CSVData = { id: generateUniqueId() } as CSVData;
 
-      parsedHeaders.forEach((header, index) => {
-        const value = values[index] || '';
+      parsedHeaders?.forEach((header, index) => {
+        const value = values ? values[index] || '' : '';
         if (booleanFields.has(header)) {
           row[header] = value.toLowerCase() === 'true';
         } else if (
@@ -164,23 +164,27 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     }
 
     const lines = csvText.split('\n');
-    const fileHeaders = lines[0].split(',').map((h) => h.trim());
-    const areHeadersValid =
-      requiredHeaders.length === fileHeaders.length &&
-      requiredHeaders.every((value, index) => value === fileHeaders[index]);
+    const fileHeaders = lines[0]?.split(',').map((h) => h.trim());
+    if (fileHeaders) {
+      const areHeadersValid =
+        requiredHeaders.length === fileHeaders.length &&
+        requiredHeaders.every((value, index) => value === fileHeaders[index]);
 
-    if (!areHeadersValid) {
-      toast({
-        title: 'Invalid CSV Format',
-        description: 'Headers do not match required format. Use the template.',
-        variant: 'destructive',
-      });
-      return;
+      if (!areHeadersValid) {
+        toast({
+          title: 'Invalid CSV Format',
+          description:
+            'Headers do not match required format. Use the template.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     const parsedData = parseCSV(csvText);
-    if (parsedData.length > 0) {
-      setHeaders(Object.keys(parsedData[0]).filter((key) => key !== 'id'));
+    const headers = parsedData[0];
+    if (parsedData.length > 0 && headers) {
+      setHeaders(Object.keys(headers).filter((key) => key !== 'id'));
       setCsvData(parsedData);
       setCsvText(''); // Feld leeren nach Erfolg
       toast({
@@ -208,9 +212,9 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       }
 
       const lines = text.split('\n');
-      const fileHeaders = lines[0].split(',').map((h) => h.trim());
+      const fileHeaders = lines[0]?.split(',').map((h) => h.trim());
       const areHeadersValid =
-        requiredHeaders.length === fileHeaders.length &&
+        requiredHeaders.length === fileHeaders?.length &&
         requiredHeaders.every((value, index) => value === fileHeaders[index]);
 
       if (!areHeadersValid) {
@@ -225,8 +229,9 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       }
 
       const parsedData = parseCSV(text);
-      if (parsedData.length > 0) {
-        setHeaders(Object.keys(parsedData[0]).filter((key) => key !== 'id'));
+      const headers = parsedData[0];
+      if (parsedData.length > 0 && headers) {
+        setHeaders(Object.keys(headers).filter((key) => key !== 'id'));
         setCsvData(parsedData);
       } else {
         toast({

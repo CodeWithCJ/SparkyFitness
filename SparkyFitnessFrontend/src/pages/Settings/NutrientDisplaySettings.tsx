@@ -133,9 +133,10 @@ const NutrientDisplaySettings: React.FC = () => {
       const prefIndex = newPrefs.findIndex(
         (p) => p.view_group === viewGroup && p.platform === platform
       );
-      if (prefIndex > -1) {
+      const newPrefsAtIndex = newPrefs[prefIndex];
+      if (prefIndex > -1 && newPrefsAtIndex) {
         newPrefs[prefIndex] = {
-          ...newPrefs[prefIndex],
+          ...newPrefsAtIndex,
           visible_nutrients: newNutrients,
         };
       } else {

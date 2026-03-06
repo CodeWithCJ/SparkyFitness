@@ -145,7 +145,10 @@ const ExerciseCard = ({
 
         if (validExercisesToLog.length > 0) {
           setExercisesToLogQueue(validExercisesToLog);
-          setCurrentExerciseToLog(validExercisesToLog[0]);
+          const currentExercise = validExercisesToLog[0];
+          if (currentExercise) {
+            setCurrentExerciseToLog(currentExercise);
+          }
           setIsLogExerciseDialogOpen(true);
           setIsAddDialogOpen(false); // Close the add dialog if it's open
         }
@@ -268,7 +271,10 @@ const ExerciseCard = ({
 
     if (updatedQueue.length > 0) {
       // Open the dialog for the next exercise in the queue
-      setCurrentExerciseToLog(updatedQueue[0]);
+      const currentExercise = updatedQueue[0];
+      if (currentExercise) {
+        setCurrentExerciseToLog(currentExercise);
+      }
       setIsLogExerciseDialogOpen(true);
     } else {
       // All exercises logged, close the dialog

@@ -114,7 +114,7 @@ const NutritionChartsGrid = ({
       charts.push({
         key: cn.name,
         label: cn.name,
-        color: getStringColor(cn.name),
+        color: getStringColor(cn.name) ?? '',
         unit: cn.unit,
       });
     });

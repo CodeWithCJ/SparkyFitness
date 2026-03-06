@@ -79,6 +79,9 @@ const Auth = () => {
           loginSettings.oidc.enabled
         ) {
           const provider = loginSettings.oidc.providers[0];
+          if (!provider) {
+            throw new Error('Provider undefined');
+          }
 
           // AUTO-REDIRECT LOGIC: Only when email is disabled, auto_redirect is enabled (e.g. SPARKY_FITNESS_OIDC_AUTO_REDIRECT), and exactly 1 OIDC provider is active
           if (

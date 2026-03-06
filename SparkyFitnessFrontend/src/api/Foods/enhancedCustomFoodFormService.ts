@@ -115,6 +115,9 @@ export const saveFood = async (
     // Create new food
     // The first variant in the array is always the primary unit for the food
     const primaryVariant = variants[0];
+    if (!primaryVariant) {
+      throw new Error('Primary variant is undefined');
+    }
     const foodToCreate = {
       name: foodData.name,
       brand: foodData.brand,

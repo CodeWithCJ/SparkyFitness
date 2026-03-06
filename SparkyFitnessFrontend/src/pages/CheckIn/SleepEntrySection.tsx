@@ -150,8 +150,13 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     field: 'bedtime' | 'wakeTime',
     value: string
   ) => {
+    const session = sleepSessions[index];
+    if (!session) {
+      return;
+    }
+
     const updatedSessions = [...sleepSessions];
-    updatedSessions[index] = { ...updatedSessions[index], [field]: value };
+    updatedSessions[index] = { ...session, [field]: value };
     setSleepSessions(updatedSessions);
   };
 
@@ -164,8 +169,13 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
       `SleepEntrySection: handleStageEventsPreviewChange for new session ${index}`,
       events
     );
+    const session = sleepSessions[index];
+    if (!session) {
+      return;
+    }
+
     const updatedSessions = [...sleepSessions];
-    updatedSessions[index] = { ...updatedSessions[index], stageEvents: events };
+    updatedSessions[index] = { ...session, stageEvents: events };
     setSleepSessions(updatedSessions);
   };
 

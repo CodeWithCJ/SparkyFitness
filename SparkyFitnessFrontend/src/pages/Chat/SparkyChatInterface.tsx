@@ -48,7 +48,7 @@ const SparkyChatInterface = () => {
 
   const todayStr = new Date().toISOString().split('T')[0];
   const { data: nutritionData } = useTodaysNutritionQuery(
-    todayStr,
+    todayStr ?? '',
     !!userPreferences
   );
 

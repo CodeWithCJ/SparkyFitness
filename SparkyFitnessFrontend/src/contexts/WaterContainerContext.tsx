@@ -16,7 +16,7 @@ import {
 import { WaterContainer } from '@/types/settings';
 
 interface WaterContainerContextType {
-  activeContainer: WaterContainer | null;
+  activeContainer: WaterContainer | undefined | null;
 }
 
 const WaterContainerContext = createContext<
@@ -40,7 +40,10 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({
     if (isSuccess && containers.length > 0) {
       const hasPrimary = containers.some((c) => c.is_primary);
       if (!hasPrimary) {
-        setPrimary(containers[0].id);
+        const firstContainer = containers[0];
+        if (firstContainer) {
+          setPrimary(firstContainer.id);
+        }
       }
     }
   }, [containers, isSuccess, setPrimary]);

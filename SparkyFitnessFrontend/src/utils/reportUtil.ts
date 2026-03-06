@@ -70,10 +70,14 @@ export const getComparisonDates = (
       return [startDate, endDate]; // Should not happen
   }
 
-  return [
-    compStartDate.toISOString().split('T')[0],
-    compEndDate.toISOString().split('T')[0],
-  ];
+  const splitStartDate = compStartDate.toISOString().split('T')[0];
+  const splitEndDate = compEndDate.toISOString().split('T')[0];
+
+  if (splitStartDate && splitEndDate) {
+    return [splitStartDate, splitEndDate];
+  } else {
+    return ['', ''];
+  }
 };
 
 export const getHRVStatus = (
@@ -435,7 +439,9 @@ export const exportFoodDiary = async ({
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
       .forEach((date) => {
         const entries = groupedData[date];
-
+        if (!entries) {
+          return;
+        }
         // Add individual entries
         entries.forEach((entry) => {
           const calculatedNutrition = calculateFoodEntryNutrition(
@@ -479,34 +485,35 @@ export const exportFoodDiary = async ({
 
         // Add total row
         const totals = calculateFoodDayTotal(entries) as Record<string, number>;
+
         csvRows.push([
-          formatDateInUserTimezone(date, 'MMM dd, yyyy'), // Format date for display
+          formatDateInUserTimezone(date, 'MMM dd, yyyy'),
           i18n.t('reports.foodDiaryExportTotals.total', 'Total'),
           '',
           '',
           '',
           '',
           Math.round(
-            convertEnergy(totals.calories, 'kcal', energyUnit)
+            convertEnergy(totals.calories ?? 0, 'kcal', energyUnit)
           ).toString(),
-          totals.protein.toFixed(1), // g
-          totals.carbs.toFixed(1), // g
-          totals.fat.toFixed(1), // g
-          totals.saturated_fat.toFixed(1), // g
-          totals.polyunsaturated_fat.toFixed(1), // g
-          totals.monounsaturated_fat.toFixed(1), // g
-          totals.trans_fat.toFixed(1), // g
-          totals.cholesterol.toFixed(2), // mg
-          totals.sodium.toFixed(2), // mg
-          totals.potassium.toFixed(2), // mg
-          totals.dietary_fiber.toFixed(1), // g
-          totals.sugars.toFixed(1), // g
-          Math.round(totals.vitamin_a).toString(), // μg - full number
-          totals.vitamin_c.toFixed(2), // mg
-          totals.calcium.toFixed(2), // mg
-          totals.iron.toFixed(2), // mg
+          (totals.protein ?? 0).toFixed(1),
+          (totals.carbs ?? 0).toFixed(1),
+          (totals.fat ?? 0).toFixed(1),
+          (totals.saturated_fat ?? 0).toFixed(1),
+          (totals.polyunsaturated_fat ?? 0).toFixed(1),
+          (totals.monounsaturated_fat ?? 0).toFixed(1),
+          (totals.trans_fat ?? 0).toFixed(1),
+          (totals.cholesterol ?? 0).toFixed(2),
+          (totals.sodium ?? 0).toFixed(2),
+          (totals.potassium ?? 0).toFixed(2),
+          (totals.dietary_fiber ?? 0).toFixed(1),
+          (totals.sugars ?? 0).toFixed(1),
+          Math.round(totals.vitamin_a ?? 0).toString(),
+          (totals.vitamin_c ?? 0).toFixed(2),
+          (totals.calcium ?? 0).toFixed(2),
+          (totals.iron ?? 0).toFixed(2),
           ...customNutrients.map((nutrient) =>
-            (totals[nutrient.name] || 0).toFixed(1)
+            (totals[nutrient.name] ?? 0).toFixed(1)
           ),
         ]);
       });
@@ -981,7 +988,7 @@ export const formatCustomChartData = (
         if (
           !acc[d.entry_date] ||
           new Date(d.timestamp || 0) >
-            new Date(acc[d.entry_date].timestamp || 0)
+            new Date(acc[d.entry_date]?.timestamp || 0)
         ) {
           acc[d.entry_date] = d;
         }

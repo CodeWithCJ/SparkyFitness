@@ -176,7 +176,7 @@ const ExerciseEntryHistoryImportCSV = ({
             description: t(
               'exercise.importHistoryCSV.parseError',
               'Failed to parse CSV: {{error}}',
-              { error: results.errors[0].message }
+              { error: results.errors[0]?.message }
             ),
             variant: 'destructive',
           });
@@ -308,17 +308,17 @@ const ExerciseEntryHistoryImportCSV = ({
           exercise_description: row.exercise_description?.trim(),
           exercise_source: row.exercise_source?.trim(),
           exercise_force: dropdownFields.has('exercise_force')
-            ? dropdownOptions['exercise_force'].find(
+            ? dropdownOptions['exercise_force']?.find(
                 (option) => option === row.exercise_force?.trim()?.toLowerCase()
               ) || row.exercise_force?.trim()
             : row.exercise_force?.trim(),
           exercise_level: dropdownFields.has('exercise_level')
-            ? dropdownOptions['exercise_level'].find(
+            ? dropdownOptions['exercise_level']?.find(
                 (option) => option === row.exercise_level?.trim()?.toLowerCase()
               ) || row.exercise_level?.trim()
             : row.exercise_level?.trim(),
           exercise_mechanic: dropdownFields.has('exercise_mechanic')
-            ? dropdownOptions['exercise_mechanic'].find(
+            ? dropdownOptions['exercise_mechanic']?.find(
                 (option) =>
                   option === row.exercise_mechanic?.trim()?.toLowerCase()
               ) || row.exercise_mechanic?.trim()
@@ -732,7 +732,7 @@ const ExerciseEntryHistoryImportCSV = ({
                   {field.replace('exercise_', '').replace(/_/g, ' ')}:
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {dropdownOptions[field].map((value) => (
+                  {dropdownOptions[field]?.map((value) => (
                     <TooltipProvider key={value}>
                       <Tooltip>
                         <TooltipTrigger asChild>

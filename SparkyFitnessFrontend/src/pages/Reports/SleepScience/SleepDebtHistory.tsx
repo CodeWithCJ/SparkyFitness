@@ -31,10 +31,21 @@ const DEBT_COLORS: Record<string, string> = {
 };
 
 function getBarColor(deviation: number): string {
-  if (deviation <= 0) return DEBT_COLORS.surplus;
-  if (deviation < 1) return DEBT_COLORS.minor;
-  if (deviation < 2) return DEBT_COLORS.moderate;
-  return DEBT_COLORS.significant;
+  const defaultColor = '#ccc';
+
+  if (isNaN(deviation) || deviation <= 0) {
+    return DEBT_COLORS.surplus ?? defaultColor;
+  }
+
+  if (deviation < 1) {
+    return DEBT_COLORS.minor ?? defaultColor;
+  }
+
+  if (deviation < 2) {
+    return DEBT_COLORS.moderate ?? defaultColor;
+  }
+
+  return DEBT_COLORS.significant ?? defaultColor;
 }
 
 const TrendIcon: React.FC<{ direction: string }> = ({ direction }) => {

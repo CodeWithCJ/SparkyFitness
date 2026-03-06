@@ -341,15 +341,19 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const formatDateInUserTimezone = useCallback(
     (date: string | Date, formatStr?: string) => {
-      let dateToFormat: Date;
+      let dateToFormat: Date = new Date();
 
       if (typeof date === 'string') {
         // If it's a full ISO string with time (e.g. 2026-02-16T...), keep it as is for parseISO
         if (date.match(/^\d{4}-\d{2}-\d{2}$/) || date.includes('T00:00:00')) {
           // IMPORTANT: Treat YYYY-MM-DD as a literal local date to avoid UTC-to-Local shifting.
           const datePart = date.split('T')[0];
-          const [year, month, day] = datePart.split('-').map(Number);
-          dateToFormat = new Date(year, month - 1, day);
+          if (datePart) {
+            const [year, month, day] = datePart.split('-').map(Number);
+            if (year && month && day) {
+              dateToFormat = new Date(year, month - 1, day);
+            }
+          }
         } else {
           dateToFormat = parseISO(date);
         }

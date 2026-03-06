@@ -144,7 +144,7 @@ const WorkoutReportVisualizer = ({
       const existingPr = prProgressionData[exerciseName][0];
       if (!existingPr || oneRM > existingPr.oneRM) {
         prProgressionData[exerciseName] = [
-          { date: today, oneRM, weight, reps },
+          { date: today ?? '', oneRM, weight, reps },
         ];
       }
     }

@@ -88,10 +88,10 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
     };
     fastingData.forEach((f) => {
       const hrs = (f.duration_minutes ?? 0) / 60;
-      if (hrs < 12) zones.Anabolic += 1;
-      else if (hrs < 16) zones.Catabolic += 1;
-      else if (hrs < 20) zones.FatBurning += 1;
-      else zones.Ketosis += 1;
+      if (hrs < 12 && zones.Anabolic) zones.Anabolic += 1;
+      else if (hrs < 16 && zones.Catabolic) zones.Catabolic += 1;
+      else if (hrs < 20 && zones.FatBurning) zones.FatBurning += 1;
+      else if (zones.Ketosis) zones.Ketosis += 1;
     });
     return Object.entries(zones).map(([name, value]) => ({ name, value }));
   }, [fastingData]);

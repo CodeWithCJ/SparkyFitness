@@ -95,9 +95,9 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
       const lapDurationMinutes = lapDurationSeconds / 60;
 
       const previousDistance =
-        acc.length > 0 ? acc[acc.length - 1].cumulativeDistance : 0;
+        acc.length > 0 ? (acc[acc.length - 1]?.cumulativeDistance ?? 0) : 0;
       const previousDuration =
-        acc.length > 0 ? acc[acc.length - 1].cumulativeDuration : 0;
+        acc.length > 0 ? (acc[acc.length - 1]?.cumulativeDuration ?? 0) : 0;
 
       acc.push({
         ...lap,
@@ -128,7 +128,10 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
       const parsePaceToSeconds = (paceStr: string) => {
         if (paceStr === t('common.notApplicable', 'N/A')) return Infinity; // Treat N/A as largest for sorting
         const [minutes, seconds] = paceStr.split(':').map(Number);
-        return minutes * 60 + seconds;
+        if (minutes && seconds) {
+          return minutes * 60 + seconds;
+        }
+        return 0;
       };
       aValue = formatPace(a.averageSpeed ?? 0); // Assuming formatPace is accessible here
       bValue = formatPace(b.averageSpeed ?? 0); // Assuming formatPace is accessible here
@@ -377,12 +380,12 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                 )}
               </td>
               <td className="py-2 px-4 text-right">
-                {processedLaps.length > 0
-                  ? formatTime(
-                      processedLaps[processedLaps.length - 1]
-                        .cumulativeDuration * 60
-                    )
-                  : t('common.notApplicable', 'N/A')}
+                {(() => {
+                  const lastLap = processedLaps[processedLaps.length - 1];
+                  return lastLap
+                    ? formatTime(lastLap.cumulativeDuration * 60)
+                    : t('common.notApplicable', 'N/A');
+                })()}
               </td>
               <td className="py-2 px-4 text-right">
                 {processedLaps
@@ -393,7 +396,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                 {processedLaps.length > 0
                   ? processedLaps[
                       processedLaps.length - 1
-                    ].cumulativeDistance.toFixed(2)
+                    ]?.cumulativeDistance.toFixed(2)
                   : t('common.notApplicable', 'N/A')}
               </td>
               <td className="py-2 px-4 text-right">

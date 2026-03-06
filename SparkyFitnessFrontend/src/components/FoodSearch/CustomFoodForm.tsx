@@ -26,6 +26,7 @@ import {
   useSaveFoodMutation,
 } from '@/hooks/Foods/useFoodVariants';
 import { isUUID } from '@/utils/foodSearch';
+import { error } from '@/utils/logging';
 
 type NumericFoodVariantKeys = Exclude<
   keyof FoodVariant,
@@ -173,8 +174,12 @@ const EnhancedCustomFoodForm = ({
   visibleNutrients: passedVisibleNutrients,
 }: EnhancedCustomFoodFormProps) => {
   const { user } = useAuth();
-  const { nutrientDisplayPreferences, energyUnit, convertEnergy } =
-    usePreferences();
+  const {
+    nutrientDisplayPreferences,
+    energyUnit,
+    convertEnergy,
+    loggingLevel,
+  } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
 
@@ -441,6 +446,14 @@ const EnhancedCustomFoodForm = ({
 
   const duplicateVariant = (index: number) => {
     const variantToDuplicate = variants[index];
+    if (!variantToDuplicate) {
+      error(
+        loggingLevel,
+        'Could not find variant to duplicate at index:',
+        index
+      );
+      return;
+    }
     const newVariant: FormFoodVariant = {
       ...variantToDuplicate,
       id: undefined, // New variant should not have an ID
@@ -479,6 +492,11 @@ const EnhancedCustomFoodForm = ({
     const updatedVariants = [...variants];
     const updatedOriginalVariants = [...originalVariants]; // Get a mutable copy of original variants
     const currentVariant = updatedVariants[index];
+    if (!currentVariant) {
+      error(loggingLevel, 'Could not find variant to update at index:', index);
+      return;
+    }
+
     let newVariant: FormFoodVariant;
 
     const isCustomNutrient = customNutrients?.some(
@@ -543,6 +561,15 @@ const EnhancedCustomFoodForm = ({
     // Handle proportional scaling for locked variants when serving_size changes
     if (field === 'serving_size' && newVariant.is_locked) {
       const originalVariant = updatedOriginalVariants[index]; // Use the corresponding original variant
+      if (!originalVariant) {
+        error(
+          loggingLevel,
+          'Could not find variant to update at index:',
+          index
+        );
+        return;
+      }
+
       const originalServingSize = originalVariant.serving_size; // Use the stored original serving size
       const newServingSize = Number(value);
       const original = Number(originalServingSize);

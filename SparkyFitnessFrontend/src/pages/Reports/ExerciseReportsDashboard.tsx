@@ -612,7 +612,9 @@ const ExerciseReportsDashboard = ({
                         event?.activePayload &&
                         event.activePayload.length > 0
                       ) {
-                        onDrilldown(event.activePayload[0].payload.entry_date);
+                        onDrilldown(
+                          event.activePayload[0]?.payload.entry_date ?? ''
+                        );
                       }
                     }}
                     data={volumeTrendData}
@@ -753,7 +755,9 @@ const ExerciseReportsDashboard = ({
                         event?.activePayload &&
                         event.activePayload.length > 0
                       ) {
-                        onDrilldown(event.activePayload[0].payload.entry_date);
+                        onDrilldown(
+                          event.activePayload[0]?.payload.entry_date ?? ''
+                        );
                       }
                     }}
                     data={maxWeightTrendData}
@@ -898,7 +902,9 @@ const ExerciseReportsDashboard = ({
                         event?.activePayload &&
                         event.activePayload.length > 0
                       ) {
-                        onDrilldown(event.activePayload[0].payload.entry_date);
+                        onDrilldown(
+                          event.activePayload[0]?.payload.entry_date ?? ''
+                        );
                       }
                     }}
                     data={estimated1RMTrendData}

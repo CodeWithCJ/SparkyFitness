@@ -134,13 +134,14 @@ const FoodUnitSelector = ({
       }
 
       setVariants(combinedVariants);
-      if (initialVariantId) {
+      const firstCombinedVariant = combinedVariants[0];
+      if (initialVariantId && firstCombinedVariant) {
         const variantToSelect = combinedVariants.find(
           (v) => v.id === initialVariantId
         );
-        setSelectedVariant(variantToSelect || combinedVariants[0]);
-      } else {
-        setSelectedVariant(combinedVariants[0]); // Select the primary unit by default
+        setSelectedVariant(variantToSelect || firstCombinedVariant);
+      } else if (firstCombinedVariant) {
+        setSelectedVariant(firstCombinedVariant); // Select the primary unit by default
       }
     } catch (err) {
       error(loggingLevel, 'Error loading variants:', err);

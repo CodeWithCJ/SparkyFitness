@@ -157,107 +157,111 @@ const ReportsTables = ({
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
     .forEach((date) => {
       const entries = groupedFoodData[date];
-      foodDataWithTotals.push(...entries);
+      if (entries) foodDataWithTotals.push(...entries);
+      if (entries) {
+        // Calculate totals for the day directly from the already calculated values
+        const dailyTotals = entries.reduce(
+          (acc, entry) => {
+            const customNutrientsSum = customNutrients.reduce(
+              (sumAcc, cn) => {
+                sumAcc[cn.name] =
+                  (Number(acc[cn.name]) || 0) + (Number(entry[cn.name]) || 0);
+                return sumAcc;
+              },
+              {} as Record<string, number>
+            );
 
-      // Calculate totals for the day directly from the already calculated values
-      const dailyTotals = entries.reduce(
-        (acc, entry) => {
-          const customNutrientsSum = customNutrients.reduce(
-            (sumAcc, cn) => {
-              sumAcc[cn.name] =
-                (Number(acc[cn.name]) || 0) + (Number(entry[cn.name]) || 0);
-              return sumAcc;
-            },
-            {} as Record<string, number>
-          );
-
-          return {
-            ...acc,
-            calories:
-              (Number(acc.calories) || 0) + (Number(entry.calories) || 0),
-            protein: (Number(acc.protein) || 0) + (Number(entry.protein) || 0),
-            carbs: (Number(acc.carbs) || 0) + (Number(entry.carbs) || 0),
-            fat: (Number(acc.fat) || 0) + (Number(entry.fat) || 0),
-            saturated_fat:
-              (Number(acc.saturated_fat) || 0) +
-              (Number(entry.saturated_fat) || 0),
-            polyunsaturated_fat:
-              (Number(acc.polyunsaturated_fat) || 0) +
-              (Number(entry.polyunsaturated_fat) || 0),
-            monounsaturated_fat:
-              (Number(acc.monounsaturated_fat) || 0) +
-              (Number(entry.monounsaturated_fat) || 0),
-            trans_fat:
-              (Number(acc.trans_fat) || 0) + (Number(entry.trans_fat) || 0),
-            cholesterol:
-              (Number(acc.cholesterol) || 0) + (Number(entry.cholesterol) || 0),
-            sodium: (Number(acc.sodium) || 0) + (Number(entry.sodium) || 0),
-            potassium:
-              (Number(acc.potassium) || 0) + (Number(entry.potassium) || 0),
-            dietary_fiber:
-              (Number(acc.dietary_fiber) || 0) +
-              (Number(entry.dietary_fiber) || 0),
-            sugars: (Number(acc.sugars) || 0) + (Number(entry.sugars) || 0),
-            vitamin_a:
-              (Number(acc.vitamin_a) || 0) + (Number(entry.vitamin_a) || 0),
-            vitamin_c:
-              (Number(acc.vitamin_c) || 0) + (Number(entry.vitamin_c) || 0),
-            calcium: (Number(acc.calcium) || 0) + (Number(entry.calcium) || 0),
-            iron: (Number(acc.iron) || 0) + (Number(entry.iron) || 0),
+            return {
+              ...acc,
+              calories:
+                (Number(acc.calories) || 0) + (Number(entry.calories) || 0),
+              protein:
+                (Number(acc.protein) || 0) + (Number(entry.protein) || 0),
+              carbs: (Number(acc.carbs) || 0) + (Number(entry.carbs) || 0),
+              fat: (Number(acc.fat) || 0) + (Number(entry.fat) || 0),
+              saturated_fat:
+                (Number(acc.saturated_fat) || 0) +
+                (Number(entry.saturated_fat) || 0),
+              polyunsaturated_fat:
+                (Number(acc.polyunsaturated_fat) || 0) +
+                (Number(entry.polyunsaturated_fat) || 0),
+              monounsaturated_fat:
+                (Number(acc.monounsaturated_fat) || 0) +
+                (Number(entry.monounsaturated_fat) || 0),
+              trans_fat:
+                (Number(acc.trans_fat) || 0) + (Number(entry.trans_fat) || 0),
+              cholesterol:
+                (Number(acc.cholesterol) || 0) +
+                (Number(entry.cholesterol) || 0),
+              sodium: (Number(acc.sodium) || 0) + (Number(entry.sodium) || 0),
+              potassium:
+                (Number(acc.potassium) || 0) + (Number(entry.potassium) || 0),
+              dietary_fiber:
+                (Number(acc.dietary_fiber) || 0) +
+                (Number(entry.dietary_fiber) || 0),
+              sugars: (Number(acc.sugars) || 0) + (Number(entry.sugars) || 0),
+              vitamin_a:
+                (Number(acc.vitamin_a) || 0) + (Number(entry.vitamin_a) || 0),
+              vitamin_c:
+                (Number(acc.vitamin_c) || 0) + (Number(entry.vitamin_c) || 0),
+              calcium:
+                (Number(acc.calcium) || 0) + (Number(entry.calcium) || 0),
+              iron: (Number(acc.iron) || 0) + (Number(entry.iron) || 0),
+              glycemic_index: 'None',
+              ...customNutrientsSum,
+            };
+          },
+          {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            saturated_fat: 0,
+            polyunsaturated_fat: 0,
+            monounsaturated_fat: 0,
+            trans_fat: 0,
+            cholesterol: 0,
+            sodium: 0,
+            potassium: 0,
+            dietary_fiber: 0,
+            sugars: 0,
+            vitamin_a: 0,
+            vitamin_c: 0,
+            calcium: 0,
+            iron: 0,
             glycemic_index: 'None',
-            ...customNutrientsSum,
-          };
-        },
-        {
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-          saturated_fat: 0,
-          polyunsaturated_fat: 0,
-          monounsaturated_fat: 0,
-          trans_fat: 0,
-          cholesterol: 0,
-          sodium: 0,
-          potassium: 0,
-          dietary_fiber: 0,
-          sugars: 0,
-          vitamin_a: 0,
-          vitamin_c: 0,
-          calcium: 0,
-          iron: 0,
-          glycemic_index: 'None',
-        } as Partial<DailyFoodEntry>
-      ); // Use Partial to allow for initial empty state
+          } as Partial<DailyFoodEntry>
+        ); // Use Partial to allow for initial empty state
 
-      foodDataWithTotals.push({
-        entry_date: date,
-        meal_type: 'Total',
-        quantity: 0,
-        unit: '',
-        isTotal: true,
-        food_name: 'Total',
-        calories: dailyTotals.calories,
-        protein: dailyTotals.protein,
-        carbs: dailyTotals.carbs,
-        fat: dailyTotals.fat,
-        saturated_fat: dailyTotals.saturated_fat,
-        polyunsaturated_fat: dailyTotals.polyunsaturated_fat,
-        monounsaturated_fat: dailyTotals.monounsaturated_fat,
-        trans_fat: dailyTotals.trans_fat,
-        cholesterol: dailyTotals.cholesterol,
-        sodium: dailyTotals.sodium,
-        potassium: dailyTotals.potassium,
-        dietary_fiber: dailyTotals.dietary_fiber,
-        sugars: dailyTotals.sugars,
-        vitamin_a: dailyTotals.vitamin_a,
-        vitamin_c: dailyTotals.vitamin_c,
-        calcium: dailyTotals.calcium,
-        iron: dailyTotals.iron,
-        glycemic_index: 'None',
-        serving_size: 100, // Default value, not used for totals
-        ...dailyTotals, // Include custom nutrient totals
-      });
+        foodDataWithTotals.push({
+          entry_date: date,
+          meal_type: 'Total',
+          quantity: 0,
+          unit: '',
+          isTotal: true,
+          food_name: 'Total',
+          calories: dailyTotals.calories,
+          protein: dailyTotals.protein,
+          carbs: dailyTotals.carbs,
+          fat: dailyTotals.fat,
+          saturated_fat: dailyTotals.saturated_fat,
+          polyunsaturated_fat: dailyTotals.polyunsaturated_fat,
+          monounsaturated_fat: dailyTotals.monounsaturated_fat,
+          trans_fat: dailyTotals.trans_fat,
+          cholesterol: dailyTotals.cholesterol,
+          sodium: dailyTotals.sodium,
+          potassium: dailyTotals.potassium,
+          dietary_fiber: dailyTotals.dietary_fiber,
+          sugars: dailyTotals.sugars,
+          vitamin_a: dailyTotals.vitamin_a,
+          vitamin_c: dailyTotals.vitamin_c,
+          calcium: dailyTotals.calcium,
+          iron: dailyTotals.iron,
+          glycemic_index: 'None',
+          serving_size: 100, // Default value, not used for totals
+          ...dailyTotals, // Include custom nutrient totals
+        });
+      }
     });
   debug(
     loggingLevel,
@@ -555,7 +559,7 @@ const ReportsTables = ({
                   const isPr =
                     prData &&
                     prData[entry.exercises.id] &&
-                    prData[entry.exercises.id].date === entry.entry_date;
+                    prData[entry.exercises.id]?.date === entry.entry_date;
                   const isExpanded = expandedRows[entry.id];
 
                   return (

@@ -62,8 +62,12 @@ const CustomTooltip = ({
   formatDate,
 }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
-    const nutrientName = payload[0].dataKey as string;
-    const nutrientValue = payload[0].value as number;
+    const firstPaylod = payload[0];
+    if (!firstPaylod) {
+      return;
+    }
+    const nutrientName = firstPaylod.dataKey as string;
+    const nutrientValue = firstPaylod.value as number;
 
     const unitString =
       nutrientName === 'calories'

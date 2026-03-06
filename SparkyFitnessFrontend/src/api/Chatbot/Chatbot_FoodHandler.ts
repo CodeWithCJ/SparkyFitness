@@ -271,13 +271,12 @@ export const addFoodOption = async (
   try {
     const { foodOptions, mealType, quantity, unit, entryDate } =
       originalMetadata;
-    let selectedOption: FoodOption;
-    if (foodOptions) {
-      selectedOption = foodOptions[optionIndex];
-    } else {
+    const selectedOption = foodOptions?.[optionIndex];
+
+    if (!selectedOption) {
       error(
         userLoggingLevel,
-        `[${transactionId}] Invalid option index:`,
+        `[${transactionId}] Invalid option index or missing foodOptions:`,
         optionIndex
       );
       return {

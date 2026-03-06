@@ -165,7 +165,7 @@ const FoodDatabaseManager: React.FC = () => {
         meal_type: 'breakfast', // Default to breakfast for now, or make dynamic
         quantity: quantity,
         unit: unit,
-        entry_date: new Date().toISOString().split('T')[0], // Current date
+        entry_date: new Date().toISOString().split('T')[0] ?? '', // Current date
         variant_id: selectedVariant.id || null,
       },
     });

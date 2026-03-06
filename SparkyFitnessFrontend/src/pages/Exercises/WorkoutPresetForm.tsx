@@ -483,6 +483,9 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
           return exercise;
         }
         const lastSet = exercise.sets[exercise.sets.length - 1];
+        if (!lastSet) {
+          return exercise;
+        }
         const newSet: WorkoutPresetSet = {
           ...lastSet,
           id: crypto.randomUUID(),
@@ -505,6 +508,9 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
           }
           const sets = exercise.sets;
           const setToDuplicate = sets[setIndex];
+          if (!setToDuplicate) {
+            return exercise;
+          }
           const newSets = [
             ...sets.slice(0, setIndex + 1),
             { ...setToDuplicate, id: crypto.randomUUID() },
@@ -585,6 +591,9 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         activeSetParentIdx === overSetParentIdx
       ) {
         const exercise = newExercises[activeSetParentIdx];
+        if (!exercise) {
+          return prevExercises;
+        }
         const oldSetIdx = exercise.sets.findIndex(
           (s) => String(s.id) === activeId
         );

@@ -542,7 +542,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
     // Apply multiplier to all totals
     Object.keys(totals).forEach((key) => {
-      totals[key] = totals[key] * multiplier;
+      totals[key] = (totals[key] || 0) * multiplier;
     });
 
     return totals;

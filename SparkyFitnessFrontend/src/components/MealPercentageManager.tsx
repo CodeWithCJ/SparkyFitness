@@ -159,7 +159,9 @@ const MealPercentageManager = ({
         while (roundingDiff !== 0) {
           const mealToAdjust = unlockedMeals[i % unlockedMeals.length];
           const adjustment = Math.sign(roundingDiff);
-          finalPercentages[mealToAdjust] += adjustment;
+          if (mealToAdjust) {
+            finalPercentages[mealToAdjust] += adjustment;
+          }
           roundingDiff -= adjustment;
           i++;
         }
@@ -317,7 +319,9 @@ const MealPercentageManager = ({
                 max={100}
                 step={1}
                 value={[percentages[meal]]}
-                onValueChange={([value]) => handleSliderChange(meal, value)}
+                onValueChange={([value]) =>
+                  handleSliderChange(meal, value || 0)
+                }
                 disabled={locks[meal]}
               />
               <div className="flex items-center gap-2">

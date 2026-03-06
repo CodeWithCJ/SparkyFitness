@@ -66,6 +66,6 @@ export const DIET_TEMPLATES: DietTemplate[] = [
   },
 ];
 
-export const getDietTemplate = (id: string): DietTemplate => {
+export const getDietTemplate = (id: string): DietTemplate | undefined => {
   return DIET_TEMPLATES.find((d) => d.id === id) || DIET_TEMPLATES[0];
 };

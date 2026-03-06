@@ -189,6 +189,9 @@ export const getNutritionixNutrients = async (
     );
     if (data && data.foods && data.foods.length > 0) {
       const food = data.foods[0];
+      if (!food) {
+        throw new Error('Food is undefined');
+      }
       return {
         name: food.food_name,
         brand: food.brand_name || null,
@@ -263,6 +266,9 @@ export const getNutritionixBrandedNutrients = async (
     );
     if (data && data.foods && data.foods.length > 0) {
       const food = data.foods[0];
+      if (!food) {
+        throw new Error('Food is undefined');
+      }
       return {
         name: food.food_name,
         brand: food.brand_name || '',

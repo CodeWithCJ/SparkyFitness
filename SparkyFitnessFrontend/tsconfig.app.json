@@ -25,6 +25,7 @@
     "strictBindCallApply": true,
     "useUnknownInCatchVariables": true,
     "strictFunctionTypes": true,
+    "noUncheckedIndexedAccess": true,
 
     "paths": {
       "@/*": ["./src/*"]

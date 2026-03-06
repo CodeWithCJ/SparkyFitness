@@ -628,13 +628,13 @@ export const calculateBasePlan = (
 
   const macros = {
     carbs: Math.round(
-      (finalDailyCalories * (dietTemplate.carbsPercentage / 100)) / 4
+      (finalDailyCalories * ((dietTemplate?.carbsPercentage ?? 0) / 100)) / 4
     ),
     protein: Math.round(
-      (finalDailyCalories * (dietTemplate.proteinPercentage / 100)) / 4
+      (finalDailyCalories * ((dietTemplate?.proteinPercentage ?? 0) / 100)) / 4
     ),
     fat: Math.round(
-      (finalDailyCalories * (dietTemplate.fatPercentage / 100)) / 9
+      (finalDailyCalories * ((dietTemplate?.fatPercentage ?? 0) / 100)) / 9
     ),
     fiber: Math.round((finalDailyCalories / 1000) * 14),
   };

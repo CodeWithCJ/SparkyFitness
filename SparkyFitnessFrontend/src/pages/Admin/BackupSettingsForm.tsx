@@ -34,7 +34,9 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
     if (!utcTimeStr) return '02:00';
     const [hours, minutes] = utcTimeStr.split(':').map(Number);
     const date = new Date();
-    date.setUTCHours(hours, minutes, 0, 0);
+    if (hours && minutes) {
+      date.setUTCHours(hours, minutes, 0, 0);
+    }
     return date.toLocaleTimeString([], {
       hour: '2-digit',
       minute: '2-digit',
@@ -81,7 +83,9 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
   const handleSubmit = () => {
     const [hours, minutes] = backupTime.split(':').map(Number);
     const localDate = new Date();
-    localDate.setHours(hours, minutes, 0, 0);
+    if (hours && minutes) {
+      localDate.setHours(hours, minutes, 0, 0);
+    }
     const utcTime = localDate.toISOString().substring(11, 16);
 
     onSave({

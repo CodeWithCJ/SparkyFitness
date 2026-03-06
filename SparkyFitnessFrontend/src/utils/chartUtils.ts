@@ -49,7 +49,9 @@ export function calculateSmartYAxisDomain(
   // If all values are the same, use a small range around the value
   if (range === 0) {
     const value = values[0];
-    return value === 0 ? [0, 1] : [value * 0.95, value * 1.05];
+    if (value) {
+      return value === 0 ? [0, 1] : [value * 0.95, value * 1.05];
+    }
   }
 
   // Use min-max with margin for better visibility of trends

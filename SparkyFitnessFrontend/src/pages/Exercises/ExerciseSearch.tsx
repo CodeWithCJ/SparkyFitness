@@ -308,9 +308,10 @@ const ExerciseSearch = ({
         exerciseProvidersOptions()
       );
       setProviders(exerciseProviders);
-      if (exerciseProviders.length > 0) {
-        setSelectedProviderId(exerciseProviders[0].id);
-        setSelectedProviderType(exerciseProviders[0].provider_type);
+      const provider = exerciseProviders[0];
+      if (provider) {
+        setSelectedProviderId(provider.id);
+        setSelectedProviderType(provider.provider_type);
       } else {
         warn(
           loggingLevel,

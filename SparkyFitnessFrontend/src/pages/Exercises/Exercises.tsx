@@ -1144,7 +1144,9 @@ const ExerciseDatabaseManager = () => {
                             draggedImageIndex,
                             1
                           );
-                          newImages.splice(index, 0, draggedItem);
+                          if (draggedItem) {
+                            newImages.splice(index, 0, draggedItem);
+                          }
                           setEditExerciseImages(newImages);
                           setDraggedImageIndex(null);
                         }}
@@ -1197,11 +1199,13 @@ const ExerciseDatabaseManager = () => {
                               draggedImageIndex,
                               1
                             );
-                            newExistingImages.splice(
-                              targetIndex,
-                              0,
-                              draggedItem
-                            );
+                            if (draggedItem) {
+                              newExistingImages.splice(
+                                targetIndex,
+                                0,
+                                draggedItem
+                              );
+                            }
                             setEditExerciseImages(newExistingImages);
                           } else {
                             // Dragging a new image
@@ -1219,17 +1223,20 @@ const ExerciseDatabaseManager = () => {
                               1
                             );
 
-                            newNewImageFiles.splice(
-                              targetIndex - editExerciseImages.length,
-                              0,
-                              draggedFile
-                            );
-                            newNewImageUrls.splice(
-                              targetIndex - editExerciseImages.length,
-                              0,
-                              draggedUrl
-                            );
-
+                            if (draggedFile) {
+                              newNewImageFiles.splice(
+                                targetIndex - editExerciseImages.length,
+                                0,
+                                draggedFile
+                              );
+                            }
+                            if (draggedUrl) {
+                              newNewImageUrls.splice(
+                                targetIndex - editExerciseImages.length,
+                                0,
+                                draggedUrl
+                              );
+                            }
                             setNewExerciseImageFiles(newNewImageFiles);
                             setNewExerciseImageUrls(newNewImageUrls);
                           }

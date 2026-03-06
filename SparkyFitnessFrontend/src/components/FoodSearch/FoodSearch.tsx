@@ -430,11 +430,9 @@ const EnhancedFoodSearch = ({
 
       if (provider && searchHandlers[provider.provider_type]) {
         setSearchProviderId(provider.id);
-        await searchHandlers[provider.provider_type](
-          searchTerm,
-          provider.id,
-          provider
-        );
+        const searchHandler = searchHandlers[provider.provider_type];
+        if (searchHandler)
+          await searchHandler(searchTerm, provider.id, provider);
       } else {
         toast({
           title: t('common.error'),

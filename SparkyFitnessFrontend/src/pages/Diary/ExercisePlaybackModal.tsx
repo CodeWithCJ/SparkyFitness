@@ -226,7 +226,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
       if (!newMutedState && isPlayingRef.current) {
         // If unmuting and currently playing, restart speech
         speakInstruction(
-          instructions[currentInstructionIndex],
+          instructions[currentInstructionIndex] ?? '',
           currentInstructionIndex
         );
       }
@@ -286,7 +286,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     );
     if (isPlaying && instructions.length > 0) {
       speakInstruction(
-        instructions[currentInstructionIndex],
+        instructions[currentInstructionIndex] ?? '',
         currentInstructionIndex
       );
     } else if (!isPlaying) {
@@ -490,7 +490,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
                 // If playing, restart speech with new voice
                 if (isPlayingRef.current) {
                   speakInstruction(
-                    instructions[currentInstructionIndex],
+                    instructions[currentInstructionIndex] ?? '',
                     currentInstructionIndex
                   );
                 }

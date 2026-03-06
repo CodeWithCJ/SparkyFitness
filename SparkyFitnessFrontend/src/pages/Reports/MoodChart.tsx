@@ -143,12 +143,20 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
   const { formatDateInUserTimezone } = usePreferences();
 
   if (active && payload && payload.length) {
-    const entry = payload[0].payload;
+    const entry = payload[0]?.payload;
     return (
       <div className="p-2 bg-background border rounded-md shadow-md">
-        <p className="label">{`${formatDateInUserTimezone(entry.date, 'MMM dd, yyyy')}`}</p>
-        <p className="intro">{`${t('mood.moodValue', 'Mood Value')}: ${entry.moodValue} ${entry.moodDisplay.emoji} (${entry.moodDisplay.label})`}</p>
-        {entry.notes && (
+        <p className="label">
+          {entry
+            ? `${formatDateInUserTimezone(entry.date, 'MMM dd, yyyy')}`
+            : ''}
+        </p>
+        <p className="intro">
+          {entry
+            ? `${t('mood.moodValue', 'Mood Value')}: ${entry.moodValue} ${entry.moodDisplay.emoji} (${entry.moodDisplay.label})`
+            : ''}
+        </p>
+        {entry?.notes && (
           <p className="desc" style={{ marginTop: '5px' }}>
             {t('mood.notes', 'Notes: ') + entry.notes}
           </p>

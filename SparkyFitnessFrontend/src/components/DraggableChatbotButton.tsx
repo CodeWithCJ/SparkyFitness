@@ -214,16 +214,19 @@ const DraggableChatbotButton: React.FC = () => {
   }, [handleInteractionEnd]);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (e.touches.length === 1) {
-      handleInteractionStart(e.touches[0].clientX, e.touches[0].clientY);
+    const touches = e.touches[0];
+    if (e.touches.length === 1 && touches) {
+      handleInteractionStart(touches.clientX, touches.clientY);
       e.preventDefault();
     }
   }, []);
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        updatePosition(e.touches[0].clientX, e.touches[0].clientY);
+      const touches = e.touches[0];
+
+      if (e.touches.length === 1 && touches) {
+        updatePosition(touches.clientX, touches.clientY);
       }
     },
     [updatePosition]

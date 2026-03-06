@@ -244,6 +244,9 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
         }
 
         const lastEvent = acc[acc.length - 1];
+        if (!lastEvent) {
+          return [currentEvent];
+        }
 
         // Check for overlap or adjacency with the same stage type
         if (
