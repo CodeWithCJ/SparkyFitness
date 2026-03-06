@@ -1,9 +1,9 @@
 import { getDietTemplate } from '@/constants/dietTemplates';
 import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
 import i18n from '@/i18n';
-import { Goals } from '@/types/diary';
 import type { FoodEntry, FoodVariant } from '@/types/food';
 import { FoodEntryMeal, MealTotals } from '@/types/meal';
+import { Goals } from '@workspace/shared';
 
 // Utility functions for nutrition calculations
 

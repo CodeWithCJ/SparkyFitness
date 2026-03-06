@@ -20,7 +20,7 @@ import {
 } from '@/utils/nutrientUtils';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { useMiniNutritionTrendData } from '@/hooks/Foods/useFoods';
-import { DayData } from '@/types/diary';
+import { DayData } from '@workspace/shared';
 
 interface MiniNutritionTrendsProps {
   selectedDate: string;

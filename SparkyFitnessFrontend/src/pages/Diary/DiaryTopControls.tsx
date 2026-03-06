@@ -10,11 +10,11 @@ import {
   getNutrientMetadata,
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
-import { Goals } from '@/types/diary';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import EditGoalsForToday from '@/pages/Goals/EditGoalsForToday';
 import { useMemo } from 'react';
 import { DEFAULT_GOALS } from '@/constants/goals';
+import { Goals } from '@workspace/shared';
 
 export interface DayTotals {
   calories: number; // Stored internally as kcal

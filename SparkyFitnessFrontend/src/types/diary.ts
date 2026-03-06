@@ -1,15 +1,5 @@
 import { WorkoutPresetSet } from './workout';
 
-export interface Goals {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  water_goal_ml: number;
-  dietary_fiber?: number;
-  [key: string]: number; // Allow custom nutrients
-}
-
 export interface ExerciseEntry {
   id: string;
   exercise_id: string;
@@ -26,15 +16,6 @@ export interface ExerciseEntry {
     category: string;
     calories_per_hour: number;
   } | null;
-}
-
-export interface DayData {
-  date: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  dietary_fiber: number;
 }
 
 export interface MealTypeDefinition {

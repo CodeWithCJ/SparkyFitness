@@ -2,7 +2,7 @@ import { apiCall } from '../api';
 import type { MealFood } from '@/types/meal';
 import type { FoodEntryMeal } from '@/types/meal';
 import type { FoodEntry } from '@/types/food';
-import { DayData, Goals } from '@/types/diary';
+import { type DayData, type Goals } from '@workspace/shared';
 
 export interface FoodEntryUpdateData {
   quantity?: number;

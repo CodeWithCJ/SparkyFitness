@@ -1,0 +1,13 @@
+{
+  "name": "@workspace/shared",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "ts-to-zod": "^3.0.0",
+    "typescript": "^5.9.3"
+  }
+}

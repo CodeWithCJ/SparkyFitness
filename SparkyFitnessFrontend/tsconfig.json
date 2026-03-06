@@ -6,7 +6,8 @@
   ],
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@workspace/shared": ["../shared/src/index.ts"]
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,
