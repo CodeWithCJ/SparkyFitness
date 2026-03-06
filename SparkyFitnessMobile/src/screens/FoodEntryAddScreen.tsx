@@ -169,8 +169,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   };
 
   const clampQuantity = () => {
-    if (quantity <= 0) setQuantityText('1');
+    if (quantity <= 0) {
+      const minQuantity = (displayValues.servingSize * 0.5) || 1;
+      setQuantityText(String(minQuantity));
+    }
   };
+
 
   const adjustQuantity = (delta: number) => {
     const step = displayValues.servingSize;
