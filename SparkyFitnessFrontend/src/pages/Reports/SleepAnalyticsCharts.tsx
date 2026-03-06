@@ -26,6 +26,8 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -512,9 +514,28 @@ const SleepAnalyticsCharts = ({
                         <YAxis
                           stroke={tickColor}
                           tick={{ fill: tickColor }}
+                          domain={['auto', 'auto']}
                           tickFormatter={(value) =>
                             formatSecondsToHHMM(value * 3600)
                           }
+                        />
+                        {/* BACKGROUND COLOR ZONES */}
+                        <ReferenceArea
+                          y1={0}
+                          y2={100}
+                          fill="#ff0000"
+                          fillOpacity={0.05}
+                        />
+                        <ReferenceArea
+                          y1={-100}
+                          y2={0}
+                          fill="#00ff00"
+                          fillOpacity={0.05}
+                        />
+                        <ReferenceLine
+                          y={0}
+                          stroke="#666"
+                          strokeDasharray="3 3"
                         />
                         <Tooltip
                           labelFormatter={(label) =>
@@ -544,6 +565,21 @@ const SleepAnalyticsCharts = ({
                           dot={false}
                           isAnimationActive={false}
                         />
+                        {/* DEBT COLOR CODING - Placed after Line to ensure background rendering */}
+                        <ReferenceArea
+                          y1={0}
+                          y2={24}
+                          fill="#ff0000"
+                          fillOpacity={0.1}
+                        />{' '}
+                        {/* Red for Debt */}
+                        <ReferenceArea
+                          y1={-24}
+                          y2={0}
+                          fill="#00ff00"
+                          fillOpacity={0.1}
+                        />{' '}
+                        {/* Green for Surplus */}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -551,8 +587,8 @@ const SleepAnalyticsCharts = ({
                 <div className="text-sm text-muted-foreground p-4">
                   {t(
                     'sleepAnalyticsCharts.sleepDebtDisclaimerPersonalized',
-                    `*Sleep Debt is calculated based on your personalized sleep need of {{hours}}h.`,
-                    { hours: personalizedSleepNeed }
+                    `*Sleep Debt is calculated based on your personalized sleep need of {{time}}.`,
+                    { time: formatSecondsToHHMM(personalizedSleepNeed * 3600) }
                   )}
                 </div>
               </Card>
@@ -600,7 +636,7 @@ const SleepAnalyticsCharts = ({
                           tick={{ fill: tickColor }}
                         />
                         <YAxis
-                          domain={[0, 100]}
+                          domain={['auto', 100]}
                           tickFormatter={(value) => `${value.toFixed(0)}%`}
                           stroke={tickColor}
                           tick={{ fill: tickColor }}
@@ -609,8 +645,8 @@ const SleepAnalyticsCharts = ({
                           labelFormatter={(label) =>
                             formatDateInUserTimezone(label, dateFormat)
                           }
-                          formatter={(value: number) => [
-                            `${value.toFixed(1)}%`,
+                          formatter={(value: number | undefined) => [
+                            `${(value || 0).toFixed(1)}%`,
                             t(
                               'sleepAnalyticsCharts.sleepEfficiency',
                               'Sleep Efficiency'

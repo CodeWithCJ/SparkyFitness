@@ -127,13 +127,21 @@ const SleepAnalyticsTable = ({
               const timeAsleep = sleepEntry.time_asleep_in_seconds
                 ? formatSecondsToHHMM(sleepEntry.time_asleep_in_seconds)
                 : t('common.notApplicable', 'N/A');
-              const insight =
-                sleepEntry.sleep_score && sleepEntry.sleep_score > 70
-                  ? t('sleepAnalyticsTable.goodSleep', 'Good Sleep')
-                  : t(
-                      'sleepAnalyticsTable.needsImprovement',
-                      'Needs Improvement'
-                    );
+              let insightKey = 'sleepAnalyticsTable.needsImprovement';
+              let insightDefault = 'Needs Improvement';
+
+              if (sleepAnalyticsData.sleepDebt > 1.5) {
+                insightKey = 'sleepAnalyticsTable.highDebt';
+                insightDefault = 'High Debt';
+              } else if (
+                sleepEntry.sleep_score &&
+                sleepEntry.sleep_score > 70
+              ) {
+                insightKey = 'sleepAnalyticsTable.goodSleep';
+                insightDefault = 'Good Sleep';
+              }
+
+              const insight = t(insightKey, insightDefault);
 
               const aggregatedStages = sleepEntry.stage_events?.reduce(
                 (acc, event) => {

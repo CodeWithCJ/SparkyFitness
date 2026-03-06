@@ -54,10 +54,13 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
     ];
 
     const csvRows = data.map(({ sleepEntry, sleepAnalyticsData }) => {
-      const insight =
-        sleepEntry.sleep_score && sleepEntry.sleep_score > 70
-          ? t('sleepReport.goodSleep', 'Good Sleep')
-          : t('sleepReport.needsImprovement', 'Needs Improvement');
+      let insight = t('sleepReport.needsImprovement', 'Needs Improvement');
+      if (sleepAnalyticsData.sleepDebt > 1.5) {
+        insight = t('sleepReport.highDebt', 'High Debt');
+      } else if (sleepEntry.sleep_score && sleepEntry.sleep_score > 70) {
+        insight = t('sleepReport.goodSleep', 'Good Sleep');
+      }
+
       return [
         formatDateInUserTimezone(sleepEntry.entry_date, dateFormat),
         formatDateInUserTimezone(sleepEntry.bedtime, 'HH:mm'),
@@ -101,120 +104,256 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
   };
 
   const processSleepData = (): CombinedSleepData[] => {
-    return sleepEntries
-      .sort((a, b) => b.entry_date.localeCompare(a.entry_date))
-      .map((entry) => {
-        const timeAsleep = entry.time_asleep_in_seconds
-          ? entry.time_asleep_in_seconds / 60
-          : 0; // in minutes
+    // Group entries by date (YYYY-MM-DD)
+    const groupedEntries: Record<string, typeof sleepEntries> = {};
+    sleepEntries.forEach((entry) => {
+      const dateKey = entry.entry_date.split('T')[0] as string;
+      if (!dateKey) return;
+      if (!groupedEntries[dateKey]) {
+        groupedEntries[dateKey] = [];
+      }
+      groupedEntries[dateKey].push(entry);
+    });
 
-        const safeStageEvents =
-          entry.stage_events?.filter(
-            (event) => event != null && event.stage_type != null
-          ) || [];
-
-        const aggregatedStages = safeStageEvents.reduce(
-          (acc, event) => {
-            acc[event.stage_type] =
-              (acc[event.stage_type] || 0) + event.duration_in_seconds / 60; // in minutes
-            return acc;
-          },
-          {} as Record<SleepStageEvent['stage_type'], number>
+    // Process each group into a single CombinedSleepData point
+    const aggregatedData = Object.entries(groupedEntries)
+      .map(([dateKey, entries]) => {
+        // Sort entries within the day by bedtime
+        const sortedEntries = [...entries].sort(
+          (a, b) =>
+            new Date(a.bedtime).getTime() - new Date(b.bedtime).getTime()
         );
 
+        const mainEntry = sortedEntries[0];
+        if (!mainEntry) return null; // Satisfies TypeScript check
+
+        let totalDurationInSeconds = 0;
+        let totalTimeAsleepInSeconds = 0;
+        let weightedScoreSum = 0;
+        let earliestBedtime = mainEntry.bedtime;
+        let latestWakeTime = mainEntry.wake_time;
+
+        const allStageEvents: any[] = [];
+        const aggregatedStages = { deep: 0, rem: 0, light: 0, awake: 0 };
+
+        entries.forEach((entry) => {
+          totalDurationInSeconds += entry.duration_in_seconds;
+          totalTimeAsleepInSeconds += entry.time_asleep_in_seconds || 0;
+          weightedScoreSum +=
+            (entry.sleep_score || 0) * entry.duration_in_seconds;
+
+          if (new Date(entry.bedtime) < new Date(earliestBedtime))
+            earliestBedtime = entry.bedtime;
+          if (new Date(entry.wake_time) > new Date(latestWakeTime))
+            latestWakeTime = entry.wake_time;
+
+          if (entry.stage_events) {
+            allStageEvents.push(...entry.stage_events);
+            entry.stage_events.forEach((event) => {
+              if (event.stage_type === 'deep')
+                aggregatedStages.deep += event.duration_in_seconds / 60;
+              if (event.stage_type === 'rem')
+                aggregatedStages.rem += event.duration_in_seconds / 60;
+              if (event.stage_type === 'light')
+                aggregatedStages.light += event.duration_in_seconds / 60;
+              if (event.stage_type === 'awake')
+                aggregatedStages.awake += event.duration_in_seconds / 60;
+            });
+          }
+        });
+
         // If no detailed stage events, consider the entire timeAsleep as light sleep
-        let lightSleepDuration = aggregatedStages?.light || 0;
-        if (safeStageEvents.length === 0 && timeAsleep > 0) {
-          lightSleepDuration = timeAsleep;
+        if (allStageEvents.length === 0 && totalTimeAsleepInSeconds > 0) {
+          aggregatedStages.light = totalTimeAsleepInSeconds / 60;
         }
 
-        // Calculate sleep efficiency and sleep debt using personalized need.
-        const sleepEfficiency =
-          entry.duration_in_seconds > 0
-            ? (timeAsleep / (entry.duration_in_seconds / 60)) * 100
+        const avgSleepScore =
+          totalDurationInSeconds > 0
+            ? weightedScoreSum / totalDurationInSeconds
             : 0;
-        const sleepDebt = personalizedSleepNeed - timeAsleep / 60; // timeAsleep is in minutes, convert to hours
+        const sleepEfficiency =
+          totalDurationInSeconds > 0
+            ? (totalTimeAsleepInSeconds / totalDurationInSeconds) * 100
+            : 0;
+        const personalizedSleepNeed = sleepDebtData?.sleepNeed || 8;
+        const totalSleepDebt =
+          personalizedSleepNeed - totalTimeAsleepInSeconds / 3600;
 
-        // Find matching debt data for weight
         const debtDay = sleepDebtData?.last14Days?.find((d) => {
-          const entryDate = entry.entry_date.split('T')[0];
           const debtDate =
             typeof d.date === 'string'
               ? d.date.split('T')[0]
               : new Date(d.date).toISOString().split('T')[0];
-          return entryDate === debtDate;
+          return dateKey === debtDate;
         });
 
         const analyticsData: SleepAnalyticsData = {
-          date: entry.entry_date,
-          totalSleepDuration: entry.duration_in_seconds,
-          timeAsleep: entry.time_asleep_in_seconds || 0,
-          sleepScore: entry.sleep_score || 0,
-          earliestBedtime: entry.bedtime,
-          latestWakeTime: entry.wake_time,
-          sleepEfficiency: sleepEfficiency,
-          sleepDebt: sleepDebt,
+          date: mainEntry.entry_date,
+          totalSleepDuration: totalDurationInSeconds,
+          timeAsleep: totalTimeAsleepInSeconds,
+          sleepScore: avgSleepScore,
+          earliestBedtime,
+          latestWakeTime,
+          sleepEfficiency,
+          sleepDebt: totalSleepDebt,
           weight: debtDay?.weight || 0,
           stagePercentages: {
-            deep: aggregatedStages?.deep || 0,
-            rem: aggregatedStages?.rem || 0,
-            light: lightSleepDuration, // Use the potentially adjusted light sleep duration
-            awake: aggregatedStages?.awake || 0,
+            deep: aggregatedStages.deep,
+            rem: aggregatedStages.rem,
+            light: aggregatedStages.light,
+            awake: aggregatedStages.awake,
             unspecified: 0,
           },
           awakePeriods:
-            safeStageEvents.filter((e) => e.stage_type === 'awake').length || 0,
-          totalAwakeDuration: aggregatedStages?.awake || 0,
+            entries.reduce((acc, e) => acc + (e.awake_count || 0), 0) ||
+            allStageEvents.filter((e) => e.stage_type === 'awake').length,
+          totalAwakeDuration: aggregatedStages.awake,
+        };
+
+        const combinedEntry: any = {
+          ...mainEntry,
+          id: `agg-${dateKey}`,
+          duration_in_seconds: totalDurationInSeconds,
+          time_asleep_in_seconds: totalTimeAsleepInSeconds,
+          sleep_score: avgSleepScore,
+          bedtime: earliestBedtime,
+          wake_time: latestWakeTime,
+          awake_count: analyticsData.awakePeriods,
+          source:
+            entries.length > 1
+              ? `${entries.length} Sessions`
+              : mainEntry.source,
+          stage_events: allStageEvents,
+          is_aggregated: entries.length > 1,
         };
 
         return {
-          sleepEntry: entry,
+          sleepEntry: combinedEntry,
           sleepAnalyticsData: analyticsData,
         };
-      });
+      })
+      .filter((item): item is CombinedSleepData => item !== null);
+
+    return aggregatedData.sort((a, b) =>
+      b.sleepEntry.entry_date.localeCompare(a.sleepEntry.entry_date)
+    );
   };
 
   const processSleepChartData = (): SleepChartData[] => {
-    return sleepEntries.map((entry) => ({
-      date: entry.entry_date,
-      segments: entry.stage_events?.filter((event) => event != null) || [], // Add null check here
-    }));
+    const grouped: Record<string, SleepStageEvent[]> = {};
+    sleepEntries.forEach((entry) => {
+      const dateKey = entry.entry_date.split('T')[0] as string;
+      if (!dateKey) return;
+      if (!grouped[dateKey]) grouped[dateKey] = [];
+      if (entry.stage_events) {
+        grouped[dateKey].push(...entry.stage_events.filter((ev) => ev != null));
+      }
+    });
+    return Object.entries(grouped)
+      .map(([date, segments]) => ({
+        date,
+        segments,
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
   };
 
-  // Extract SpO2 data from sleep entries
   const processSpO2Data = () => {
-    return sleepEntries.map((entry) => ({
-      date: entry.entry_date,
-      average: entry.average_spo2_value,
-      lowest: entry.lowest_spo2_value,
-      highest: entry.highest_spo2_value,
-    }));
+    const grouped: Record<string, any[]> = {};
+    sleepEntries.forEach((entry) => {
+      const dateKey = entry.entry_date.split('T')[0] as string;
+      if (!dateKey) return;
+      if (!grouped[dateKey]) grouped[dateKey] = [];
+      if (entry.average_spo2_value != null) grouped[dateKey].push(entry);
+    });
+    return Object.entries(grouped)
+      .map(([date, entries]) => ({
+        date,
+        average:
+          entries.length > 0
+            ? entries.reduce((s, e) => s + e.average_spo2_value, 0) /
+              entries.length
+            : null,
+        lowest:
+          entries.length > 0
+            ? Math.min(...entries.map((e) => e.lowest_spo2_value))
+            : null,
+        highest:
+          entries.length > 0
+            ? Math.max(...entries.map((e) => e.highest_spo2_value))
+            : null,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
   };
 
-  // Extract HRV data from sleep entries
   const processHRVData = () => {
-    return sleepEntries.map((entry) => ({
-      date: entry.entry_date,
-      avg_overnight_hrv: entry.avg_overnight_hrv,
-    }));
+    const grouped: Record<string, number[]> = {};
+    sleepEntries.forEach((entry) => {
+      const dateKey = entry.entry_date.split('T')[0] as string;
+      if (!dateKey) return;
+      if (entry.avg_overnight_hrv != null) {
+        if (!grouped[dateKey]) grouped[dateKey] = [];
+        grouped[dateKey].push(entry.avg_overnight_hrv);
+      }
+    });
+    return Object.entries(grouped)
+      .map(([date, values]) => ({
+        date,
+        avg_overnight_hrv: values.reduce((s, v) => s + v, 0) / values.length,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
   };
 
   // Extract Respiration data from sleep entries
   const processRespirationData = () => {
-    return sleepEntries.map((entry) => ({
-      date: entry.entry_date,
-      average: entry.average_respiration_value,
-      lowest: entry.lowest_respiration_value,
-      highest: entry.highest_respiration_value,
-    }));
+    const grouped: Record<string, any[]> = {};
+    sleepEntries.forEach((entry) => {
+      const dateKey = entry.entry_date.split('T')[0] as string;
+      if (!dateKey) return;
+      if (entry.average_respiration_value != null) {
+        if (!grouped[dateKey]) grouped[dateKey] = [];
+        grouped[dateKey].push(entry);
+      }
+    });
+    return Object.entries(grouped)
+      .map(([date, entries]) => ({
+        date,
+        average:
+          entries.length > 0
+            ? entries.reduce((s, e) => s + e.average_respiration_value, 0) /
+              entries.length
+            : null,
+        lowest:
+          entries.length > 0
+            ? Math.min(...entries.map((e) => e.lowest_respiration_value))
+            : null,
+        highest:
+          entries.length > 0
+            ? Math.max(...entries.map((e) => e.highest_respiration_value))
+            : null,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
   };
 
   // Extract Heart Rate data from sleep entries
   const processHeartRateData = () => {
-    return sleepEntries.map((entry) => ({
-      date: entry.entry_date,
-      resting_heart_rate: entry.resting_heart_rate,
-    }));
+    const grouped: Record<string, number[]> = {};
+    sleepEntries.forEach((entry) => {
+      const dateKey = entry.entry_date.split('T')[0] as string;
+      if (!dateKey) return;
+      if (entry.resting_heart_rate != null) {
+        if (!grouped[dateKey]) grouped[dateKey] = [];
+        grouped[dateKey].push(entry.resting_heart_rate);
+      }
+    });
+    return Object.entries(grouped)
+      .map(([date, values]) => ({
+        date,
+        resting_heart_rate:
+          values.length > 0
+            ? values.reduce((s, v) => s + v, 0) / values.length
+            : null,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
   };
 
   // Get the most recent sleep entry for the summary card
