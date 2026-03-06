@@ -127,12 +127,12 @@ const GlobalAISettings = () => {
         service_name: newService.service_name,
         service_type: newService.service_type,
         api_key: newService.api_key,
-        custom_url: newService.custom_url || '',
+        custom_url: newService.custom_url || null,
         system_prompt: newService.system_prompt || '',
         is_active: newService.is_active,
         model_name: newService.showCustomModelInput
           ? newService.custom_model_name
-          : newService.model_name || '',
+          : newService.model_name || null,
       };
       await createService(serviceData);
       // Reset form

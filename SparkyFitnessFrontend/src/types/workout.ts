@@ -77,7 +77,7 @@ export interface WorkoutPlanTemplate {
   plan_name: string;
   description?: string;
   start_date?: string;
-  end_date?: string;
+  end_date?: string | null;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;

@@ -115,8 +115,8 @@ export const createExerciseEntry = async (payload: {
   sets: WorkoutPresetSet[];
   image_url?: string;
   calories_burned?: number;
-  distance?: number;
-  avg_heart_rate?: number;
+  distance?: number | null;
+  avg_heart_rate?: number | null;
   imageFile?: File | null;
   activity_details?: {
     provider_name?: string;
@@ -192,9 +192,9 @@ export interface UpdateExerciseEntryPayload {
   calories_burned?: number;
   notes?: string;
   sets?: WorkoutPresetSet[];
-  image_url?: string;
-  distance?: number;
-  avg_heart_rate?: number;
+  image_url?: string | null;
+  distance?: number | null;
+  avg_heart_rate?: number | null;
   imageFile?: File | null;
   activity_details?: {
     id?: string;

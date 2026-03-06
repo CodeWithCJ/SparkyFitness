@@ -76,7 +76,9 @@ const EditExerciseEntryDialog = ({
     }));
   });
   const [notes, setNotes] = useState(entry.notes || '');
-  const [imageUrl, setImageUrl] = useState<string>(entry.image_url || '');
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    entry.image_url || null
+  );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(
     entry.calories_burned || ''
@@ -129,7 +131,7 @@ const EditExerciseEntryDialog = ({
 
   const handleClearImage = () => {
     setImageFile(null);
-    setImageUrl('');
+    setImageUrl(null);
   };
 
   const handleSetChange = (
@@ -269,7 +271,7 @@ const EditExerciseEntryDialog = ({
           image_url: imageUrl,
           distance:
             distanceInput === ''
-              ? 0
+              ? null
               : convertDistance(Number(distanceInput), distanceUnit, 'km'),
           avg_heart_rate:
             avgHeartRateInput === '' ? 0 : Number(avgHeartRateInput),

@@ -271,7 +271,7 @@ export const getNutritionixBrandedNutrients = async (
       }
       return {
         name: food.food_name,
-        brand: food.brand_name || '',
+        brand: food.brand_name || null,
         calories: food.nf_calories,
         protein: food.nf_protein,
         carbs: food.nf_total_carbohydrate,

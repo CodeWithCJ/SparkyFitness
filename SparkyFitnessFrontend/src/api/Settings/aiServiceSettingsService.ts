@@ -20,7 +20,7 @@ export const getAIServices = async (): Promise<AIService[]> => {
   }
 };
 
-export const getPreferences = async (): Promise<UserPreferencesChat> => {
+export const getPreferences = async (): Promise<UserPreferencesChat | null> => {
   try {
     const preferences = await apiCall(`/user-preferences`, {
       method: 'GET',
@@ -32,7 +32,7 @@ export const getPreferences = async (): Promise<UserPreferencesChat> => {
     // If it's a 404, it means no preferences are found, which is a valid scenario.
     // We return null in this case, and the calling function will handle it.
     if (message && message.includes('404')) {
-      return { auto_clear_history: '' };
+      return null;
     }
     throw err;
   }

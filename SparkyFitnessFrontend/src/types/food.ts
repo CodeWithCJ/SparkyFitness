@@ -36,7 +36,7 @@ export interface FoodVariant {
 export interface Food {
   id: string;
   name: string;
-  brand?: string;
+  brand?: string | null;
   is_custom: boolean;
   user_id?: string;
   shared_with_public?: boolean;

@@ -91,7 +91,7 @@ export interface NutritionixItem {
   id?: string;
   name: string;
   food_name?: string;
-  brand?: string;
+  brand?: string | null;
   brand_name?: string;
   image?: string;
   serving_size?: number;

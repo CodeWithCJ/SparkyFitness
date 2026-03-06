@@ -55,27 +55,33 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
       withings_last_sync_at:
         editData.provider_type === 'withings'
           ? editData.withings_last_sync_at
-          : '',
+          : null,
       withings_token_expires:
         editData.provider_type === 'withings'
           ? editData.withings_token_expires
-          : '',
+          : null,
       fitbit_last_sync_at:
-        editData.provider_type === 'fitbit' ? editData.fitbit_last_sync_at : '',
+        editData.provider_type === 'fitbit'
+          ? editData.fitbit_last_sync_at
+          : null,
       fitbit_token_expires:
         editData.provider_type === 'fitbit'
           ? editData.fitbit_token_expires
-          : '',
+          : null,
       polar_last_sync_at:
-        editData.provider_type === 'polar' ? editData.polar_last_sync_at : '',
+        editData.provider_type === 'polar' ? editData.polar_last_sync_at : null,
       polar_token_expires:
-        editData.provider_type === 'polar' ? editData.polar_token_expires : '',
+        editData.provider_type === 'polar'
+          ? editData.polar_token_expires
+          : null,
       strava_last_sync_at:
-        editData.provider_type === 'strava' ? editData.strava_last_sync_at : '',
+        editData.provider_type === 'strava'
+          ? editData.strava_last_sync_at
+          : null,
       strava_token_expires:
         editData.provider_type === 'strava'
           ? editData.strava_token_expires
-          : '',
+          : null,
       sync_frequency:
         editData.provider_type === 'withings' ||
         editData.provider_type === 'garmin' ||
@@ -120,7 +126,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
     setEditData({
       provider_name: provider.provider_name,
       provider_type: provider.provider_type,
-      app_id: provider.app_id || '',
+      app_id: provider.app_id || null,
       // Never pre-fill API keys when editing for security/privacy
       app_key: '',
       is_active: provider.is_active,

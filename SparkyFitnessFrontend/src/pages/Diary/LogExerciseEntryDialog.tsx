@@ -240,10 +240,10 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         imageFile: imageFile,
         distance:
           distanceInput === ''
-            ? 0
+            ? null
             : convertDistance(Number(distanceInput), distanceUnit, 'km'),
         avg_heart_rate:
-          avgHeartRateInput === '' ? 0 : Number(avgHeartRateInput),
+          avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
         ...(mappedDetails.length > 0 && { activity_details: mappedDetails }),
       };
 

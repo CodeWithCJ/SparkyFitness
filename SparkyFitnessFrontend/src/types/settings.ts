@@ -6,7 +6,7 @@ export interface AIService {
   custom_url: string | null;
   system_prompt: string | null;
   is_active: boolean;
-  model_name?: string;
+  model_name?: string | null;
   custom_model_name?: string; // Add custom_model_name to AIService interface
   is_public?: boolean; // Indicates if this is a public setting
   source?: 'user' | 'global' | 'environment'; // Indicates the source of the setting

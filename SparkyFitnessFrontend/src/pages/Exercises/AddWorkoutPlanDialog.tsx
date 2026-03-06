@@ -871,7 +871,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
       plan_name: planName,
       description: description,
       start_date: startDate,
-      end_date: endDate || '',
+      end_date: endDate || null,
       is_active: isActive,
       assignments: assignmentsToSave.map((a) => {
         // Calculate sort_order within its day
