@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
@@ -38,22 +38,18 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     }, [])
   );
 
-  useEffect(() => {
-    navigation.setParams({ selectedDate });
-  }, [selectedDate, navigation]);
-
-  const goToPreviousDay = () => setSelectedDate(prev => addDays(prev, -1));
-  const goToNextDay = () => setSelectedDate(prev => {
+  const goToPreviousDay = useCallback(() => setSelectedDate(prev => addDays(prev, -1)), []);
+  const goToNextDay = useCallback(() => setSelectedDate(prev => {
     const today = getTodayDate();
     const next = addDays(prev, 1);
     return next > today ? prev : next;
-  });
-  const goToToday = () => setSelectedDate(getTodayDate());
+  }), []);
+  const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
 
-  const swipeGesture = Gesture.Race(
+  const swipeGesture = useMemo(() => Gesture.Race(
     Gesture.Fling().direction(Directions.RIGHT).onEnd(goToPreviousDay).runOnJS(true),
     Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
-  );
+  ), [goToPreviousDay, goToNextDay]);
 
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);

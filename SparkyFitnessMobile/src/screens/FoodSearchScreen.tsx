@@ -604,7 +604,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
                   setSelectedProvider(provider.id);
                 }}
                 activeOpacity={0.7}
-                className={`flex-row items-center rounded-full px-3 py-1.5 border ${
+                className={`flex-row items-center rounded-full px-3 py-1 border ${
                   isActive
                     ? 'border-accent-primary bg-accent-primary'
                     : 'border-border-subtle bg-raised'

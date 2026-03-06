@@ -172,7 +172,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
             </View>
 
             {/* More link */}
-            {onViewEntry && (
+            {/* {onViewEntry && (
               <TouchableOpacity
                 onPress={() => {
                   bottomSheetRef.current?.dismiss();
@@ -183,7 +183,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
               >
                 <Text className="text-accent-primary text-sm font-medium">More</Text>
               </TouchableOpacity>
-            )}
+            )} */}
 
             {/* Done button */}
             <TouchableOpacity

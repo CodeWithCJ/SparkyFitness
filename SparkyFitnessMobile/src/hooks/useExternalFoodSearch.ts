@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import { searchOpenFoodFacts, searchUsda, searchFatSecret, searchMealie } from '../services/api/externalFoodSearchApi';
 import { externalFoodSearchQueryKey } from './queryKeys';
@@ -47,7 +48,10 @@ export function useExternalFoodSearch(
     placeholderData: keepPreviousData,
   });
 
-  const searchResults = query.data?.pages.flatMap((p) => p.items) ?? [];
+  const searchResults = useMemo(
+    () => query.data?.pages.flatMap((p) => p.items) ?? [],
+    [query.data?.pages],
+  );
   // When keepPreviousData is active, isPlaceholderData is true and data belongs
   // to the previous query key. Only treat the error as a load-more error when
   // the current query has real (non-placeholder) pages loaded.

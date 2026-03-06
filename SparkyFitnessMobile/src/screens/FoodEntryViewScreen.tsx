@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Pressable, ScrollView, TextInput } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,15 +34,27 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
   const canEdit = !!(entry.user_id && profile?.id === entry.user_id && !entry.food_entry_meal_id);
 
-  const [isEditing, setIsEditing] = useState(false);
+  interface EditState {
+    isEditing: boolean;
+    selectedDate: string;
+    selectedMealId: string | undefined;
+    selectedVariantId: string | undefined;
+    quantityText: string;
+    adjustedValues: FoodFormData | null;
+  }
 
-  // --- Edit state (called unconditionally per React rules) ---
   const initialDate = entry.entry_date.split('T')[0];
-  const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [selectedMealId, setSelectedMealId] = useState<string | undefined>(entry.meal_type_id);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(entry.variant_id);
-  const [quantityText, setQuantityText] = useState(String(entry.quantity));
-  const [adjustedValues, setAdjustedValues] = useState<FoodFormData | null>(null);
+  const [editState, setEditState] = useState<EditState>({
+    isEditing: false,
+    selectedDate: initialDate,
+    selectedMealId: entry.meal_type_id,
+    selectedVariantId: entry.variant_id,
+    quantityText: String(entry.quantity),
+    adjustedValues: null,
+  });
+
+  const { isEditing, selectedDate, selectedMealId, selectedVariantId, quantityText, adjustedValues } = editState;
+  const updateEdit = useCallback((patch: Partial<EditState>) => setEditState(prev => ({ ...prev, ...patch })), []);
 
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const effectiveMealId = selectedMealId ?? defaultMealTypeId;
@@ -53,7 +65,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
   // Active variant: the currently selected variant's data, or fallback to entry snapshot
   const activeVariant = useMemo(() => {
-    if (variants && selectedVariantId) {
+    if (variants && selectedVariantId && selectedVariantId !== entry.variant_id) {
       const v = variants.find((v: FoodVariantDetail) => v.id === selectedVariantId);
       if (v) {
         return {
@@ -124,34 +136,34 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     if (adjustedFromNav) {
       const previousServingSize = servingSizeRef.current;
       const newServingSize = parseFloat(adjustedFromNav.servingSize) || previousServingSize;
-      setAdjustedValues(adjustedFromNav);
-      if (newServingSize !== previousServingSize) {
-        setQuantityText(String(newServingSize));
-      }
+      updateEdit({
+        adjustedValues: adjustedFromNav,
+        ...(newServingSize !== previousServingSize ? { quantityText: String(newServingSize) } : {}),
+      });
       // Clear route params so variant changes don't replay stale overrides
       navigation.setParams({ adjustedValues: undefined });
     }
-  }, [adjustedFromNav, navigation]);
+  }, [adjustedFromNav, navigation, updateEdit]);
 
   const handleVariantChange = (variantId: string) => {
-    setSelectedVariantId(variantId);
-    setAdjustedValues(null);
-    if (variants) {
-      const v = variants.find((v: FoodVariantDetail) => v.id === variantId);
-      if (v) { setQuantityText(String(v.serving_size)); return; }
-    }
+    const v = variants?.find((v: FoodVariantDetail) => v.id === variantId);
+    updateEdit({
+      selectedVariantId: variantId,
+      adjustedValues: null,
+      ...(v ? { quantityText: String(v.serving_size) } : {}),
+    });
   };
 
   const updateQuantityText = (text: string) => {
     if (/^\d*\.?\d*$/.test(text)) {
-      setQuantityText(text);
+      updateEdit({ quantityText: text });
     }
   };
 
  const clampQuantity = () => {
     if (quantity <= 0) {
       const minQuantity = (displayValues.servingSize * 0.5) || 1;
-      setQuantityText(String(minQuantity));
+      updateEdit({ quantityText: String(minQuantity) });
     }
   };
 
@@ -163,7 +175,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         ? Math.ceil(quantity / increment) * increment
         : Math.floor(quantity / increment) * increment;
     const next = boundary !== quantity ? boundary : quantity + delta * increment;
-    setQuantityText(String(Math.max(increment, next)));
+    updateEdit({ quantityText: String(Math.max(increment, next)) });
   };
 
   const navigateToNutritionForm = () => {
@@ -204,13 +216,14 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         if (mt) mergedEntry.meal_type = mt.name;
       }
       setEntry(mergedEntry);
-      // Reset edit state to match the saved entry
-      setSelectedDate(mergedEntry.entry_date.split('T')[0]);
-      setSelectedMealId(mergedEntry.meal_type_id);
-      setSelectedVariantId(mergedEntry.variant_id);
-      setQuantityText(String(mergedEntry.quantity));
-      setAdjustedValues(null);
-      setIsEditing(false);
+      setEditState({
+        isEditing: false,
+        selectedDate: mergedEntry.entry_date.split('T')[0],
+        selectedMealId: mergedEntry.meal_type_id,
+        selectedVariantId: mergedEntry.variant_id,
+        quantityText: String(mergedEntry.quantity),
+        adjustedValues: null,
+      });
     },
   });
 
@@ -242,7 +255,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
     // Nothing changed — just exit edit mode
     if (Object.keys(payload).length === 0) {
-      setIsEditing(false);
+      updateEdit({ isEditing: false });
       return;
     }
 
@@ -288,7 +301,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   const servings = entry.serving_size ? entry.quantity / entry.serving_size : entry.quantity;
   const servingsDisplay = servings === 1
     ? `1 serving · ${entry.serving_size} ${entry.unit} per serving`
-    : `${servings % 1 === 0 ? servings : servings.toFixed(2)} servings · ${entry.serving_size} ${entry.unit} per serving`;
+    : `${servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2))} servings · ${entry.serving_size} ${entry.unit} per serving`;
 
   const otherNutrients = isEditing
     ? [
@@ -318,7 +331,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         {canEdit && !isEditing && (
           <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={{ marginLeft: 'auto', zIndex: 10 }}>
             <TouchableOpacity
-              onPress={() => setIsEditing(true)}
+              onPress={() => updateEdit({ isEditing: true })}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Text className="text-accent-primary text-base font-medium">Edit</Text>
@@ -385,7 +398,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
               </View>
               <View className="flex-row items-center mt-2">
                 <Text className="text-text-secondary text-sm">
-                  {editServings % 1 === 0 ? editServings : editServings.toFixed(2)} {editServings === 1 ? 'serving' : 'servings'}
+                  {editServings % 1 === 0 ? editServings : parseFloat(editServings.toFixed(2))} {editServings === 1 ? 'serving' : 'servings'}
                 </Text>
                 {variantPickerOptions.length > 1 ? (
                   <BottomSheetPicker
@@ -498,49 +511,50 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         {/* Date & Meal type */}
         <Animated.View layout={LinearTransition.duration(300)} className="mt-2 gap-2">
           {/* Date */}
-          <TouchableOpacity
-            onPress={isEditing ? () => calendarRef.current?.present() : undefined}
-            activeOpacity={isEditing ? 0.7 : 1}
-            disabled={!isEditing}
-            className="flex-row items-center"
-          >
-            <Text className="text-text-secondary text-base">Date</Text>
-            <Text className="text-text-primary text-base font-medium mx-1.5">
-              {formatDateLabel(isEditing ? selectedDate : entry.entry_date.split('T')[0])}
-            </Text>
-            {isEditing && (
-              <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
-                <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
-              </Animated.View>
+          <View className="flex-row items-center">
+            <Text className="text-text-secondary text-base w-12">Date</Text>
+            {isEditing ? (
+              <TouchableOpacity
+                onPress={() => calendarRef.current?.present()}
+                activeOpacity={0.7}
+                className="flex-row items-center bg-raised border border-border-subtle rounded-lg px-3 py-1.5"
+              >
+                <Text className="text-text-primary text-base font-medium">
+                  {formatDateLabel(selectedDate)}
+                </Text>
+                <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
+              </TouchableOpacity>
+            ) : (
+              <Text className="text-text-primary text-base font-medium">
+                {formatDateLabel(entry.entry_date.split('T')[0])}
+              </Text>
             )}
-          </TouchableOpacity>
+          </View>
 
           {/* Meal type */}
           <View className="flex-row items-center">
-            <Text className="text-text-secondary text-base">Meal</Text>
+            <Text className="text-text-secondary text-base w-12">Meal</Text>
             {isEditing && selectedMealType ? (
               <BottomSheetPicker
                 value={effectiveMealId!}
                 options={mealPickerOptions}
-                onSelect={setSelectedMealId}
+                onSelect={(id) => updateEdit({ selectedMealId: id })}
                 title="Select Meal"
                 renderTrigger={({ onPress }) => (
                   <TouchableOpacity
                     onPress={onPress}
                     activeOpacity={0.7}
-                    className="flex-row items-center"
+                    className="flex-row items-center bg-raised border border-border-subtle rounded-lg px-3 py-1.5"
                   >
-                    <Text className="text-text-primary text-base font-medium mx-1.5">
+                    <Text className="text-text-primary text-base font-medium">
                       {getMealTypeLabel(selectedMealType.name)}
                     </Text>
-                    <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
-                      <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
-                    </Animated.View>
+                    <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
                   </TouchableOpacity>
                 )}
               />
             ) : (
-              <Text className="text-text-primary text-base font-medium mx-1.5">
+              <Text className="text-text-primary text-base font-medium">
                 {getMealTypeLabel(entry.meal_type)}
               </Text>
             )}
@@ -563,7 +577,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       </ScrollView>
 
       {isEditing && (
-        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={(date) => updateEdit({ selectedDate: date })} />
       )}
     </View>
   );
