@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, {
@@ -15,12 +15,13 @@ import type { EntryNutrition } from './FoodSummary';
 interface SwipeableFoodRowProps {
   entry: FoodEntry;
   nutrition: EntryNutrition;
+  onAdjustServing?: (entry: FoodEntry) => void;
 }
 
 const ROW_COLLAPSE_DURATION = 300;
 const DELETE_ACTION_WIDTH = 80;
 
-const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition }) => {
+const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, onAdjustServing }) => {
   const navigation = useNavigation();
   const swipeableRef = useRef<any>(null);
   const rowHeight = useSharedValue<number | null>(null);
@@ -74,6 +75,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition })
     </TouchableOpacity>
   );
 
+  const canQuickAdjust = !!onAdjustServing && entry.serving_size > 0 && !entry.food_entry_meal_id;
   const name = entry.food_name || 'Unknown food';
 
   return (
@@ -84,21 +86,35 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition })
         overshootRight={false}
         rightThreshold={40}
       >
-        <TouchableOpacity
-          className="py-2 flex-row justify-between items-center bg-surface"
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('FoodEntryView', { entry })}
-        >
-          <Text className="text-md text-text-primary flex-1 mr-2" numberOfLines={1}>
-            {name}
-            <Text className="text-sm text-text-secondary">
-              {' \u00B7 '}{entry.quantity} {entry.unit}
+        <View className="py-2 flex-row items-center bg-surface">
+          <TouchableOpacity
+            className="flex-1 mr-2"
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('FoodEntryView', { entry })}
+          >
+            <Text className="text-md text-text-primary" numberOfLines={1}>
+              {name}
+              <Text className="text-sm text-text-secondary">
+                {' \u00B7 '}{entry.quantity} {entry.unit}
+              </Text>
             </Text>
-          </Text>
-          <Text className="text-sm text-text-secondary font-medium mr-2">
-            {nutrition.calories} Cal
-          </Text>
-        </TouchableOpacity>
+          </TouchableOpacity>
+          {canQuickAdjust ? (
+            <TouchableOpacity
+              onPress={() => onAdjustServing!(entry)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+            >
+              <Text className="text-sm text-text-secondary font-medium">
+                {nutrition.calories} Cal {'\u25BE'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <Text className="text-sm text-text-secondary font-medium mr-2">
+              {nutrition.calories} Cal
+            </Text>
+          )}
+        </View>
       </ReanimatedSwipeable>
     </Animated.View>
   );

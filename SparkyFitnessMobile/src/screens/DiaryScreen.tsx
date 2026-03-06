@@ -8,6 +8,7 @@ import DateNavigator from '../components/DateNavigator';
 import FoodSummary from '../components/FoodSummary';
 import ExerciseSummary from '../components/ExerciseSummary';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import { useServerConnection, useDailySummary } from '../hooks';
 import { addDays, getTodayDate } from '../utils/dateUtils';
@@ -25,6 +26,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const lastKnownToday = useRef(getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
+  const servingSheetRef = useRef<ServingAdjustSheetRef>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -145,7 +147,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           </>
         ) : (
           <>
-            <FoodSummary foodEntries={summary.foodEntries} onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })} />
+            <FoodSummary foodEntries={summary.foodEntries} onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })} onAdjustServing={(entry) => servingSheetRef.current?.present(entry)} />
             <ExerciseSummary exerciseEntries={summary.exerciseEntries} />
           </>
         )}
@@ -170,6 +172,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         )}
         {renderContent()}
         <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+        <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
       </View>
     </GestureDetector>
   );
