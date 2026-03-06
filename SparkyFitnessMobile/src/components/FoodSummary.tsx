@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { FoodEntry } from '../types/foodEntries';
 import Icon, { type IconName } from './Icon';
@@ -8,6 +8,8 @@ import SwipeableFoodRow from './SwipeableFoodRow';
 
 interface FoodSummaryProps {
   foodEntries: FoodEntry[];
+  onAddFood?: () => void;
+  onAdjustServing?: (entry: FoodEntry) => void;
 }
 
 function groupByMealType(entries: FoodEntry[]): Record<string, FoodEntry[]> {
@@ -52,9 +54,10 @@ export function calculateEntryNutrition(entry: FoodEntry): EntryNutrition {
 interface MealSectionProps {
   mealType: string;
   entries: FoodEntry[];
+  onAdjustServing?: (entry: FoodEntry) => void;
 }
 
-const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
+const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustServing }) => {
   const config = MEAL_CONFIG[mealType] || { label: mealType, icon: 'meal-snack' as IconName };
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
@@ -62,7 +65,7 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
 
   return (
     <View className="bg-surface rounded-xl p-4 overflow-hidden shadow-sm">
-      <View className="flex-row items-center gap-2 mb-2">
+      <View className="flex-row gap-2 mb-2 items-baseline">
         <Icon name={config.icon} size={18} color={accentPrimary} />
         <Text className="text-base font-bold text-text-primary flex-1">{config.label}</Text>
         {totalCalories > 0 && (
@@ -78,6 +81,7 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
             key={entry.id || index}
             entry={entry}
             nutrition={nutrition}
+            onAdjustServing={onAdjustServing}
           />
         );
       })}
@@ -85,12 +89,12 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries }) => {
   );
 };
 
-const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries }) => {
+const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries, onAddFood, onAdjustServing }) => {
   if (foodEntries.length === 0) {
     return (
-      <View className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
-        <Text className="text-text-muted text-base">No food entries yet</Text>
-      </View>
+      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
+        <Text className="text-text-muted text-base">Tap to add food</Text>
+      </Pressable>
     );
   }
 
@@ -100,19 +104,19 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({ foodEntries }) => {
 
   if (mealTypesWithEntries.length === 0 && !hasOther) {
     return (
-      <View className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
-        <Text className="text-text-muted text-base">No food entries yet</Text>
-      </View>
+      <Pressable onPress={onAddFood} className="bg-surface rounded-xl p-4 mt-2 shadow-sm items-center py-6">
+        <Text className="text-text-muted text-base">Tap to add food</Text>
+      </Pressable>
     );
   }
 
   return (
     <View className="gap-2 my-2">
       {mealTypesWithEntries.map((mealType) => (
-        <MealSection key={mealType} mealType={mealType} entries={grouped[mealType]} />
+        <MealSection key={mealType} mealType={mealType} entries={grouped[mealType]} onAdjustServing={onAdjustServing} />
       ))}
       {hasOther && (
-        <MealSection mealType="other" entries={grouped.other} />
+        <MealSection mealType="other" entries={grouped.other} onAdjustServing={onAdjustServing} />
       )}
     </View>
   );

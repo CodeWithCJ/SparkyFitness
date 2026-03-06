@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import DateNavigator from '../components/DateNavigator';
 import FoodSummary from '../components/FoodSummary';
 import ExerciseSummary from '../components/ExerciseSummary';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import { useServerConnection, useDailySummary } from '../hooks';
 import { addDays, getTodayDate } from '../utils/dateUtils';
@@ -25,6 +26,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const lastKnownToday = useRef(getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
+  const servingSheetRef = useRef<ServingAdjustSheetRef>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -36,22 +38,18 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     }, [])
   );
 
-  useEffect(() => {
-    navigation.setParams({ selectedDate });
-  }, [selectedDate, navigation]);
-
-  const goToPreviousDay = () => setSelectedDate(prev => addDays(prev, -1));
-  const goToNextDay = () => setSelectedDate(prev => {
+  const goToPreviousDay = useCallback(() => setSelectedDate(prev => addDays(prev, -1)), []);
+  const goToNextDay = useCallback(() => setSelectedDate(prev => {
     const today = getTodayDate();
     const next = addDays(prev, 1);
     return next > today ? prev : next;
-  });
-  const goToToday = () => setSelectedDate(getTodayDate());
+  }), []);
+  const goToToday = useCallback(() => setSelectedDate(getTodayDate()), []);
 
-  const swipeGesture = Gesture.Race(
+  const swipeGesture = useMemo(() => Gesture.Race(
     Gesture.Fling().direction(Directions.RIGHT).onEnd(goToPreviousDay).runOnJS(true),
     Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
-  );
+  ), [goToPreviousDay, goToNextDay]);
 
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
@@ -134,10 +132,18 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         }
       >
         {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 ? (
-          <EmptyDayIllustration />
+          <>
+            <EmptyDayIllustration />
+            <TouchableOpacity
+              className="bg-accent-primary rounded-xl py-3 px-6 mt-4 self-center"
+              onPress={() => navigation.navigate('FoodSearch', { date: selectedDate })}
+            >
+              <Text className="text-white font-semibold">Add Food</Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <>
-            <FoodSummary foodEntries={summary.foodEntries} />
+            <FoodSummary foodEntries={summary.foodEntries} onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })} onAdjustServing={(entry) => servingSheetRef.current?.present(entry)} />
             <ExerciseSummary exerciseEntries={summary.exerciseEntries} />
           </>
         )}
@@ -162,6 +168,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         )}
         {renderContent()}
         <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+        <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
       </View>
     </GestureDetector>
   );

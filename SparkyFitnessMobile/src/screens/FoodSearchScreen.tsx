@@ -1,12 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-
   View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   SectionList,
   FlatList,
+  ScrollView,
   TextInput,
   Platform,
 } from 'react-native';
@@ -14,8 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import SegmentedControl from '../components/SegmentedControl';
-import BottomSheetPicker, { type PickerOption } from '../components/BottomSheetPicker';
-import { useServerConnection, useFoods, useFoodSearch, useMeals, useMealSearch, useExternalProviders, useExternalFoodSearch } from '../hooks';
+import { useServerConnection, useFoods, useFoodSearch, useMeals, useMealSearch, useExternalProviders, useExternalFoodSearch, usePreferences } from '../hooks';
 import { fetchFatSecretNutrients } from '../services/api/externalFoodSearchApi';
 import { FoodItem, TopFoodItem } from '../types/foods';
 import { ExternalFoodItem } from '../types/externalFoods';
@@ -48,6 +47,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     '--color-text-secondary',
   ]) as [string, string, string];
   const { isConnected } = useServerConnection();
+  const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({ enabled: isConnected });
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
@@ -79,6 +79,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   });
 
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const hasUserSelectedProvider = useRef(false);
   const [loadingFoodId, setLoadingFoodId] = useState<string | null>(null);
 
   const selectedProviderType = useMemo(
@@ -92,6 +93,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     isSearchActive: isOnlineSearchActive,
     isSearchError: isOnlineSearchError,
     isProviderSupported,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
   } = useExternalFoodSearch(searchText, selectedProviderType, {
     enabled: isConnected && activeTab === 'online' && selectedProvider !== null,
     providerId: selectedProvider ?? undefined,
@@ -99,10 +104,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   useEffect(() => {
     if (providers.length === 0) return;
-    if (selectedProvider === null || !providers.some((p) => p.id === selectedProvider)) {
-      setSelectedProvider(providers[0].id);
-    }
-  }, [providers, selectedProvider]);
+    if (hasUserSelectedProvider.current && providers.some((p) => p.id === selectedProvider)) return;
+
+    const defaultId = preferences?.default_food_data_provider_id;
+    const defaultProvider = defaultId ? providers.find((p) => p.id === defaultId) : undefined;
+    setSelectedProvider(defaultProvider?.id ?? providers[0].id);
+  }, [providers, selectedProvider, preferences?.default_food_data_provider_id]);
 
   const showFoodInfo = (item: FoodInfoItem) => {
     navigation.navigate('FoodEntryAdd', { item, date });
@@ -496,24 +503,35 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     return (
       <FlatList
         data={onlineSearchResults}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => `${item.source}-${item.id}-${index}`}
         renderItem={renderExternalFoodItem}
         keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={
-          isOnlineSearching ? (
-            <View className="py-2 items-center">
+        ListFooterComponent={
+          isFetchNextPageError ? (
+            <TouchableOpacity
+              onPress={() => fetchNextPage()}
+              className="py-3 items-center"
+            >
+              <Text className="text-accent-primary text-sm font-medium">
+                Failed to load more. Tap to retry
+              </Text>
+            </TouchableOpacity>
+          ) : isFetchingNextPage ? (
+            <View className="py-3 items-center">
               <ActivityIndicator size="small" color={accentColor} />
             </View>
+          ) : hasNextPage ? (
+            <TouchableOpacity
+              onPress={() => fetchNextPage()}
+              className="py-4 mb-4 items-center"
+            >
+              <Text className="text-accent-primary text-sm font-medium">Load More</Text>
+            </TouchableOpacity>
           ) : null
         }
       />
     );
   };
-
-  const providerOptions: PickerOption<string>[] = useMemo(
-    () => providers.map((p) => ({ label: p.provider_name, value: p.id })),
-    [providers],
-  );
 
   const selectedProviderName = useMemo(
     () => providers.find((p) => p.id === selectedProvider)?.provider_name ?? '',
@@ -570,27 +588,39 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     return (
       <View className="flex-1">
-        <View className="px-4 py-2">
-          <BottomSheetPicker
-            value={selectedProvider!}
-            options={providerOptions}
-            onSelect={setSelectedProvider}
-            title="Select Provider"
-            renderTrigger={({ onPress }) => (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerClassName="px-4 gap-2 items-center"
+          className="grow-0"
+        >
+          {providers.map((provider) => {
+            const isActive = provider.id === selectedProvider;
+            return (
               <TouchableOpacity
-                onPress={onPress}
+                key={provider.id}
+                onPress={() => {
+                  hasUserSelectedProvider.current = true;
+                  setSelectedProvider(provider.id);
+                }}
                 activeOpacity={0.7}
-                className="flex-row items-center bg-raised rounded-full px-3 py-1.5 border border-border-subtle self-start"
+                className={`flex-row items-center rounded-full px-3 py-1 border ${
+                  isActive
+                    ? 'border-accent-primary bg-accent-primary'
+                    : 'border-border-subtle bg-raised'
+                }`}
               >
-                <Icon name="globe" size={16} color={accentColor} />
-                <Text className="text-text-primary text-sm font-medium mx-1.5">
-                  {selectedProviderName}
+                <Text
+                  className={`text-sm font-medium ${
+                    isActive ? 'text-white' : 'text-text-primary'
+                  }`}
+                >
+                  {provider.provider_name}
                 </Text>
-                <Icon name="chevron-down" size={12} color={textMuted} />
               </TouchableOpacity>
-            )}
-          />
-        </View>
+            );
+          })}
+        </ScrollView>
         {!isProviderSupported ? (
           <View className="flex-1 justify-center items-center px-6">
             <Icon name="globe" size={48} color={textMuted} />

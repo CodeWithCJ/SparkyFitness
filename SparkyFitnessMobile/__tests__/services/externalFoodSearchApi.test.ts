@@ -128,39 +128,50 @@ describe('externalFoodSearchApi', () => {
       apiKey: 'test-api-key',
     };
 
-    test('calls correct endpoint with query', async () => {
+    test('calls correct endpoint with query and page', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
           Promise.resolve({
-            count: 0,
-            page: 1,
-            page_count: 0,
-            page_size: 20,
             products: [],
-            skip: 0,
+            pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
           }),
       });
 
       await searchOpenFoodFacts('peanut butter');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/foods/openfoodfacts/search?query=peanut+butter'),
+        expect.stringContaining('/api/foods/openfoodfacts/search?query=peanut+butter&page=1'),
         expect.anything(),
       );
     });
 
-    test('unwraps response and transforms products', async () => {
+    test('passes page parameter to endpoint', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () =>
           Promise.resolve({
-            count: 1,
-            page: 1,
-            page_count: 1,
-            page_size: 20,
+            products: [],
+            pagination: { page: 3, pageSize: 20, totalCount: 50, hasMore: false },
+          }),
+      });
+
+      await searchOpenFoodFacts('peanut butter', 3);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('page=3'),
+        expect.anything(),
+      );
+    });
+
+    test('returns items and pagination from response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
             products: [
               {
                 product_name: 'Banana',
@@ -169,17 +180,18 @@ describe('externalFoodSearchApi', () => {
                 nutriments: { 'energy-kcal_100g': 89 },
               },
             ],
-            skip: 0,
+            pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
           }),
       });
 
-      const results = await searchOpenFoodFacts('banana');
+      const result = await searchOpenFoodFacts('banana');
 
-      expect(results).toHaveLength(1);
-      expect(results[0].name).toBe('Banana');
-      expect(results[0].brand).toBe('Chiquita');
-      expect(results[0].calories).toBe(89);
-      expect(results[0].source).toBe('openfoodfacts');
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].name).toBe('Banana');
+      expect(result.items[0].brand).toBe('Chiquita');
+      expect(result.items[0].calories).toBe(89);
+      expect(result.items[0].source).toBe('openfoodfacts');
+      expect(result.pagination).toEqual({ page: 1, pageSize: 20, totalCount: 1, hasMore: false });
     });
 
     test('filters out products with falsy product_name', async () => {
@@ -188,24 +200,20 @@ describe('externalFoodSearchApi', () => {
         ok: true,
         json: () =>
           Promise.resolve({
-            count: 3,
-            page: 1,
-            page_count: 1,
-            page_size: 20,
             products: [
               { product_name: 'Good Food', code: '1', nutriments: {} },
               { product_name: '', code: '2', nutriments: {} },
               { product_name: 'Also Good', code: '3', nutriments: {} },
             ],
-            skip: 0,
+            pagination: { page: 1, pageSize: 20, totalCount: 3, hasMore: false },
           }),
       });
 
-      const results = await searchOpenFoodFacts('food');
+      const result = await searchOpenFoodFacts('food');
 
-      expect(results).toHaveLength(2);
-      expect(results[0].name).toBe('Good Food');
-      expect(results[1].name).toBe('Also Good');
+      expect(result.items).toHaveLength(2);
+      expect(result.items[0].name).toBe('Good Food');
+      expect(result.items[1].name).toBe('Also Good');
     });
 
     test('propagates errors', async () => {
@@ -309,17 +317,17 @@ describe('externalFoodSearchApi', () => {
     });
 
     describe('searchUsda', () => {
-      test('calls correct endpoint with x-provider-id header', async () => {
+      test('calls correct endpoint with x-provider-id header and page', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({ foods: [] }),
+          json: () => Promise.resolve({ foods: [], pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
         });
 
         await searchUsda('blueberry', 'provider-abc');
 
         expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/foods/usda/search?query=blueberry'),
+          expect.stringContaining('/api/foods/usda/search?query=blueberry&page=1'),
           expect.objectContaining({
             headers: expect.objectContaining({
               'x-provider-id': 'provider-abc',
@@ -328,7 +336,7 @@ describe('externalFoodSearchApi', () => {
         );
       });
 
-      test('transforms response items', async () => {
+      test('returns items and pagination from response', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
@@ -344,16 +352,18 @@ describe('externalFoodSearchApi', () => {
                   ],
                 },
               ],
+              pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
             }),
         });
 
-        const results = await searchUsda('banana', 'provider-1');
+        const result = await searchUsda('banana', 'provider-1');
 
-        expect(results).toHaveLength(1);
-        expect(results[0].name).toBe('Banana, raw');
-        expect(results[0].brand).toBe('Fresh Farms');
-        expect(results[0].calories).toBe(89);
-        expect(results[0].source).toBe('usda');
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].name).toBe('Banana, raw');
+        expect(result.items[0].brand).toBe('Fresh Farms');
+        expect(result.items[0].calories).toBe(89);
+        expect(result.items[0].source).toBe('usda');
+        expect(result.pagination).toEqual({ page: 1, pageSize: 20, totalCount: 1, hasMore: false });
       });
 
       test('filters out items with empty description', async () => {
@@ -367,14 +377,15 @@ describe('externalFoodSearchApi', () => {
                 { fdcId: 2, description: '', foodNutrients: [] },
                 { fdcId: 3, description: 'Also Good', foodNutrients: [] },
               ],
+              pagination: { page: 1, pageSize: 20, totalCount: 3, hasMore: false },
             }),
         });
 
-        const results = await searchUsda('food', 'provider-1');
+        const result = await searchUsda('food', 'provider-1');
 
-        expect(results).toHaveLength(2);
-        expect(results[0].name).toBe('Good Food');
-        expect(results[1].name).toBe('Also Good');
+        expect(result.items).toHaveLength(2);
+        expect(result.items[0].name).toBe('Good Food');
+        expect(result.items[1].name).toBe('Also Good');
       });
 
       test('propagates errors', async () => {
@@ -501,17 +512,17 @@ describe('externalFoodSearchApi', () => {
     });
 
     describe('searchFatSecret', () => {
-      test('calls correct endpoint with x-provider-id header', async () => {
+      test('calls correct endpoint with x-provider-id header and page', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({ foods: { food: [] } }),
+          json: () => Promise.resolve({ foods: { food: [] }, pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
         });
 
         await searchFatSecret('rice', 'provider-fs');
 
         expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/foods/fatsecret/search?query=rice'),
+          expect.stringContaining('/api/foods/fatsecret/search?query=rice&page=1'),
           expect.objectContaining({
             headers: expect.objectContaining({
               'x-provider-id': 'provider-fs',
@@ -520,7 +531,7 @@ describe('externalFoodSearchApi', () => {
         );
       });
 
-      test('transforms and filters response', async () => {
+      test('returns items and pagination from response', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
@@ -540,15 +551,17 @@ describe('externalFoodSearchApi', () => {
                   },
                 ],
               },
+              pagination: { page: 1, pageSize: 20, totalCount: 2, hasMore: false },
             }),
         });
 
-        const results = await searchFatSecret('rice', 'provider-fs');
+        const result = await searchFatSecret('rice', 'provider-fs');
 
-        expect(results).toHaveLength(1);
-        expect(results[0].name).toBe('Fried Rice');
-        expect(results[0].source).toBe('fatsecret');
-        expect(results[0].calories).toBe(627);
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].name).toBe('Fried Rice');
+        expect(result.items[0].source).toBe('fatsecret');
+        expect(result.items[0].calories).toBe(627);
+        expect(result.pagination).toEqual({ page: 1, pageSize: 20, totalCount: 2, hasMore: false });
       });
 
       test('handles single food object (not array)', async () => {
@@ -564,37 +577,38 @@ describe('externalFoodSearchApi', () => {
                   food_description: 'Per 100g - Calories: 200kcal | Fat: 10g | Carbs: 20g | Protein: 15g',
                 },
               },
+              pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
             }),
         });
 
-        const results = await searchFatSecret('solo', 'provider-fs');
+        const result = await searchFatSecret('solo', 'provider-fs');
 
-        expect(results).toHaveLength(1);
-        expect(results[0].name).toBe('Solo Result');
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].name).toBe('Solo Result');
       });
 
-      test('returns empty array when foods.food is missing (no matches)', async () => {
+      test('returns empty items when foods.food is missing (no matches)', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({ foods: {} }),
+          json: () => Promise.resolve({ foods: {}, pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
         });
 
-        const results = await searchFatSecret('nonexistent', 'provider-fs');
+        const result = await searchFatSecret('nonexistent', 'provider-fs');
 
-        expect(results).toEqual([]);
+        expect(result.items).toEqual([]);
       });
 
-      test('returns empty array when foods is missing', async () => {
+      test('returns empty items when foods is missing', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({}),
+          json: () => Promise.resolve({ pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
         });
 
-        const results = await searchFatSecret('nonexistent', 'provider-fs');
+        const result = await searchFatSecret('nonexistent', 'provider-fs');
 
-        expect(results).toEqual([]);
+        expect(result.items).toEqual([]);
       });
     });
 

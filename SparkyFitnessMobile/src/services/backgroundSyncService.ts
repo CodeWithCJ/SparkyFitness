@@ -32,6 +32,7 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
   const now = new Date();
   const lastSyncedTimeStr = await loadLastSyncedTime();
   const lastSyncedDate = lastSyncedTimeStr ? new Date(lastSyncedTimeStr) : new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  addLog(`[Background Sync] Last synced: ${lastSyncedTimeStr ?? 'never (defaulting to 24h ago)'}`, 'DEBUG');
   const endDate = now;
 
   // Session metrics use an overlap window to catch late-arriving records whose
@@ -98,6 +99,7 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
 
   if (allData.length > 0) {
     addLog(`[Background Sync] Collected ${allData.length} records (${collectedCounts.join(', ')})`, 'DEBUG');
+    addLog(`[Background Sync] Sending ${allData.length} records to server`, 'INFO');
     await syncHealthData(allData);
     await saveLastSyncedTime();
     addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'SUCCESS');
@@ -107,6 +109,7 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
 };
 
 TaskManager.defineTask(BACKGROUND_TASK_NAME, async () => {
+  addLog('[Background Sync] Task invoked by OS', 'INFO');
   try {
     await performBackgroundSync(BACKGROUND_TASK_NAME);
     return BackgroundTask.BackgroundTaskResult.Success;
@@ -129,12 +132,12 @@ export const configureBackgroundSync = async (): Promise<void> => {
     await BackgroundTask.registerTaskAsync(BACKGROUND_TASK_NAME, {
       minimumInterval: 240, // minutes; Android respects this roughly, iOS treats it as a hint
     });
-    const status = await BackgroundTask.getStatusAsync();
-    if (status === BackgroundTask.BackgroundTaskStatus.Available) {
-      // addLog('[Background Sync] Background task registered successfully', 'INFO');
-    } else {
-      addLog('[Background Sync] Background task registration skipped (restricted environment)', 'WARNING');
-    }
+    // const status = await BackgroundTask.getStatusAsync();
+    // // if (status === BackgroundTask.BackgroundTaskStatus.Available) {
+    // //   addLog('[Background Sync] Background task registered successfully', 'INFO');
+    // // } else {
+    // //   addLog('[Background Sync] Background task registration skipped (restricted environment)', 'WARNING');
+    // // }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[Background Sync] Failed to register background task: ${message}`, 'ERROR');
@@ -144,6 +147,7 @@ export const configureBackgroundSync = async (): Promise<void> => {
 export const stopBackgroundSync = async (): Promise<void> => {
   try {
     await BackgroundTask.unregisterTaskAsync(BACKGROUND_TASK_NAME);
+    addLog('[Background Sync] Background task unregistered', 'INFO');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[Background Sync] Background task failed to stop: ${message}`, 'ERROR');
@@ -151,5 +155,6 @@ export const stopBackgroundSync = async (): Promise<void> => {
 };
 
 export const triggerManualSync = async (): Promise<void> => {
+  addLog('[Background Sync] Manual sync triggered', 'INFO');
   await performBackgroundSync('manual-sync');
 };

@@ -1,6 +1,6 @@
 # Sync API for Mobile App
 
-## POST /health-data
+## POST /api/health-data
 
 ### Authentication
 

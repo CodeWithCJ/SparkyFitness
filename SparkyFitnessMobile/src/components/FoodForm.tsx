@@ -212,7 +212,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
           </View>
           <View className="flex-row gap-3">
             {renderNumericField('Carbs', 'carbs', 'g', false, 'fiber')}
-            {renderNumericField('Fiber', 'fiber', 'g')}
+            {renderNumericField('Fiber', 'fiber', 'g', false, showMoreNutrients ? 'saturatedFat' : undefined)}
           </View>
           <TouchableOpacity
             onPress={() => setShowMoreNutrients((prev) => !prev)}

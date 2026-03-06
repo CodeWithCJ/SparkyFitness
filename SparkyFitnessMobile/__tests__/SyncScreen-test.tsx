@@ -1,20 +1,15 @@
 import { render, screen } from '@testing-library/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 import SyncScreen from '@/src/screens/SyncScreen';
 import { NavigationContainer } from '@react-navigation/native';
 import SettingsScreen from '@/src/screens/SettingsScreen';
 import { createStackNavigator } from '@react-navigation/stack';
+import { createTestQueryClient } from './hooks/queryTestUtils';
 
 const Stack = createStackNavigator();
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-    },
-  },
-});
+const queryClient = createTestQueryClient();
 
 const AppNavigator = () => {
   return (
@@ -30,9 +25,12 @@ const AppNavigator = () => {
 };
 
 describe('<SyncScreen />', () => {
+  afterEach(() => {
+    queryClient.clear();
+  });
+
   test('renders Sync Now button', async () => {
     render(<AppNavigator />);
-    expect(screen.getByText('Sync Now')).toBeVisible();
-    
+    expect(await screen.findByText('Sync Now')).toBeVisible();
   });
 });

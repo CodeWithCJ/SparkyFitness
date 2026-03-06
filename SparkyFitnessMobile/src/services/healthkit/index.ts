@@ -174,7 +174,7 @@ export const requestHealthPermissions = async (
   }
 
   const isSimulator = Platform.OS === 'ios' && (Platform.constants as { simulator?: boolean })?.simulator === true;
-  if (isSimulator && !global?.FORCE_HEALTHKIT_ON_SIM) {
+  if (isSimulator && !(globalThis as Record<string, unknown>).FORCE_HEALTHKIT_ON_SIM) {
     return true;
   }
 

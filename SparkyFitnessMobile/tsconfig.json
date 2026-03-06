@@ -11,5 +11,9 @@
   "include": [
     "**/*.ts",
     "**/*.tsx"
+  ],
+  "exclude": [
+    "__tests__",
+    "plugins"
   ]
 }

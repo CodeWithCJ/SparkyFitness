@@ -8,12 +8,13 @@ const {
 const MealieService = require("../integrations/mealie/mealieService"); // Import MealieService
 const TandoorService = require("../integrations/tandoor/tandoorService"); // Import TandoorService
 
-async function searchFatSecretFoods(query, clientId, clientSecret) {
+async function searchFatSecretFoods(query, clientId, clientSecret, page = 1) {
   try {
     const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
     const searchUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams({
       method: "foods.search",
       search_expression: query,
+      page_number: page - 1,
       format: "json",
     }).toString()}`;
     log("info", `FatSecret Search URL: ${searchUrl}`);
@@ -33,7 +34,19 @@ async function searchFatSecretFoods(query, clientId, clientSecret) {
     }
 
     const data = await response.json();
-    return data;
+    const foods = data.foods || {};
+    const totalCount = Number(foods.total_results || 0);
+    const pageNum = Number(foods.page_number || 0) + 1;
+    const maxResults = Number(foods.max_results || 20);
+    return {
+      foods: foods,
+      pagination: {
+        page: pageNum,
+        pageSize: maxResults,
+        totalCount: totalCount,
+        hasMore: totalCount > 0 && pageNum * maxResults < totalCount,
+      },
+    };
   } catch (error) {
     log(
       "error",
@@ -92,14 +105,14 @@ async function getFatSecretNutrients(foodId, clientId, clientSecret) {
   }
 }
 
-async function searchMealieFoods(query, baseUrl, apiKey, userId, providerId) {
+async function searchMealieFoods(query, baseUrl, apiKey, userId, providerId, page = 1) {
   log(
     "debug",
-    `searchMealieFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey}, userId: ${userId}, providerId: ${providerId}`
+    `searchMealieFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey}, userId: ${userId}, providerId: ${providerId}, page: ${page}`
   );
   try {
     const mealieService = new MealieService(baseUrl, apiKey, providerId);
-    const searchResults = await mealieService.searchRecipes(query);
+    const { items: searchResults, pagination } = await mealieService.searchRecipes(query, page);
 
     // Concurrently fetch details for all recipes
     const detailedRecipes = await Promise.all(
@@ -109,7 +122,7 @@ async function searchMealieFoods(query, baseUrl, apiKey, userId, providerId) {
     // Filter out any null results (e.g., if a recipe detail fetch failed)
     const validRecipes = detailedRecipes.filter((recipe) => recipe !== null);
 
-    return validRecipes.map((recipe) => {
+    const mappedFoods = validRecipes.map((recipe) => {
       const { food, variant } = mealieService.mapMealieRecipeToSparkyFood(
         recipe,
         userId
@@ -120,6 +133,8 @@ async function searchMealieFoods(query, baseUrl, apiKey, userId, providerId) {
         variants: [variant],
       };
     });
+
+    return { items: mappedFoods, pagination };
   } catch (error) {
     log("error", `Error searching Mealie foods for user ${userId}:`, error);
     throw error;

@@ -143,7 +143,7 @@ describe('calculations', () => {
         otherExerciseCalories: 150,
         steps: 10000,
       });
-      expect(burned).toBe(450); // 300 + 150, ignores steps
+      expect(burned).toBe(300); // active calories already include workout calories
     });
 
     it('uses steps calories when no active calories', () => {

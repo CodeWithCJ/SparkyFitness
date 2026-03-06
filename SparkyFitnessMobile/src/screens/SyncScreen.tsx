@@ -32,6 +32,17 @@ interface TimeRangeOption {
   value: TimeRange;
 }
 
+const timeRangeOptions: TimeRangeOption[] = [
+  { label: "Today", value: "today" },
+  { label: "Last 24 Hours", value: "24h" },
+  { label: "Last 3 Days", value: "3d" },
+  { label: "Last 7 Days", value: "7d" },
+  { label: "Last 30 Days", value: "30d" },
+  { label: "Last 90 Days", value: "90d" },
+  { label: "Last 6 Months", value: "180d" },
+  { label: "Last Year", value: "365d" },
+];
+
 const SyncScreen: React.FC<SyncScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
@@ -49,17 +60,6 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
       setLastSyncedTime(newLastSyncedTime);
     },
   });
-
-  const timeRangeOptions: TimeRangeOption[] = [
-    { label: "Today", value: "today" },
-    { label: "Last 24 Hours", value: "24h" },
-    { label: "Last 3 Days", value: "3d" },
-    { label: "Last 7 Days", value: "7d" },
-    { label: "Last 30 Days", value: "30d" },
-    { label: "Last 90 Days", value: "90d" },
-    { label: "Last 6 Months", value: "180d" },
-    { label: "Last Year", value: "365d" },
-  ];
 
   const initialize = useCallback(async (): Promise<void> => {
     const initialized = await initHealthConnect();
@@ -98,7 +98,6 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   useEffect(() => {
     fetchHealthData(healthMetricStates, selectedTimeRange);
   }, [healthMetricStates, selectedTimeRange]);
-
 
   const fetchHealthData = async (
     currentHealthMetricStates: HealthMetricStates,

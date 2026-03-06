@@ -7,5 +7,5 @@ export interface ExternalProvider {
 
 // Allowlist of provider_type values relevant to food search
 export const FOOD_PROVIDER_TYPES = new Set([
-  'openfoodfacts', 'nutritionix', 'fatsecret', 'mealie', 'tandoor', 'usda',
+  'openfoodfacts', 'fatsecret', 'usda', 'mealie',
 ]);

@@ -45,11 +45,12 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
   onCloseModal,
   isEditing,
 }) => {
-  const [success, successBackground, accentPrimary] = useCSSVariable([
+  const [success, successBackground, accentPrimary, textSecondary] = useCSSVariable([
     '--color-text-success',
     '--color-bg-success',
-    '--color-accent-primary'
-  ]) as [string, string, string];
+    '--color-accent-primary',
+    '--color-text-secondary'
+  ]) as [string, string, string, string];
 
   const showConfigMenu = (item: ServerConfigType) => {
     const isActive = item.id === activeConfigId;
@@ -78,7 +79,13 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
           />
         </View>
         {serverConfigs.map((item) => (
-          <View key={item.id} className="py-0.5 flex-row items-center">
+          <TouchableOpacity
+            key={item.id}
+            className="py-2 flex-row items-center"
+            onPress={() => showConfigMenu(item)}
+            accessibilityLabel={`Options for ${item.url}`}
+            accessibilityRole="button"
+          >
             <View className="flex-1 flex-row items-center gap-2">
               <Text
                 className="text-sm text-text-primary shrink max-w-[80%]"
@@ -96,15 +103,8 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
                 </View>
               )}
             </View>
-            <TouchableOpacity
-              className="px-3 h-11 justify-center items-center"
-              onPress={() => showConfigMenu(item)}
-              accessibilityLabel={`Options for ${item.url}`}
-              accessibilityRole="button"
-            >
-              <Text className="text-sm font-medium text-text-secondary">Edit</Text>
-            </TouchableOpacity>
-          </View>
+            <Icon name="chevron-forward" color={textSecondary} size={16} />
+          </TouchableOpacity>
         ))}
         <View className="flex-row align-items-baseline justify-start gap-4">
           <TouchableOpacity

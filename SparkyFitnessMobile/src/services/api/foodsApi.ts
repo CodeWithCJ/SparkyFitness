@@ -41,7 +41,7 @@ export const fetchFoodVariants = async (foodId: string): Promise<FoodVariantDeta
 };
 
 
-interface SaveFoodPayload {
+export interface SaveFoodPayload {
   name: string;
   brand: string | null;
   serving_size: number;

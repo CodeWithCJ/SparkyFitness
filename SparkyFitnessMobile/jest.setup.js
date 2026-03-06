@@ -153,6 +153,24 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
   };
 });
 
+// Mock react-native-reanimated
+jest.mock('react-native-reanimated', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: { View },
+    useSharedValue: (init) => ({ value: init }),
+    useAnimatedStyle: (fn) => fn(),
+    useDerivedValue: (fn) => ({ value: fn() }),
+    withTiming: (toValue) => toValue,
+    withSpring: (toValue) => toValue,
+    withSequence: (...args) => args[args.length - 1],
+    useAnimatedReaction: jest.fn(),
+    Easing: { linear: jest.fn(), ease: jest.fn(), bezier: jest.fn(() => jest.fn()) },
+  };
+});
+
 // Mock expo-web-browser
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: jest.fn(),
@@ -260,6 +278,17 @@ jest.mock('react-native-ui-datepicker', () => {
     default: (props) => React.createElement(View, { testID: 'date-picker', ...props }),
   };
 });
+
+// Mock uniwind
+jest.mock('uniwind', () => ({
+  useCSSVariable: jest.fn((vars) =>
+    Array.isArray(vars) ? vars.map(() => '#888888') : '#888888'
+  ),
+  useUniwind: jest.fn(() => ({ theme: 'light', hasAdaptiveThemes: false })),
+  Uniwind: {
+    setTheme: jest.fn(),
+  },
+}));
 
 // Mock @gorhom/bottom-sheet
 jest.mock('@gorhom/bottom-sheet', () => {

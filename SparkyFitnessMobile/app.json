@@ -2,7 +2,7 @@
   "expo": {
     "name": "SparkyFitnessMobile",
     "slug": "sparkyfitnessmobile",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "scheme": "sparkyfitnessmobile",
     "orientation": "portrait",
     "icon": "./assets/icons/appstore.png",
@@ -42,7 +42,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "SparkyFitness needs access to your camera to scan food barcodes.",
+          "cameraPermission": "SparkyFitness needs access to your camera to scan food barcodes and labels.",
           "recordAudioAndroid": false
         }
       ]

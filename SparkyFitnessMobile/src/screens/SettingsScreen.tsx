@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Alert, Text, ScrollView, Platform, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
@@ -40,7 +40,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>(
     HEALTH_METRICS.reduce((acc, metric) => ({ ...acc, [metric.stateKey]: false }), {} as HealthMetricStates)
   );
-  const [isAllMetricsEnabled, setIsAllMetricsEnabled] = useState<boolean>(false);
+  const isAllMetricsEnabled = useMemo(
+    () => HEALTH_METRICS.every(metric => healthMetricStates[metric.stateKey]),
+    [healthMetricStates]
+  );
 
   const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(true);
   const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
@@ -84,8 +87,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       newHealthMetricStates[metric.stateKey] = enabled === true;
     }
     setHealthMetricStates(newHealthMetricStates);
-    const allEnabled = HEALTH_METRICS.every(metric => newHealthMetricStates[metric.stateKey]);
-    setIsAllMetricsEnabled(allEnabled);
 
     const bgSyncEnabled = await loadBackgroundSyncEnabled();
     setIsBackgroundSyncEnabled(bgSyncEnabled);
@@ -254,7 +255,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   const handleToggleAllMetrics = async (): Promise<void> => {
     const newValue = !isAllMetricsEnabled;
-    setIsAllMetricsEnabled(newValue);
 
     const newHealthMetricStates: HealthMetricStates = {};
     HEALTH_METRICS.forEach(metric => {
@@ -273,7 +273,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             'Permissions Required',
             `Some permissions were not granted. Please enable all required health permissions in the ${healthSettingsName} to sync all data.`
           );
-          setIsAllMetricsEnabled(false);
           HEALTH_METRICS.forEach(metric => {
             newHealthMetricStates[metric.stateKey] = false;
           });
@@ -284,7 +283,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
         Alert.alert('Permission Error', `An error occurred while requesting health permissions: ${errorMessage}`);
-        setIsAllMetricsEnabled(false);
         HEALTH_METRICS.forEach(metric => {
           newHealthMetricStates[metric.stateKey] = false;
         });

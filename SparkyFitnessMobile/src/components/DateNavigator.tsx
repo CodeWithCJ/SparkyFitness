@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { Platform, View, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -14,6 +14,7 @@ interface DateNavigatorProps {
   onDatePress?: () => void;
   hideChevrons?: boolean;
   showDateAlways?: boolean;
+  skipSafeAreaTop?: boolean;
 }
 
 const DateNavigator: React.FC<DateNavigatorProps> = ({
@@ -25,6 +26,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
   onDatePress,
   hideChevrons,
   showDateAlways,
+  skipSafeAreaTop,
 }) => {
   const insets = useSafeAreaInsets();
   const secondaryTextColor = useCSSVariable('--color-text-secondary') as string;
@@ -36,7 +38,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
     : formatDateLabel(selectedDate);
 
   return (
-    <View style={{ paddingTop: insets.top + 16, paddingHorizontal: 16 }}
+    <View style={{ paddingTop: (skipSafeAreaTop && Platform.OS === 'ios') ? 16 : insets.top + 16, paddingHorizontal: skipSafeAreaTop ? 0 : 16 }}
           className="flex-row justify-between items-center pb-4">
       <Text className="text-2xl font-bold text-text-primary">{title}</Text>
       <View className="flex-row items-center">

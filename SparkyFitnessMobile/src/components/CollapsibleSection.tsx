@@ -1,12 +1,12 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   LayoutAnimation,
-  Animated,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 
@@ -27,25 +27,20 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   itemCount,
 }) => {
   const textSecondary = useCSSVariable('--color-text-secondary') as string;
-  const rotateAnim = useRef(new Animated.Value(expanded ? 1 : 0)).current;
+  const rotation = useSharedValue(expanded ? 0 : -90);
 
   useEffect(() => {
-    Animated.timing(rotateAnim, {
-      toValue: expanded ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [expanded, rotateAnim]);
+    rotation.value = withTiming(expanded ? 0 : -90, { duration: 200 });
+  }, [expanded, rotation]);
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
 
   const handleToggle = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     onToggle();
   };
-
-  const rotateInterpolate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['-90deg', '0deg'],
-  });
 
   return (
     <View className="mt-2">
@@ -59,7 +54,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         accessibilityHint={expanded ? 'Collapse this section' : 'Expand this section'}
       >
         <View className="flex-row items-center gap-2">
-          <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
+          <Animated.View style={chevronStyle}>
             <Icon name="chevron-down" size={20} color={textSecondary} />
           </Animated.View>
           <Text className="text-base font-semibold text-text-primary">{title}</Text>

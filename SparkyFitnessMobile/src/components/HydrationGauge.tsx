@@ -9,6 +9,7 @@ interface HydrationGaugeProps {
   consumed: number; // ml
   goal: number;     // ml
   unit?: string;
+  containerVolume?: number; // ml per button press
   onIncrement?: () => void;
   onDecrement?: () => void;
   disableDecrement?: boolean;
@@ -36,7 +37,7 @@ const FILL_TOP = 28;
 const FILL_BOTTOM = 124;
 const FILL_HEIGHT = FILL_BOTTOM - FILL_TOP;
 
-const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 'ml', onIncrement, onDecrement, disableDecrement }) => {
+const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 'ml', containerVolume, onIncrement, onDecrement, disableDecrement }) => {
   const hydrationColor = useCSSVariable('--color-hydration') as string;
   const trackColor = useCSSVariable('--color-progress-track') as string;
   const outlineColor = useCSSVariable('--color-border-strong') as string;
@@ -105,6 +106,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
   const unitLabel = UNIT_LABELS[unit] ?? unit;
 
   const showButtons = !!onIncrement || !!onDecrement;
+  const noContainer = containerVolume == null;
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
@@ -114,8 +116,8 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
           {showButtons && (
             <TouchableOpacity
               onPress={onDecrement}
-              disabled={disableDecrement}
-              style={disableDecrement ? { opacity: 0.3 } : undefined}
+              disabled={disableDecrement || noContainer}
+              style={disableDecrement || noContainer ? { opacity: 0.3 } : undefined}
               className="p-2"
             >
               <Icon name="remove-circle" size={28} color={hydrationColor} />
@@ -131,7 +133,12 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
             <Path path={bottlePath} style="stroke" strokeWidth={2} color={outlineColor} />
           </Canvas>
           {showButtons && (
-            <TouchableOpacity onPress={onIncrement} className="p-2">
+            <TouchableOpacity
+              onPress={onIncrement}
+              disabled={noContainer}
+              style={noContainer ? { opacity: 0.3 } : undefined}
+              className="p-2"
+            >
               <Icon name="add-circle" size={28} color={hydrationColor} />
             </TouchableOpacity>
           )}
@@ -145,6 +152,16 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
           </Text>
         </View>
       </View>
+      {showButtons && containerVolume != null && (
+        <Text className="text-xs text-text-muted text-center mt-2">
+          {convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 })} {unitLabel} per bottle
+        </Text>
+      )}
+      {showButtons && containerVolume == null && (
+        <Text className="text-xs text-text-muted text-center mt-2">
+          Configure water container on server to{'\n'}enable quick add/remove buttons
+        </Text>
+      )}
     </View>
   );
 };

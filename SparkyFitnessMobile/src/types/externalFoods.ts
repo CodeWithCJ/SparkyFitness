@@ -12,6 +12,18 @@ export interface ExternalFoodVariant {
   sugars?: number;
 }
 
+export interface ExternalFoodSearchPagination {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export interface PaginatedExternalFoodSearchResult {
+  items: ExternalFoodItem[];
+  pagination: ExternalFoodSearchPagination;
+}
+
 export interface ExternalFoodItem {
   id: string;
   name: string;

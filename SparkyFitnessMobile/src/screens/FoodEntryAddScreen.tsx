@@ -1,18 +1,20 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Platform, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Platform, ScrollView, TextInput } from 'react-native';
 import { StackActions, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { fetchDailyGoals } from '../services/api/goalsApi';
-import { saveFood, fetchFoodVariants } from '../services/api/foodsApi';
-import { createFoodEntry, CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
+import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
-import { dailySummaryQueryKey, foodsQueryKey, goalsQueryKey, foodVariantsQueryKey } from '../hooks/queryKeys';
+import { goalsQueryKey } from '../hooks/queryKeys';
 import { useMealTypes } from '../hooks';
+import { useFoodVariants } from '../hooks/useFoodVariants';
+import { useSaveFood } from '../hooks/useSaveFood';
+import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import type { FoodFormData } from '../components/FoodForm';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -36,12 +38,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
     hasExternalVariants ? 'ext-0' : item.variantId,
   );
 
-  const { data: variants } = useQuery({
-    queryKey: foodVariantsQueryKey(item.id),
-    queryFn: () => fetchFoodVariants(item.id),
-    enabled: isLocalFood,
-    staleTime: 1000 * 60 * 5,
-  });
+  const { variants } = useFoodVariants(item.id, { enabled: isLocalFood });
 
   const externalVariantOptions = useMemo(() => {
     if (!item.externalVariants || item.externalVariants.length <= 1) return null;
@@ -172,31 +169,27 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   };
 
   const clampQuantity = () => {
-    const minQuantity = displayValues.servingSize * 0.5;
-    const clamped = Math.max(minQuantity, quantity);
-    setQuantityText(String(clamped));
+    if (quantity <= 0) {
+      const minQuantity = (displayValues.servingSize * 0.5) || 1;
+      setQuantityText(String(minQuantity));
+    }
   };
+
 
   const adjustQuantity = (delta: number) => {
     const step = displayValues.servingSize;
-    const increment = step * 0.5;
-    const minQuantity = increment;
-    if (quantity < minQuantity) {
-      if (delta > 0) setQuantityText(String(minQuantity));
-      return;
-    }
+    const increment = step * 0.5 || 1;
     const boundary =
       delta > 0
         ? Math.ceil(quantity / increment) * increment
         : Math.floor(quantity / increment) * increment;
     const next = boundary !== quantity ? boundary : quantity + delta * increment;
-    setQuantityText(String(Math.max(minQuantity, next)));
+    setQuantityText(String(Math.max(increment, next)));
   };
 
   const scaled = (value: number) => value * servings;
 
   const insets = useSafeAreaInsets();
-  const queryClient = useQueryClient();
   const [accentColor, textPrimary, proteinColor, carbsColor, fatColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-primary',
@@ -209,7 +202,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
     const source = adjustedValues ? displayValues : activeVariant;
     return {
       name: adjustedValues?.name || item.name,
-      brand: adjustedValues?.brand ?? item.brand,
+      brand: adjustedValues?.brand ?? item.brand ?? null,
       serving_size: source.servingSize,
       serving_unit: source.servingUnit,
       calories: source.calories,
@@ -223,14 +216,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
     };
   };
 
-  const saveFoodMutation = useMutation({
-    mutationFn: () => saveFood(buildSaveFoodPayload()),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
-    },
-  });
+  const { saveFood: saveFoodMutate, isPending: isSavePending, isSaved } = useSaveFood();
 
-  const buildFoodEntryPayload = (savedFood?: { id: string; variantId: string }): CreateFoodEntryPayload => {
+  const buildFoodEntryPayload = (): CreateFoodEntryPayload => {
     const base = {
       meal_type_id: effectiveMealId!,
       quantity,
@@ -262,8 +250,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
         }
         return { ...base, food_id: item.id, variant_id: selectedVariantId };
       case 'external':
-        if (!savedFood) throw new Error('External food must be saved before creating entry');
-        return { ...base, food_id: savedFood.id, variant_id: savedFood.variantId };
+        // food_id and variant_id are set by useAddFoodEntry after saving the food
+        return base;
       case 'meal':
         return {
           ...base,
@@ -279,27 +267,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
     }
   };
 
-  const addFoodEntryMutation = useMutation({
-    mutationFn: async () => {
-      if (!effectiveMealId) throw new Error('No meal type selected');
-
-      if (item.source === 'external') {
-        const saved = await saveFood(buildSaveFoodPayload());
-        return createFoodEntry(buildFoodEntryPayload({
-          id: saved.id,
-          variantId: saved.default_variant.id!,
-        }));
-      }
-
-      return createFoodEntry(buildFoodEntryPayload());
-    },
+  const { addEntry, isPending: isAddPending, invalidateCache } = useAddFoodEntry({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(selectedDate) });
-      queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
+      invalidateCache(selectedDate);
       nav.dispatch(StackActions.popToTop());
-    },
-    onError: () => {
-      Alert.alert('Failed to add food', 'Please try again.');
     },
   });
 
@@ -371,16 +342,16 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
 
             {item.source === 'external' && (
               <TouchableOpacity
-                onPress={() => saveFoodMutation.mutate()}
-                disabled={saveFoodMutation.isPending || saveFoodMutation.isSuccess}
+                onPress={() => saveFoodMutate(buildSaveFoodPayload())}
+                disabled={isSavePending || isSaved}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 activeOpacity={0.7}
               >
-                {saveFoodMutation.isPending ? (
+                {isSavePending ? (
                   <ActivityIndicator size="small" color={accentColor} />
                 ) : (
                   <Icon
-                    name={saveFoodMutation.isSuccess ? 'bookmark-filled' : 'bookmark'}
+                    name={isSaved ? 'bookmark-filled' : 'bookmark'}
                     size={22}
                     color={accentColor}
                   />
@@ -573,11 +544,18 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
         <TouchableOpacity
           className="bg-accent-primary rounded-[10px] py-3.5 items-center mt-2"
           activeOpacity={0.8}
-          disabled={addFoodEntryMutation.isPending || !effectiveMealId || servings < 0.5}
-          style={(!effectiveMealId || servings < 0.5) ? { opacity: 0.5 } : undefined}
-          onPress={() => addFoodEntryMutation.mutate()}
+          disabled={isAddPending || !effectiveMealId || quantity <= 0}
+          style={(!effectiveMealId || quantity <= 0) ? { opacity: 0.5 } : undefined}
+          onPress={() => {
+            if (!effectiveMealId) return;
+            const saveFoodPayload = item.source === 'external' ? buildSaveFoodPayload() : undefined;
+            addEntry({
+              saveFoodPayload,
+              createEntryPayload: buildFoodEntryPayload(),
+            });
+          }}
         >
-          {addFoodEntryMutation.isPending ? (
+          {isAddPending ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text className="text-white text-base font-semibold">Add Food</Text>

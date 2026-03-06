@@ -1,5 +1,5 @@
 import './global.css'
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StatusBar, Platform, type ImageSourcePropType } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -59,8 +59,7 @@ function AppContent() {
   // Determine if we're in dark mode based on current theme
   const isDarkMode = theme === 'dark' || theme === 'amoled';
 
-  // Create navigation theme that matches app colors
-  const navigationTheme: Theme = {
+  const navigationTheme = useMemo<Theme>(() => ({
     dark: isDarkMode,
     colors: {
       primary: primary,
@@ -76,7 +75,7 @@ function AppContent() {
       bold: { fontFamily: 'System', fontWeight: '600' },
       heavy: { fontFamily: 'System', fontWeight: '700' },
     },
-  };
+  }), [isDarkMode, primary, bgPrimary, chrome, textPrimary, chromeBorder]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') {

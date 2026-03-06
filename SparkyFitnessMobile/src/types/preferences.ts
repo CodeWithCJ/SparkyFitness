@@ -5,7 +5,8 @@ export interface UserPreferences {
   mineral_calculation_algorithm?: string;
   vitamin_calculation_algorithm?: string;
   sugar_calculation_algorithm?: string;
-  
+  default_food_data_provider_id?: string;
+  default_barcode_provider_id?: string;
   
   default_weight_unit?: 'kg' | 'lbs';
   default_distance_unit?: 'km' | 'miles';

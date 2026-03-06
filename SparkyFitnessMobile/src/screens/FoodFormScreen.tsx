@@ -2,18 +2,15 @@ import React, { useState, useRef } from 'react';
 import { View, TouchableOpacity, Platform, Text, TextInput, Switch, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CommonActions, StackActions } from '@react-navigation/native';
 import Icon from '../components/Icon';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useMealTypes } from '../hooks';
+import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { getMealTypeLabel } from '../constants/meals';
 import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
-import { saveFood } from '../services/api/foodsApi';
-import { createFoodEntry } from '../services/api/foodEntriesApi';
-import { foodsQueryKey, dailySummaryQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
 
 const parseOptional = (s: string): number | undefined =>
@@ -84,13 +81,33 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
 
   const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
 
-  const queryClient = useQueryClient();
+  const { addEntry, isPending: isSubmitting, invalidateCache } = useAddFoodEntry({
+    onSuccess: (entry) => {
+      invalidateCache(entry.entry_date.split('T')[0]);
+      navigation.dispatch(StackActions.popToTop());
+    },
+  });
 
-  const submitMutation = useMutation({
-    mutationFn: async (data: FoodFormData) => {
-      if (!effectiveMealId) throw new Error('No meal type selected');
+  const handleSubmit = (data: FoodFormData) => {
+    if (!data.name.trim()) {
+      Alert.alert('Missing name', 'Please enter a food name.');
+      return;
+    }
+    if (!parseFloat(data.servingSize)) {
+      Alert.alert('Invalid serving size', 'Serving size must be greater than zero.');
+      return;
+    }
+    if (!quantity) {
+      Alert.alert('Invalid amount', 'Amount must be greater than zero.');
+      return;
+    }
+    if (!effectiveMealId) {
+      Alert.alert('No meal type', 'No meal types are available. Please check your account settings.');
+      return;
+    }
 
-      const saved = await saveFood({
+    addEntry({
+      saveFoodPayload: {
         name: data.name,
         brand: data.brand || null,
         serving_size: parseFloat(data.servingSize) || 0,
@@ -108,45 +125,14 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         is_default: true,
         barcode: barcode ?? null,
         provider_type: providerType ?? null,
-      });
-
-      if (!saved.default_variant.id) {
-        throw new Error('Server did not return a variant ID for the saved food');
-      }
-
-      return createFoodEntry({
+      },
+      createEntryPayload: {
         meal_type_id: effectiveMealId,
         quantity,
         unit: data.servingUnit || 'serving',
         entry_date: selectedDate,
-        food_id: saved.id,
-        variant_id: saved.default_variant.id,
-      });
-    },
-    onSuccess: (entry) => {
-      queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(entry.entry_date.split('T')[0]) });
-      queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
-      navigation.dispatch(StackActions.popToTop());
-    },
-    onError: () => {
-      Alert.alert('Failed to save food', 'Please try again.');
-    },
-  });
-
-  const handleSubmit = (data: FoodFormData) => {
-    if (!data.name.trim()) {
-      Alert.alert('Missing name', 'Please enter a food name.');
-      return;
-    }
-    if (!parseFloat(data.servingSize)) {
-      Alert.alert('Invalid serving size', 'Serving size must be greater than zero.');
-      return;
-    }
-    if (!quantity) {
-      Alert.alert('Invalid amount', 'Amount must be greater than zero.');
-      return;
-    }
-    submitMutation.mutate(data);
+      },
+    });
   };
 
   return (
@@ -165,7 +151,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         </Text>
       </View>
 
-      <FoodForm onSubmit={handleSubmit} onServingChange={handleServingChange} isSubmitting={submitMutation.isPending} initialValues={initialFood}>
+      <FoodForm onSubmit={handleSubmit} onServingChange={handleServingChange} isSubmitting={isSubmitting} initialValues={initialFood}>
         {/* Logging */}
         <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
 

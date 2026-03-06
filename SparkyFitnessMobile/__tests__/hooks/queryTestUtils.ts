@@ -1,8 +1,14 @@
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider, notifyManager } from '@tanstack/react-query';
 import type { DefaultOptions } from '@tanstack/react-query';
 
 export type { QueryClient } from '@tanstack/react-query';
+
+// Ensure React Query state updates are wrapped in act() to avoid warnings
+notifyManager.setNotifyFunction((callback) => {
+  act(callback);
+});
 
 /**
  * Creates a QueryClient configured for tests: no retries and instant staleness.

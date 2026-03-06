@@ -32,5 +32,8 @@ export { useExternalFoodSearch } from './useExternalFoodSearch';
 export { useMealTypes } from './useMealTypes';
 export { useDeleteFoodEntry } from './useDeleteFoodEntry';
 export { useUpdateFoodEntry } from './useUpdateFoodEntry';
+export { useFoodVariants } from './useFoodVariants';
+export { useSaveFood } from './useSaveFood';
+export { useAddFoodEntry } from './useAddFoodEntry';
 export { useMeasurementsRange } from './useMeasurementsRange';
 export type { StepsDataPoint, StepsRange, WeightDataPoint } from './useMeasurementsRange';
