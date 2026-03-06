@@ -132,12 +132,12 @@ export const configureBackgroundSync = async (): Promise<void> => {
     await BackgroundTask.registerTaskAsync(BACKGROUND_TASK_NAME, {
       minimumInterval: 240, // minutes; Android respects this roughly, iOS treats it as a hint
     });
-    const status = await BackgroundTask.getStatusAsync();
-    if (status === BackgroundTask.BackgroundTaskStatus.Available) {
-      addLog('[Background Sync] Background task registered successfully', 'INFO');
-    } else {
-      addLog('[Background Sync] Background task registration skipped (restricted environment)', 'WARNING');
-    }
+    // const status = await BackgroundTask.getStatusAsync();
+    // // if (status === BackgroundTask.BackgroundTaskStatus.Available) {
+    // //   addLog('[Background Sync] Background task registered successfully', 'INFO');
+    // // } else {
+    // //   addLog('[Background Sync] Background task registration skipped (restricted environment)', 'WARNING');
+    // // }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[Background Sync] Failed to register background task: ${message}`, 'ERROR');

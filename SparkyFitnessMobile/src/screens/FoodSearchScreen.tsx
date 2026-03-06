@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -79,6 +79,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   });
 
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+  const hasUserSelectedProvider = useRef(false);
   const [loadingFoodId, setLoadingFoodId] = useState<string | null>(null);
 
   const selectedProviderType = useMemo(
@@ -103,11 +104,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   useEffect(() => {
     if (providers.length === 0) return;
-    if (selectedProvider === null || !providers.some((p) => p.id === selectedProvider)) {
-      const defaultId = preferences?.default_food_data_provider_id;
-      const defaultProvider = defaultId ? providers.find((p) => p.id === defaultId) : undefined;
-      setSelectedProvider(defaultProvider?.id ?? providers[0].id);
-    }
+    if (hasUserSelectedProvider.current && providers.some((p) => p.id === selectedProvider)) return;
+
+    const defaultId = preferences?.default_food_data_provider_id;
+    const defaultProvider = defaultId ? providers.find((p) => p.id === defaultId) : undefined;
+    setSelectedProvider(defaultProvider?.id ?? providers[0].id);
   }, [providers, selectedProvider, preferences?.default_food_data_provider_id]);
 
   const showFoodInfo = (item: FoodInfoItem) => {
@@ -598,7 +599,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             return (
               <TouchableOpacity
                 key={provider.id}
-                onPress={() => setSelectedProvider(provider.id)}
+                onPress={() => {
+                  hasUserSelectedProvider.current = true;
+                  setSelectedProvider(provider.id);
+                }}
                 activeOpacity={0.7}
                 className={`flex-row items-center rounded-full px-3 py-1.5 border ${
                   isActive

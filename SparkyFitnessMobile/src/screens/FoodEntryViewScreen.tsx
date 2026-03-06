@@ -149,25 +149,18 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   };
 
   const clampQuantity = () => {
-    const minQuantity = displayValues.servingSize * 0.5;
-    const clamped = Math.max(minQuantity, quantity);
-    setQuantityText(String(clamped));
+    if (quantity <= 0) setQuantityText('1');
   };
 
   const adjustQuantity = (delta: number) => {
     const step = displayValues.servingSize;
-    const increment = step * 0.5;
-    const minQuantity = increment;
-    if (quantity < minQuantity) {
-      if (delta > 0) setQuantityText(String(minQuantity));
-      return;
-    }
+    const increment = step * 0.5 || 1;
     const boundary =
       delta > 0
         ? Math.ceil(quantity / increment) * increment
         : Math.floor(quantity / increment) * increment;
     const next = boundary !== quantity ? boundary : quantity + delta * increment;
-    setQuantityText(String(Math.max(minQuantity, next)));
+    setQuantityText(String(Math.max(increment, next)));
   };
 
   const navigateToNutritionForm = () => {
@@ -292,7 +285,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   const servings = entry.serving_size ? entry.quantity / entry.serving_size : entry.quantity;
   const servingsDisplay = servings === 1
     ? `1 serving · ${entry.serving_size} ${entry.unit} per serving`
-    : `${servings % 1 === 0 ? servings : servings.toFixed(1)} servings · ${entry.serving_size} ${entry.unit} per serving`;
+    : `${servings % 1 === 0 ? servings : servings.toFixed(2)} servings · ${entry.serving_size} ${entry.unit} per serving`;
 
   const otherNutrients = isEditing
     ? [
@@ -333,9 +326,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={{ marginLeft: 'auto', zIndex: 10 }}>
             <TouchableOpacity
               onPress={handleSave}
-              disabled={isUpdatePending || editServings < 0.5}
+              disabled={isUpdatePending || quantity <= 0}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={editServings < 0.5 ? { opacity: 0.5 } : undefined}
+              style={quantity <= 0 ? { opacity: 0.5 } : undefined}
             >
               <Text className="text-accent-primary text-base font-semibold">Done</Text>
             </TouchableOpacity>
@@ -389,7 +382,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
               </View>
               <View className="flex-row items-center mt-2">
                 <Text className="text-text-secondary text-sm">
-                  {editServings % 1 === 0 ? editServings : editServings.toFixed(1)} {editServings === 1 ? 'serving' : 'servings'}
+                  {editServings % 1 === 0 ? editServings : editServings.toFixed(2)} {editServings === 1 ? 'serving' : 'servings'}
                 </Text>
                 {variantPickerOptions.length > 1 ? (
                   <BottomSheetPicker

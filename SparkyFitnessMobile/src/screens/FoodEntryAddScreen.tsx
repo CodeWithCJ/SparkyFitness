@@ -169,25 +169,18 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
   };
 
   const clampQuantity = () => {
-    const minQuantity = displayValues.servingSize * 0.5;
-    const clamped = Math.max(minQuantity, quantity);
-    setQuantityText(String(clamped));
+    if (quantity <= 0) setQuantityText('1');
   };
 
   const adjustQuantity = (delta: number) => {
     const step = displayValues.servingSize;
-    const increment = step * 0.5;
-    const minQuantity = increment;
-    if (quantity < minQuantity) {
-      if (delta > 0) setQuantityText(String(minQuantity));
-      return;
-    }
+    const increment = step * 0.5 || 1;
     const boundary =
       delta > 0
         ? Math.ceil(quantity / increment) * increment
         : Math.floor(quantity / increment) * increment;
     const next = boundary !== quantity ? boundary : quantity + delta * increment;
-    setQuantityText(String(Math.max(minQuantity, next)));
+    setQuantityText(String(Math.max(increment, next)));
   };
 
   const scaled = (value: number) => value * servings;
@@ -547,8 +540,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
         <TouchableOpacity
           className="bg-accent-primary rounded-[10px] py-3.5 items-center mt-2"
           activeOpacity={0.8}
-          disabled={isAddPending || !effectiveMealId || servings < 0.5}
-          style={(!effectiveMealId || servings < 0.5) ? { opacity: 0.5 } : undefined}
+          disabled={isAddPending || !effectiveMealId || quantity <= 0}
+          style={(!effectiveMealId || quantity <= 0) ? { opacity: 0.5 } : undefined}
           onPress={() => {
             if (!effectiveMealId) return;
             const saveFoodPayload = item.source === 'external' ? buildSaveFoodPayload() : undefined;
