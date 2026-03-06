@@ -13,7 +13,7 @@ interface OnBoardingProps {
 const OnBoarding = ({ onOnboardingComplete }: OnBoardingProps) => {
   const { user } = useAuth();
   const { data: profileData, isPending: isProfilePending } = useProfileQuery(
-    user.activeUserId
+    user?.activeUserId
   );
   const { data: weightData, isPending: isWeightPending } =
     useMostRecentWeightQuery();
@@ -25,12 +25,15 @@ const OnBoarding = ({ onOnboardingComplete }: OnBoardingProps) => {
   }
 
   return (
-    <OnBoardingForm
-      onOnboardingComplete={onOnboardingComplete}
-      profileData={profileData}
-      weightData={weightData}
-      heightData={heightData}
-    />
+    weightData &&
+    heightData && (
+      <OnBoardingForm
+        onOnboardingComplete={onOnboardingComplete}
+        profileData={profileData}
+        weightData={weightData}
+        heightData={heightData}
+      />
+    )
   );
 };
 

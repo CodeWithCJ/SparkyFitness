@@ -562,7 +562,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
       assignmentIndex: number,
       setIndex: number,
       field: keyof WorkoutPresetSet,
-      value: string | number
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
     ) => {
       debug(
         loggingLevel,
@@ -599,6 +599,9 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
           return assignment;
         }
         const lastSet = assignment.sets[assignment.sets.length - 1];
+        if (!lastSet) {
+          return assignment;
+        }
         const newSet: WorkoutPresetSet = {
           ...lastSet,
           id: crypto.randomUUID(),
@@ -621,6 +624,9 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
           }
           const sets = assignment.sets;
           const setToDuplicate = sets[setIndex];
+          if (!setToDuplicate) {
+            return assignment;
+          }
           const newSets = [
             ...sets.slice(0, setIndex + 1),
             { ...setToDuplicate, id: crypto.randomUUID() },
@@ -687,12 +693,18 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
             const overAssignment = assignments[overAssignmentIdx];
 
             // If moving to a different day, update the day_of_week
-            if (activeAssignment.day_of_week !== overAssignment.day_of_week) {
+            if (activeAssignment?.day_of_week !== overAssignment?.day_of_week) {
               setAssignments((prev) => {
+                const sourceItem = prev[activeAssignmentIdx];
+
+                if (!sourceItem) return prev;
+
                 const newItems = [...prev];
-                const item = {
-                  ...newItems[activeAssignmentIdx],
-                  day_of_week: overAssignment.day_of_week,
+                const item: WorkoutPlanAssignment = {
+                  ...sourceItem,
+                  day_of_week:
+                    overAssignment?.day_of_week ?? sourceItem.day_of_week,
+                  template_id: sourceItem.template_id ?? '',
                 };
                 newItems.splice(activeAssignmentIdx, 1);
                 // Insert before or after the 'over' item?
@@ -836,7 +848,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
   };
 
   const handleSave = () => {
-    if (planName.trim() === '' || startDate.trim() === '') {
+    if (planName.trim() === '' || startDate?.trim() === '') {
       toast({
         title: t(
           'addWorkoutPlanDialog.validationErrorTitle',
@@ -874,7 +886,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
           sets:
             a.sets?.map((s) => ({
               ...s,
-              weight: convertWeight(s.weight, weightUnit, 'kg'),
+              weight: s.weight ? convertWeight(s.weight, weightUnit, 'kg') : 0,
             })) || [],
         };
       }),
@@ -1105,9 +1117,11 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
             <AddExerciseDialog
               open={isAddExerciseDialogOpen}
               onOpenChange={setIsAddExerciseDialogOpen}
-              onExerciseAdded={(exercise, sourceMode) =>
-                handleAddExerciseOrPreset(exercise, sourceMode)
-              }
+              onExerciseAdded={(exercise, sourceMode) => {
+                if (exercise && sourceMode) {
+                  handleAddExerciseOrPreset(exercise, sourceMode);
+                }
+              }}
               onWorkoutPresetSelected={(preset) =>
                 handleAddExerciseOrPreset(preset, 'preset')
               }

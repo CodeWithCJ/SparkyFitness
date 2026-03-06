@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { info } from '@/utils/logging';
 import { useLatestReleaseQuery } from '@/hooks/useGeneralQueries';
+import { ReleaseInfo } from './NewReleaseDialog';
 
 export interface LatestReleaseResponse {
   version: string;
@@ -10,7 +11,7 @@ export interface LatestReleaseResponse {
 }
 
 interface AppSetupProps {
-  setLatestRelease: (release: LatestReleaseResponse) => void;
+  setLatestRelease: React.Dispatch<React.SetStateAction<ReleaseInfo | null>>;
   setShowNewReleaseDialog: (show: boolean) => void;
 }
 

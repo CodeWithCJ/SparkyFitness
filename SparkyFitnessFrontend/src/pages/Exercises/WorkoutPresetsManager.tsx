@@ -62,13 +62,17 @@ const WorkoutPresetsManager = () => {
   const handleLogPresetToDiary = async (preset: WorkoutPreset) => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      await logWorkoutPreset({ presetId: preset.id, date: today });
-      toast({
-        title: t('common.success', 'Success'),
-        description: t('workoutPresetsManager.logSuccess', {
-          presetName: preset.name,
-        }),
-      });
+      if (today) {
+        await logWorkoutPreset({ presetId: preset.id, date: today });
+        toast({
+          title: t('common.success', 'Success'),
+          description: t('workoutPresetsManager.logSuccess', {
+            presetName: preset.name,
+          }),
+        });
+      } else {
+        throw new Error('today is undefined');
+      }
     } catch (err) {
       toast({
         title: t('common.error', 'Error'),

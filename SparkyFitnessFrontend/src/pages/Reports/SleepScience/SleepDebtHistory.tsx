@@ -23,7 +23,7 @@ interface SleepDebtHistoryProps {
   data: SleepDebtData;
 }
 
-const DEBT_COLORS: Record<string, string> = {
+const DEBT_COLORS = {
   surplus: '#22c55e',
   minor: '#3b82f6',
   moderate: '#f97316',
@@ -31,10 +31,21 @@ const DEBT_COLORS: Record<string, string> = {
 };
 
 function getBarColor(deviation: number): string {
-  if (deviation <= 0) return DEBT_COLORS.surplus;
-  if (deviation < 1) return DEBT_COLORS.minor;
-  if (deviation < 2) return DEBT_COLORS.moderate;
-  return DEBT_COLORS.significant;
+  const defaultColor = '#ccc';
+
+  if (isNaN(deviation) || deviation <= 0) {
+    return DEBT_COLORS.surplus ?? defaultColor;
+  }
+
+  if (deviation < 1) {
+    return DEBT_COLORS.minor ?? defaultColor;
+  }
+
+  if (deviation < 2) {
+    return DEBT_COLORS.moderate ?? defaultColor;
+  }
+
+  return DEBT_COLORS.significant ?? defaultColor;
 }
 
 const TrendIcon: React.FC<{ direction: string }> = ({ direction }) => {
@@ -105,12 +116,18 @@ const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(value: number, name: string) => {
+              formatter={(
+                value: number | undefined,
+                name: string | undefined
+              ) => {
                 const label =
                   name === 'deviation'
                     ? t('sleepScience.debt', 'Debt')
                     : t('sleepScience.surplus', 'Surplus');
-                return [formatSecondsToHHMM(Math.abs(value) * 3600), label];
+                return [
+                  formatSecondsToHHMM(Math.abs(value || 0) * 3600),
+                  label,
+                ];
               }}
             />
             <ReferenceLine y={0} stroke={isDark ? '#555' : '#ccc'} />

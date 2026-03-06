@@ -85,7 +85,7 @@ export interface SleepChartData {
   segments: SleepStageEvent[];
 }
 
-export const SLEEP_STAGE_COLORS: { [key: string]: string } = {
+export const SLEEP_STAGE_COLORS = {
   awake: '#F87171', // red-400
   rem: '#C084FC', // purple-400
   light: '#60A5FA', // blue-400

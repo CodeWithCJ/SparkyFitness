@@ -62,8 +62,12 @@ const CustomTooltip = ({
   formatDate,
 }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
-    const nutrientName = payload[0].dataKey as string;
-    const nutrientValue = payload[0].value as number;
+    const firstPaylod = payload[0];
+    if (!firstPaylod) {
+      return;
+    }
+    const nutrientName = firstPaylod.dataKey as string;
+    const nutrientValue = firstPaylod.value as number;
 
     const unitString =
       nutrientName === 'calories'
@@ -80,7 +84,7 @@ const CustomTooltip = ({
     return (
       <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded shadow-lg">
         <p className="text-xs font-medium text-gray-900 dark:text-gray-100">
-          {formatDate(parseISO(label), 'MMM dd')}
+          {label ? formatDate(parseISO(label), 'MMM dd') : ''}
         </p>
         <p className="text-xs text-gray-600 dark:text-gray-400">
           {nutrientName === 'dietary_fiber' ? 'Fiber' : nutrientName}:{' '}

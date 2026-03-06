@@ -34,15 +34,15 @@ const CustomCategoryManager = () => {
   const { user } = useAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const { data: categories = [] } = useCustomCategories(user.activeUserId);
+  const { data: categories = [] } = useCustomCategories(user?.activeUserId);
   const { mutateAsync: addCategory } = useAddCategoryMutation(
-    user.activeUserId
+    user?.activeUserId
   );
   const { mutateAsync: updateCategory } = useUpdateCategoryMutation(
-    user.activeUserId
+    user?.activeUserId
   );
   const { mutateAsync: deleteCategory } = useDeleteCategoryMutation(
-    user.activeUserId
+    user?.activeUserId
   );
   const [editingCategory, setEditingCategory] = useState<CustomCategory | null>(
     null

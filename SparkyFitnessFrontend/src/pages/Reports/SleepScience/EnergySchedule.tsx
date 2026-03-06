@@ -145,8 +145,8 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
                 fontSize: '12px',
               }}
               formatter={(
-                value: number,
-                _name: string,
+                value: number | undefined,
+                _name: string | undefined,
                 props: { payload?: { zone?: string } }
               ) => {
                 const pt = props?.payload;

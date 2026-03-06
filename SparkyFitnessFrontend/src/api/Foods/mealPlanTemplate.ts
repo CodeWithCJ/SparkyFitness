@@ -26,11 +26,13 @@ export const createMealPlanTemplate = async (
 
 export const updateMealPlanTemplate = async (
   userId: string,
-  templateId: string,
   templateData: Partial<MealPlanTemplate>,
   currentClientDate?: string
 ): Promise<MealPlanTemplate> => {
-  return await api.put(`/meal-plan-templates/${templateId}`, {
+  if (!templateData.id) {
+    throw new Error('TemplateId is undefined');
+  }
+  return await api.put(`/meal-plan-templates/${templateData.id}`, {
     body: { ...templateData, userId, currentClientDate },
   });
 };

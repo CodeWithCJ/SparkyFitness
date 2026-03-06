@@ -288,7 +288,7 @@ const OidcSettings: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {providers.map((provider) => (
+                  {providers?.map((provider) => (
                     <TableRow key={provider.id}>
                       <TableCell>
                         <img

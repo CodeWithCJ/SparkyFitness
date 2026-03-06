@@ -290,7 +290,7 @@ export const calculateNutrition = (
 
 export const calculateDayTotals = (
   entries: FoodEntry[],
-  meals: FoodEntryMeal[]
+  meals: FoodEntryMeal[] | undefined
 ): MealTotals => {
   if (!entries || !meals || (entries.length === 0 && meals.length === 0)) {
     return EMPTY_MEAL_TOTALS;
@@ -628,13 +628,13 @@ export const calculateBasePlan = (
 
   const macros = {
     carbs: Math.round(
-      (finalDailyCalories * (dietTemplate.carbsPercentage / 100)) / 4
+      (finalDailyCalories * ((dietTemplate?.carbsPercentage ?? 0) / 100)) / 4
     ),
     protein: Math.round(
-      (finalDailyCalories * (dietTemplate.proteinPercentage / 100)) / 4
+      (finalDailyCalories * ((dietTemplate?.proteinPercentage ?? 0) / 100)) / 4
     ),
     fat: Math.round(
-      (finalDailyCalories * (dietTemplate.fatPercentage / 100)) / 9
+      (finalDailyCalories * ((dietTemplate?.fatPercentage ?? 0) / 100)) / 9
     ),
     fiber: Math.round((finalDailyCalories / 1000) * 14),
   };

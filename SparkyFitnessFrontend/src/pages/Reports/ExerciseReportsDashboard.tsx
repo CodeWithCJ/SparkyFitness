@@ -39,7 +39,7 @@ import { calculateTotalTonnage } from '@/utils/reportUtil';
 import { ExerciseDashboardData, ExerciseProgressData } from '@/types/reports';
 
 interface ExerciseReportsDashboardProps {
-  exerciseDashboardData: ExerciseDashboardData | null;
+  exerciseDashboardData: ExerciseDashboardData | undefined;
   startDate: string | null;
   endDate: string | null;
   onDrilldown: (date: string) => void;
@@ -612,7 +612,9 @@ const ExerciseReportsDashboard = ({
                         event?.activePayload &&
                         event.activePayload.length > 0
                       ) {
-                        onDrilldown(event.activePayload[0].payload.entry_date);
+                        onDrilldown(
+                          event.activePayload[0]?.payload.entry_date ?? ''
+                        );
                       }
                     }}
                     data={volumeTrendData}
@@ -633,8 +635,8 @@ const ExerciseReportsDashboard = ({
                       }}
                     />
                     <Tooltip
-                      formatter={(value: number) =>
-                        `${formatWeight(value)} ${weightUnit}`
+                      formatter={(value: number | undefined) =>
+                        value ? `${formatWeight(value)} ${weightUnit}` : 0
                       }
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
@@ -753,7 +755,9 @@ const ExerciseReportsDashboard = ({
                         event?.activePayload &&
                         event.activePayload.length > 0
                       ) {
-                        onDrilldown(event.activePayload[0].payload.entry_date);
+                        onDrilldown(
+                          event.activePayload[0]?.payload.entry_date ?? ''
+                        );
                       }
                     }}
                     data={maxWeightTrendData}
@@ -898,7 +902,9 @@ const ExerciseReportsDashboard = ({
                         event?.activePayload &&
                         event.activePayload.length > 0
                       ) {
-                        onDrilldown(event.activePayload[0].payload.entry_date);
+                        onDrilldown(
+                          event.activePayload[0]?.payload.entry_date ?? ''
+                        );
                       }
                     }}
                     data={estimated1RMTrendData}

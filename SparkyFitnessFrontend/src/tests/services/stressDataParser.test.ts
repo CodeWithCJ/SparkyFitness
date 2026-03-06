@@ -6,7 +6,7 @@ describe('parseStressMeasurement', () => {
     const result = parseStressMeasurement(input);
 
     expect(result).toHaveLength(1);
-    expect(result[0].stress_level).toBe(26);
+    expect(result[0]?.stress_level).toBe(26);
   });
 
   it('parses a valid JSON array', () => {
@@ -15,7 +15,7 @@ describe('parseStressMeasurement', () => {
     const result = parseStressMeasurement(input);
 
     expect(result).toHaveLength(2);
-    expect(result[1].stress_level).toBe(27);
+    expect(result[1]?.stress_level).toBe(27);
   });
 
   it('parses objects concatenated without commas', () => {
@@ -24,7 +24,7 @@ describe('parseStressMeasurement', () => {
     const result = parseStressMeasurement(input);
 
     expect(result).toHaveLength(2);
-    expect(result[1].stress_level).toBe(27);
+    expect(result[1]?.stress_level).toBe(27);
   });
 
   it('handles double encoded JSON strings', () => {
@@ -33,7 +33,7 @@ describe('parseStressMeasurement', () => {
     const result = parseStressMeasurement(input);
 
     expect(result).toHaveLength(1);
-    expect(result[0].stress_level).toBe(26);
+    expect(result[0]?.stress_level).toBe(26);
   });
 
   it('attempts to parse the specific massive garbled string format', () => {

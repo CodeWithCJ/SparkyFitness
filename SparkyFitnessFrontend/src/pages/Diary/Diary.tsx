@@ -208,7 +208,7 @@ const Diary = () => {
   };
 
   const handleFoodSelect = async (item: Food | MealType, mealType: string) => {
-    const typeObj = availableMealTypes.find(
+    const typeObj = availableMealTypes?.find(
       (t) => t.name.toLowerCase() === mealType.toLowerCase()
     );
     const typeId = typeObj?.id || '';
@@ -239,6 +239,9 @@ const Diary = () => {
     unit: string,
     selectedVariant: FoodVariant
   ) => {
+    if (!currentUserId) {
+      return;
+    }
     debug(loggingLevel, 'Handling food unit select:', {
       food,
       quantity,
@@ -395,13 +398,13 @@ const Diary = () => {
           />
 
           <div className="space-y-6">
-            {availableMealTypes.length === 0 && (
+            {availableMealTypes?.length === 0 && (
               <div className="text-center p-4 text-muted-foreground">
                 Loading meal types...
               </div>
             )}
 
-            {availableMealTypes
+            {(availableMealTypes ?? [])
               .filter((meal) => meal.is_visible)
               .map((mealTypeObj) => (
                 <MealCard
@@ -410,7 +413,7 @@ const Diary = () => {
                     ...getMealData(
                       mealTypeObj.name,
                       foodEntries,
-                      foodEntryMeals,
+                      foodEntryMeals ?? [],
                       goals
                     ),
                     selectedDate: selectedDate,
@@ -418,7 +421,7 @@ const Diary = () => {
                   totals={getMealTotals(
                     mealTypeObj.name,
                     foodEntries,
-                    foodEntryMeals
+                    foodEntryMeals ?? []
                   )}
                   onFoodSelect={handleFoodSelect}
                   onEditEntry={handleEditEntry}

@@ -13,7 +13,7 @@ jest.mock('react-i18next', () => ({
         typeof defaultValueOrOpts === 'object' &&
         'defaultValue' in defaultValueOrOpts
       ) {
-        return defaultValueOrOpts.defaultValue as string;
+        return defaultValueOrOpts['defaultValue'] as string;
       }
       return key;
     },

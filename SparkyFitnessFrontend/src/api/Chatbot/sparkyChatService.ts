@@ -217,7 +217,7 @@ export const processUserInput = async (
     try {
       const jsonMatch = aiResponse.response.match(/```json\n([\s\S]*?)\n```/);
       let jsonString = jsonMatch ? jsonMatch[1] : aiResponse.response;
-      jsonString = stripJsonComments(jsonString); // Strip comments before parsing
+      jsonString = stripJsonComments(jsonString ?? ''); // Strip comments before parsing
 
       parsedResponse = JSON.parse(jsonString);
       info(
@@ -269,8 +269,8 @@ export const processUserInput = async (
             foodResponse.metadata;
 
           const foodOptions = await callAIForFoodOptions(
-            foodName,
-            unit,
+            foodName ?? '',
+            unit ?? '',
             userLoggingLevel,
             activeAIServiceSetting as AIService
           );
@@ -348,7 +348,7 @@ export const processUserInput = async (
       case 'chat':
         return await processChatInput(
           parsedResponse.data || {},
-          parsedResponse.response,
+          parsedResponse.response ?? '',
           userLoggingLevel
         );
       default: {
@@ -615,23 +615,26 @@ const extractDateFromInput = (
     /(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?/
   );
   if (dateMatch) {
-    const month = parseInt(dateMatch[1], 10);
-    const day = parseInt(dateMatch[2], 10);
-    let year = today.getFullYear();
+    const [, monthStr, dayStr, yearStr] = dateMatch;
+    if (monthStr && dayStr) {
+      const month = parseInt(monthStr, 10);
+      const day = parseInt(dayStr, 10);
+      let year = today.getFullYear();
 
-    if (dateMatch[3]) {
-      year = parseInt(dateMatch[3], 10);
-      if (year < 100) {
-        year += 2000;
+      if (yearStr) {
+        year = parseInt(yearStr, 10);
+        if (year < 100) {
+          year += 2000;
+        }
       }
-    }
 
-    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      const date = new Date(year, month - 1, day);
-      if (!dateMatch[3] && date > today) {
-        date.setFullYear(year - 1);
+      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const date = new Date(year, month - 1, day);
+        if (!yearStr && date > today) {
+          date.setFullYear(year - 1);
+        }
+        return date.toISOString().split('T')[0];
       }
-      return date.toISOString().split('T')[0];
     }
   }
   return undefined;

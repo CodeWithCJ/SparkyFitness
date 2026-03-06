@@ -8,6 +8,7 @@ import type { Meal } from '@/types/meal';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { useTranslation } from 'react-i18next';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 
 interface NutrientGridConfig {
   visibleNutrients: string[];
@@ -23,7 +24,6 @@ interface FoodResultCardProps {
   isOnline?: boolean;
   providerLabel?: string;
   imageUrl?: string;
-  activeUserId?: string;
   nutrientConfig: NutrientGridConfig;
   onCardClick?: () => void;
   onEditClick?: () => void;
@@ -35,12 +35,12 @@ const FoodResultCard = ({
   isOnline = false,
   providerLabel,
   imageUrl,
-  activeUserId,
   nutrientConfig,
   onCardClick,
   onEditClick,
 }: FoodResultCardProps) => {
   const { t } = useTranslation();
+  const { activeUserId } = useActiveUser();
   const isFood = !isMeal;
   const foodItem = item as Food;
   const mealItem = item as Meal;

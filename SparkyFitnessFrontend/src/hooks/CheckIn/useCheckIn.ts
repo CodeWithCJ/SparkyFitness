@@ -16,10 +16,11 @@ import {
 import { checkInKeys } from '@/api/keys/checkin';
 import { dailyProgressKeys } from '@/api/keys/diary';
 
-export const useCustomCategories = (userId?: string) => {
+export const useCustomCategories = (userId?: string | null) => {
   return useQuery({
-    queryKey: checkInKeys.customCategories(userId),
-    queryFn: () => loadCustomCategories(userId),
+    queryKey: checkInKeys.customCategories(userId!),
+    queryFn: () => loadCustomCategories(userId!),
+    enabled: !!userId,
     meta: {
       errorMessage: i18n.t(
         'checkIn.failedToLoadCategories',

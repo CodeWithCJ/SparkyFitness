@@ -120,12 +120,14 @@ export const GoalPresetDialog = ({
     );
   }, [formData, macroInputType]);
 
-  const isTotalPercentageValid =
-    formData.breakfast_percentage +
-      formData.lunch_percentage +
-      formData.dinner_percentage +
-      formData.snacks_percentage ===
-    100;
+  const isTotalPercentageValid = formData
+    ? formData.breakfast_percentage +
+        formData.lunch_percentage +
+        formData.dinner_percentage +
+        formData.snacks_percentage ===
+      100
+    : false;
+
   if (!formData) return null;
   return (
     <>
@@ -200,7 +202,10 @@ export const GoalPresetDialog = ({
               {(['protein', 'carbs', 'fat'] as const).map((m) => (
                 <div key={m} className="space-y-1.5">
                   <Label className="text-xs capitalize">
-                    {t(CENTRAL_NUTRIENT_CONFIG[m].label, m)}{' '}
+                    {t(
+                      CENTRAL_NUTRIENT_CONFIG[m]?.label ?? String(m),
+                      String(m)
+                    )}{' '}
                     {macroInputType === 'grams' ? '(g)' : '(%)'}
                   </Label>
                   <Input

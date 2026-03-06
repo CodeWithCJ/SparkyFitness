@@ -49,17 +49,17 @@ export interface ExternalDataProvider {
   garmin_connect_status?: 'linked' | 'connected' | 'disconnected';
   garmin_last_status_check?: string;
   garmin_token_expires?: string;
-  withings_last_sync_at?: string;
-  withings_token_expires?: string;
-  fitbit_last_sync_at?: string;
-  fitbit_token_expires?: string;
-  polar_last_sync_at?: string;
-  polar_token_expires?: string;
-  hevy_last_sync_at?: string;
+  withings_last_sync_at?: string | null;
+  withings_token_expires?: string | null;
+  fitbit_last_sync_at?: string | null;
+  fitbit_token_expires?: string | null;
+  polar_last_sync_at?: string | null;
+  polar_token_expires?: string | null;
+  hevy_last_sync_at?: string | null;
   hevy_connect_status?: 'connected' | 'disconnected';
-  strava_last_sync_at?: string;
-  strava_token_expires?: string;
-  is_strictly_private?: boolean;
+  strava_last_sync_at?: string | null;
+  strava_token_expires?: string | null;
+  is_strictly_private?: boolean | null;
 }
 
 const BARCODE_PROVIDER_TYPES = ['openfoodfacts', 'usda'];
@@ -76,7 +76,7 @@ const ExternalProviderSettings = () => {
     setDefaultBarcodeProviderId,
     saveAllPreferences,
   } = usePreferences();
-  const { data: providers = [] } = useExternalProviders(user.activeUserId);
+  const { data: providers = [] } = useExternalProviders(user?.activeUserId);
 
   const barcodeProviders = providers.filter(
     (p) => p.is_active && BARCODE_PROVIDER_TYPES.includes(p.provider_type)

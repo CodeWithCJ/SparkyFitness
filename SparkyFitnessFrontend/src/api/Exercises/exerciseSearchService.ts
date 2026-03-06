@@ -1,12 +1,17 @@
 import { apiCall } from '@/api/api';
 import { Exercise } from '@/types/exercises';
 
+interface ExerciseSearchParams {
+  searchTerm: string;
+  equipmentFilter?: string;
+  muscleGroupFilter?: string;
+}
 export const searchExercises = async (
   query: string,
   equipmentFilter: string[] = [],
   muscleGroupFilter: string[] = []
 ): Promise<Exercise[]> => {
-  const params: Record<string, string> = {
+  const params: ExerciseSearchParams = {
     searchTerm: query,
   };
   if (equipmentFilter.length > 0) {
@@ -22,6 +27,14 @@ export const searchExercises = async (
   return Array.isArray(result) ? result : [];
 };
 
+interface ExternalExerciseSearchParams {
+  query: string;
+  providerId: string;
+  providerType: string;
+  equipmentFilter?: string;
+  muscleGroupFilter?: string;
+  limit?: number;
+}
 export const searchExternalExercises = async (
   query: string,
   providerId: string,
@@ -30,7 +43,7 @@ export const searchExternalExercises = async (
   muscleGroupFilter: string[] = [],
   limit?: number
 ): Promise<Exercise[]> => {
-  const params: Record<string, string | number> = {
+  const params: ExternalExerciseSearchParams = {
     query: query,
     providerId: providerId,
     providerType: providerType,

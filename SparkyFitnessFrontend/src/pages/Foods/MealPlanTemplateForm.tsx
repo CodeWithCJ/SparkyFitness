@@ -164,7 +164,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     template?.id,
     setExtendedAssignments,
     fetchNutritionForAssignment,
-    template.assignments,
+    template?.assignments,
   ]); // Only run when template ID changes
 
   const handleAddFood = (day: number, mealType: string) => {
@@ -181,24 +181,27 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     if (currentDay === null || currentMealType === null) return;
 
     if (editingAssignmentIndex !== null) {
-      // Update existing assignment
-      const updatedAssignment: MealPlanTemplateAssignment = {
-        ...assignments[editingAssignmentIndex],
-        quantity,
-        unit,
-      };
-      const updatedAssignments = [...assignments];
-      updatedAssignments[editingAssignmentIndex] = updatedAssignment;
-      setAssignments(updatedAssignments);
+      const assignmentAtIndex = assignments[editingAssignmentIndex];
+      if (assignmentAtIndex) {
+        // Update existing assignment
+        const updatedAssignment: MealPlanTemplateAssignment = {
+          ...assignmentAtIndex,
+          quantity,
+          unit,
+        };
+        const updatedAssignments = [...assignments];
+        updatedAssignments[editingAssignmentIndex] = updatedAssignment;
+        setAssignments(updatedAssignments);
 
-      // Update extended assignments
-      const extendedAssignment =
-        await fetchNutritionForAssignment(updatedAssignment);
-      const updatedExtended = [...extendedAssignments];
-      updatedExtended[editingAssignmentIndex] = extendedAssignment;
-      setExtendedAssignments(updatedExtended);
+        // Update extended assignments
+        const extendedAssignment =
+          await fetchNutritionForAssignment(updatedAssignment);
+        const updatedExtended = [...extendedAssignments];
+        updatedExtended[editingAssignmentIndex] = extendedAssignment;
+        setExtendedAssignments(updatedExtended);
 
-      setEditingAssignmentIndex(null);
+        setEditingAssignmentIndex(null);
+      }
     } else {
       // Add new assignment
       const newAssignment: MealPlanTemplateAssignment = {
@@ -248,32 +251,35 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     if (currentDay === null || currentMealType === null) return;
 
     if (editingAssignmentIndex !== null) {
+      const assignmentAtIndex = assignments[editingAssignmentIndex];
       // Update existing assignment
-      const updatedAssignment: MealPlanTemplateAssignment = {
-        ...assignments[editingAssignmentIndex],
-        quantity,
-        unit,
-        variant_id: selectedVariant.id,
-      };
-      const updatedAssignments = [...assignments];
-      updatedAssignments[editingAssignmentIndex] = updatedAssignment;
-      setAssignments(updatedAssignments);
+      if (assignmentAtIndex) {
+        const updatedAssignment: MealPlanTemplateAssignment = {
+          ...assignmentAtIndex,
+          quantity,
+          unit,
+          variant_id: selectedVariant.id,
+        };
+        const updatedAssignments = [...assignments];
+        updatedAssignments[editingAssignmentIndex] = updatedAssignment;
+        setAssignments(updatedAssignments);
 
-      // Update extended assignments with nutrition data
-      const extendedAssignment: ExtendedAssignment = {
-        ...updatedAssignment,
-        calories: selectedVariant.calories,
-        protein: selectedVariant.protein,
-        carbs: selectedVariant.carbs,
-        fat: selectedVariant.fat,
-        serving_size: selectedVariant.serving_size,
-        serving_unit: selectedVariant.serving_unit,
-      };
-      const updatedExtended = [...extendedAssignments];
-      updatedExtended[editingAssignmentIndex] = extendedAssignment;
-      setExtendedAssignments(updatedExtended);
+        // Update extended assignments with nutrition data
+        const extendedAssignment: ExtendedAssignment = {
+          ...updatedAssignment,
+          calories: selectedVariant.calories,
+          protein: selectedVariant.protein,
+          carbs: selectedVariant.carbs,
+          fat: selectedVariant.fat,
+          serving_size: selectedVariant.serving_size,
+          serving_unit: selectedVariant.serving_unit,
+        };
+        const updatedExtended = [...extendedAssignments];
+        updatedExtended[editingAssignmentIndex] = extendedAssignment;
+        setExtendedAssignments(updatedExtended);
 
-      setEditingAssignmentIndex(null);
+        setEditingAssignmentIndex(null);
+      }
     } else {
       // Add new assignment
       const newAssignment: MealPlanTemplateAssignment = {
@@ -394,7 +400,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
       });
       return;
     }
-    if (endDate && startDate > endDate) {
+    if (startDate && endDate && startDate > endDate) {
       toast({
         title: t('common.error'),
         description: t('mealPlanTemplateForm.endDateError'),

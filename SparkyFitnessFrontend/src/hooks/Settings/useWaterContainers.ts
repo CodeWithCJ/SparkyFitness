@@ -10,7 +10,7 @@ import {
 import { WaterContainer } from '@/types/settings';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 
-export const useWaterContainersQuery = (userId: string) => {
+export const useWaterContainersQuery = (userId?: string) => {
   return useQuery({
     queryKey: waterContainerKeys.lists(),
     queryFn: getWaterContainers,

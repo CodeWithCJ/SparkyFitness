@@ -14,10 +14,10 @@ interface EndFastDialogProps {
   onClose: () => void;
   // onEnd may receive optional weight, mood, and custom start/end Date values
   onEnd: (
+    startTime: Date,
+    endTime: Date,
     weight?: number,
-    mood?: { value: number; notes: string },
-    startTime?: Date,
-    endTime?: Date
+    mood?: { value: number; notes: string }
   ) => void;
   durationFormatted: string;
   initialStartISO?: string | null;
@@ -66,9 +66,9 @@ const EndFastDialog: React.FC<EndFastDialogProps> = ({
 
   const handleConfirm = () => {
     // Convert local datetime-local value back to a Date object in user's local timezone
-    const start = startLocal ? new Date(startLocal) : undefined;
-    const end = endLocal ? new Date(endLocal) : undefined;
-    onEnd(undefined, undefined, start, end);
+    const start = startLocal ? new Date(startLocal) : new Date();
+    const end = endLocal ? new Date(endLocal) : new Date();
+    onEnd(start, end);
     onClose();
   };
 

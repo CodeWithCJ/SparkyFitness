@@ -1,11 +1,11 @@
 import { Input } from '@/components/ui/input';
 import { ExpandedGoals } from '@/types/goals';
+import { OnboardingData } from '@/types/onboarding';
 import { BasePlan } from '@/utils/nutritionCalculations';
 import { useTranslation } from 'react-i18next';
-import { FormData } from './OnBoardingForm';
 
 export interface PersonalPlanHeaderProps {
-  formData: FormData;
+  formData: OnboardingData;
   convertEnergy: (
     value: number,
     fromUnit: 'kcal' | 'kJ',
@@ -98,8 +98,9 @@ export const PersonalPlanHeader = ({
         <div className="mt-6 pt-6 border-t border-gray-800 flex justify-between text-sm text-gray-400">
           <span>
             Base BMR:{' '}
-            {Math.round(convertEnergy(plan.bmr, 'kcal', localEnergyUnit))}{' '}
-            {getEnergyUnitString(localEnergyUnit)}
+            {plan?.bmr &&
+              Math.round(convertEnergy(plan.bmr, 'kcal', localEnergyUnit))}
+            ) {getEnergyUnitString(localEnergyUnit)}
           </span>
 
           <span>

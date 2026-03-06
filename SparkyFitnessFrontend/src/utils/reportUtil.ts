@@ -27,6 +27,27 @@ interface StressDataPoint {
   stress_level: number;
 }
 
+interface NutrientTotals {
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  [key: string]: number | undefined;
+}
+
 export const calculateTotalTonnage = (
   entries: { sets: { weight: number | string; reps: number | string }[] }[]
 ) => {
@@ -70,10 +91,14 @@ export const getComparisonDates = (
       return [startDate, endDate]; // Should not happen
   }
 
-  return [
-    compStartDate.toISOString().split('T')[0],
-    compEndDate.toISOString().split('T')[0],
-  ];
+  const splitStartDate = compStartDate.toISOString().split('T')[0];
+  const splitEndDate = compEndDate.toISOString().split('T')[0];
+
+  if (splitStartDate && splitEndDate) {
+    return [splitStartDate, splitEndDate];
+  } else {
+    return ['', ''];
+  }
 };
 
 export const getHRVStatus = (
@@ -350,7 +375,9 @@ export const exportFoodDiary = async ({
       {} as Record<string, DailyFoodEntry[]>
     );
 
-    const calculateFoodDayTotal = (entries: DailyFoodEntry[]) => {
+    const calculateFoodDayTotal = (
+      entries: DailyFoodEntry[]
+    ): NutrientTotals => {
       return entries.reduce(
         (total, entry) => {
           const calculatedNutrition = calculateFoodEntryNutrition(
@@ -435,7 +462,9 @@ export const exportFoodDiary = async ({
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
       .forEach((date) => {
         const entries = groupedData[date];
-
+        if (!entries) {
+          return;
+        }
         // Add individual entries
         entries.forEach((entry) => {
           const calculatedNutrition = calculateFoodEntryNutrition(
@@ -448,8 +477,8 @@ export const exportFoodDiary = async ({
           csvRows.push([
             formatDateInUserTimezone(entry.entry_date, 'MMM dd, yyyy'), // Format date for display
             entry.meal_type,
-            entry.foods.name,
-            entry.foods.brand || '',
+            entry.foods?.name || '',
+            entry.foods?.brand || '',
             entry.quantity.toString(),
             entry.unit,
             Math.round(
@@ -478,35 +507,36 @@ export const exportFoodDiary = async ({
         });
 
         // Add total row
-        const totals = calculateFoodDayTotal(entries) as Record<string, number>;
+        const totals = calculateFoodDayTotal(entries);
+
         csvRows.push([
-          formatDateInUserTimezone(date, 'MMM dd, yyyy'), // Format date for display
+          formatDateInUserTimezone(date, 'MMM dd, yyyy'),
           i18n.t('reports.foodDiaryExportTotals.total', 'Total'),
           '',
           '',
           '',
           '',
           Math.round(
-            convertEnergy(totals.calories, 'kcal', energyUnit)
+            convertEnergy(totals.calories ?? 0, 'kcal', energyUnit)
           ).toString(),
-          totals.protein.toFixed(1), // g
-          totals.carbs.toFixed(1), // g
-          totals.fat.toFixed(1), // g
-          totals.saturated_fat.toFixed(1), // g
-          totals.polyunsaturated_fat.toFixed(1), // g
-          totals.monounsaturated_fat.toFixed(1), // g
-          totals.trans_fat.toFixed(1), // g
-          totals.cholesterol.toFixed(2), // mg
-          totals.sodium.toFixed(2), // mg
-          totals.potassium.toFixed(2), // mg
-          totals.dietary_fiber.toFixed(1), // g
-          totals.sugars.toFixed(1), // g
-          Math.round(totals.vitamin_a).toString(), // μg - full number
-          totals.vitamin_c.toFixed(2), // mg
-          totals.calcium.toFixed(2), // mg
-          totals.iron.toFixed(2), // mg
+          (totals.protein ?? 0).toFixed(1),
+          (totals.carbs ?? 0).toFixed(1),
+          (totals.fat ?? 0).toFixed(1),
+          (totals.saturated_fat ?? 0).toFixed(1),
+          (totals.polyunsaturated_fat ?? 0).toFixed(1),
+          (totals.monounsaturated_fat ?? 0).toFixed(1),
+          (totals.trans_fat ?? 0).toFixed(1),
+          (totals.cholesterol ?? 0).toFixed(2),
+          (totals.sodium ?? 0).toFixed(2),
+          (totals.potassium ?? 0).toFixed(2),
+          (totals.dietary_fiber ?? 0).toFixed(1),
+          (totals.sugars ?? 0).toFixed(1),
+          Math.round(totals.vitamin_a ?? 0).toString(),
+          (totals.vitamin_c ?? 0).toFixed(2),
+          (totals.calcium ?? 0).toFixed(2),
+          (totals.iron ?? 0).toFixed(2),
           ...customNutrients.map((nutrient) =>
-            (totals[nutrient.name] || 0).toFixed(1)
+            (totals[nutrient.name] ?? 0).toFixed(1)
           ),
         ]);
       });
@@ -839,7 +869,8 @@ export const exportCustomMeasurement = async ({
     // Sort by timestamp descending
     const sortedMeasurements = [...measurements].sort(
       (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        new Date(b.timestamp || 0).getTime() -
+        new Date(a.timestamp || 0).getTime()
     );
 
     const csvHeaders = [
@@ -848,10 +879,13 @@ export const exportCustomMeasurement = async ({
       i18n.t('reports.customMeasurementsExportHeaders.value', 'Value'),
     ];
     const csvRows = sortedMeasurements.map((measurement) => {
-      const timestamp = new Date(measurement.timestamp);
-      const hour = timestamp.getHours();
-      const minutes = timestamp.getMinutes();
-      const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} `;
+      let formattedHour: string = '';
+      if (measurement.timestamp) {
+        const timestamp = new Date(measurement.timestamp);
+        const hour = timestamp.getHours();
+        const minutes = timestamp.getMinutes();
+        formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} `;
+      }
 
       return [
         measurement.entry_date &&
@@ -976,7 +1010,8 @@ export const formatCustomChartData = (
       (acc, d) => {
         if (
           !acc[d.entry_date] ||
-          new Date(d.timestamp) > new Date(acc[d.entry_date].timestamp)
+          new Date(d.timestamp || 0) >
+            new Date(acc[d.entry_date]?.timestamp || 0)
         ) {
           acc[d.entry_date] = d;
         }

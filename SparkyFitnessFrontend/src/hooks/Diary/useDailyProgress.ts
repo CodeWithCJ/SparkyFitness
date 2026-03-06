@@ -162,7 +162,7 @@ export const useCalculatedBMR = () => {
   const { bmrAlgorithm, includeBmrInNetCalories } = usePreferences();
 
   const { data: userProfile } = useQuery({
-    queryKey: userKeys.profile(user?.id),
+    queryKey: userKeys.profile(user?.id ?? ''),
     queryFn: () => userManagementService.getUserProfile(),
     enabled: !!user?.id,
   });

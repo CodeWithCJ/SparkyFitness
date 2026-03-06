@@ -114,8 +114,11 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     value: string | number | undefined
   ) => {
     setSets((prev) => {
+      const currentSet = prev[index];
+      if (!currentSet) return prev;
+
       const newSets = [...prev];
-      newSets[index] = { ...newSets[index], [field]: value };
+      newSets[index] = { ...currentSet, [field]: value };
       return newSets;
     });
   };
@@ -123,6 +126,9 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   const handleAddSet = () => {
     setSets((prev) => {
       const lastSet = prev[prev.length - 1];
+      if (!lastSet) {
+        return prev;
+      }
       const newSet: WorkoutPresetSet = {
         ...lastSet,
         set_number: prev.length + 1,
@@ -134,6 +140,9 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   const handleDuplicateSet = (index: number) => {
     setSets((prev) => {
       const setToDuplicate = prev[index];
+      if (!setToDuplicate) {
+        return prev;
+      }
       const newSets = [
         ...prev.slice(0, index + 1),
         { ...setToDuplicate },

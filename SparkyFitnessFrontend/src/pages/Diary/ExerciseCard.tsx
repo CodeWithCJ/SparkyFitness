@@ -145,7 +145,10 @@ const ExerciseCard = ({
 
         if (validExercisesToLog.length > 0) {
           setExercisesToLogQueue(validExercisesToLog);
-          setCurrentExerciseToLog(validExercisesToLog[0]);
+          const currentExercise = validExercisesToLog[0];
+          if (currentExercise) {
+            setCurrentExerciseToLog(currentExercise);
+          }
           setIsLogExerciseDialogOpen(true);
           setIsAddDialogOpen(false); // Close the add dialog if it's open
         }
@@ -268,7 +271,10 @@ const ExerciseCard = ({
 
     if (updatedQueue.length > 0) {
       // Open the dialog for the next exercise in the queue
-      setCurrentExerciseToLog(updatedQueue[0]);
+      const currentExercise = updatedQueue[0];
+      if (currentExercise) {
+        setCurrentExerciseToLog(currentExercise);
+      }
       setIsLogExerciseDialogOpen(true);
     } else {
       // All exercises logged, close the dialog
@@ -327,7 +333,9 @@ const ExerciseCard = ({
       items.forEach((entry: ExerciseEntry | GroupedExerciseEntry) => {
         // Calories
         const cal = entry.calories_burned;
-        if (!isNaN(cal)) calories += cal;
+        if (cal) {
+          if (!isNaN(cal)) calories += cal;
+        }
 
         // Duration & Sets
         if (entry.sets) {
@@ -388,13 +396,13 @@ const ExerciseCard = ({
         </div>
       </CardHeader>
       <CardContent>
-        {exerciseEntries.length === 0 ? (
+        {exerciseEntries?.length === 0 ? (
           <p className="dark:text-slate-300">
             {t('exerciseCard.noEntries', 'No exercise entries for this day.')}
           </p>
         ) : (
           <div className="space-y-4">
-            {exerciseEntries.map((entry) => {
+            {exerciseEntries?.map((entry) => {
               if (entry.type === 'preset') {
                 return (
                   <ExercisePresetEntryDisplay

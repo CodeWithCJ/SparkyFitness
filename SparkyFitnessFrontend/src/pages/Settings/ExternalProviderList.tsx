@@ -26,7 +26,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
     saveAllPreferences,
   } = usePreferences();
   const { data: providers = [], isLoading: providersLoading } =
-    useExternalProviders(user.activeUserId);
+    useExternalProviders(user?.activeUserId);
 
   const { mutateAsync: updateExternalProvider, isPending: updatePending } =
     useUpdateExternalProviderMutation();
@@ -90,7 +90,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
         editData.provider_type === 'strava' ||
         editData.provider_type === 'polar'
           ? editData.sync_frequency
-          : null,
+          : undefined,
     };
 
     try {
@@ -126,12 +126,12 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
     setEditData({
       provider_name: provider.provider_name,
       provider_type: provider.provider_type,
-      app_id: provider.app_id || '',
+      app_id: provider.app_id || null,
       // Never pre-fill API keys when editing for security/privacy
       app_key: '',
       is_active: provider.is_active,
       base_url: provider.base_url || '',
-      last_sync_at: provider.last_sync_at || null,
+      last_sync_at: provider.last_sync_at || '',
       sync_frequency: provider.sync_frequency || 'manual',
       garmin_connect_status: provider.garmin_connect_status || 'disconnected',
       garmin_last_status_check: provider.garmin_last_status_check || '',

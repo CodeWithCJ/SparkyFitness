@@ -30,7 +30,7 @@ export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
   const { user } = useAuth();
   const { formatDate } = usePreferences();
   const { mutateAsync: updateProfile, isPending: updatingProfile } =
-    useUpdateProfileMutation();
+    useUpdateProfileMutation(user?.id || ''); // can't be undefined or null because of check inside the function
 
   const [profileForm, setProfileForm] = useState<ProfileFormState>({
     full_name: profile.full_name || '',
@@ -41,7 +41,7 @@ export const ProfileFormContent = ({ profile }: { profile: Profile }) => {
   });
 
   const handleProfileUpdate = async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       await updateProfile({

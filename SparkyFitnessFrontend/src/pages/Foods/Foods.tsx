@@ -165,7 +165,7 @@ const FoodDatabaseManager: React.FC = () => {
         meal_type: 'breakfast', // Default to breakfast for now, or make dynamic
         quantity: quantity,
         unit: unit,
-        entry_date: new Date().toISOString().split('T')[0], // Current date
+        entry_date: new Date().toISOString().split('T')[0] ?? '', // Current date
         variant_id: selectedVariant.id || null,
       },
     });
@@ -394,13 +394,13 @@ const FoodDatabaseManager: React.FC = () => {
             </div>
           ) : (
             <>
-              {foodData.foods.length === 0 ? (
+              {foodData?.foods.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   {getEmptyMessage()}
                 </div>
               ) : (
                 <div className="grid gap-3">
-                  {foodData.foods.map((food) => (
+                  {foodData?.foods.map((food) => (
                     <div
                       key={food.id}
                       className="flex flex-col p-2 bg-gray-50 dark:bg-gray-800 rounded-lg gap-2"

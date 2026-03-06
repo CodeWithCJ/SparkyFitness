@@ -174,7 +174,7 @@ const SleepRespirationCard = ({ data }: SleepRespirationCardProps) => {
                   borderRadius: '6px',
                   color: 'hsl(var(--foreground))',
                 }}
-                formatter={(value: number) => [`${value} brpm`]}
+                formatter={(value: number | undefined) => [`${value} brpm`]}
               />
               {/* Normal range reference area */}
               <ReferenceArea

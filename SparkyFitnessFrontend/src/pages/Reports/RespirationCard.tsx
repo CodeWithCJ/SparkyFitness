@@ -318,7 +318,10 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
                       borderRadius: '6px',
                       color: 'hsl(var(--foreground))',
                     }}
-                    formatter={(value: number, name: string) => {
+                    formatter={(
+                      value: number | undefined,
+                      name: string | undefined
+                    ) => {
                       const labels: Record<string, string> = {
                         sleepAvg: t('reports.sleepAvg', 'Sleep Avg'),
                         awakeAvg: t('reports.awakeAvg', 'Awake Avg'),
@@ -326,7 +329,7 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
                       };
                       return [
                         `${value?.toFixed(1)} brpm`,
-                        labels[name] || name,
+                        labels[name ?? ''] || name,
                       ];
                     }}
                     labelFormatter={(label) => label}

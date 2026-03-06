@@ -147,12 +147,12 @@ const CopyFoodEntryDialog = ({
                 />
               </SelectTrigger>
               <SelectContent>
-                {availableMealTypes.length === 0 && (
+                {availableMealTypes?.length === 0 && (
                   <SelectItem value="loading" disabled>
                     Loading...
                   </SelectItem>
                 )}
-                {availableMealTypes.map((meal) => (
+                {availableMealTypes?.map((meal) => (
                   <SelectItem key={meal.id} value={meal.name}>
                     {getDisplayName(meal.name)}
                   </SelectItem>

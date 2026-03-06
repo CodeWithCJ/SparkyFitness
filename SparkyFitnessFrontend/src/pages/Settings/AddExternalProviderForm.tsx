@@ -192,7 +192,7 @@ const AddExternalProviderForm = ({
         createdProvider?.is_active &&
         connectionHandlers[createdProvider.provider_type]
       ) {
-        connectionHandlers[createdProvider.provider_type](createdProvider.id);
+        connectionHandlers[createdProvider.provider_type]?.(createdProvider.id);
       }
     } catch (error: unknown) {
       if (error instanceof Error) {

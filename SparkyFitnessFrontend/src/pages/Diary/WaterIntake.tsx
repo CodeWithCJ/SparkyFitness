@@ -23,12 +23,9 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const { activeUserId } = useActiveUser(); // Get activeUserId
   const { activeContainer } = useWaterContainer(); // Use activeContainer from context
   const { water_display_unit } = usePreferences();
-  const userId = activeUserId || user.id;
-  const { data: waterGoalMl = 1920 } = useWaterGoalQuery(
-    selectedDate,
-    activeUserId
-  );
-  const { data: waterMl = 0 } = useWaterIntakeQuery(selectedDate, activeUserId);
+  const userId = activeUserId || user?.id;
+  const { data: waterGoalMl = 1920 } = useWaterGoalQuery(selectedDate, userId);
+  const { data: waterMl = 0 } = useWaterIntakeQuery(selectedDate, userId);
   const { mutate: updateWaterIntake, isPending: loading } =
     useUpdateWaterIntakeMutation();
 
@@ -36,6 +33,9 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
     changeDrinks: number,
     containerId: number | null
   ) => {
+    if (!userId) {
+      return;
+    }
     updateWaterIntake({
       user_id: userId,
       entry_date: selectedDate,

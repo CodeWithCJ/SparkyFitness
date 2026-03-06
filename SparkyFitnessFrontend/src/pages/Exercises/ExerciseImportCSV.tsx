@@ -27,6 +27,7 @@ import {
 
 export interface ExerciseCSVData {
   id: string;
+  name: string;
   [key: string]: string | number | boolean; // Allow for dynamic properties
 }
 
@@ -94,12 +95,12 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     const csvSplitRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
 
     const parsedHeaders = lines[0]
-      .split(csvSplitRegex)
+      ?.split(csvSplitRegex)
       .map((header) => header.trim().replace(/^"|"$/g, ''));
     const data: ExerciseCSVData[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(csvSplitRegex).map((value) => {
+      const values = lines[i]?.split(csvSplitRegex).map((value) => {
         // Remove surrounding quotes and unescape internal quotes
         let trimmedValue = value.trim();
         if (trimmedValue.startsWith('"') && trimmedValue.endsWith('"')) {
@@ -111,14 +112,14 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       });
       const row: Partial<ExerciseCSVData> = { id: generateUniqueId() };
 
-      parsedHeaders.forEach((header, index) => {
-        const value = values[index] || '';
+      parsedHeaders?.forEach((header, index) => {
+        const value = values ? (values[index] ?? '') : '';
         if (booleanFields.has(header)) {
           row[header as keyof ExerciseCSVData] = value.toLowerCase() === 'true';
         } else if (dropdownFields.has(header)) {
           const normalizedValue = value.toLowerCase();
           const options = dropdownOptions[header];
-          const matchingOption = options.find(
+          const matchingOption = options?.find(
             (option) => option === normalizedValue
           );
           row[header as keyof ExerciseCSVData] = matchingOption || value;
@@ -145,12 +146,12 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     const csvSplitRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
 
     const parsedHeaders = lines[0]
-      .split(csvSplitRegex)
+      ?.split(csvSplitRegex)
       .map((header) => header.trim().replace(/^"|"$/g, ''));
     const data: ExerciseCSVData[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(csvSplitRegex).map((value) => {
+      const values = lines[i]?.split(csvSplitRegex).map((value) => {
         let trimmedValue = value.trim();
         if (trimmedValue.startsWith('"') && trimmedValue.endsWith('"')) {
           trimmedValue = trimmedValue
@@ -163,14 +164,15 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
 
       // Create a map from parsed header to index
       const headerIndexMap: Record<string, number> = {};
-      parsedHeaders.forEach((header, index) => {
+      parsedHeaders?.forEach((header, index) => {
         headerIndexMap[header] = index;
       });
 
       requiredHeaders.forEach((requiredHeader) => {
         const fileHeader = mapping[requiredHeader];
-        const index = headerIndexMap[fileHeader];
-        const value = index !== undefined ? values[index] || '' : '';
+        const index = fileHeader ? headerIndexMap[fileHeader] : 0;
+        const value =
+          index !== undefined ? (values ? values[index] : '') || '' : '';
 
         if (booleanFields.has(requiredHeader)) {
           row[requiredHeader as keyof ExerciseCSVData] =
@@ -178,7 +180,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
         } else if (dropdownFields.has(requiredHeader)) {
           const normalizedValue = value.toLowerCase();
           const options = dropdownOptions[requiredHeader];
-          const matchingOption = options.find(
+          const matchingOption = options?.find(
             (option) => option === normalizedValue
           );
           row[requiredHeader as keyof ExerciseCSVData] =
@@ -221,18 +223,19 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
 
       const lines = text.split('\n');
       const parsedFileHeaders = lines[0]
-        .split(',')
+        ?.split(',')
         .map((h) => h.trim().replace(/^"|"$/g, ''));
       const areHeadersValid =
-        requiredHeaders.length === parsedFileHeaders.length &&
+        requiredHeaders.length === parsedFileHeaders?.length &&
         requiredHeaders.every(
           (value, index) => value === parsedFileHeaders[index]
         );
 
       if (areHeadersValid) {
         const parsedData = parseCSV(text);
-        if (parsedData.length > 0) {
-          setHeaders(Object.keys(parsedData[0]).filter((key) => key !== 'id'));
+        const header = parsedData[0];
+        if (parsedData.length > 0 && header) {
+          setHeaders(Object.keys(header).filter((key) => key !== 'id'));
           setCsvData(parsedData);
         } else {
           toast({
@@ -252,14 +255,16 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
           const normalizedRequired = required
             .toLowerCase()
             .replace(/[_ ]/g, '');
-          const match = parsedFileHeaders.find(
+          const match = parsedFileHeaders?.find(
             (h) => h.toLowerCase().replace(/[_ ]/g, '') === normalizedRequired
           );
           if (match) {
             initialMapping[required] = match;
           }
         });
-        setFileHeaders(parsedFileHeaders);
+        if (parsedFileHeaders) {
+          setFileHeaders(parsedFileHeaders);
+        }
         setHeaderMapping(initialMapping);
         setRawCsvText(text);
         setShowMapping(true);
@@ -410,8 +415,9 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
 
   const parseWithMapping = () => {
     const parsedData = parseCSVWithMapping(rawCsvText, headerMapping);
-    if (parsedData.length > 0) {
-      const filteredHeaders = Object.keys(parsedData[0]).filter(
+    const headers = parsedData[0];
+    if (parsedData.length > 0 && headers) {
+      const filteredHeaders = Object.keys(headers).filter(
         (key) => key !== 'id'
       );
       setHeaders(filteredHeaders);
@@ -448,7 +454,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     const invalidRow = csvData.find(
       (row) => !row.name || String(row.name).trim() === ''
@@ -844,7 +850,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {dropdownOptions[header].map((option) => (
+                                  {dropdownOptions[header]?.map((option) => (
                                     <SelectItem key={option} value={option}>
                                       {option.charAt(0).toUpperCase() +
                                         option.slice(1)}

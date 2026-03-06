@@ -32,7 +32,7 @@ import {
 import { useImportExerciseHistoryMutation } from '@/hooks/Exercises/useExercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { HistoryImportEntry } from '@/types/exercises';
-import { getErrorMessage, isObject } from '@/utils/api';
+import { getErrorMessage } from '@/utils/api';
 
 // Define the shape of a single row from the CSV
 interface CsvRow {
@@ -176,7 +176,7 @@ const ExerciseEntryHistoryImportCSV = ({
             description: t(
               'exercise.importHistoryCSV.parseError',
               'Failed to parse CSV: {{error}}',
-              { error: results.errors[0].message }
+              { error: results.errors[0]?.message }
             ),
             variant: 'destructive',
           });
@@ -308,17 +308,17 @@ const ExerciseEntryHistoryImportCSV = ({
           exercise_description: row.exercise_description?.trim(),
           exercise_source: row.exercise_source?.trim(),
           exercise_force: dropdownFields.has('exercise_force')
-            ? dropdownOptions['exercise_force'].find(
+            ? dropdownOptions['exercise_force']?.find(
                 (option) => option === row.exercise_force?.trim()?.toLowerCase()
               ) || row.exercise_force?.trim()
             : row.exercise_force?.trim(),
           exercise_level: dropdownFields.has('exercise_level')
-            ? dropdownOptions['exercise_level'].find(
+            ? dropdownOptions['exercise_level']?.find(
                 (option) => option === row.exercise_level?.trim()?.toLowerCase()
               ) || row.exercise_level?.trim()
             : row.exercise_level?.trim(),
           exercise_mechanic: dropdownFields.has('exercise_mechanic')
-            ? dropdownOptions['exercise_mechanic'].find(
+            ? dropdownOptions['exercise_mechanic']?.find(
                 (option) =>
                   option === row.exercise_mechanic?.trim()?.toLowerCase()
               ) || row.exercise_mechanic?.trim()
@@ -403,6 +403,16 @@ const ExerciseEntryHistoryImportCSV = ({
     }
   };
 
+  interface FailedEntry {
+    entry: { exercise_name: string };
+    reason: string;
+  }
+
+  interface ImportError {
+    details?: {
+      failedEntries?: FailedEntry[];
+    };
+  }
   const handleImportSubmit = async () => {
     if (groupedEntries.length === 0) {
       toast({
@@ -427,21 +437,19 @@ const ExerciseEntryHistoryImportCSV = ({
       onImportComplete();
     } catch (error: unknown) {
       let errorMessage = t('exercise.importHistoryCSV.importError');
-
+      const importError = error as ImportError;
       if (
-        isObject(error) &&
-        isObject(error.details) &&
-        Array.isArray(error.details.failedEntries)
+        importError &&
+        typeof importError === 'object' &&
+        importError.details &&
+        Array.isArray(importError.details.failedEntries)
       ) {
-        const details = error.details.failedEntries
-          .map(
-            (e: { entry: { exercise_name: string }; reason: string }) =>
-              `${e.entry.exercise_name} - ${e.reason}`
-          )
+        const detailsString = importError.details.failedEntries
+          .map((e) => `${e.entry.exercise_name} - ${e.reason}`)
           .join(', ');
 
         errorMessage = t('exercise.importHistoryCSV.partialImportError', {
-          details,
+          details: detailsString,
         });
       } else if (error instanceof Error) {
         errorMessage = error.message;
@@ -732,7 +740,7 @@ const ExerciseEntryHistoryImportCSV = ({
                   {field.replace('exercise_', '').replace(/_/g, ' ')}:
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {dropdownOptions[field].map((value) => (
+                  {dropdownOptions[field]?.map((value) => (
                     <TooltipProvider key={value}>
                       <Tooltip>
                         <TooltipTrigger asChild>

@@ -1,3 +1,4 @@
+import { PersonalRecordsMap } from '@/pages/Reports/ReportsTables';
 import { Exercise } from './exercises';
 import { Food, FoodVariant } from './food';
 
@@ -32,6 +33,26 @@ export interface DailyFoodEntry {
   food_variants?: FoodVariant;
   custom_nutrients?: Record<string, number>; // Add custom_nutrients
   isTotal?: boolean;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  food_name?: string;
+  brand_name?: string;
+  glycemic_index?: string | number;
   [key: string]:
     | string
     | number
@@ -91,14 +112,7 @@ export interface ExerciseDashboardData {
     totalVolume: number;
     totalReps: number;
   };
-  prData: {
-    [exerciseName: string]: {
-      oneRM: number;
-      date: string;
-      weight: number;
-      reps: number;
-    };
-  };
+  prData: PersonalRecordsMap;
   bestSetRepRange: {
     [exerciseName: string]: {
       [repRange: string]: {

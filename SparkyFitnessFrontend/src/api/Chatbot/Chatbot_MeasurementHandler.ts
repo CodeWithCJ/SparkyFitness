@@ -188,11 +188,11 @@ export const processMeasurementInput = async (
 
         let categoryId: string;
         let existingCategory = null;
-        let categorySearchError: ApiError = null;
+        let categorySearchError: ApiError = {};
         try {
           existingCategory = await searchCustomCategory(customMeasurementName);
         } catch (err: unknown) {
-          categorySearchError = err;
+          categorySearchError = err as ApiError;
         }
 
         if (categorySearchError && categorySearchError.code !== 'PGRST116') {
@@ -220,7 +220,7 @@ export const processMeasurementInput = async (
             `Custom category "${customMeasurementName}" not found, creating...`
           );
           let newCategory = null;
-          let categoryCreateError: ApiError = null;
+          let categoryCreateError: ApiError = {};
           try {
             newCategory = await createCustomCategory({
               name: customMeasurementName,
@@ -228,7 +228,7 @@ export const processMeasurementInput = async (
               measurement_type: 'numeric',
             });
           } catch (err: unknown) {
-            categoryCreateError = err;
+            categoryCreateError = err as ApiError;
           }
 
           if (categoryCreateError) {
@@ -245,7 +245,7 @@ export const processMeasurementInput = async (
 
         // Now insert the custom measurement entry
         const valueToLog = measurement.value ?? measurement.systolic;
-        let customEntryError: ApiError = null;
+        let customEntryError: ApiError = {};
 
         if (valueToLog === undefined || valueToLog === null) {
           error(
@@ -264,7 +264,7 @@ export const processMeasurementInput = async (
             entry_timestamp: new Date().toISOString(),
           });
         } catch (err: unknown) {
-          customEntryError = err;
+          customEntryError = err as ApiError;
         }
 
         if (customEntryError) {

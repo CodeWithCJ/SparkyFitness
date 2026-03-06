@@ -35,7 +35,7 @@ const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
     );
   }
 
-  if (history.length === 0) {
+  if (history?.length === 0) {
     return (
       <p className="text-center text-muted-foreground">
         {t(
@@ -70,7 +70,7 @@ const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
           </Button>
         </div>
       </CardHeader>
-      {!isMinimized && (
+      {!isMinimized && history && (
         <CardContent>
           <div className="space-y-2">
             {history
@@ -94,7 +94,7 @@ const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
                         </strong>
                         {entry.sets.map((set, i) => (
                           <div key={i} className="pl-4">
-                            {`${set.reps}x${convertWeight(set.weight, 'kg', weightUnit).toFixed(2)}${weightUnit}`}
+                            {`${set.reps}x${convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(2)}${weightUnit}`}
                             {set.duration
                               ? ` ${t('exercise.exerciseHistoryDisplay.durationLabel', 'for')} ${set.duration}min`
                               : ''}

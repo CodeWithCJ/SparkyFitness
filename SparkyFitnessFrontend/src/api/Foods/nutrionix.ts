@@ -1,6 +1,7 @@
 import { toast } from '@/hooks/use-toast';
 import { apiCall } from '@/api/api';
 import { getErrorMessage } from '@/utils/api';
+import { NutritionixItem } from '@/components/FoodSearch/FoodSearch';
 
 interface NutritionixFood {
   food_name: string;
@@ -188,6 +189,9 @@ export const getNutritionixNutrients = async (
     );
     if (data && data.foods && data.foods.length > 0) {
       const food = data.foods[0];
+      if (!food) {
+        throw new Error('Food is undefined');
+      }
       return {
         name: food.food_name,
         brand: food.brand_name || null,
@@ -228,7 +232,7 @@ export const getNutritionixNutrients = async (
 export const getNutritionixBrandedNutrients = async (
   nixItemId: string,
   defaultFoodDataProviderId: string | null
-) => {
+): Promise<NutritionixItem | null> => {
   if (!defaultFoodDataProviderId) {
     toast({
       title: 'Error',
@@ -262,6 +266,9 @@ export const getNutritionixBrandedNutrients = async (
     );
     if (data && data.foods && data.foods.length > 0) {
       const food = data.foods[0];
+      if (!food) {
+        throw new Error('Food is undefined');
+      }
       return {
         name: food.food_name,
         brand: food.brand_name || null,

@@ -238,8 +238,12 @@ const AddExerciseDialog = ({
     const [draggedFile] = reorderedImages.splice(draggedImageIndex, 1);
     const [draggedUrl] = reorderedUrls.splice(draggedImageIndex, 1);
 
-    reorderedImages.splice(index, 0, draggedFile);
-    reorderedUrls.splice(index, 0, draggedUrl);
+    if (draggedFile) {
+      reorderedImages.splice(index, 0, draggedFile);
+    }
+    if (draggedUrl) {
+      reorderedUrls.splice(index, 0, draggedUrl);
+    }
 
     setNewExerciseImages(reorderedImages);
     setNewExerciseImageUrls(reorderedUrls);

@@ -11,12 +11,17 @@ export const createMeal = async (mealData: MealPayload): Promise<Meal> => {
   return await apiCall(`/meals`, { method: 'POST', body: mealData });
 };
 
+interface MealParams {
+  filter: string;
+  searchTerm?: string;
+}
+
 export const getMeals = async (
   filter: MealFilter = 'all',
   searchTerm: string = ''
 ): Promise<Meal[]> => {
   let url = `/meals`;
-  const params: { [key: string]: string } = { filter };
+  const params: MealParams = { filter };
 
   if (searchTerm) {
     url = `/meals/search`;

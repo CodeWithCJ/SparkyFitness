@@ -16,7 +16,7 @@ interface NutrientGridProps {
     from: 'kcal' | 'kJ',
     to: 'kcal' | 'kJ'
   ) => number;
-  baseVariant: FoodVariant | null;
+  baseVariant: FoodVariant | null | undefined;
 }
 
 export const NutrientGrid = ({

@@ -22,18 +22,10 @@ import {
   ChartDataPoint,
   getChartConfig,
 } from '@/utils/chartUtils';
-
-interface MeasurementData {
-  entry_date: string; // Changed from 'date' to 'entry_date'
-  weight?: number;
-  neck?: number;
-  waist?: number;
-  hips?: number;
-  steps?: number;
-}
+import { CheckInMeasurement } from '@/types/checkin';
 
 interface MeasurementChartsGridProps {
-  measurementData: MeasurementData[];
+  measurementData: CheckInMeasurement[];
   showWeightInKg: boolean;
   showMeasurementsInCm: boolean;
 }
@@ -61,13 +53,17 @@ const MeasurementChartsGrid = ({
   };
 
   // Helper function to get smart Y-axis domain for measurements
-  const getYAxisDomain = (data: MeasurementData[], dataKey: string) => {
+  const getYAxisDomain = (data: CheckInMeasurement[], dataKey: string) => {
     const config = getChartConfig(dataKey);
-    return calculateSmartYAxisDomain(data as ChartDataPoint[], dataKey, {
-      marginPercent: config.marginPercent,
-      minRangeThreshold: config.minRangeThreshold,
-      useZeroBaseline: config.useZeroBaseline, // Pass useZeroBaseline from config
-    });
+    return calculateSmartYAxisDomain(
+      data as unknown as ChartDataPoint[],
+      dataKey,
+      {
+        marginPercent: config.marginPercent,
+        minRangeThreshold: config.minRangeThreshold,
+        useZeroBaseline: config.useZeroBaseline, // Pass useZeroBaseline from config
+      }
+    );
   };
 
   const [isMounted, setIsMounted] = React.useState(false);
@@ -170,8 +166,9 @@ const MeasurementChartsGrid = ({
                         labelFormatter={(value) =>
                           formatDateForChart(value as string)
                         }
-                        formatter={(value: number) => [
-                          `${value.toFixed(1)} ${showWeightInKg ? t('reports.kg', 'kg') : t('reports.lbs', 'lbs')}`,
+                        formatter={(value: number | undefined) => [
+                          value &&
+                            `${value.toFixed(1)} ${showWeightInKg ? t('reports.kg', 'kg') : t('reports.lbs', 'lbs')}`,
                         ]}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--background))',
@@ -246,8 +243,9 @@ const MeasurementChartsGrid = ({
                         labelFormatter={(value) =>
                           formatDateForChart(value as string)
                         }
-                        formatter={(value: number) => [
-                          `${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`,
+                        formatter={(value: number | undefined) => [
+                          value &&
+                            `${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`,
                         ]}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--background))',
@@ -323,8 +321,9 @@ const MeasurementChartsGrid = ({
                         labelFormatter={(value) =>
                           formatDateForChart(value as string)
                         }
-                        formatter={(value: number) => [
-                          `${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`,
+                        formatter={(value: number | undefined) => [
+                          value &&
+                            `${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`,
                         ]}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--background))',
@@ -399,8 +398,9 @@ const MeasurementChartsGrid = ({
                         labelFormatter={(value) =>
                           formatDateForChart(value as string)
                         }
-                        formatter={(value: number) => [
-                          `${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`,
+                        formatter={(value: number | undefined) => [
+                          value &&
+                            `${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`,
                         ]}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--background))',

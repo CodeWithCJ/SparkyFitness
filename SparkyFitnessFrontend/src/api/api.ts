@@ -16,11 +16,11 @@ interface ApiCallOptions extends RequestInit {
 export const API_BASE_URL = '/api';
 //export const API_BASE_URL = 'http://192.168.1.111:3010';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function apiCall<T = any>(
+export async function apiCall(
   endpoint: string,
   options?: ApiCallOptions
-): Promise<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
   const userLoggingLevel = getUserLoggingLevel();
   let url = options?.externalApi ? endpoint : `${API_BASE_URL}${endpoint}`;
 
@@ -118,7 +118,7 @@ export async function apiCall<T = any>(
           userLoggingLevel,
           `Frontend workaround triggered for ${endpoint}: Backend returned 400. Returning empty array.`
         );
-        return [] as unknown as T; // Return empty array to gracefully handle 400 errors on these endpoints
+        return []; // Return empty array to gracefully handle 400 errors on these endpoints
       }
 
       // Special handling for 404 errors on exercise search endpoints
@@ -130,7 +130,7 @@ export async function apiCall<T = any>(
           userLoggingLevel,
           `Frontend workaround triggered for ${endpoint}: Backend returned 404. Returning empty array.`
         );
-        return [] as unknown as T; // Return empty array to gracefully handle 404 errors on exercise search
+        return []; // Return empty array to gracefully handle 404 errors on exercise search
       }
 
       // Suppress toast for 404 errors if suppress404Toast is true
@@ -163,7 +163,7 @@ export async function apiCall<T = any>(
         userLoggingLevel,
         `API Call: Received blob response from ${url}.`
       );
-      return blobResponse as unknown as T;
+      return blobResponse;
     }
     // Handle cases where the response might be empty (e.g., DELETE requests)
     const text = await response.text();

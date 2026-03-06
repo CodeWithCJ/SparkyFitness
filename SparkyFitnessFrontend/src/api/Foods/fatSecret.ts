@@ -38,15 +38,15 @@ const parseFoodDescription = (description: string) => {
   let serving_unit: string | undefined;
 
   if (servingMatch) {
-    serving_size = parseFloat(servingMatch[1]);
-    serving_unit = servingMatch[2].trim();
+    serving_size = parseFloat(servingMatch[1] ?? '1');
+    serving_unit = servingMatch[2]?.trim();
   }
 
   return {
-    calories: caloriesMatch ? parseFloat(caloriesMatch[1]) : 0,
-    fat: fatMatch ? parseFloat(fatMatch[1]) : 0,
-    carbs: carbsMatch ? parseFloat(carbsMatch[1]) : 0,
-    protein: proteinMatch ? parseFloat(proteinMatch[1]) : 0,
+    calories: caloriesMatch ? parseFloat(caloriesMatch[1] ?? '0') : 0,
+    fat: fatMatch ? parseFloat(fatMatch[1] ?? '0') : 0,
+    carbs: carbsMatch ? parseFloat(carbsMatch[1] ?? '0') : 0,
+    protein: proteinMatch ? parseFloat(proteinMatch[1] ?? '0') : 0,
     serving_size,
     serving_unit,
   };

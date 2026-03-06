@@ -70,10 +70,10 @@ const HomeDashboardFasting = () => {
   };
 
   const handleEndFast = (
-    weight: number,
-    mood: { value: number; notes: string },
     start: Date,
-    end: Date
+    end: Date,
+    weight?: number,
+    mood?: { value: number; notes: string }
   ) => {
     if (!activeFast) return;
     endFast({
@@ -231,8 +231,8 @@ const HomeDashboardFasting = () => {
         durationFormatted={formatDuration()}
         initialStartISO={activeFast?.start_time ?? null}
         initialEndISO={new Date().toISOString()}
-        onEnd={(weight, mood, start, end) => {
-          handleEndFast(weight, mood, start, end);
+        onEnd={(start, end, weight, mood) => {
+          handleEndFast(start, end, weight, mood);
         }}
       />
     </Card>

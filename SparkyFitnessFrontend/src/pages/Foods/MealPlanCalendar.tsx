@@ -54,7 +54,7 @@ const MealPlanCalendar: React.FC = () => {
   const handleSave = async (templateData: Partial<MealPlanTemplate>) => {
     if (!activeUserId) return;
     try {
-      const currentClientDate = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+      const currentClientDate = new Date().toISOString().split('T')[0] ?? ''; // Get today's date in YYYY-MM-DD format
 
       if (templateData.id) {
         const updatedTemplate = await updateMealPlanTemplate({
@@ -105,7 +105,7 @@ const MealPlanCalendar: React.FC = () => {
   ) => {
     if (!activeUserId) return;
     try {
-      const templateToUpdate = templates.find((t) => t.id === templateId);
+      const templateToUpdate = templates?.find((t) => t.id === templateId);
       if (!templateToUpdate) {
         toast({
           title: t('common.error'),
@@ -114,7 +114,7 @@ const MealPlanCalendar: React.FC = () => {
         });
         return;
       }
-      const currentClientDate = new Date().toISOString().split('T')[0];
+      const currentClientDate = new Date().toISOString().split('T')[0] ?? '';
 
       await updateMealPlanTemplate({
         userId: activeUserId,

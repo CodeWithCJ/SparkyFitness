@@ -29,7 +29,7 @@ const WaterContainerManager: React.FC = () => {
     ''
   );
   const { toast } = useToast();
-  const { data: containers = [] } = useWaterContainersQuery(user.activeUserId);
+  const { data: containers = [] } = useWaterContainersQuery(user?.activeUserId);
   const { mutateAsync: createWaterContainer } =
     useCreateWaterContainerMutation();
   const { mutateAsync: deleteWaterContainer } =

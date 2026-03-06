@@ -114,7 +114,11 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
       const startX = getX(new Date(segment.start_time).getTime());
       const endX = getX(new Date(segment.end_time).getTime());
       const width = endX - startX;
-      const y = stageYPositions[segment.stage_type] + BAR_VERTICAL_OFFSET;
+      const segmentStageType = stageYPositions[segment.stage_type];
+      let y = 0;
+      if (segmentStageType) {
+        y = segmentStageType + BAR_VERTICAL_OFFSET;
+      }
       const color = SLEEP_STAGE_COLORS[segment.stage_type];
 
       return (
@@ -138,50 +142,50 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
       const current = sortedSegments[i];
       const next = sortedSegments[i + 1];
 
+      if (!current || !next) {
+        return;
+      }
       const currentEndX = getX(new Date(current.end_time).getTime());
       const nextStartX = getX(new Date(next.start_time).getTime());
 
       // Only draw connecting lines if there's a gap or stage change
-      if (current.stage_type !== next.stage_type || currentEndX < nextStartX) {
-        const y1 =
-          stageYPositions[current.stage_type] +
-          BAR_VERTICAL_OFFSET +
-          BAR_HEIGHT / 2;
-        const y2 =
-          stageYPositions[next.stage_type] +
-          BAR_VERTICAL_OFFSET +
-          BAR_HEIGHT / 2;
+      if (current?.stage_type !== next.stage_type || currentEndX < nextStartX) {
+        const currentStageType = stageYPositions[current.stage_type];
+        if (currentStageType) {
+          const y1 = currentStageType + BAR_VERTICAL_OFFSET + BAR_HEIGHT / 2;
+          const y2 = currentStageType + BAR_VERTICAL_OFFSET + BAR_HEIGHT / 2;
 
-        // Draw vertical line from current stage end to next stage start
-        lines.push(
-          <line
-            key={`v-line-${i}`}
-            x1={currentEndX}
-            y1={y1}
-            x2={currentEndX}
-            y2={y2}
-            stroke={resolvedTheme === 'dark' ? 'white' : 'black'}
-            strokeWidth={LINE_WIDTH}
-          />
-        );
-
-        // Draw horizontal line if there's a time gap between segments at the same stage level
-        if (
-          currentEndX < nextStartX &&
-          current.stage_type === next.stage_type
-        ) {
+          // Draw vertical line from current stage end to next stage start
           lines.push(
             <line
-              key={`h-line-gap-${i}`}
+              key={`v-line-${i}`}
               x1={currentEndX}
               y1={y1}
-              x2={nextStartX}
-              y2={y1}
+              x2={currentEndX}
+              y2={y2}
               stroke={resolvedTheme === 'dark' ? 'white' : 'black'}
               strokeWidth={LINE_WIDTH}
-              strokeDasharray="4 4"
             />
           );
+
+          // Draw horizontal line if there's a time gap between segments at the same stage level
+          if (
+            currentEndX < nextStartX &&
+            current.stage_type === next.stage_type
+          ) {
+            lines.push(
+              <line
+                key={`h-line-gap-${i}`}
+                x1={currentEndX}
+                y1={y1}
+                x2={nextStartX}
+                y2={y1}
+                stroke={resolvedTheme === 'dark' ? 'white' : 'black'}
+                strokeWidth={LINE_WIDTH}
+                strokeDasharray="4 4"
+              />
+            );
+          }
         }
       }
     }
@@ -195,6 +199,7 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
 
     // Horizontal grid lines and stage labels
     Object.entries(stageYPositions).forEach(([stageType, yPos]) => {
+      const stageTypeLabel = stageLabels[stageType];
       gridLines.push(
         <line
           key={`h-grid-${stageType}`}
@@ -216,10 +221,11 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
           fill={resolvedTheme === 'dark' ? 'white' : 'black'}
           fontSize="12"
         >
-          {t(
-            `sleepAnalyticsCharts.${stageType === 'light' ? 'core' : stageType}`,
-            stageLabels[stageType]
-          )}
+          {stageTypeLabel &&
+            t(
+              `sleepAnalyticsCharts.${stageType === 'light' ? 'core' : stageType}`,
+              stageTypeLabel
+            )}
         </text>
       );
     });
@@ -305,7 +311,12 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
                   <div key={stageKey} className="flex items-center text-sm">
                     <span
                       className="mr-2 h-3 w-3 rounded-full"
-                      style={{ backgroundColor: SLEEP_STAGE_COLORS[stageKey] }}
+                      style={{
+                        backgroundColor:
+                          SLEEP_STAGE_COLORS[
+                            stageKey as keyof typeof SLEEP_STAGE_COLORS
+                          ],
+                      }}
                     ></span>
                     <span>
                       {t(

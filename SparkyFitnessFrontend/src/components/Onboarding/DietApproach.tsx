@@ -67,11 +67,13 @@ export const DietApproach = ({
               setLocalSelectedDiet(value);
               if (value !== 'custom') {
                 const template = getDietTemplate(value);
-                setCustomPercentages({
-                  carbs: template.carbsPercentage,
-                  protein: template.proteinPercentage,
-                  fat: template.fatPercentage,
-                });
+                if (template) {
+                  setCustomPercentages({
+                    carbs: template.carbsPercentage,
+                    protein: template.proteinPercentage,
+                    fat: template.fatPercentage,
+                  });
+                }
               }
             }}
           >
@@ -95,7 +97,7 @@ export const DietApproach = ({
 
           <div className="mt-3 p-3 bg-[#2c2c2e] rounded-lg">
             <p className="text-sm text-gray-300">
-              {getDietTemplate(localSelectedDiet).description}
+              {getDietTemplate(localSelectedDiet)?.description}
             </p>
           </div>
 
@@ -163,7 +165,7 @@ export const DietApproach = ({
                 <Slider
                   value={[customPercentages.carbs]}
                   onValueChange={([value]) =>
-                    handleMacroValueChange('carbs', value)
+                    handleMacroValueChange('carbs', value || 0)
                   }
                   min={5}
                   max={80}
@@ -216,7 +218,7 @@ export const DietApproach = ({
                 <Slider
                   value={[customPercentages.protein]}
                   onValueChange={([value]) =>
-                    handleMacroValueChange('protein', value)
+                    handleMacroValueChange('protein', value || 0)
                   }
                   min={10}
                   max={50}
@@ -266,7 +268,7 @@ export const DietApproach = ({
                 <Slider
                   value={[customPercentages.fat]}
                   onValueChange={([value]) =>
-                    handleMacroValueChange('fat', value)
+                    handleMacroValueChange('fat', value || 0)
                   }
                   min={10}
                   max={75}

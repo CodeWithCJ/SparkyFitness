@@ -84,7 +84,9 @@ const EditExerciseEntryDialog = ({
     entry.calories_burned || ''
   );
   const [distanceInput, setDistanceInput] = useState<number | ''>(
-    Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1)) || ''
+    entry.distance !== undefined
+      ? Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1))
+      : ''
   );
   const [avgHeartRateInput, setAvgHeartRateInput] = useState<number | ''>(
     entry.avg_heart_rate !== null && entry.avg_heart_rate !== undefined
@@ -135,7 +137,7 @@ const EditExerciseEntryDialog = ({
   const handleSetChange = (
     setIndex: number,
     field: keyof WorkoutPresetSet,
-    value: string | number
+    value: string | number | undefined
   ) => {
     debug(
       loggingLevel,
@@ -162,6 +164,9 @@ const EditExerciseEntryDialog = ({
               reps: 10,
               weight: 0,
             };
+      if (!lastSet) {
+        return [...prev];
+      }
       const newSet: WorkoutPresetSet = {
         ...lastSet,
         set_number: prev.length + 1,
@@ -173,6 +178,9 @@ const EditExerciseEntryDialog = ({
   const handleDuplicateSet = (setIndex: number) => {
     setSets((prev) => {
       const setToDuplicate = prev[setIndex];
+      if (!setToDuplicate) {
+        return [...prev];
+      }
       const newSets = [
         ...prev.slice(0, setIndex + 1),
         { ...setToDuplicate },
@@ -266,7 +274,7 @@ const EditExerciseEntryDialog = ({
               ? null
               : convertDistance(Number(distanceInput), distanceUnit, 'km'),
           avg_heart_rate:
-            avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
+            avgHeartRateInput === '' ? 0 : Number(avgHeartRateInput),
           activity_details: activityDetails.map((detail) => ({
             id: detail.id,
             provider_name: detail.provider_name,

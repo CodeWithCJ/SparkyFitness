@@ -10,17 +10,17 @@ import {
 } from '@/api/Settings/profileService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-export const useAvatarQuery = (url: string | null) => {
+export const useAvatarQuery = (url?: string | null) => {
   return useQuery({
-    queryKey: userKeys.avatar(url),
-    queryFn: () => fetchAvatarBlob(url),
+    queryKey: userKeys.avatar(url!),
+    queryFn: () => fetchAvatarBlob(url!),
     enabled: !!url,
   });
 };
 
 export const useProfileQuery = (userId?: string) => {
   return useQuery({
-    queryKey: userKeys.profile(userId),
+    queryKey: userKeys.profile(userId!),
     queryFn: getProfileData,
     enabled: !!userId,
     meta: {
@@ -29,7 +29,7 @@ export const useProfileQuery = (userId?: string) => {
   });
 };
 
-export const useUpdateProfileMutation = (userId?: string) => {
+export const useUpdateProfileMutation = (userId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -45,7 +45,7 @@ export const useUpdateProfileMutation = (userId?: string) => {
   });
 };
 
-export const useUploadAvatarMutation = (userId?: string) => {
+export const useUploadAvatarMutation = (userId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({

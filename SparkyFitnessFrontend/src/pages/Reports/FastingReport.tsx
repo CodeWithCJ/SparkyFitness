@@ -26,6 +26,12 @@ interface FastingReportProps {
   fastingData: FastingLog[];
 }
 
+interface Zones {
+  Anabolic: number;
+  Catabolic: number;
+  FatBurning: number;
+  Ketosis: number;
+}
 const COLORS = ['#6366f1', '#06b6d4', '#f59e0b', '#ef4444'];
 
 export const FastingReport = ({ fastingData }: FastingReportProps) => {
@@ -80,7 +86,7 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
 
   // Zone distribution (simple example based on duration)
   const zoneData = useMemo(() => {
-    const zones: Record<string, number> = {
+    const zones: Zones = {
       Anabolic: 0,
       Catabolic: 0,
       FatBurning: 0,
@@ -88,10 +94,15 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
     };
     fastingData.forEach((f) => {
       const hrs = (f.duration_minutes ?? 0) / 60;
-      if (hrs < 12) zones.Anabolic += 1;
-      else if (hrs < 16) zones.Catabolic += 1;
-      else if (hrs < 20) zones.FatBurning += 1;
-      else zones.Ketosis += 1;
+      if (hrs < 12) {
+        zones.Anabolic = (zones.Anabolic ?? 0) + 1;
+      } else if (hrs < 16) {
+        zones.Catabolic = (zones.Catabolic ?? 0) + 1;
+      } else if (hrs < 20) {
+        zones.FatBurning = (zones.FatBurning ?? 0) + 1;
+      } else {
+        zones.Ketosis = (zones.Ketosis ?? 0) + 1;
+      }
     });
     return Object.entries(zones).map(([name, value]) => ({ name, value }));
   }, [fastingData]);
@@ -229,7 +240,11 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                         />
                         <Tooltip
                           formatter={(
-                            value: string | number | (string | number)[]
+                            value:
+                              | string
+                              | number
+                              | undefined
+                              | (string | number)[]
                           ) => {
                             if (value === null || value === undefined)
                               return '';
@@ -371,7 +386,11 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                         />
                         <Tooltip
                           formatter={(
-                            value: string | number | (string | number)[]
+                            value:
+                              | string
+                              | number
+                              | undefined
+                              | (string | number)[]
                           ) => {
                             if (value === null || value === undefined)
                               return '';

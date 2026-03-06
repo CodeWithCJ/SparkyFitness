@@ -16,7 +16,7 @@ export const processChatInput = async (
   debug(userLoggingLevel, 'Processing chat input with data:', data);
 
   return {
-    action: data?.intent === 'ask_question' ? 'advice' : 'chat', // Determine action based on original intent if available
+    action: data['intent'] === 'ask_question' ? 'advice' : 'chat', // Determine action based on original intent if available
     response: aiResponseText || 'Okay, what would you like to talk about?', // Use the AI's response text
   };
 };

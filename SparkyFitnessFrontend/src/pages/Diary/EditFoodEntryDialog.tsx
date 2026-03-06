@@ -1,4 +1,4 @@
-import { useState, FormEvent, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, SubmitEvent } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -118,7 +118,7 @@ const EditFoodEntryDialog = ({
 
   if (!entry) return null;
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedVariant) {
       warn(loggingLevel, 'Save called with no selected variant.');
@@ -200,11 +200,14 @@ const EditFoodEntryDialog = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {variants.map((variant) => (
-                        <SelectItem key={variant.id} value={variant.id}>
-                          {variant.serving_unit}
-                        </SelectItem>
-                      ))}
+                      {variants.map(
+                        (variant) =>
+                          variant.id && (
+                            <SelectItem key={variant.id} value={variant.id}>
+                              {variant.serving_unit}
+                            </SelectItem>
+                          )
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

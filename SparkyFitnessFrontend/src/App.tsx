@@ -15,7 +15,7 @@ import {
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import DraggableChatbotButton from '@/components/DraggableChatbotButton';
 import AboutDialog from '@/components/AboutDialog';
-import NewReleaseDialog from '@/components/NewReleaseDialog';
+import NewReleaseDialog, { ReleaseInfo } from '@/components/NewReleaseDialog';
 import AppSetup from '@/components/AppSetup';
 import { Toaster } from '@/components/ui/toaster';
 import {
@@ -100,7 +100,7 @@ export const ComponentFallback = () => {
 };
 const Root = () => {
   const [showAboutDialog, setShowAboutDialog] = useState(false);
-  const [latestRelease, setLatestRelease] = useState(null);
+  const [latestRelease, setLatestRelease] = useState<ReleaseInfo | null>(null);
   const [showNewReleaseDialog, setShowNewReleaseDialog] = useState(false);
   const { data: appVersion } = useCurrentVersionQuery();
   const navigate = useNavigate();

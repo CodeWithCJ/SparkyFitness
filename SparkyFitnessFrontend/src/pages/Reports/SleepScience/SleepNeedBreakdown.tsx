@@ -93,7 +93,9 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
                 borderRadius: '8px',
                 fontSize: '12px',
               }}
-              formatter={(value: number) => [formatSecondsToHHMM(value * 3600)]}
+              formatter={(value: number | undefined) => [
+                formatSecondsToHHMM((value || 0) * 3600),
+              ]}
             />
             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
               {chartData.map((entry, index) => (

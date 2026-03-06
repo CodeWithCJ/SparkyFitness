@@ -419,25 +419,29 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
   });
   const [isAddExerciseDialogOpen, setIsAddExerciseDialogOpen] = useState(false);
 
-  const handleAddExercise = (exercise: Exercise) => {
-    const newExercise: WorkoutPresetExercise = {
-      id: crypto.randomUUID(), // Stable ID for DND
-      exercise_id: exercise.id,
-      exercise_name: exercise.name,
-      image_url:
-        exercise.images && exercise.images.length > 0 ? exercise.images[0] : '',
-      exercise: exercise,
-      sets: [
-        {
-          id: crypto.randomUUID(),
-          set_number: 1,
-          set_type: 'Working Set',
-          reps: 10,
-          weight: 0,
-        },
-      ],
-    };
-    setExercises((prev) => [...prev, newExercise]);
+  const handleAddExercise = (exercise: Exercise | undefined) => {
+    if (exercise) {
+      const newExercise: WorkoutPresetExercise = {
+        id: crypto.randomUUID(), // Stable ID for DND
+        exercise_id: exercise.id,
+        exercise_name: exercise.name,
+        image_url:
+          exercise.images && exercise.images.length > 0
+            ? exercise.images[0]
+            : '',
+        exercise: exercise,
+        sets: [
+          {
+            id: crypto.randomUUID(),
+            set_number: 1,
+            set_type: 'Working Set',
+            reps: 10,
+            weight: 0,
+          },
+        ],
+      };
+      setExercises((prev) => [...prev, newExercise]);
+    }
     setIsAddExerciseDialogOpen(false);
   };
 
@@ -450,7 +454,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
       exerciseIndex: number,
       setIndex: number,
       field: keyof WorkoutPresetSet,
-      value: string | number
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
     ) => {
       setExercises((prev) =>
         prev.map((exercise, eIndex) => {
@@ -479,6 +483,9 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
           return exercise;
         }
         const lastSet = exercise.sets[exercise.sets.length - 1];
+        if (!lastSet) {
+          return exercise;
+        }
         const newSet: WorkoutPresetSet = {
           ...lastSet,
           id: crypto.randomUUID(),
@@ -501,6 +508,9 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
           }
           const sets = exercise.sets;
           const setToDuplicate = sets[setIndex];
+          if (!setToDuplicate) {
+            return exercise;
+          }
           const newSets = [
             ...sets.slice(0, setIndex + 1),
             { ...setToDuplicate, id: crypto.randomUUID() },
@@ -581,6 +591,9 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         activeSetParentIdx === overSetParentIdx
       ) {
         const exercise = newExercises[activeSetParentIdx];
+        if (!exercise) {
+          return prevExercises;
+        }
         const oldSetIdx = exercise.sets.findIndex(
           (s) => String(s.id) === activeId
         );
@@ -631,7 +644,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         sort_order: index,
         sets: ex.sets.map((set) => ({
           ...set,
-          weight: convertWeight(set.weight, weightUnit, 'kg'),
+          weight: set.weight ? convertWeight(set.weight, weightUnit, 'kg') : 0,
         })),
       })),
     });

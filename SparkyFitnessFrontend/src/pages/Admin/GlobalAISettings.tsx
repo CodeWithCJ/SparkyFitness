@@ -175,7 +175,7 @@ const GlobalAISettings = () => {
       id: serviceId,
       model_name: editData.showCustomModelInput
         ? editData.custom_model_name
-        : editData.model_name || null,
+        : editData.model_name || '',
     };
 
     if (serviceToUpdate.api_key === '') {

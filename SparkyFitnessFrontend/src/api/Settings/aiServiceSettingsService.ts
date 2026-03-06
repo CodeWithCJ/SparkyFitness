@@ -20,7 +20,7 @@ export const getAIServices = async (): Promise<AIService[]> => {
   }
 };
 
-export const getPreferences = async (): Promise<UserPreferencesChat> => {
+export const getPreferences = async (): Promise<UserPreferencesChat | null> => {
   try {
     const preferences = await apiCall(`/user-preferences`, {
       method: 'GET',

@@ -451,7 +451,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         } else {
           await createMeal({ mealPayload: mealData });
         }
-        onSave();
+        onSave?.();
       } catch (err) {
         error(loggingLevel, 'Error saving meal:', err);
       }
@@ -497,7 +497,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         } else {
           await createFoodEntryMeal(foodEntryMealData);
         }
-        onSave();
+        onSave?.();
       } catch (err) {
         error(loggingLevel, 'Error updating food diary meal entry:', err);
       }
@@ -542,7 +542,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
     // Apply multiplier to all totals
     Object.keys(totals).forEach((key) => {
-      totals[key] = totals[key] * multiplier;
+      totals[key] = (totals[key] || 0) * multiplier;
     });
 
     return totals;
