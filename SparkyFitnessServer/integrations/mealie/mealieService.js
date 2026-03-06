@@ -11,15 +11,16 @@ class MealieService {
         this.accessToken = apiKey; // Directly use the provided API key as the access token
     }
 
-    async searchRecipes(query, options = {}) {
+    async searchRecipes(query, page = 1, options = {}) {
         if (!this.accessToken) {
             throw new Error('Mealie API key not provided.');
         }
 
+        const perPage = 10;
         const url = new URL(`${this.baseUrl}/api/recipes`);
-        url.searchParams.append('queryFilter', `name LIKE "%${query}%"`); // Use queryFilter for better filtering
-        url.searchParams.append('perPage', 10); // Limit results to 10 using perPage
-        url.searchParams.append('page', 1); // Request the first page of results
+        url.searchParams.append('queryFilter', `name LIKE "%${query}%"`);
+        url.searchParams.append('perPage', perPage);
+        url.searchParams.append('page', page);
 
         try {
             const response = await fetch(url.toString(), {
@@ -27,28 +28,38 @@ class MealieService {
                 headers: {
                     'Authorization': `Bearer ${this.accessToken}`,
                     'Accept': 'application/json',
-                    ...options.headers, // Apply custom headers
+                    ...options.headers,
                 },
             });
 
             if (!response.ok) {
-                const errorText = await response.text(); // Read response as text
-                log('error', `Mealie API Error Response (Raw): ${errorText}`); // Log the raw response
+                const errorText = await response.text();
+                log('error', `Mealie API Error Response (Raw): ${errorText}`);
                 try {
-                    const errorData = JSON.parse(errorText); // Attempt to parse as JSON
+                    const errorData = JSON.parse(errorText);
                     throw new Error(`Search failed: ${response.status} ${response.statusText} - ${errorData.detail}`);
                 } catch (jsonError) {
-                    // If parsing fails, use the raw text as the error message
                     throw new Error(`Search failed: ${response.status} ${response.statusText} - ${errorText}`);
                 }
             }
 
             const data = await response.json();
-            log('debug', `Found ${data.items.length} recipes for query: ${query}`);
-            return data.items; // Assuming 'items' contains the list of recipes
+            log('debug', `Found ${data.items.length} recipes for query: ${query} (page ${page})`);
+            return {
+                items: data.items,
+                pagination: {
+                    page,
+                    pageSize: perPage,
+                    totalCount: data.total,
+                    hasMore: page * perPage < data.total,
+                },
+            };
         } catch (error) {
             log('error', 'Error during Mealie recipe search:', error.message);
-            return [];
+            return {
+                items: [],
+                pagination: { page: 1, pageSize: 10, totalCount: 0, hasMore: false },
+            };
         }
     }
 

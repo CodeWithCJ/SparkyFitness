@@ -492,7 +492,7 @@ router.get("/nutritionix/item", authenticate, async (req, res, next) => {
  *   get:
  *     summary: Search for foods on Mealie
  *     tags: [External Integrations]
- *     description: Searches for foods using the Mealie API.
+ *     description: Searches for foods using the Mealie API. When a page parameter is provided, returns a paginated response with items and pagination metadata. Without page, returns a plain array for backwards compatibility.
  *     parameters:
  *       - in: query
  *         name: query
@@ -500,6 +500,13 @@ router.get("/nutritionix/item", authenticate, async (req, res, next) => {
  *           type: string
  *         required: true
  *         description: The search query.
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         required: false
+ *         description: Page number for paginated results. When provided, response includes pagination metadata.
  *       - in: header
  *         name: x-provider-id
  *         schema:
@@ -508,7 +515,7 @@ router.get("/nutritionix/item", authenticate, async (req, res, next) => {
  *         description: The ID of the Mealie data provider.
  *     responses:
  *       200:
- *         description: A list of foods from Mealie.
+ *         description: A list of foods from Mealie. Returns {items, pagination} when page param is provided, or a plain array otherwise.
  *       400:
  *         description: Missing search query or x-provider-id header.
  */
@@ -518,6 +525,7 @@ router.get(
   async (req, res, next) => {
     const { query } = req.query;
     const { mealieBaseUrl, mealieApiKey, userId } = req;
+    const page = req.query.page !== undefined ? Math.max(1, parseInt(req.query.page, 10) || 1) : undefined;
 
     if (!query) {
       return res.status(400).json({ error: "Missing search query" });
@@ -528,9 +536,11 @@ router.get(
         query,
         mealieBaseUrl,
         mealieApiKey,
-        userId
+        userId,
+        undefined,
+        page || 1
       );
-      res.json(data);
+      res.json(page !== undefined ? data : data.items);
     } catch (error) {
       next(error);
     }

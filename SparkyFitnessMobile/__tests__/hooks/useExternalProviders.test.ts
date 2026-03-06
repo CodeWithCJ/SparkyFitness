@@ -54,7 +54,7 @@ describe('useExternalProviders', () => {
 
     test('filters out inactive providers', async () => {
       mockFetchExternalProviders.mockResolvedValue([
-        makeProvider({ id: '1', provider_name: 'Active', provider_type: 'nutritionix', is_active: true }),
+        makeProvider({ id: '1', provider_name: 'Active', provider_type: 'openfoodfacts', is_active: true }),
         makeProvider({ id: '2', provider_name: 'Inactive', provider_type: 'fatsecret', is_active: false }),
       ]);
 

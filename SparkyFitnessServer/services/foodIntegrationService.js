@@ -105,14 +105,14 @@ async function getFatSecretNutrients(foodId, clientId, clientSecret) {
   }
 }
 
-async function searchMealieFoods(query, baseUrl, apiKey, userId, providerId) {
+async function searchMealieFoods(query, baseUrl, apiKey, userId, providerId, page = 1) {
   log(
     "debug",
-    `searchMealieFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey}, userId: ${userId}, providerId: ${providerId}`
+    `searchMealieFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey}, userId: ${userId}, providerId: ${providerId}, page: ${page}`
   );
   try {
     const mealieService = new MealieService(baseUrl, apiKey, providerId);
-    const searchResults = await mealieService.searchRecipes(query);
+    const { items: searchResults, pagination } = await mealieService.searchRecipes(query, page);
 
     // Concurrently fetch details for all recipes
     const detailedRecipes = await Promise.all(
@@ -122,7 +122,7 @@ async function searchMealieFoods(query, baseUrl, apiKey, userId, providerId) {
     // Filter out any null results (e.g., if a recipe detail fetch failed)
     const validRecipes = detailedRecipes.filter((recipe) => recipe !== null);
 
-    return validRecipes.map((recipe) => {
+    const mappedFoods = validRecipes.map((recipe) => {
       const { food, variant } = mealieService.mapMealieRecipeToSparkyFood(
         recipe,
         userId
@@ -133,6 +133,8 @@ async function searchMealieFoods(query, baseUrl, apiKey, userId, providerId) {
         variants: [variant],
       };
     });
+
+    return { items: mappedFoods, pagination };
   } catch (error) {
     log("error", `Error searching Mealie foods for user ${userId}:`, error);
     throw error;

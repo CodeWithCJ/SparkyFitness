@@ -1,10 +1,10 @@
 import { useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
-import { searchOpenFoodFacts, searchUsda, searchFatSecret } from '../services/api/externalFoodSearchApi';
+import { searchOpenFoodFacts, searchUsda, searchFatSecret, searchMealie } from '../services/api/externalFoodSearchApi';
 import { externalFoodSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
 import { RateLimiter } from '../utils/rateLimiter';
 
-const SUPPORTED_PROVIDERS = new Set(['openfoodfacts', 'usda', 'fatsecret']);
+const SUPPORTED_PROVIDERS = new Set(['openfoodfacts', 'usda', 'fatsecret', 'mealie']);
 
 // Open Food Facts allows 10 req/min; use 8 for headroom
 const offRateLimiter = new RateLimiter(8, 60_000);
@@ -32,6 +32,9 @@ export function useExternalFoodSearch(
         case 'fatsecret':
           if (!providerId) return { items: [], pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false } };
           return searchFatSecret(debouncedSearch, providerId, pageParam);
+        case 'mealie':
+          if (!providerId) return { items: [], pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false } };
+          return searchMealie(debouncedSearch, providerId, pageParam);
         default:
           return { items: [], pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false } };
       }
