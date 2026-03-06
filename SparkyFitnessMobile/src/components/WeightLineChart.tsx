@@ -1,10 +1,18 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { View, Text, Platform } from 'react-native';
-import { CartesianChart, Line, useChartPressState, type ChartPressState } from 'victory-native';
-import { useAnimatedReaction, runOnJS } from 'react-native-reanimated';
+import { CartesianChart, Line } from 'victory-native';
 import { matchFont } from '@shopify/react-native-skia';
 import { useCSSVariable } from 'uniwind';
-import type { WeightDataPoint, StepsRange } from '../hooks/useMeasurementsRange';
+import type {
+  WeightDataPoint,
+  StepsRange,
+} from '../hooks/useMeasurementsRange';
+import ChartTouchOverlay, {
+  ChartLayoutReporter,
+  EMPTY_CHART_TOUCH_LAYOUT,
+  createChartTouchLayoutSignature,
+  type ChartTouchLayout,
+} from './ChartTouchOverlay';
 
 type WeightLineChartProps = {
   data: WeightDataPoint[];
@@ -40,39 +48,22 @@ const formatXLabel30d90d = (day: string): string => {
 const formatTooltipDate = (day: string): string => {
   const [year, month, d] = day.split('-').map(Number);
   const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 };
 
-type WeightPressInit = { x: string; y: { weight: number } };
+const formatTooltipWeight = (weight: number): string => weight.toFixed(2);
 
-const WeightTooltip: React.FC<{ state: ChartPressState<WeightPressInit>; unit: string }> = ({ state, unit }) => {
-  const [tooltipText, setTooltipText] = useState('Press the line for details');
+const DEFAULT_TOOLTIP = 'Press the line for details';
 
-  const updateTooltip = useCallback((active: boolean, day: string, weight: number) => {
-    if (!active || !day) {
-      setTooltipText('Press the line for details');
-    } else {
-      setTooltipText(`${weight} ${unit} — ${formatTooltipDate(day)}`);
-    }
-  }, [unit]);
-
-  useAnimatedReaction(
-    () => ({
-      active: state.isActive.value,
-      day: state.x.value.value,
-      weight: state.y.weight.value.value,
-    }),
-    (current) => {
-      runOnJS(updateTooltip)(current.active, current.day as string, current.weight);
-    },
-  );
-
-  return (
-    <View className="h-6 justify-center mt-3 mb-1">
-      <Text className="text-text-secondary text-sm text-center">{tooltipText}</Text>
-    </View>
-  );
-};
+const WeightTooltip: React.FC<{ text: string }> = ({ text }) => (
+  <View className="h-6 justify-center mt-3 mb-1">
+    <Text className="text-text-secondary text-sm text-center">{text}</Text>
+  </View>
+);
 
 const WeightLineChart: React.FC<WeightLineChartProps> = ({
   data,
@@ -85,12 +76,55 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-
-  const { state } = useChartPressState({ x: '' as string, y: { weight: 0 } });
+  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
+    EMPTY_CHART_TOUCH_LAYOUT,
+  );
 
   const hasData = useMemo(() => data.length > 0, [data]);
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
+
+  useEffect(() => {
+    setTooltipText(DEFAULT_TOOLTIP);
+  }, [data, range, unit]);
+
+  const handleTouchLayoutChange = useCallback(
+    (nextLayout: ChartTouchLayout) => {
+      setTouchLayout(currentLayout => {
+        const currentSignature = createChartTouchLayoutSignature(currentLayout);
+        const nextSignature = createChartTouchLayoutSignature(nextLayout);
+
+        if (currentSignature === nextSignature) {
+          return currentLayout;
+        }
+
+        return nextLayout;
+      });
+    },
+    [],
+  );
+
+  const handleSelectPoint = useCallback(
+    (index: number) => {
+      const point = data[index];
+
+      if (!point) {
+        return;
+      }
+
+      setTooltipText(
+        `${formatTooltipWeight(point.weight)} ${unit} — ${formatTooltipDate(
+          point.day,
+        )}`,
+      );
+    },
+    [data, unit],
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setTooltipText(DEFAULT_TOOLTIP);
+  }, []);
 
   if (!hasData && !isLoading && !isError) {
     return null;
@@ -98,9 +132,11 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
-      <Text className="text-text-primary text-lg font-semibold mb-2">Weight</Text>
+      <Text className="text-text-primary text-lg font-semibold mb-2">
+        Weight
+      </Text>
 
-      <WeightTooltip state={state} unit={unit} />
+      <WeightTooltip text={tooltipText} />
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
@@ -108,7 +144,9 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">Failed to load weight data</Text>
+          <Text className="text-text-muted text-sm">
+            Failed to load weight data
+          </Text>
         </View>
       ) : (
         <View style={{ height: 175 }}>
@@ -117,7 +155,6 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
             xKey="day"
             yKeys={['weight']}
             domainPadding={{ left: 25, right: 25 }}
-            chartPressState={state}
             xAxis={{
               font,
               tickCount: X_TICK_COUNT[range],
@@ -132,17 +169,30 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
               },
             ]}
           >
-            {({ points }) => (
-              <Line
-                points={points.weight}
-                color={accentColor}
-                strokeWidth={2}
-                animate={{ type: 'timing', duration: 300 }}
-                curveType='cardinal'
-                connectMissingData
-              />
+            {({ points, chartBounds }) => (
+              <>
+                <ChartLayoutReporter
+                  chartBounds={chartBounds}
+                  points={points.weight}
+                  onChange={handleTouchLayoutChange}
+                />
+                <Line
+                  points={points.weight}
+                  color={accentColor}
+                  strokeWidth={2}
+                  animate={{ type: 'timing', duration: 300 }}
+                  curveType="cardinal"
+                  connectMissingData
+                />
+              </>
             )}
           </CartesianChart>
+          <ChartTouchOverlay
+            layout={touchLayout}
+            onSelect={handleSelectPoint}
+            onClear={handleClearSelection}
+            testIDPrefix="weight-touch-overlay"
+          />
         </View>
       )}
     </View>

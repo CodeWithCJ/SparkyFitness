@@ -1,10 +1,15 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { View, Text, Platform } from 'react-native';
-import { CartesianChart, Bar, useChartPressState, type ChartPressState } from 'victory-native';
-import { useAnimatedReaction, runOnJS } from 'react-native-reanimated';
+import { CartesianChart, Bar } from 'victory-native';
 import { matchFont } from '@shopify/react-native-skia';
 import { useCSSVariable } from 'uniwind';
 import type { StepsDataPoint, StepsRange } from '../hooks/useMeasurementsRange';
+import ChartTouchOverlay, {
+  ChartLayoutReporter,
+  EMPTY_CHART_TOUCH_LAYOUT,
+  createChartTouchLayoutSignature,
+  type ChartTouchLayout,
+} from './ChartTouchOverlay';
 
 type StepsBarChartProps = {
   data: StepsDataPoint[];
@@ -50,39 +55,20 @@ const formatXLabel30d90d = (day: string): string => {
 const formatTooltipDate = (day: string): string => {
   const [year, month, d] = day.split('-').map(Number);
   const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 };
 
-type StepsPressInit = { x: string; y: { steps: number } };
+const DEFAULT_TOOLTIP = 'Press a bar for details';
 
-const StepsTooltip: React.FC<{ state: ChartPressState<StepsPressInit> }> = ({ state }) => {
-  const [tooltipText, setTooltipText] = useState('Press a bar for details');
-
-  const updateTooltip = useCallback((active: boolean, day: string, steps: number) => {
-    if (!active || !day) {
-      setTooltipText('Press a bar for details');
-    } else {
-      setTooltipText(`${steps.toLocaleString()} steps — ${formatTooltipDate(day)}`);
-    }
-  }, []);
-
-  useAnimatedReaction(
-    () => ({
-      active: state.isActive.value,
-      day: state.x.value.value,
-      steps: state.y.steps.value.value,
-    }),
-    (current) => {
-      runOnJS(updateTooltip)(current.active, current.day as string, current.steps);
-    },
-  );
-
-  return (
-    <View className="h-6 justify-center mt-3 mb-1">
-      <Text className="text-text-secondary text-sm text-center">{tooltipText}</Text>
-    </View>
-  );
-};
+const StepsTooltip: React.FC<{ text: string }> = ({ text }) => (
+  <View className="h-6 justify-center mt-3 mb-1">
+    <Text className="text-text-secondary text-sm text-center">{text}</Text>
+  </View>
+);
 
 const StepsBarChart: React.FC<StepsBarChartProps> = ({
   data,
@@ -94,18 +80,63 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
+  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
+    EMPTY_CHART_TOUCH_LAYOUT,
+  );
 
-  const { state } = useChartPressState({ x: '' as string, y: { steps: 0 } });
-
-  const hasData = useMemo(() => data.some((d) => d.steps > 0), [data]);
+  const hasData = useMemo(() => data.some(d => d.steps > 0), [data]);
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
+  useEffect(() => {
+    setTooltipText(DEFAULT_TOOLTIP);
+  }, [data, range]);
+
+  const handleTouchLayoutChange = useCallback(
+    (nextLayout: ChartTouchLayout) => {
+      setTouchLayout(currentLayout => {
+        const currentSignature = createChartTouchLayoutSignature(currentLayout);
+        const nextSignature = createChartTouchLayoutSignature(nextLayout);
+
+        if (currentSignature === nextSignature) {
+          return currentLayout;
+        }
+
+        return nextLayout;
+      });
+    },
+    [],
+  );
+
+  const handleSelectBar = useCallback(
+    (index: number) => {
+      const point = data[index];
+
+      if (!point) {
+        return;
+      }
+
+      setTooltipText(
+        `${point.steps.toLocaleString()} steps — ${formatTooltipDate(
+          point.day,
+        )}`,
+      );
+    },
+    [data],
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setTooltipText(DEFAULT_TOOLTIP);
+  }, []);
+
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
-      <Text className="text-text-primary text-lg font-semibold mb-2">Steps</Text>
+      <Text className="text-text-primary text-lg font-semibold mb-2">
+        Steps
+      </Text>
 
-      <StepsTooltip state={state} />
+      <StepsTooltip text={tooltipText} />
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
@@ -113,11 +144,15 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">Failed to load step data</Text>
+          <Text className="text-text-muted text-sm">
+            Failed to load step data
+          </Text>
         </View>
       ) : !hasData ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">No step data for this period</Text>
+          <Text className="text-text-muted text-sm">
+            No step data for this period
+          </Text>
         </View>
       ) : (
         <View style={{ height: 175 }}>
@@ -126,8 +161,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
             xKey="day"
             yKeys={['steps']}
             domain={{ y: [0] }}
-            domainPadding={{ left: 25, right: 25}}
-            chartPressState={state}
+            domainPadding={{ left: 25, right: 25 }}
             xAxis={{
               font,
               tickCount: X_TICK_COUNT[range],
@@ -144,16 +178,29 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
             ]}
           >
             {({ points, chartBounds }) => (
-              <Bar
-                points={points.steps}
-                chartBounds={chartBounds}
-                color={accentColor}
-                innerPadding={INNER_PADDING[range]}
-                animate={{ type: 'timing', duration: 300 }}
-                roundedCorners={{ topLeft: 6, topRight: 6 }}
-              />
+              <>
+                <ChartLayoutReporter
+                  chartBounds={chartBounds}
+                  points={points.steps}
+                  onChange={handleTouchLayoutChange}
+                />
+                <Bar
+                  points={points.steps}
+                  chartBounds={chartBounds}
+                  color={accentColor}
+                  innerPadding={INNER_PADDING[range]}
+                  animate={{ type: 'timing', duration: 300 }}
+                  roundedCorners={{ topLeft: 6, topRight: 6 }}
+                />
+              </>
             )}
           </CartesianChart>
+          <ChartTouchOverlay
+            layout={touchLayout}
+            onSelect={handleSelectBar}
+            onClear={handleClearSelection}
+            testIDPrefix="steps-touch-overlay"
+          />
         </View>
       )}
     </View>
