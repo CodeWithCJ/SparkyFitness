@@ -39,7 +39,7 @@ graph TD
 
 The mobile app will communicate with the SparkyFitness server via a REST API.
 
-**Endpoint:** `POST /health-data`
+**Endpoint:** `POST /api/health-data`
 
 **Request Body:**
 
@@ -74,7 +74,7 @@ The body should be an array of data entries. For steps, the server expects the `
 5.  If permission is granted, the app fetches the steps data for the selected period.
 6.  The app aggregates the step counts, summing them up for each distinct date.
 7.  The app constructs a JSON payload with the aggregated steps data, conforming to the server's expected format.
-8.  The app sends a `POST` request to `https://<USER_SERVER_URL>/health-data` with the payload and API key in the header.
+8.  The app sends a `POST` request to `https://<USER_SERVER_URL>/api/health-data` with the payload and API key in the header.
 9.  The app displays a success or failure message to the user based on the server's response.
 
 ## 6. Project Structure

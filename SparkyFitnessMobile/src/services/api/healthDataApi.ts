@@ -26,13 +26,13 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
     throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
   }
 
-  console.log(`[API Service] Attempting to sync to URL: ${url}/health-data`);
+  console.log(`[API Service] Attempting to sync to URL: ${url}/api/health-data`);
   console.log(`[API Service] Using API Key (first 5 chars): ${apiKey ? apiKey.substring(0, 5) + '...' : 'N/A'}`);
 
   addLog(`[API] Starting sync of ${data.length} records to server`, 'DEBUG');
 
   try {
-    const response = await fetch(`${url}/health-data`, {
+    const response = await fetch(`${url}/api/health-data`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

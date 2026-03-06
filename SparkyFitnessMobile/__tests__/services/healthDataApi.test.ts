@@ -47,7 +47,7 @@ describe('healthDataApi', () => {
       );
     });
 
-    test('sends POST request to /health-data with correct headers', async () => {
+    test('sends POST request to /api/health-data with correct headers', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -57,7 +57,7 @@ describe('healthDataApi', () => {
       await syncHealthData(testData);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/health-data',
+        'https://example.com/api/health-data',
         expect.objectContaining({
           method: 'POST',
           headers: {
@@ -81,7 +81,7 @@ describe('healthDataApi', () => {
       await syncHealthData(testData);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/health-data',
+        'https://example.com/api/health-data',
         expect.anything()
       );
     });
