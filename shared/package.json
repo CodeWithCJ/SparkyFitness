@@ -1,0 +1,15 @@
+{
+  "name": "@workspace/shared",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "gen-types": "pnpm kanel && pnpm ts-to-zod 'src/shared/schemas/public/*.ts' && pnpm build-index",
+    "build-index": "for f in src/shared/schemas/public/*.zod.ts; do name=$(basename \"$f\" .zod.ts); schemaName=\"${name,,}Schema\"; echo \"export type $name = z.infer<typeof $schemaName>;\" >> \"$f\"; done"
+  },
+  "devDependencies": {
+    "ts-to-zod": "^3.0.0",
+    "typescript": "^5.9.3",
+    "zod": "^3.22.0"
+  }
+}
