@@ -23,7 +23,7 @@ interface SleepDebtHistoryProps {
   data: SleepDebtData;
 }
 
-const DEBT_COLORS: Record<string, string> = {
+const DEBT_COLORS = {
   surplus: '#22c55e',
   minor: '#3b82f6',
   moderate: '#f97316',

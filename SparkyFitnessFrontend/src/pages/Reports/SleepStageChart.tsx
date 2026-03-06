@@ -311,7 +311,12 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
                   <div key={stageKey} className="flex items-center text-sm">
                     <span
                       className="mr-2 h-3 w-3 rounded-full"
-                      style={{ backgroundColor: SLEEP_STAGE_COLORS[stageKey] }}
+                      style={{
+                        backgroundColor:
+                          SLEEP_STAGE_COLORS[
+                            stageKey as keyof typeof SLEEP_STAGE_COLORS
+                          ],
+                      }}
                     ></span>
                     <span>
                       {t(

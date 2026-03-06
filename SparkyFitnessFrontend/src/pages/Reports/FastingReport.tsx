@@ -26,6 +26,12 @@ interface FastingReportProps {
   fastingData: FastingLog[];
 }
 
+interface Zones {
+  Anabolic: number;
+  Catabolic: number;
+  FatBurning: number;
+  Ketosis: number;
+}
 const COLORS = ['#6366f1', '#06b6d4', '#f59e0b', '#ef4444'];
 
 export const FastingReport = ({ fastingData }: FastingReportProps) => {
@@ -80,7 +86,7 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
 
   // Zone distribution (simple example based on duration)
   const zoneData = useMemo(() => {
-    const zones: Record<string, number> = {
+    const zones: Zones = {
       Anabolic: 0,
       Catabolic: 0,
       FatBurning: 0,

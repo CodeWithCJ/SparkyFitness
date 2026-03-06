@@ -32,7 +32,7 @@ import {
 import { useImportExerciseHistoryMutation } from '@/hooks/Exercises/useExercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { HistoryImportEntry } from '@/types/exercises';
-import { getErrorMessage, isObject } from '@/utils/api';
+import { getErrorMessage } from '@/utils/api';
 
 // Define the shape of a single row from the CSV
 interface CsvRow {
@@ -403,6 +403,16 @@ const ExerciseEntryHistoryImportCSV = ({
     }
   };
 
+  interface FailedEntry {
+    entry: { exercise_name: string };
+    reason: string;
+  }
+
+  interface ImportError {
+    details?: {
+      failedEntries?: FailedEntry[];
+    };
+  }
   const handleImportSubmit = async () => {
     if (groupedEntries.length === 0) {
       toast({
@@ -427,21 +437,19 @@ const ExerciseEntryHistoryImportCSV = ({
       onImportComplete();
     } catch (error: unknown) {
       let errorMessage = t('exercise.importHistoryCSV.importError');
-
+      const importError = error as ImportError;
       if (
-        isObject(error) &&
-        isObject(error.details) &&
-        Array.isArray(error.details.failedEntries)
+        importError &&
+        typeof importError === 'object' &&
+        importError.details &&
+        Array.isArray(importError.details.failedEntries)
       ) {
-        const details = error.details.failedEntries
-          .map(
-            (e: { entry: { exercise_name: string }; reason: string }) =>
-              `${e.entry.exercise_name} - ${e.reason}`
-          )
+        const detailsString = importError.details.failedEntries
+          .map((e) => `${e.entry.exercise_name} - ${e.reason}`)
           .join(', ');
 
         errorMessage = t('exercise.importHistoryCSV.partialImportError', {
-          details,
+          details: detailsString,
         });
       } else if (error instanceof Error) {
         errorMessage = error.message;

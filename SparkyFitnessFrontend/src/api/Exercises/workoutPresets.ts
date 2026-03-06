@@ -46,11 +46,16 @@ export const deleteWorkoutPreset = async (
   });
 };
 
+interface WorkoutSearchParams {
+  searchTerm: string;
+  limit?: number;
+}
+
 export const searchWorkoutPresets = async (
   searchTerm: string,
   limit?: number
 ): Promise<WorkoutPreset[]> => {
-  const params: Record<string, string | number> = { searchTerm };
+  const params: WorkoutSearchParams = { searchTerm };
   if (limit !== undefined) {
     params.limit = limit;
   }

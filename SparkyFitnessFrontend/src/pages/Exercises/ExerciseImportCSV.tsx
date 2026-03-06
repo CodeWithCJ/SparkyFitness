@@ -27,6 +27,7 @@ import {
 
 export interface ExerciseCSVData {
   id: string;
+  name: string;
   [key: string]: string | number | boolean; // Allow for dynamic properties
 }
 

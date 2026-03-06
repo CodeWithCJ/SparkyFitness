@@ -22,19 +22,12 @@ import {
 } from '@/utils/nutrientUtils';
 import { formatWeight } from '@/utils/numberFormatting';
 import type { UserCustomNutrient } from '@/types/customNutrient';
-import type {
-  DailyFoodEntry as BaseDailyFoodEntry,
-  DailyExerciseEntry,
-} from '@/types/reports';
+import type { DailyFoodEntry, DailyExerciseEntry } from '@/types/reports';
 import {
   CheckInMeasurement,
   CustomCategory,
   CustomMeasurement,
 } from '@/types/checkin';
-
-interface DailyFoodEntry extends BaseDailyFoodEntry {
-  isTotal?: boolean;
-}
 
 interface PersonalRecord {
   date: string;

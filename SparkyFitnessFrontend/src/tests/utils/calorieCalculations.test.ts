@@ -14,10 +14,10 @@ import {
 // ---------------------------------------------------------------------------
 describe('ACTIVITY_MULTIPLIERS', () => {
   it('has expected multiplier for each level', () => {
-    expect(ACTIVITY_MULTIPLIERS.not_much).toBe(1.2);
-    expect(ACTIVITY_MULTIPLIERS.light).toBe(1.375);
-    expect(ACTIVITY_MULTIPLIERS.moderate).toBe(1.55);
-    expect(ACTIVITY_MULTIPLIERS.heavy).toBe(1.725);
+    expect(ACTIVITY_MULTIPLIERS['not_much']).toBe(1.2);
+    expect(ACTIVITY_MULTIPLIERS['light']).toBe(1.375);
+    expect(ACTIVITY_MULTIPLIERS['moderate']).toBe(1.55);
+    expect(ACTIVITY_MULTIPLIERS['heavy']).toBe(1.725);
   });
 });
 

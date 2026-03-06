@@ -5,7 +5,7 @@ export const getErrorMessage = (error: unknown): string => {
     error !== null &&
     typeof error === 'object' &&
     'message' in error &&
-    typeof (error as Record<string, unknown>).message === 'string'
+    typeof (error as Record<string, unknown>)['message'] === 'string'
   ) {
     return (error as { message: string }).message;
   }

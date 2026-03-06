@@ -27,6 +27,27 @@ interface StressDataPoint {
   stress_level: number;
 }
 
+interface NutrientTotals {
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  [key: string]: number | undefined;
+}
+
 export const calculateTotalTonnage = (
   entries: { sets: { weight: number | string; reps: number | string }[] }[]
 ) => {
@@ -354,7 +375,9 @@ export const exportFoodDiary = async ({
       {} as Record<string, DailyFoodEntry[]>
     );
 
-    const calculateFoodDayTotal = (entries: DailyFoodEntry[]) => {
+    const calculateFoodDayTotal = (
+      entries: DailyFoodEntry[]
+    ): NutrientTotals => {
       return entries.reduce(
         (total, entry) => {
           const calculatedNutrition = calculateFoodEntryNutrition(
@@ -484,7 +507,7 @@ export const exportFoodDiary = async ({
         });
 
         // Add total row
-        const totals = calculateFoodDayTotal(entries) as Record<string, number>;
+        const totals = calculateFoodDayTotal(entries);
 
         csvRows.push([
           formatDateInUserTimezone(date, 'MMM dd, yyyy'),
