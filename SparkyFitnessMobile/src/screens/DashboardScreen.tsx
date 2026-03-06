@@ -14,9 +14,8 @@ import { getActiveServerConfig } from '../services/storage';
 import { calculateEffectiveBurned, calculateCalorieBalance } from '../services/calculations';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import HydrationGauge from '../components/HydrationGauge';
-import StepsBarChart from '../components/StepsBarChart';
-import WeightLineChart from '../components/WeightLineChart';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
+import HealthTrendsPager from '../components/HealthTrendsPager';
 import ExerciseProgressCard from '../components/ExerciseProgressCard';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
@@ -112,6 +111,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
+  const [chartPage, setChartPage] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -307,19 +307,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <Text className="text-text-primary text-xl font-bold mt-4 mb-2">Health Trends</Text>
         <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />
 
-        <StepsBarChart
-          data={stepsData}
+        <HealthTrendsPager
+          stepsData={stepsData}
+          weightData={weightData}
           isLoading={isStepsLoading}
           isError={isStepsError}
           range={stepsRange}
-        />
-
-        <WeightLineChart
-          data={weightData}
-          isLoading={isStepsLoading}
-          isError={isStepsError}
-          range={stepsRange}
-          unit={preferences?.default_weight_unit ?? 'kg'}
+          weightUnit={preferences?.default_weight_unit ?? 'kg'}
+          activePage={chartPage}
+          onPageSelected={setChartPage}
         />
       </ScrollView>
     );
