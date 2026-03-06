@@ -5,11 +5,11 @@ import { Loader2, Save, Play, Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { BackupSettingsResponse } from '@/types/admin';
+import { BackupSettings, BackupSettingsMutator } from '@workspace/shared';
 
 interface BackupSettingsFormProps {
-  initialSettings: BackupSettingsResponse;
-  onSave: (settings: BackupSettingsResponse) => void;
+  initialSettings: BackupSettings;
+  onSave: (settings: BackupSettingsMutator) => void;
   onManualBackup: () => void;
   onRestore: (file: File) => void;
   isSaving: boolean;
@@ -44,7 +44,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
     });
   };
 
-  const getStatusText = (status?: string, timestamp?: string) => {
+  const getStatusText = (status?: string | null, timestamp?: Date | null) => {
     if (status && timestamp) {
       return `${status} on ${new Date(timestamp).toLocaleString()}`;
     }
@@ -52,16 +52,16 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
   };
 
   const [backupEnabled, setBackupEnabled] = useState(
-    initialSettings.backupEnabled ?? false
+    initialSettings.backup_enabled ?? false
   );
   const [backupDays, setBackupDays] = useState<string[]>(
-    initialSettings.backupDays || []
+    initialSettings.backup_days || []
   );
   const [backupTime, setBackupTime] = useState(
-    getLocalTimeString(initialSettings.backupTime)
+    getLocalTimeString(initialSettings.backup_time)
   );
   const [retentionDays, setRetentionDays] = useState(
-    initialSettings.retentionDays ?? 7
+    initialSettings.retention_days ?? 7
   );
 
   const daysOfWeek = [
@@ -89,10 +89,10 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
     const utcTime = localDate.toISOString().substring(11, 16);
 
     onSave({
-      backupEnabled,
-      backupDays,
-      backupTime: utcTime,
-      retentionDays,
+      backup_enabled: backupEnabled,
+      backup_days: backupDays,
+      backup_time: utcTime,
+      retention_days: retentionDays,
     });
   };
 
@@ -189,8 +189,8 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
         </label>
         <p className="text-gray-900">
           {getStatusText(
-            initialSettings.lastBackupStatus,
-            initialSettings.lastBackupTimestamp
+            initialSettings.last_backup_status,
+            initialSettings.last_backup_timestamp
           )}
         </p>
       </div>

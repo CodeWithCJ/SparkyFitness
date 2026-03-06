@@ -76,9 +76,7 @@ const BackupSettings: React.FC = () => {
               isSaving={isSaving}
               isRunningBackup={isRunningBackup}
               isRestoring={isRestoring}
-              backupLocation={
-                settings.backupLocation || '/app/SparkyFitnessServer/backup'
-              }
+              backupLocation={'/app/SparkyFitnessServer/backup'}
             />
           ) : (
             <div className="p-4 text-red-500">Failed to load settings.</div>

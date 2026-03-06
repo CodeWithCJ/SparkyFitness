@@ -1,13 +1,3 @@
-export interface BackupSettingsResponse {
-  backupEnabled?: boolean;
-  backupDays?: string[];
-  backupTime?: string;
-  retentionDays?: number;
-  lastBackupStatus?: string;
-  lastBackupTimestamp?: string;
-  backupLocation?: string;
-}
-
 export interface GlobalSettings {
   enable_email_password_login: boolean;
   is_oidc_active: boolean;
