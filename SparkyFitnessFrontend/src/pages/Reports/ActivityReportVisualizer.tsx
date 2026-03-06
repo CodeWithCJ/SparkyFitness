@@ -475,660 +475,673 @@ const ActivityReportVisualizer = ({
           <span className="text-xl">{activityData.activity ? '🏃' : '🏋️'}</span>
         </div>
         <h2 className="text-2xl font-bold">
-          {activityData.activity?.activity.activityName ||
+          {activityData?.activity?.activity?.activityName ||
             activityData.workout?.workoutName}
         </h2>
         <span className="ml-2 text-gray-500 cursor-pointer">✏️</span>
       </div>
 
-      {activityData.activity && (
-        <>
-          <div className="flex flex-wrap gap-4 mb-6 text-sm text-muted-foreground">
-            {activityData.activity?.activity.eventType && (
-              <span>
-                {t('reports.activityReport.event')}{' '}
-                {typeof activityData.activity.activity.eventType === 'object' &&
-                activityData.activity.activity.eventType !== null
-                  ? (
-                      activityData.activity.activity.eventType as {
-                        typeKey: string;
-                      }
-                    ).typeKey || t('common.notApplicable')
-                  : String(activityData.activity.activity.eventType)}
-              </span>
-            )}
-            {activityData.activity?.activity.course && (
-              <span className="mr-4">
-                {t('reports.activityReport.course')}{' '}
-                {typeof activityData.activity.activity.course === 'object' &&
-                activityData.activity.activity.course !== null
-                  ? (
-                      activityData.activity.activity.course as {
-                        typeKey: string;
-                      }
-                    ).typeKey || t('common.notApplicable')
-                  : String(activityData.activity.activity.course)}
-              </span>
-            )}
-            {activityData.activity?.activity.gear && (
-              <span className="mr-4">
-                {t('reports.activityReport.gear')}{' '}
-                {typeof activityData.activity.activity.gear === 'object' &&
-                activityData.activity.activity.gear !== null
-                  ? (activityData.activity.activity.gear as { typeKey: string })
-                      .typeKey || t('common.notApplicable')
-                  : String(activityData.activity.activity.gear)}
-              </span>
-            )}
-          </div>
-
-          {activityData.activity?.details?.geoPolylineDTO?.polyline &&
-            activityData.activity.details.geoPolylineDTO.polyline.length >
-              0 && (
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold mb-2">
-                  {t('reports.activityReport.activityMap')}
-                </h3>
-                <ActivityReportMap
-                  polylineData={
-                    activityData.activity.details.geoPolylineDTO.polyline
-                  }
-                />
-              </div>
-            )}
-
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold mb-2">
-              {t('reports.activityReport.stats')}
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">
-                    {t('reports.activityReport.distance')}
-                  </CardTitle>
-                  <FaRoute className="h-5 w-5 text-blue-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {totalActivityDistanceFormatted}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">
-                    {t('reports.activityReport.time')}
-                  </CardTitle>
-                  <FaClock className="h-5 w-5 text-green-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {totalActivityDurationFormatted}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">
-                    {t('reports.activityReport.avgPace')}
-                  </CardTitle>
-                  <FaWalking className="h-5 w-5 text-purple-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {averagePaceFormatted}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">
-                    {t('reports.activityReport.totalAscent')}
-                  </CardTitle>
-                  <FaMountain className="h-5 w-5 text-gray-700" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {totalActivityAscentFormatted}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">
-                    {t('reports.activityReport.calories')}
-                  </CardTitle>
-                  <FaFire className="h-5 w-5 text-red-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {totalActivityCaloriesFormatted}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">
-                    {t('reports.activityReport.heartRate')}
-                  </CardTitle>
-                  <FaHeartbeat className="h-5 w-5 text-pink-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{averageHRFormatted}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                  <CardTitle className="text-sm font-medium">
-                    {t('reports.activityReport.runningDynamics')}
-                  </CardTitle>
-                  <FaRunning className="h-5 w-5 text-orange-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {averageRunCadenceFormatted}
-                  </div>
-                </CardContent>
-              </Card>
+      {activityData &&
+        activityData.activity &&
+        activityData.activity.activity && (
+          <>
+            <div className="flex flex-wrap gap-4 mb-6 text-sm text-muted-foreground">
+              {!!activityData.activity.activity.eventType && (
+                <span>
+                  {t('reports.activityReport.event')}{' '}
+                  {typeof activityData.activity.activity.eventType ===
+                    'object' &&
+                  activityData.activity.activity.eventType !== null
+                    ? (
+                        activityData.activity.activity.eventType as {
+                          typeKey: string;
+                        }
+                      ).typeKey || t('common.notApplicable')
+                    : String(activityData.activity.activity.eventType)}
+                </span>
+              )}
+              {!!activityData.activity?.activity.course && (
+                <span className="mr-4">
+                  {t('reports.activityReport.course')}{' '}
+                  {typeof activityData.activity.activity.course === 'object' &&
+                  activityData.activity.activity.course !== null
+                    ? (
+                        activityData.activity.activity.course as {
+                          typeKey: string;
+                        }
+                      ).typeKey || t('common.notApplicable')
+                    : String(activityData.activity.activity.course)}
+                </span>
+              )}
+              {!!activityData.activity?.activity.gear && (
+                <span className="mr-4">
+                  {t('reports.activityReport.gear')}{' '}
+                  {typeof activityData.activity.activity.gear === 'object' &&
+                  activityData.activity.activity.gear !== null
+                    ? (
+                        activityData.activity.activity.gear as {
+                          typeKey: string;
+                        }
+                      ).typeKey || t('common.notApplicable')
+                    : String(activityData.activity.activity.gear)}
+                </span>
+              )}
             </div>
-          </div>
 
-          <div className="mb-4">
-            <span className="mr-2">{t('reports.activityReport.xAxis')}</span>
-            <button
-              className={`px-3 py-1 rounded-md text-sm ${xAxisMode === 'timeOfDay' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
-              onClick={() => setXAxisMode('timeOfDay')}
-            >
-              {t('reports.activityReport.timeOfDay')}
-            </button>
-            <button
-              className={`ml-2 px-3 py-1 rounded-md text-sm ${xAxisMode === 'activityDuration' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
-              onClick={() => setXAxisMode('activityDuration')}
-            >
-              {t('reports.activityReport.duration')}
-            </button>
-            <button
-              className={`ml-2 px-3 py-1 rounded-md text-sm ${xAxisMode === 'distance' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
-              onClick={() => setXAxisMode('distance')}
-            >
-              {t('reports.activityReport.distance')}
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {paceData && paceData.length > 0 && (
-              <ZoomableChart title={t('reports.activityReport.paceAndSpeed')}>
-                {(isMaximized, zoomLevel) => (
-                  <Card
-                    className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
-                  >
-                    <CardHeader>
-                      <CardTitle className="text-sm">
-                        {t('reports.activityReport.paceAndSpeed')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent
-                      className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
-                    >
-                      {isMounted ? (
-                        <ResponsiveContainer
-                          width={`${100 * zoomLevel}%`}
-                          height={
-                            isMaximized
-                              ? `${100 * zoomLevel}%`
-                              : 300 * zoomLevel
-                          }
-                          minWidth={0}
-                          minHeight={0}
-                          debounce={100}
-                        >
-                          <LineChart
-                            data={paceData}
-                            syncId="activityReportSync"
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis
-                              dataKey={getXAxisDataKey()}
-                              label={{
-                                value: getXAxisLabel(),
-                                position: 'insideBottom',
-                                offset: -5,
-                              }}
-                              tickFormatter={(value) => {
-                                if (xAxisMode === 'activityDuration')
-                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
-                                if (xAxisMode === 'distance')
-                                  return `${Number(value).toFixed(2)}`;
-                                if (xAxisMode === 'timeOfDay')
-                                  return new Date(value).toLocaleTimeString();
-                                return String(value);
-                              }}
-                              interval="preserveStartEnd"
-                            />
-                            <YAxis
-                              yAxisId="left"
-                              orientation="left"
-                              stroke="#8884d8"
-                            />
-                            <YAxis
-                              yAxisId="right"
-                              orientation="right"
-                              stroke="#82ca9d"
-                            />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: 'hsl(var(--background))',
-                                borderColor: 'hsl(var(--border))',
-                              }}
-                              labelFormatter={(value) => {
-                                if (xAxisMode === 'timeOfDay') {
-                                  return new Date(value).toLocaleTimeString();
-                                }
-                                if (xAxisMode === 'activityDuration') {
-                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
-                                }
-                                if (xAxisMode === 'distance') {
-                                  return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
-                                }
-                                return String(value);
-                              }}
-                            />
-                            <Legend />
-                            <Line
-                              yAxisId="left"
-                              type="monotone"
-                              dataKey="pace"
-                              stroke="#8884d8"
-                              name={t('reports.activityReport.paceMinPerKm')}
-                              dot={false}
-                              strokeWidth={2}
-                              isAnimationActive={false}
-                            />
-                            <Line
-                              yAxisId="right"
-                              type="monotone"
-                              dataKey="speed"
-                              stroke="#82ca9d"
-                              name={t('reports.activityReport.speedMPerS')}
-                              dot={false}
-                              strokeWidth={2}
-                              isAnimationActive={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">
-                            {t('common.loading', 'Loading chart...')}
-                          </span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </ZoomableChart>
-            )}
-
-            {heartRateData && heartRateData.length > 0 && (
-              <ZoomableChart title={t('reports.activityReport.heartRateBpm')}>
-                {(isMaximized, zoomLevel) => (
-                  <Card
-                    className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
-                  >
-                    <CardHeader>
-                      <CardTitle className="text-sm">
-                        {t('reports.activityReport.heartRateBpm')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent
-                      className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
-                    >
-                      {isMounted ? (
-                        <ResponsiveContainer
-                          width={`${100 * zoomLevel}%`}
-                          height={
-                            isMaximized
-                              ? `${100 * zoomLevel}%`
-                              : 300 * zoomLevel
-                          }
-                          minWidth={0}
-                          minHeight={0}
-                          debounce={100}
-                        >
-                          <LineChart
-                            data={heartRateData}
-                            syncId="activityReportSync"
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis
-                              dataKey={getXAxisDataKey()}
-                              label={{
-                                value: getXAxisLabel(),
-                                position: 'insideBottom',
-                                offset: -5,
-                              }}
-                              tickFormatter={(value) => {
-                                if (xAxisMode === 'activityDuration')
-                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
-                                if (xAxisMode === 'distance')
-                                  return `${Number(value).toFixed(2)}`;
-                                if (xAxisMode === 'timeOfDay')
-                                  return new Date(value).toLocaleTimeString();
-                                return String(value);
-                              }}
-                              interval="preserveStartEnd"
-                            />
-                            <YAxis />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: 'hsl(var(--background))',
-                                borderColor: 'hsl(var(--border))',
-                              }}
-                              labelFormatter={(value) => {
-                                if (xAxisMode === 'timeOfDay') {
-                                  return new Date(value).toLocaleTimeString();
-                                }
-                                if (xAxisMode === 'activityDuration') {
-                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
-                                }
-                                if (xAxisMode === 'distance') {
-                                  return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
-                                }
-                                return String(value);
-                              }}
-                            />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="heartRate"
-                              stroke="#ff7300"
-                              name={t('reports.activityReport.heartRateBpm')}
-                              dot={false}
-                              strokeWidth={2}
-                              isAnimationActive={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">
-                            {t('common.loading', 'Loading chart...')}
-                          </span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </ZoomableChart>
-            )}
-
-            {runCadenceData && runCadenceData.length > 0 && (
-              <ZoomableChart title={t('reports.activityReport.runCadenceSpM')}>
-                {(isMaximized, zoomLevel) => (
-                  <Card
-                    className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
-                  >
-                    <CardHeader>
-                      <CardTitle className="text-sm">
-                        {t('reports.activityReport.runCadenceSpM')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent
-                      className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
-                    >
-                      {isMounted ? (
-                        <ResponsiveContainer
-                          width={`${100 * zoomLevel}%`}
-                          height={
-                            isMaximized
-                              ? `${100 * zoomLevel}%`
-                              : 300 * zoomLevel
-                          }
-                          minWidth={0}
-                          minHeight={0}
-                          debounce={100}
-                        >
-                          <LineChart
-                            data={runCadenceData}
-                            syncId="activityReportSync"
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis
-                              dataKey={getXAxisDataKey()}
-                              label={{
-                                value: getXAxisLabel(),
-                                position: 'insideBottom',
-                                offset: -5,
-                              }}
-                              tickFormatter={(value) => {
-                                if (xAxisMode === 'activityDuration')
-                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
-                                if (xAxisMode === 'distance')
-                                  return `${Number(value).toFixed(2)}`;
-                                if (xAxisMode === 'timeOfDay')
-                                  return new Date(value).toLocaleTimeString();
-                                return String(value);
-                              }}
-                              interval="preserveStartEnd"
-                            />
-                            <YAxis />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: 'hsl(var(--background))',
-                                borderColor: 'hsl(var(--border))',
-                              }}
-                              labelFormatter={(value) => {
-                                if (xAxisMode === 'timeOfDay') {
-                                  return new Date(value).toLocaleTimeString();
-                                }
-                                if (xAxisMode === 'activityDuration') {
-                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
-                                }
-                                if (xAxisMode === 'distance') {
-                                  return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
-                                }
-                                return String(value);
-                              }}
-                            />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="runCadence"
-                              stroke="#387900"
-                              name={t('reports.activityReport.runCadenceSpM')}
-                              dot={false}
-                              strokeWidth={2}
-                              isAnimationActive={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">
-                            {t('common.loading', 'Loading chart...')}
-                          </span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </ZoomableChart>
-            )}
-
-            {elevationData && elevationData.length > 0 && (
-              <ZoomableChart title={t('reports.activityReport.elevationM')}>
-                {(isMaximized, zoomLevel) => (
-                  <Card
-                    className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
-                  >
-                    <CardHeader>
-                      <CardTitle className="text-sm">
-                        {t('reports.activityReport.elevationM')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent
-                      className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
-                    >
-                      {isMounted ? (
-                        <ResponsiveContainer
-                          width={`${100 * zoomLevel}%`}
-                          height={
-                            isMaximized
-                              ? `${100 * zoomLevel}%`
-                              : 300 * zoomLevel
-                          }
-                          minWidth={0}
-                          minHeight={0}
-                          debounce={100}
-                        >
-                          <LineChart
-                            data={elevationData}
-                            syncId="activityReportSync"
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis
-                              dataKey={getXAxisDataKey()}
-                              label={{
-                                value: getXAxisLabel(),
-                                position: 'insideBottom',
-                                offset: -5,
-                              }}
-                              tickFormatter={(value) => {
-                                if (xAxisMode === 'activityDuration')
-                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
-                                if (xAxisMode === 'distance')
-                                  return `${Number(value).toFixed(2)}`;
-                                if (xAxisMode === 'timeOfDay')
-                                  return new Date(value).toLocaleTimeString();
-                                return String(value);
-                              }}
-                              interval="preserveStartEnd"
-                            />
-                            <YAxis />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: 'hsl(var(--background))',
-                                borderColor: 'hsl(var(--border))',
-                              }}
-                              labelFormatter={(value) => {
-                                if (xAxisMode === 'timeOfDay') {
-                                  return new Date(value).toLocaleTimeString();
-                                }
-                                if (xAxisMode === 'activityDuration') {
-                                  return `${Number(value).toFixed(0)} ${t('common.min')}`;
-                                }
-                                if (xAxisMode === 'distance') {
-                                  return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
-                                }
-                                return String(value);
-                              }}
-                              formatter={(value: number) =>
-                                Number(value).toFixed(2)
-                              }
-                            />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="elevation"
-                              stroke="#007bff"
-                              name={t('reports.activityReport.elevationM')}
-                              dot={false}
-                              strokeWidth={2}
-                              isAnimationActive={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">
-                            {t('common.loading', 'Loading chart...')}
-                          </span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </ZoomableChart>
-            )}
-
-            {hrInTimezonesData && hrInTimezonesData.length > 0 && (
-              <ZoomableChart
-                title={t('reports.activityReport.heartRateTimeInZones')}
-              >
-                {(isMaximized, zoomLevel) => (
-                  <Card
-                    className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
-                  >
-                    <CardHeader>
-                      <CardTitle className="text-sm">
-                        {t('reports.activityReport.heartRateTimeInZones')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent
-                      className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
-                    >
-                      {isMounted ? (
-                        <ResponsiveContainer
-                          width={`${100 * zoomLevel}%`}
-                          height={
-                            isMaximized
-                              ? `${100 * zoomLevel}%`
-                              : 300 * zoomLevel
-                          }
-                          minWidth={0}
-                          minHeight={0}
-                          debounce={100}
-                        >
-                          <BarChart data={hrInTimezonesData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: 'hsl(var(--background))',
-                                borderColor: 'hsl(var(--border))',
-                              }}
-                              formatter={(value: number) =>
-                                `${value.toFixed(2)} ${t('reports.activityReport.timeInZoneS')}`
-                              }
-                            />
-                            <Legend />
-                            <Bar
-                              dataKey={t('reports.activityReport.timeInZoneS')}
-                              fill="#8884d8"
-                              isAnimationActive={false}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-                          <span className="text-xs text-muted-foreground">
-                            {t('common.loading', 'Loading chart...')}
-                          </span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </ZoomableChart>
-            )}
-          </div>
-
-          {activityData.activity?.splits?.lapDTOs &&
-            activityData.activity.splits.lapDTOs.length > 0 && (
-              <ZoomableChart title={t('reports.activityReport.lapsTable')}>
-                {(isMaximized, zoomLevel) => (
-                  <ActivityReportLapTable
-                    lapDTOs={activityData.activity!.splits.lapDTOs}
-                    isMaximized={isMaximized}
-                    zoomLevel={zoomLevel}
+            {activityData.activity?.details?.geoPolylineDTO?.polyline &&
+              activityData.activity.details.geoPolylineDTO.polyline.length >
+                0 && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold mb-2">
+                    {t('reports.activityReport.activityMap')}
+                  </h3>
+                  <ActivityReportMap
+                    polylineData={
+                      activityData.activity.details.geoPolylineDTO.polyline
+                    }
                   />
-                )}
-              </ZoomableChart>
-            )}
-        </>
-      )}
+                </div>
+              )}
+
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold mb-2">
+                {t('reports.activityReport.stats')}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-sm font-medium">
+                      {t('reports.activityReport.distance')}
+                    </CardTitle>
+                    <FaRoute className="h-5 w-5 text-blue-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {totalActivityDistanceFormatted}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-sm font-medium">
+                      {t('reports.activityReport.time')}
+                    </CardTitle>
+                    <FaClock className="h-5 w-5 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {totalActivityDurationFormatted}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-sm font-medium">
+                      {t('reports.activityReport.avgPace')}
+                    </CardTitle>
+                    <FaWalking className="h-5 w-5 text-purple-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {averagePaceFormatted}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-sm font-medium">
+                      {t('reports.activityReport.totalAscent')}
+                    </CardTitle>
+                    <FaMountain className="h-5 w-5 text-gray-700" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {totalActivityAscentFormatted}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-sm font-medium">
+                      {t('reports.activityReport.calories')}
+                    </CardTitle>
+                    <FaFire className="h-5 w-5 text-red-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {totalActivityCaloriesFormatted}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-sm font-medium">
+                      {t('reports.activityReport.heartRate')}
+                    </CardTitle>
+                    <FaHeartbeat className="h-5 w-5 text-pink-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {averageHRFormatted}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                    <CardTitle className="text-sm font-medium">
+                      {t('reports.activityReport.runningDynamics')}
+                    </CardTitle>
+                    <FaRunning className="h-5 w-5 text-orange-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {averageRunCadenceFormatted}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <span className="mr-2">{t('reports.activityReport.xAxis')}</span>
+              <button
+                className={`px-3 py-1 rounded-md text-sm ${xAxisMode === 'timeOfDay' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
+                onClick={() => setXAxisMode('timeOfDay')}
+              >
+                {t('reports.activityReport.timeOfDay')}
+              </button>
+              <button
+                className={`ml-2 px-3 py-1 rounded-md text-sm ${xAxisMode === 'activityDuration' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
+                onClick={() => setXAxisMode('activityDuration')}
+              >
+                {t('reports.activityReport.duration')}
+              </button>
+              <button
+                className={`ml-2 px-3 py-1 rounded-md text-sm ${xAxisMode === 'distance' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
+                onClick={() => setXAxisMode('distance')}
+              >
+                {t('reports.activityReport.distance')}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {paceData && paceData.length > 0 && (
+                <ZoomableChart title={t('reports.activityReport.paceAndSpeed')}>
+                  {(isMaximized, zoomLevel) => (
+                    <Card
+                      className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-sm">
+                          {t('reports.activityReport.paceAndSpeed')}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent
+                        className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                      >
+                        {isMounted ? (
+                          <ResponsiveContainer
+                            width={`${100 * zoomLevel}%`}
+                            height={
+                              isMaximized
+                                ? `${100 * zoomLevel}%`
+                                : 300 * zoomLevel
+                            }
+                            minWidth={0}
+                            minHeight={0}
+                            debounce={100}
+                          >
+                            <LineChart
+                              data={paceData}
+                              syncId="activityReportSync"
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis
+                                dataKey={getXAxisDataKey()}
+                                label={{
+                                  value: getXAxisLabel(),
+                                  position: 'insideBottom',
+                                  offset: -5,
+                                }}
+                                tickFormatter={(value) => {
+                                  if (xAxisMode === 'activityDuration')
+                                    return `${Number(value).toFixed(0)} ${t('common.min')}`;
+                                  if (xAxisMode === 'distance')
+                                    return `${Number(value).toFixed(2)}`;
+                                  if (xAxisMode === 'timeOfDay')
+                                    return new Date(value).toLocaleTimeString();
+                                  return String(value);
+                                }}
+                                interval="preserveStartEnd"
+                              />
+                              <YAxis
+                                yAxisId="left"
+                                orientation="left"
+                                stroke="#8884d8"
+                              />
+                              <YAxis
+                                yAxisId="right"
+                                orientation="right"
+                                stroke="#82ca9d"
+                              />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: 'hsl(var(--background))',
+                                  borderColor: 'hsl(var(--border))',
+                                }}
+                                labelFormatter={(value) => {
+                                  if (xAxisMode === 'timeOfDay') {
+                                    return new Date(value).toLocaleTimeString();
+                                  }
+                                  if (xAxisMode === 'activityDuration') {
+                                    return `${Number(value).toFixed(0)} ${t('common.min')}`;
+                                  }
+                                  if (xAxisMode === 'distance') {
+                                    return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
+                                  }
+                                  return String(value);
+                                }}
+                              />
+                              <Legend />
+                              <Line
+                                yAxisId="left"
+                                type="monotone"
+                                dataKey="pace"
+                                stroke="#8884d8"
+                                name={t('reports.activityReport.paceMinPerKm')}
+                                dot={false}
+                                strokeWidth={2}
+                                isAnimationActive={false}
+                              />
+                              <Line
+                                yAxisId="right"
+                                type="monotone"
+                                dataKey="speed"
+                                stroke="#82ca9d"
+                                name={t('reports.activityReport.speedMPerS')}
+                                dot={false}
+                                strokeWidth={2}
+                                isAnimationActive={false}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                            <span className="text-xs text-muted-foreground">
+                              {t('common.loading', 'Loading chart...')}
+                            </span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </ZoomableChart>
+              )}
+
+              {heartRateData && heartRateData.length > 0 && (
+                <ZoomableChart title={t('reports.activityReport.heartRateBpm')}>
+                  {(isMaximized, zoomLevel) => (
+                    <Card
+                      className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-sm">
+                          {t('reports.activityReport.heartRateBpm')}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent
+                        className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                      >
+                        {isMounted ? (
+                          <ResponsiveContainer
+                            width={`${100 * zoomLevel}%`}
+                            height={
+                              isMaximized
+                                ? `${100 * zoomLevel}%`
+                                : 300 * zoomLevel
+                            }
+                            minWidth={0}
+                            minHeight={0}
+                            debounce={100}
+                          >
+                            <LineChart
+                              data={heartRateData}
+                              syncId="activityReportSync"
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis
+                                dataKey={getXAxisDataKey()}
+                                label={{
+                                  value: getXAxisLabel(),
+                                  position: 'insideBottom',
+                                  offset: -5,
+                                }}
+                                tickFormatter={(value) => {
+                                  if (xAxisMode === 'activityDuration')
+                                    return `${Number(value).toFixed(0)} ${t('common.min')}`;
+                                  if (xAxisMode === 'distance')
+                                    return `${Number(value).toFixed(2)}`;
+                                  if (xAxisMode === 'timeOfDay')
+                                    return new Date(value).toLocaleTimeString();
+                                  return String(value);
+                                }}
+                                interval="preserveStartEnd"
+                              />
+                              <YAxis />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: 'hsl(var(--background))',
+                                  borderColor: 'hsl(var(--border))',
+                                }}
+                                labelFormatter={(value) => {
+                                  if (xAxisMode === 'timeOfDay') {
+                                    return new Date(value).toLocaleTimeString();
+                                  }
+                                  if (xAxisMode === 'activityDuration') {
+                                    return `${Number(value).toFixed(0)} ${t('common.min')}`;
+                                  }
+                                  if (xAxisMode === 'distance') {
+                                    return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
+                                  }
+                                  return String(value);
+                                }}
+                              />
+                              <Legend />
+                              <Line
+                                type="monotone"
+                                dataKey="heartRate"
+                                stroke="#ff7300"
+                                name={t('reports.activityReport.heartRateBpm')}
+                                dot={false}
+                                strokeWidth={2}
+                                isAnimationActive={false}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                            <span className="text-xs text-muted-foreground">
+                              {t('common.loading', 'Loading chart...')}
+                            </span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </ZoomableChart>
+              )}
+
+              {runCadenceData && runCadenceData.length > 0 && (
+                <ZoomableChart
+                  title={t('reports.activityReport.runCadenceSpM')}
+                >
+                  {(isMaximized, zoomLevel) => (
+                    <Card
+                      className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-sm">
+                          {t('reports.activityReport.runCadenceSpM')}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent
+                        className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                      >
+                        {isMounted ? (
+                          <ResponsiveContainer
+                            width={`${100 * zoomLevel}%`}
+                            height={
+                              isMaximized
+                                ? `${100 * zoomLevel}%`
+                                : 300 * zoomLevel
+                            }
+                            minWidth={0}
+                            minHeight={0}
+                            debounce={100}
+                          >
+                            <LineChart
+                              data={runCadenceData}
+                              syncId="activityReportSync"
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis
+                                dataKey={getXAxisDataKey()}
+                                label={{
+                                  value: getXAxisLabel(),
+                                  position: 'insideBottom',
+                                  offset: -5,
+                                }}
+                                tickFormatter={(value) => {
+                                  if (xAxisMode === 'activityDuration')
+                                    return `${Number(value).toFixed(0)} ${t('common.min')}`;
+                                  if (xAxisMode === 'distance')
+                                    return `${Number(value).toFixed(2)}`;
+                                  if (xAxisMode === 'timeOfDay')
+                                    return new Date(value).toLocaleTimeString();
+                                  return String(value);
+                                }}
+                                interval="preserveStartEnd"
+                              />
+                              <YAxis />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: 'hsl(var(--background))',
+                                  borderColor: 'hsl(var(--border))',
+                                }}
+                                labelFormatter={(value) => {
+                                  if (xAxisMode === 'timeOfDay') {
+                                    return new Date(value).toLocaleTimeString();
+                                  }
+                                  if (xAxisMode === 'activityDuration') {
+                                    return `${Number(value).toFixed(0)} ${t('common.min')}`;
+                                  }
+                                  if (xAxisMode === 'distance') {
+                                    return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
+                                  }
+                                  return String(value);
+                                }}
+                              />
+                              <Legend />
+                              <Line
+                                type="monotone"
+                                dataKey="runCadence"
+                                stroke="#387900"
+                                name={t('reports.activityReport.runCadenceSpM')}
+                                dot={false}
+                                strokeWidth={2}
+                                isAnimationActive={false}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                            <span className="text-xs text-muted-foreground">
+                              {t('common.loading', 'Loading chart...')}
+                            </span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </ZoomableChart>
+              )}
+
+              {elevationData && elevationData.length > 0 && (
+                <ZoomableChart title={t('reports.activityReport.elevationM')}>
+                  {(isMaximized, zoomLevel) => (
+                    <Card
+                      className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-sm">
+                          {t('reports.activityReport.elevationM')}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent
+                        className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                      >
+                        {isMounted ? (
+                          <ResponsiveContainer
+                            width={`${100 * zoomLevel}%`}
+                            height={
+                              isMaximized
+                                ? `${100 * zoomLevel}%`
+                                : 300 * zoomLevel
+                            }
+                            minWidth={0}
+                            minHeight={0}
+                            debounce={100}
+                          >
+                            <LineChart
+                              data={elevationData}
+                              syncId="activityReportSync"
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis
+                                dataKey={getXAxisDataKey()}
+                                label={{
+                                  value: getXAxisLabel(),
+                                  position: 'insideBottom',
+                                  offset: -5,
+                                }}
+                                tickFormatter={(value) => {
+                                  if (xAxisMode === 'activityDuration')
+                                    return `${Number(value).toFixed(0)} ${t('common.min')}`;
+                                  if (xAxisMode === 'distance')
+                                    return `${Number(value).toFixed(2)}`;
+                                  if (xAxisMode === 'timeOfDay')
+                                    return new Date(value).toLocaleTimeString();
+                                  return String(value);
+                                }}
+                                interval="preserveStartEnd"
+                              />
+                              <YAxis />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: 'hsl(var(--background))',
+                                  borderColor: 'hsl(var(--border))',
+                                }}
+                                labelFormatter={(value) => {
+                                  if (xAxisMode === 'timeOfDay') {
+                                    return new Date(value).toLocaleTimeString();
+                                  }
+                                  if (xAxisMode === 'activityDuration') {
+                                    return `${Number(value).toFixed(0)} ${t('common.min')}`;
+                                  }
+                                  if (xAxisMode === 'distance') {
+                                    return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
+                                  }
+                                  return String(value);
+                                }}
+                                formatter={(value: number | undefined) =>
+                                  Number(value).toFixed(2)
+                                }
+                              />
+                              <Legend />
+                              <Line
+                                type="monotone"
+                                dataKey="elevation"
+                                stroke="#007bff"
+                                name={t('reports.activityReport.elevationM')}
+                                dot={false}
+                                strokeWidth={2}
+                                isAnimationActive={false}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                            <span className="text-xs text-muted-foreground">
+                              {t('common.loading', 'Loading chart...')}
+                            </span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </ZoomableChart>
+              )}
+
+              {hrInTimezonesData && hrInTimezonesData.length > 0 && (
+                <ZoomableChart
+                  title={t('reports.activityReport.heartRateTimeInZones')}
+                >
+                  {(isMaximized, zoomLevel) => (
+                    <Card
+                      className={`mb-8 ${isMaximized ? 'h-full flex flex-col' : ''}`}
+                    >
+                      <CardHeader>
+                        <CardTitle className="text-sm">
+                          {t('reports.activityReport.heartRateTimeInZones')}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent
+                        className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+                      >
+                        {isMounted ? (
+                          <ResponsiveContainer
+                            width={`${100 * zoomLevel}%`}
+                            height={
+                              isMaximized
+                                ? `${100 * zoomLevel}%`
+                                : 300 * zoomLevel
+                            }
+                            minWidth={0}
+                            minHeight={0}
+                            debounce={100}
+                          >
+                            <BarChart data={hrInTimezonesData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="name" />
+                              <YAxis />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: 'hsl(var(--background))',
+                                  borderColor: 'hsl(var(--border))',
+                                }}
+                                formatter={(value: number | undefined) =>
+                                  value &&
+                                  `${value.toFixed(2)} ${t('reports.activityReport.timeInZoneS')}`
+                                }
+                              />
+                              <Legend />
+                              <Bar
+                                dataKey={t(
+                                  'reports.activityReport.timeInZoneS'
+                                )}
+                                fill="#8884d8"
+                                isAnimationActive={false}
+                              />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
+                            <span className="text-xs text-muted-foreground">
+                              {t('common.loading', 'Loading chart...')}
+                            </span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </ZoomableChart>
+              )}
+            </div>
+
+            {activityData.activity?.splits?.lapDTOs &&
+              activityData.activity.splits.lapDTOs.length > 0 && (
+                <ZoomableChart title={t('reports.activityReport.lapsTable')}>
+                  {(isMaximized, zoomLevel) => (
+                    <ActivityReportLapTable
+                      lapDTOs={activityData.activity!.splits?.lapDTOs ?? []}
+                      isMaximized={isMaximized}
+                      zoomLevel={zoomLevel}
+                    />
+                  )}
+                </ZoomableChart>
+              )}
+          </>
+        )}
       {activityData.workout && (
         <WorkoutReportVisualizer workoutData={activityData.workout} />
       )}

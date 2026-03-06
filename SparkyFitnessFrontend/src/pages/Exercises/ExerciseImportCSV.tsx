@@ -448,7 +448,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     const invalidRow = csvData.find(
       (row) => !row.name || String(row.name).trim() === ''

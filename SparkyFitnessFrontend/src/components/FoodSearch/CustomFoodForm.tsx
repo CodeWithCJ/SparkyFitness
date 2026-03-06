@@ -392,7 +392,7 @@ const EnhancedCustomFoodForm = ({
 
       setVariants([defaultVariant]);
       setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
-      setVariantErrors([null]); // Initialize error for the single default variant
+      setVariantErrors(['']); // Initialize error for the single default variant
     }
   }, [food, initialVariants, customNutrients, loadExistingVariants]);
 
@@ -436,7 +436,7 @@ const EnhancedCustomFoodForm = ({
       ...prevOriginal,
       JSON.parse(JSON.stringify(newVariant)),
     ]); // Add deep copy to original variants
-    setVariantErrors((prevErrors) => [...prevErrors, null]); // Add a null error for the new variant
+    setVariantErrors((prevErrors) => [...prevErrors, '']); // Add a null error for the new variant
   };
 
   const duplicateVariant = (index: number) => {
@@ -453,7 +453,7 @@ const EnhancedCustomFoodForm = ({
       ...prevOriginal,
       JSON.parse(JSON.stringify(newVariant)),
     ]); // Add deep copy to original variants
-    setVariantErrors((prevErrors) => [...prevErrors, null]); // Add a null error for the duplicated variant
+    setVariantErrors((prevErrors) => [...prevErrors, '']); // Add a null error for the duplicated variant
   };
 
   const removeVariant = (index: number) => {
@@ -481,7 +481,7 @@ const EnhancedCustomFoodForm = ({
     const currentVariant = updatedVariants[index];
     let newVariant: FormFoodVariant;
 
-    const isCustomNutrient = customNutrients.some(
+    const isCustomNutrient = customNutrients?.some(
       (nutrient) => nutrient.name === field
     );
     // Handle nutrient fields - allow empty string, convert to number if not empty
@@ -594,7 +594,7 @@ const EnhancedCustomFoodForm = ({
     setVariants(updatedVariants);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!user) return;
 
@@ -710,7 +710,7 @@ const EnhancedCustomFoodForm = ({
           };
           setVariants([defaultVariant]);
           setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
-          setVariantErrors([null]);
+          setVariantErrors(['']);
         }
         onSave(savedFood);
       }
@@ -748,7 +748,7 @@ const EnhancedCustomFoodForm = ({
         };
         setVariants([defaultVariant]);
         setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
-        setVariantErrors([null]);
+        setVariantErrors(['']);
       }
 
       onSave(savedFood);
@@ -775,7 +775,9 @@ const EnhancedCustomFoodForm = ({
       }
     }
     setShowSyncConfirmation(false);
-    onSave(food);
+    if (food) {
+      onSave(food);
+    }
   };
 
   return (
@@ -1028,7 +1030,7 @@ const EnhancedCustomFoodForm = ({
                                       ? ''
                                       : Math.round(
                                           convertEnergy(
-                                            variant.calories,
+                                            variant.calories || 0,
                                             'kcal',
                                             energyUnit
                                           )

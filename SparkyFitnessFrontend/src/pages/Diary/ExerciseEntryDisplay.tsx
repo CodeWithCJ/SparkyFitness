@@ -95,7 +95,8 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
                     <span key={index}>
                       {Number.isFinite(set.reps) &&
                         ` • Reps: ${String(set.reps)}`}
-                      {Number.isFinite(set.weight) &&
+                      {set.weight &&
+                        Number.isFinite(set.weight) &&
                         ` • Weight: ${convertWeight(set.weight, 'kg', weightUnit).toFixed(1)} ${weightUnit}`}
                       {Number.isFinite(set.rpe) && ` • RPE: ${set.rpe}`}
                     </span>

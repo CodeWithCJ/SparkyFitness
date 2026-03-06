@@ -451,7 +451,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         } else {
           await createMeal({ mealPayload: mealData });
         }
-        onSave();
+        onSave?.();
       } catch (err) {
         error(loggingLevel, 'Error saving meal:', err);
       }
@@ -497,7 +497,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         } else {
           await createFoodEntryMeal(foodEntryMealData);
         }
-        onSave();
+        onSave?.();
       } catch (err) {
         error(loggingLevel, 'Error updating food diary meal entry:', err);
       }

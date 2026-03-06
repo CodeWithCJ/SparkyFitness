@@ -26,11 +26,10 @@ export const createMealPlanTemplate = async (
 
 export const updateMealPlanTemplate = async (
   userId: string,
-  templateId: string,
   templateData: Partial<MealPlanTemplate>,
   currentClientDate?: string
 ): Promise<MealPlanTemplate> => {
-  return await api.put(`/meal-plan-templates/${templateId}`, {
+  return await api.put(`/meal-plan-templates/${templateData.id}`, {
     body: { ...templateData, userId, currentClientDate },
   });
 };

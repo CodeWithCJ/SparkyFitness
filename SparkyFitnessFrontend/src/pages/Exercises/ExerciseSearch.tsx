@@ -223,6 +223,9 @@ const ExerciseSearch = ({
   const handleAddExternalExercise = async (
     exercise: Exercise
   ): Promise<Exercise | undefined> => {
+    if (!selectedProviderType) {
+      return;
+    }
     setLoading(true);
     try {
       const newExercise = await addExercise({
@@ -813,7 +816,7 @@ const ExerciseSearch = ({
                           variant="ghost"
                           size="icon"
                           onClick={() =>
-                            handleSpeakInstructions(exercise.instructions)
+                            handleSpeakInstructions(exercise.instructions ?? '')
                           }
                           className="ml-2"
                         >

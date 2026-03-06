@@ -394,13 +394,13 @@ const FoodDatabaseManager: React.FC = () => {
             </div>
           ) : (
             <>
-              {foodData.foods.length === 0 ? (
+              {foodData?.foods.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   {getEmptyMessage()}
                 </div>
               ) : (
                 <div className="grid gap-3">
-                  {foodData.foods.map((food) => (
+                  {foodData?.foods.map((food) => (
                     <div
                       key={food.id}
                       className="flex flex-col p-2 bg-gray-50 dark:bg-gray-800 rounded-lg gap-2"

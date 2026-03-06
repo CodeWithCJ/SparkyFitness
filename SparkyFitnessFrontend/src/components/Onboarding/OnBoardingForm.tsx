@@ -6,20 +6,7 @@ import PersonalPlan from './PersonalPlan';
 import { OnboardingSteps } from './OnBoardingSteps';
 import { CheckInMeasurement } from '@/types/checkin';
 import { Profile } from '@/types/settings';
-
-type sex = 'male' | 'female' | '';
-export interface FormData {
-  sex: sex;
-  primaryGoal: 'lose_weight' | 'maintain_weight' | 'gain_weight' | '';
-  currentWeight: number | '';
-  height: number | '';
-  birthDate: string;
-  bodyFatRange: string;
-  targetWeight: number | '';
-  mealsPerDay: number | '';
-  activityLevel: 'not_much' | 'light' | 'moderate' | 'heavy' | '';
-  addBurnedCalories: boolean | null;
-}
+import { OnboardingData, Sex } from '@/types/onboarding';
 
 interface OnBoardingProps {
   onOnboardingComplete: () => void;
@@ -48,7 +35,7 @@ export const OnBoardingForm = ({
   // State management
   const [step, setStep] = useState(1);
 
-  const [formData, setFormData] = useState<FormData>(() => {
+  const [formData, setFormData] = useState<OnboardingData>(() => {
     let currentWeight: number | '' = '';
     if (weightData && weightData.weight) {
       currentWeight =
@@ -66,16 +53,16 @@ export const OnBoardingForm = ({
     }
 
     return {
-      sex: (profileData?.gender as sex) || '',
+      sex: (profileData?.gender as Sex) || '',
       primaryGoal: '',
       currentWeight: currentWeight,
       height: currentHeight,
       birthDate: profileData?.date_of_birth || '',
       bodyFatRange: '',
       targetWeight: '',
-      mealsPerDay: '',
+      mealsPerDay: 3,
       activityLevel: '',
-      addBurnedCalories: null,
+      addBurnedCalories: false,
     };
   });
 

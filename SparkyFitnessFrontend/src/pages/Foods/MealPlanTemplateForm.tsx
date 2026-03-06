@@ -164,7 +164,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     template?.id,
     setExtendedAssignments,
     fetchNutritionForAssignment,
-    template.assignments,
+    template?.assignments,
   ]); // Only run when template ID changes
 
   const handleAddFood = (day: number, mealType: string) => {

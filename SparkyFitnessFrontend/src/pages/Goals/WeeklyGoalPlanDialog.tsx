@@ -301,9 +301,11 @@ export const WeeklyGoalPlanDialog = ({
                         .filter((p) => p.id)
                         .map((preset) => {
                           return (
-                            <SelectItem key={preset.id} value={preset.id}>
-                              {preset.preset_name}
-                            </SelectItem>
+                            preset.id && (
+                              <SelectItem key={preset.id} value={preset.id}>
+                                {preset.preset_name}
+                              </SelectItem>
+                            )
                           );
                         })}
                     </SelectContent>

@@ -47,18 +47,20 @@ export class ZxingEngine implements BarcodeScannerEngine {
 
     // Zxing allows passing deviceId directly to decodeFromVideoDevice
     // If deviceId is not provided, it will use the default or first available
-    this.codeReader.decodeFromVideoDevice(
-      this.currentDeviceId,
-      this.videoElement,
-      (result: Result | null, err: unknown) => {
-        if (result) {
-          const text = result.getText();
-          if (this.callback) this.callback(text);
-        } else if (err && !(err instanceof NotFoundException)) {
-          console.error('Zxing scanning error:', err);
+    if (this.currentDeviceId) {
+      this.codeReader.decodeFromVideoDevice(
+        this.currentDeviceId,
+        this.videoElement,
+        (result: Result | null, err: unknown) => {
+          if (result) {
+            const text = result.getText();
+            if (this.callback) this.callback(text);
+          } else if (err && !(err instanceof NotFoundException)) {
+            console.error('Zxing scanning error:', err);
+          }
         }
-      }
-    );
+      );
+    }
   }
 
   stop(): void {

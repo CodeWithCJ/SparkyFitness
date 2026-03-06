@@ -124,7 +124,7 @@ const ExerciseDatabaseManager = () => {
     ownershipFilter,
     currentPage,
     itemsPerPage,
-    user.id
+    user?.id
   );
   const { mutateAsync: updateExercise } = useUpdateExerciseMutation();
   const { mutateAsync: updateExerciseEntriesSnapshot } =
@@ -211,7 +211,7 @@ const ExerciseDatabaseManager = () => {
         deletionImpact.exerciseEntriesCount > 0;
       const response = await deleteExercise({
         id: exerciseToDelete.id,
-        forceDelete: shouldForce,
+        forceDelete: shouldForce ?? false,
       });
       // Interpret server response status for user feedback
       if (response && response.status) {

@@ -50,7 +50,7 @@ const Auth = () => {
   // State for MFA challenge
   const [showMfaChallenge, setShowMfaChallenge] = useState(false);
   const [mfaChallengeProps, setMfaChallengeProps] =
-    useState<MfaChallengeProps>(null); // Store MFA data
+    useState<MfaChallengeProps>(); // Store MFA data
   // State for Magic Link Request Dialog
   const [isMagicLinkRequestDialogOpen, setIsMagicLinkRequestDialogOpen] =
     useState(false);
@@ -93,7 +93,7 @@ const Auth = () => {
             );
             // Safety timeout to catch any late-arriving sessions
             const timer = setTimeout(() => {
-              if (!authUser) {
+              if (!authUser && provider.id) {
                 initiateOidcLogin({
                   providerId: provider.id,
                   requestSignUp: provider.auto_register,
@@ -258,7 +258,7 @@ const Auth = () => {
     return null; // No error
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.SubmitEvent) => {
     e.preventDefault();
     info(loggingLevel, 'Auth: Attempting sign up.');
 
@@ -299,7 +299,7 @@ const Auth = () => {
     setLoading(false);
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.SubmitEvent) => {
     e.preventDefault();
     info(loggingLevel, 'Auth: Attempting sign in.');
     setLoading(true);
@@ -381,7 +381,7 @@ const Auth = () => {
               Securing your family dashboard...
             </p>
           </div>
-        ) : showMfaChallenge ? (
+        ) : showMfaChallenge && mfaChallengeProps ? (
           <MfaChallenge {...mfaChallengeProps} />
         ) : (
           <Card className="w-full max-w-md">
@@ -520,12 +520,14 @@ const Auth = () => {
                             key={provider.id}
                             variant="outline"
                             className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
-                            onClick={() =>
-                              initiateOidcLogin({
-                                providerId: provider.id,
-                                requestSignUp: provider.auto_register,
-                              })
-                            }
+                            onClick={() => {
+                              if (provider.id) {
+                                initiateOidcLogin({
+                                  providerId: provider.id,
+                                  requestSignUp: provider.auto_register,
+                                });
+                              }
+                            }}
                           >
                             {provider.logo_url && (
                               <img
@@ -625,9 +627,11 @@ const Auth = () => {
                         key={provider.id}
                         variant="outline"
                         className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
-                        onClick={() =>
-                          initiateOidcLogin({ providerId: provider.id })
-                        }
+                        onClick={() => {
+                          if (provider.id) {
+                            initiateOidcLogin({ providerId: provider.id });
+                          }
+                        }}
                       >
                         {provider.logo_url && (
                           <img

@@ -11,6 +11,7 @@ import {
 import { UserLoggingLevel } from '@/utils/logging';
 import { chatbotKeys } from '@/api/keys/ai';
 import { AIService } from '@/types/settings';
+import { MessageMetadata } from '@/types/Chatbot_types';
 
 export const useChatPreferencesQuery = () => {
   const { t } = useTranslation();
@@ -75,7 +76,7 @@ export const useSaveMessageMutation = (autoClearSetting: string) => {
       content: string;
       messageType: 'user' | 'assistant';
       metadata?: unknown;
-    }) => saveMessageToHistory(content, messageType, metadata),
+    }) => saveMessageToHistory(content, messageType, metadata ?? undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: chatbotKeys.history(autoClearSetting),
@@ -116,7 +117,7 @@ interface ProcessUserInputParams {
   input: string;
   image: File | null;
   transactionId: string;
-  lastBotMessageMetadata: unknown;
+  lastBotMessageMetadata: MessageMetadata;
   userLoggingLevel: UserLoggingLevel;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
   activeAIServiceSetting: AIService | null;

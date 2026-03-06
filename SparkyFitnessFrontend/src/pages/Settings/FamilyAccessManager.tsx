@@ -51,7 +51,7 @@ const FamilyAccessManager = () => {
   });
 
   const queryClient = useQueryClient();
-  const { data: familyAccess = [] } = useFamilyAccess(user.activeUserId);
+  const { data: familyAccess = [] } = useFamilyAccess(user?.activeUserId);
   const { mutateAsync: createFamilyAccess } = useCreateFamilyAccessMutation();
   const { mutateAsync: updateFamilyAccess } = useUpdateFamilyAccessMutation();
   const { mutateAsync: deleteFamilyAccess } = useDeleteFamilyAccessMutation();

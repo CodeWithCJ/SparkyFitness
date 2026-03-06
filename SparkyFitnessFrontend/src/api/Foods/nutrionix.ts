@@ -1,6 +1,7 @@
 import { toast } from '@/hooks/use-toast';
 import { apiCall } from '@/api/api';
 import { getErrorMessage } from '@/utils/api';
+import { NutritionixItem } from '@/components/FoodSearch/FoodSearch';
 
 interface NutritionixFood {
   food_name: string;
@@ -228,7 +229,7 @@ export const getNutritionixNutrients = async (
 export const getNutritionixBrandedNutrients = async (
   nixItemId: string,
   defaultFoodDataProviderId: string | null
-) => {
+): Promise<NutritionixItem | null> => {
   if (!defaultFoodDataProviderId) {
     toast({
       title: 'Error',
@@ -264,7 +265,7 @@ export const getNutritionixBrandedNutrients = async (
       const food = data.foods[0];
       return {
         name: food.food_name,
-        brand: food.brand_name || null,
+        brand: food.brand_name || '',
         calories: food.nf_calories,
         protein: food.nf_protein,
         carbs: food.nf_total_carbohydrate,

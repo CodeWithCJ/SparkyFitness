@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useCustomCategories } from '../CheckIn/useCheckIn';
 import { MeasurementUnit, WeightUnit } from '@/contexts/PreferencesContext';
 
-export const useRawStressData = (userId: string) => {
+export const useRawStressData = (userId?: string | null) => {
   const { data: categories } = useCustomCategories(userId);
   const { t } = useTranslation();
   const categoryId = categories?.find(
@@ -19,11 +19,11 @@ export const useRawStressData = (userId: string) => {
   )?.id;
 
   return useQuery({
-    queryKey: checkInKeys.rawStressData(userId, categoryId),
+    queryKey: checkInKeys.rawStressData(userId!, categoryId!),
     queryFn: async () => {
       const customMeasurements = await fetchCustomEntries(
         categoryId as string,
-        userId
+        userId!
       );
       let allStressDataPoints: ReturnType<typeof parseStressMeasurement> = [];
 
@@ -36,7 +36,7 @@ export const useRawStressData = (userId: string) => {
 
       return allStressDataPoints;
     },
-    enabled: Boolean(categoryId),
+    enabled: !!categoryId && !!userId,
     meta: {
       errorMessage: t(
         'reports.failedToLoadStress',
@@ -49,7 +49,7 @@ export const useRawStressData = (userId: string) => {
 export const useReportsData = (
   startDate: string,
   endDate: string,
-  userId: string,
+  userId: string | null,
   converters: {
     convertWeight: (val: number, from: WeightUnit, to: WeightUnit) => number;
     convertMeasurement: (
@@ -64,9 +64,9 @@ export const useReportsData = (
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: reportKeys.core(startDate, endDate, userId),
-    queryFn: () => loadReportsData(startDate, endDate, userId),
-    enabled: Boolean(startDate && endDate),
+    queryKey: reportKeys.core(startDate, endDate, userId!),
+    queryFn: () => loadReportsData(startDate, endDate, userId!),
+    enabled: Boolean(startDate && endDate) && !!userId,
     select: (data) => ({
       ...data,
       measurementData: data.measurementData.map((m) => ({
@@ -77,35 +77,35 @@ export const useReportsData = (
               'kg',
               converters.defaultWeightUnit
             )
-          : undefined,
+          : 0,
         neck: m.neck
           ? converters.convertMeasurement(
               m.neck,
               'cm',
               converters.defaultMeasurementUnit
             )
-          : undefined,
+          : 0,
         waist: m.waist
           ? converters.convertMeasurement(
               m.waist,
               'cm',
               converters.defaultMeasurementUnit
             )
-          : undefined,
+          : 0,
         hips: m.hips
           ? converters.convertMeasurement(
               m.hips,
               'cm',
               converters.defaultMeasurementUnit
             )
-          : undefined,
+          : 0,
         height: m.height
           ? converters.convertMeasurement(
               m.height,
               'cm',
               converters.defaultMeasurementUnit
             )
-          : undefined,
+          : 0,
       })),
     }),
     meta: {
@@ -120,7 +120,7 @@ export const useReportsData = (
 export const useExerciseDashboardData = (
   startDate: string,
   endDate: string,
-  userId: string,
+  userId?: string | null,
   equipment: string | null = null,
   muscle: string | null = null,
   exercise: string | null = null
@@ -131,7 +131,7 @@ export const useExerciseDashboardData = (
     queryKey: reportKeys.exerciseDashboard(
       startDate,
       endDate,
-      userId,
+      userId!,
       equipment,
       muscle,
       exercise
@@ -140,12 +140,12 @@ export const useExerciseDashboardData = (
       getExerciseDashboardData(
         startDate,
         endDate,
-        userId,
+        userId!,
         equipment,
         muscle,
         exercise
       ),
-    enabled: Boolean(startDate && endDate),
+    enabled: Boolean(startDate && endDate) && !!userId,
     meta: {
       errorMessage: t(
         'reports.failedToLoadExerciseDashboard',

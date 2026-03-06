@@ -105,7 +105,7 @@ const MealPlanCalendar: React.FC = () => {
   ) => {
     if (!activeUserId) return;
     try {
-      const templateToUpdate = templates.find((t) => t.id === templateId);
+      const templateToUpdate = templates?.find((t) => t.id === templateId);
       if (!templateToUpdate) {
         toast({
           title: t('common.error'),

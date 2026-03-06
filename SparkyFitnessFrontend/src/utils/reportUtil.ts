@@ -448,8 +448,8 @@ export const exportFoodDiary = async ({
           csvRows.push([
             formatDateInUserTimezone(entry.entry_date, 'MMM dd, yyyy'), // Format date for display
             entry.meal_type,
-            entry.foods.name,
-            entry.foods.brand || '',
+            entry.foods?.name || '',
+            entry.foods?.brand || '',
             entry.quantity.toString(),
             entry.unit,
             Math.round(
@@ -839,7 +839,8 @@ export const exportCustomMeasurement = async ({
     // Sort by timestamp descending
     const sortedMeasurements = [...measurements].sort(
       (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        new Date(b.timestamp || 0).getTime() -
+        new Date(a.timestamp || 0).getTime()
     );
 
     const csvHeaders = [
@@ -848,10 +849,13 @@ export const exportCustomMeasurement = async ({
       i18n.t('reports.customMeasurementsExportHeaders.value', 'Value'),
     ];
     const csvRows = sortedMeasurements.map((measurement) => {
-      const timestamp = new Date(measurement.timestamp);
-      const hour = timestamp.getHours();
-      const minutes = timestamp.getMinutes();
-      const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} `;
+      let formattedHour: string = '';
+      if (measurement.timestamp) {
+        const timestamp = new Date(measurement.timestamp);
+        const hour = timestamp.getHours();
+        const minutes = timestamp.getMinutes();
+        formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} `;
+      }
 
       return [
         measurement.entry_date &&
@@ -976,7 +980,8 @@ export const formatCustomChartData = (
       (acc, d) => {
         if (
           !acc[d.entry_date] ||
-          new Date(d.timestamp) > new Date(acc[d.entry_date].timestamp)
+          new Date(d.timestamp || 0) >
+            new Date(acc[d.entry_date].timestamp || 0)
         ) {
           acc[d.entry_date] = d;
         }

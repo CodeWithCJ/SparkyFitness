@@ -38,15 +38,18 @@ interface DailyFoodEntry extends BaseDailyFoodEntry {
 
 interface PersonalRecord {
   date: string;
+  oneRM: number;
+  weight: number;
+  reps: number;
 }
-type PersonalRecordsMap = Record<string, PersonalRecord>;
+export type PersonalRecordsMap = Record<string, PersonalRecord>;
 interface ReportsTablesProps {
   tabularData: DailyFoodEntry[];
   exerciseEntries: DailyExerciseEntry[]; // New prop for exercise entries
   measurementData: CheckInMeasurement[];
   customCategories: CustomCategory[];
   customMeasurementsData: Record<string, CustomMeasurement[]>;
-  prData: PersonalRecordsMap;
+  prData: PersonalRecordsMap | undefined;
   showWeightInKg: boolean;
   showMeasurementsInCm: boolean;
   onExportFoodDiary: () => void;
@@ -272,10 +275,13 @@ const ReportsTables = ({
     const sortableItems = [...sortedExerciseEntries];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
+        const key = sortConfig.key as keyof typeof a;
+        const aValue = a[key] ?? '';
+        const bValue = b[key] ?? '';
+        if (aValue < bValue) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
         }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
+        if (aValue > bValue) {
           return sortConfig.direction === 'ascending' ? 1 : -1;
         }
         return 0;
@@ -776,7 +782,8 @@ const ReportsTables = ({
         );
         const sortedData = [...data].sort(
           (a, b) =>
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            new Date(b.timestamp || 0).getTime() -
+            new Date(a.timestamp || 0).getTime()
         );
 
         return (
@@ -825,10 +832,13 @@ const ReportsTables = ({
                   <TableBody>
                     {sortedData.map((measurement, index) => {
                       // Extract hour from timestamp
-                      const timestamp = parseISO(measurement.timestamp);
-                      const hour = timestamp.getHours();
-                      const minutes = timestamp.getMinutes();
-                      const formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                      let formattedHour: string = '';
+                      if (measurement.timestamp) {
+                        const timestamp = parseISO(measurement.timestamp);
+                        const hour = timestamp.getHours();
+                        const minutes = timestamp.getMinutes();
+                        formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                      }
 
                       // Convert kg values to user's preferred weight unit
                       const displayValue =

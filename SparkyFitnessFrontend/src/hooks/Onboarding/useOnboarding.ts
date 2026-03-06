@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getOnboardingStatus,
-  OnboardingData,
   resetOnboardingStatus,
   submitOnboardingData,
 } from '@/api/Onboarding/onboarding';
 import { onboardingKeys } from '@/api/keys/onboarding';
 import { useTranslation } from 'react-i18next';
+import { OnboardingData } from '@/types/onboarding';
 
 export const useOnboardingStatus = (enabled: boolean) => {
   return useQuery({

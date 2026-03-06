@@ -133,7 +133,7 @@ export const SortableSetItem = React.memo(
                 value={set.weight ?? ''}
                 onChange={(e) => {
                   const val = e.target.value;
-                  const newValue = val === '' ? null : Number(val);
+                  const newValue = val === '' ? undefined : Number(val);
                   handleSetChange(setIndex, 'weight', newValue);
                 }}
                 onBlur={(e) => {

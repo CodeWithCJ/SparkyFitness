@@ -1,3 +1,4 @@
+import { ReleaseInfo } from '@/components/NewReleaseDialog';
 import { apiCall } from './api';
 interface VersionResponse {
   version: string;
@@ -32,9 +33,8 @@ export interface LatestReleaseResponse {
   version: string;
   isNewVersionAvailable: boolean;
 }
-export const getLatestGithubRelease =
-  async (): Promise<LatestReleaseResponse> => {
-    return apiCall('/version/latest-github', {
-      method: 'GET',
-    });
-  };
+export const getLatestGithubRelease = async (): Promise<ReleaseInfo> => {
+  return apiCall('/version/latest-github', {
+    method: 'GET',
+  });
+};

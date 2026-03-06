@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useActiveUser } from '@/contexts/ActiveUserContext';
 import type {
   Food,
   CSVData,
@@ -146,7 +145,6 @@ const EnhancedFoodSearch = ({
   hideMealTab = false,
   mealType = undefined,
 }: EnhancedFoodSearchProps) => {
-  const { activeUserId } = useActiveUser();
   const { t } = useTranslation();
   const {
     defaultFoodDataProviderId,
@@ -388,7 +386,7 @@ const EnhancedFoodSearch = ({
     },
     mealie: async (term, id, p) => {
       const data: Food[] = await queryClient.fetchQuery(
-        searchMealieOptions(term, p.base_url, p.app_key, id)
+        searchMealieOptions(term, p.base_url ?? '', p.app_key, id)
       );
       setExternalResults(
         data.map((item) => ({
@@ -400,7 +398,7 @@ const EnhancedFoodSearch = ({
     },
     tandoor: async (term, id, p) => {
       const data: Food[] = await queryClient.fetchQuery(
-        searchTandoorOptions(term, p.base_url, p.app_key, id)
+        searchTandoorOptions(term, p.base_url ?? '', p.app_key, id)
       );
       setExternalResults(
         data.map((item) => ({
@@ -449,6 +447,9 @@ const EnhancedFoodSearch = ({
   };
 
   const handleUsdaEdit = async (item: UsdaItem) => {
+    if (!searchProviderId) {
+      return;
+    }
     const nutrientData = await queryClient.fetchQuery(
       usdaFoodDetailsOptions(item.fdcId, searchProviderId)
     );
@@ -466,10 +467,10 @@ const EnhancedFoodSearch = ({
   };
 
   const handleNutritionixEdit = async (item: NutritionixItem) => {
-    let nutrientData;
+    let nutrientData: NutritionixItem;
     if (item.brand) {
       nutrientData = await queryClient.fetchQuery(
-        nutritionixBrandedNutrientsOptions(item.id, searchProviderId)
+        nutritionixBrandedNutrientsOptions(item.id ?? ' ', searchProviderId)
       );
     } else {
       nutrientData = await queryClient.fetchQuery(
@@ -490,9 +491,14 @@ const EnhancedFoodSearch = ({
   };
 
   const handleFatSecretEdit = async (item: FatSecretFoodItem) => {
-    const nutrientData = await queryClient.fetchQuery(
-      fatSecretNutrientOptions(item.food_id, searchProviderId)
-    );
+    if (!searchProviderId) {
+      return;
+    }
+
+    const nutrientData: Partial<FatSecretFoodItem> =
+      await queryClient.fetchQuery(
+        fatSecretNutrientOptions(item.food_id, searchProviderId)
+      );
 
     if (nutrientData) {
       setEditingProduct(convertFatSecretToFood(item, nutrientData));
@@ -668,7 +674,6 @@ const EnhancedFoodSearch = ({
               <FoodResultCard
                 key={food.id}
                 item={food}
-                activeUserId={activeUserId}
                 nutrientConfig={nutrientConfig}
                 onCardClick={() => onFoodSelect(food, 'food')}
               />
@@ -678,7 +683,6 @@ const EnhancedFoodSearch = ({
               <FoodResultCard
                 key={food.id}
                 item={food}
-                activeUserId={activeUserId}
                 nutrientConfig={nutrientConfig}
                 onCardClick={() => onFoodSelect(food, 'food')}
               />
@@ -780,7 +784,6 @@ const EnhancedFoodSearch = ({
             <FoodResultCard
               key={food.id}
               item={food}
-              activeUserId={activeUserId}
               nutrientConfig={nutrientConfig}
               onCardClick={() => onFoodSelect(food, 'food')}
             />

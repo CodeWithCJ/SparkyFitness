@@ -195,13 +195,19 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '6px',
                     }}
-                    formatter={(value: number, name: string) => {
+                    formatter={(
+                      value: number | undefined,
+                      name: string | undefined
+                    ) => {
                       const labels: Record<string, string> = {
                         highest: t('reports.highest', 'Highest'),
                         at_wake: t('reports.atWake', 'At Wake'),
                         lowest: t('reports.lowest', 'Lowest'),
                       };
-                      return [Math.round(value), labels[name] || name];
+                      return [
+                        Math.round(value ?? 0),
+                        labels[name ?? ''] || name,
+                      ];
                     }}
                   />
                   <Legend

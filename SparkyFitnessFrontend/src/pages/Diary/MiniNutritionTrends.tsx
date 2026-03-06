@@ -80,7 +80,7 @@ const CustomTooltip = ({
     return (
       <div className="bg-white dark:bg-gray-800 p-2 border border-gray-200 dark:border-gray-700 rounded shadow-lg">
         <p className="text-xs font-medium text-gray-900 dark:text-gray-100">
-          {formatDate(parseISO(label), 'MMM dd')}
+          {label ? formatDate(parseISO(label), 'MMM dd') : ''}
         </p>
         <p className="text-xs text-gray-600 dark:text-gray-400">
           {nutrientName === 'dietary_fiber' ? 'Fiber' : nutrientName}:{' '}

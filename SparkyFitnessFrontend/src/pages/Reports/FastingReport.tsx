@@ -229,7 +229,11 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                         />
                         <Tooltip
                           formatter={(
-                            value: string | number | (string | number)[]
+                            value:
+                              | string
+                              | number
+                              | undefined
+                              | (string | number)[]
                           ) => {
                             if (value === null || value === undefined)
                               return '';
@@ -371,7 +375,11 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                         />
                         <Tooltip
                           formatter={(
-                            value: string | number | (string | number)[]
+                            value:
+                              | string
+                              | number
+                              | undefined
+                              | (string | number)[]
                           ) => {
                             if (value === null || value === undefined)
                               return '';

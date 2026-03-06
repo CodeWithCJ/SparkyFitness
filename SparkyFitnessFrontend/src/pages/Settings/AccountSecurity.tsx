@@ -35,7 +35,7 @@ export const AccountSecurity = () => {
 
   const isLoading = isEmailPending || isPasswordPending;
 
-  const [newEmail, setNewEmail] = useState<string>(user.email || '');
+  const [newEmail, setNewEmail] = useState<string>(user?.email || '');
   const handleEmailChange = async () => {
     if (!newEmail || newEmail === user?.email) {
       toast({

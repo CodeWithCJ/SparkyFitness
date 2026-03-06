@@ -1,3 +1,4 @@
+import { PersonalRecordsMap } from '@/pages/Reports/ReportsTables';
 import { Exercise } from './exercises';
 import { Food, FoodVariant } from './food';
 
@@ -91,14 +92,7 @@ export interface ExerciseDashboardData {
     totalVolume: number;
     totalReps: number;
   };
-  prData: {
-    [exerciseName: string]: {
-      oneRM: number;
-      date: string;
-      weight: number;
-      reps: number;
-    };
-  };
+  prData: PersonalRecordsMap;
   bestSetRepRange: {
     [exerciseName: string]: {
       [repRange: string]: {

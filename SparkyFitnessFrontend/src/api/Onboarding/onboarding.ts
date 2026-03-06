@@ -1,17 +1,5 @@
 import { apiCall } from '@/api/api';
-
-export interface OnboardingData {
-  sex: 'male' | 'female' | '';
-  primaryGoal: 'lose_weight' | 'maintain_weight' | 'gain_weight' | '';
-  currentWeight: number | '';
-  height: number | '';
-  birthDate: string; // In 'YYYY-MM-DD' format
-  bodyFatRange?: string;
-  targetWeight: number | '';
-  mealsPerDay?: number;
-  activityLevel: 'not_much' | 'light' | 'moderate' | 'heavy' | '';
-  addBurnedCalories?: boolean;
-}
+import { OnboardingData } from '@/types/onboarding';
 
 /**
  * Submits the completed onboarding form data to the backend.

@@ -127,12 +127,12 @@ const GlobalAISettings = () => {
         service_name: newService.service_name,
         service_type: newService.service_type,
         api_key: newService.api_key,
-        custom_url: newService.custom_url || null,
+        custom_url: newService.custom_url || '',
         system_prompt: newService.system_prompt || '',
         is_active: newService.is_active,
         model_name: newService.showCustomModelInput
           ? newService.custom_model_name
-          : newService.model_name || null,
+          : newService.model_name || '',
       };
       await createService(serviceData);
       // Reset form
@@ -175,7 +175,7 @@ const GlobalAISettings = () => {
       id: serviceId,
       model_name: editData.showCustomModelInput
         ? editData.custom_model_name
-        : editData.model_name || null,
+        : editData.model_name || '',
     };
 
     if (serviceToUpdate.api_key === '') {

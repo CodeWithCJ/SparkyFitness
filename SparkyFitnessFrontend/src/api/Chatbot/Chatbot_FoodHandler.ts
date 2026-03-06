@@ -271,9 +271,10 @@ export const addFoodOption = async (
   try {
     const { foodOptions, mealType, quantity, unit, entryDate } =
       originalMetadata;
-    const selectedOption = foodOptions[optionIndex];
-
-    if (!selectedOption) {
+    let selectedOption: FoodOption;
+    if (foodOptions) {
+      selectedOption = foodOptions[optionIndex];
+    } else {
       error(
         userLoggingLevel,
         `[${transactionId}] Invalid option index:`,
@@ -502,7 +503,7 @@ export const addFoodOption = async (
 
     const calories = Math.round(
       (selectedOption.calories || 0) *
-        (quantity / (selectedOption.serving_size || 100))
+        (quantity ?? 0 / (selectedOption.serving_size || 100))
     );
 
     return {

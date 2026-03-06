@@ -23,11 +23,12 @@ import { NutrientGoals } from './NutrientGoals';
 import { PersonalPlanHeader } from './PersonalPlanHeader';
 import { OnboardingDialog } from './OnboardingDialog';
 import { createInitialPlan } from '@/utils/onboarding';
-import { FormData } from './OnBoardingForm';
 import { useUpdateProfileMutation } from '@/hooks/Settings/useProfile';
+import { useAuth } from '@/hooks/useAuth';
+import { OnboardingData } from '@/types/onboarding';
 
 interface PersonalPlanProps {
-  formData: FormData;
+  formData: OnboardingData;
   weightUnit: 'kg' | 'lbs';
   heightUnit: 'cm' | 'inches';
   localDateFormat: string;
@@ -52,6 +53,7 @@ const PersonalPlan = ({
     energyUnit,
   } = usePreferences();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [showDietApproach, setShowDietApproach] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [isSavePresetOpen, setIsSavePresetOpen] = useState(false);
@@ -104,7 +106,9 @@ const PersonalPlan = ({
   const { mutateAsync: saveGoals } = useSaveGoalsMutation();
   const { mutateAsync: saveCheckInMeasurements } =
     useSaveCheckInMeasurementsMutation();
-  const { mutateAsync: updateProfileData } = useUpdateProfileMutation();
+  const { mutateAsync: updateProfileData } = useUpdateProfileMutation(
+    user?.activeUserId ?? ''
+  );
 
   const handleDietChange = (newDiet: string) => {
     setLocalSelectedDiet(newDiet);
@@ -124,7 +128,7 @@ const PersonalPlan = ({
     );
 
     setEditedPlan((prev) => {
-      if (!prev) return updatedPlan;
+      if (!prev || !updatedPlan) return updatedPlan;
       return {
         ...updatedPlan,
         breakfast_percentage: prev.breakfast_percentage,
@@ -225,28 +229,30 @@ const PersonalPlan = ({
   };
 
   const handleSubmit = async () => {
-    const dataToSubmit = {
+    if (!user?.activeUserId) {
+      return;
+    }
+    const dataToSubmit: OnboardingData = {
       ...formData,
       currentWeight:
         formData.currentWeight === ''
-          ? undefined
+          ? 0
           : weightUnit === 'lbs'
             ? Number(formData.currentWeight) * 0.453592
             : Number(formData.currentWeight),
       height:
         formData.height === ''
-          ? undefined
+          ? 0
           : heightUnit === 'inches'
             ? Number(formData.height) * 2.54
             : Number(formData.height),
       targetWeight:
         formData.targetWeight === ''
-          ? undefined
+          ? 0
           : weightUnit === 'lbs'
             ? Number(formData.targetWeight) * 0.453592
             : Number(formData.targetWeight),
-      mealsPerDay:
-        formData.mealsPerDay === '' ? undefined : Number(formData.mealsPerDay),
+      mealsPerDay: !formData.mealsPerDay ? 3 : Number(formData.mealsPerDay),
     };
 
     // Update user preferences with selected units and algorithms

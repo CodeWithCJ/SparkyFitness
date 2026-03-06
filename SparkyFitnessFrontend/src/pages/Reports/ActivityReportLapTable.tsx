@@ -111,7 +111,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
       });
 
       return acc;
-    }, []);
+    }, [] as ProcessedLap[]);
   }, [lapDTOs, distanceUnit, convertDistance]);
 
   const sortedLaps = [...processedLaps].sort((a, b) => {
@@ -130,8 +130,8 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
         const [minutes, seconds] = paceStr.split(':').map(Number);
         return minutes * 60 + seconds;
       };
-      aValue = formatPace(a.averageSpeed); // Assuming formatPace is accessible here
-      bValue = formatPace(b.averageSpeed); // Assuming formatPace is accessible here
+      aValue = formatPace(a.averageSpeed ?? 0); // Assuming formatPace is accessible here
+      bValue = formatPace(b.averageSpeed ?? 0); // Assuming formatPace is accessible here
       aValue = parsePaceToSeconds(aValue);
       bValue = parsePaceToSeconds(bValue);
     } else if (
@@ -335,7 +335,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                   {lap.cumulativeDistance.toFixed(2)}
                 </td>
                 <td className="py-2 px-4 border-b border-border text-right">
-                  {formatPace(lap.averageSpeed)}
+                  {formatPace(lap.averageSpeed ?? 0)}
                 </td>
                 <td className="py-2 px-4 border-b border-border text-right">
                   {formatPace(lap.averageMovingSpeed)}
@@ -400,7 +400,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                 {processedLaps.length > 0
                   ? formatPace(
                       processedLaps.reduce(
-                        (sum, lap) => sum + lap.averageSpeed,
+                        (sum, lap) => sum + (lap.averageSpeed ?? 0),
                         0
                       ) / processedLaps.length
                     )

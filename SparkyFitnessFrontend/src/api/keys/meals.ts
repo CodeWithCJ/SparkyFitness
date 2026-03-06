@@ -2,7 +2,7 @@ import { MealFilter } from '@/types/meal';
 
 export const mealKeys = {
   all: ['meals'] as const,
-  one: (mealId: string) => [...mealKeys.all, mealId] as const,
+  one: (mealId?: string) => [...mealKeys.all, mealId] as const,
   filter: (filter: MealFilter, searchTerm?: string) =>
     [...mealKeys.all, 'filter', filter, searchTerm] as const,
   impact: (mealId: string) => [...mealKeys.one(mealId), 'impact'] as const,

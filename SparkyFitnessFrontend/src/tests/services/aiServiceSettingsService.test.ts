@@ -73,7 +73,7 @@ describe('aiServiceSettingsService', () => {
 
       const result = await aiServiceSettingsService.getPreferences();
 
-      expect(result).toBeNull();
+      expect(result).toStrictEqual({ auto_clear_history: '' });
     });
   });
 

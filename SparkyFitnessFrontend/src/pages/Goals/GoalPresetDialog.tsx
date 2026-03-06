@@ -120,12 +120,14 @@ export const GoalPresetDialog = ({
     );
   }, [formData, macroInputType]);
 
-  const isTotalPercentageValid =
-    formData.breakfast_percentage +
-      formData.lunch_percentage +
-      formData.dinner_percentage +
-      formData.snacks_percentage ===
-    100;
+  const isTotalPercentageValid = formData
+    ? formData.breakfast_percentage +
+        formData.lunch_percentage +
+        formData.dinner_percentage +
+        formData.snacks_percentage ===
+      100
+    : false;
+
   if (!formData) return null;
   return (
     <>

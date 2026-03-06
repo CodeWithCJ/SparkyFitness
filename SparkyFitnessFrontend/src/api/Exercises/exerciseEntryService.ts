@@ -35,6 +35,10 @@ export const fetchExerciseEntries = async (
               sets: ex.sets ? ex.sets : [], // Parse sets if it's a JSON string
               exercise_snapshot: {
                 ...ex.exercise_snapshot, // Use the existing snapshot
+                id: ex.exercise_snapshot.id ?? '',
+                name: ex.exercise_snapshot.name ?? '',
+                calories_per_hour: ex.exercise_snapshot.calories_per_hour ?? 0,
+                category: ex.exercise_snapshot.category ?? '',
                 equipment: parseJsonArray(ex.exercise_snapshot.equipment),
                 primary_muscles: parseJsonArray(
                   ex.exercise_snapshot.primary_muscles
@@ -47,14 +51,14 @@ export const fetchExerciseEntries = async (
               },
               activity_details: ex.activity_details
                 ? ex.activity_details.map((detail) => ({
-                    id: detail.id,
-                    key: detail.detail_type,
+                    id: detail.id ?? '',
+                    key: detail.detail_type ?? '',
                     value:
                       typeof detail.detail_data === 'object'
                         ? JSON.stringify(detail.detail_data, null, 2)
                         : String(detail.detail_data),
                     provider_name: detail.provider_name,
-                    detail_type: detail.detail_type,
+                    detail_type: detail.detail_type ?? '',
                   }))
                 : [],
             }))
@@ -66,26 +70,30 @@ export const fetchExerciseEntries = async (
         sets: entry.sets ? entry.sets : [], // Parse sets if it's a JSON string
         exercise_snapshot: {
           ...entry.exercise_snapshot, // Use the existing snapshot
-          equipment: parseJsonArray(entry.exercise_snapshot.equipment),
+          id: entry.exercise_snapshot?.id ?? '',
+          name: entry.exercise_snapshot?.name ?? '',
+          category: entry.exercise_snapshot?.category ?? '',
+          calories_per_hour: entry.exercise_snapshot?.calories_per_hour ?? 0,
+          equipment: parseJsonArray(entry.exercise_snapshot?.equipment),
           primary_muscles: parseJsonArray(
-            entry.exercise_snapshot.primary_muscles
+            entry.exercise_snapshot?.primary_muscles
           ),
           secondary_muscles: parseJsonArray(
-            entry.exercise_snapshot.secondary_muscles
+            entry.exercise_snapshot?.secondary_muscles
           ),
-          instructions: parseJsonArray(entry.exercise_snapshot.instructions),
-          images: parseJsonArray(entry.exercise_snapshot.images),
+          instructions: parseJsonArray(entry.exercise_snapshot?.instructions),
+          images: parseJsonArray(entry.exercise_snapshot?.images),
         },
         activity_details: entry.activity_details
           ? entry.activity_details.map((detail) => ({
-              id: detail.id,
-              key: detail.detail_type,
+              id: detail.id ?? '',
+              key: detail.detail_type ?? '',
               value:
                 typeof detail.detail_data === 'object'
                   ? JSON.stringify(detail.detail_data, null, 2)
                   : String(detail.detail_data),
               provider_name: detail.provider_name,
-              detail_type: detail.detail_type,
+              detail_type: detail.detail_type ?? '',
             }))
           : [],
       };

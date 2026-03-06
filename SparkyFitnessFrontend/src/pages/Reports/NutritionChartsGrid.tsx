@@ -192,12 +192,11 @@ const NutritionChartsGrid = ({
                           labelFormatter={(value) =>
                             formatDateForChart(value as string)
                           } // Apply formatter
-                          formatter={(
-                            value: number | string | null | undefined
-                          ) => {
+                          formatter={(value: number | string | undefined) => {
                             if (value === null || value === undefined) {
-                              return ['N/A'];
+                              return 'N/A';
                             }
+
                             let numValue: number;
                             if (typeof value === 'string') {
                               numValue = parseFloat(value);
@@ -206,14 +205,10 @@ const NutritionChartsGrid = ({
                             }
 
                             if (chart.key === 'calories') {
-                              return [
-                                `${Math.round(convertEnergy(numValue, 'kcal', energyUnit))} ${chart.unit}`,
-                              ];
+                              return `${Math.round(convertEnergy(numValue, 'kcal', energyUnit))} ${chart.unit}`;
                             }
 
-                            return [
-                              `${formatNutrientValue(chart.key, numValue, customNutrients)} ${chart.unit}`,
-                            ];
+                            return `${formatNutrientValue(chart.key, numValue, customNutrients)} ${chart.unit}`;
                           }}
                           contentStyle={{
                             backgroundColor: 'hsl(var(--background))',

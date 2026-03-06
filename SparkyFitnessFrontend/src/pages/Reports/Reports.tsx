@@ -240,7 +240,7 @@ const Reports = () => {
             </ChartErrorBoundary>
             <ChartErrorBoundary>
               <MeasurementChartsGrid
-                measurementData={measurementData}
+                measurementData={measurementData ?? []}
                 showWeightInKg={defaultWeightUnit === 'kg'}
                 showMeasurementsInCm={defaultMeasurementUnit === 'cm'}
               />

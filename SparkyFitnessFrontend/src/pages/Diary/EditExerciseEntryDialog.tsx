@@ -76,15 +76,15 @@ const EditExerciseEntryDialog = ({
     }));
   });
   const [notes, setNotes] = useState(entry.notes || '');
-  const [imageUrl, setImageUrl] = useState<string | null>(
-    entry.image_url || null
-  );
+  const [imageUrl, setImageUrl] = useState<string>(entry.image_url || '');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(
     entry.calories_burned || ''
   );
   const [distanceInput, setDistanceInput] = useState<number | ''>(
-    Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1)) || ''
+    entry.distance !== undefined
+      ? Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1))
+      : ''
   );
   const [avgHeartRateInput, setAvgHeartRateInput] = useState<number | ''>(
     entry.avg_heart_rate !== null && entry.avg_heart_rate !== undefined
@@ -129,13 +129,13 @@ const EditExerciseEntryDialog = ({
 
   const handleClearImage = () => {
     setImageFile(null);
-    setImageUrl(null);
+    setImageUrl('');
   };
 
   const handleSetChange = (
     setIndex: number,
     field: keyof WorkoutPresetSet,
-    value: string | number
+    value: string | number | undefined
   ) => {
     debug(
       loggingLevel,
@@ -263,10 +263,10 @@ const EditExerciseEntryDialog = ({
           image_url: imageUrl,
           distance:
             distanceInput === ''
-              ? null
+              ? 0
               : convertDistance(Number(distanceInput), distanceUnit, 'km'),
           avg_heart_rate:
-            avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
+            avgHeartRateInput === '' ? 0 : Number(avgHeartRateInput),
           activity_details: activityDetails.map((detail) => ({
             id: detail.id,
             provider_name: detail.provider_name,

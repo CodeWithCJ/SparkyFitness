@@ -26,7 +26,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
     saveAllPreferences,
   } = usePreferences();
   const { data: providers = [], isLoading: providersLoading } =
-    useExternalProviders(user.activeUserId);
+    useExternalProviders(user?.activeUserId);
 
   const { mutateAsync: updateExternalProvider, isPending: updatePending } =
     useUpdateExternalProviderMutation();
@@ -55,33 +55,27 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
       withings_last_sync_at:
         editData.provider_type === 'withings'
           ? editData.withings_last_sync_at
-          : null,
+          : '',
       withings_token_expires:
         editData.provider_type === 'withings'
           ? editData.withings_token_expires
-          : null,
+          : '',
       fitbit_last_sync_at:
-        editData.provider_type === 'fitbit'
-          ? editData.fitbit_last_sync_at
-          : null,
+        editData.provider_type === 'fitbit' ? editData.fitbit_last_sync_at : '',
       fitbit_token_expires:
         editData.provider_type === 'fitbit'
           ? editData.fitbit_token_expires
-          : null,
+          : '',
       polar_last_sync_at:
-        editData.provider_type === 'polar' ? editData.polar_last_sync_at : null,
+        editData.provider_type === 'polar' ? editData.polar_last_sync_at : '',
       polar_token_expires:
-        editData.provider_type === 'polar'
-          ? editData.polar_token_expires
-          : null,
+        editData.provider_type === 'polar' ? editData.polar_token_expires : '',
       strava_last_sync_at:
-        editData.provider_type === 'strava'
-          ? editData.strava_last_sync_at
-          : null,
+        editData.provider_type === 'strava' ? editData.strava_last_sync_at : '',
       strava_token_expires:
         editData.provider_type === 'strava'
           ? editData.strava_token_expires
-          : null,
+          : '',
       sync_frequency:
         editData.provider_type === 'withings' ||
         editData.provider_type === 'garmin' ||
@@ -90,7 +84,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
         editData.provider_type === 'strava' ||
         editData.provider_type === 'polar'
           ? editData.sync_frequency
-          : null,
+          : undefined,
     };
 
     try {
@@ -131,7 +125,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
       app_key: '',
       is_active: provider.is_active,
       base_url: provider.base_url || '',
-      last_sync_at: provider.last_sync_at || null,
+      last_sync_at: provider.last_sync_at || '',
       sync_frequency: provider.sync_frequency || 'manual',
       garmin_connect_status: provider.garmin_connect_status || 'disconnected',
       garmin_last_status_check: provider.garmin_last_status_check || '',

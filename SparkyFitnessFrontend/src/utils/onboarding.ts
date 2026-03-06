@@ -9,10 +9,10 @@ import {
 } from '@/types/nutrientAlgorithms';
 import { calculateBasePlan } from './nutritionCalculations';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
-import { FormData } from '@/components/Onboarding/OnBoardingForm';
+import { OnboardingData } from '@/types/onboarding';
 
 export const createInitialPlan = (
-  formData: FormData,
+  formData: OnboardingData,
   weightUnit: 'kg' | 'lbs',
   heightUnit: 'cm' | 'inches',
   localEnergyUnit: 'kcal' | 'kJ',

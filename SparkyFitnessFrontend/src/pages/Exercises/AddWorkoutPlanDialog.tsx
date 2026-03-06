@@ -562,7 +562,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
       assignmentIndex: number,
       setIndex: number,
       field: keyof WorkoutPresetSet,
-      value: string | number
+      value: WorkoutPresetSet[keyof WorkoutPresetSet]
     ) => {
       debug(
         loggingLevel,
@@ -859,7 +859,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
       plan_name: planName,
       description: description,
       start_date: startDate,
-      end_date: endDate || null,
+      end_date: endDate || '',
       is_active: isActive,
       assignments: assignmentsToSave.map((a) => {
         // Calculate sort_order within its day
@@ -874,7 +874,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
           sets:
             a.sets?.map((s) => ({
               ...s,
-              weight: convertWeight(s.weight, weightUnit, 'kg'),
+              weight: s.weight ? convertWeight(s.weight, weightUnit, 'kg') : 0,
             })) || [],
         };
       }),
@@ -1105,9 +1105,11 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
             <AddExerciseDialog
               open={isAddExerciseDialogOpen}
               onOpenChange={setIsAddExerciseDialogOpen}
-              onExerciseAdded={(exercise, sourceMode) =>
-                handleAddExerciseOrPreset(exercise, sourceMode)
-              }
+              onExerciseAdded={(exercise, sourceMode) => {
+                if (exercise && sourceMode) {
+                  handleAddExerciseOrPreset(exercise, sourceMode);
+                }
+              }}
               onWorkoutPresetSelected={(preset) =>
                 handleAddExerciseOrPreset(preset, 'preset')
               }

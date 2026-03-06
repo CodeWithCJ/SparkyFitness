@@ -343,13 +343,16 @@ const FoodUnitSelector = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {variants.map((variant) => (
-                        <SelectItem key={variant.id} value={variant.id}>
-                          {' '}
-                          {/* Use actual ID as key and value */}
-                          {variant.serving_unit}
-                        </SelectItem>
-                      ))}
+                      {variants.map(
+                        (variant) =>
+                          variant.id && (
+                            <SelectItem key={variant.id} value={variant.id}>
+                              {' '}
+                              {/* Use actual ID as key and value */}
+                              {variant.serving_unit}
+                            </SelectItem>
+                          )
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

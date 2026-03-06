@@ -59,7 +59,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     bedtime: string;
     wakeTime: string;
   } | null>(null);
-  const handleSleepSubmit = async (e: React.FormEvent) => {
+  const handleSleepSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
     if (!currentUserId) {
@@ -120,7 +120,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
               ...event,
               duration_in_seconds: Number(event.duration_in_seconds) || 0,
               entry_id: '',
-              id: event.id.startsWith('temp-') ? undefined : event.id,
+              id: event.id.startsWith('temp-') ? '' : event.id,
             })),
         };
 
@@ -180,7 +180,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     const eventsForApi = events.map((event) => ({
       ...event,
       entry_id: entryId,
-      id: event.id.startsWith('temp-') ? undefined : event.id,
+      id: event.id.startsWith('temp-') ? '' : event.id,
     }));
 
     const durationInSeconds =
@@ -493,7 +493,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                                   entry.time_asleep_in_seconds
                                 )
                               : undefined,
-                          sleepScore: entry.sleep_score,
+                          sleepScore: entry.sleep_score ?? 0,
                           source: entry.source,
                           deepSleepSeconds: entry.deep_sleep_seconds,
                           lightSleepSeconds: entry.light_sleep_seconds,

@@ -269,8 +269,8 @@ export const processUserInput = async (
             foodResponse.metadata;
 
           const foodOptions = await callAIForFoodOptions(
-            foodName,
-            unit,
+            foodName ?? '',
+            unit ?? '',
             userLoggingLevel,
             activeAIServiceSetting as AIService
           );
@@ -348,7 +348,7 @@ export const processUserInput = async (
       case 'chat':
         return await processChatInput(
           parsedResponse.data || {},
-          parsedResponse.response,
+          parsedResponse.response ?? '',
           userLoggingLevel
         );
       default: {

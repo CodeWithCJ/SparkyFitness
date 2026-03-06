@@ -34,7 +34,7 @@ const WorkoutPlansManager = () => {
     null
   );
 
-  const { data: plans } = useWorkoutPlanTemplates(user.id);
+  const { data: plans } = useWorkoutPlanTemplates(user?.id);
   const { mutateAsync: createWorkoutPlanTemplate } =
     useCreateWorkoutPlanTemplateMutation();
   const { mutateAsync: updateWorkoutPlanTemplate } =
@@ -83,7 +83,7 @@ const WorkoutPlansManager = () => {
   const handleTogglePlanActive = async (planId: string, isActive: boolean) => {
     if (!user?.id) return;
     try {
-      const planToUpdate = plans.find((p) => p.id === planId);
+      const planToUpdate = plans?.find((p) => p.id === planId);
       if (!planToUpdate) {
         toast({
           title: t('common.error', 'Error'),

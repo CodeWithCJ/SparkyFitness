@@ -40,7 +40,7 @@ export const mealDeletionImpactOptions = (mealId: string) => ({
     ),
   },
 });
-export const mealViewOptions = (mealId: string) => ({
+export const mealViewOptions = (mealId?: string) => ({
   queryKey: mealKeys.one(mealId),
   queryFn: () => getMealById(mealId),
   staleTime: 1000 * 10,

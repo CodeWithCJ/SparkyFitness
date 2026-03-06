@@ -159,7 +159,9 @@ const SpO2Card = ({ data }: SpO2CardProps) => {
                   borderRadius: '6px',
                   color: 'hsl(var(--foreground))',
                 }}
-                formatter={(value: number) => [`${value}%`]}
+                formatter={(value: number | undefined) =>
+                  value ? [`${value}%`] : ''
+                }
               />
               <Bar
                 dataKey="average"

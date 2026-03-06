@@ -54,7 +54,7 @@ const GarminConnectSettings = ({
         password: garminPassword,
       });
 
-      if (result.status === 'needs_mfa') {
+      if (result.status === 'needs_mfa' && result.client_state) {
         setGarminClientState(result.client_state);
         setShowGarminMfaInput(true);
         toast({

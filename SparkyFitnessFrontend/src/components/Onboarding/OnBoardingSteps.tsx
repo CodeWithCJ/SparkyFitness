@@ -17,12 +17,12 @@ import {
 } from '@/components/ui/select';
 import { OptionButton } from './OptionButton';
 import { useTranslation } from 'react-i18next';
-import { FormData } from './OnBoardingForm';
+import { OnboardingData } from '@/types/onboarding';
 
 interface OnboardingStepsProps {
   step: number;
-  formData: FormData;
-  setFormData: React.Dispatch<React.SetStateAction<FormData>>;
+  formData: OnboardingData;
+  setFormData: React.Dispatch<React.SetStateAction<OnboardingData>>;
   nextStep: () => void;
   weightUnit: 'kg' | 'lbs';
   setLocalWeightUnit: (unit: 'kg' | 'lbs') => void;
@@ -47,7 +47,7 @@ export const OnboardingSteps = ({
   const { t } = useTranslation();
 
   const handleSelect = (
-    field: keyof FormData,
+    field: keyof OnboardingData,
     value: string | boolean | number
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

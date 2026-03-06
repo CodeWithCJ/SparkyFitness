@@ -114,11 +114,11 @@ const SleepAnalyticsCharts = ({
       sleepDebt: data.sleepDebt,
       sleepEfficiency: data.sleepEfficiency,
       bedtime:
-        new Date(data.earliestBedtime).getHours() +
-        new Date(data.earliestBedtime).getMinutes() / 60,
+        new Date(data.earliestBedtime || 0).getHours() +
+        new Date(data.earliestBedtime || 0).getMinutes() / 60,
       wakeTime:
-        new Date(data.latestWakeTime).getHours() +
-        new Date(data.latestWakeTime).getMinutes() / 60,
+        new Date(data.latestWakeTime || 0).getHours() +
+        new Date(data.latestWakeTime || 0).getMinutes() / 60,
     }))
     .sort((a, b) => {
       // Safe sorting for date strings
@@ -363,10 +363,12 @@ const SleepAnalyticsCharts = ({
                           labelFormatter={(label) =>
                             formatDateInUserTimezone(label, dateFormat)
                           }
-                          formatter={(value: number, name: string) => [
-                            `${formatBedWakeTime(value)}`,
-                            name,
-                          ]}
+                          formatter={(
+                            value: number | undefined,
+                            name: string | undefined
+                          ) =>
+                            value ? [`${formatBedWakeTime(value)}`, name] : ''
+                          }
                           contentStyle={{
                             backgroundColor: tooltipBackgroundColor,
                             borderColor: tooltipBorderColor,
@@ -446,10 +448,10 @@ const SleepAnalyticsCharts = ({
                           labelFormatter={(label) =>
                             formatDateInUserTimezone(label, dateFormat)
                           }
-                          formatter={(value: number, name: string) => [
-                            formatSecondsToHHMM(value * 3600),
-                            name,
-                          ]}
+                          formatter={(
+                            value: number | undefined,
+                            name: string | undefined
+                          ) => [formatSecondsToHHMM((value || 0) * 3600), name]}
                           contentStyle={{
                             backgroundColor: tooltipBackgroundColor,
                             borderColor: tooltipBorderColor,

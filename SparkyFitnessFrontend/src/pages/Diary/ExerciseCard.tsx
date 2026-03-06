@@ -327,7 +327,9 @@ const ExerciseCard = ({
       items.forEach((entry: ExerciseEntry | GroupedExerciseEntry) => {
         // Calories
         const cal = entry.calories_burned;
-        if (!isNaN(cal)) calories += cal;
+        if (cal) {
+          if (!isNaN(cal)) calories += cal;
+        }
 
         // Duration & Sets
         if (entry.sets) {
@@ -388,13 +390,13 @@ const ExerciseCard = ({
         </div>
       </CardHeader>
       <CardContent>
-        {exerciseEntries.length === 0 ? (
+        {exerciseEntries?.length === 0 ? (
           <p className="dark:text-slate-300">
             {t('exerciseCard.noEntries', 'No exercise entries for this day.')}
           </p>
         ) : (
           <div className="space-y-4">
-            {exerciseEntries.map((entry) => {
+            {exerciseEntries?.map((entry) => {
               if (entry.type === 'preset') {
                 return (
                   <ExercisePresetEntryDisplay

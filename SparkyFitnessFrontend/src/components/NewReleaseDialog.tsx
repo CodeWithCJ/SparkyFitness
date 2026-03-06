@@ -11,16 +11,18 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 
+export interface ReleaseInfo {
+  version: string;
+  releaseNotes: string;
+  publishedAt: string;
+  htmlUrl: string;
+  isNewVersionAvailable: boolean;
+}
+
 interface NewReleaseDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  releaseInfo: {
-    version: string;
-    releaseNotes: string;
-    publishedAt: string;
-    htmlUrl: string;
-    isNewVersionAvailable: boolean;
-  } | null;
+  releaseInfo: ReleaseInfo | null;
   onDismissForVersion: (version: string) => void;
 }
 

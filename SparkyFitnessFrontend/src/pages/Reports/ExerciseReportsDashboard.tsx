@@ -39,7 +39,7 @@ import { calculateTotalTonnage } from '@/utils/reportUtil';
 import { ExerciseDashboardData, ExerciseProgressData } from '@/types/reports';
 
 interface ExerciseReportsDashboardProps {
-  exerciseDashboardData: ExerciseDashboardData | null;
+  exerciseDashboardData: ExerciseDashboardData | undefined;
   startDate: string | null;
   endDate: string | null;
   onDrilldown: (date: string) => void;
@@ -633,8 +633,8 @@ const ExerciseReportsDashboard = ({
                       }}
                     />
                     <Tooltip
-                      formatter={(value: number) =>
-                        `${formatWeight(value)} ${weightUnit}`
+                      formatter={(value: number | undefined) =>
+                        value ? `${formatWeight(value)} ${weightUnit}` : 0
                       }
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',

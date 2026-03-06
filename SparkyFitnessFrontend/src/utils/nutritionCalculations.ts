@@ -290,7 +290,7 @@ export const calculateNutrition = (
 
 export const calculateDayTotals = (
   entries: FoodEntry[],
-  meals: FoodEntryMeal[]
+  meals: FoodEntryMeal[] | undefined
 ): MealTotals => {
   if (!entries || !meals || (entries.length === 0 && meals.length === 0)) {
     return EMPTY_MEAL_TOTALS;

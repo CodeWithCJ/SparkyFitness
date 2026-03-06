@@ -76,7 +76,7 @@ const ExternalProviderSettings = () => {
     setDefaultBarcodeProviderId,
     saveAllPreferences,
   } = usePreferences();
-  const { data: providers = [] } = useExternalProviders(user.activeUserId);
+  const { data: providers = [] } = useExternalProviders(user?.activeUserId);
 
   const barcodeProviders = providers.filter(
     (p) => p.is_active && BARCODE_PROVIDER_TYPES.includes(p.provider_type)
