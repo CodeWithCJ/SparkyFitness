@@ -7,6 +7,7 @@ import type {
   CombinedSleepData,
   SleepAnalyticsData,
   SleepChartData,
+  SleepEntry,
   SleepStageEvent,
 } from '@/types';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +29,6 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
   const { data: sleepDebtData, isLoading: loadingDebt } = useSleepDebtQuery();
 
   const loading = loadingEntries || loadingDebt;
-  const personalizedSleepNeed = sleepDebtData?.sleepNeed || 8;
 
   const exportSleepDataToCSV = (data: CombinedSleepData[]) => {
     if (!data.length) {
@@ -133,7 +133,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
         let earliestBedtime = mainEntry.bedtime;
         let latestWakeTime = mainEntry.wake_time;
 
-        const allStageEvents: any[] = [];
+        const allStageEvents: SleepStageEvent[] = [];
         const aggregatedStages = { deep: 0, rem: 0, light: 0, awake: 0 };
 
         entries.forEach((entry) => {
@@ -210,7 +210,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           totalAwakeDuration: aggregatedStages.awake,
         };
 
-        const combinedEntry: any = {
+        const combinedEntry: SleepEntry & { is_aggregated?: boolean } = {
           ...mainEntry,
           id: `agg-${dateKey}`,
           duration_in_seconds: totalDurationInSeconds,
@@ -258,7 +258,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
   };
 
   const processSpO2Data = () => {
-    const grouped: Record<string, any[]> = {};
+    const grouped: Record<string, SleepEntry[]> = {};
     sleepEntries.forEach((entry) => {
       const dateKey = entry.entry_date.split('T')[0] as string;
       if (!dateKey) return;
@@ -266,22 +266,27 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
       if (entry.average_spo2_value != null) grouped[dateKey].push(entry);
     });
     return Object.entries(grouped)
-      .map(([date, entries]) => ({
-        date,
-        average:
-          entries.length > 0
-            ? entries.reduce((s, e) => s + e.average_spo2_value, 0) /
-              entries.length
-            : null,
-        lowest:
-          entries.length > 0
-            ? Math.min(...entries.map((e) => e.lowest_spo2_value))
-            : null,
-        highest:
-          entries.length > 0
-            ? Math.max(...entries.map((e) => e.highest_spo2_value))
-            : null,
-      }))
+      .map(([date, entries]) => {
+        const averages = entries
+          .map((e) => e.average_spo2_value)
+          .filter((v): v is number => v !== null);
+        const lowests = entries
+          .map((e) => e.lowest_spo2_value)
+          .filter((v): v is number => v !== null);
+        const highests = entries
+          .map((e) => e.highest_spo2_value)
+          .filter((v): v is number => v !== null);
+
+        return {
+          date,
+          average:
+            averages.length > 0
+              ? averages.reduce((s, v) => s + v, 0) / averages.length
+              : null,
+          lowest: lowests.length > 0 ? Math.min(...lowests) : null,
+          highest: highests.length > 0 ? Math.max(...highests) : null,
+        };
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
   };
 
@@ -305,7 +310,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
 
   // Extract Respiration data from sleep entries
   const processRespirationData = () => {
-    const grouped: Record<string, any[]> = {};
+    const grouped: Record<string, SleepEntry[]> = {};
     sleepEntries.forEach((entry) => {
       const dateKey = entry.entry_date.split('T')[0] as string;
       if (!dateKey) return;
@@ -315,22 +320,27 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
       }
     });
     return Object.entries(grouped)
-      .map(([date, entries]) => ({
-        date,
-        average:
-          entries.length > 0
-            ? entries.reduce((s, e) => s + e.average_respiration_value, 0) /
-              entries.length
-            : null,
-        lowest:
-          entries.length > 0
-            ? Math.min(...entries.map((e) => e.lowest_respiration_value))
-            : null,
-        highest:
-          entries.length > 0
-            ? Math.max(...entries.map((e) => e.highest_respiration_value))
-            : null,
-      }))
+      .map(([date, entries]) => {
+        const averages = entries
+          .map((e) => e.average_respiration_value)
+          .filter((v): v is number => v !== null);
+        const lowests = entries
+          .map((e) => e.lowest_respiration_value)
+          .filter((v): v is number => v !== null);
+        const highests = entries
+          .map((e) => e.highest_respiration_value)
+          .filter((v): v is number => v !== null);
+
+        return {
+          date,
+          average:
+            averages.length > 0
+              ? averages.reduce((s, v) => s + v, 0) / averages.length
+              : null,
+          lowest: lowests.length > 0 ? Math.min(...lowests) : null,
+          highest: highests.length > 0 ? Math.max(...highests) : null,
+        };
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
   };
 
@@ -346,13 +356,16 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
       }
     });
     return Object.entries(grouped)
-      .map(([date, values]) => ({
-        date,
-        resting_heart_rate:
-          values.length > 0
-            ? values.reduce((s, v) => s + v, 0) / values.length
-            : null,
-      }))
+      .map(([date, values]) => {
+        const validValues = values.filter((v): v is number => v !== null);
+        return {
+          date,
+          resting_heart_rate:
+            validValues.length > 0
+              ? validValues.reduce((s, v) => s + v, 0) / validValues.length
+              : null,
+        };
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
   };
 

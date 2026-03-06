@@ -150,7 +150,21 @@ const SleepAnalyticsCharts = ({
       return a.date.localeCompare(b.date);
     });
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  interface CustomTooltipProps {
+    active?: boolean;
+    payload?: {
+      value: number;
+      name: string;
+      fill: string;
+      dataKey: string;
+      payload: {
+        totalMinutes?: number;
+      };
+    }[];
+    label?: string;
+  }
+
+  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div
@@ -162,10 +176,10 @@ const SleepAnalyticsCharts = ({
           }}
         >
           <p className="font-semibold mb-2">
-            {formatDateInUserTimezone(label, dateFormat)}
+            {formatDateInUserTimezone(label || '', dateFormat)}
           </p>
           <div className="space-y-1">
-            {payload.map((entry: any, index: number) => {
+            {payload.map((entry, index: number) => {
               if (
                 entry.dataKey === 'sleepDebt' ||
                 entry.dataKey === 'sleepEfficiency'
@@ -173,7 +187,7 @@ const SleepAnalyticsCharts = ({
                 return null;
 
               const value = entry.value;
-              const total = entry.payload.totalMinutes;
+              const total = entry.payload?.totalMinutes || 0;
               const percent = total > 0 ? (value / total) * 100 : 0;
 
               return (
@@ -195,14 +209,18 @@ const SleepAnalyticsCharts = ({
               );
             })}
           </div>
-          {payload[0].payload.totalMinutes > 0 && (
-            <div className="mt-2 pt-2 border-t border-border/50 text-sm font-semibold flex justify-between">
-              <span>{t('sleepAnalyticsCharts.total', 'Total')}:</span>
-              <span>
-                {formatSecondsToHHMM(payload[0].payload.totalMinutes * 60)}
-              </span>
-            </div>
-          )}
+          {(() => {
+            const totalMin = payload[0]?.payload?.totalMinutes;
+            if (totalMin && totalMin > 0) {
+              return (
+                <div className="mt-2 pt-2 border-t border-border/50 text-sm font-semibold flex justify-between">
+                  <span>{t('sleepAnalyticsCharts.total', 'Total')}:</span>
+                  <span>{formatSecondsToHHMM(totalMin * 60)}</span>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
       );
     }
