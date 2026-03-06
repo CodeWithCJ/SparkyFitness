@@ -99,31 +99,113 @@ const SleepAnalyticsCharts = ({
   const [showAllHypnograms, setShowAllHypnograms] = useState(false);
 
   const formatBedWakeTime = (value: number) => {
-    const hours = Math.floor(value);
+    let hours = Math.floor(value);
     const minutes = Math.round((value - hours) * 60);
+
+    // If hours >= 24, it means it's early morning (cross-midnight)
+    if (hours >= 24) hours -= 24;
+
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
   const chartData = sleepAnalyticsData
-    .map((data) => ({
-      date: data.date,
-      deep: data.stagePercentages.deep,
-      rem: data.stagePercentages.rem,
-      light: data.stagePercentages.light,
-      awake: data.stagePercentages.awake,
-      sleepDebt: data.sleepDebt,
-      sleepEfficiency: data.sleepEfficiency,
-      bedtime:
-        new Date(data.earliestBedtime || 0).getHours() +
-        new Date(data.earliestBedtime || 0).getMinutes() / 60,
-      wakeTime:
-        new Date(data.latestWakeTime || 0).getHours() +
-        new Date(data.latestWakeTime || 0).getMinutes() / 60,
-    }))
+    .map((data) => {
+      const totalMinutes =
+        (data.stagePercentages.deep || 0) +
+        (data.stagePercentages.rem || 0) +
+        (data.stagePercentages.light || 0) +
+        (data.stagePercentages.awake || 0);
+
+      const bedtimeDate = new Date(data.earliestBedtime || 0);
+      let bedtimeHours = bedtimeDate.getHours() + bedtimeDate.getMinutes() / 60;
+
+      // CROSS-MIDNIGHT FIX:
+      // If bedtime is between 00:00 and 12:00 (midday), treat it as 24:00+
+      // This keeps the trend line continuous (e.g. 23:00 -> 01:00 becomes 23:00 -> 25:00)
+      if (bedtimeHours >= 0 && bedtimeHours < 12) {
+        bedtimeHours += 24;
+      }
+
+      const wakeTimeDate = new Date(data.latestWakeTime || 0);
+      const wakeTimeHours =
+        wakeTimeDate.getHours() + wakeTimeDate.getMinutes() / 60;
+
+      return {
+        date: data.date,
+        deep: data.stagePercentages.deep,
+        rem: data.stagePercentages.rem,
+        light: data.stagePercentages.light,
+        awake: data.stagePercentages.awake,
+        totalMinutes,
+        sleepDebt: data.sleepDebt,
+        sleepEfficiency: data.sleepEfficiency,
+        bedtime: bedtimeHours,
+        wakeTime: wakeTimeHours,
+      };
+    })
     .sort((a, b) => {
       // Safe sorting for date strings
       return a.date.localeCompare(b.date);
     });
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div
+          className="p-3 border rounded shadow-md"
+          style={{
+            backgroundColor: tooltipBackgroundColor,
+            borderColor: tooltipBorderColor,
+            color: tickColor,
+          }}
+        >
+          <p className="font-semibold mb-2">
+            {formatDateInUserTimezone(label, dateFormat)}
+          </p>
+          <div className="space-y-1">
+            {payload.map((entry: any, index: number) => {
+              if (
+                entry.dataKey === 'sleepDebt' ||
+                entry.dataKey === 'sleepEfficiency'
+              )
+                return null;
+
+              const value = entry.value;
+              const total = entry.payload.totalMinutes;
+              const percent = total > 0 ? (value / total) * 100 : 0;
+
+              return (
+                <div
+                  key={index}
+                  className="flex items-center justify-between gap-4 text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: entry.fill }}
+                    />
+                    <span>{entry.name}:</span>
+                  </div>
+                  <span className="font-mono">
+                    {formatSecondsToHHMM(value * 60)} ({percent.toFixed(1)}%)
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          {payload[0].payload.totalMinutes > 0 && (
+            <div className="mt-2 pt-2 border-t border-border/50 text-sm font-semibold flex justify-between">
+              <span>{t('sleepAnalyticsCharts.total', 'Total')}:</span>
+              <span>
+                {formatSecondsToHHMM(payload[0].payload.totalMinutes * 60)}
+              </span>
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
 
   // Sort hypnograms by date descending (most recent first)
   const sortedHypnograms = useMemo(
@@ -266,17 +348,7 @@ const SleepAnalyticsCharts = ({
                           stroke={tickColor}
                           tick={{ fill: tickColor }}
                         />
-                        <Tooltip
-                          labelFormatter={(label) =>
-                            formatDateInUserTimezone(label, dateFormat)
-                          }
-                          contentStyle={{
-                            backgroundColor: tooltipBackgroundColor,
-                            borderColor: tooltipBorderColor,
-                            color: tickColor,
-                          }}
-                          itemStyle={{ color: tickColor }}
-                        />
+                        <Tooltip content={<CustomTooltip />} />
                         <Legend wrapperStyle={{ color: tickColor }} />
                         <Bar
                           dataKey="deep"
@@ -537,6 +609,13 @@ const SleepAnalyticsCharts = ({
                           labelFormatter={(label) =>
                             formatDateInUserTimezone(label, dateFormat)
                           }
+                          formatter={(value: number) => [
+                            `${value.toFixed(1)}%`,
+                            t(
+                              'sleepAnalyticsCharts.sleepEfficiency',
+                              'Sleep Efficiency'
+                            ),
+                          ]}
                           contentStyle={{
                             backgroundColor: tooltipBackgroundColor,
                             borderColor: tooltipBorderColor,

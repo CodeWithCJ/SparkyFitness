@@ -29,6 +29,7 @@ async function getSleepHistory(userId, days = 90) {
           (SELECT SUM(ss.duration_in_seconds) FROM sleep_entry_stages ss WHERE ss.entry_id = se.id AND ss.stage_type = 'awake'), 0
         ) / 60.0 AS "awakeMinutes",
         se.duration_in_seconds / 3600.0 AS "sleepDurationHours",
+        se.time_asleep_in_seconds / 3600.0 AS "timeAsleepHours",
         EXTRACT(EPOCH FROM se.bedtime) * 1000 AS "sleepStartTimestampGMT",
         EXTRACT(EPOCH FROM se.wake_time) * 1000 AS "sleepEndTimestampGMT",
         se.sleep_score AS "sleepScore"

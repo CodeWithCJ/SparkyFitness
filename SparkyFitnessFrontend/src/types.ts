@@ -70,6 +70,7 @@ export interface SleepAnalyticsData {
   latestWakeTime: string | null;
   sleepEfficiency: number;
   sleepDebt: number;
+  weight?: number;
   stagePercentages: SleepStageSummary;
   awakePeriods: number;
   totalAwakeDuration: number;

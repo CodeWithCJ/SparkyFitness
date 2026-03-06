@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useSleepEntriesQuery } from '@/hooks/CheckIn/useSleep';
@@ -46,6 +47,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
       t('sleepReport.csvHeadersScore', 'Score'),
       t('sleepReport.csvHeadersEfficiencyPercentage', 'Efficiency (%)'),
       t('sleepReport.csvHeadersDebt', 'Debt'),
+      t('sleepReport.csvHeadersWeight', 'Weight (%)'),
       t('sleepReport.csvHeadersAwakePeriods', 'Awake Periods'),
       t('sleepReport.csvHeadersSource', 'Source'),
       t('sleepReport.csvHeadersInsight', 'Insight'),
@@ -67,6 +69,9 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
         sleepAnalyticsData.sleepScore.toFixed(0),
         sleepAnalyticsData.sleepEfficiency.toFixed(1),
         formatSecondsToHHMM(sleepAnalyticsData.sleepDebt * 3600),
+        sleepAnalyticsData.weight
+          ? `${(sleepAnalyticsData.weight * 100).toFixed(0)}%`
+          : '0%',
         sleepAnalyticsData.awakePeriods.toString(),
         sleepEntry.source,
         insight,
@@ -97,7 +102,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
 
   const processSleepData = (): CombinedSleepData[] => {
     return sleepEntries
-      .sort((a, b) => a.entry_date.localeCompare(b.entry_date))
+      .sort((a, b) => b.entry_date.localeCompare(a.entry_date))
       .map((entry) => {
         const timeAsleep = entry.time_asleep_in_seconds
           ? entry.time_asleep_in_seconds / 60
@@ -130,6 +135,16 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
             : 0;
         const sleepDebt = personalizedSleepNeed - timeAsleep / 60; // timeAsleep is in minutes, convert to hours
 
+        // Find matching debt data for weight
+        const debtDay = sleepDebtData?.last14Days?.find((d) => {
+          const entryDate = entry.entry_date.split('T')[0];
+          const debtDate =
+            typeof d.date === 'string'
+              ? d.date.split('T')[0]
+              : new Date(d.date).toISOString().split('T')[0];
+          return entryDate === debtDate;
+        });
+
         const analyticsData: SleepAnalyticsData = {
           date: entry.entry_date,
           totalSleepDuration: entry.duration_in_seconds,
@@ -139,6 +154,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           latestWakeTime: entry.wake_time,
           sleepEfficiency: sleepEfficiency,
           sleepDebt: sleepDebt,
+          weight: debtDay?.weight || 0,
           stagePercentages: {
             deep: aggregatedStages?.deep || 0,
             rem: aggregatedStages?.rem || 0,
@@ -244,10 +260,29 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
                 heartRateData={processHeartRateData()}
                 latestSleepEntry={getLatestSleepEntry()}
               />
-              <SleepAnalyticsTable
-                combinedSleepData={combinedSleepData}
-                onExport={exportSleepDataToCSV}
-              />
+
+              <div className="pt-6 border-t border-border/50">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold px-1">
+                    {t(
+                      'sleepReport.sleepHistoryTableTitle',
+                      'Sleep History & Analytics'
+                    )}
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportSleepDataToCSV(combinedSleepData)}
+                  >
+                    {t('sleepAnalyticsTable.exportToCSV', 'Export to CSV')}
+                  </Button>
+                </div>
+                <SleepAnalyticsTable
+                  combinedSleepData={combinedSleepData}
+                  onExport={exportSleepDataToCSV}
+                  renderHeaderActions={() => null} // Hide the internal one
+                />
+              </div>
             </div>
           )}
         </CardContent>

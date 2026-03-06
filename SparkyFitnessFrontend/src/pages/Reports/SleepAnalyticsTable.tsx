@@ -20,11 +20,13 @@ import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 interface SleepAnalyticsTableProps {
   combinedSleepData: CombinedSleepData[];
   onExport: (data: CombinedSleepData[]) => void;
+  renderHeaderActions?: () => React.ReactNode;
 }
 
 const SleepAnalyticsTable = ({
   combinedSleepData,
   onExport,
+  renderHeaderActions,
 }: SleepAnalyticsTableProps) => {
   const { t } = useTranslation();
   const loggingLevel = getUserLoggingLevel();
@@ -68,11 +70,17 @@ const SleepAnalyticsTable = ({
 
   return (
     <div>
-      <div className="flex justify-end mb-4">
-        <Button onClick={handleExportClick}>
-          {t('sleepAnalyticsTable.exportToCSV', 'Export to CSV')}
-        </Button>
-      </div>
+      {renderHeaderActions ? (
+        renderHeaderActions() !== null && (
+          <div className="flex justify-end mb-4">{renderHeaderActions()}</div>
+        )
+      ) : (
+        <div className="flex justify-end mb-4">
+          <Button onClick={handleExportClick}>
+            {t('sleepAnalyticsTable.exportToCSV', 'Export to CSV')}
+          </Button>
+        </div>
+      )}
       <Table>
         <TableHeader>
           <TableRow>
@@ -101,6 +109,7 @@ const SleepAnalyticsTable = ({
               {t('sleepAnalyticsTable.efficiency', 'Efficiency')}
             </TableHead>
             <TableHead>{t('sleepAnalyticsTable.debt', 'Debt')}</TableHead>
+            <TableHead>{t('sleepAnalyticsTable.impact', 'Impact')}</TableHead>
             <TableHead>
               {t('sleepAnalyticsTable.awakePeriods', 'Awake Periods')}
             </TableHead>
@@ -172,8 +181,22 @@ const SleepAnalyticsTable = ({
                     <TableCell>
                       {sleepAnalyticsData.sleepEfficiency.toFixed(1)}%
                     </TableCell>
-                    <TableCell>
+                    <TableCell
+                      className={
+                        sleepAnalyticsData.sleepDebt > 0
+                          ? 'text-red-500 font-mono'
+                          : sleepAnalyticsData.sleepDebt < 0
+                            ? 'text-green-500 font-mono'
+                            : 'font-mono'
+                      }
+                    >
+                      {sleepAnalyticsData.sleepDebt > 0 ? '+' : ''}
                       {formatSecondsToHHMM(sleepAnalyticsData.sleepDebt * 3600)}
+                    </TableCell>
+                    <TableCell className="font-mono text-muted-foreground">
+                      {sleepAnalyticsData.weight
+                        ? `${(sleepAnalyticsData.weight * 100).toFixed(0)}%`
+                        : '0%'}
                     </TableCell>
                     <TableCell>{sleepAnalyticsData.awakePeriods}</TableCell>
                     <TableCell>{insight}</TableCell>
@@ -181,7 +204,7 @@ const SleepAnalyticsTable = ({
                   </TableRow>
                   {isExpanded && sleepEntry.stage_events && (
                     <TableRow>
-                      <TableCell colSpan={12} className="p-0">
+                      <TableCell colSpan={13} className="p-0">
                         <div className="bg-gray-50 dark:bg-gray-900 p-4">
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-2">
                             <h4 className="font-semibold text-sm">
@@ -275,7 +298,7 @@ const SleepAnalyticsTable = ({
             })
           ) : (
             <TableRow>
-              <TableCell colSpan={12} className="text-center">
+              <TableCell colSpan={13} className="text-center">
                 {t(
                   'sleepAnalyticsTable.noSleepDataAvailable',
                   'No sleep data available.'
