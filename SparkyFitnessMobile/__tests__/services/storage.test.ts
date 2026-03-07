@@ -517,18 +517,18 @@ describe('storage', () => {
   });
 
   describe('loadBackgroundSyncEnabled', () => {
-    test('defaults to true when no value stored', async () => {
+    test('defaults to false when no value stored', async () => {
       const result = await loadBackgroundSyncEnabled();
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
 
-    test("defaults to true on storage error (doesn't throw)", async () => {
+    test("defaults to false on storage error (doesn't throw)", async () => {
       jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('Storage error'));
 
       const result = await loadBackgroundSyncEnabled();
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
   });
 

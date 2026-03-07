@@ -266,11 +266,11 @@ export const saveBackgroundSyncEnabled = async (enabled: boolean): Promise<void>
 export const loadBackgroundSyncEnabled = async (): Promise<boolean> => {
   try {
     const value = await AsyncStorage.getItem(BACKGROUND_SYNC_ENABLED_KEY);
-    if (value === null) return true; // Default to enabled for backwards compat
+    if (value === null) return false;
     return JSON.parse(value) as boolean;
   } catch (error) {
     console.error('Failed to load background sync enabled preference.', error);
-    return true;
+    return false;
   }
 };
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
 import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
-import { openHealthConnectSettings, openHealthConnectDataManagement } from 'react-native-health-connect';
+import { openHealthConnectSettings, openHealthConnectDataManagement, getGrantedPermissions } from 'react-native-health-connect';
 
 const DevTools: React.FC = () => {
   const [isSeeding, setIsSeeding] = useState(false);
@@ -61,6 +61,22 @@ const DevTools: React.FC = () => {
     }
   };
 
+  const handleCheckBackgroundPermissions = async () => {
+    const permissions = await getGrantedPermissions();
+    const hasBackgroundAccess = permissions.some(
+      (permission) =>
+        permission.accessType === 'read' &&
+        permission.recordType === 'BackgroundAccessPermission'
+    );
+
+    Alert.alert(
+      'Background Access Permission',
+      hasBackgroundAccess
+        ? 'Background access permission is granted.'
+        : 'Background access permission is NOT granted.'
+    );
+  };
+
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
       <Text className="text-lg font-bold mb-3 text-text-primary">Dev Tools</Text>
@@ -115,38 +131,48 @@ const DevTools: React.FC = () => {
         </TouchableOpacity>
       </View>
       {Platform.OS === 'android' && (
-      <View className="flex-row gap-2 flex-wrap justify-between mt-4">
-        <Pressable
-          className="bg-accent-muted py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
-          onPress={() => openHealthConnectSettings()}
-        >
-          <Text className="text-white text-base font-bold">Health Connect</Text>
-        </Pressable>
-                <Pressable
-          className="bg-accent-muted py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
-          onPress={() => openHealthConnectDataManagement()}
-        >
-          <Text className="text-white text-base font-bold">Health Connect Data</Text>
-        </Pressable>
-      </View>
+        <View className="flex-row gap-2 flex-wrap justify-between mt-4">
+          <Pressable
+            className="bg-accent-muted py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
+            onPress={() => openHealthConnectSettings()}
+          >
+            <Text className="text-white text-base font-bold">Health Connect</Text>
+          </Pressable>
+          <Pressable
+            className="bg-accent-muted py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
+            onPress={() => openHealthConnectDataManagement()}
+          >
+            <Text className="text-white text-base font-bold">Health Connect Data</Text>
+          </Pressable>
+        </View>
       )}
       <View className="mt-5">
         <Text className="text-sm text-text-primary">Background Sync</Text>
         <Text className="text-text-muted mb-3 text-[13px]">
           Manually trigger the background sync process.
         </Text>
-        <TouchableOpacity
-          className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-30"
-          style={{ opacity: isSyncing ? 0.6 : 1 }}
-          onPress={handleTriggerSync}
-          disabled={isSyncing}
-        >
-          {isSyncing ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text className="text-white text-base font-bold">Trigger Sync</Text>
+        <View className="flex-row gap-2 flex-wrap justify-between">
+          <TouchableOpacity
+            className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-30"
+            style={{ opacity: isSyncing ? 0.6 : 1 }}
+            onPress={handleTriggerSync}
+            disabled={isSyncing}
+          >
+            {isSyncing ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text className="text-white text-base font-bold">Trigger Sync</Text>
+            )}
+          </TouchableOpacity>
+          {Platform.OS === 'android' && (
+            <TouchableOpacity
+              className="bg-accent-muted py-2 px-4 rounded-lg my-1 items-center self-center min-w-30"
+              onPress={handleCheckBackgroundPermissions}
+            >
+              <Text className="text-white text-base font-bold">Check BG Permission</Text>
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+        </View>
       </View>
 
     </View>

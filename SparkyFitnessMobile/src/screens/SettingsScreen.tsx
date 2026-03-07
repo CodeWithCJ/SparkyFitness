@@ -46,7 +46,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     [healthMetricStates]
   );
 
-  const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(true);
+  const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(false);
   const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
   const [currentConfigId, setCurrentConfigId] = useState<string | null>(null);
@@ -385,6 +385,25 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           <SyncFrequency
             isEnabled={isBackgroundSyncEnabled}
             onToggle={async (newValue) => {
+              if (newValue && Platform.OS === 'android') {
+                try {
+                  const granted = await requestHealthPermissions([
+                    { accessType: 'read', recordType: 'BackgroundAccessPermission' },
+                  ]);
+                  if (!granted) {
+                    Alert.alert(
+                      'Permission Required',
+                      'Background access permission is required for background sync. Please grant the permission in Health Connect settings.'
+                    );
+                    return;
+                  }
+                } catch (error) {
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  Alert.alert('Permission Error', `Failed to request background access permission: ${errorMessage}`);
+                  addLog(`[SettingsScreen] Background access permission error: ${errorMessage}`, 'ERROR');
+                  return;
+                }
+              }
               setIsBackgroundSyncEnabled(newValue);
               await saveBackgroundSyncEnabled(newValue);
               if (newValue) {
