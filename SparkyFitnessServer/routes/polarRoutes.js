@@ -127,8 +127,12 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
 router.post('/sync', authMiddleware.authenticate, async (req, res) => {
     try {
         const userId = req.userId;
-        const { providerId } = req.body;
-        await polarService.syncPolarData(userId, 'manual', providerId);
+        const { providerId, startDate, endDate } = req.body;
+        log(
+            'info',
+            `[polarRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
+        );
+        await polarService.syncPolarData(userId, 'manual', providerId, startDate, endDate);
         res.status(200).json({ message: 'Polar data sync completed successfully.' });
     } catch (error) {
         log('error', `Error initiating manual Polar sync: ${error.message}`);

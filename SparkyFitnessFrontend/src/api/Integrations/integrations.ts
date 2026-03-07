@@ -40,11 +40,13 @@ export const linkStravaAccount = async (
 
 export const syncHevyData = async (
   fullSync: boolean = false,
-  providerId?: string
+  providerId?: string,
+  startDate?: string,
+  endDate?: string
 ): Promise<void> => {
   return apiCall(`/integrations/hevy/sync${fullSync ? '?fullSync=true' : ''}`, {
     method: 'POST',
-    body: JSON.stringify({ providerId }),
+    body: JSON.stringify({ providerId, startDate, endDate }),
   });
 };
 export interface GarminLoginPayload {

@@ -22,11 +22,20 @@ log(
  * Orchestrate a full Polar data sync for a user
  * @param {number} userId - The ID of the user to sync data for
  * @param {string} syncType - 'manual' or 'scheduled'
+ * @param {string} providerId - Optional provider ID
+ * @param {string} [startDate] - Optional custom start date (YYYY-MM-DD)
+ * @param {string} [endDate] - Optional custom end date (YYYY-MM-DD)
  */
-async function syncPolarData(userId, syncType = "manual", providerId) {
+async function syncPolarData(
+  userId,
+  syncType = "manual",
+  providerId,
+  startDate = null,
+  endDate = null,
+) {
   log(
     "info",
-    `[polarService] Starting Polar sync (${syncType}) for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ""}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`,
+    `[polarService] Starting Polar sync (${syncType}) for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ""}${startDate ? ` from ${startDate}` : ""}${endDate ? ` to ${endDate}` : ""}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`,
   );
 
   if (POLAR_DATA_SOURCE === "local") {

@@ -70,8 +70,17 @@ router.post("/callback", async (req, res) => {
 router.post("/sync", async (req, res) => {
   try {
     const userId = req.userId;
-    log("info", `[stravaRoutes] Manual sync triggered for user ${userId}`);
-    const result = await stravaService.syncStravaData(userId, "manual");
+    const { startDate, endDate } = req.body;
+    log(
+      "info",
+      `[stravaRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ""}${endDate ? ` to ${endDate}` : ""}`,
+    );
+    const result = await stravaService.syncStravaData(
+      userId,
+      "manual",
+      startDate,
+      endDate,
+    );
     res.json(result);
   } catch (error) {
     log("error", `[stravaRoutes] Error syncing data: ${error.message}`);

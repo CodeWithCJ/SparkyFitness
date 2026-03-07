@@ -21,12 +21,22 @@ log(
  * Orchestrate a full Fitbit data sync for a user
  * @param {number} userId - The ID of the user to sync data for
  * @param {string} syncType - 'manual' or 'scheduled'
+ * @param {string} [customStartDate] - Optional start date (YYYY-MM-DD)
+ * @param {string} [customEndDate] - Optional end date (YYYY-MM-DD)
  */
-async function syncFitbitData(userId, syncType = "manual") {
+async function syncFitbitData(
+  userId,
+  syncType = "manual",
+  customStartDate = null,
+  customEndDate = null,
+) {
   let startDate, endDate;
   const today = moment();
 
-  if (syncType === "manual") {
+  if (customStartDate) {
+    startDate = customStartDate;
+    endDate = customEndDate || today.format("YYYY-MM-DD");
+  } else if (syncType === "manual") {
     endDate = today.format("YYYY-MM-DD");
     startDate = today.clone().subtract(7, "days").format("YYYY-MM-DD");
   } else if (syncType === "scheduled") {
@@ -165,7 +175,7 @@ async function syncFitbitData(userId, syncType = "manual") {
           responses["raw_activities_list"].data,
           timezoneOffset,
           distanceUnit,
-          startDate,
+          null, // Pass null to skip the date safety filter during local replay
         );
       if (responses["raw_water"])
         await fitbitDataProcessor.processFitbitWater(
