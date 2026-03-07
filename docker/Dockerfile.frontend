@@ -1,19 +1,24 @@
 # Stage 1: Build the React application
 FROM node:20-slim AS builder
-WORKDIR /app/SparkyFitnessFrontend
+WORKDIR /app
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 
+# Copy global lockfile
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
 # Copy package files and install dependencies
-COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/pnpm-lock.yaml SparkyFitnessFrontend/pnpm-workspace.yaml ./
+COPY SparkyFitnessFrontend/package.json ./SparkyFitnessFrontend/
+COPY shared/package.json ./shared/
+
 RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the application source code
-COPY SparkyFitnessFrontend .
+COPY . .
 
 # Build the application
-RUN pnpm run build
+RUN pnpm --filter sparkyfitnessfrontend run build
 
 # Stage 2: Serve the application with Nginx
 FROM nginx:alpine3.22
