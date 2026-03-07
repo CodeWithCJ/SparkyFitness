@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -55,11 +55,14 @@ const CopyFoodEntryDialog = ({
 
   const isAllDayCopy = sourceMealType === 'all';
 
-  useEffect(() => {
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
       setSelectedMealType(sourceMealType);
     }
-  }, [isOpen, sourceMealType]);
+  }
 
   const handleCopyClick = () => {
     if (selectedDate) {
