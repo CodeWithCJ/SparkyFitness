@@ -14,6 +14,8 @@ import {
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
+import ProxyHeadersModal from './ProxyHeadersModal';
+import type { ProxyHeader } from '../services/storage';
 import {
   login,
   LoginError,
@@ -22,12 +24,15 @@ import {
   verifyTotp,
   sendEmailOtp,
   verifyEmailOtp,
+  setPendingProxyHeaders,
+  clearPendingProxyHeaders,
   type MfaFactors,
 } from '../services/api/authService';
 import {
   getAllServerConfigs,
   getActiveServerConfig,
   saveServerConfig,
+  proxyHeadersToRecord,
   type ServerConfig,
 } from '../services/storage';
 
@@ -77,6 +82,8 @@ interface CredentialsFormProps {
   onSelectConfig: (id: string, url: string) => void;
   serverUrl: string;
   onServerUrlChange: (url: string) => void;
+  proxyHeaderCount: number;
+  onEditProxyHeaders: () => void;
   email: string;
   onEmailChange: (email: string) => void;
   password: string;
@@ -97,6 +104,8 @@ const CredentialsForm: React.FC<CredentialsFormProps> = ({
   onSelectConfig,
   serverUrl,
   onServerUrlChange,
+  proxyHeaderCount,
+  onEditProxyHeaders,
   email,
   onEmailChange,
   password,
@@ -176,6 +185,20 @@ const CredentialsForm: React.FC<CredentialsFormProps> = ({
             </TouchableOpacity>
           </View>
         </View>
+      )}
+
+      {/* Proxy Headers — only for new servers without an existing config */}
+      {!hasExistingConfigs && (
+        <TouchableOpacity
+          className="mb-3 flex-row items-center justify-between border border-border-subtle rounded-lg p-2.5 bg-raised"
+          onPress={onEditProxyHeaders}
+          activeOpacity={0.7}
+        >
+          <Text className="text-base text-text-primary">
+            Proxy Headers{proxyHeaderCount > 0 ? ` (${proxyHeaderCount})` : ''}
+          </Text>
+          <Icon name="chevron-forward" size={18} color={textSecondary} />
+        </TouchableOpacity>
       )}
 
       {/* Email */}
@@ -388,7 +411,7 @@ interface LoginModalProps {
   visible: boolean;
   defaultConfigId?: string | null;
   onLoginSuccess: () => void;
-  onUseApiKey: (serverUrl: string) => void;
+  onUseApiKey: (serverUrl: string, proxyHeaders: import('../services/storage').ProxyHeader[]) => void;
   onDismiss: () => void;
 }
 
@@ -412,6 +435,10 @@ const LoginModal: React.FC<LoginModalProps> = ({
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Proxy headers for new-server entry (fresh install)
+  const [localProxyHeaders, setLocalProxyHeaders] = useState<ProxyHeader[]>([]);
+  const [showProxyHeadersModal, setShowProxyHeadersModal] = useState(false);
 
   // MFA state
   const [step, setStep] = useState<'credentials' | 'mfa'>('credentials');
@@ -438,11 +465,15 @@ const LoginModal: React.FC<LoginModalProps> = ({
           (defaultConfigId && configs.find((c) => c.id === defaultConfigId)) ||
           (await getActiveServerConfig()) ||
           configs[0];
+        setLocalProxyHeaders([]);
         setSelectedConfigId(preferred.id);
         setServerUrl(preferred.url);
+        setPendingProxyHeaders(proxyHeadersToRecord(preferred.proxyHeaders));
       } else {
         setSelectedConfigId(null);
         setServerUrl('');
+        setLocalProxyHeaders([]);
+        clearPendingProxyHeaders();
       }
     };
     loadConfigs();
@@ -463,6 +494,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
         apiKey: existing.apiKey,
         authType: 'session',
         sessionToken,
+        proxyHeaders: existing.proxyHeaders,
       });
     } else {
       await saveServerConfig({
@@ -471,6 +503,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
         apiKey: '',
         authType: 'session',
         sessionToken,
+        proxyHeaders: localProxyHeaders.length > 0 ? localProxyHeaders : undefined,
       });
     }
   };
@@ -512,6 +545,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
       }
 
       await saveSessionConfig(url, result.sessionToken);
+      clearPendingProxyHeaders();
       onLoginSuccess();
     } catch (err) {
       if (err instanceof LoginError) {
@@ -541,6 +575,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
           : await verifyEmailOtp(currentUrl, code);
 
       await saveSessionConfig(currentUrl, result.sessionToken);
+      clearPendingProxyHeaders();
       onLoginSuccess();
     } catch (err) {
       if (err instanceof LoginError) {
@@ -595,6 +630,11 @@ const LoginModal: React.FC<LoginModalProps> = ({
     setError('');
   };
 
+  const handleSaveLocalProxyHeaders = (headers: ProxyHeader[]) => {
+    setLocalProxyHeaders(headers);
+    setPendingProxyHeaders(proxyHeadersToRecord(headers));
+  };
+
   const handleMfaMethodChange = (method: 'totp' | 'email') => {
     setMfaMethod(method);
     setMfaCode('');
@@ -639,9 +679,13 @@ const LoginModal: React.FC<LoginModalProps> = ({
                 onSelectConfig={(id, url) => {
                   setSelectedConfigId(id);
                   setServerUrl(url);
+                  const config = existingConfigs.find(c => c.id === id);
+                  setPendingProxyHeaders(proxyHeadersToRecord(config?.proxyHeaders));
                 }}
                 serverUrl={serverUrl}
                 onServerUrlChange={setServerUrl}
+                proxyHeaderCount={localProxyHeaders.length}
+                onEditProxyHeaders={() => setShowProxyHeadersModal(true)}
                 email={email}
                 onEmailChange={setEmail}
                 password={password}
@@ -649,8 +693,14 @@ const LoginModal: React.FC<LoginModalProps> = ({
                 error={error}
                 loading={loading}
                 onSignIn={handleSignIn}
-                onUseApiKey={() => onUseApiKey(currentUrl)}
-                onDismiss={onDismiss}
+                onUseApiKey={() => {
+                  clearPendingProxyHeaders();
+                  const selectedConfig = selectedConfigId
+                    ? existingConfigs.find(c => c.id === selectedConfigId)
+                    : undefined;
+                  onUseApiKey(currentUrl, selectedConfig ? (selectedConfig.proxyHeaders ?? []) : localProxyHeaders);
+                }}
+                onDismiss={() => { clearPendingProxyHeaders(); onDismiss(); }}
                 textMuted={textMuted}
                 textSecondary={textSecondary}
                 accentPrimary={accentPrimary}
@@ -668,13 +718,26 @@ const LoginModal: React.FC<LoginModalProps> = ({
                 onVerify={handleVerifyMfa}
                 onSendEmailOtp={handleSendEmailOtp}
                 onBack={handleBackToCredentials}
-                onUseApiKey={() => onUseApiKey(currentUrl)}
+                onUseApiKey={() => {
+                  clearPendingProxyHeaders();
+                  const selectedConfig = selectedConfigId
+                    ? existingConfigs.find(c => c.id === selectedConfigId)
+                    : undefined;
+                  onUseApiKey(currentUrl, selectedConfig ? (selectedConfig.proxyHeaders ?? []) : localProxyHeaders);
+                }}
                 textMuted={textMuted}
               />
             )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ProxyHeadersModal
+        visible={showProxyHeadersModal}
+        onClose={() => setShowProxyHeadersModal(false)}
+        headers={localProxyHeaders}
+        onSave={handleSaveLocalProxyHeaders}
+      />
     </Modal>
   );
 };

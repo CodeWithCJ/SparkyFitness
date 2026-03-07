@@ -54,6 +54,7 @@ function AppContent() {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [apiKeyUrl, setApiKeyUrl] = useState('');
   const [apiKeyValue, setApiKeyValue] = useState('');
+  const [apiKeyProxyHeaders, setApiKeyProxyHeaders] = useState<import('./src/services/storage').ProxyHeader[]>([]);
 
   const [primary, chrome, chromeBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
     '--color-accent-primary',
@@ -267,10 +268,11 @@ function AppContent() {
             handleLoginSuccess();
             queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
           }}
-          onUseApiKey={(serverUrl) => {
+          onUseApiKey={(serverUrl, proxyHeaders) => {
             dismissLoginModal();
             setApiKeyUrl(serverUrl);
             setApiKeyValue('');
+            setApiKeyProxyHeaders(proxyHeaders);
             setShowApiKeyModal(true);
           }}
           onDismiss={dismissLoginModal}
@@ -281,6 +283,8 @@ function AppContent() {
           setUrl={setApiKeyUrl}
           apiKey={apiKeyValue}
           setApiKey={setApiKeyValue}
+          proxyHeaders={apiKeyProxyHeaders}
+          setProxyHeaders={setApiKeyProxyHeaders}
           isEditing={false}
           onSave={async () => {
             const url = apiKeyUrl.trim().replace(/\/+$/, '');
@@ -297,6 +301,7 @@ function AppContent() {
               url,
               apiKey: apiKeyValue.trim(),
               authType: 'apiKey',
+              proxyHeaders: apiKeyProxyHeaders,
             });
             setShowApiKeyModal(false);
             dismissLoginModal();

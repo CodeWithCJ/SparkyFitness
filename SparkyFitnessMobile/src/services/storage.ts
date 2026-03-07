@@ -1,6 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { CATEGORY_ORDER } from '../HealthMetrics';
+import { addLog } from './LogService';
+
+export interface ProxyHeader {
+  name: string;
+  value: string;
+}
 
 export interface ServerConfig {
   id: string;
@@ -8,6 +14,7 @@ export interface ServerConfig {
   apiKey: string;
   authType?: 'apiKey' | 'session';
   sessionToken?: string;
+  proxyHeaders?: ProxyHeader[];
 }
 
 /** Config shape stored in AsyncStorage (apiKey stripped out). */
@@ -28,7 +35,13 @@ const BACKGROUND_SYNC_ENABLED_KEY = 'backgroundSyncEnabled';
 
 const secureStoreKey = (configId: string) => `apiKey_${configId}`;
 const sessionTokenSecureStoreKey = (configId: string) => `sessionToken_${configId}`;
+const proxyHeadersSecureStoreKey = (configId: string) => `proxyHeaders_${configId}`;
 const secureStoreOptions = { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK };
+
+export const proxyHeadersToRecord = (headers?: ProxyHeader[]): Record<string, string> => {
+  if (!headers?.length) return {};
+  return Object.fromEntries(headers.map(h => [h.name, h.value]));
+};
 
 // undefined = cache cold (not yet read), null = no active config, ServerConfig = cached config
 let activeServerConfigCache: ServerConfig | null | undefined = undefined;
@@ -77,6 +90,12 @@ export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
       } else {
         await SecureStore.deleteItemAsync(sessionTokenSecureStoreKey(config.id));
       }
+    }
+
+    if (config.proxyHeaders?.length) {
+      await SecureStore.setItemAsync(proxyHeadersSecureStoreKey(config.id), JSON.stringify(config.proxyHeaders), secureStoreOptions);
+    } else {
+      await SecureStore.deleteItemAsync(proxyHeadersSecureStoreKey(config.id));
     }
 
     await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
@@ -130,12 +149,20 @@ export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
       stored.map(async (entry) => {
         const secureKey = await SecureStore.getItemAsync(secureStoreKey(entry.id), secureStoreOptions);
         const sessionToken = await SecureStore.getItemAsync(sessionTokenSecureStoreKey(entry.id), secureStoreOptions);
+        const proxyHeadersJson = await SecureStore.getItemAsync(proxyHeadersSecureStoreKey(entry.id), secureStoreOptions);
+        let proxyHeaders: ProxyHeader[] | undefined;
+        if (proxyHeadersJson) {
+          try { proxyHeaders = JSON.parse(proxyHeadersJson); } catch {
+            addLog(`Failed to parse proxy headers for config ${entry.id}.`, 'ERROR');
+          }
+        }
 
         const base = {
           id: entry.id,
           url: entry.url,
           ...(entry.authType ? { authType: entry.authType } : {}),
           ...(sessionToken ? { sessionToken } : {}),
+          ...(proxyHeaders?.length ? { proxyHeaders } : {}),
         };
 
         if (secureKey != null) {
@@ -198,6 +225,7 @@ export const deleteServerConfig = async (configId: string): Promise<void> => {
     activeServerConfigCache = undefined;
     await SecureStore.deleteItemAsync(secureStoreKey(configId));
     await SecureStore.deleteItemAsync(sessionTokenSecureStoreKey(configId));
+    await SecureStore.deleteItemAsync(proxyHeadersSecureStoreKey(configId));
 
     const activeId = await AsyncStorage.getItem(ACTIVE_SERVER_CONFIG_ID_KEY);
     if (activeId === configId) {
@@ -266,11 +294,11 @@ export const saveBackgroundSyncEnabled = async (enabled: boolean): Promise<void>
 export const loadBackgroundSyncEnabled = async (): Promise<boolean> => {
   try {
     const value = await AsyncStorage.getItem(BACKGROUND_SYNC_ENABLED_KEY);
-    if (value === null) return true; // Default to enabled for backwards compat
+    if (value === null) return false;
     return JSON.parse(value) as boolean;
   } catch (error) {
     console.error('Failed to load background sync enabled preference.', error);
-    return true;
+    return false;
   }
 };
 

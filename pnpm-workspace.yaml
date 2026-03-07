@@ -2,3 +2,8 @@ packages:
   - "frontend"
   - "SparkyFitnessFrontend"
   - "shared"
+  - "SparkyFitnessMobile"
+
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver

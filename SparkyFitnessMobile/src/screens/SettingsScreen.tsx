@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Alert, Text, ScrollView, Platform, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
-import type { ServerConfig } from '../services/storage';
+import type { ServerConfig, ProxyHeader } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { notifyNoConfigs } from '../services/api/authService';
 import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference } from '../services/healthConnectService';
@@ -37,6 +37,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [url, setUrl] = useState<string>('');
   const [apiKey, setApiKey] = useState<string>('');
+  const [proxyHeaders, setProxyHeaders] = useState<ProxyHeader[]>([]);
 
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>(
     HEALTH_METRICS.reduce((acc, metric) => ({ ...acc, [metric.stateKey]: false }), {} as HealthMetricStates)
@@ -46,7 +47,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     [healthMetricStates]
   );
 
-  const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(true);
+  const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(false);
   const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
   const [currentConfigId, setCurrentConfigId] = useState<string | null>(null);
@@ -152,6 +153,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         ...(hasNewApiKey
           ? { authType: 'apiKey' as const, sessionToken: '' }
           : {}),
+        proxyHeaders,
       };
       await saveServerConfig(configToSave);
 
@@ -223,6 +225,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     // Session-backed configs may still retain an old API key for fallback,
     // but opening the editor should not implicitly treat that as an auth-mode switch.
     setApiKey(config.authType === 'session' ? '' : config.apiKey);
+    setProxyHeaders(config.proxyHeaders ?? []);
     setCurrentConfigId(config.id);
     setShowConfigModal(true);
   };
@@ -230,6 +233,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const handleAddNewConfig = (): void => {
     setUrl('');
     setApiKey('');
+    setProxyHeaders([]);
     setCurrentConfigId(null);
     setShowConfigModal(true);
   };
@@ -367,6 +371,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             setUrl={setUrl}
             apiKey={apiKey}
             setApiKey={setApiKey}
+            proxyHeaders={proxyHeaders}
+            setProxyHeaders={setProxyHeaders}
             handleSaveConfig={handleSaveConfig}
             serverConfigs={serverConfigs}
             activeConfigId={activeConfigId}
@@ -385,6 +391,25 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           <SyncFrequency
             isEnabled={isBackgroundSyncEnabled}
             onToggle={async (newValue) => {
+              if (newValue && Platform.OS === 'android') {
+                try {
+                  const granted = await requestHealthPermissions([
+                    { accessType: 'read', recordType: 'BackgroundAccessPermission' },
+                  ]);
+                  if (!granted) {
+                    Alert.alert(
+                      'Permission Required',
+                      'Background access permission is required for background sync. Please grant the permission in Health Connect settings.'
+                    );
+                    return;
+                  }
+                } catch (error) {
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  Alert.alert('Permission Error', `Failed to request background access permission: ${errorMessage}`);
+                  addLog(`[SettingsScreen] Background access permission error: ${errorMessage}`, 'ERROR');
+                  return;
+                }
+              }
               setIsBackgroundSyncEnabled(newValue);
               await saveBackgroundSyncEnabled(newValue);
               if (newValue) {

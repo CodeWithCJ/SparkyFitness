@@ -43,14 +43,14 @@
     "expo-task-manager": "~14.0.9",
     "expo-web-browser": "~15.0.10",
     "react": "19.1.0",
-    "react-native": "^0.81.5",
+    "react-native": "0.81.5",
     "react-native-bottom-tabs": "^1.1.0",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-health-connect": "^3.5.0",
     "react-native-nitro-modules": "^0.33.2",
-    "react-native-pager-view": "8.0.0",
+    "react-native-pager-view": "6.9.1",
     "react-native-reanimated": "~4.1.1",
-    "react-native-safe-area-context": "^5.6.2",
+    "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-ui-datepicker": "^3.1.2",
@@ -58,11 +58,6 @@
     "tailwindcss": "^4.1.18",
     "uniwind": "^1.2.7",
     "victory-native": "^41.20.2"
-  },
-  "pnpm": {
-    "overrides": {
-      "side-channel": "1.0.6"
-    }
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -75,6 +70,7 @@
     "eslint-config-expo": "~10.0.0",
     "expo-atlas": "^0.4.0",
     "jest": "~29.7.0",
+    "jest-environment-jsdom": "29.7.0",
     "jest-expo": "~54.0.17",
     "prettier": "2.8.8",
     "tsx": "^4.21.0",

@@ -4,6 +4,7 @@ import { notifySessionExpired } from '../../src/services/api/authService';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/services/api/authService', () => ({

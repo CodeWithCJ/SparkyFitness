@@ -25,12 +25,15 @@ jest.mock('../../src/services/api/authService', () => ({
   verifyTotp: jest.fn(),
   sendEmailOtp: jest.fn(),
   verifyEmailOtp: jest.fn(),
+  setPendingProxyHeaders: jest.fn(),
+  clearPendingProxyHeaders: jest.fn(),
 }));
 
 jest.mock('../../src/services/storage', () => ({
   getAllServerConfigs: jest.fn(),
   getActiveServerConfig: jest.fn(),
   saveServerConfig: jest.fn().mockResolvedValue(undefined),
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/components/Icon', () => {
@@ -636,7 +639,7 @@ describe('LoginModal', () => {
 
       fireEvent.press(result.getAllByText('Use API Key Instead')[0]);
 
-      expect(onUseApiKey).toHaveBeenCalledWith('https://my-server.com');
+      expect(onUseApiKey).toHaveBeenCalledWith('https://my-server.com', []);
     });
 
     it('calls onDismiss when Later is pressed', async () => {
@@ -682,7 +685,36 @@ describe('LoginModal', () => {
 
       fireEvent.press(result.getAllByText('Use API Key Instead')[0]);
 
-      expect(onUseApiKey).toHaveBeenCalledWith('https://my-server.com');
+      expect(onUseApiKey).toHaveBeenCalledWith('https://my-server.com', []);
+    });
+
+    it('does not reuse stale local proxy headers for saved configs', async () => {
+      const onUseApiKey = jest.fn();
+      const result = renderModal({ onUseApiKey });
+      await waitForCredentialsForm(result);
+
+      fireEvent.press(result.getByText('Proxy Headers'));
+      fireEvent.changeText(
+        result.getByPlaceholderText('Header name (e.g. X-Access-Token)'),
+        'X-Proxy-Token',
+      );
+      fireEvent.changeText(result.getByPlaceholderText('Header value'), 'secret-token');
+      fireEvent.press(result.getByText('Save'));
+
+      result.rerender(<LoginModal {...defaultProps} onUseApiKey={onUseApiKey} visible={false} />);
+
+      mockGetAllServerConfigs.mockResolvedValue([existingConfig]);
+      mockGetActiveServerConfig.mockResolvedValue(existingConfig);
+
+      result.rerender(<LoginModal {...defaultProps} onUseApiKey={onUseApiKey} visible={true} />);
+
+      await waitFor(() =>
+        expect(result.getByText('https://existing-server.com')).toBeTruthy(),
+      );
+
+      fireEvent.press(result.getAllByText('Use API Key Instead')[0]);
+
+      expect(onUseApiKey).toHaveBeenCalledWith('https://existing-server.com', []);
     });
   });
 

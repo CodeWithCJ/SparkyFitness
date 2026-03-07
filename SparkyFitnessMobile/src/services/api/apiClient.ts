@@ -1,4 +1,4 @@
-import { getActiveServerConfig } from '../storage';
+import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { addLog } from '../LogService';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 
@@ -33,6 +33,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
     const response = await fetch(`${baseUrl}${endpoint}`, {
       method,
       headers: {
+        ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...customHeaders,

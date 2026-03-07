@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
+import ProxyHeadersModal from './ProxyHeadersModal';
+import type { ProxyHeader } from '../services/storage';
 
 interface ServerConfigModalProps {
   visible: boolean;
@@ -20,6 +22,8 @@ interface ServerConfigModalProps {
   setUrl: (url: string) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
+  proxyHeaders: ProxyHeader[];
+  setProxyHeaders: (headers: ProxyHeader[]) => void;
   onSave: () => void;
   isEditing: boolean;
 }
@@ -31,13 +35,18 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   setUrl,
   apiKey,
   setApiKey,
+  proxyHeaders,
+  setProxyHeaders,
   onSave,
   isEditing,
 }) => {
-  const [textMuted, textSecondary] = useCSSVariable([
+  const [textMuted, textSecondary, accentPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-text-secondary',
-  ]) as [string, string];
+    '--color-accent-primary',
+  ]) as [string, string, string];
+
+  const [showProxyHeaders, setShowProxyHeaders] = useState(false);
 
   return (
     <Modal
@@ -86,7 +95,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
               </View>
             </View>
 
-            <View className="mb-5">
+            <View className="mb-3">
               <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
               <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
                 <TextInput
@@ -109,6 +118,17 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
               </View>
             </View>
 
+            <TouchableOpacity
+              className="mb-5 flex-row items-center justify-between border border-border-subtle rounded-lg p-2.5 bg-raised"
+              onPress={() => setShowProxyHeaders(true)}
+              activeOpacity={0.7}
+            >
+              <Text className="text-base text-text-primary">
+                Proxy Headers{proxyHeaders.length > 0 ? ` (${proxyHeaders.length})` : ''}
+              </Text>
+              <Icon name="chevron-forward" size={18} color={textSecondary} />
+            </TouchableOpacity>
+
             <View className="flex-row gap-3">
               <TouchableOpacity
                 className="flex-1 items-center py-2.5 rounded-[10px]"
@@ -129,6 +149,13 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ProxyHeadersModal
+        visible={showProxyHeaders}
+        onClose={() => setShowProxyHeaders(false)}
+        headers={proxyHeaders}
+        onSave={setProxyHeaders}
+      />
     </Modal>
   );
 };
