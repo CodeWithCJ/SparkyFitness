@@ -91,7 +91,9 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     if (initialSets && initialSets.length > 0) {
       return initialSets.map((set) => ({
         ...set,
-        weight: convertWeight(set.weight || 0, 'kg', weightUnit),
+        weight: parseFloat(
+          convertWeight(set.weight || 0, 'kg', weightUnit).toFixed(1)
+        ),
       }));
     }
     return [{ set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }];

@@ -411,7 +411,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
           ...set,
           id: set.id ? String(set.id) : crypto.randomUUID(),
           weight: parseFloat(
-            convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(2)
+            convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(1)
           ),
         })),
       })) || []

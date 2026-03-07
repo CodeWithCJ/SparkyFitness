@@ -94,7 +94,7 @@ const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
                         </strong>
                         {entry.sets.map((set, i) => (
                           <div key={i} className="pl-4">
-                            {`${set.reps}x${convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(2)}${weightUnit}`}
+                            {`${set.reps}x${convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(1)}${weightUnit}`}
                             {set.duration
                               ? ` ${t('exercise.exerciseHistoryDisplay.durationLabel', 'for')} ${set.duration}min`
                               : ''}

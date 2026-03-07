@@ -531,7 +531,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
               ...s,
               id: s.id ? String(s.id) : crypto.randomUUID(),
               weight: parseFloat(
-                convertWeight(s.weight ?? 0, 'kg', weightUnit).toFixed(2)
+                convertWeight(s.weight ?? 0, 'kg', weightUnit).toFixed(1)
               ),
             })) || [],
         })) || []

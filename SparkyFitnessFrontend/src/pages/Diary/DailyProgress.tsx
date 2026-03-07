@@ -449,7 +449,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                   </span>
                   <span className="font-semibold text-gray-800 dark:text-slate-200">
                     {adaptiveTdeeData.weightTrend
-                      ? `${convertWeight(adaptiveTdeeData.weightTrend, 'kg', weightUnit).toFixed(2)} ${t(`units.${weightUnit}`, weightUnit)}`
+                      ? `${convertWeight(adaptiveTdeeData.weightTrend, 'kg', weightUnit).toFixed(1)} ${t(`units.${weightUnit}`, weightUnit)}`
                       : t('common.calculating', 'Calculating...')}
                   </span>
                 </div>
