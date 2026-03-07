@@ -316,6 +316,11 @@ async function copyFoodEntries(
   targetMealType,
 ) {
   try {
+    log(
+      "info",
+      `copyFoodEntries: Copying from ${sourceDate} (${sourceMealType}) to ${targetDate} (${targetMealType}) for user ${authenticatedUserId}`,
+    );
+
     // 1. Fetch source entries
     const sourceEntries = await foodRepository.getFoodEntriesByDateAndMealType(
       authenticatedUserId,
@@ -339,33 +344,77 @@ async function copyFoodEntries(
       throw new Error(`Invalid target meal type: ${targetMealType}`);
     }
 
+    // Map to keep track of duplicated food_entry_meals
+    // Key: old_food_entry_meal_id, Value: new_food_entry_meal_id
+    const mealMapping = new Map();
+
     const entriesToCreate = [];
     for (const entry of sourceEntries) {
       log(
         "debug",
         `copyFoodEntries: Processing source entry: ${JSON.stringify(entry)}`,
       );
-      // Check for existing entry to prevent duplicates
+
+      let newFoodEntryMealId = null;
+
+      // If the entry belongs to a meal container, ensure the container is duplicated
+      if (entry.food_entry_meal_id) {
+        if (mealMapping.has(entry.food_entry_meal_id)) {
+          newFoodEntryMealId = mealMapping.get(entry.food_entry_meal_id);
+        } else {
+          // Fetch the original meal details
+          const originalMeal = await foodEntryMealRepository.getFoodEntryMealById(
+            entry.food_entry_meal_id,
+            authenticatedUserId,
+          );
+
+          if (originalMeal) {
+            // Create a new meal container for the target date/slot
+            const newMeal = await foodEntryMealRepository.createFoodEntryMeal(
+              {
+                user_id: authenticatedUserId,
+                meal_template_id: originalMeal.meal_template_id,
+                meal_type_id: targetMealTypeId,
+                entry_date: targetDate,
+                name: originalMeal.name,
+                description: originalMeal.description,
+                quantity: originalMeal.quantity,
+                unit: originalMeal.unit,
+              },
+              actingUserId,
+            );
+            newFoodEntryMealId = newMeal.id;
+            mealMapping.set(entry.food_entry_meal_id, newFoodEntryMealId);
+            log(
+              "debug",
+              `copyFoodEntries: Duplicated meal container "${originalMeal.name}" (${entry.food_entry_meal_id} -> ${newFoodEntryMealId})`,
+            );
+          }
+        }
+      }
+
+      // Check for existing entry to prevent duplicates in the same meal/slot
       const existingEntry = await foodRepository.getFoodEntryByDetails(
         authenticatedUserId,
         entry.food_id,
         targetMealType,
         targetDate,
         entry.variant_id,
+        newFoodEntryMealId, // Use the new meal container ID for the duplicate check
       );
 
       if (!existingEntry) {
         entriesToCreate.push({
           user_id: authenticatedUserId,
-          created_by_user_id: actingUserId, // Use actingUserId for audit
+          created_by_user_id: actingUserId,
           food_id: entry.food_id,
           meal_type_id: targetMealTypeId,
+          food_entry_meal_id: newFoodEntryMealId, // Link the food to the new container
           quantity: entry.quantity,
           unit: entry.unit,
           entry_date: targetDate,
           variant_id: entry.variant_id,
-          meal_plan_template_id: null, // Copied entries are not part of a template
-          // Copy all snapshot data from the source entry
+          meal_plan_template_id: null,
           food_name: entry.food_name,
           brand_name: entry.brand_name,
           serving_size: entry.serving_size,
@@ -392,9 +441,8 @@ async function copyFoodEntries(
         });
         log(
           "debug",
-          `copyFoodEntries: Adding entry for food_id: ${entry.food_id}, meal_type_id: ${targetMealTypeId}, entry_date: ${targetDate}, variant_id: ${entry.variant_id}`,
+          `copyFoodEntries: Adding entry for food_id: ${entry.food_id} into meal_id: ${newFoodEntryMealId}`,
         );
-        // Pass authenticatedUserId as the RLS user for bulkCreateFoodEntries
       } else {
         log(
           "debug",
@@ -406,19 +454,14 @@ async function copyFoodEntries(
     if (entriesToCreate.length === 0) {
       log(
         "debug",
-        `All food entries from ${sourceMealType} on ${sourceDate} already exist in ${targetMealType} on ${targetDate}. No new entries created.`,
+        `All food entries already exist in target slot. No new entries created.`,
       );
       return [];
     }
 
-    // 3. Bulk insert new entries
     const newEntries = await foodRepository.bulkCreateFoodEntries(
       entriesToCreate,
-      authenticatedUserId, // Pass authenticatedUserId for RLS
-    );
-    log(
-      "debug",
-      `Successfully copied ${newEntries.length} new food entries from ${sourceMealType} on ${sourceDate} to ${targetMealType} on ${targetDate} for user ${authenticatedUserId}.`,
+      authenticatedUserId,
     );
     return newEntries;
   } catch (error) {
@@ -440,132 +483,31 @@ async function copyFoodEntriesFromYesterday(
   try {
     const [yearStr, monthStr, dayStr] = targetDate.split("-");
     const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10); // month is 1-indexed from frontend
+    const month = parseInt(monthStr, 10);
     const day = parseInt(dayStr, 10);
 
-    // Validate parsed components
-    if (
-      isNaN(year) ||
-      isNaN(month) ||
-      isNaN(day) ||
-      month < 1 ||
-      month > 12 ||
-      day < 1 ||
-      day > 31
-    ) {
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
       throw new Error("Invalid date format provided for targetDate.");
     }
 
-    // Create UTC date object
-    const priorDay = new Date(Date.UTC(year, month - 1, day)); // month - 1 because Date.UTC expects 0-indexed month
-    if (isNaN(priorDay.getTime())) {
-      throw new Error("Invalid date value generated for prior day.");
-    }
+    const priorDay = new Date(Date.UTC(year, month - 1, day));
+    priorDay.setUTCDate(priorDay.getUTCDate() - 1);
+    const sourceDate = priorDay.toISOString().split("T")[0];
 
-    priorDay.setUTCDate(priorDay.getUTCDate() - 1); // Subtract one day in UTC
-    if (isNaN(priorDay.getTime())) {
-      throw new Error("Invalid date value generated after subtracting a day.");
-    }
+    log(
+      "info",
+      `copyFoodEntriesFromYesterday: Calculating sourceDate ${sourceDate} from targetDate ${targetDate}`,
+    );
 
-    const sourceDate = priorDay.toISOString().split("T")[0]; // Format as YYYY-MM-DD
-
-    // 1. Fetch source entries from the prior day for the specified meal type
-    const sourceEntries = await foodRepository.getFoodEntriesByDateAndMealType(
+    // Delegate to consolidated copyFoodEntries function
+    return await copyFoodEntries(
       authenticatedUserId,
+      actingUserId,
       sourceDate,
       mealType,
+      targetDate,
+      mealType,
     );
-
-    if (sourceEntries.length === 0) {
-      log(
-        "debug",
-        `No food entries found for ${mealType} on ${sourceDate} for user ${authenticatedUserId}. No entries to copy.`,
-      );
-      return [];
-    }
-
-    const mealTypeId = await resolveMealTypeId(authenticatedUserId, mealType);
-    if (!mealTypeId) throw new Error(`Invalid meal type: ${mealType}`);
-
-    const entriesToCreate = [];
-    for (const entry of sourceEntries) {
-      log(
-        "debug",
-        `copyFoodEntriesFromYesterday: Processing source entry: ${JSON.stringify(
-          entry,
-        )}`,
-      );
-      // Check for existing entry to prevent duplicates
-      const existingEntry = await foodRepository.getFoodEntryByDetails(
-        authenticatedUserId,
-        entry.food_id,
-        mealType,
-        targetDate,
-        entry.variant_id,
-      );
-
-      if (!existingEntry) {
-        entriesToCreate.push({
-          user_id: authenticatedUserId,
-          created_by_user_id: actingUserId, // Use actingUserId for audit
-          food_id: entry.food_id,
-          meal_type_id: mealTypeId,
-          quantity: entry.quantity,
-          unit: entry.unit,
-          entry_date: targetDate, // Set to targetDate
-          variant_id: entry.variant_id,
-          meal_plan_template_id: null, // Copied entries are not part of a template
-          // Copy all snapshot data from the source entry
-          food_name: entry.food_name,
-          brand_name: entry.brand_name,
-          serving_size: entry.serving_size,
-          serving_unit: entry.serving_unit,
-          calories: entry.calories,
-          protein: entry.protein,
-          carbs: entry.carbs,
-          fat: entry.fat,
-          saturated_fat: entry.saturated_fat,
-          polyunsaturated_fat: entry.polyunsaturated_fat,
-          monounsaturated_fat: entry.monounsaturated_fat,
-          trans_fat: entry.trans_fat,
-          cholesterol: entry.cholesterol,
-          sodium: entry.sodium,
-          potassium: entry.potassium,
-          dietary_fiber: entry.dietary_fiber,
-          sugars: entry.sugars,
-          vitamin_a: entry.vitamin_a,
-          vitamin_c: entry.vitamin_c,
-          calcium: entry.calcium,
-          iron: entry.iron,
-          glycemic_index: entry.glycemic_index,
-          custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
-        });
-      } else {
-        log(
-          "debug",
-          `Skipping duplicate food entry for food_id ${entry.food_id} in ${mealType} on ${targetDate}.`,
-        );
-      }
-    }
-
-    if (entriesToCreate.length === 0) {
-      log(
-        "debug",
-        `All food entries from prior day's ${mealType} already exist in ${targetDate} ${mealType}. No new entries created.`,
-      );
-      return [];
-    }
-
-    // 3. Bulk insert new entries
-    const newEntries = await foodRepository.bulkCreateFoodEntries(
-      entriesToCreate,
-      authenticatedUserId, // Pass authenticatedUserId for RLS
-    );
-    log(
-      "debug",
-      `Successfully copied ${newEntries.length} new food entries from prior day's ${mealType} to ${targetDate} ${mealType} for user ${authenticatedUserId}.`,
-    );
-    return newEntries;
   } catch (error) {
     log(
       "error",
