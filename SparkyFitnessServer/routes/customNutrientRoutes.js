@@ -243,7 +243,7 @@ router.put('/:id', async (req, res, next) => {
  *   delete:
  *     summary: Delete a custom nutrient
  *     tags: [Nutrition & Meals]
- *     description: Deletes a specific custom nutrient.
+ *     description: Deletes a specific custom nutrient and performs cascading cleanup.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -254,6 +254,11 @@ router.put('/:id', async (req, res, next) => {
  *           type: string
  *           format: uuid
  *         description: The ID of the custom nutrient to delete.
+ *       - in: query
+ *         name: deleteAllHistory
+ *         schema:
+ *           type: boolean
+ *         description: Whether to also remove the nutrient data from past diary entries and goals.
  *     responses:
  *       200:
  *         description: Custom nutrient deleted successfully.
@@ -267,7 +272,8 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
     try {
         const { id } = req.params;
-        const success = await customNutrientService.deleteCustomNutrient(req.userId, id);
+        const deleteAllHistory = req.query.deleteAllHistory === 'true';
+        const success = await customNutrientService.deleteCustomNutrient(req.userId, id, deleteAllHistory);
         if (success) {
             res.status(200).json({ message: 'Custom nutrient deleted successfully.' });
         } else {

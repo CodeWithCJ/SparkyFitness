@@ -270,6 +270,23 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       return num;
     };
 
+    // Filter custom nutrients to only include those that are currently defined for the user
+    // This prevents "zombie" data from being re-inserted if the frontend sends back old keys
+    const customNutrientService = require("./customNutrientService");
+    const activeCustomNutrients = await customNutrientService.getCustomNutrients(authenticatedUserId);
+    const activeNames = new Set(activeCustomNutrients.map(n => n.name));
+    
+    const filteredCustomNutrients = {};
+    if (custom_nutrients && typeof custom_nutrients === 'object') {
+      Object.entries(custom_nutrients).forEach(([name, value]) => {
+        if (activeNames.has(name)) {
+          filteredCustomNutrients[name] = value;
+        } else {
+          log("debug", `manageGoalTimeline: Filtering out inactive custom nutrient: ${name}`);
+        }
+      });
+    }
+
     const goalPayload = {
       user_id: authenticatedUserId,
       goal_date: p_start_date,
@@ -304,7 +321,7 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       lunch_percentage: cleanNumber(p_lunch_percentage, true),
       dinner_percentage: cleanNumber(p_dinner_percentage, true),
       snacks_percentage: cleanNumber(p_snacks_percentage, true),
-      custom_nutrients: custom_nutrients || {},
+      custom_nutrients: filteredCustomNutrients,
     };
 
     // If cascade is false, or if editing a past date, only update that specific date

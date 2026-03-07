@@ -31,7 +31,12 @@ export const customNutrientService = {
     return response.data;
   },
 
-  async deleteCustomNutrient(id: string): Promise<void> {
-    await api.delete(`/custom-nutrients/${id}`);
+  async deleteCustomNutrient(
+    id: string,
+    deleteAllHistory: boolean = false
+  ): Promise<void> {
+    await api.delete(
+      `/custom-nutrients/${id}?deleteAllHistory=${deleteAllHistory}`
+    );
   },
 };

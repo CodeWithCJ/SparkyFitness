@@ -65,7 +65,13 @@ export const useUpdateCustomNutrientMutation = () => {
 export const useDeleteCustomNutrientMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => customNutrientService.deleteCustomNutrient(id),
+    mutationFn: ({
+      id,
+      deleteAllHistory = false,
+    }: {
+      id: string;
+      deleteAllHistory?: boolean;
+    }) => customNutrientService.deleteCustomNutrient(id, deleteAllHistory),
     onSuccess: () => {
       return queryClient.invalidateQueries({
         queryKey: customNutrientsKeys.all,

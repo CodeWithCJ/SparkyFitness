@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Pencil, Trash2 } from 'lucide-react';
+import { Checkbox } from '../../components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -39,6 +40,7 @@ const CustomNutrientsSettings: React.FC = () => {
   const [newNutrientUnit, setNewNutrientUnit] = useState('');
   const [editingNutrient, setEditingNutrient] =
     useState<UserCustomNutrient | null>(null);
+  const [deleteAllHistory, setDeleteAllHistory] = useState(false);
   const { toast } = useToast();
 
   const { data: customNutrients } = useCustomNutrients();
@@ -85,7 +87,8 @@ const CustomNutrientsSettings: React.FC = () => {
   };
 
   const handleDeleteNutrient = async (id: string) => {
-    await deleteCustomNutrient(id);
+    await deleteCustomNutrient({ id, deleteAllHistory });
+    setDeleteAllHistory(false);
   };
 
   return (
@@ -209,13 +212,39 @@ const CustomNutrientsSettings: React.FC = () => {
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
                                   This action cannot be undone. This will
-                                  permanently delete your custom nutrient and
-                                  remove its values from all associated foods
-                                  and entries.
+                                  permanently delete your custom nutrient
+                                  definition.
                                 </AlertDialogDescription>
+                                <div className="flex items-start space-x-3 pt-4">
+                                  <Checkbox
+                                    id={`delete-history-${nutrient.id}`}
+                                    checked={deleteAllHistory}
+                                    onCheckedChange={(checked) =>
+                                      setDeleteAllHistory(checked === true)
+                                    }
+                                  />
+                                  <div className="grid gap-1.5 leading-none">
+                                    <label
+                                      htmlFor={`delete-history-${nutrient.id}`}
+                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                      Also remove from past goals and diary
+                                      entries?
+                                    </label>
+                                    <p className="text-sm text-muted-foreground">
+                                      If unchecked, old values remain in your
+                                      history but the nutrient will be hidden
+                                      from UI.
+                                    </p>
+                                  </div>
+                                </div>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel
+                                  onClick={() => setDeleteAllHistory(false)}
+                                >
+                                  Cancel
+                                </AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() =>
                                     handleDeleteNutrient(nutrient.id)
