@@ -328,8 +328,14 @@ router.post('/sync/activities_and_workouts', authenticate, async (req, res, next
 router.post('/sync', authenticate, async (req, res, next) => {
     try {
         const userId = req.userId;
-        log('info', `[garminRoutes] Manual full sync requested for user ${userId}`);
-        const result = await garminService.syncGarminData(userId, 'manual');
+        const { startDate, endDate } = req.body;
+        
+        log(
+            'info',
+            `[garminRoutes] Manual full sync requested for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
+        );
+
+        const result = await garminService.syncGarminData(userId, 'manual', startDate, endDate);
 
         // Update the last sync timestamp
         const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');

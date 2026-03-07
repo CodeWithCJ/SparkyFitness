@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -8,6 +9,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Trash2, Edit, Lock, Share2, RefreshCw, Link2Off } from 'lucide-react';
 import { getProviderTypes } from '@/utils/settings';
+import SyncRangeDialog from './SyncRangeDialog';
 
 import {
   useConnectFitbitMutation,
@@ -95,15 +97,46 @@ export const ProviderCard = ({
     useManualSyncStravaMutation();
   const { mutate: syncHevyData, isPending: isSyncHevyPending } =
     useSyncHevyMutation();
+
   const {
     mutateAsync: toggleProviderPublicSharing,
     isPending: isToggleSharingPending,
   } = useToggleProviderPublicSharingMutation();
 
+  const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
+
   const { mutateAsync: toggleProviderActiveStatus, isPending: statusPending } =
     useToggleProviderStatusMutation();
   const { mutateAsync: deleteExternalProvider, isPending: deletePending } =
     useDeleteExternalProviderMutation();
+
+  const executeSync = (startDate: string, endDate: string) => {
+    switch (provider.provider_type) {
+      case 'withings':
+        handleManualSync({ startDate, endDate });
+        break;
+      case 'fitbit':
+        handleManualSyncFitbit({ startDate, endDate });
+        break;
+      case 'polar':
+        handleManualSyncPolar({ providerId: provider.id, startDate, endDate });
+        break;
+      case 'strava':
+        handleManualSyncStrava({ startDate, endDate });
+        break;
+      case 'garmin':
+        handleManualSyncGarmin({ startDate, endDate });
+        break;
+      case 'hevy':
+        syncHevyData({
+          fullSync: false,
+          providerId: provider.id,
+          startDate,
+          endDate,
+        });
+        break;
+    }
+  };
 
   const loading =
     isLoading ||
@@ -182,7 +215,7 @@ export const ProviderCard = ({
         return {
           connect: () => handleConnectWithings(),
           disconnect: () => handleDisconnectWithings(),
-          sync: () => handleManualSync(),
+          sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.withings_last_sync_at,
           tokenExpires: provider.withings_token_expires,
           hasToken: provider.has_token,
@@ -191,7 +224,7 @@ export const ProviderCard = ({
         return {
           connect: () => handleConnectFitbit(),
           disconnect: () => handleDisconnectFitbit(),
-          sync: () => handleManualSyncFitbit(),
+          sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.fitbit_last_sync_at,
           tokenExpires: provider.fitbit_token_expires,
           hasToken: provider.has_token,
@@ -200,7 +233,7 @@ export const ProviderCard = ({
         return {
           connect: () => handleConnectPolar(provider.id),
           disconnect: () => handleDisconnectPolar(provider.id),
-          sync: () => handleManualSyncPolar(provider.id),
+          sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.polar_last_sync_at,
           tokenExpires: provider.polar_token_expires,
           hasToken: provider.has_token,
@@ -209,7 +242,7 @@ export const ProviderCard = ({
         return {
           connect: () => handleConnectStrava(),
           disconnect: () => handleDisconnectStrava(),
-          sync: () => handleManualSyncStrava(),
+          sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.strava_last_sync_at,
           tokenExpires: provider.strava_token_expires,
           hasToken: provider.has_token,
@@ -218,7 +251,7 @@ export const ProviderCard = ({
         return {
           connect: null,
           disconnect: () => handleDisconnectGarmin(),
-          sync: () => handleManualSyncGarmin(),
+          sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.garmin_last_status_check,
           tokenExpires: provider.garmin_token_expires,
           hasToken:
@@ -229,7 +262,7 @@ export const ProviderCard = ({
         return {
           connect: null,
           disconnect: null,
-          sync: () => syncHevyData({ fullSync: true, providerId: provider.id }),
+          sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.hevy_last_sync_at,
           tokenExpires: null,
           hasToken: true,
@@ -248,111 +281,50 @@ export const ProviderCard = ({
           <h4 className="font-medium">{provider.provider_name}</h4>
           {(provider.visibility === 'private' ||
             provider.user_id === user?.id) && (
-            <>
-              <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">
-                Private
-              </span>
-              {provider.shared_with_public && (
-                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded ml-2">
-                  Public
-                </span>
-              )}
-            </>
+            <Lock className="h-3 w-3 text-muted-foreground" title="Private" />
           )}
-          {provider.user_id !== user?.id &&
-            provider.visibility === 'public' && (
-              <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                Public
-              </span>
-            )}
-          {provider.user_id !== user?.id &&
-            provider.visibility === 'family' && (
-              <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                Family
-              </span>
-            )}
-
-          {provider.is_active && config && (
-            <>
-              {!config.hasToken && config.connect && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={config.connect}
-                  disabled={loading}
-                  className="ml-2"
-                >
-                  Connect {provider.provider_type}
-                </Button>
-              )}
-              {config.hasToken && (
-                <>
-                  {config.sync && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={config.sync}
-                            disabled={loading}
-                            className="ml-2 text-blue-500"
-                          >
-                            <RefreshCw className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Sync Now</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  {config.disconnect && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={config.disconnect}
-                            disabled={loading}
-                            className="ml-2 text-red-500"
-                          >
-                            <Link2Off className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Disconnect</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </>
-              )}
-            </>
+          {provider.shared_with_public && (
+            <Share2
+              className="h-3 w-3 text-green-500"
+              title="Shared with Family"
+            />
           )}
         </div>
-
         <div className="flex items-center gap-2">
-          {provider.visibility === 'private' ? (
+          {config?.hasToken ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={config.sync}
+              disabled={loading}
+              title="Manual Sync"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`}
+              />
+            </Button>
+          ) : config?.connect ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={config.connect}
+              disabled={loading}
+            >
+              Connect
+            </Button>
+          ) : null}
+
+          {provider.user_id === user?.id ? (
             <>
-              {!provider.is_strictly_private && (
+              {config?.hasToken && config.disconnect && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    toggleProviderPublicSharing({
-                      id: provider.id,
-                      sharedWithPublic: !provider.shared_with_public,
-                    })
-                  }
+                  onClick={config.disconnect}
                   disabled={loading}
+                  title="Disconnect"
                 >
-                  {provider.shared_with_public ? (
-                    <Lock className="h-4 w-4" />
-                  ) : (
-                    <Share2 className="h-4 w-4" />
-                  )}
+                  <Link2Off className="h-4 w-4" />
                 </Button>
               )}
               <Button
@@ -461,6 +433,13 @@ export const ProviderCard = ({
           </TooltipProvider>
         </div>
       )}
+
+      <SyncRangeDialog
+        isOpen={isSyncDialogOpen}
+        onClose={() => setIsSyncDialogOpen(false)}
+        onSync={executeSync}
+        providerType={provider.provider_type}
+      />
     </div>
   );
 };

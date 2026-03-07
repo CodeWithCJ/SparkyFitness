@@ -208,34 +208,6 @@ async def read_root():
 async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
     """
     Retrieves a wide range of health, wellness, and achievement metrics from Garmin.
-    user_id = request_data.user_id
-    start_date = request_data.start_date
-    end_date = request_data.end_date
-
-    filename = "health_and_wellness_data.json"
-
-    if GARMIN_DATA_SOURCE == "local":
-        local_data = _load_from_local_file(filename)
-        if local_data:
-            logger.info(f"Returning local health and wellness data for user {user_id} from {start_date} to {end_date}.")
-            return local_data
-        else:
-            raise HTTPException(status_code=404, detail=f"Local data not found for {start_date} to {end_date}. Please set GARMIN_DATA_SOURCE to 'garmin' to fetch and save data.")
-
-    user_id = request_data.user_id
-    start_date = request_data.start_date
-    end_date = request_data.end_date
-
-    filename = "health_and_wellness_data.json"
-
-    if GARMIN_DATA_SOURCE == "local":
-        local_data = _load_from_local_file(filename)
-        if local_data:
-            logger.info(f"Returning local health and wellness data for user {user_id} from {start_date} to {end_date}.")
-            return local_data
-        else:
-            raise HTTPException(status_code=404, detail=f"Local data not found for {start_date} to {end_date}. Please set GARMIN_DATA_SOURCE to 'garmin' to fetch and save data.")
-
     """
     user_id = request_data.user_id
     start_date = request_data.start_date

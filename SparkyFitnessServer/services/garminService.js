@@ -504,21 +504,32 @@ async function processGarminSleepData(userId, actingUserId, sleepDataArray, star
   }
 }
 
-async function syncGarminData(userId, syncType = 'manual') {
+async function syncGarminData(
+  userId,
+  syncType = "manual",
+  customStartDate = null,
+  customEndDate = null,
+) {
   let startDate, endDate;
   const today = moment();
 
-  if (syncType === 'manual') {
-    endDate = today.format('YYYY-MM-DD');
-    startDate = today.clone().subtract(7, 'days').format('YYYY-MM-DD');
-  } else if (syncType === 'scheduled') {
-    endDate = today.format('YYYY-MM-DD');
-    startDate = today.format('YYYY-MM-DD');
+  if (customStartDate) {
+    startDate = customStartDate;
+    endDate = customEndDate || today.format("YYYY-MM-DD");
+  } else if (syncType === "manual") {
+    endDate = today.format("YYYY-MM-DD");
+    startDate = today.clone().subtract(7, "days").format("YYYY-MM-DD");
+  } else if (syncType === "scheduled") {
+    endDate = today.format("YYYY-MM-DD");
+    startDate = today.format("YYYY-MM-DD");
   } else {
     throw new Error("Invalid syncType. Must be 'manual' or 'scheduled'.");
   }
 
-  log('info', `[garminService] Starting Garmin sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}.`);
+  log(
+    "info",
+    `[garminService] Starting Garmin sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}.`,
+  );
   const results = {
     health: null,
     activities: null

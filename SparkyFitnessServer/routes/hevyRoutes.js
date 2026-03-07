@@ -16,14 +16,22 @@ const authMiddleware = require("../middleware/authMiddleware");
 router.post("/sync", authMiddleware.authenticate, async (req, res) => {
   try {
     const userId = req.userId;
-    const createdByUserId = req.userId; // Currently same as userId
-    const { providerId } = req.body;
-    const { fullSync } = req.query;
+    const createdByUserId = req.userId;
+    const { providerId, startDate, endDate } = req.body;
+    const fullSync = req.query.fullSync === "true" || req.body.fullSync === true;
+    
+    log(
+      "info",
+      `[hevyRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ""}${endDate ? ` to ${endDate}` : ""}`,
+    );
+
     const result = await hevyService.syncHevyData(
       userId,
       createdByUserId,
-      fullSync === "true",
+      fullSync,
       providerId,
+      startDate,
+      endDate,
     );
     res.status(200).json(result);
   } catch (error) {
