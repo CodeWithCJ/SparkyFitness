@@ -77,9 +77,6 @@ const authenticate = async (req, res, next) => {
 
       req.userId = req.activeUserId; // RLS context
 
-      // Support for scoping (for future broad API key use)
-      req.permissions = session.session?.metadata?.permissions || { "*": true };
-
       // Ensure user initialization
       try {
         await userRepository.ensureUserInitialization(session.user.id, session.user.name);
@@ -139,31 +136,7 @@ const isAdmin = async (req, res, next) => {
   return res.status(403).json({ error: "Admin access required." });
 };
 
-const authorize = (requiredPermission) => {
-  return async (req, res, next) => {
-    if (!req.userId) {
-      return res.status(401).json({ error: "Authentication required." });
-    }
-
-    // In a real application, you would fetch user permissions from the DB
-    // For this example, we'll assume a simple permission check
-    // You might have a user object on req.user that contains roles/permissions
-    // For now, we'll just check if the requiredPermission is present as a string
-    // and if the user has that permission. This is a placeholder.
-    // The actual implementation would depend on your permission management system.
-
-    // For the purpose of this fix, we'll assume that if a permission is required,
-    // it means the user needs to be authenticated, and the permission check
-    // will be handled by the RLS in the DB layer.
-    // So, if we reach here, and req.userId is present, authentication is successful.
-    // The 'requiredPermission' argument is primarily for clarity in the route definitions.
-
-    next();
-  };
-};
-
 module.exports = {
   authenticate,
   isAdmin,
-  authorize,
 };
