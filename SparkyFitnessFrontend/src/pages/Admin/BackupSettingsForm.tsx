@@ -52,16 +52,16 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
   };
 
   const [backupEnabled, setBackupEnabled] = useState(
-    initialSettings.backup_enabled ?? false
+    initialSettings.backupEnabled ?? false
   );
   const [backupDays, setBackupDays] = useState<string[]>(
-    initialSettings.backup_days || []
+    initialSettings.backupDays || []
   );
   const [backupTime, setBackupTime] = useState(
-    getLocalTimeString(initialSettings.backup_time)
+    getLocalTimeString(initialSettings.backupTime)
   );
   const [retentionDays, setRetentionDays] = useState(
-    initialSettings.retention_days ?? 7
+    initialSettings.retentionDays ?? 7
   );
 
   const daysOfWeek = [
@@ -89,10 +89,10 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
     const utcTime = localDate.toISOString().substring(11, 16);
 
     onSave({
-      backup_enabled: backupEnabled,
-      backup_days: backupDays,
-      backup_time: utcTime,
-      retention_days: retentionDays,
+      backupEnabled: backupEnabled,
+      backupDays: backupDays,
+      backupTime: utcTime,
+      retentionDays: retentionDays,
     });
   };
 
@@ -189,8 +189,8 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
         </label>
         <p className="text-gray-900">
           {getStatusText(
-            initialSettings.last_backup_status,
-            initialSettings.last_backup_timestamp
+            initialSettings.lastBackupStatus,
+            initialSettings.lastBackupTimestamp
           )}
         </p>
       </div>
