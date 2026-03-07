@@ -15,6 +15,7 @@ import {
   saveCollapsedCategories,
   loadCollapsedCategories,
   clearServerConfigCache,
+  clearSessionToken,
   ServerConfig,
 } from '../../src/services/storage';
 import { CATEGORY_ORDER } from '../../src/HealthMetrics';
@@ -90,6 +91,56 @@ describe('storage', () => {
 
       const configs = await getAllServerConfigs();
       expect(configs).toEqual([testConfig]);
+    });
+
+    test('saves sessionToken to SecureStore', async () => {
+      const config: ServerConfig = {
+        ...testConfig,
+        authType: 'session',
+        sessionToken: 'tok',
+      };
+      await saveServerConfig(config);
+
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+        'sessionToken_test-id-1',
+        'tok',
+        expect.objectContaining({ keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK }),
+      );
+    });
+
+    test('deletes sessionToken when empty string', async () => {
+      const config: ServerConfig = {
+        ...testConfig,
+        sessionToken: '',
+      };
+      await saveServerConfig(config);
+
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('sessionToken_test-id-1');
+    });
+
+    test('does not touch sessionToken when undefined', async () => {
+      await saveServerConfig(testConfig);
+
+      const sessionCalls = (SecureStore.setItemAsync as jest.Mock).mock.calls.filter(
+        (call: any[]) => (call[0] as string).startsWith('sessionToken_'),
+      );
+      const deleteCalls = (SecureStore.deleteItemAsync as jest.Mock).mock.calls.filter(
+        (call: any[]) => (call[0] as string).startsWith('sessionToken_'),
+      );
+      expect(sessionCalls).toHaveLength(0);
+      expect(deleteCalls).toHaveLength(0);
+    });
+
+    test('authType round-trips through save and get', async () => {
+      const config: ServerConfig = {
+        ...testConfig,
+        authType: 'session',
+        sessionToken: 'tok',
+      };
+      await saveServerConfig(config);
+
+      const configs = await getAllServerConfigs();
+      expect(configs[0].authType).toBe('session');
     });
 
     test('throws when setItem fails', async () => {
@@ -213,6 +264,34 @@ describe('storage', () => {
       expect(raw[0]).not.toHaveProperty('apiKey');
     });
 
+    test('returns sessionToken when present in SecureStore', async () => {
+      const config: ServerConfig = {
+        id: 'st-1',
+        url: 'https://a.com',
+        apiKey: 'k1',
+        authType: 'session',
+        sessionToken: 'my-session-tok',
+      };
+      await saveServerConfig(config);
+      clearServerConfigCache();
+
+      const configs = await getAllServerConfigs();
+      expect(configs[0].sessionToken).toBe('my-session-tok');
+    });
+
+    test('omits sessionToken when absent from SecureStore', async () => {
+      const config: ServerConfig = {
+        id: 'st-2',
+        url: 'https://b.com',
+        apiKey: 'k2',
+      };
+      await saveServerConfig(config);
+      clearServerConfigCache();
+
+      const configs = await getAllServerConfigs();
+      expect(configs[0]).not.toHaveProperty('sessionToken');
+    });
+
     test('returns empty apiKey when key is in neither store', async () => {
       const noKey = [{ id: 'no-key', url: 'https://x.com' }];
       await AsyncStorage.setItem('serverConfigs', JSON.stringify(noKey));
@@ -261,6 +340,14 @@ describe('storage', () => {
       await deleteServerConfig('id-1');
 
       expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('apiKey_id-1');
+    });
+
+    test('removes sessionToken from SecureStore', async () => {
+      await saveServerConfig(config1);
+
+      await deleteServerConfig('id-1');
+
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('sessionToken_id-1');
     });
 
     test('clears active config when deleted config was active', async () => {
@@ -482,6 +569,29 @@ describe('storage', () => {
       const result = await loadCollapsedCategories();
 
       expect(result).toEqual(CATEGORY_ORDER.filter(c => c !== 'Common'));
+    });
+  });
+
+  describe('clearSessionToken', () => {
+    test('deletes session token from SecureStore', async () => {
+      await clearSessionToken('cfg-1');
+
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('sessionToken_cfg-1');
+    });
+
+    test('invalidates active config cache', async () => {
+      const config: ServerConfig = { id: 'cache-test', url: 'https://a.com', apiKey: 'k' };
+      await saveServerConfig(config);
+
+      // Prime the cache
+      await getActiveServerConfig();
+      const callsBefore = (AsyncStorage.getItem as jest.Mock).mock.calls.length;
+
+      await clearSessionToken('cache-test');
+
+      // Next call should hit storage again (cache was invalidated)
+      await getActiveServerConfig();
+      expect((AsyncStorage.getItem as jest.Mock).mock.calls.length).toBeGreaterThan(callsBefore);
     });
   });
 
