@@ -130,12 +130,12 @@ const SleepAnalyticsTable = ({
               let insightKey = 'sleepAnalyticsTable.needsImprovement';
               let insightDefault = 'Needs Improvement';
 
-              if (sleepAnalyticsData.sleepDebt > 1.5) {
+              if (sleepAnalyticsData.sleepDebt > HIGH_DEBT_THRESHOLD_HOURS) {
                 insightKey = 'sleepAnalyticsTable.highDebt';
                 insightDefault = 'High Debt';
               } else if (
                 sleepEntry.sleep_score &&
-                sleepEntry.sleep_score > 70
+                sleepEntry.sleep_score > GOOD_SLEEP_SCORE_THRESHOLD
               ) {
                 insightKey = 'sleepAnalyticsTable.goodSleep';
                 insightDefault = 'Good Sleep';
