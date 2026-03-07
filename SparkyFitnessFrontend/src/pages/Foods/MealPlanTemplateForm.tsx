@@ -29,6 +29,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { mealViewOptions } from '@/hooks/Foods/useMeals';
 import { foodViewOptions } from '@/hooks/Foods/useFoods';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 
 // Extended assignment type with nutrition data for display
 interface ExtendedAssignment extends MealPlanTemplateAssignment {
@@ -86,6 +87,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
   >(null);
 
   const queryClient = useQueryClient();
+  const { data: availableMealTypes = [] } = useMealTypes();
   // Helper function to fetch nutrition data for an assignment
   const fetchNutritionForAssignment = useCallback(
     async (
@@ -434,12 +436,15 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
     t('common.friday', 'Friday'),
     t('common.saturday', 'Saturday'),
   ];
-  const mealTypes = [
-    t('common.breakfast', 'breakfast'),
-    t('common.lunch', 'lunch'),
-    t('common.dinner', 'dinner'),
-    t('common.snacks', 'snacks'),
-  ];
+  const mealTypes =
+    availableMealTypes.length > 0
+      ? availableMealTypes.map((mt) => mt.name)
+      : [
+          t('common.breakfast', 'breakfast'),
+          t('common.lunch', 'lunch'),
+          t('common.dinner', 'dinner'),
+          t('common.snacks', 'snacks'),
+        ];
 
   return (
     <>

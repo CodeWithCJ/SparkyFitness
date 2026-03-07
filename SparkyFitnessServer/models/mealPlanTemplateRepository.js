@@ -33,7 +33,9 @@ async function createMealPlanTemplate(planData) {
     );
     const newTemplate = templateResult.rows[0];
 
-    if (planData.assignments && planData.assignments.length > 0) {
+    const assignments = planData.assignments || planData.day_presets;
+
+    if (assignments && assignments.length > 0) {
       const mealTypesRes = await client.query(
         "SELECT id, name FROM meal_types WHERE user_id = $1 OR user_id IS NULL",
         [planData.user_id]
@@ -43,13 +45,13 @@ async function createMealPlanTemplate(planData) {
         mealTypeMap.set(r.name.toLowerCase(), r.id)
       );
 
-      const assignmentValues = planData.assignments.map((a) => {
+      const assignmentValues = assignments.map((a) => {
         let typeId = a.meal_type_id;
-        if (!typeId && a.meal_type_id) {
-          typeId = mealTypeMap.get(a.meal_type_id);
+        if (!typeId && a.meal_type) {
+          typeId = mealTypeMap.get(a.meal_type.toLowerCase());
         }
         if (!typeId) {
-          throw new Error(`Invalid meal type: ${a.meal_type_id}`);
+          throw new Error(`Invalid meal type: ${a.meal_type || a.meal_type_id}`);
         }
 
         if (a.item_type === "meal") {
