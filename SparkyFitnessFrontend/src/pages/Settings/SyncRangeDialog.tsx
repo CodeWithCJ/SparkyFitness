@@ -15,7 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { CalendarIcon, AlertCircle, RefreshCw } from 'lucide-react';
+import { CalendarIcon, AlertCircle, RefreshCw, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, subDays } from 'date-fns';
 import { Label } from '@/components/ui/label';
@@ -103,6 +103,19 @@ const SyncRangeDialog = ({
             </AlertDescription>
           </Alert>
         )}
+
+        <Alert
+          variant="default"
+          className="mt-2 bg-yellow-50 border-yellow-200"
+        >
+          <Info className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-[10px] leading-tight text-yellow-700">
+            {t(
+              'syncRangeDialog.timeoutWarning',
+              'For large date ranges, the browser may time out, but the server will continue syncing in the background.'
+            )}
+          </AlertDescription>
+        </Alert>
 
         <div className="grid gap-6 py-4">
           {/* Presets */}
