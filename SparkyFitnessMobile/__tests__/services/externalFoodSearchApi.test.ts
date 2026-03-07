@@ -13,6 +13,7 @@ import { getActiveServerConfig, ServerConfig } from '../../src/services/storage'
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/services/LogService', () => ({

@@ -60,6 +60,14 @@ export const notifyNoConfigs = (): void => {
   onNoConfigsCallback?.();
 };
 
+let pendingProxyHeaders: Record<string, string> = {};
+export const setPendingProxyHeaders = (headers: Record<string, string>): void => {
+  pendingProxyHeaders = headers;
+};
+export const clearPendingProxyHeaders = (): void => {
+  pendingProxyHeaders = {};
+};
+
 /**
  * Returns the appropriate Authorization header for the given config.
  * Session configs use the session token; API key configs use the API key.
@@ -78,6 +86,7 @@ const normalizeUrl = (url: string): string => {
 
 const getJsonHeaders = (): Record<string, string> => ({
   'Content-Type': 'application/json',
+  ...pendingProxyHeaders,
 });
 
 const trustedOriginCache = new Map<string, string | null>();
@@ -121,6 +130,7 @@ const getTrustedAuthOrigin = async (serverUrl: string): Promise<string | undefin
     const response = await fetch(`${baseUrl}/api/auth/settings`, {
       method: 'GET',
       credentials: 'omit',
+      headers: { ...pendingProxyHeaders },
     });
 
     if (response.ok) {
@@ -258,6 +268,7 @@ export const fetchMfaFactors = async (
     `${baseUrl}/api/auth/mfa-factors?email=${encodeURIComponent(email)}`,
     {
       credentials: 'omit',
+      headers: { ...pendingProxyHeaders },
     },
   );
 

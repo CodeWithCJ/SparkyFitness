@@ -11,6 +11,8 @@ interface ServerConfigProps {
   setUrl: React.Dispatch<React.SetStateAction<string>>;
   apiKey: string;
   setApiKey: React.Dispatch<React.SetStateAction<string>>;
+  proxyHeaders: import('../services/storage').ProxyHeader[];
+  setProxyHeaders: React.Dispatch<React.SetStateAction<import('../services/storage').ProxyHeader[]>>;
   handleSaveConfig: () => void;
   serverConfigs: ServerConfigType[];
   activeConfigId: string | null;
@@ -31,6 +33,8 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
   setUrl,
   apiKey,
   setApiKey,
+  proxyHeaders,
+  setProxyHeaders,
   handleSaveConfig,
   serverConfigs,
   activeConfigId,
@@ -143,6 +147,8 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
         setUrl={setUrl}
         apiKey={apiKey}
         setApiKey={setApiKey}
+        proxyHeaders={proxyHeaders}
+        setProxyHeaders={setProxyHeaders}
         onSave={handleSaveConfig}
         isEditing={isEditing}
       />

@@ -1,4 +1,4 @@
-import { getActiveServerConfig } from '../storage';
+import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
 import { getAuthHeaders, notifySessionExpired } from './authService';
@@ -35,6 +35,7 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),
       },
       body: JSON.stringify(data),
@@ -81,6 +82,7 @@ export const checkServerConnection = async (): Promise<boolean> => {
     const response = await fetch(`${url}/api/identity/user`, {
       method: 'GET',
       headers: {
+        ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),
       },
     });

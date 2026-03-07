@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Alert, Text, ScrollView, Platform, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
-import type { ServerConfig } from '../services/storage';
+import type { ServerConfig, ProxyHeader } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { notifyNoConfigs } from '../services/api/authService';
 import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference } from '../services/healthConnectService';
@@ -37,6 +37,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [url, setUrl] = useState<string>('');
   const [apiKey, setApiKey] = useState<string>('');
+  const [proxyHeaders, setProxyHeaders] = useState<ProxyHeader[]>([]);
 
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>(
     HEALTH_METRICS.reduce((acc, metric) => ({ ...acc, [metric.stateKey]: false }), {} as HealthMetricStates)
@@ -152,6 +153,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         ...(hasNewApiKey
           ? { authType: 'apiKey' as const, sessionToken: '' }
           : {}),
+        proxyHeaders,
       };
       await saveServerConfig(configToSave);
 
@@ -223,6 +225,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     // Session-backed configs may still retain an old API key for fallback,
     // but opening the editor should not implicitly treat that as an auth-mode switch.
     setApiKey(config.authType === 'session' ? '' : config.apiKey);
+    setProxyHeaders(config.proxyHeaders ?? []);
     setCurrentConfigId(config.id);
     setShowConfigModal(true);
   };
@@ -230,6 +233,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const handleAddNewConfig = (): void => {
     setUrl('');
     setApiKey('');
+    setProxyHeaders([]);
     setCurrentConfigId(null);
     setShowConfigModal(true);
   };
@@ -367,6 +371,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             setUrl={setUrl}
             apiKey={apiKey}
             setApiKey={setApiKey}
+            proxyHeaders={proxyHeaders}
+            setProxyHeaders={setProxyHeaders}
             handleSaveConfig={handleSaveConfig}
             serverConfigs={serverConfigs}
             activeConfigId={activeConfigId}
