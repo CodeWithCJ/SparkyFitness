@@ -31,6 +31,359 @@ import {
   type ServerConfig,
 } from '../services/storage';
 
+// --- Shared sub-components ---
+
+const ErrorBanner = ({ message }: { message: string }) =>
+  message ? (
+    <View className="mb-4 p-3 rounded-lg bg-status-danger-bg">
+      <Text className="text-sm text-status-danger-text">{message}</Text>
+    </View>
+  ) : null;
+
+const PrimaryButton = ({
+  label,
+  onPress,
+  loading,
+  disabled,
+}: {
+  label: string;
+  onPress: () => void;
+  loading: boolean;
+  disabled?: boolean;
+}) => {
+  const isDisabled = disabled ?? loading;
+  return (
+    <TouchableOpacity
+      className="items-center justify-center py-3.5 rounded-[10px] bg-accent-primary"
+      onPress={onPress}
+      activeOpacity={0.8}
+      disabled={isDisabled}
+      style={{ opacity: isDisabled ? 0.7 : 1 }}
+    >
+      {loading ? (
+        <ActivityIndicator color="#fff" />
+      ) : (
+        <Text className="text-white text-[17px] font-semibold">{label}</Text>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+// --- Form sub-components ---
+
+interface CredentialsFormProps {
+  existingConfigs: ServerConfig[];
+  selectedConfigId: string | null;
+  onSelectConfig: (id: string, url: string) => void;
+  serverUrl: string;
+  onServerUrlChange: (url: string) => void;
+  email: string;
+  onEmailChange: (email: string) => void;
+  password: string;
+  onPasswordChange: (password: string) => void;
+  error: string;
+  loading: boolean;
+  onSignIn: () => void;
+  onUseApiKey: () => void;
+  onDismiss: () => void;
+  textMuted: string;
+  textSecondary: string;
+  accentPrimary: string;
+}
+
+const CredentialsForm: React.FC<CredentialsFormProps> = ({
+  existingConfigs,
+  selectedConfigId,
+  onSelectConfig,
+  serverUrl,
+  onServerUrlChange,
+  email,
+  onEmailChange,
+  password,
+  onPasswordChange,
+  error,
+  loading,
+  onSignIn,
+  onUseApiKey,
+  onDismiss,
+  textMuted,
+  textSecondary,
+  accentPrimary,
+}) => {
+  const hasExistingConfigs = existingConfigs.length > 0;
+
+  return (
+    <>
+      {/* Server Selection */}
+      {hasExistingConfigs ? (
+        <View className="mb-3">
+          <Text className="text-sm mb-2 text-text-secondary">Server</Text>
+          {existingConfigs.map((config) => (
+            <TouchableOpacity
+              key={config.id}
+              className={`flex-row items-center p-3 rounded-lg mb-1.5 border ${
+                selectedConfigId === config.id
+                  ? 'border-accent-primary bg-raised'
+                  : 'border-border-subtle bg-raised'
+              }`}
+              onPress={() => onSelectConfig(config.id, config.url)}
+            >
+              <Icon
+                name={
+                  selectedConfigId === config.id
+                    ? 'radio-button-on'
+                    : 'radio-button-off'
+                }
+                size={20}
+                color={
+                  selectedConfigId === config.id
+                    ? accentPrimary
+                    : textMuted
+                }
+                style={{ marginRight: 8 }}
+              />
+              <Text
+                className="flex-1 text-base text-text-primary"
+                numberOfLines={1}
+              >
+                {config.url}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
+        <View className="mb-3">
+          <Text className="text-sm mb-2 text-text-secondary">
+            Server URL
+          </Text>
+          <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
+            <TextInput
+              className="flex-1 p-2.5 text-base text-text-primary"
+              placeholder="https://your-server-url.com"
+              placeholderTextColor={textMuted}
+              value={serverUrl}
+              onChangeText={onServerUrlChange}
+              autoCapitalize="none"
+              keyboardType="url"
+            />
+            <TouchableOpacity
+              className="p-2"
+              onPress={async () => onServerUrlChange(await Clipboard.getString())}
+              accessibilityLabel="Paste URL from clipboard"
+              accessibilityRole="button"
+            >
+              <Icon name="paste" size={20} color={textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Email */}
+      <View className="mb-3">
+        <Text className="text-sm mb-2 text-text-secondary">Email</Text>
+        <View className="border border-border-subtle rounded-lg bg-raised">
+          <TextInput
+            className="p-2.5 text-base text-text-primary"
+            placeholder="email@example.com"
+            placeholderTextColor={textMuted}
+            value={email}
+            onChangeText={onEmailChange}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            autoComplete="email"
+          />
+        </View>
+      </View>
+
+      {/* Password */}
+      <View className="mb-4">
+        <Text className="text-sm mb-2 text-text-secondary">Password</Text>
+        <View className="border border-border-subtle rounded-lg bg-raised">
+          <TextInput
+            className="p-2.5 text-base text-text-primary"
+            placeholder="Password"
+            placeholderTextColor={textMuted}
+            value={password}
+            onChangeText={onPasswordChange}
+            secureTextEntry
+            autoComplete="password"
+          />
+        </View>
+      </View>
+
+      <ErrorBanner message={error} />
+
+      <PrimaryButton label="Sign In" onPress={onSignIn} loading={loading} />
+
+      {/* Use API Key Instead */}
+      <TouchableOpacity
+        className="items-center py-3 mt-2"
+        onPress={onUseApiKey}
+        activeOpacity={0.7}
+      >
+        <Text className="text-sm text-text-muted">
+          Use API Key Instead
+        </Text>
+      </TouchableOpacity>
+
+      {/* Later — only when existing configs exist */}
+      {hasExistingConfigs && (
+        <TouchableOpacity
+          className="items-center py-2.5"
+          onPress={onDismiss}
+          activeOpacity={0.7}
+        >
+          <Text className="text-base text-text-muted">Later</Text>
+        </TouchableOpacity>
+      )}
+    </>
+  );
+};
+
+interface MfaFormProps {
+  mfaFactors: MfaFactors;
+  mfaMethod: 'totp' | 'email';
+  onMfaMethodChange: (method: 'totp' | 'email') => void;
+  mfaCode: string;
+  onMfaCodeChange: (code: string) => void;
+  emailOtpSent: boolean;
+  error: string;
+  loading: boolean;
+  onVerify: () => void;
+  onSendEmailOtp: () => void;
+  onBack: () => void;
+  onUseApiKey: () => void;
+  textMuted: string;
+}
+
+const MfaForm: React.FC<MfaFormProps> = ({
+  mfaFactors,
+  mfaMethod,
+  onMfaMethodChange,
+  mfaCode,
+  onMfaCodeChange,
+  emailOtpSent,
+  error,
+  loading,
+  onVerify,
+  onSendEmailOtp,
+  onBack,
+  onUseApiKey,
+  textMuted,
+}) => {
+  const showCodeInput = mfaMethod === 'totp' || emailOtpSent;
+
+  return (
+    <>
+      {/* MFA Method Toggle */}
+      {mfaFactors.mfaTotpEnabled && mfaFactors.mfaEmailEnabled && (
+        <View className="flex-row mb-4 rounded-lg overflow-hidden border border-border-subtle">
+          {([
+            { method: 'totp' as const, label: 'Authenticator App' },
+            { method: 'email' as const, label: 'Email Code' },
+          ]).map(({ method, label }) => (
+            <TouchableOpacity
+              key={method}
+              className={`flex-1 py-2.5 items-center ${
+                mfaMethod === method ? 'bg-accent-primary' : 'bg-raised'
+              }`}
+              onPress={() => onMfaMethodChange(method)}
+              activeOpacity={0.8}
+            >
+              <Text
+                className={`text-sm font-semibold ${
+                  mfaMethod === method ? 'text-white' : 'text-text-secondary'
+                }`}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* MFA Instructions */}
+      <Text className="text-sm text-text-secondary mb-3 text-center">
+        {mfaMethod === 'totp'
+          ? 'Enter the code from your authenticator app.'
+          : emailOtpSent
+            ? 'Enter the code sent to your email.'
+            : 'Tap the button below to receive a verification code by email.'}
+      </Text>
+
+      {/* Send Email OTP Button */}
+      {mfaMethod === 'email' && !emailOtpSent && (
+        <View className="mb-3">
+          <PrimaryButton label="Send Code" onPress={onSendEmailOtp} loading={loading} />
+        </View>
+      )}
+
+      {/* Code Input (shown for TOTP always, for email after OTP sent) */}
+      {showCodeInput && (
+        <>
+          <View className="mb-4">
+            <View className="border border-border-subtle rounded-lg bg-raised">
+              <TextInput
+                className="p-2.5 text-base text-text-primary text-center tracking-[8px]"
+                placeholder="000000"
+                placeholderTextColor={textMuted}
+                value={mfaCode}
+                onChangeText={(text) => onMfaCodeChange(text.replace(/[^0-9]/g, '').slice(0, 6))}
+                keyboardType="number-pad"
+                maxLength={6}
+                autoFocus
+              />
+            </View>
+          </View>
+
+          <ErrorBanner message={error} />
+
+          <PrimaryButton
+            label="Verify"
+            onPress={onVerify}
+            loading={loading}
+            disabled={loading || mfaCode.length < 6}
+          />
+        </>
+      )}
+
+      {/* Error (shown when email OTP not yet sent) */}
+      {mfaMethod === 'email' && !emailOtpSent && <ErrorBanner message={error} />}
+
+      {/* Resend email code */}
+      {mfaMethod === 'email' && emailOtpSent && (
+        <TouchableOpacity
+          className="items-center py-3 mt-2"
+          onPress={onSendEmailOtp}
+          activeOpacity={0.7}
+          disabled={loading}
+        >
+          <Text className="text-sm text-accent-primary">Resend Code</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Back */}
+      <TouchableOpacity
+        className="items-center py-3 mt-2"
+        onPress={onBack}
+        activeOpacity={0.7}
+      >
+        <Text className="text-base text-text-muted">Back</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        className="items-center py-2"
+        onPress={onUseApiKey}
+        activeOpacity={0.7}
+      >
+        <Text className="text-sm text-text-muted">Use API Key Instead</Text>
+      </TouchableOpacity>
+    </>
+  );
+};
+
+// --- Main component ---
+
 interface LoginModalProps {
   visible: boolean;
   defaultConfigId?: string | null;
@@ -101,6 +454,27 @@ const LoginModal: React.FC<LoginModalProps> = ({
     ? existingConfigs.find((c) => c.id === selectedConfigId)?.url ?? serverUrl
     : serverUrl;
 
+  const saveSessionConfig = async (url: string, sessionToken: string) => {
+    if (selectedConfigId) {
+      const existing = existingConfigs.find((c) => c.id === selectedConfigId)!;
+      await saveServerConfig({
+        id: existing.id,
+        url: existing.url,
+        apiKey: existing.apiKey,
+        authType: 'session',
+        sessionToken,
+      });
+    } else {
+      await saveServerConfig({
+        id: Date.now().toString(),
+        url: url.endsWith('/') ? url.slice(0, -1) : url,
+        apiKey: '',
+        authType: 'session',
+        sessionToken,
+      });
+    }
+  };
+
   const handleSignIn = async () => {
     const url = currentUrl.trim();
     if (!url) {
@@ -123,7 +497,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
       const result = await login(url, email.trim(), password);
 
       if (result.type === 'mfa_required') {
-        // Determine which MFA methods are available
         let factors: MfaFactors = { mfaTotpEnabled: true, mfaEmailEnabled: false };
         try {
           factors = await fetchMfaFactors(url, email.trim());
@@ -148,27 +521,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveSessionConfig = async (url: string, sessionToken: string) => {
-    if (selectedConfigId) {
-      const existing = existingConfigs.find((c) => c.id === selectedConfigId)!;
-      await saveServerConfig({
-        id: existing.id,
-        url: existing.url,
-        apiKey: existing.apiKey,
-        authType: 'session',
-        sessionToken,
-      });
-    } else {
-      await saveServerConfig({
-        id: Date.now().toString(),
-        url: url.endsWith('/') ? url.slice(0, -1) : url,
-        apiKey: '',
-        authType: 'session',
-        sessionToken,
-      });
     }
   };
 
@@ -243,6 +595,12 @@ const LoginModal: React.FC<LoginModalProps> = ({
     setError('');
   };
 
+  const handleMfaMethodChange = (method: 'totp' | 'email') => {
+    setMfaMethod(method);
+    setMfaCode('');
+    setError('');
+  };
+
   return (
     <Modal
       visible={visible}
@@ -261,7 +619,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
           bounces={false}
         >
-          <View className="w-full max-w-[360px] rounded-2xl p-6 bg-surface shadow-sm">
+          <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm">
             {/* Header */}
             <View className="items-center mb-5">
               <Image
@@ -275,307 +633,44 @@ const LoginModal: React.FC<LoginModalProps> = ({
             </View>
 
             {step === 'credentials' ? (
-              <>
-                {/* Server Selection */}
-                {hasExistingConfigs ? (
-                  <View className="mb-3">
-                    <Text className="text-sm mb-2 text-text-secondary">Server</Text>
-                    {existingConfigs.map((config) => (
-                      <TouchableOpacity
-                        key={config.id}
-                        className={`flex-row items-center p-3 rounded-lg mb-1.5 border ${
-                          selectedConfigId === config.id
-                            ? 'border-accent-primary bg-raised'
-                            : 'border-border-subtle bg-raised'
-                        }`}
-                        onPress={() => {
-                          setSelectedConfigId(config.id);
-                          setServerUrl(config.url);
-                        }}
-                      >
-                        <Icon
-                          name={
-                            selectedConfigId === config.id
-                              ? 'radio-button-on'
-                              : 'radio-button-off'
-                          }
-                          size={20}
-                          color={
-                            selectedConfigId === config.id
-                              ? accentPrimary
-                              : textMuted
-                          }
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text
-                          className="flex-1 text-base text-text-primary"
-                          numberOfLines={1}
-                        >
-                          {config.url}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                ) : (
-                  <View className="mb-3">
-                    <Text className="text-sm mb-2 text-text-secondary">
-                      Server URL
-                    </Text>
-                    <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
-                      <TextInput
-                        className="flex-1 p-2.5 text-base text-text-primary"
-                        placeholder="https://your-server-url.com"
-                        placeholderTextColor={textMuted}
-                        value={serverUrl}
-                        onChangeText={setServerUrl}
-                        autoCapitalize="none"
-                        keyboardType="url"
-                      />
-                      <TouchableOpacity
-                        className="p-2"
-                        onPress={async () => setServerUrl(await Clipboard.getString())}
-                        accessibilityLabel="Paste URL from clipboard"
-                        accessibilityRole="button"
-                      >
-                        <Icon name="paste" size={20} color={textSecondary} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                {/* Email */}
-                <View className="mb-3">
-                  <Text className="text-sm mb-2 text-text-secondary">Email</Text>
-                  <View className="border border-border-subtle rounded-lg bg-raised">
-                    <TextInput
-                      className="p-2.5 text-base text-text-primary"
-                      placeholder="email@example.com"
-                      placeholderTextColor={textMuted}
-                      value={email}
-                      onChangeText={setEmail}
-                      autoCapitalize="none"
-                      keyboardType="email-address"
-                      autoComplete="email"
-                    />
-                  </View>
-                </View>
-
-                {/* Password */}
-                <View className="mb-4">
-                  <Text className="text-sm mb-2 text-text-secondary">Password</Text>
-                  <View className="border border-border-subtle rounded-lg bg-raised">
-                    <TextInput
-                      className="p-2.5 text-base text-text-primary"
-                      placeholder="Password"
-                      placeholderTextColor={textMuted}
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry
-                      autoComplete="password"
-                    />
-                  </View>
-                </View>
-
-                {/* Error */}
-                {error ? (
-                  <View className="mb-4 p-3 rounded-lg bg-status-danger-bg">
-                    <Text className="text-sm text-status-danger-text">{error}</Text>
-                  </View>
-                ) : null}
-
-                {/* Sign In Button */}
-                <TouchableOpacity
-                  className="items-center justify-center py-3.5 rounded-[10px] bg-accent-primary"
-                  onPress={handleSignIn}
-                  activeOpacity={0.8}
-                  disabled={loading}
-                  style={{ opacity: loading ? 0.7 : 1 }}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text className="text-white text-[17px] font-semibold">
-                      Sign In
-                    </Text>
-                  )}
-                </TouchableOpacity>
-
-                {/* Use API Key Instead */}
-                <TouchableOpacity
-                  className="items-center py-3 mt-2"
-                  onPress={() => onUseApiKey(currentUrl)}
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-sm text-text-muted">
-                    Use API Key Instead
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Later — only when existing configs exist */}
-                {hasExistingConfigs && (
-                  <TouchableOpacity
-                    className="items-center py-2.5"
-                    onPress={onDismiss}
-                    activeOpacity={0.7}
-                  >
-                    <Text className="text-base text-text-muted">Later</Text>
-                  </TouchableOpacity>
-                )}
-              </>
+              <CredentialsForm
+                existingConfigs={existingConfigs}
+                selectedConfigId={selectedConfigId}
+                onSelectConfig={(id, url) => {
+                  setSelectedConfigId(id);
+                  setServerUrl(url);
+                }}
+                serverUrl={serverUrl}
+                onServerUrlChange={setServerUrl}
+                email={email}
+                onEmailChange={setEmail}
+                password={password}
+                onPasswordChange={setPassword}
+                error={error}
+                loading={loading}
+                onSignIn={handleSignIn}
+                onUseApiKey={() => onUseApiKey(currentUrl)}
+                onDismiss={onDismiss}
+                textMuted={textMuted}
+                textSecondary={textSecondary}
+                accentPrimary={accentPrimary}
+              />
             ) : (
-              <>
-                {/* MFA Method Toggle */}
-                {mfaFactors.mfaTotpEnabled && mfaFactors.mfaEmailEnabled && (
-                  <View className="flex-row mb-4 rounded-lg overflow-hidden border border-border-subtle">
-                    <TouchableOpacity
-                      className={`flex-1 py-2.5 items-center ${
-                        mfaMethod === 'totp' ? 'bg-accent-primary' : 'bg-raised'
-                      }`}
-                      onPress={() => {
-                        setMfaMethod('totp');
-                        setMfaCode('');
-                        setError('');
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text
-                        className={`text-sm font-semibold ${
-                          mfaMethod === 'totp' ? 'text-white' : 'text-text-secondary'
-                        }`}
-                      >
-                        Authenticator App
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      className={`flex-1 py-2.5 items-center ${
-                        mfaMethod === 'email' ? 'bg-accent-primary' : 'bg-raised'
-                      }`}
-                      onPress={() => {
-                        setMfaMethod('email');
-                        setMfaCode('');
-                        setError('');
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text
-                        className={`text-sm font-semibold ${
-                          mfaMethod === 'email' ? 'text-white' : 'text-text-secondary'
-                        }`}
-                      >
-                        Email Code
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {/* MFA Instructions */}
-                <Text className="text-sm text-text-secondary mb-3 text-center">
-                  {mfaMethod === 'totp'
-                    ? 'Enter the code from your authenticator app.'
-                    : emailOtpSent
-                      ? 'Enter the code sent to your email.'
-                      : 'Tap the button below to receive a verification code by email.'}
-                </Text>
-
-                {/* Send Email OTP Button */}
-                {mfaMethod === 'email' && !emailOtpSent && (
-                  <TouchableOpacity
-                    className="items-center justify-center py-3.5 rounded-[10px] bg-accent-primary mb-3"
-                    onPress={handleSendEmailOtp}
-                    activeOpacity={0.8}
-                    disabled={loading}
-                    style={{ opacity: loading ? 0.7 : 1 }}
-                  >
-                    {loading ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text className="text-white text-[17px] font-semibold">
-                        Send Code
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-
-                {/* Code Input (shown for TOTP always, for email after OTP sent) */}
-                {(mfaMethod === 'totp' || emailOtpSent) && (
-                  <>
-                    <View className="mb-4">
-                      <View className="border border-border-subtle rounded-lg bg-raised">
-                        <TextInput
-                          className="p-2.5 text-base text-text-primary text-center tracking-[8px]"
-                          placeholder="000000"
-                          placeholderTextColor={textMuted}
-                          value={mfaCode}
-                          onChangeText={(text) => setMfaCode(text.replace(/[^0-9]/g, '').slice(0, 6))}
-                          keyboardType="number-pad"
-                          maxLength={6}
-                          autoFocus
-                        />
-                      </View>
-                    </View>
-
-                    {/* Error */}
-                    {error ? (
-                      <View className="mb-4 p-3 rounded-lg bg-status-danger-bg">
-                        <Text className="text-sm text-status-danger-text">{error}</Text>
-                      </View>
-                    ) : null}
-
-                    {/* Verify Button */}
-                    <TouchableOpacity
-                      className="items-center justify-center py-3.5 rounded-[10px] bg-accent-primary"
-                      onPress={handleVerifyMfa}
-                      activeOpacity={0.8}
-                      disabled={loading || mfaCode.length < 6}
-                      style={{ opacity: loading || mfaCode.length < 6 ? 0.7 : 1 }}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text className="text-white text-[17px] font-semibold">
-                          Verify
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                {/* Error (shown when email OTP not yet sent) */}
-                {mfaMethod === 'email' && !emailOtpSent && error ? (
-                  <View className="mb-4 p-3 rounded-lg bg-status-danger-bg">
-                    <Text className="text-sm text-status-danger-text">{error}</Text>
-                  </View>
-                ) : null}
-
-                {/* Resend email code */}
-                {mfaMethod === 'email' && emailOtpSent && (
-                  <TouchableOpacity
-                    className="items-center py-3 mt-2"
-                    onPress={handleSendEmailOtp}
-                    activeOpacity={0.7}
-                    disabled={loading}
-                  >
-                    <Text className="text-sm text-accent-primary">Resend Code</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Back */}
-                <TouchableOpacity
-                  className="items-center py-3 mt-2"
-                  onPress={handleBackToCredentials}
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-base text-text-muted">Back</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  className="items-center py-2"
-                  onPress={() => onUseApiKey(currentUrl)}
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-sm text-text-muted">Use API Key Instead</Text>
-                </TouchableOpacity>
-              </>
+              <MfaForm
+                mfaFactors={mfaFactors}
+                mfaMethod={mfaMethod}
+                onMfaMethodChange={handleMfaMethodChange}
+                mfaCode={mfaCode}
+                onMfaCodeChange={setMfaCode}
+                emailOtpSent={emailOtpSent}
+                error={error}
+                loading={loading}
+                onVerify={handleVerifyMfa}
+                onSendEmailOtp={handleSendEmailOtp}
+                onBack={handleBackToCredentials}
+                onUseApiKey={() => onUseApiKey(currentUrl)}
+                textMuted={textMuted}
+              />
             )}
           </View>
         </ScrollView>
