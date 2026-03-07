@@ -68,6 +68,7 @@ function getSleepHour(entry) {
 }
 
 function getTST(entry) {
+  if (entry.timeAsleepHours) return Number(entry.timeAsleepHours);
   const deep = Number(entry.deepSleepMinutes) || 0;
   const rem = Number(entry.remSleepMinutes) || 0;
   const light = Number(entry.lightSleepMinutes) || 0;
@@ -112,7 +113,8 @@ async function calculateSleepDebt(userId) {
 
     const weight = calculateDayWeight(i);
     const deviation = sleepNeed - tst;
-    const weightedDebt = Math.max(0, deviation) * weight;
+    // Allow negative deviation (surplus) to reduce weighted debt
+    const weightedDebt = deviation * weight;
 
     totalWeightedDebt += weightedDebt;
     totalWeight += weight;
@@ -126,6 +128,7 @@ async function calculateSleepDebt(userId) {
     });
   }
 
+  // currentDebt can now be negative if user has a surplus
   const currentDebt =
     totalWeight > 0
       ? Math.round((totalWeightedDebt / totalWeight) * 100) / 100
@@ -136,11 +139,11 @@ async function calculateSleepDebt(userId) {
   const older7 = dailyBreakdown.slice(7, 14);
   const recentAvgDebt =
     recent7.length > 0
-      ? recent7.reduce((s, d) => s + Math.max(0, d.deviation), 0) / recent7.length
+      ? recent7.reduce((s, d) => s + d.deviation, 0) / recent7.length
       : 0;
   const olderAvgDebt =
     older7.length > 0
-      ? older7.reduce((s, d) => s + Math.max(0, d.deviation), 0) / older7.length
+      ? older7.reduce((s, d) => s + d.deviation, 0) / older7.length
       : 0;
   const change7d = Math.round((recentAvgDebt - olderAvgDebt) * 100) / 100;
   const direction = change7d < -0.25 ? 'improving' : change7d > 0.25 ? 'worsening' : 'stable';
@@ -232,17 +235,31 @@ async function calculateBaseline(userId, windowDays = 90) {
     }
   }
 
+  // Confidence calculation
+  let confidence = 'low';
+  if (workdayEntries.length >= 40 && freedayEntries.length >= 16) {
+    confidence = 'high';
+  } else if (workdayEntries.length >= 20 && freedayEntries.length >= 8) {
+    confidence = 'medium';
+  }
+
   if (workdayEntries.length < MCTQ_CONFIG.minWorkdaysForCalculation / 2 ||
       freedayEntries.length < MCTQ_CONFIG.minFreedaysForCalculation / 2) {
-    // Fallback: use overall median
+    
     const allTSTs = history.map((e) => getTST(e)).filter((t) => t !== null && t >= 3 && t <= 14);
-    const fallbackNeed = Math.max(
+    let fallbackNeed = median(allTSTs);
+    
+    // Weighted pull toward default 8.25 if data is sparse
+    const weight = Math.min(1, allTSTs.length / 30);
+    fallbackNeed = (fallbackNeed * weight) + (DEFAULT_SLEEP_NEED_HOURS * (1 - weight));
+
+    fallbackNeed = Math.max(
       MCTQ_CONFIG.minSleepNeed,
-      Math.min(MCTQ_CONFIG.maxSleepNeed, median(allTSTs))
+      Math.min(MCTQ_CONFIG.maxSleepNeed - 1, fallbackNeed) // Cap at 9h for low confidence
     );
 
     await sleepScienceRepository.updateBaselineSleepNeed(userId, {
-      baselineNeed: fallbackNeed,
+      baselineNeed: Math.round(fallbackNeed * 100) / 100,
       confidence: 'low',
       basedOnDays: allTSTs.length,
       sdWorkday: null,
@@ -252,7 +269,7 @@ async function calculateBaseline(userId, windowDays = 90) {
 
     return {
       success: true,
-      sleepNeedIdeal: fallbackNeed,
+      sleepNeedIdeal: Math.round(fallbackNeed * 100) / 100,
       confidence: 'low',
       method: 'median_fallback',
       basedOnDays: allTSTs.length,
@@ -266,49 +283,41 @@ async function calculateBaseline(userId, windowDays = 90) {
 
   let sleepNeedIdeal;
   if (sdFreeday > sdWorkday) {
+    // Standard MCTQ Correction
     sleepNeedIdeal = sdFreeday - (sdFreeday - sdWeek) / 2;
   } else {
     sleepNeedIdeal = sdWeek;
   }
+
+  // If low/medium confidence, pull toward 8.25 to avoid outliers
+  if (confidence !== 'high') {
+    const targetWeight = confidence === 'medium' ? 0.7 : 0.4;
+    sleepNeedIdeal = (sleepNeedIdeal * targetWeight) + (DEFAULT_SLEEP_NEED_HOURS * (1 - targetWeight));
+  }
+
   sleepNeedIdeal = Math.max(
     MCTQ_CONFIG.minSleepNeed,
     Math.min(MCTQ_CONFIG.maxSleepNeed, sleepNeedIdeal)
   );
 
-  // Mid-sleep calculation
-  const workdayMidSleeps = [];
-  const freedayMidSleeps = [];
-  for (const entry of workdayEntries) {
+  // Mid-sleep point calculation - uses actual TST to find the true middle
+  const getMidSleep = (entry) => {
     const start = getSleepHour(entry);
-    const end = getWakeHour(entry);
-    if (start !== null && end !== null) {
-      let mid = (start + (end > start ? end : end + 24)) / 2;
-      if (mid >= 24) mid -= 24;
-      workdayMidSleeps.push(mid);
-    }
-  }
-  for (const entry of freedayEntries) {
-    const start = getSleepHour(entry);
-    const end = getWakeHour(entry);
-    if (start !== null && end !== null) {
-      let mid = (start + (end > start ? end : end + 24)) / 2;
-      if (mid >= 24) mid -= 24;
-      freedayMidSleeps.push(mid);
-    }
-  }
+    if (start === null) return null;
+    const tst = getTST(entry);
+    if (tst === null) return null;
+    let mid = start + (tst / 2);
+    if (mid >= 24) mid -= 24;
+    return mid;
+  };
+
+  const workdayMidSleeps = workdayEntries.map(getMidSleep).filter(m => m !== null);
+  const freedayMidSleeps = freedayEntries.map(getMidSleep).filter(m => m !== null);
 
   const mswHour = workdayMidSleeps.length > 0 ? mean(workdayMidSleeps) : null;
   const msfHour = freedayMidSleeps.length > 0 ? mean(freedayMidSleeps) : null;
   const socialJetlag =
     mswHour !== null && msfHour !== null ? Math.abs(msfHour - mswHour) : null;
-
-  // Confidence
-  let confidence = 'low';
-  if (workdayEntries.length >= 40 && freedayEntries.length >= 16) {
-    confidence = 'high';
-  } else if (workdayEntries.length >= 20 && freedayEntries.length >= 8) {
-    confidence = 'medium';
-  }
 
   // Determine data range
   const dates = history

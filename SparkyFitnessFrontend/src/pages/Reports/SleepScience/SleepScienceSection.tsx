@@ -13,7 +13,6 @@ import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import ChronotypeCard from './ChronotypeCard';
 import EnergySchedule from './EnergySchedule';
-import SleepDebtBreakdown from './SleepDebtBreakdown';
 import SleepDebtHistory from './SleepDebtHistory';
 import SleepDebtRing from './SleepDebtRing';
 import SleepNeedBreakdown from './SleepNeedBreakdown';
@@ -154,13 +153,6 @@ const SleepScienceSection: React.FC<SleepScienceSectionProps> = ({
           {/* Sleep Debt History */}
           {sleepDebt && sleepDebt.last14Days.length > 0 && (
             <SleepDebtHistory data={sleepDebt} />
-          )}
-
-          {/* Sleep Debt Daily Breakdown */}
-          {sleepDebt && sleepDebt.last14Days.length > 0 && (
-            <div className="md:col-span-2">
-              <SleepDebtBreakdown data={sleepDebt} />
-            </div>
           )}
         </div>
       )}
