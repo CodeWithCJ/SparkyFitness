@@ -39,9 +39,14 @@ export const updateMealPlanTemplate = async (
 
 export const deleteMealPlanTemplate = async (
   userId: string,
-  templateId: string
+  templateId: string,
+  currentClientDate?: string
 ): Promise<void> => {
-  await api.delete(`/meal-plan-templates/${templateId}?userId=${userId}`);
+  let url = `/meal-plan-templates/${templateId}?userId=${userId}`;
+  if (currentClientDate) {
+    url += `&currentClientDate=${currentClientDate}`;
+  }
+  await api.delete(url);
 };
 
 export const getMealDayPresets = async (userId: string): Promise<[]> => {

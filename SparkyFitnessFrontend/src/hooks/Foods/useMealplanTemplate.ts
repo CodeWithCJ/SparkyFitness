@@ -92,10 +92,12 @@ export const useDeleteMealPlanMutation = () => {
     mutationFn: ({
       userId,
       templateId,
+      currentClientDate,
     }: {
       userId: string;
       templateId: string;
-    }) => deleteMealPlanTemplate(userId, templateId),
+      currentClientDate?: string;
+    }) => deleteMealPlanTemplate(userId, templateId, currentClientDate),
     onSuccess: (_data, variables) => {
       return queryClient.invalidateQueries({
         queryKey: mealPlanKeys.byUser(variables.userId),

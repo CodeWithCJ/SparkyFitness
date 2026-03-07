@@ -119,13 +119,21 @@ const PrProgressionChart = ({ prProgressionData }: PrProgressionChartProps) => {
                     }}
                   />
                   <Tooltip
-                    formatter={(value: number, name: string) => {
+                    formatter={(
+                      value: number | undefined,
+                      name: string | undefined
+                    ) => {
+                      const finalName = name || '';
                       if (
-                        name === t('prProgressionChart.maxReps', 'Max Reps')
+                        finalName ===
+                        t('prProgressionChart.maxReps', 'Max Reps')
                       ) {
-                        return [value, name];
+                        return [value ?? 0, finalName];
                       }
-                      return [`${formatWeight(value)} ${weightUnit}`, name];
+                      return [
+                        `${formatWeight(value ?? 0)} ${weightUnit}`,
+                        finalName,
+                      ];
                     }}
                     contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                   />

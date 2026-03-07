@@ -24,7 +24,7 @@ import {
   useMealPlanTemplates,
   useUpdateMealPlanMutation,
 } from '@/hooks/Foods/useMealplanTemplate';
-import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
+import { useFoodEntryInvalidation } from '@/hooks/useInvalidateKeys';
 
 const MealPlanCalendar: React.FC = () => {
   const { t } = useTranslation();
@@ -35,7 +35,7 @@ const MealPlanCalendar: React.FC = () => {
     MealPlanTemplate | undefined
   >(undefined);
   const isMobile = useIsMobile();
-  const invalidate = useDiaryInvalidation();
+  const invalidate = useFoodEntryInvalidation();
   const { data: templates, isLoading } = useMealPlanTemplates(activeUserId);
   const { mutateAsync: createMealPlanTemplate } = useCreateMealPlanMutation();
   const { mutateAsync: updateMealPlanTemplate } = useUpdateMealPlanMutation();
@@ -54,7 +54,8 @@ const MealPlanCalendar: React.FC = () => {
   const handleSave = async (templateData: Partial<MealPlanTemplate>) => {
     if (!activeUserId) return;
     try {
-      const currentClientDate = new Date().toISOString().split('T')[0] ?? ''; // Get today's date in YYYY-MM-DD format
+      const now = new Date();
+      const currentClientDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       if (templateData.id) {
         const updatedTemplate = await updateMealPlanTemplate({
@@ -80,7 +81,7 @@ const MealPlanCalendar: React.FC = () => {
         ); // Use debug
       }
       setIsFormOpen(false);
-      invalidate();
+      invalidate(); // Trigger refresh of diary and reports
     } catch (error) {
       // The toast will be handled by the QueryClient's mutationCache
     }
@@ -93,7 +94,15 @@ const MealPlanCalendar: React.FC = () => {
     )
       return;
     try {
-      await deleteMealPlanTemplate({ userId: activeUserId, templateId });
+      const now = new Date();
+      const currentClientDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      await deleteMealPlanTemplate({
+        userId: activeUserId,
+        templateId,
+        currentClientDate,
+      });
+      invalidate(); // Refresh diary and reports after deletion
     } catch (error) {
       // The toast will be handled by the QueryClient's mutationCache
     }

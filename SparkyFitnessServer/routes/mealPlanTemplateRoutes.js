@@ -269,7 +269,8 @@ router.put('/:id', authenticate, async (req, res, next) => {
  */
 router.delete('/:id', authenticate, async (req, res, next) => {
     try {
-        await mealPlanTemplateService.deleteMealPlanTemplate(req.params.id, req.userId);
+        const { currentClientDate } = req.query;
+        await mealPlanTemplateService.deleteMealPlanTemplate(req.params.id, req.userId, currentClientDate);
         res.status(204).send();
     } catch (error) {
         next(error);

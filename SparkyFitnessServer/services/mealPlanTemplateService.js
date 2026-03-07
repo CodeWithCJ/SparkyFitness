@@ -69,8 +69,11 @@ async function updateMealPlanTemplate(planId, userId, planData, currentClientDat
     }
 }
 
-async function deleteMealPlanTemplate(planId, userId) {
+async function deleteMealPlanTemplate(planId, userId, currentClientDate = null) {
     try {
+        log('info', `deleteMealPlanTemplate service - Deleting food entries for template ${planId} starting from ${currentClientDate || 'today'}`);
+        await foodRepository.deleteFoodEntriesByTemplateId(planId, userId, currentClientDate);
+        
         return await mealPlanTemplateRepository.deleteMealPlanTemplate(planId, userId);
     } catch (error) {
         log('error', `Error deleting meal plan template ${planId} for user ${userId}: ${error.message}`, error);
