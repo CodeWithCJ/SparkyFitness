@@ -5,4 +5,5 @@ export interface MealType {
   user_id: string | null;
   created_at: string;
   is_visible: boolean;
+  show_in_quick_log: boolean;
 }

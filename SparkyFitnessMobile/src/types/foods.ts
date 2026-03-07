@@ -6,10 +6,22 @@ export interface FoodDefaultVariant {
   protein: number;
   carbs: number;
   fat: number;
-  fiber?: number;
   saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
   sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
   sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  is_default?: boolean;
+  glycemic_index?: string;
+  custom_nutrients?: Record<string, string | number>;
 }
 
 export interface FoodItem {
@@ -44,8 +56,19 @@ export interface FoodVariantDetail {
   carbs: number;
   fat: number;
   saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
   sodium?: number;
+  potassium?: number;
   dietary_fiber?: number;
   sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
   is_default?: boolean;
+  glycemic_index?: string;
+  custom_nutrients?: Record<string, string | number>;
 }

@@ -16,13 +16,12 @@ export interface FoodEntry {
   quantity: number;
   unit: string;
   variant_id?: string;
-  food_variants?: FoodVariant;
-  food_name?: string; // Snapshotted food name
-  brand_name?: string; // Snapshotted brand name
+  food_name?: string;
+  brand_name?: string;
   entry_date: string;
   meal_plan_template_id?: string;
-  // Add water_ml to FoodEntry if it's a water entry
-  water_ml?: number;
+  serving_size: number;
+  serving_unit?: string;
 
   // Snapshotted nutrient data
   calories: number;
@@ -42,7 +41,6 @@ export interface FoodEntry {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
-  // glycemic_index?: GlycemicIndex;
-  serving_size: number;
-  custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
+  glycemic_index?: string;
+  custom_nutrients?: Record<string, string | number>;
 }
