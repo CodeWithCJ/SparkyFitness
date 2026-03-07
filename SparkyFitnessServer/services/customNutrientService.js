@@ -115,25 +115,100 @@ class CustomNutrientService {
   }
 
   /**
-   * Deletes a custom nutrient.
+   * Deletes a custom nutrient and cleans up its data across the system.
    * @param {string} userId - The ID of the user who owns the custom nutrient.
    * @param {string} id - The ID of the custom nutrient to delete.
+   * @param {boolean} deleteAllHistory - Whether to remove from historical entries and goals.
    * @returns {boolean} True if the custom nutrient was deleted, false otherwise.
    */
-  static async deleteCustomNutrient(userId, id) {
+  static async deleteCustomNutrient(userId, id, deleteAllHistory = false) {
     const client = await getClient(userId);
     try {
-      const result = await client.query(
-        `DELETE FROM user_custom_nutrients
-                 WHERE id = $1 AND user_id = $2
-                 RETURNING id`,
+      // 1. Get the nutrient name first so we know what to clean up from JSONB
+      const nutrientRes = await client.query(
+        "SELECT name FROM user_custom_nutrients WHERE id = $1 AND user_id = $2",
         [id, userId],
       );
-      if (result.rows.length > 0) {
-        log("info", `Custom nutrient deleted: ${id} for user ${userId}`);
-        return true;
+
+      if (nutrientRes.rows.length === 0) {
+        return false;
       }
-      return false;
+
+      const nutrientName = nutrientRes.rows[0].name;
+      log(
+        "info",
+        `Deleting custom nutrient "${nutrientName}" for user ${userId}. Delete history: ${deleteAllHistory}`,
+      );
+
+      // Start transaction for atomic cleanup
+      await client.query("BEGIN");
+
+      // 2. Remove the definition
+      await client.query(
+        "DELETE FROM user_custom_nutrients WHERE id = $1 AND user_id = $2",
+        [id, userId],
+      );
+
+      // 3. Remove from UI Display Preferences (Always)
+      const nutrientDisplayPreferenceService = require("./nutrientDisplayPreferenceService");
+      await nutrientDisplayPreferenceService.removeNutrientFromAllViews(
+        userId,
+        nutrientName,
+      );
+
+      // 4. Remove from Goal Presets (Always)
+      await client.query(
+        "UPDATE goal_presets SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2",
+        [nutrientName, userId],
+      );
+
+      // 5. Remove from Food Database (Always - standardizes the library)
+      await client.query(
+        `UPDATE food_variants SET custom_nutrients = custom_nutrients - $1 
+         WHERE food_id IN (SELECT id FROM foods WHERE user_id = $2)`,
+        [nutrientName, userId],
+      );
+
+      // 6. Remove from Future Goals (Always - date >= today)
+      const today = new Date().toISOString().split("T")[0];
+      await client.query(
+        "UPDATE user_goals SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2 AND (goal_date >= $3 OR goal_date IS NULL)",
+        [nutrientName, userId, today],
+      );
+
+      // 7. Optional: Remove from History (Diary Entries and Past Goals)
+      if (deleteAllHistory) {
+        log(
+          "info",
+          `Cleaning up historical data for nutrient "${nutrientName}" for user ${userId}`,
+        );
+
+        // Remove from all Diary Entries
+        await client.query(
+          "UPDATE food_entries SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2",
+          [nutrientName, userId],
+        );
+
+        // Remove from all Past Goals
+        await client.query(
+          "UPDATE user_goals SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2 AND goal_date < $3",
+          [nutrientName, userId, today],
+        );
+      }
+
+      await client.query("COMMIT");
+      log(
+        "info",
+        `Successfully deleted custom nutrient "${nutrientName}" and performed cascading cleanup for user ${userId}`,
+      );
+      return true;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      log(
+        "error",
+        `Failed to delete custom nutrient ${id} for user ${userId}: ${error.message}`,
+      );
+      throw error;
     } finally {
       client.release();
     }

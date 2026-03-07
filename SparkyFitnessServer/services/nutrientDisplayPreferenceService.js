@@ -104,6 +104,42 @@ async function addNutrientToSpecificViews(userId, nutrientName) {
   }
 }
 
+/**
+ * Removes a nutrient from all display preferences for a user.
+ */
+async function removeNutrientFromAllViews(userId, nutrientName) {
+  log(
+    "info",
+    `removeNutrientFromAllViews: Removing nutrient ${nutrientName} for user ${userId}`,
+  );
+
+  const rawUserPrefs =
+    await nutrientDisplayPreferenceRepository.getNutrientDisplayPreferences(
+      userId,
+    );
+
+  for (const pref of rawUserPrefs) {
+    let visibleNutrients =
+      typeof pref.visible_nutrients === "string"
+        ? JSON.parse(pref.visible_nutrients)
+        : pref.visible_nutrients;
+
+    if (visibleNutrients.includes(nutrientName)) {
+      const updatedNutrients = visibleNutrients.filter((n) => n !== nutrientName);
+      log(
+        "debug",
+        `removeNutrientFromAllViews: Updating ${pref.view_group}/${pref.platform} for user ${userId}`,
+      );
+      await upsertNutrientDisplayPreference(
+        userId,
+        pref.view_group,
+        pref.platform,
+        updatedNutrients,
+      );
+    }
+  }
+}
+
 async function getAllNutrients(userId) {
   const customNutrientService = require("./customNutrientService");
   const customNutrients =
@@ -312,4 +348,5 @@ module.exports = {
   createDefaultNutrientPreferencesForUser,
   getAllNutrients,
   addNutrientToSpecificViews,
+  removeNutrientFromAllViews,
 };
