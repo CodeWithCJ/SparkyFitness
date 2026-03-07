@@ -210,6 +210,13 @@ export const ProviderCard = ({
   };
 
   const getProviderConfig = () => {
+    // Basic hasToken check that is more robust
+    const isLinked =
+      provider.has_token ||
+      provider.garmin_connect_status === 'linked' ||
+      provider.garmin_connect_status === 'connected' ||
+      provider.hevy_connect_status === 'connected';
+
     switch (provider.provider_type) {
       case 'withings':
         return {
@@ -218,7 +225,7 @@ export const ProviderCard = ({
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.withings_last_sync_at,
           tokenExpires: provider.withings_token_expires,
-          hasToken: provider.has_token,
+          hasToken: isLinked && provider.is_active,
         };
       case 'fitbit':
         return {
@@ -227,7 +234,7 @@ export const ProviderCard = ({
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.fitbit_last_sync_at,
           tokenExpires: provider.fitbit_token_expires,
-          hasToken: provider.has_token,
+          hasToken: isLinked && provider.is_active,
         };
       case 'polar':
         return {
@@ -236,7 +243,7 @@ export const ProviderCard = ({
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.polar_last_sync_at,
           tokenExpires: provider.polar_token_expires,
-          hasToken: provider.has_token,
+          hasToken: isLinked && provider.is_active,
         };
       case 'strava':
         return {
@@ -245,7 +252,7 @@ export const ProviderCard = ({
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.strava_last_sync_at,
           tokenExpires: provider.strava_token_expires,
-          hasToken: provider.has_token,
+          hasToken: isLinked && provider.is_active,
         };
       case 'garmin':
         return {
@@ -254,9 +261,7 @@ export const ProviderCard = ({
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.garmin_last_status_check,
           tokenExpires: provider.garmin_token_expires,
-          hasToken:
-            provider.garmin_connect_status === 'linked' ||
-            provider.garmin_connect_status === 'connected',
+          hasToken: isLinked && provider.is_active,
         };
       case 'hevy':
         return {
@@ -265,7 +270,7 @@ export const ProviderCard = ({
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.hevy_last_sync_at,
           tokenExpires: null,
-          hasToken: true,
+          hasToken: isLinked && provider.is_active,
         };
       default:
         return null;
@@ -281,13 +286,14 @@ export const ProviderCard = ({
           <h4 className="font-medium">{provider.provider_name}</h4>
           {(provider.visibility === 'private' ||
             provider.user_id === user?.id) && (
-            <Lock className="h-3 w-3 text-muted-foreground" title="Private" />
+            <span title="Private">
+              <Lock className="h-3 w-3 text-muted-foreground" />
+            </span>
           )}
           {provider.shared_with_public && (
-            <Share2
-              className="h-3 w-3 text-green-500"
-              title="Shared with Family"
-            />
+            <span title="Shared with Family">
+              <Share2 className="h-3 w-3 text-green-500" />
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2">
