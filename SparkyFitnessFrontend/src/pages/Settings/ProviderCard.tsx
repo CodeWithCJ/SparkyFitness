@@ -98,10 +98,8 @@ export const ProviderCard = ({
   const { mutate: syncHevyData, isPending: isSyncHevyPending } =
     useSyncHevyMutation();
 
-  const {
-    mutateAsync: toggleProviderPublicSharing,
-    isPending: isToggleSharingPending,
-  } = useToggleProviderPublicSharingMutation();
+  const { isPending: isToggleSharingPending } =
+    useToggleProviderPublicSharingMutation();
 
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
 
