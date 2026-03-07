@@ -68,7 +68,7 @@ const DiaryTopControls = ({
     copyAllFromYesterday({ targetDate: selectedDate });
   };
 
-  const handleCopyAllToDate = (targetDate: string) => {
+  const handleCopyAllToDate = (targetDate: string, _targetMealType: string) => {
     copyAllToDate({
       sourceDate: selectedDate,
       targetDate,
