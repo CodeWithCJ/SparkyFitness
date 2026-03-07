@@ -1,0 +1,2 @@
+export const HIGH_DEBT_THRESHOLD_HOURS = 1.5;
+export const GOOD_SLEEP_SCORE_THRESHOLD = 70;

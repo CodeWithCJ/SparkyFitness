@@ -16,6 +16,10 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
 import { formatSecondsToHHMM } from '@/utils/timeFormatters';
+import {
+  HIGH_DEBT_THRESHOLD_HOURS,
+  GOOD_SLEEP_SCORE_THRESHOLD,
+} from '@/constants/sleepScience';
 
 interface SleepAnalyticsTableProps {
   combinedSleepData: CombinedSleepData[];
