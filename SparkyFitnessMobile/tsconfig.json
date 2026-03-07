@@ -5,6 +5,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@workspace/shared": [
+        "../shared/src/index.ts"
       ]
     }
   },
