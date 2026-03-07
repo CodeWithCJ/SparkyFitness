@@ -1,13 +1,23 @@
 import { normalizeUrl, apiFetch } from '../../src/services/api/apiClient';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
+import { notifySessionExpired } from '../../src/services/api/authService';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
 }));
 
+jest.mock('../../src/services/api/authService', () => ({
+  ...jest.requireActual('../../src/services/api/authService'),
+  notifySessionExpired: jest.fn(),
+}));
+
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
+
+const mockNotifySessionExpired = notifySessionExpired as jest.MockedFunction<
+  typeof notifySessionExpired
+>;
 
 const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
   typeof getActiveServerConfig
@@ -210,6 +220,96 @@ describe('apiClient', () => {
         'https://example.com/api/test',
         expect.anything()
       );
+    });
+
+    describe('session auth', () => {
+      const sessionConfig: ServerConfig = {
+        id: 'session-config-id',
+        url: 'https://example.com',
+        apiKey: '',
+        authType: 'session',
+        sessionToken: 'my-session-token',
+      };
+
+      test('sends Bearer with session token instead of apiKey', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(sessionConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({}),
+        });
+
+        await apiFetch({
+          endpoint: '/api/test',
+          serviceName: 'Test API',
+          operation: 'fetch test',
+        });
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://example.com/api/test',
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: 'Bearer my-session-token',
+            }),
+          })
+        );
+      });
+
+      test('401 with session config calls notifySessionExpired', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(sessionConfig);
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 401,
+          text: () => Promise.resolve('Unauthorized'),
+        });
+
+        await expect(
+          apiFetch({
+            endpoint: '/api/test',
+            serviceName: 'Test API',
+            operation: 'fetch test',
+          })
+        ).rejects.toThrow();
+
+        expect(mockNotifySessionExpired).toHaveBeenCalledWith('session-config-id');
+      });
+
+      test('401 with API key config does NOT call notifySessionExpired', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 401,
+          text: () => Promise.resolve('Unauthorized'),
+        });
+
+        await expect(
+          apiFetch({
+            endpoint: '/api/test',
+            serviceName: 'Test API',
+            operation: 'fetch test',
+          })
+        ).rejects.toThrow();
+
+        expect(mockNotifySessionExpired).not.toHaveBeenCalled();
+      });
+
+      test('non-401 error with session config does NOT call notifySessionExpired', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(sessionConfig);
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 500,
+          text: () => Promise.resolve('Internal Server Error'),
+        });
+
+        await expect(
+          apiFetch({
+            endpoint: '/api/test',
+            serviceName: 'Test API',
+            operation: 'fetch test',
+          })
+        ).rejects.toThrow();
+
+        expect(mockNotifySessionExpired).not.toHaveBeenCalled();
+      });
     });
 
     describe('HTTPS enforcement', () => {

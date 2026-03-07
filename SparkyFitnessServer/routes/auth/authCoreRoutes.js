@@ -21,6 +21,19 @@ router.get('/settings', async (req, res) => {
             oidcProviderRepository.getOidcProviders()
         ]);
 
+        let trustedOrigin = null;
+        if (process.env.SPARKY_FITNESS_FRONTEND_URL) {
+            try {
+                trustedOrigin = new URL(
+                    process.env.SPARKY_FITNESS_FRONTEND_URL.startsWith('http')
+                        ? process.env.SPARKY_FITNESS_FRONTEND_URL
+                        : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`
+                ).origin;
+            } catch (error) {
+                log('warn', `[AUTH CORE] Invalid frontend URL for trusted origin: ${process.env.SPARKY_FITNESS_FRONTEND_URL}`);
+            }
+        }
+
         // Environment overrides are now handled within globalSettingsRepository.getGlobalSettings()
         const oidcAutoRedirectEnv = process.env.SPARKY_FITNESS_OIDC_AUTO_REDIRECT === 'true';
 
@@ -37,6 +50,7 @@ router.get('/settings', async (req, res) => {
             }));
 
         res.json({
+            trusted_origin: trustedOrigin,
             email: {
                 enabled: emailEnabled
             },
@@ -52,6 +66,7 @@ router.get('/settings', async (req, res) => {
         const forceEmailLogin = process.env.SPARKY_FITNESS_FORCE_EMAIL_LOGIN === 'true';
         const disableEmailLogin = process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN === 'true';
         res.json({
+            trusted_origin: null,
             email: { enabled: forceEmailLogin || !disableEmailLogin },
             oidc: { enabled: process.env.SPARKY_FITNESS_OIDC_AUTH_ENABLED === 'true', providers: [], auto_redirect: false }
         });

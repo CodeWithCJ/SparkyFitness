@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, authorize } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const chatService = require('../services/chatService');
 const globalSettingsRepository = require('../models/globalSettingsRepository');
 
@@ -134,7 +134,7 @@ router.post('/clear-old-history', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.get('/ai-service-settings', authenticate, authorize('ai_service_settings'), async (req, res, next) => {
+router.get('/ai-service-settings', authenticate, async (req, res, next) => {
   try {
     const settings = await chatService.getAiServiceSettings(req.userId, req.userId);
     
@@ -172,7 +172,7 @@ router.get('/ai-service-settings', authenticate, authorize('ai_service_settings'
  *       500:
  *         description: Server error.
  */
-router.get('/ai-service-settings/active', authenticate, authorize('ai_service_settings'), async (req, res, next) => {
+router.get('/ai-service-settings/active', authenticate, async (req, res, next) => {
   try {
     const setting = await chatService.getActiveAiServiceSetting(req.userId, req.userId);
     res.status(200).json(setting);
@@ -214,7 +214,7 @@ router.get('/ai-service-settings/active', authenticate, authorize('ai_service_se
  *       500:
  *         description: Server error.
  */
-router.delete('/ai-service-settings/:id', authenticate, authorize('ai_service_settings'), async (req, res, next) => {
+router.delete('/ai-service-settings/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'AI Service ID is required.' });
@@ -266,7 +266,7 @@ router.delete('/ai-service-settings/:id', authenticate, authorize('ai_service_se
  *       500:
  *         description: Server error.
  */
-router.get('/sparky-chat-history', authenticate, authorize('chat_history'), async (req, res, next) => {
+router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
   try {
     const history = await chatService.getSparkyChatHistory(req.userId, req.userId);
     res.status(200).json(history);
@@ -305,7 +305,7 @@ router.get('/sparky-chat-history', authenticate, authorize('chat_history'), asyn
  *       500:
  *         description: Server error.
  */
-router.get('/sparky-chat-history/entry/:id', authenticate, authorize('chat_history'), async (req, res, next) => {
+router.get('/sparky-chat-history/entry/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Chat History Entry ID is required.' });
@@ -357,7 +357,7 @@ router.get('/sparky-chat-history/entry/:id', authenticate, authorize('chat_histo
  *       500:
  *         description: Server error.
  */
-router.put('/sparky-chat-history/:id', authenticate, authorize('chat_history'), async (req, res, next) => {
+router.put('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
   if (!id) {
@@ -404,7 +404,7 @@ router.put('/sparky-chat-history/:id', authenticate, authorize('chat_history'), 
  *       500:
  *         description: Server error.
  */
-router.delete('/sparky-chat-history/:id', authenticate, authorize('chat_history'), async (req, res, next) => {
+router.delete('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Chat History Entry ID is required.' });
@@ -439,7 +439,7 @@ router.delete('/sparky-chat-history/:id', authenticate, authorize('chat_history'
  *       500:
  *         description: Server error.
  */
-router.post('/clear-all-history', authenticate, authorize('chat_history'), async (req, res, next) => {
+router.post('/clear-all-history', authenticate, async (req, res, next) => {
   try {
     const result = await chatService.clearAllSparkyChatHistory(req.userId);
     res.status(200).json(result);
@@ -482,7 +482,7 @@ router.post('/clear-all-history', authenticate, authorize('chat_history'), async
  *       500:
  *         description: Server error.
  */
-router.post('/save-history', authenticate, authorize('chat_history'), async (req, res, next) => {
+router.post('/save-history', authenticate, async (req, res, next) => {
   const { content, messageType, metadata } = req.body;
   if (!content || !messageType) {
     return res.status(400).json({ error: 'Content and message type are required.' });

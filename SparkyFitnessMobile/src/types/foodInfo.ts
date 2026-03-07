@@ -33,7 +33,7 @@ export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem 
   protein: item.default_variant.protein,
   carbs: item.default_variant.carbs,
   fat: item.default_variant.fat,
-  fiber: item.default_variant.fiber,
+  fiber: item.default_variant.dietary_fiber,
   saturatedFat: item.default_variant.saturated_fat,
   sodium: item.default_variant.sodium,
   sugars: item.default_variant.sugars,

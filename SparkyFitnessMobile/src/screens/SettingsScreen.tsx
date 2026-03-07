@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
 import type { ServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { notifyNoConfigs } from '../services/api/authService';
 import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference } from '../services/healthConnectService';
 import { configureBackgroundSync, stopBackgroundSync } from '../services/backgroundSyncService';
 import { HEALTH_METRICS } from '../HealthMetrics';
@@ -96,7 +97,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   useEffect(() => {
     loadConfig();
-  }, [activeConfigId]);
+  }, [activeConfigId, isConnected]);
 
   const openWebDashboard = async (): Promise<void> => {
     try {
@@ -130,7 +131,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   const handleSaveConfig = async (): Promise<void> => {
-    if (!url || !apiKey) {
+    const existingConfig = serverConfigs.find((c) => c.id === currentConfigId);
+    const isSessionAuth = existingConfig?.authType === 'session';
+
+    if (!url || (!apiKey && !isSessionAuth)) {
       Alert.alert('Error', 'Please enter both a server URL and an API key.');
       return;
     }
@@ -140,10 +144,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
     try {
       const normalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+      const hasNewApiKey = !!apiKey.trim();
       const configToSave: ServerConfig = {
         id: currentConfigId || Date.now().toString(),
         url: normalizedUrl,
-        apiKey,
+        apiKey: apiKey || existingConfig?.apiKey || '',
+        ...(hasNewApiKey
+          ? { authType: 'apiKey' as const, sessionToken: '' }
+          : {}),
       };
       await saveServerConfig(configToSave);
 
@@ -185,16 +193,23 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const handleDeleteConfig = async (configId: string): Promise<void> => {
     try {
       await deleteServerConfig(configId);
-      await loadConfig();
-      refetchConnection();
+      const remainingConfigs = await getAllServerConfigs();
       if (activeConfigId === configId) {
         setUrl('');
         setApiKey('');
         setActiveConfigId(null);
         setCurrentConfigId(null);
       }
-      Alert.alert('Success', 'Server configuration deleted.');
+      await loadConfig();
+      refetchConnection();
       addLog('Server configuration deleted.', 'SUCCESS');
+      if (remainingConfigs.length === 0) {
+        Alert.alert('Success', 'Server configuration deleted.', [
+          { text: 'OK', onPress: () => notifyNoConfigs() },
+        ]);
+      } else {
+        Alert.alert('Success', 'Server configuration deleted.');
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to delete server configuration:', error);
@@ -205,7 +220,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   const handleEditConfig = (config: ServerConfig): void => {
     setUrl(config.url);
-    setApiKey(config.apiKey);
+    // Session-backed configs may still retain an old API key for fallback,
+    // but opening the editor should not implicitly treat that as an auth-mode switch.
+    setApiKey(config.authType === 'session' ? '' : config.apiKey);
     setCurrentConfigId(config.id);
     setShowConfigModal(true);
   };

@@ -170,7 +170,7 @@ async function getActiveAiServiceSetting(userId) {
 }
 
 async function clearOldChatHistory(userId) {
-  const client = await getSystemClient(); // System-level operation
+  const client = await getClient(userId);
   try {
     await client.query(`
       DELETE FROM sparky_chat_history

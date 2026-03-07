@@ -1,6 +1,7 @@
 import { getActiveServerConfig } from '../storage';
 import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
+import { getAuthHeaders, notifySessionExpired } from './authService';
 
 export interface HealthDataPayloadItem {
   type: string;
@@ -19,7 +20,6 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
     throw new Error('Server configuration not found.');
   }
 
-  const { apiKey } = config;
   const url = normalizeUrl(config.url);
 
   if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
@@ -27,7 +27,6 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
   }
 
   console.log(`[API Service] Attempting to sync to URL: ${url}/api/health-data`);
-  console.log(`[API Service] Using API Key (first 5 chars): ${apiKey ? apiKey.substring(0, 5) + '...' : 'N/A'}`);
 
   addLog(`[API] Starting sync of ${data.length} records to server`, 'DEBUG');
 
@@ -36,14 +35,17 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        ...getAuthHeaders(config),
       },
       body: JSON.stringify(data),
     });
 
     if (!response.ok) {
-      const errorText = await response.text(); // Read raw response text
-      console.log('Server responded with non-OK status:', response.status, errorText); // Use console.log
+      if (response.status === 401 && config.authType === 'session') {
+        notifySessionExpired(config.id);
+      }
+      const errorText = await response.text();
+      console.log('Server responded with non-OK status:', response.status, errorText);
       addLog(`[API] Sync failed: server returned ${response.status}`, 'ERROR', [errorText]);
       throw new Error(`Server error: ${response.status} - ${errorText}`);
     }
@@ -68,7 +70,6 @@ export const checkServerConnection = async (): Promise<boolean> => {
     return false; // No configuration, so no connection
   }
 
-  const { apiKey } = config;
   const url = normalizeUrl(config.url);
 
   if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
@@ -80,15 +81,15 @@ export const checkServerConnection = async (): Promise<boolean> => {
     const response = await fetch(`${url}/api/identity/user`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        ...getAuthHeaders(config),
       },
     });
-    // Check for successful response (2xx status code)
     if (response.ok) {
-      // addLog(`[API] Server connection check successful`, 'debug');
       return true;
     } else {
-      // For non-2xx responses, log the error and return false
+      if (response.status === 401 && config.authType === 'session') {
+        notifySessionExpired(config.id);
+      }
       const errorText = await response.text();
       addLog(`[API] Server connection check failed: status ${response.status}`, 'WARNING', [errorText]);
       return false;

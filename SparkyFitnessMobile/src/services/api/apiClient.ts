@@ -1,5 +1,6 @@
 import { getActiveServerConfig } from '../storage';
 import { addLog } from '../LogService';
+import { getAuthHeaders, notifySessionExpired } from './authService';
 
 export const normalizeUrl = (url: string): string => {
   return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -32,7 +33,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
     const response = await fetch(`${baseUrl}${endpoint}`, {
       method,
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
+        ...getAuthHeaders(config),
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...customHeaders,
       },
@@ -40,6 +41,9 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
     });
 
     if (!response.ok) {
+      if (response.status === 401 && config.authType === 'session') {
+        notifySessionExpired(config.id);
+      }
       const errorText = await response.text();
       addLog(`[${serviceName}] Failed to ${operation}: ${response.status}`, 'ERROR', [errorText]);
       throw new Error(`Server error: ${response.status} - ${errorText}`);

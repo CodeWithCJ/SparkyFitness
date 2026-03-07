@@ -277,7 +277,7 @@ const auth = betterAuth({
       }
     }
 
-    const finalOrigins = [...new Set(origins)] // Remove duplicates
+    const finalOrigins = [...new Set(origins)]
       .filter(Boolean)
       .map((url) => url.replace(/\/$/, ""));
 
