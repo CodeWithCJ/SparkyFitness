@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import ZoomableChart from '@/components/ZoomableChart';
+import { formatWeight } from '@/utils/numberFormatting';
 
 interface PrProgressionChartProps {
   prProgressionData:
@@ -27,7 +28,8 @@ interface PrProgressionChartProps {
 
 const PrProgressionChart = ({ prProgressionData }: PrProgressionChartProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone } = usePreferences();
+  const { formatDateInUserTimezone, weightUnit, convertWeight } =
+    usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -60,6 +62,10 @@ const PrProgressionChart = ({ prProgressionData }: PrProgressionChartProps) => {
   const formattedData = prProgressionData.map((d) => ({
     ...d,
     date: formatDateInUserTimezone(d.date, 'MMM dd, yyyy'),
+    oneRM: parseFloat(convertWeight(d.oneRM, 'kg', weightUnit).toFixed(1)),
+    maxWeight: parseFloat(
+      convertWeight(d.maxWeight, 'kg', weightUnit).toFixed(1)
+    ),
   }));
 
   return (
@@ -94,8 +100,11 @@ const PrProgressionChart = ({ prProgressionData }: PrProgressionChartProps) => {
                   />
                   <YAxis
                     yAxisId="left"
+                    tickFormatter={(value) => formatWeight(value)}
                     label={{
-                      value: t('prProgressionChart.weightKg', 'Weight (kg)'),
+                      value: t('prProgressionChart.weightUnit', {
+                        unit: weightUnit,
+                      }),
                       angle: -90,
                       position: 'insideLeft',
                     }}
@@ -110,6 +119,14 @@ const PrProgressionChart = ({ prProgressionData }: PrProgressionChartProps) => {
                     }}
                   />
                   <Tooltip
+                    formatter={(value: number, name: string) => {
+                      if (
+                        name === t('prProgressionChart.maxReps', 'Max Reps')
+                      ) {
+                        return [value, name];
+                      }
+                      return [`${formatWeight(value)} ${weightUnit}`, name];
+                    }}
                     contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                   />
                   <Legend />

@@ -541,13 +541,12 @@ const ExerciseReportsDashboard = ({
                       existingEntry = { date, volume: 0, comparisonVolume: 0 };
                       acc.push(existingEntry);
                     }
+                    const currentVolume = entry.sets.reduce(
+                      (sum, set) => sum + set.reps * set.weight,
+                      0
+                    );
                     existingEntry.volume += parseFloat(
-                      formatWeight(
-                        entry.sets.reduce(
-                          (sum, set) => sum + set.reps * set.weight,
-                          0
-                        )
-                      )
+                      convertWeight(currentVolume, 'kg', weightUnit).toFixed(1)
                     );
                     // For comparison, we need to find the corresponding entry in comparisonExerciseProgressData
                     // This assumes a 1:1 date mapping for simplicity, might need more complex logic for real-world scenarios
@@ -559,13 +558,12 @@ const ExerciseReportsDashboard = ({
                         (compEntry) => compEntry.entry_date === entry.entry_date
                       );
                     if (comparisonEntry) {
+                      const compVolume = comparisonEntry.sets.reduce(
+                        (sum, set) => sum + set.reps * set.weight,
+                        0
+                      );
                       existingEntry.comparisonVolume += parseFloat(
-                        formatWeight(
-                          comparisonEntry.sets.reduce(
-                            (sum, set) => sum + set.reps * set.weight,
-                            0
-                          )
-                        )
+                        convertWeight(compVolume, 'kg', weightUnit).toFixed(1)
                       );
                     }
                     return acc;
@@ -691,9 +689,16 @@ const ExerciseReportsDashboard = ({
                       };
                       acc.push(existingEntry);
                     }
+                    const currentMaxWeight = parseFloat(
+                      convertWeight(
+                        Math.max(...entry.sets.map((set) => set.weight)),
+                        'kg',
+                        weightUnit
+                      ).toFixed(1)
+                    );
                     existingEntry.maxWeight = Math.max(
                       existingEntry.maxWeight,
-                      ...entry.sets.map((set) => set.weight)
+                      currentMaxWeight
                     );
                     const comparisonEntry = Object.values(
                       comparisonExerciseProgressData
@@ -703,9 +708,18 @@ const ExerciseReportsDashboard = ({
                         (compEntry) => compEntry.entry_date === entry.entry_date
                       );
                     if (comparisonEntry) {
+                      const compMaxWeight = parseFloat(
+                        convertWeight(
+                          Math.max(
+                            ...comparisonEntry.sets.map((set) => set.weight)
+                          ),
+                          'kg',
+                          weightUnit
+                        ).toFixed(1)
+                      );
                       existingEntry.comparisonMaxWeight = Math.max(
                         existingEntry.comparisonMaxWeight,
-                        ...comparisonEntry.sets.map((set) => set.weight)
+                        compMaxWeight
                       );
                     }
                     return acc;
@@ -765,6 +779,7 @@ const ExerciseReportsDashboard = ({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis
+                      tickFormatter={(value) => formatWeight(value)}
                       label={{
                         value: t(
                           'exerciseReportsDashboard.maxWeightCurrent',
@@ -777,6 +792,9 @@ const ExerciseReportsDashboard = ({
                       }}
                     />
                     <Tooltip
+                      formatter={(value: number | undefined) =>
+                        value ? `${formatWeight(value)} ${weightUnit}` : 0
+                      }
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
                       }}
@@ -830,13 +848,17 @@ const ExerciseReportsDashboard = ({
                       };
                       acc.push(existingEntry);
                     }
-                    existingEntry.estimated1RM = Math.round(
-                      Math.max(
-                        existingEntry.estimated1RM,
-                        ...entry.sets.map(
-                          (set) => set.weight * (1 + set.reps / 30)
-                        )
+                    const currentMax1RM = Math.max(
+                      ...entry.sets.map(
+                        (set) => set.weight * (1 + set.reps / 30)
                       )
+                    );
+                    const converted1RM = parseFloat(
+                      convertWeight(currentMax1RM, 'kg', weightUnit).toFixed(1)
+                    );
+                    existingEntry.estimated1RM = Math.max(
+                      existingEntry.estimated1RM,
+                      converted1RM
                     );
                     const comparisonEntry = Object.values(
                       comparisonExerciseProgressData
@@ -846,13 +868,17 @@ const ExerciseReportsDashboard = ({
                         (compEntry) => compEntry.entry_date === entry.entry_date
                       );
                     if (comparisonEntry) {
-                      existingEntry.comparisonEstimated1RM = Math.round(
-                        Math.max(
-                          existingEntry.comparisonEstimated1RM,
-                          ...comparisonEntry.sets.map(
-                            (set) => set.weight * (1 + set.reps / 30)
-                          )
+                      const compMax1RM = Math.max(
+                        ...comparisonEntry.sets.map(
+                          (set) => set.weight * (1 + set.reps / 30)
                         )
+                      );
+                      const convertedComp1RM = parseFloat(
+                        convertWeight(compMax1RM, 'kg', weightUnit).toFixed(1)
+                      );
+                      existingEntry.comparisonEstimated1RM = Math.max(
+                        existingEntry.comparisonEstimated1RM,
+                        convertedComp1RM
                       );
                     }
                     return acc;
@@ -912,6 +938,7 @@ const ExerciseReportsDashboard = ({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis
+                      tickFormatter={(value) => formatWeight(value)}
                       label={{
                         value: t(
                           'exerciseReportsDashboard.estimated1RMCurrent',
@@ -924,6 +951,9 @@ const ExerciseReportsDashboard = ({
                       }}
                     />
                     <Tooltip
+                      formatter={(value: number | undefined) =>
+                        value ? `${formatWeight(value)} ${weightUnit}` : 0
+                      }
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
                       }}

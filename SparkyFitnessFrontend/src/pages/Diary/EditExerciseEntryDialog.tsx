@@ -72,7 +72,9 @@ const EditExerciseEntryDialog = ({
   const [sets, setSets] = useState<WorkoutPresetSet[]>(() => {
     return ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
       ...set,
-      weight: convertWeight(Number(set.weight), 'kg', weightUnit),
+      weight: parseFloat(
+        convertWeight(Number(set.weight), 'kg', weightUnit).toFixed(1)
+      ),
     }));
   });
   const [notes, setNotes] = useState(entry.notes || '');
