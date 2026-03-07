@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { CATEGORY_ORDER } from '../HealthMetrics';
+import { addLog } from './LogService';
 
 export interface ProxyHeader {
   name: string;
@@ -151,7 +152,9 @@ export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
         const proxyHeadersJson = await SecureStore.getItemAsync(proxyHeadersSecureStoreKey(entry.id), secureStoreOptions);
         let proxyHeaders: ProxyHeader[] | undefined;
         if (proxyHeadersJson) {
-          try { proxyHeaders = JSON.parse(proxyHeadersJson); } catch { /* ignore */ }
+          try { proxyHeaders = JSON.parse(proxyHeadersJson); } catch {
+            addLog(`Failed to parse proxy headers for config ${entry.id}.`, 'ERROR');
+          }
         }
 
         const base = {
