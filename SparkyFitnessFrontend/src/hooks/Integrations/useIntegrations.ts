@@ -115,14 +115,21 @@ export const usePolarFlowMutation = () => {
 interface SyncHevyVariables {
   fullSync?: boolean;
   providerId?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const useSyncHevyMutation = () => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: ({ fullSync = false, providerId }: SyncHevyVariables) =>
-      syncHevyData(fullSync, providerId),
+    mutationFn: ({
+      fullSync = false,
+      providerId,
+      startDate,
+      endDate,
+    }: SyncHevyVariables) =>
+      syncHevyData(fullSync, providerId, startDate, endDate),
     meta: {
       successMessage: t(
         'integrations.hevySyncSuccess',
@@ -171,11 +178,17 @@ export const useDisconnectWithingsMutation = () => {
   });
 };
 
+interface SyncVariables {
+  startDate?: string;
+  endDate?: string;
+}
+
 export const useManualSyncWithingsMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: handleManualSync,
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSync(startDate, endDate),
     onSuccess: () => {
       invalidateSyncData();
     },
@@ -192,7 +205,8 @@ export const useManualSyncGarminMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: handleManualSyncGarmin,
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSyncGarmin(startDate, endDate),
     onSuccess: () => {
       invalidateSyncData();
     },
@@ -215,7 +229,8 @@ export const useManualSyncFitbitMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: handleManualSyncFitbit,
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSyncFitbit(startDate, endDate),
     onSuccess: () => {
       invalidateSyncData();
     },
@@ -234,11 +249,16 @@ export const useDisconnectPolarMutation = () => {
   });
 };
 
+interface SyncPolarVariables extends SyncVariables {
+  providerId: string;
+}
+
 export const useManualSyncPolarMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: handleManualSyncPolar,
+    mutationFn: ({ providerId, startDate, endDate }: SyncPolarVariables) =>
+      handleManualSyncPolar(providerId, startDate, endDate),
     onSuccess: () => {
       invalidateSyncData();
     },
@@ -261,7 +281,8 @@ export const useManualSyncStravaMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: handleManualSyncStrava,
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSyncStrava(startDate, endDate),
     onSuccess: () => {
       invalidateSyncData();
     },

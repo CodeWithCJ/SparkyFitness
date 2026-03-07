@@ -177,7 +177,10 @@ async function getExerciseTemplates(
  * Synchronize Hevy data for a user.
  * @param {string} userId - The Sparky Fitness user ID.
  * @param {string} createdByUserId - The user ID who triggered the sync.
- * @param {boolean} fullSync - Whether to fetch all history or just recent (last 7 days).
+ * @param {boolean} fullSync - Whether to fetch all history or just recent.
+ * @param {string} providerId - Optional provider ID.
+ * @param {string} [startDate] - Optional custom start date (YYYY-MM-DD).
+ * @param {string} [endDate] - Optional custom end date (YYYY-MM-DD).
  * @returns {Promise<Object>} - The result of the synchronization.
  */
 async function syncHevyData(
@@ -185,10 +188,12 @@ async function syncHevyData(
   createdByUserId,
   fullSync = false,
   providerId,
+  startDate = null,
+  endDate = null,
 ) {
   log(
     "info",
-    `Starting Hevy ${fullSync ? "FULL" : "INCREMENTAL"} synchronization for user ${userId}...`,
+    `Starting Hevy ${fullSync ? "FULL" : "INCREMENTAL"} synchronization for user ${userId}${startDate ? ` from ${startDate}` : ""}${endDate ? ` to ${endDate}` : ""}...`,
   );
 
   if (HEVY_DATA_SOURCE === "local") {

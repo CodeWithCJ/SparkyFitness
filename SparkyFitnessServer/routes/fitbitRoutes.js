@@ -73,7 +73,12 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
 router.post('/sync', authMiddleware.authenticate, async (req, res) => {
     try {
         const userId = req.userId;
-        await fitbitService.syncFitbitData(userId, 'manual');
+        const { startDate, endDate } = req.body;
+        log(
+            'info',
+            `[fitbitRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
+        );
+        await fitbitService.syncFitbitData(userId, 'manual', startDate, endDate);
         res.status(200).json({ message: 'Fitbit data sync completed successfully.' });
     } catch (error) {
         log('error', `Error initiating manual Fitbit sync: ${error.message}`);

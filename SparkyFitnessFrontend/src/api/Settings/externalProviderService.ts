@@ -107,10 +107,14 @@ export const handleDisconnectWithings = async () => {
   }
 };
 
-export const handleManualSync = async () => {
+export const handleManualSync = async (
+  startDate?: string,
+  endDate?: string
+) => {
   try {
     await apiCall(`/withings/sync`, {
       method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual sync:', error);
@@ -137,11 +141,15 @@ export const handleDisconnectGarmin = async () => {
   }
 };
 
-export const handleManualSyncGarmin = async () => {
+export const handleManualSyncGarmin = async (
+  startDate?: string,
+  endDate?: string
+) => {
   try {
-    // Call the simplified sync endpoint. Backend handles date ranges (7 days for manual).
+    // Call the simplified sync endpoint.
     await apiCall(`/integrations/garmin/sync`, {
       method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Garmin sync:', error);
@@ -183,10 +191,14 @@ export const handleDisconnectFitbit = async () => {
   }
 };
 
-export const handleManualSyncFitbit = async () => {
+export const handleManualSyncFitbit = async (
+  startDate?: string,
+  endDate?: string
+) => {
   try {
     await apiCall(`/integrations/fitbit/sync`, {
       method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Fitbit sync:', error);
@@ -230,11 +242,15 @@ export const handleDisconnectPolar = async (providerId: string) => {
   }
 };
 
-export const handleManualSyncPolar = async (providerId: string) => {
+export const handleManualSyncPolar = async (
+  providerId: string,
+  startDate?: string,
+  endDate?: string
+) => {
   try {
     await apiCall(`/integrations/polar/sync`, {
       method: 'POST',
-      body: JSON.stringify({ providerId }),
+      body: JSON.stringify({ providerId, startDate, endDate }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Polar sync:', error);
@@ -276,10 +292,14 @@ export const handleDisconnectStrava = async () => {
   }
 };
 
-export const handleManualSyncStrava = async () => {
+export const handleManualSyncStrava = async (
+  startDate?: string,
+  endDate?: string
+) => {
   try {
     await apiCall(`/integrations/strava/sync`, {
       method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Strava sync:', error);
