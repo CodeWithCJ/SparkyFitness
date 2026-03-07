@@ -2,6 +2,7 @@ const { log } = require("../config/logging");
 const userRepository = require("../models/userRepository"); // Import userRepository
 const { getClient, getSystemClient } = require("../db/poolManager"); // Import getClient and getSystemClient
 const { canAccessUserData } = require("../utils/permissionUtils");
+const { serializeSignedCookie } = require("better-call");
 
 const authenticate = async (req, res, next) => {
   // Allow public access to the /api/auth/settings endpoint
@@ -15,17 +16,34 @@ const authenticate = async (req, res, next) => {
   try {
     const { auth } = require("../auth");
 
-    // Support Bearer token from mobile app by mapping it to x-api-key
-    // Better Auth's API Key plugin defaults to looking for 'x-api-key'
+    // Route Bearer tokens to the correct auth mechanism:
+    // - API keys (64+ alphanumeric chars, no dots) → x-api-key header
+    // - Session tokens (shorter, or contain dots) → signed session cookie
     if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
       const token = req.headers.authorization.split(' ')[1];
-      if (token) {
+      if (token && token.length >= 64 && !token.includes('.')) {
         req.headers['x-api-key'] = token;
-        log("debug", "Authentication: Mapped Bearer token to x-api-key header for Better Auth.");
+        delete req.headers.authorization;
+        log("debug", "Authentication: Mapped Bearer token to x-api-key (API key detected).");
+      } else if (token) {
+        // Session token: sign it and inject as a session cookie so getSession() resolves it.
+        // We do this here instead of relying on the bearer plugin due to a compatibility
+        // issue with Buffer secrets in @better-auth/utils/hmac.
+        const prefix = auth.options.advanced?.cookiePrefix || "better-auth";
+        const secureCookiePrefix = auth.options.advanced?.useSecureCookies ? "__Secure-" : "";
+        const cookieName = `${secureCookiePrefix}${prefix}.session_token`;
+        const signed = await serializeSignedCookie("", token, auth.options.secret);
+        const signedValue = signed.replace("=", ""); // Strip leading = from empty cookie name
+        const cookieHeader = `${cookieName}=${signedValue}`;
+        req.headers.cookie = req.headers.cookie
+          ? `${req.headers.cookie}; ${cookieHeader}`
+          : cookieHeader;
+        delete req.headers.authorization;
+        log("debug", "Authentication: Converted Bearer session token to session cookie.");
       }
     }
 
-    // getSession natively handles both Browser Cookies and Authorization: Bearer <API_KEY> (if configured)
+    // getSession resolves from session cookies or x-api-key header
     const session = await auth.api.getSession({
       headers: req.headers,
     });

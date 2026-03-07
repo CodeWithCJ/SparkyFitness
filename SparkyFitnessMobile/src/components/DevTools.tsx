@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
-import OnboardingModal from './OnboardingModal';
 
 const DevTools: React.FC = () => {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const handleTriggerSync = async () => {
     setIsSyncing(true);
@@ -135,24 +133,6 @@ const DevTools: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <View className="mt-5">
-        <Text className="text-sm text-text-primary">Onboarding Modal</Text>
-        <Text className="text-text-muted mb-3 text-[13px]">
-          Preview the onboarding modal shown to new users.
-        </Text>
-        <TouchableOpacity
-          className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-30"
-          onPress={() => setShowOnboarding(true)}
-        >
-          <Text className="text-white text-base font-bold">View Onboarding</Text>
-        </TouchableOpacity>
-      </View>
-
-      <OnboardingModal
-        visible={showOnboarding}
-        onGoToSettings={() => setShowOnboarding(false)}
-        onDismiss={() => setShowOnboarding(false)}
-      />
     </View>
   );
 };

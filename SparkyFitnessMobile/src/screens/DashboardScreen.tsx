@@ -1,16 +1,14 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation, useMeasurementsRange } from '../hooks';
 import type { StepsRange } from '../hooks';
-import OnboardingModal, { shouldShowOnboardingModal } from '../components/OnboardingModal';
 import CalorieRingCard from '../components/CalorieRingCard';
 import MacroCard from '../components/MacroCard';
 import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { getActiveServerConfig } from '../services/storage';
 import { calculateEffectiveBurned, calculateCalorieBalance } from '../services/calculations';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import HydrationGauge from '../components/HydrationGauge';
@@ -36,8 +34,6 @@ type DashboardScreenProps = CompositeScreenProps<
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
-  const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(false);
-  const hasCheckedOnboarding = useRef(false);
   const lastKnownToday = useRef(getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
 
@@ -61,23 +57,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const goToToday = () => setSelectedDate(getTodayDate());
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), []);
-
-  // Check for onboarding on initial mount only
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      if (hasCheckedOnboarding.current) return;
-      hasCheckedOnboarding.current = true;
-
-      if (!shouldShowOnboardingModal()) return;
-
-      const activeConfig = await getActiveServerConfig();
-      if (!activeConfig) {
-        setShowOnboardingModal(true);
-      }
-    };
-
-    checkOnboarding();
-  }, []);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { summary, isLoading, isError, refetch } = useDailySummary({
@@ -328,24 +307,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     );
   };
 
-  const handleOnboardingGoToSettings = () => {
-    setShowOnboardingModal(false);
-    navigation.navigate('Settings');
-  };
-
-  const handleOnboardingDismiss = () => {
-    setShowOnboardingModal(false);
-  };
-
   return (
     <View className="flex-1 bg-background">
       {renderContent()}
 
-      <OnboardingModal
-        visible={showOnboardingModal}
-        onGoToSettings={handleOnboardingGoToSettings}
-        onDismiss={handleOnboardingDismiss}
-      />
       <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
     </View>
   );

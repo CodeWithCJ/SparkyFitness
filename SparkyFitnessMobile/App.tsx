@@ -1,6 +1,6 @@
 import './global.css'
 import React, { useEffect, useMemo, useState } from 'react';
-import { StatusBar, Platform, type ImageSourcePropType } from 'react-native';
+import { StatusBar, Platform, Alert, type ImageSourcePropType } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   NavigationContainer,
@@ -12,7 +12,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryClient } from './src/hooks';
+import { queryClient, serverConnectionQueryKey } from './src/hooks';
 
 import { createStackNavigator, type StackNavigationProp } from '@react-navigation/stack';
 import SyncScreen from './src/screens/SyncScreen';
@@ -25,6 +25,10 @@ import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
+import LoginModal from './src/components/LoginModal';
+import ServerConfigModal from './src/components/ServerConfigModal';
+import { useAuth } from './src/hooks/useAuth';
+import { saveServerConfig } from './src/services/storage';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { initializeTheme } from './src/services/themeService';
 import { initLogService } from './src/services/LogService';
@@ -45,6 +49,11 @@ type TabIcons = {
 
 function AppContent() {
   const { theme } = useUniwind();
+  const { showLoginModal, expiredConfigId, dismissLoginModal, handleLoginSuccess } = useAuth();
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [apiKeyUrl, setApiKeyUrl] = useState('');
+  const [apiKeyValue, setApiKeyValue] = useState('');
+
   const [primary, chrome, chromeBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
     '--color-accent-primary',
     '--color-chrome',
@@ -250,6 +259,50 @@ function AppContent() {
             }}
           />
         </Stack.Navigator>
+        <LoginModal
+          visible={showLoginModal}
+          defaultConfigId={expiredConfigId}
+          onLoginSuccess={() => {
+            handleLoginSuccess();
+            queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
+          }}
+          onUseApiKey={(serverUrl) => {
+            dismissLoginModal();
+            setApiKeyUrl(serverUrl);
+            setApiKeyValue('');
+            setShowApiKeyModal(true);
+          }}
+          onDismiss={dismissLoginModal}
+        />
+        <ServerConfigModal
+          visible={showApiKeyModal}
+          url={apiKeyUrl}
+          setUrl={setApiKeyUrl}
+          apiKey={apiKeyValue}
+          setApiKey={setApiKeyValue}
+          isEditing={false}
+          onSave={async () => {
+            const url = apiKeyUrl.trim().replace(/\/+$/, '');
+            if (!url || !apiKeyValue.trim()) {
+              Alert.alert('Missing fields', 'Please enter both a server URL and API key.');
+              return;
+            }
+            if (__DEV__ === false && !url.startsWith('https://')) {
+              Alert.alert('Insecure URL', 'Please use an HTTPS URL for production.');
+              return;
+            }
+            await saveServerConfig({
+              id: Date.now().toString(),
+              url,
+              apiKey: apiKeyValue.trim(),
+              authType: 'apiKey',
+            });
+            setShowApiKeyModal(false);
+            dismissLoginModal();
+            queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
+          }}
+          onClose={() => setShowApiKeyModal(false)}
+        />
       </SafeAreaProvider>
     </NavigationContainer>
   );

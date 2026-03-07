@@ -130,7 +130,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   const handleSaveConfig = async (): Promise<void> => {
-    if (!url || !apiKey) {
+    const existingConfig = serverConfigs.find((c) => c.id === currentConfigId);
+    const isSessionAuth = existingConfig?.authType === 'session';
+
+    if (!url || (!apiKey && !isSessionAuth)) {
       Alert.alert('Error', 'Please enter both a server URL and an API key.');
       return;
     }
@@ -140,10 +143,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
     try {
       const normalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+      const hasNewApiKey = !!apiKey.trim();
       const configToSave: ServerConfig = {
         id: currentConfigId || Date.now().toString(),
         url: normalizedUrl,
-        apiKey,
+        apiKey: apiKey || existingConfig?.apiKey || '',
+        ...(hasNewApiKey
+          ? { authType: 'apiKey' as const, sessionToken: '' }
+          : {}),
       };
       await saveServerConfig(configToSave);
 
@@ -205,7 +212,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   const handleEditConfig = (config: ServerConfig): void => {
     setUrl(config.url);
-    setApiKey(config.apiKey);
+    // Session-backed configs may still retain an old API key for fallback,
+    // but opening the editor should not implicitly treat that as an auth-mode switch.
+    setApiKey(config.authType === 'session' ? '' : config.apiKey);
     setCurrentConfigId(config.id);
     setShowConfigModal(true);
   };

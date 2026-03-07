@@ -30,6 +30,8 @@ const ICON_MAP = {
   'bookmark': { sf: 'bookmark', ion: 'bookmark-outline' },
   'bookmark-filled': { sf: 'bookmark.fill', ion: 'bookmark' },
   'checkmark-circle': { sf: 'checkmark.circle', ion: 'checkmark-circle-outline' },
+  'radio-button-on': { sf: 'circle.inset.filled', ion: 'radio-button-on' },
+  'radio-button-off': { sf: 'circle', ion: 'radio-button-off' },
   'camera-reverse': { sf: 'camera.rotate', ion: 'camera-reverse-outline' },
   'pencil': { sf: 'pencil', ion: 'create-outline' },
 

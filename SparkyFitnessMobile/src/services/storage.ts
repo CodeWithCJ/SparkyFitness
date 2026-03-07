@@ -6,6 +6,8 @@ export interface ServerConfig {
   id: string;
   url: string;
   apiKey: string;
+  authType?: 'apiKey' | 'session';
+  sessionToken?: string;
 }
 
 /** Config shape stored in AsyncStorage (apiKey stripped out). */
@@ -13,6 +15,7 @@ interface StoredServerConfig {
   id: string;
   url: string;
   apiKey?: string; // Present only in legacy data before migration
+  authType?: 'apiKey' | 'session';
 }
 
 export type TimeRange = 'today' | '24h' | '3d' | '7d' | '30d' | '90d' | '180d' | '365d';
@@ -24,6 +27,7 @@ const LAST_SYNCED_TIME_KEY = 'lastSyncedTime';
 const BACKGROUND_SYNC_ENABLED_KEY = 'backgroundSyncEnabled';
 
 const secureStoreKey = (configId: string) => `apiKey_${configId}`;
+const sessionTokenSecureStoreKey = (configId: string) => `sessionToken_${configId}`;
 const secureStoreOptions = { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK };
 
 // undefined = cache cold (not yet read), null = no active config, ServerConfig = cached config
@@ -49,8 +53,15 @@ const getRawStoredConfigs = async (): Promise<StoredServerConfig[]> => {
 export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
   try {
     const stored = await getRawStoredConfigs();
-    const stripped: StoredServerConfig = { id: config.id, url: config.url };
     const index = stored.findIndex(c => c.id === config.id);
+    const existingAuthType = index > -1 ? stored[index].authType : undefined;
+    const authType = config.authType ?? existingAuthType;
+
+    const stripped: StoredServerConfig = {
+      id: config.id,
+      url: config.url,
+      ...(authType ? { authType } : {}),
+    };
 
     if (index > -1) {
       stored[index] = stripped;
@@ -59,6 +70,15 @@ export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
     }
 
     await SecureStore.setItemAsync(secureStoreKey(config.id), config.apiKey, secureStoreOptions);
+
+    if (config.sessionToken !== undefined) {
+      if (config.sessionToken) {
+        await SecureStore.setItemAsync(sessionTokenSecureStoreKey(config.id), config.sessionToken, secureStoreOptions);
+      } else {
+        await SecureStore.deleteItemAsync(sessionTokenSecureStoreKey(config.id));
+      }
+    }
+
     await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
     activeServerConfigCache = undefined;
     await setActiveServerConfig(config.id);
@@ -109,21 +129,28 @@ export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
     const configs: ServerConfig[] = await Promise.all(
       stored.map(async (entry) => {
         const secureKey = await SecureStore.getItemAsync(secureStoreKey(entry.id), secureStoreOptions);
+        const sessionToken = await SecureStore.getItemAsync(sessionTokenSecureStoreKey(entry.id), secureStoreOptions);
+
+        const base = {
+          id: entry.id,
+          url: entry.url,
+          ...(entry.authType ? { authType: entry.authType } : {}),
+          ...(sessionToken ? { sessionToken } : {}),
+        };
 
         if (secureKey != null) {
-          // Flag for cleanup if a stale plaintext key remains in AsyncStorage
           if (entry.apiKey) migrated = true;
-          return { id: entry.id, url: entry.url, apiKey: secureKey };
+          return { ...base, apiKey: secureKey };
         }
 
         // Legacy migration: key still in AsyncStorage
         if (entry.apiKey) {
           await SecureStore.setItemAsync(secureStoreKey(entry.id), entry.apiKey, secureStoreOptions);
           migrated = true;
-          return { id: entry.id, url: entry.url, apiKey: entry.apiKey };
+          return { ...base, apiKey: entry.apiKey };
         }
 
-        return { id: entry.id, url: entry.url, apiKey: '' };
+        return { ...base, apiKey: '' };
       }),
     );
 
@@ -131,7 +158,7 @@ export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
     // Re-read to avoid overwriting configs saved by concurrent saveServerConfig calls.
     if (migrated) {
       const current = await getRawStoredConfigs();
-      const cleaned = current.map(({ id, url }) => ({ id, url }));
+      const cleaned = current.map(({ id, url, authType }) => ({ id, url, ...(authType ? { authType } : {}) }));
       await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(cleaned));
     }
 
@@ -166,6 +193,7 @@ export const deleteServerConfig = async (configId: string): Promise<void> => {
     await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
     activeServerConfigCache = undefined;
     await SecureStore.deleteItemAsync(secureStoreKey(configId));
+    await SecureStore.deleteItemAsync(sessionTokenSecureStoreKey(configId));
 
     const activeId = await AsyncStorage.getItem(ACTIVE_SERVER_CONFIG_ID_KEY);
     if (activeId === configId) {
@@ -263,6 +291,11 @@ export const loadCollapsedCategories = async (): Promise<string[]> => {
   }
   // Default: all categories except Common are collapsed
   return CATEGORY_ORDER.filter(c => c !== 'Common');
+};
+
+export const clearSessionToken = async (configId: string): Promise<void> => {
+  await SecureStore.deleteItemAsync(sessionTokenSecureStoreKey(configId));
+  activeServerConfigCache = undefined;
 };
 
 export const clearServerConfigCache = (): void => {
