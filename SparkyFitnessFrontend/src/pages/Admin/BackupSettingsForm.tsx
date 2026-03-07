@@ -5,11 +5,11 @@ import { Loader2, Save, Play, Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { BackupSettingsResponse } from '@/types/admin';
+import { BackupSettings, BackupSettingsMutator } from '@workspace/shared';
 
 interface BackupSettingsFormProps {
-  initialSettings: BackupSettingsResponse;
-  onSave: (settings: BackupSettingsResponse) => void;
+  initialSettings: BackupSettings;
+  onSave: (settings: BackupSettingsMutator) => void;
   onManualBackup: () => void;
   onRestore: (file: File) => void;
   isSaving: boolean;
@@ -44,7 +44,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
     });
   };
 
-  const getStatusText = (status?: string, timestamp?: string) => {
+  const getStatusText = (status?: string | null, timestamp?: Date | null) => {
     if (status && timestamp) {
       return `${status} on ${new Date(timestamp).toLocaleString()}`;
     }
@@ -89,10 +89,10 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
     const utcTime = localDate.toISOString().substring(11, 16);
 
     onSave({
-      backupEnabled,
-      backupDays,
+      backupEnabled: backupEnabled,
+      backupDays: backupDays,
       backupTime: utcTime,
-      retentionDays,
+      retentionDays: retentionDays,
     });
   };
 

@@ -1,14 +1,19 @@
 import { api } from '@/api/api';
-import { BackupSettingsResponse } from '@/types/admin';
+import {
+  BackupSettings,
+  BackupSettingsMutator,
+  backupSettingsMutatorSchema,
+  backupSettingsSchema,
+} from '@workspace/shared';
 
-export const fetchBackupSettings =
-  async (): Promise<BackupSettingsResponse> => {
-    const response = await api.get('/admin/backup/settings');
-    return response || {};
-  };
+export const fetchBackupSettings = async (): Promise<BackupSettings> => {
+  const response = await api.get('/admin/backup/settings');
+  return backupSettingsSchema.parse(response);
+};
 
-export const saveBackupSettings = async (payload: BackupSettingsResponse) => {
-  return api.post('/admin/backup/settings', { body: payload });
+export const saveBackupSettings = async (payload: BackupSettingsMutator) => {
+  const validPayload = backupSettingsMutatorSchema.parse(payload);
+  return api.post('/admin/backup/settings', { body: validPayload });
 };
 
 export const triggerManualBackup = async () => {

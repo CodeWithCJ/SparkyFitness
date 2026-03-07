@@ -52,10 +52,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
 
-    defaults:
-      run:
-        working-directory: SparkyFitnessFrontend
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,15 +66,17 @@ jobs:
         with:
           node-version: "20"
           cache: "pnpm"
-          cache-dependency-path: SparkyFitnessFrontend/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
-      - name: Install dependencies
+      - name: Install global dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Run validation (Type Check, Lint, Format)
+        working-directory: SparkyFitnessFrontend
         run: pnpm run validate
 
       - name: Run tests with coverage
+        working-directory: SparkyFitnessFrontend
         run: pnpm run test:ci
         env:
           NODE_ENV: test

@@ -5,8 +5,8 @@ import {
   triggerManualBackup,
 } from '@/api/Admin/backup';
 import { backupKeys } from '@/api/keys/admin';
-import { BackupSettingsResponse } from '@/types/admin';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { BackupSettingsMutator } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 
 export const useBackupSettings = () => {
@@ -29,8 +29,7 @@ export const useUpdateBackupSettings = () => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   return useMutation({
-    mutationFn: (data: Partial<BackupSettingsResponse>) =>
-      saveBackupSettings(data),
+    mutationFn: (data: BackupSettingsMutator) => saveBackupSettings(data),
     onSuccess: () => {
       return queryClient.invalidateQueries({ queryKey: backupKeys.all });
     },
