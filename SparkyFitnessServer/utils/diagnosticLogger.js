@@ -24,24 +24,35 @@ function logRawResponse(provider, dataType, data) {
     }
 
     const filePath = path.join(DIAGNOSTICS_DIR, `${provider}_raw.json`);
+    
+    // Start with a fresh bundle every time to prevent stale/incorrectly formatted data
     let bundle = {
       provider,
       last_updated: new Date().toISOString(),
       responses: {},
     };
 
+    // If we want to capture multiple data types within a SINGLE sync session (e.g. activities + sleep),
+    // we should still allow merging IF the file was updated very recently (e.g. within the last 1 minute).
+    // Otherwise, start fresh.
     if (fs.existsSync(filePath)) {
       try {
-        const existingData = JSON.parse(fs.readFileSync(filePath, "utf8"));
-        bundle = { ...bundle, ...existingData };
-        bundle.last_updated = new Date().toISOString();
-      } catch (parseError) {
-        log(
-          "warn",
-          `[diagnosticLogger] Could not parse existing raw bundle for ${provider}, creating new one.`,
-        );
+        const stats = fs.statSync(filePath);
+        const now = new Date();
+        const lastModified = new Date(stats.mtime);
+        const diffInSeconds = (now - lastModified) / 1000;
+
+        // If updated within the last 60 seconds, it's likely the same sync process
+        if (diffInSeconds < 60) {
+          const existingData = JSON.parse(fs.readFileSync(filePath, "utf8"));
+          bundle = { ...bundle, ...existingData };
+        }
+      } catch (err) {
+        // Fallback to fresh bundle on error
       }
     }
+
+    bundle.last_updated = new Date().toISOString();
 
     // Update the specific data type with the new raw response
     bundle.responses[dataType] = {
