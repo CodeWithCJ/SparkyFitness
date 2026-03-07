@@ -76,7 +76,9 @@ interface SleepAnalyticsChartsProps {
   latestSleepEntry?: SleepEntry | null;
 }
 
-const DEFAULT_HYPNOGRAMS_SHOWN = 2;
+const DEBT_ZONE_COLOR = '#ff0000';
+const SURPLUS_ZONE_COLOR = '#00ff00';
+const DEFAULT_HYPNOGRAMS_SHOWN = 3;
 
 const SleepAnalyticsCharts = ({
   sleepAnalyticsData,
@@ -541,13 +543,13 @@ const SleepAnalyticsCharts = ({
                         <ReferenceArea
                           y1={0}
                           y2={100}
-                          fill="#ff0000"
+                          fill={DEBT_ZONE_COLOR}
                           fillOpacity={0.05}
                         />
                         <ReferenceArea
                           y1={-100}
                           y2={0}
-                          fill="#00ff00"
+                          fill={SURPLUS_ZONE_COLOR}
                           fillOpacity={0.05}
                         />
                         <ReferenceLine
@@ -583,21 +585,6 @@ const SleepAnalyticsCharts = ({
                           dot={false}
                           isAnimationActive={false}
                         />
-                        {/* DEBT COLOR CODING - Placed after Line to ensure background rendering */}
-                        <ReferenceArea
-                          y1={0}
-                          y2={24}
-                          fill="#ff0000"
-                          fillOpacity={0.1}
-                        />{' '}
-                        {/* Red for Debt */}
-                        <ReferenceArea
-                          y1={-24}
-                          y2={0}
-                          fill="#00ff00"
-                          fillOpacity={0.1}
-                        />{' '}
-                        {/* Green for Surplus */}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>

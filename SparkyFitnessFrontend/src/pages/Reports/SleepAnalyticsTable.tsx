@@ -68,12 +68,12 @@ const SleepAnalyticsTable = ({
     });
   };
 
+  const headerActions = renderHeaderActions ? renderHeaderActions() : null;
+
   return (
     <div>
-      {renderHeaderActions ? (
-        renderHeaderActions() !== null && (
-          <div className="flex justify-end mb-4">{renderHeaderActions()}</div>
-        )
+      {headerActions ? (
+        <div className="flex justify-end mb-4">{headerActions}</div>
       ) : (
         <div className="flex justify-end mb-4">
           <Button onClick={handleExportClick}>
