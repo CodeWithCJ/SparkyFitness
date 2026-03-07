@@ -53,6 +53,17 @@ const CopyFoodEntryDialog = ({
 
   const { data: availableMealTypes } = useMealTypes();
 
+  const isAllDayCopy = sourceMealType === 'all';
+
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setSelectedMealType(sourceMealType);
+    }
+  }
+
   const handleCopyClick = () => {
     if (selectedDate) {
       const formattedDate = formatDateInUserTimezone(
@@ -84,13 +95,20 @@ const CopyFoodEntryDialog = ({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {t('copyFoodEntryDialog.title', 'Copy Food Entries')}
+            {isAllDayCopy
+              ? t('copyFoodEntryDialog.titleAll', 'Copy Entire Day')
+              : t('copyFoodEntryDialog.title', 'Copy Food Entries')}
           </DialogTitle>
           <DialogDescription>
-            {t(
-              'copyFoodEntryDialog.description',
-              'Select the target date and meal type to copy the food entries.'
-            )}
+            {isAllDayCopy
+              ? t(
+                  'copyFoodEntryDialog.descriptionAll',
+                  'Select the target date to copy all food entries from this day.'
+                )
+              : t(
+                  'copyFoodEntryDialog.description',
+                  'Select the target date and meal type to copy the food entries.'
+                )}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -127,39 +145,41 @@ const CopyFoodEntryDialog = ({
               </PopoverContent>
             </Popover>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="mealType" className="text-right">
-              {t('copyFoodEntryDialog.mealType', 'Meal Type')}
-            </Label>
-            <Select
-              onValueChange={(value) => {
-                setSelectedMealType(value);
-                debug(loggingLevel, 'Selected meal type in dialog:', value);
-              }}
-              value={selectedMealType}
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue
-                  placeholder={t(
-                    'copyFoodEntryDialog.selectMealTypePlaceholder',
-                    'Select meal type'
+          {!isAllDayCopy && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="mealType" className="text-right">
+                {t('copyFoodEntryDialog.mealType', 'Meal Type')}
+              </Label>
+              <Select
+                onValueChange={(value) => {
+                  setSelectedMealType(value);
+                  debug(loggingLevel, 'Selected meal type in dialog:', value);
+                }}
+                value={selectedMealType}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue
+                    placeholder={t(
+                      'copyFoodEntryDialog.selectMealTypePlaceholder',
+                      'Select meal type'
+                    )}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableMealTypes?.length === 0 && (
+                    <SelectItem value="loading" disabled>
+                      Loading...
+                    </SelectItem>
                   )}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {availableMealTypes?.length === 0 && (
-                  <SelectItem value="loading" disabled>
-                    Loading...
-                  </SelectItem>
-                )}
-                {availableMealTypes?.map((meal) => (
-                  <SelectItem key={meal.id} value={meal.name}>
-                    {getDisplayName(meal.name)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                  {availableMealTypes?.map((meal) => (
+                    <SelectItem key={meal.id} value={meal.name}>
+                      {getDisplayName(meal.name)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

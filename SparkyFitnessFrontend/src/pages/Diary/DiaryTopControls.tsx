@@ -15,6 +15,14 @@ import EditGoalsForToday from '@/pages/Goals/EditGoalsForToday';
 import { useMemo } from 'react';
 import { DEFAULT_GOALS } from '@/constants/goals';
 import { Goals } from '@/types/diary';
+import { Button } from '@/components/ui/button';
+import { ClipboardCopy, History } from 'lucide-react';
+import {
+  useCopyAllFoodEntriesMutation,
+  useCopyAllFoodEntriesFromYesterdayMutation,
+} from '@/hooks/Diary/useFoodEntries';
+import CopyFoodEntryDialog from './CopyFoodEntryDialog';
+import { useState } from 'react';
 
 export interface DayTotals {
   calories: number; // Stored internally as kcal
@@ -49,6 +57,23 @@ const DiaryTopControls = ({
   const { loggingLevel, nutrientDisplayPreferences } = usePreferences(); // Get logging level
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
+
+  const [isCopyDialogOpen, setIsCopyDialogOpen] = useState(false);
+
+  const { mutate: copyAllFromYesterday } =
+    useCopyAllFoodEntriesFromYesterdayMutation();
+  const { mutate: copyAllToDate } = useCopyAllFoodEntriesMutation();
+
+  const handleCopyAllFromYesterday = () => {
+    copyAllFromYesterday({ targetDate: selectedDate });
+  };
+
+  const handleCopyAllToDate = (targetDate: string, _targetMealType: string) => {
+    copyAllToDate({
+      sourceDate: selectedDate,
+      targetDate,
+    });
+  };
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal'
@@ -87,7 +112,24 @@ const DiaryTopControls = ({
               <CardTitle className="text-lg dark:text-slate-300">
                 {t('diary.nutritionSummary', 'Nutrition Summary')}
               </CardTitle>
-              <EditGoalsForToday selectedDate={selectedDate} />
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setIsCopyDialogOpen(true)}
+                  title={t('diary.copyAllToDate', 'Copy entire day to date')}
+                >
+                  <ClipboardCopy className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={handleCopyAllFromYesterday}
+                  title={t(
+                    'diary.copyAllFromYesterday',
+                    'Copy all from yesterday'
+                  )}
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+                <EditGoalsForToday selectedDate={selectedDate} />
+              </div>
             </div>
           </CardHeader>
           <CardContent className="pb-4">
@@ -164,6 +206,13 @@ const DiaryTopControls = ({
       <div className="lg:col-span-1 h-full">
         <WaterIntake selectedDate={selectedDate} />
       </div>
+
+      <CopyFoodEntryDialog
+        isOpen={isCopyDialogOpen}
+        onClose={() => setIsCopyDialogOpen(false)}
+        onCopy={handleCopyAllToDate}
+        sourceMealType="all"
+      />
     </div>
   );
 };

@@ -106,6 +106,27 @@ export const copyFoodEntriesFromYesterday = async (
   return response;
 };
 
+export const copyAllFoodEntries = async (
+  sourceDate: string,
+  targetDate: string
+): Promise<unknown> => {
+  const response = await apiCall('/food-entries/copy-all', {
+    method: 'POST',
+    body: { sourceDate, targetDate },
+  });
+  return response;
+};
+
+export const copyAllFoodEntriesFromYesterday = async (
+  targetDate: string
+): Promise<unknown> => {
+  const response = await apiCall('/food-entries/copy-all-yesterday', {
+    method: 'POST',
+    body: { targetDate },
+  });
+  return response;
+};
+
 // New interfaces and functions for food_entry_meals
 export interface FoodEntryMealCreateData {
   meal_template_id?: string | null;

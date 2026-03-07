@@ -606,7 +606,8 @@ async function getFoodEntryByDetails(
   foodId,
   mealType,
   entryDate,
-  variantId
+  variantId,
+  foodEntryMealId = null
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -618,8 +619,12 @@ async function getFoodEntryByDetails(
          AND fe.food_id = $2
          AND (LOWER(mt.name) = LOWER($3) OR fe.meal_type_id::text = $3)
          AND fe.entry_date = $4
-         AND fe.variant_id = $5`,
-      [userId, foodId, mealType, entryDate, variantId]
+         AND fe.variant_id = $5
+         AND (
+           ($6::uuid IS NULL AND fe.food_entry_meal_id IS NULL) OR 
+           (fe.food_entry_meal_id = $6::uuid)
+         )`,
+      [userId, foodId, mealType, entryDate, variantId, foodEntryMealId]
     );
     return result.rows[0]; // Returns the entry if found, otherwise undefined
   } finally {

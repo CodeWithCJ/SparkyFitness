@@ -7,6 +7,8 @@ import {
   removeFoodEntry,
   copyFoodEntries,
   copyFoodEntriesFromYesterday,
+  copyAllFoodEntries,
+  copyAllFoodEntriesFromYesterday,
   getFoodEntryMealsByDate,
   getFoodEntryMealWithComponents,
   createFoodEntryMeal,
@@ -155,6 +157,47 @@ export const useCopyFoodEntriesFromYesterdayMutation = () => {
     meta: {
       successMessage: t('diary.copySuccess', 'Entries copied from yesterday.'),
       errorMessage: t('diary.copyError', 'Failed to copy entries.'),
+    },
+  });
+};
+
+export const useCopyAllFoodEntriesMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: ({
+      sourceDate,
+      targetDate,
+    }: {
+      sourceDate: string;
+      targetDate: string;
+    }) => copyAllFoodEntries(sourceDate, targetDate),
+    onSuccess: () => invalidate(),
+    meta: {
+      successMessage: t(
+        'diary.copyAllSuccess',
+        'Entire day copied successfully.'
+      ),
+      errorMessage: t('diary.copyAllError', 'Failed to copy entire day.'),
+    },
+  });
+};
+
+export const useCopyAllFoodEntriesFromYesterdayMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ targetDate }: { targetDate: string }) =>
+      copyAllFoodEntriesFromYesterday(targetDate),
+    onSuccess: () => invalidate(),
+    meta: {
+      successMessage: t(
+        'diary.copyAllSuccess',
+        'Entire day copied from yesterday.'
+      ),
+      errorMessage: t('diary.copyAllError', 'Failed to copy entire day.'),
     },
   });
 };
