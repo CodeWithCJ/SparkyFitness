@@ -28,7 +28,8 @@ import FoodScanScreen from './src/screens/FoodScanScreen';
 import LoginModal from './src/components/LoginModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
-import { saveServerConfig } from './src/services/storage';
+import { saveServerConfig, getActiveServerConfig } from './src/services/storage';
+import { notifyNoConfigs } from './src/services/api/authService';
 import { configureBackgroundSync } from './src/services/backgroundSyncService';
 import { initializeTheme } from './src/services/themeService';
 import { initLogService } from './src/services/LogService';
@@ -301,7 +302,13 @@ function AppContent() {
             dismissLoginModal();
             queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
           }}
-          onClose={() => setShowApiKeyModal(false)}
+          onClose={async () => {
+            setShowApiKeyModal(false);
+            const config = await getActiveServerConfig();
+            if (!config) {
+              notifyNoConfigs();
+            }
+          }}
         />
       </SafeAreaProvider>
     </NavigationContainer>

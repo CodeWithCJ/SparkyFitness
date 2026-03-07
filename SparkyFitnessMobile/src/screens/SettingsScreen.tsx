@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
 import type { ServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { notifyNoConfigs } from '../services/api/authService';
 import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference } from '../services/healthConnectService';
 import { configureBackgroundSync, stopBackgroundSync } from '../services/backgroundSyncService';
 import { HEALTH_METRICS } from '../HealthMetrics';
@@ -96,7 +97,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   useEffect(() => {
     loadConfig();
-  }, [activeConfigId]);
+  }, [activeConfigId, isConnected]);
 
   const openWebDashboard = async (): Promise<void> => {
     try {
@@ -192,16 +193,23 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const handleDeleteConfig = async (configId: string): Promise<void> => {
     try {
       await deleteServerConfig(configId);
-      await loadConfig();
-      refetchConnection();
+      const remainingConfigs = await getAllServerConfigs();
       if (activeConfigId === configId) {
         setUrl('');
         setApiKey('');
         setActiveConfigId(null);
         setCurrentConfigId(null);
       }
-      Alert.alert('Success', 'Server configuration deleted.');
+      await loadConfig();
+      refetchConnection();
       addLog('Server configuration deleted.', 'SUCCESS');
+      if (remainingConfigs.length === 0) {
+        Alert.alert('Success', 'Server configuration deleted.', [
+          { text: 'OK', onPress: () => notifyNoConfigs() },
+        ]);
+      } else {
+        Alert.alert('Success', 'Server configuration deleted.');
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to delete server configuration:', error);

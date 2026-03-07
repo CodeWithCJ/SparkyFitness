@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
 import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
+import { openHealthConnectSettings, openHealthConnectDataManagement } from 'react-native-health-connect';
 
 const DevTools: React.FC = () => {
   const [isSeeding, setIsSeeding] = useState(false);
@@ -113,7 +114,22 @@ const DevTools: React.FC = () => {
           <Text className="text-white text-base font-bold text-center">1 Year{'\n'}(Steps)</Text>
         </TouchableOpacity>
       </View>
-
+      {Platform.OS === 'android' && (
+      <View className="flex-row gap-2 flex-wrap justify-between mt-4">
+        <Pressable
+          className="bg-accent-muted py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
+          onPress={() => openHealthConnectSettings()}
+        >
+          <Text className="text-white text-base font-bold">Health Connect</Text>
+        </Pressable>
+                <Pressable
+          className="bg-accent-muted py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
+          onPress={() => openHealthConnectDataManagement()}
+        >
+          <Text className="text-white text-base font-bold">Health Connect Data</Text>
+        </Pressable>
+      </View>
+      )}
       <View className="mt-5">
         <Text className="text-sm text-text-primary">Background Sync</Text>
         <Text className="text-text-muted mb-3 text-[13px]">

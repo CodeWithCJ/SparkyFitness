@@ -158,7 +158,11 @@ export const getAllServerConfigs = async (): Promise<ServerConfig[]> => {
     // Re-read to avoid overwriting configs saved by concurrent saveServerConfig calls.
     if (migrated) {
       const current = await getRawStoredConfigs();
-      const cleaned = current.map(({ id, url, authType }) => ({ id, url, ...(authType ? { authType } : {}) }));
+      const cleaned = current.map(({ id, url, authType }) => ({
+        id,
+        url,
+        ...(authType ? { authType } : {}),
+      }));
       await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(cleaned));
     }
 

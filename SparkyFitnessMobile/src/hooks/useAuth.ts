@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { setOnSessionExpired } from '../services/api/authService';
+import { setOnSessionExpired, setOnNoConfigs } from '../services/api/authService';
 import { getActiveServerConfig, clearServerConfigCache } from '../services/storage';
 
 export function useAuth() {
@@ -13,6 +13,9 @@ export function useAuth() {
         if (!prev) clearServerConfigCache();
         return true;
       });
+    });
+    setOnNoConfigs(() => {
+      setShowLoginModal(true);
     });
   }, []);
 
