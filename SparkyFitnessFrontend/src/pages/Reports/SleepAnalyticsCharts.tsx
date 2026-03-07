@@ -11,6 +11,11 @@ import {
 } from '@/types';
 import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 import {
+  DEBT_ZONE_COLOR,
+  SURPLUS_ZONE_COLOR,
+  DEFAULT_HYPNOGRAMS_SHOWN,
+} from '@/constants/sleep';
+import {
   Activity,
   ChevronDown,
   ChevronUp,
@@ -75,10 +80,6 @@ interface SleepAnalyticsChartsProps {
   heartRateData?: HeartRateDataPoint[];
   latestSleepEntry?: SleepEntry | null;
 }
-
-const DEBT_ZONE_COLOR = '#ff0000';
-const SURPLUS_ZONE_COLOR = '#00ff00';
-const DEFAULT_HYPNOGRAMS_SHOWN = 3;
 
 const SleepAnalyticsCharts = ({
   sleepAnalyticsData,

@@ -16,7 +16,7 @@ import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 import {
   HIGH_DEBT_THRESHOLD_HOURS,
   GOOD_SLEEP_SCORE_THRESHOLD,
-} from '@/constants/sleepScience';
+} from '@/constants/sleep';
 import SleepAnalyticsCharts from './SleepAnalyticsCharts';
 import SleepAnalyticsTable from './SleepAnalyticsTable';
 
