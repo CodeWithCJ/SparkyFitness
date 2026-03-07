@@ -190,6 +190,107 @@ router.post(
 
 /**
  * @swagger
+ * /food-entries/copy-all:
+ *   post:
+ *     summary: Copy all food entries from one day to another
+ *     tags: [Nutrition & Meals]
+ *     description: Copies every food entry across all meal slots from a source date to a target date.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - sourceDate
+ *               - targetDate
+ *             properties:
+ *               sourceDate:
+ *                 type: string
+ *                 format: date
+ *               targetDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       201:
+ *         description: All food entries were copied successfully.
+ *       400:
+ *         description: sourceDate and targetDate are required.
+ *       403:
+ *         description: User does not have permission.
+ */
+router.post(
+  "/copy-all",
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    try {
+      const { sourceDate, targetDate } = req.body;
+      if (!sourceDate || !targetDate) {
+        return res.status(400).json({ error: "sourceDate and targetDate are required." });
+      }
+      const copiedEntries = await foodEntryService.copyAllFoodEntries(
+        req.userId,
+        req.originalUserId || req.userId,
+        sourceDate,
+        targetDate
+      );
+      res.status(201).json(copiedEntries);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /food-entries/copy-all-yesterday:
+ *   post:
+ *     summary: Copy all food entries from yesterday
+ *     tags: [Nutrition & Meals]
+ *     description: Copies every food entry from the previous day to a target date.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - targetDate
+ *             properties:
+ *               targetDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       201:
+ *         description: All food entries were copied successfully.
+ *       400:
+ *         description: targetDate is required.
+ */
+router.post(
+  "/copy-all-yesterday",
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    try {
+      const { targetDate } = req.body;
+      if (!targetDate) {
+        return res.status(400).json({ error: "targetDate is required." });
+      }
+      const copiedEntries = await foodEntryService.copyAllFoodEntriesFromYesterday(
+        req.userId,
+        req.originalUserId || req.userId,
+        targetDate
+      );
+      res.status(201).json(copiedEntries);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
  * /food-entries/{id}:
  *   put:
  *     summary: Update a food entry

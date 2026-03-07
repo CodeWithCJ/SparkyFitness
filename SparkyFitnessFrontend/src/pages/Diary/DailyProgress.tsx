@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -60,6 +61,10 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     convertWeight,
   } = usePreferences();
 
+  const { bmr, includeInNet } = useCalculatedBMR();
+  const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
+    useAdaptiveTdee(selectedDate);
+
   const { data: goals, isLoading: loadingGoals } = useDailyGoals(selectedDate);
   const { data: foodData, isLoading: loadingFood } =
     useDailyFoodIntake(selectedDate);
@@ -67,9 +72,6 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     useDailyExerciseStats(selectedDate);
   const { data: stepsData, isLoading: loadingSteps } =
     useDailySteps(selectedDate);
-  const { bmr, includeInNet } = useCalculatedBMR();
-  const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
-    useAdaptiveTdee(selectedDate);
 
   const isLoading =
     loadingGoals ||
@@ -186,12 +188,14 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   return (
     <Card className="h-full">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center space-x-2 text-base">
-          <Target className="w-4 h-4 text-green-500" />
-          <span className="dark:text-slate-300">
-            {t('exercise.dailyProgress.dailyEnergyGoal', 'Daily Energy Goal')}
-          </span>
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center space-x-2 text-base">
+            <Target className="w-4 h-4 text-green-500" />
+            <span className="dark:text-slate-300">
+              {t('exercise.dailyProgress.dailyEnergyGoal', 'Daily Energy Goal')}
+            </span>
+          </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="pb-4">
         <div className="space-y-4">

@@ -518,6 +518,106 @@ async function copyFoodEntriesFromYesterday(
   }
 }
 
+async function copyAllFoodEntries(
+  authenticatedUserId,
+  actingUserId,
+  sourceDate,
+  targetDate,
+) {
+  try {
+    log(
+      "info",
+      `copyAllFoodEntries: Copying entire day from ${sourceDate} to ${targetDate} for user ${authenticatedUserId}`,
+    );
+
+    // 1. Fetch all entries from the source day to find used meal slots
+    const allSourceEntries = await foodRepository.getFoodEntriesByDate(
+      authenticatedUserId,
+      sourceDate,
+    );
+
+    if (allSourceEntries.length === 0) {
+      log(
+        "debug",
+        `No food entries found on ${sourceDate} for user ${authenticatedUserId}. Nothing to copy.`,
+      );
+      return [];
+    }
+
+    // 2. Identify unique meal types (slots) that have data
+    const usedMealTypes = [
+      ...new Set(allSourceEntries.map((e) => e.meal_type)),
+    ];
+    log(
+      "debug",
+      `copyAllFoodEntries: Found ${usedMealTypes.length} slots with data: ${usedMealTypes.join(", ")}`,
+    );
+
+    const allCopiedEntries = [];
+
+    // 3. Loop through each slot and perform a Deep Copy
+    for (const mealType of usedMealTypes) {
+      const copiedEntries = await copyFoodEntries(
+        authenticatedUserId,
+        actingUserId,
+        sourceDate,
+        mealType,
+        targetDate,
+        mealType,
+      );
+      allCopiedEntries.push(...copiedEntries);
+    }
+
+    log(
+      "info",
+      `Successfully copied entire day (${allCopiedEntries.length} entries) from ${sourceDate} to ${targetDate} for user ${authenticatedUserId}.`,
+    );
+    return allCopiedEntries;
+  } catch (error) {
+    log(
+      "error",
+      `Error copying all food entries for user ${authenticatedUserId} from ${sourceDate} to ${targetDate}:`,
+      error,
+    );
+    throw error;
+  }
+}
+
+async function copyAllFoodEntriesFromYesterday(
+  authenticatedUserId,
+  actingUserId,
+  targetDate,
+) {
+  try {
+    const [yearStr, monthStr, dayStr] = targetDate.split("-");
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    const day = parseInt(dayStr, 10);
+
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      throw new Error("Invalid date format provided for targetDate.");
+    }
+
+    const priorDay = new Date(Date.UTC(year, month - 1, day));
+    priorDay.setUTCDate(priorDay.getUTCDate() - 1);
+    const sourceDate = priorDay.toISOString().split("T")[0];
+
+    return await copyAllFoodEntries(
+      authenticatedUserId,
+      actingUserId,
+      sourceDate,
+      targetDate,
+    );
+  } catch (error) {
+    log(
+      "error",
+      `Error copying all food entries from prior day for user ${authenticatedUserId} to ${targetDate}:`,
+      error,
+    );
+    throw error;
+  }
+}
+
 async function getDailyNutritionSummary(userId, date) {
   try {
     const summary = await foodRepository.getDailyNutritionSummary(userId, date);
@@ -1290,6 +1390,8 @@ module.exports = {
   getFoodEntriesByDateRange,
   copyFoodEntries,
   copyFoodEntriesFromYesterday,
+  copyAllFoodEntries,
+  copyAllFoodEntriesFromYesterday,
   getDailyNutritionSummary,
   createFoodEntryMeal, // New export
   updateFoodEntryMeal, // New export
