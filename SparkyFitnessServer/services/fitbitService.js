@@ -165,7 +165,7 @@ async function syncFitbitData(userId, syncType = "manual") {
           responses["raw_activities_list"].data,
           timezoneOffset,
           distanceUnit,
-          startDate,
+          null, // Pass null to skip the date safety filter during local replay
         );
       if (responses["raw_water"])
         await fitbitDataProcessor.processFitbitWater(

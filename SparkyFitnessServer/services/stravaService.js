@@ -93,7 +93,7 @@ async function syncStravaData(userId, syncType = "manual") {
           userId,
           responses["raw_activities_list"].data,
           detailedActivities,
-          startDate,
+          null, // Pass null to skip the date safety filter during local replay
         );
       }
 
