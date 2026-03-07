@@ -13,6 +13,10 @@ import type {
 import { useTranslation } from 'react-i18next';
 import { toast as sonnerToast } from 'sonner';
 import { formatSecondsToHHMM } from '@/utils/timeFormatters';
+import {
+  HIGH_DEBT_THRESHOLD_HOURS,
+  GOOD_SLEEP_SCORE_THRESHOLD,
+} from '@/constants/sleepScience';
 import SleepAnalyticsCharts from './SleepAnalyticsCharts';
 import SleepAnalyticsTable from './SleepAnalyticsTable';
 
@@ -57,7 +61,10 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
       let insight = t('sleepReport.needsImprovement', 'Needs Improvement');
       if (sleepAnalyticsData.sleepDebt > HIGH_DEBT_THRESHOLD_HOURS) {
         insight = t('sleepReport.highDebt', 'High Debt');
-      } else if (sleepEntry.sleep_score && sleepEntry.sleep_score > GOOD_SLEEP_SCORE_THRESHOLD) {
+      } else if (
+        sleepEntry.sleep_score &&
+        sleepEntry.sleep_score > GOOD_SLEEP_SCORE_THRESHOLD
+      ) {
         insight = t('sleepReport.goodSleep', 'Good Sleep');
       }
 
