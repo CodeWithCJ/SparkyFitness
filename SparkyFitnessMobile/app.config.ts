@@ -3,7 +3,7 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 const APP_NAME = 'SparkyFitness';
 const APP_SLUG = 'sparkyfitnessmobile';
-const ANDROID_PROD_BUNDLE_IDENTIFIER = 'org.SparkyApps.SparkyFitnessMobile';
+const ANDROID_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
 const IOS_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
 const DEV_BUNDLE_IDENTIFIER = 'org.SparkyApps.SparkyFitnessMobile.dev';
 
