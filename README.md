@@ -101,6 +101,14 @@ docker compose pull && docker compose up -d
 # Access application at http://localhost:8080
 ```
 
+
+## 🎥 Video Tutorial
+
+[![Watch the video](https://img.youtube.com/vi/B13IiL2DeQc/maxresdefault.jpg)](https://www.youtube.com/watch?v=B13IiL2DeQc)
+
+Quick 2-minute tutorial showing how to install SparkyFitness (self-hosted fitness tracker).
+
+
 ## Documentation
 
 For full installation guides, configuration options, and development docs, please visit our [Documentation Site](https://codewithcj.github.io/SparkyFitness/).
