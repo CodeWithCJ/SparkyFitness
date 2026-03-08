@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { ServerConfig as ServerConfigType } from '../services/storage';
 import ConnectionStatus from './ConnectionStatus';
@@ -19,6 +19,7 @@ interface ServerConfigProps {
   handleSetActiveConfig: (id: string) => void;
   handleDeleteConfig: (id: string) => void;
   handleEditConfig: (config: ServerConfigType) => void;
+  handleSignIn: (config: ServerConfigType) => void;
   handleAddNewConfig: () => void;
   onOpenWebDashboard: () => void;
   isConnected: boolean;
@@ -41,6 +42,7 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
   handleSetActiveConfig,
   handleDeleteConfig,
   handleEditConfig,
+  handleSignIn,
   handleAddNewConfig,
   onOpenWebDashboard,
   isConnected,
@@ -56,17 +58,48 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
     '--color-text-secondary'
   ]) as [string, string, string, string];
 
+  const showAndroidConfigDetailsMenu = (item: ServerConfigType) => {
+    Alert.alert(
+      item.url,
+      'More actions',
+      [
+        { text: 'Edit', onPress: () => handleEditConfig(item) },
+        { text: 'Delete', style: 'destructive', onPress: () => handleDeleteConfig(item.id) },
+      ],
+      { cancelable: true },
+    );
+  };
+
   const showConfigMenu = (item: ServerConfigType) => {
     const isActive = item.id === activeConfigId;
+
+    if (Platform.OS === 'android' && !isActive) {
+      Alert.alert(
+        item.url,
+        'Select an action',
+        [
+          { text: 'Set Active', onPress: () => handleSetActiveConfig(item.id) },
+          { text: 'Sign In', onPress: () => handleSignIn(item) },
+          { text: 'More', onPress: () => showAndroidConfigDetailsMenu(item) },
+        ],
+        { cancelable: true },
+      );
+      return;
+    }
+
+    const buttons = [
+      ...(!isActive ? [{ text: 'Set Active', onPress: () => handleSetActiveConfig(item.id) }] : []),
+      { text: 'Sign In', onPress: () => handleSignIn(item) },
+      { text: 'Edit', onPress: () => handleEditConfig(item) },
+      { text: 'Delete', style: 'destructive' as const, onPress: () => handleDeleteConfig(item.id) },
+      // Android supports max 3 alert buttons; the dialog is dismissable via back/outside tap
+      ...(Platform.OS === 'ios' ? [{ text: 'Cancel', style: 'cancel' as const }] : []),
+    ];
     Alert.alert(
       item.url,
       isActive ? 'Active configuration' : 'Select an action',
-      [
-        ...(!isActive ? [{ text: 'Set Active', onPress: () => handleSetActiveConfig(item.id) }] : []),
-        { text: 'Edit', onPress: () => handleEditConfig(item) },
-        { text: 'Delete', style: 'destructive' as const, onPress: () => handleDeleteConfig(item.id) },
-        { text: 'Cancel', style: 'cancel' as const },
-      ]
+      buttons,
+      { cancelable: true },
     );
   };
 

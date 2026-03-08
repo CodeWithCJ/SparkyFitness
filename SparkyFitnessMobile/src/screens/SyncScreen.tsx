@@ -24,6 +24,8 @@ import type { HealthMetricStates, HealthDataDisplayState } from '../types/health
 import { useServerConnection, useSyncHealthData } from '../hooks';
 import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
 import type { TabParamList } from '../types/navigation';
+import { Ionicons } from '@expo/vector-icons';
+import { useCSSVariable } from 'uniwind';
 
 type SyncScreenProps = NativeBottomTabScreenProps<TabParamList, 'Sync'>;
 
@@ -52,6 +54,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState<boolean>(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('3d');
   const isAndroid = Platform.OS === 'android';
+  const textSecondary = useCSSVariable('--color-text-secondary') as string;
 
   const { isConnected } = useServerConnection({ enablePolling: true });
 
@@ -579,7 +582,12 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
           )}
         </View>
 
-
+        {/* Health Disclaimer */}
+        {Platform.OS === 'android' && (
+          <Text className="text-text-secondary text-sm text-center mb-4 mt-2">
+            <Text className="font-semibold">Not medical advice.</Text> Consult a healthcare professional for medical advice, diagnosis, or treatment.
+          </Text>
+        )}
         {/* Health Overview */}
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <Text className="text-lg font-bold text-text-primary">Data to Sync</Text>

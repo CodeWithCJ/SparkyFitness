@@ -11,11 +11,8 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
-import ProxyHeadersModal from './ProxyHeadersModal';
-import type { ProxyHeader } from '../services/storage';
 import {
   login,
   LoginError,
@@ -82,8 +79,6 @@ interface CredentialsFormProps {
   onSelectConfig: (id: string, url: string) => void;
   serverUrl: string;
   onServerUrlChange: (url: string) => void;
-  proxyHeaderCount: number;
-  onEditProxyHeaders: () => void;
   email: string;
   onEmailChange: (email: string) => void;
   password: string;
@@ -93,8 +88,8 @@ interface CredentialsFormProps {
   onSignIn: () => void;
   onUseApiKey: () => void;
   onDismiss: () => void;
+  canDismiss: boolean;
   textMuted: string;
-  textSecondary: string;
   accentPrimary: string;
 }
 
@@ -104,8 +99,6 @@ const CredentialsForm: React.FC<CredentialsFormProps> = ({
   onSelectConfig,
   serverUrl,
   onServerUrlChange,
-  proxyHeaderCount,
-  onEditProxyHeaders,
   email,
   onEmailChange,
   password,
@@ -115,8 +108,8 @@ const CredentialsForm: React.FC<CredentialsFormProps> = ({
   onSignIn,
   onUseApiKey,
   onDismiss,
+  canDismiss,
   textMuted,
-  textSecondary,
   accentPrimary,
 }) => {
   const hasExistingConfigs = existingConfigs.length > 0;
@@ -165,9 +158,9 @@ const CredentialsForm: React.FC<CredentialsFormProps> = ({
           <Text className="text-sm mb-2 text-text-secondary">
             Server URL
           </Text>
-          <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
+          <View className="border border-border-subtle rounded-lg bg-raised">
             <TextInput
-              className="flex-1 p-2.5 text-base text-text-primary"
+              className="p-2.5 text-base text-text-primary"
               placeholder="https://your-server-url.com"
               placeholderTextColor={textMuted}
               value={serverUrl}
@@ -175,30 +168,8 @@ const CredentialsForm: React.FC<CredentialsFormProps> = ({
               autoCapitalize="none"
               keyboardType="url"
             />
-            <TouchableOpacity
-              className="p-2"
-              onPress={async () => onServerUrlChange(await Clipboard.getString())}
-              accessibilityLabel="Paste URL from clipboard"
-              accessibilityRole="button"
-            >
-              <Icon name="paste" size={20} color={textSecondary} />
-            </TouchableOpacity>
           </View>
         </View>
-      )}
-
-      {/* Proxy Headers — only for new servers without an existing config */}
-      {!hasExistingConfigs && (
-        <TouchableOpacity
-          className="mb-3 flex-row items-center justify-between border border-border-subtle rounded-lg p-2.5 bg-raised"
-          onPress={onEditProxyHeaders}
-          activeOpacity={0.7}
-        >
-          <Text className="text-base text-text-primary">
-            Proxy Headers{proxyHeaderCount > 0 ? ` (${proxyHeaderCount})` : ''}
-          </Text>
-          <Icon name="chevron-forward" size={18} color={textSecondary} />
-        </TouchableOpacity>
       )}
 
       {/* Email */}
@@ -249,14 +220,15 @@ const CredentialsForm: React.FC<CredentialsFormProps> = ({
         </Text>
       </TouchableOpacity>
 
-      {/* Later — only when existing configs exist */}
-      {hasExistingConfigs && (
+      {canDismiss && (
         <TouchableOpacity
           className="items-center py-2.5"
           onPress={onDismiss}
           activeOpacity={0.7}
         >
-          <Text className="text-base text-text-muted">Later</Text>
+          <Text className="text-base text-text-muted">
+            {hasExistingConfigs ? 'Later' : 'Cancel'}
+          </Text>
         </TouchableOpacity>
       )}
     </>
@@ -410,23 +382,28 @@ const MfaForm: React.FC<MfaFormProps> = ({
 interface LoginModalProps {
   visible: boolean;
   defaultConfigId?: string | null;
+  mode?: 'add-new';
   onLoginSuccess: () => void;
-  onUseApiKey: (serverUrl: string, proxyHeaders: import('../services/storage').ProxyHeader[]) => void;
+  onUseApiKey: (
+    serverUrl: string,
+    proxyHeaders: import('../services/storage').ProxyHeader[],
+    selectedConfigId: string | null,
+  ) => void;
   onDismiss: () => void;
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({
   visible,
   defaultConfigId,
+  mode,
   onLoginSuccess,
   onUseApiKey,
   onDismiss,
 }) => {
-  const [textMuted, textSecondary, accentPrimary] = useCSSVariable([
+  const [textMuted, accentPrimary] = useCSSVariable([
     '--color-text-muted',
-    '--color-text-secondary',
     '--color-accent-primary',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const [existingConfigs, setExistingConfigs] = useState<ServerConfig[]>([]);
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
@@ -435,10 +412,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Proxy headers for new-server entry (fresh install)
-  const [localProxyHeaders, setLocalProxyHeaders] = useState<ProxyHeader[]>([]);
-  const [showProxyHeadersModal, setShowProxyHeadersModal] = useState(false);
 
   // MFA state
   const [step, setStep] = useState<'credentials' | 'mfa'>('credentials');
@@ -457,6 +430,14 @@ const LoginModal: React.FC<LoginModalProps> = ({
     setMfaCode('');
     setEmailOtpSent(false);
 
+    if (mode === 'add-new') {
+      setExistingConfigs([]);
+      setSelectedConfigId(null);
+      setServerUrl('');
+      clearPendingProxyHeaders();
+      return;
+    }
+
     const loadConfigs = async () => {
       const configs = await getAllServerConfigs();
       setExistingConfigs(configs);
@@ -465,19 +446,17 @@ const LoginModal: React.FC<LoginModalProps> = ({
           (defaultConfigId && configs.find((c) => c.id === defaultConfigId)) ||
           (await getActiveServerConfig()) ||
           configs[0];
-        setLocalProxyHeaders([]);
         setSelectedConfigId(preferred.id);
         setServerUrl(preferred.url);
         setPendingProxyHeaders(proxyHeadersToRecord(preferred.proxyHeaders));
       } else {
         setSelectedConfigId(null);
         setServerUrl('');
-        setLocalProxyHeaders([]);
         clearPendingProxyHeaders();
       }
     };
     loadConfigs();
-  }, [defaultConfigId, visible]);
+  }, [defaultConfigId, mode, visible]);
 
   const hasExistingConfigs = existingConfigs.length > 0;
 
@@ -503,7 +482,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
         apiKey: '',
         authType: 'session',
         sessionToken,
-        proxyHeaders: localProxyHeaders.length > 0 ? localProxyHeaders : undefined,
       });
     }
   };
@@ -630,11 +608,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
     setError('');
   };
 
-  const handleSaveLocalProxyHeaders = (headers: ProxyHeader[]) => {
-    setLocalProxyHeaders(headers);
-    setPendingProxyHeaders(proxyHeadersToRecord(headers));
-  };
-
   const handleMfaMethodChange = (method: 'totp' | 'email') => {
     setMfaMethod(method);
     setMfaCode('');
@@ -646,7 +619,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={hasExistingConfigs ? onDismiss : undefined}
+      onRequestClose={hasExistingConfigs || mode === 'add-new' ? onDismiss : undefined}
     >
       <KeyboardAvoidingView
         className="flex-1"
@@ -684,8 +657,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
                 }}
                 serverUrl={serverUrl}
                 onServerUrlChange={setServerUrl}
-                proxyHeaderCount={localProxyHeaders.length}
-                onEditProxyHeaders={() => setShowProxyHeadersModal(true)}
                 email={email}
                 onEmailChange={setEmail}
                 password={password}
@@ -698,11 +669,11 @@ const LoginModal: React.FC<LoginModalProps> = ({
                   const selectedConfig = selectedConfigId
                     ? existingConfigs.find(c => c.id === selectedConfigId)
                     : undefined;
-                  onUseApiKey(currentUrl, selectedConfig ? (selectedConfig.proxyHeaders ?? []) : localProxyHeaders);
+                  onUseApiKey(currentUrl, selectedConfig?.proxyHeaders ?? [], selectedConfigId);
                 }}
                 onDismiss={() => { clearPendingProxyHeaders(); onDismiss(); }}
+                canDismiss={hasExistingConfigs || mode === 'add-new'}
                 textMuted={textMuted}
-                textSecondary={textSecondary}
                 accentPrimary={accentPrimary}
               />
             ) : (
@@ -723,7 +694,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
                   const selectedConfig = selectedConfigId
                     ? existingConfigs.find(c => c.id === selectedConfigId)
                     : undefined;
-                  onUseApiKey(currentUrl, selectedConfig ? (selectedConfig.proxyHeaders ?? []) : localProxyHeaders);
+                  onUseApiKey(currentUrl, selectedConfig?.proxyHeaders ?? [], selectedConfigId);
                 }}
                 textMuted={textMuted}
               />
@@ -731,13 +702,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <ProxyHeadersModal
-        visible={showProxyHeadersModal}
-        onClose={() => setShowProxyHeadersModal(false)}
-        headers={localProxyHeaders}
-        onSave={handleSaveLocalProxyHeaders}
-      />
     </Modal>
   );
 };

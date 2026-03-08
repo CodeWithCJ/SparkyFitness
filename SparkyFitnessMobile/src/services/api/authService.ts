@@ -41,12 +41,18 @@ interface AuthSettingsResponse {
 }
 
 let onSessionExpiredCallback: ((configId: string) => void) | null = null;
+let sessionExpiredSuppressed = false;
 
 export const setOnSessionExpired = (cb: (configId: string) => void): void => {
   onSessionExpiredCallback = cb;
 };
 
+export const suppressSessionExpired = (suppressed: boolean): void => {
+  sessionExpiredSuppressed = suppressed;
+};
+
 export const notifySessionExpired = (configId: string): void => {
+  if (sessionExpiredSuppressed) return;
   onSessionExpiredCallback?.(configId);
 };
 

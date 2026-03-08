@@ -6,6 +6,7 @@ import { getActiveServerConfig, clearServerConfigCache } from '../../src/service
 jest.mock('../../src/services/api/authService', () => ({
   setOnSessionExpired: jest.fn(),
   setOnNoConfigs: jest.fn(),
+  suppressSessionExpired: jest.fn(),
 }));
 
 jest.mock('../../src/services/storage', () => ({

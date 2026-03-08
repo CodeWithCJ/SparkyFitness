@@ -16,6 +16,7 @@ import SyncFrequency from '../components/SyncFrequency';
 import AppearanceSettings from '../components/AppearanceSettings';
 import DevTools from '../components/DevTools';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
+import LoginModal from '../components/LoginModal';
 import * as Application from 'expo-application';
 import Icon from '../components/Icon';
 import { shareDiagnosticReport, sanitizeQueryKey } from '../services/diagnosticReportService';
@@ -53,6 +54,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [currentConfigId, setCurrentConfigId] = useState<string | null>(null);
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginDefaultConfigId, setLoginDefaultConfigId] = useState<string | null>(null);
+  const [loginMode, setLoginMode] = useState<'add-new' | undefined>(undefined);
 
   const { isConnected, refetch: refetchConnection } = useServerConnection();
   const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
@@ -231,11 +235,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   const handleAddNewConfig = (): void => {
-    setUrl('');
-    setApiKey('');
-    setProxyHeaders([]);
-    setCurrentConfigId(null);
-    setShowConfigModal(true);
+    setLoginDefaultConfigId(null);
+    setLoginMode('add-new');
+    setShowLoginModal(true);
+  };
+
+  const handleSignIn = (config: ServerConfig): void => {
+    setLoginDefaultConfigId(config.id);
+    setLoginMode(undefined);
+    setShowLoginModal(true);
   };
 
   const handleToggleHealthMetric = async (
@@ -379,6 +387,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             handleSetActiveConfig={handleSetActiveConfig}
             handleDeleteConfig={handleDeleteConfig}
             handleEditConfig={handleEditConfig}
+            handleSignIn={handleSignIn}
             handleAddNewConfig={handleAddNewConfig}
             onOpenWebDashboard={openWebDashboard}
             isConnected={isConnected}
@@ -475,6 +484,26 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       <PrivacyPolicyModal
         visible={showPrivacyModal}
         onClose={() => setShowPrivacyModal(false)}
+      />
+
+      <LoginModal
+        visible={showLoginModal}
+        defaultConfigId={loginDefaultConfigId}
+        mode={loginMode}
+        onLoginSuccess={() => {
+          setShowLoginModal(false);
+          loadConfig();
+          refetchConnection();
+        }}
+        onUseApiKey={(serverUrl, loginProxyHeaders, selectedConfigId) => {
+          setShowLoginModal(false);
+          setUrl(serverUrl);
+          setApiKey('');
+          setProxyHeaders(loginProxyHeaders);
+          setCurrentConfigId(selectedConfigId);
+          setShowConfigModal(true);
+        }}
+        onDismiss={() => setShowLoginModal(false)}
       />
     </View>
   );

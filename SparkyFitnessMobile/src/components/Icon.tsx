@@ -39,6 +39,7 @@ const ICON_MAP = {
   'shield-checkmark': { sf: 'checkmark.shield', ion: 'shield-checkmark-outline' },
   'cloud-offline': { sf: 'icloud.slash', ion: 'cloud-offline-outline' },
   'alert-circle': { sf: 'exclamationmark.circle', ion: 'alert-circle-outline' },
+  'info-circle': { sf: 'info.circle', ion: 'information-circle-outline' },
   'globe': { sf: 'globe', ion: 'globe-outline' },
 
   // Meals
