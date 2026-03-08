@@ -5,7 +5,7 @@ import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServ
 import type { ServerConfig, ProxyHeader } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { notifyNoConfigs } from '../services/api/authService';
-import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference, enableBackgroundDeliveryForMetric, disableBackgroundDeliveryForMetric, disableAllBackgroundDelivery, cleanupAllSubscriptions, refreshSubscriptions, startObservers, stopObservers } from '../services/healthConnectService';
+import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference, enableBackgroundDeliveryForMetric, disableBackgroundDeliveryForMetric, setupBackgroundDeliveryForEnabledMetrics, disableAllBackgroundDelivery, cleanupAllSubscriptions, refreshSubscriptions, startObservers, stopObservers } from '../services/healthConnectService';
 import { configureBackgroundSync, stopBackgroundSync, performBackgroundSync } from '../services/backgroundSyncService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import { useServerConnection, usePreferences, queryClient } from '../hooks';
@@ -314,9 +314,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           addLog('[SettingsScreen] Not all permissions were granted. Reverting "Enable All".', 'WARNING');
         } else {
           addLog(`[SettingsScreen] All ${HEALTH_METRICS.length} metric permissions granted`, 'SUCCESS');
-          for (const metric of HEALTH_METRICS) {
-            enableBackgroundDeliveryForMetric(metric.recordType).catch(() => {});
-          }
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
@@ -347,6 +344,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
     if (saveErrors.length > 0) {
       addLog(`[SettingsScreen] Failed to save ${saveErrors.length}/${HEALTH_METRICS.length} metric preferences`, 'WARNING', saveErrors);
+    }
+
+    if (newValue) {
+      setupBackgroundDeliveryForEnabledMetrics().catch(() => {});
     }
 
     // Rebuild observer subscriptions to match updated metric preferences

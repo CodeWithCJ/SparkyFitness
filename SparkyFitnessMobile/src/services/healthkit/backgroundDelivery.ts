@@ -3,14 +3,68 @@ import {
   disableBackgroundDelivery,
   disableAllBackgroundDelivery,
   subscribeToChanges,
+  UpdateFrequency
 } from '@kingstinct/react-native-healthkit';
 import type { ObjectTypeIdentifier, SampleTypeIdentifier } from '@kingstinct/react-native-healthkit';
-import { UpdateFrequency } from '@kingstinct/react-native-healthkit';
-
 import { addLog } from '../LogService';
 import { HEALTHKIT_TYPE_MAP } from './index';
 import { HEALTH_METRICS } from '../../HealthMetrics';
+import type { BackgroundDeliveryFrequency, HealthMetric } from '../../HealthMetrics';
 import { loadHealthPreference } from './preferences';
+
+function getBackgroundDeliveryFrequency(recordType: string): BackgroundDeliveryFrequency {
+  const metric = HEALTH_METRICS.find(m => m.recordType === recordType);
+  return metric?.backgroundDeliveryFrequency ?? 'daily';
+}
+
+type NativeUpdateFrequency = typeof UpdateFrequency[keyof typeof UpdateFrequency];
+
+function toUpdateFrequency(frequency: BackgroundDeliveryFrequency): NativeUpdateFrequency | null {
+  if (frequency === 'none') return null;
+  // UpdateFrequency.hourly (2) < UpdateFrequency.daily (3) — lower = more aggressive
+  return frequency === 'hourly' ? UpdateFrequency.hourly : UpdateFrequency.daily;
+}
+
+async function getEnabledIdentifierFrequencies(options?: {
+  forceEnabledRecordTypes?: string[];
+  forceDisabledRecordTypes?: string[];
+}): Promise<Map<string, NativeUpdateFrequency>> {
+  const forceEnabledRecordTypes = new Set(options?.forceEnabledRecordTypes ?? []);
+  const forceDisabledRecordTypes = new Set(options?.forceDisabledRecordTypes ?? []);
+  const identifierFrequencies = new Map<string, NativeUpdateFrequency>();
+
+  for (const metric of HEALTH_METRICS) {
+    const enabled = await isMetricEnabled(metric, forceEnabledRecordTypes, forceDisabledRecordTypes);
+    if (!enabled) continue;
+
+    const frequency = metric.backgroundDeliveryFrequency ?? 'daily';
+    const updateFreq = toUpdateFrequency(frequency);
+    if (updateFreq === null) continue;
+
+    for (const id of resolveHKIdentifiers(metric.recordType)) {
+      const existing = identifierFrequencies.get(id);
+      if (existing === undefined || updateFreq < existing) {
+        identifierFrequencies.set(id, updateFreq);
+      }
+    }
+  }
+
+  return identifierFrequencies;
+}
+
+async function isMetricEnabled(
+  metric: HealthMetric,
+  forceEnabledRecordTypes: Set<string>,
+  forceDisabledRecordTypes: Set<string>,
+): Promise<boolean> {
+  if (forceDisabledRecordTypes.has(metric.recordType)) {
+    return false;
+  }
+  if (forceEnabledRecordTypes.has(metric.recordType)) {
+    return true;
+  }
+  return Boolean(await loadHealthPreference<boolean>(metric.preferenceKey));
+}
 
 // Active observer subscriptions keyed by HK identifier
 const subscriptions = new Map<string, { remove: () => void }>();
@@ -18,6 +72,9 @@ const subscriptions = new Map<string, { remove: () => void }>();
 // Module-level state for subscription management
 let storedCallback: (() => void) | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+// Incremented each time rebuildSubscriptions is called so that stale async
+// rebuilds discard their results instead of registering orphaned observers.
+let rebuildGeneration = 0;
 
 /**
  * Resolve a metric recordType to the set of real HK identifiers it maps to.
@@ -41,10 +98,23 @@ function resolveHKIdentifiers(recordType: string): string[] {
 }
 
 export async function enableBackgroundDeliveryForMetric(recordType: string): Promise<void> {
+  const frequency = getBackgroundDeliveryFrequency(recordType);
+  if (toUpdateFrequency(frequency) === null) {
+    addLog(`[BackgroundDelivery] Skipping background delivery for ${recordType} (foreground-only)`, 'DEBUG');
+  }
+
+  const desiredFrequencies = await getEnabledIdentifierFrequencies({
+    forceEnabledRecordTypes: [recordType],
+  });
   const identifiers = resolveHKIdentifiers(recordType);
   for (const id of identifiers) {
+    const desiredFrequency = desiredFrequencies.get(id);
+    if (desiredFrequency === undefined) {
+      continue;
+    }
+
     try {
-      await enableBackgroundDelivery(id as ObjectTypeIdentifier, UpdateFrequency.hourly);
+      await enableBackgroundDelivery(id as ObjectTypeIdentifier, desiredFrequency);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[BackgroundDelivery] Failed to enable for ${id}: ${message}`, 'ERROR');
@@ -54,22 +124,20 @@ export async function enableBackgroundDeliveryForMetric(recordType: string): Pro
 
 export async function disableBackgroundDeliveryForMetric(recordType: string): Promise<void> {
   const identifiers = resolveHKIdentifiers(recordType);
-
-  // Build the set of HK identifiers still needed by other enabled metrics.
-  // The caller saves the preference before calling this, so the metric being
-  // disabled already reads as false — no need to filter it out explicitly.
-  const stillNeeded = new Set<string>();
-  for (const metric of HEALTH_METRICS) {
-    const enabled = await loadHealthPreference<boolean>(metric.preferenceKey);
-    if (!enabled) continue;
-    for (const id of resolveHKIdentifiers(metric.recordType)) {
-      stillNeeded.add(id);
-    }
-  }
+  const desiredFrequencies = await getEnabledIdentifierFrequencies({
+    forceDisabledRecordTypes: [recordType],
+  });
 
   for (const id of identifiers) {
-    if (stillNeeded.has(id)) {
+    const desiredFrequency = desiredFrequencies.get(id);
+    if (desiredFrequency !== undefined) {
       addLog(`[BackgroundDelivery] Keeping delivery for ${id}: still needed by another enabled metric`, 'DEBUG');
+      try {
+        await enableBackgroundDelivery(id as ObjectTypeIdentifier, desiredFrequency);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[BackgroundDelivery] Failed to update frequency for ${id}: ${message}`, 'ERROR');
+      }
       continue;
     }
     try {
@@ -82,22 +150,13 @@ export async function disableBackgroundDeliveryForMetric(recordType: string): Pr
 }
 
 export async function setupBackgroundDeliveryForEnabledMetrics(): Promise<void> {
-  // Collect all unique HK identifiers for enabled metrics
-  const identifiers = new Set<string>();
+  const identifierFrequencies = await getEnabledIdentifierFrequencies();
 
-  for (const metric of HEALTH_METRICS) {
-    const enabled = await loadHealthPreference<boolean>(metric.preferenceKey);
-    if (!enabled) continue;
-    for (const id of resolveHKIdentifiers(metric.recordType)) {
-      identifiers.add(id);
-    }
-  }
+  addLog(`[BackgroundDelivery] Registering background delivery for ${identifierFrequencies.size} HK types`, 'DEBUG');
 
-  addLog(`[BackgroundDelivery] Registering background delivery for ${identifiers.size} HK types`, 'DEBUG');
-
-  for (const id of identifiers) {
+  for (const [id, freq] of identifierFrequencies) {
     try {
-      await enableBackgroundDelivery(id as ObjectTypeIdentifier, UpdateFrequency.hourly);
+      await enableBackgroundDelivery(id as ObjectTypeIdentifier, freq);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[BackgroundDelivery] Failed to enable for ${id}: ${message}`, 'ERROR');
@@ -116,6 +175,8 @@ function rebuildSubscriptions(): void {
 
   const callback = storedCallback;
   if (!callback) return;
+
+  const generation = ++rebuildGeneration;
 
   const identifiersToSubscribe = new Set<string>();
   const enabledChecks: Promise<void>[] = [];
@@ -141,6 +202,13 @@ function rebuildSubscriptions(): void {
 
   Promise.all(enabledChecks)
     .then(() => {
+      // A newer rebuild was started while we were loading preferences —
+      // discard these results to avoid registering orphaned observers.
+      if (generation !== rebuildGeneration) {
+        addLog(`[BackgroundDelivery] Discarding stale rebuild (generation ${generation}, current ${rebuildGeneration})`, 'DEBUG');
+        return;
+      }
+
       addLog(`[BackgroundDelivery] Subscribing to changes for ${identifiersToSubscribe.size} HK types`, 'DEBUG');
       for (const id of identifiersToSubscribe) {
         try {

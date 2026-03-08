@@ -24,8 +24,6 @@ import type { HealthMetricStates, HealthDataDisplayState } from '../types/health
 import { useServerConnection, useSyncHealthData } from '../hooks';
 import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
 import type { TabParamList } from '../types/navigation';
-import { Ionicons } from '@expo/vector-icons';
-import { useCSSVariable } from 'uniwind';
 
 type SyncScreenProps = NativeBottomTabScreenProps<TabParamList, 'Sync'>;
 
@@ -54,7 +52,6 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState<boolean>(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('3d');
   const isAndroid = Platform.OS === 'android';
-  const textSecondary = useCSSVariable('--color-text-secondary') as string;
 
   const { isConnected } = useServerConnection({ enablePolling: true });
 

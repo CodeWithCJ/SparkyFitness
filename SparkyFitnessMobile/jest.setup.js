@@ -51,6 +51,11 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
     cumulativeSum: 'cumulativeSum',
   },
   isHealthDataAvailable: jest.fn().mockResolvedValue(true),
+  enableBackgroundDelivery: jest.fn().mockResolvedValue(true),
+  disableBackgroundDelivery: jest.fn().mockResolvedValue(undefined),
+  disableAllBackgroundDelivery: jest.fn().mockResolvedValue(undefined),
+  subscribeToChanges: jest.fn().mockReturnValue({ remove: jest.fn() }),
+  UpdateFrequency: { immediate: 1, hourly: 2, daily: 3, weekly: 4 },
 }));
 
 // Mock react-native-health-connect
