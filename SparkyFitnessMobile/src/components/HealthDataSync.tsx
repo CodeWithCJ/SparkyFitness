@@ -137,6 +137,9 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           thumbColor="#FFFFFF"
         />
       </View>
+      <Text className="text-xs text-text-muted mb-3">
+        Enabling many health metrics may increase battery usage. Each enabled metric allows the app to wake in the background when new data is available.
+      </Text>
       {isLoaded && CATEGORY_ORDER.map((category) => {
         const metricsInCategory = groupedMetrics[category];
         if (!metricsInCategory || metricsInCategory.length === 0) {

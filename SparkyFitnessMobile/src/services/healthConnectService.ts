@@ -131,6 +131,21 @@ export const loadStringPreference = HealthConnectPreferences.loadStringPreferenc
 export const saveSyncDuration = HealthConnectPreferences.saveSyncDuration;
 export const loadSyncDuration = HealthConnectPreferences.loadSyncDuration;
 
+// Locked-device detection stubs for Android (iOS-only feature)
+export const resetDatabaseInaccessibleCount = (): void => {};
+export const getDatabaseInaccessibleCount = (): number => 0;
+
+// Background delivery stubs for Android (iOS-only feature)
+export const enableBackgroundDeliveryForMetric = async (_recordType: string): Promise<void> => {};
+export const disableBackgroundDeliveryForMetric = async (_recordType: string): Promise<void> => {};
+export const setupBackgroundDeliveryForEnabledMetrics = async (): Promise<void> => {};
+export const subscribeToEnabledMetricChanges = (_onDataAvailable: () => void): (() => void) => () => {};
+export const refreshSubscriptions = (): void => {};
+export const cleanupAllSubscriptions = (): void => {};
+export const disableAllBackgroundDelivery = async (): Promise<boolean> => true;
+export const startObservers = (_onDataAvailable: () => void): void => {};
+export const stopObservers = (): void => {};
+
 export const syncHealthData = async (
   syncDuration: SyncDuration,
   healthMetricStates: HealthMetricStates = {}

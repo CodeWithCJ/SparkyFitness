@@ -14,6 +14,8 @@ import {
   getAggregatedTotalCaloriesByDate,
   getAggregatedDistanceByDate,
   getAggregatedFloorsClimbedByDate,
+  resetDatabaseInaccessibleCount,
+  getDatabaseInaccessibleCount,
 } from './healthConnectService';
 import { loadLastSyncedTime, saveLastSyncedTime, loadBackgroundSyncEnabled } from './storage';
 
@@ -25,7 +27,7 @@ const BACKGROUND_TASK_NAME = 'healthDataSync';
 // upserts by record identity, so duplicates are harmless.
 const SESSION_OVERLAP_MS = 6 * 60 * 60 * 1000; // 6 hours
 
-const performBackgroundSync = async (taskId: string): Promise<void> => {
+export const performBackgroundSync = async (taskId: string): Promise<void> => {
   console.log('[BackgroundSync] taskId', taskId);
   addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'INFO');
 
@@ -49,10 +51,14 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
   const allData: HealthDataPayload = [];
   const collectedCounts: string[] = [];
   let syncErrors = 0;
+  let enabledMetricCount = 0;
+
+  resetDatabaseInaccessibleCount();
 
   for (const metric of HEALTH_METRICS) {
     const isEnabled = await loadHealthPreference<boolean>(metric.preferenceKey);
     if (!isEnabled) continue;
+    enabledMetricCount++;
 
     try {
       let dataToTransform: unknown[] = [];
@@ -95,6 +101,25 @@ const performBackgroundSync = async (taskId: string): Promise<void> => {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[Background Sync] Error syncing ${metric.label}: ${message}`, 'ERROR');
     }
+  }
+
+  const inaccessibleCount = getDatabaseInaccessibleCount();
+
+  if (inaccessibleCount > 0 && allData.length === 0) {
+    addLog(
+      `[Background Sync] Device appears locked — ${inaccessibleCount} HealthKit query(s) returned database inaccessible ` +
+      `(${enabledMetricCount} metric(s) enabled). Skipping timestamp update; will retry next cycle.`,
+      'WARNING'
+    );
+    return;
+  }
+
+  if (inaccessibleCount > 0) {
+    addLog(
+      `[Background Sync] Partial data collected — ${inaccessibleCount} query(s) hit database inaccessible, ` +
+      `but ${allData.length} records were still collected. Proceeding with sync.`,
+      'WARNING'
+    );
   }
 
   if (allData.length > 0) {

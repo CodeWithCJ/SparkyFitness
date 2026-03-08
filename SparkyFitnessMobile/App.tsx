@@ -28,9 +28,10 @@ import FoodScanScreen from './src/screens/FoodScanScreen';
 import LoginModal from './src/components/LoginModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
-import { saveServerConfig, getActiveServerConfig } from './src/services/storage';
+import { saveServerConfig, getActiveServerConfig, loadBackgroundSyncEnabled } from './src/services/storage';
 import { notifyNoConfigs } from './src/services/api/authService';
-import { configureBackgroundSync } from './src/services/backgroundSyncService';
+import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
+import { startObservers, stopObservers } from './src/services/healthConnectService';
 import { initializeTheme } from './src/services/themeService';
 import { initLogService } from './src/services/LogService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -127,6 +128,25 @@ function AppContent() {
     configureBackgroundSync().catch(error => {
       console.error('[App] Failed to configure background sync:', error);
     });
+
+    // Register HealthKit background delivery and observer subscriptions (iOS)
+    // Only if the user has background sync enabled — otherwise observers would
+    // bypass the preference and continue syncing in the background.
+    // When the user toggles the setting at runtime, SettingsScreen calls
+    // startObservers/stopObservers directly, so the lifecycle stays in sync.
+    if (Platform.OS === 'ios') {
+      loadBackgroundSyncEnabled().then(enabled => {
+        if (!enabled) return;
+
+        startObservers(() => {
+          performBackgroundSync('healthkit-observer').catch(error => {
+            console.error('[App] Observer-triggered sync failed:', error);
+          });
+        });
+      });
+
+      return () => stopObservers();
+    }
   }, []);
 
   if (Platform.OS !== 'ios' && !icons) {
