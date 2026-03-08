@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { setOnSessionExpired, setOnNoConfigs } from '../services/api/authService';
+import { setOnSessionExpired, setOnNoConfigs, suppressSessionExpired } from '../services/api/authService';
 import { getActiveServerConfig, clearServerConfigCache } from '../services/storage';
 
 export function useAuth() {
@@ -10,7 +10,10 @@ export function useAuth() {
     setOnSessionExpired((configId) => {
       setExpiredConfigId(configId);
       setShowLoginModal((prev) => {
-        if (!prev) clearServerConfigCache();
+        if (!prev) {
+          clearServerConfigCache();
+          suppressSessionExpired(true);
+        }
         return true;
       });
     });
@@ -33,10 +36,12 @@ export function useAuth() {
   const dismissLoginModal = useCallback(() => {
     setShowLoginModal(false);
     setExpiredConfigId(null);
+    suppressSessionExpired(false);
   }, []);
   const handleLoginSuccess = useCallback(() => {
     setShowLoginModal(false);
     setExpiredConfigId(null);
+    suppressSessionExpired(false);
   }, []);
 
   return {

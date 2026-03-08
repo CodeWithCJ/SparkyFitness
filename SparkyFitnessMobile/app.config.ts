@@ -5,7 +5,7 @@ const APP_NAME = 'SparkyFitness';
 const APP_SLUG = 'sparkyfitnessmobile';
 const ANDROID_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
 const IOS_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
-const DEV_BUNDLE_IDENTIFIER = 'org.SparkyApps.SparkyFitnessMobile.dev';
+const DEV_BUNDLE_IDENTIFIER = process.env.EXPO_DEV_BUNDLE_IDENTIFIER || 'org.SparkyApps.SparkyFitnessMobile.dev';
 
 const DEV_PACKAGE = DEV_BUNDLE_IDENTIFIER;
 const PROD_PACKAGE = ANDROID_PROD_BUNDLE_IDENTIFIER;

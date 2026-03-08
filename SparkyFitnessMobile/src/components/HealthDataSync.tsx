@@ -108,6 +108,9 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
       <View className="mb-3">
         <Text className="text-sm font-semibold text-text-secondary mb-1">{platformSubtitle}</Text>
         <Text className="text-sm text-text-secondary">{platformSummary}</Text>
+        <Text className="text-sm text-text-secondary mt-1">
+          <Text className="font-semibold">Not medical advice.</Text> Consult a healthcare professional for medical advice, diagnosis, or treatment.
+        </Text>
         {learnMoreExpanded && (
           <Text className="text-sm text-text-secondary mt-2">{platformDetail}</Text>
         )}

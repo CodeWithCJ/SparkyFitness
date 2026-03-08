@@ -17,9 +17,13 @@ async function handleAiServiceSettings(
       // API key validation happens when actually using the service (in processChatMessage)
       // This enables the override workflow where users create a service and add API key later
       const result = await chatRepository.upsertAiServiceSetting(serviceData);
+      if (!result) {
+        throw new Error("AI service setting not found.");
+      }
+      const { encrypted_api_key, api_key_iv, api_key_tag, ...safeSetting } = result;
       return {
         message: "AI service settings saved successfully.",
-        setting: result,
+        setting: safeSetting,
       };
     }
     // Add other actions if needed in the future
@@ -723,7 +727,7 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         `AI service API call error for ${aiService.service_type}. Status: ${response.status}, StatusText: ${response.statusText}, Content-Type: ${response.headers.get("content-type")}, Body: ${errorBody}`,
       );
       throw new Error(
-        `AI service API call error: ${response.status} - ${response.statusText} - ${errorBody}`,
+        `AI service API call error: ${response.status} - ${response.statusText}`,
       );
     }
 
@@ -1054,7 +1058,7 @@ async function processFoodOptionsRequest(
         `AI service API call error for food options (${aiService.service_type}). Status: ${response.status}, StatusText: ${response.statusText}, Content-Type: ${response.headers.get("content-type")}, Body: ${errorBody}`,
       );
       throw new Error(
-        `AI service API call error: ${response.status} - ${response.statusText} - ${errorBody}`,
+        `AI service API call error: ${response.status} - ${response.statusText}`,
       );
     }
 
