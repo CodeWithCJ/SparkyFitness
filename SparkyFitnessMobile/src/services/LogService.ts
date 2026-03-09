@@ -394,6 +394,7 @@ export const initLogService = async (): Promise<void> => {
   await getLogFilter();
   await pruneLogs();
 
+  appStateSubscription?.remove();
   appStateSubscription = AppState.addEventListener('change', (nextState) => {
     if (nextState === 'background' || nextState === 'inactive') {
       flushBuffer().catch(error => {

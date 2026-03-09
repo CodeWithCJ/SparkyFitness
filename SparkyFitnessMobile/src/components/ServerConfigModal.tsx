@@ -40,11 +40,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   onSave,
   isEditing,
 }) => {
-  const [textMuted, textSecondary, accentPrimary] = useCSSVariable([
+  const [textMuted, textSecondary] = useCSSVariable([
     '--color-text-muted',
     '--color-text-secondary',
-    '--color-accent-primary',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const [showProxyHeaders, setShowProxyHeaders] = useState(false);
 

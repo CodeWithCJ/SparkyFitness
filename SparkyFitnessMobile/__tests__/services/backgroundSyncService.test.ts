@@ -38,6 +38,8 @@ jest.mock('../../src/services/healthConnectService', () => ({
   getAggregatedTotalCaloriesByDate: jest.fn(),
   getAggregatedDistanceByDate: jest.fn(),
   getAggregatedFloorsClimbedByDate: jest.fn(),
+  resetDatabaseInaccessibleCount: jest.fn(),
+  getDatabaseInaccessibleCount: jest.fn().mockReturnValue(0),
 }));
 
 const api = require('../../src/services/api/healthDataApi') as { syncHealthData: jest.Mock };
@@ -57,6 +59,8 @@ const healthService = require('../../src/services/healthConnectService') as {
   getAggregatedTotalCaloriesByDate: jest.Mock;
   getAggregatedDistanceByDate: jest.Mock;
   getAggregatedFloorsClimbedByDate: jest.Mock;
+  resetDatabaseInaccessibleCount: jest.Mock;
+  getDatabaseInaccessibleCount: jest.Mock;
 };
 
 describe('performBackgroundSync (via triggerManualSync)', () => {
@@ -512,6 +516,72 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
 
       expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
       expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+  });
+
+  describe('Locked-device detection', () => {
+    beforeEach(() => {
+      storage.loadLastSyncedTime.mockResolvedValue(new Date('2024-01-15T08:00:00Z').toISOString());
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+      healthService.getAggregatedActiveCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedTotalCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedDistanceByDate.mockResolvedValue([]);
+      healthService.getAggregatedFloorsClimbedByDate.mockResolvedValue([]);
+      healthService.readHealthRecords.mockResolvedValue([]);
+    });
+
+    test('resets counter at start of sync', async () => {
+      healthService.loadHealthPreference.mockResolvedValue(false);
+
+      await triggerManualSync();
+
+      expect(healthService.resetDatabaseInaccessibleCount).toHaveBeenCalled();
+    });
+
+    test('skips timestamp save when all queries are inaccessible and no data collected', async () => {
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getDatabaseInaccessibleCount.mockReturnValue(3);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).not.toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+
+    test('proceeds with sync when some data collected despite inaccessible queries', async () => {
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.transformHealthRecords.mockImplementation((data) => data);
+      healthService.getDatabaseInaccessibleCount.mockReturnValue(2);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).toHaveBeenCalledWith(
+        expect.arrayContaining([{ value: 5000 }])
+      );
+      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+
+    test('normal sync proceeds when inaccessible count is zero', async () => {
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.transformHealthRecords.mockImplementation((data) => data);
+      healthService.getDatabaseInaccessibleCount.mockReturnValue(0);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+
+    test('no data + no inaccessible errors = normal "no data" behavior', async () => {
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getDatabaseInaccessibleCount.mockReturnValue(0);
+
+      await triggerManualSync();
+
+      expect(api.syncHealthData).not.toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
     });
   });
 });

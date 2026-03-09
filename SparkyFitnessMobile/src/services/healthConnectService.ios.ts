@@ -17,6 +17,10 @@ export const requestHealthPermissions = HealthKit.requestHealthPermissions;
 export const readHealthRecords = HealthKit.readHealthRecords;
 export const getSyncStartDate = HealthKit.getSyncStartDate;
 
+// Locked-device detection (HealthKit database inaccessible)
+export const resetDatabaseInaccessibleCount = HealthKit.resetDatabaseInaccessibleCount;
+export const getDatabaseInaccessibleCount = HealthKit.getDatabaseInaccessibleCount;
+
 // Record reader functions for specific types
 export const readStepRecords = async (startDate: Date, endDate: Date): Promise<unknown[]> =>
   HealthKit.readHealthRecords('Steps', startDate, endDate);
@@ -58,6 +62,19 @@ export const saveStringPreference = HealthKitPreferences.saveStringPreference;
 export const loadStringPreference = HealthKitPreferences.loadStringPreference;
 export const saveSyncDuration = HealthKitPreferences.saveSyncDuration;
 export const loadSyncDuration = HealthKitPreferences.loadSyncDuration;
+
+// Background delivery (iOS only)
+export {
+  enableBackgroundDeliveryForMetric,
+  disableBackgroundDeliveryForMetric,
+  setupBackgroundDeliveryForEnabledMetrics,
+  subscribeToEnabledMetricChanges,
+  refreshSubscriptions,
+  cleanupAllSubscriptions,
+  disableAllBackgroundDelivery,
+  startObservers,
+  stopObservers,
+} from './healthkit/backgroundDelivery';
 
 export const syncHealthData = async (
   syncDuration: SyncDuration,

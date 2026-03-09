@@ -5,8 +5,8 @@ import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServ
 import type { ServerConfig, ProxyHeader } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { notifyNoConfigs } from '../services/api/authService';
-import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference } from '../services/healthConnectService';
-import { configureBackgroundSync, stopBackgroundSync } from '../services/backgroundSyncService';
+import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference, enableBackgroundDeliveryForMetric, disableBackgroundDeliveryForMetric, setupBackgroundDeliveryForEnabledMetrics, disableAllBackgroundDelivery, cleanupAllSubscriptions, refreshSubscriptions, startObservers, stopObservers } from '../services/healthConnectService';
+import { configureBackgroundSync, stopBackgroundSync, performBackgroundSync } from '../services/backgroundSyncService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import { useServerConnection, usePreferences, queryClient } from '../hooks';
 import type { HealthMetric } from '../HealthMetrics';
@@ -255,6 +255,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       [metric.stateKey]: newValue,
     }));
     await saveHealthPreference(metric.preferenceKey, newValue);
+    if (!newValue) {
+      disableBackgroundDeliveryForMetric(metric.recordType).catch(() => {});
+    }
     if (newValue) {
       try {
         const granted = await requestHealthPermissions(metric.permissions);
@@ -268,6 +271,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           addLog(`Permission Denied: ${metric.label} permission not granted.`, 'WARNING');
         } else {
           addLog(`${metric.label} sync enabled and permissions granted.`, 'SUCCESS');
+          enableBackgroundDeliveryForMetric(metric.recordType).catch(() => {});
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
@@ -280,6 +284,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         addLog(`Permission Request Error for ${metric.label}: ${errorMessage}`, 'ERROR');
       }
     }
+    // Rebuild observer subscriptions to match updated metric preferences
+    refreshSubscriptions();
   };
 
   const handleToggleAllMetrics = async (): Promise<void> => {
@@ -319,6 +325,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       }
     } else {
       addLog(`[SettingsScreen] Disabling all ${HEALTH_METRICS.length} metrics`, 'DEBUG');
+      disableAllBackgroundDelivery().catch(() => {});
+      cleanupAllSubscriptions();
     }
 
     setHealthMetricStates(newHealthMetricStates);
@@ -337,6 +345,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     if (saveErrors.length > 0) {
       addLog(`[SettingsScreen] Failed to save ${saveErrors.length}/${HEALTH_METRICS.length} metric preferences`, 'WARNING', saveErrors);
     }
+
+    if (newValue) {
+      setupBackgroundDeliveryForEnabledMetrics().catch(() => {});
+    }
+
+    // Rebuild observer subscriptions to match updated metric preferences
+    refreshSubscriptions();
   };
 
   const handleShareDiagnosticReport = async (): Promise<void> => {
@@ -423,8 +438,18 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               await saveBackgroundSyncEnabled(newValue);
               if (newValue) {
                 await configureBackgroundSync();
+                if (Platform.OS === 'ios') {
+                  startObservers(() => {
+                    performBackgroundSync('healthkit-observer').catch(error => {
+                      console.error('[SettingsScreen] Observer-triggered sync failed:', error);
+                    });
+                  });
+                }
               } else {
                 await stopBackgroundSync();
+                if (Platform.OS === 'ios') {
+                  stopObservers();
+                }
               }
             }}
           />

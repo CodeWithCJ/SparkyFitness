@@ -21,6 +21,30 @@ export { getSyncStartDate };
 // Track if HealthKit is available on this device
 let isHealthKitAvailable = false;
 
+// ============================================================================
+// Database inaccessible error detection (locked device)
+// ============================================================================
+
+// When the device is locked, HealthKit encrypts its database. Queries return
+// empty arrays or throw HKError.errorDatabaseInaccessible (code 6). We detect
+// this via the error message so background sync can distinguish "locked" from
+// "genuinely no data".
+let databaseInaccessibleCount = 0;
+
+export function resetDatabaseInaccessibleCount(): void {
+  databaseInaccessibleCount = 0;
+}
+
+export function getDatabaseInaccessibleCount(): number {
+  return databaseInaccessibleCount;
+}
+
+export function isDatabaseInaccessibleError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return msg.includes('protected health data') || msg.includes('errordatabaseinaccessible');
+}
+
 // Define all supported HealthKit type identifiers for this app
 const SUPPORTED_HK_TYPES = new Set<string>([
   'HKQuantityTypeIdentifierStepCount',
@@ -91,7 +115,7 @@ const HEALTHKIT_UNIT_MAP: Record<string, string> = {
 };
 
 // Map our internal health metric types to the official HealthKit identifiers
-const HEALTHKIT_TYPE_MAP: Record<string, string> = {
+export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   'Steps': 'HKQuantityTypeIdentifierStepCount',
   'HeartRate': 'HKQuantityTypeIdentifierHeartRate',
   'ActiveCaloriesBurned': 'HKQuantityTypeIdentifierActiveEnergyBurned',
@@ -285,8 +309,13 @@ const queryTotalCalories = async (
     }
     return { value: 0, hasData: false };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthKitService] Failed to query total calories: ${message}`, 'ERROR');
+    if (isDatabaseInaccessibleError(error)) {
+      databaseInaccessibleCount++;
+      addLog('[HealthKitService] Total calories query failed: database inaccessible (device likely locked)', 'WARNING');
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthKitService] Failed to query total calories: ${message}`, 'ERROR');
+    }
     return null;
   }
 };
@@ -415,9 +444,13 @@ const getAggregatedDataByDate = async (
         });
       }
     } catch (error) {
-      // errorCount++;
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthKitService] Failed to get aggregated ${config.logLabel}: ${message}`, 'ERROR');
+      if (isDatabaseInaccessibleError(error)) {
+        databaseInaccessibleCount++;
+        addLog(`[HealthKitService] Aggregated ${config.logLabel} query failed: database inaccessible (device likely locked)`, 'WARNING');
+      } else {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[HealthKitService] Failed to get aggregated ${config.logLabel}: ${message}`, 'ERROR');
+      }
     }
 
     currentDate.setDate(currentDate.getDate() + 1);
@@ -740,8 +773,13 @@ export const readHealthRecords = async (
     const handler = RECORD_HANDLERS[recordType] || createQuantityHandler(recordType);
     return await handler(identifier, startDate, endDate);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthKitService] Error reading ${recordType}: ${message}`, 'ERROR');
+    if (isDatabaseInaccessibleError(error)) {
+      databaseInaccessibleCount++;
+      addLog(`[HealthKitService] ${recordType} read failed: database inaccessible (device likely locked)`, 'WARNING');
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthKitService] Error reading ${recordType}: ${message}`, 'ERROR');
+    }
     return [];
   }
 };

@@ -4,6 +4,9 @@ import {
   getAggregatedStepsByDate,
   getAggregatedTotalCaloriesByDate,
   readHealthRecords,
+  isDatabaseInaccessibleError,
+  resetDatabaseInaccessibleCount,
+  getDatabaseInaccessibleCount,
 } from '../../../src/services/healthkit/index';
 
 import {
@@ -1046,5 +1049,109 @@ describe('readHealthRecords', () => {
 
       expect(result).toEqual([]);
     });
+  });
+});
+
+describe('isDatabaseInaccessibleError', () => {
+  test('returns true for "protected health data" error message', () => {
+    const error = new Error('Protected health data is inaccessible');
+    expect(isDatabaseInaccessibleError(error)).toBe(true);
+  });
+
+  test('returns true for "errordatabaseinaccessible" error message', () => {
+    const error = new Error('HKError errordatabaseinaccessible');
+    expect(isDatabaseInaccessibleError(error)).toBe(true);
+  });
+
+  test('is case-insensitive', () => {
+    expect(isDatabaseInaccessibleError(new Error('PROTECTED HEALTH DATA is blocked'))).toBe(true);
+    expect(isDatabaseInaccessibleError(new Error('ErrorDatabaseInaccessible'))).toBe(true);
+  });
+
+  test('returns false for non-Error values', () => {
+    expect(isDatabaseInaccessibleError('protected health data')).toBe(false);
+    expect(isDatabaseInaccessibleError(null)).toBe(false);
+    expect(isDatabaseInaccessibleError(undefined)).toBe(false);
+    expect(isDatabaseInaccessibleError(42)).toBe(false);
+  });
+
+  test('returns false for unrelated errors', () => {
+    expect(isDatabaseInaccessibleError(new Error('Network timeout'))).toBe(false);
+    expect(isDatabaseInaccessibleError(new Error('Authorization denied'))).toBe(false);
+  });
+});
+
+describe('databaseInaccessibleCount', () => {
+  beforeEach(() => {
+    resetDatabaseInaccessibleCount();
+  });
+
+  test('starts at zero after reset', () => {
+    expect(getDatabaseInaccessibleCount()).toBe(0);
+  });
+
+  test('increments when readHealthRecords catches a database inaccessible error', async () => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    await initHealthConnect();
+
+    mockQueryQuantitySamples.mockRejectedValue(new Error('Protected health data is inaccessible'));
+
+    await readHealthRecords('Steps', new Date('2024-01-15'), new Date('2024-01-16'));
+
+    expect(getDatabaseInaccessibleCount()).toBe(1);
+  });
+
+  test('increments when getAggregatedStepsByDate catches a database inaccessible error', async () => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    await initHealthConnect();
+
+    mockQueryStatisticsForQuantity.mockRejectedValue(new Error('Protected health data is inaccessible'));
+
+    const startDate = new Date('2024-01-15T00:00:00Z');
+    const endDate = new Date('2024-01-15T23:59:59Z');
+    await getAggregatedStepsByDate(startDate, endDate);
+
+    expect(getDatabaseInaccessibleCount()).toBe(1);
+  });
+
+  test('increments when getAggregatedTotalCaloriesByDate catches a database inaccessible error', async () => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    await initHealthConnect();
+
+    mockQueryStatisticsForQuantity.mockRejectedValue(new Error('Protected health data is inaccessible'));
+
+    const startDate = new Date('2024-01-15T00:00:00Z');
+    const endDate = new Date('2024-01-15T23:59:59Z');
+    await getAggregatedTotalCaloriesByDate(startDate, endDate);
+
+    expect(getDatabaseInaccessibleCount()).toBeGreaterThanOrEqual(1);
+  });
+
+  test('does not increment for unrelated errors', async () => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    await initHealthConnect();
+
+    mockQueryQuantitySamples.mockRejectedValue(new Error('Network error'));
+
+    await readHealthRecords('Steps', new Date('2024-01-15'), new Date('2024-01-16'));
+
+    expect(getDatabaseInaccessibleCount()).toBe(0);
+  });
+
+  test('resets correctly between syncs', async () => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    await initHealthConnect();
+
+    mockQueryQuantitySamples.mockRejectedValue(new Error('Protected health data is inaccessible'));
+    await readHealthRecords('Steps', new Date('2024-01-15'), new Date('2024-01-16'));
+    expect(getDatabaseInaccessibleCount()).toBe(1);
+
+    resetDatabaseInaccessibleCount();
+    expect(getDatabaseInaccessibleCount()).toBe(0);
   });
 });
