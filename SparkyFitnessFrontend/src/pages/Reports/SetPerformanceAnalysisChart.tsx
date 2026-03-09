@@ -135,17 +135,20 @@ const SetPerformanceAnalysisChart = ({
                   />
                   <Tooltip
                     contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
-                    formatter={(value: any, name: any) => {
+                    formatter={(
+                      value: number | string | undefined,
+                      name: string | undefined
+                    ) => {
                       if (name === 'avgWeight') {
                         return [
-                          formatWeight(value, weightUnit),
+                          formatWeight(Number(value ?? 0), weightUnit),
                           t(
                             'reports.setPerformanceAnalysis.avgWeight',
                             'Avg. Weight'
                           ),
                         ];
                       }
-                      return [value, name];
+                      return [value ?? '', name ?? ''];
                     }}
                   />
                   <Legend />
