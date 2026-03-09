@@ -19,7 +19,11 @@ import {
   AccordionContent,
 } from '@/components/ui/accordion'; // Import Accordion components
 import { useTranslation } from 'react-i18next';
-import { usePreferences } from '@/contexts/PreferencesContext';
+import {
+  usePreferences,
+  WeightUnit,
+  MeasurementUnit,
+} from '@/contexts/PreferencesContext';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -128,7 +132,10 @@ export const PreferenceSettings = () => {
             <Label htmlFor="weight_unit">
               {t('settings.preferences.weightUnit', 'Weight Unit')}
             </Label>
-            <Select value={weightUnit} onValueChange={setWeightUnit}>
+            <Select
+              value={weightUnit}
+              onValueChange={(value) => setWeightUnit(value as WeightUnit)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -139,6 +146,12 @@ export const PreferenceSettings = () => {
                 <SelectItem value="lbs">
                   {t('settings.preferences.pounds', 'Pounds (lbs)')}
                 </SelectItem>
+                <SelectItem value="st_lbs">
+                  {t(
+                    'settings.preferences.stonesLbs',
+                    'Stones & Pounds (st/lb)'
+                  )}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -146,7 +159,12 @@ export const PreferenceSettings = () => {
             <Label htmlFor="measurement_unit">
               {t('settings.preferences.measurementUnit', 'Measurement Unit')}
             </Label>
-            <Select value={measurementUnit} onValueChange={setMeasurementUnit}>
+            <Select
+              value={measurementUnit}
+              onValueChange={(value) =>
+                setMeasurementUnit(value as MeasurementUnit)
+              }
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -156,6 +174,12 @@ export const PreferenceSettings = () => {
                 </SelectItem>
                 <SelectItem value="inches">
                   {t('settings.preferences.inches', 'Inches (in)')}
+                </SelectItem>
+                <SelectItem value="ft_in">
+                  {t(
+                    'settings.preferences.feetInches',
+                    'Feet & Inches (ft/in)'
+                  )}
                 </SelectItem>
               </SelectContent>
             </Select>

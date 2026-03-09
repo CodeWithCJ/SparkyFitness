@@ -1,6 +1,5 @@
 import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { CalendarIcon, Utensils } from 'lucide-react';
 import {
   Popover,
@@ -18,16 +17,17 @@ import {
 import { OptionButton } from './OptionButton';
 import { useTranslation } from 'react-i18next';
 import { OnboardingData } from '@/types/onboarding';
+import { UnitInput } from '@/components/ui/UnitInput';
 
 interface OnboardingStepsProps {
   step: number;
   formData: OnboardingData;
   setFormData: React.Dispatch<React.SetStateAction<OnboardingData>>;
   nextStep: () => void;
-  weightUnit: 'kg' | 'lbs';
-  setLocalWeightUnit: (unit: 'kg' | 'lbs') => void;
-  heightUnit: 'cm' | 'inches';
-  setLocalHeightUnit: (unit: 'cm' | 'inches') => void;
+  weightUnit: 'kg' | 'lbs' | 'st_lbs';
+  setLocalWeightUnit: (unit: 'kg' | 'lbs' | 'st_lbs') => void;
+  heightUnit: 'cm' | 'inches' | 'ft_in';
+  setLocalHeightUnit: (unit: 'cm' | 'inches' | 'ft_in') => void;
   localDateFormat: string;
   setLocalDateFormat: (format: string) => void;
 }
@@ -118,53 +118,36 @@ export const OnboardingSteps = ({
 
           <div className="flex justify-center mb-6 bg-[#2c2c2e] p-1 rounded-lg w-fit mx-auto">
             <button
-              onClick={() => {
-                if (weightUnit !== 'kg' && formData.currentWeight) {
-                  setFormData((prev) => ({
-                    ...prev,
-                    currentWeight: Number(
-                      (Number(prev.currentWeight) * 0.453592).toFixed(1)
-                    ),
-                  }));
-                }
-                setLocalWeightUnit('kg');
-              }}
+              onClick={() => setLocalWeightUnit('kg')}
               className={`px-4 py-2 rounded-md transition-all ${weightUnit === 'kg' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
             >
-              {t('settings.preferences.kilograms', 'Kilograms (kg)')}
+              kg
             </button>
             <button
-              onClick={() => {
-                if (weightUnit !== 'lbs' && formData.currentWeight) {
-                  setFormData((prev) => ({
-                    ...prev,
-                    currentWeight: Number(
-                      (Number(prev.currentWeight) * 2.20462).toFixed(1)
-                    ),
-                  }));
-                }
-                setLocalWeightUnit('lbs');
-              }}
+              onClick={() => setLocalWeightUnit('lbs')}
               className={`px-4 py-2 rounded-md transition-all ${weightUnit === 'lbs' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
             >
-              {t('settings.preferences.pounds', 'Pounds (lbs)')}
+              lbs
+            </button>
+            <button
+              onClick={() => setLocalWeightUnit('st_lbs')}
+              className={`px-4 py-2 rounded-md transition-all ${weightUnit === 'st_lbs' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+            >
+              st/lb
             </button>
           </div>
 
           <div className="flex items-center justify-center">
-            <Input
-              type="number"
-              className="text-5xl text-center bg-transparent border-none text-green-500 font-bold w-48 focus-visible:ring-0 placeholder:text-gray-700"
-              placeholder="0"
-              autoFocus
+            <UnitInput
+              id="current-weight"
+              type="weight"
+              unit={weightUnit}
               value={formData.currentWeight}
-              onChange={(e) =>
-                handleInputChange('currentWeight', e.target.value)
+              onChange={(val) =>
+                handleInputChange('currentWeight', val.toString())
               }
+              className="w-64"
             />
-            <span className="text-2xl text-gray-500 font-bold ml-2">
-              {weightUnit}
-            </span>
           </div>
           <Button
             onClick={nextStep}
@@ -185,47 +168,34 @@ export const OnboardingSteps = ({
 
           <div className="flex justify-center mb-6 bg-[#2c2c2e] p-1 rounded-lg w-fit mx-auto">
             <button
-              onClick={() => {
-                if (heightUnit !== 'cm' && formData.height) {
-                  setFormData((prev) => ({
-                    ...prev,
-                    height: Number((Number(prev.height) * 2.54).toFixed(1)),
-                  }));
-                }
-                setLocalHeightUnit('cm');
-              }}
+              onClick={() => setLocalHeightUnit('cm')}
               className={`px-4 py-2 rounded-md transition-all ${heightUnit === 'cm' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
             >
-              {t('settings.preferences.centimeters', 'Centimeters (cm)')}
+              cm
             </button>
             <button
-              onClick={() => {
-                if (heightUnit !== 'inches' && formData.height) {
-                  setFormData((prev) => ({
-                    ...prev,
-                    height: Number((Number(prev.height) / 2.54).toFixed(1)),
-                  }));
-                }
-                setLocalHeightUnit('inches');
-              }}
+              onClick={() => setLocalHeightUnit('inches')}
               className={`px-4 py-2 rounded-md transition-all ${heightUnit === 'inches' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
             >
-              {t('settings.preferences.inches', 'Inches (in)')}
+              in
+            </button>
+            <button
+              onClick={() => setLocalHeightUnit('ft_in')}
+              className={`px-4 py-2 rounded-md transition-all ${heightUnit === 'ft_in' ? 'bg-green-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+            >
+              ft/in
             </button>
           </div>
 
           <div className="flex items-center justify-center">
-            <Input
-              type="number"
-              className="text-5xl text-center bg-transparent border-none text-green-500 font-bold w-48 focus-visible:ring-0 placeholder:text-gray-700"
-              placeholder="0"
-              autoFocus
+            <UnitInput
+              id="height"
+              type="height"
+              unit={heightUnit}
               value={formData.height}
-              onChange={(e) => handleInputChange('height', e.target.value)}
+              onChange={(val) => handleInputChange('height', val.toString())}
+              className="w-64"
             />
-            <span className="text-2xl text-gray-500 font-bold ml-2">
-              {heightUnit === 'cm' ? 'cm' : 'in'}
-            </span>
           </div>
           <Button
             onClick={nextStep}
@@ -356,19 +326,16 @@ export const OnboardingSteps = ({
           </h1>
           <p className="text-gray-400 mb-8">Your ultimate goal.</p>
           <div className="flex items-center justify-center">
-            <Input
-              type="number"
-              className="text-5xl text-center bg-transparent border-none text-green-500 font-bold w-48 focus-visible:ring-0 placeholder:text-gray-700"
-              placeholder="0"
-              autoFocus
+            <UnitInput
+              id="target-weight"
+              type="weight"
+              unit={weightUnit}
               value={formData.targetWeight}
-              onChange={(e) =>
-                handleInputChange('targetWeight', e.target.value)
+              onChange={(val) =>
+                handleInputChange('targetWeight', val.toString())
               }
+              className="w-64"
             />
-            <span className="text-2xl text-gray-500 font-bold ml-2">
-              {weightUnit}
-            </span>
           </div>
           <Button
             onClick={nextStep}

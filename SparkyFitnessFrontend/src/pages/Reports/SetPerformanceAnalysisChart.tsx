@@ -12,6 +12,8 @@ import {
   Legend,
 } from 'recharts';
 import ZoomableChart from '@/components/ZoomableChart';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatWeight } from '@/utils/numberFormatting';
 
 interface SetPerformanceAnalysisChartProps {
   setPerformanceData: {
@@ -27,6 +29,7 @@ const SetPerformanceAnalysisChart = ({
   exerciseName,
 }: SetPerformanceAnalysisChartProps) => {
   const { t } = useTranslation();
+  const { weightUnit } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -101,10 +104,18 @@ const SetPerformanceAnalysisChart = ({
                   />
                   <YAxis
                     yAxisId="left"
+                    tickFormatter={(value) =>
+                      weightUnit === 'st_lbs'
+                        ? typeof value === 'number'
+                          ? value.toFixed(1)
+                          : String(value)
+                        : String(value)
+                    }
                     label={{
                       value: t(
-                        'reports.setPerformanceAnalysis.avgWeightKg',
-                        'Avg. Weight (kg)'
+                        'reports.setPerformanceAnalysis.avgWeightHeader',
+                        `Avg. Weight (${weightUnit})`,
+                        { weightUnit }
                       ),
                       angle: -90,
                       position: 'insideLeft',
@@ -124,6 +135,21 @@ const SetPerformanceAnalysisChart = ({
                   />
                   <Tooltip
                     contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
+                    formatter={(
+                      value: number | string | undefined,
+                      name: string | undefined
+                    ) => {
+                      if (name === 'avgWeight') {
+                        return [
+                          formatWeight(Number(value ?? 0), weightUnit),
+                          t(
+                            'reports.setPerformanceAnalysis.avgWeight',
+                            'Avg. Weight'
+                          ),
+                        ];
+                      }
+                      return [value ?? '', name ?? ''];
+                    }}
                   />
                   <Legend />
                   <Bar

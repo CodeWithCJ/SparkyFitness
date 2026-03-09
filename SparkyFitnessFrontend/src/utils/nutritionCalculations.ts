@@ -569,31 +569,31 @@ export interface BasePlan {
   };
 }
 
+// ... (existing code)
+
+// ... (existing code)
+
 export const calculateBasePlan = (
   formData: CalculatorFormData,
-  weightUnit: 'kg' | 'lbs',
-  heightUnit: 'cm' | 'inches',
   localSelectedDiet: string,
   customPercentages: { carbs: number; protein: number; fat: number }
 ): BasePlan | null => {
-  const weightKg =
-    weightUnit === 'lbs'
-      ? Number(formData.currentWeight) * 0.453592
-      : Number(formData.currentWeight);
+  // formData values are already in Metric (kg/cm) because they come from UnitInput or normalized state
+  const weightKg = Number(formData.currentWeight) || 0;
+  const heightCm = Number(formData.height) || 0;
 
-  const heightCm =
-    heightUnit === 'inches'
-      ? Number(formData.height) * 2.54
-      : Number(formData.height);
-
-  const age =
-    new Date().getFullYear() - new Date(formData.birthDate).getFullYear();
+  const birthDate = formData.birthDate
+    ? new Date(formData.birthDate)
+    : new Date();
+  const age = new Date().getFullYear() - birthDate.getFullYear();
 
   if (
     isNaN(weightKg) ||
     isNaN(heightCm) ||
     isNaN(age) ||
-    !formData.activityLevel
+    !formData.activityLevel ||
+    weightKg <= 0 ||
+    heightCm <= 0
   ) {
     return null;
   }

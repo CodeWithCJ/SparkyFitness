@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
 import { CustomCategory } from '@/types/checkin';
+import { UnitInput } from '@/components/ui/UnitInput';
 
 interface CheckInFormProps {
   bodyFatPercentage: string;
@@ -83,18 +84,13 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="weight">
-                {t('checkIn.weight', 'Weight')} ({defaultWeightUnit})
-              </Label>
-              <Input
+              <Label htmlFor="weight">{t('checkIn.weight', 'Weight')}</Label>
+              <UnitInput
                 id="weight"
-                type="number"
-                step="0.1"
+                type="weight"
+                unit={defaultWeightUnit}
                 value={weight}
-                onChange={(e) => {
-                  setWeight(e.target.value);
-                }}
-                placeholder={`${t('checkIn.enterWeight', 'Enter weight in')} ${defaultWeightUnit}`}
+                onChange={(val) => setWeight(val.toString())}
               />
             </div>
 
@@ -112,64 +108,46 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
             </div>
 
             <div>
-              <Label htmlFor="neck">
-                {t('checkIn.neck', 'Neck')} ({defaultMeasurementUnit})
-              </Label>
-              <Input
+              <Label htmlFor="neck">{t('checkIn.neck', 'Neck')}</Label>
+              <UnitInput
                 id="neck"
-                type="number"
-                step="0.1"
+                type="measurement"
+                unit={defaultMeasurementUnit}
                 value={neck}
-                onChange={(e) => {
-                  setNeck(e.target.value);
-                }}
-                placeholder={`${t('checkIn.enterNeckMeasurement', 'Enter neck measurement in')} ${defaultMeasurementUnit}`}
+                onChange={(val) => setNeck(val.toString())}
               />
             </div>
 
             <div>
-              <Label htmlFor="waist">
-                {t('checkIn.waist', 'Waist')} ({defaultMeasurementUnit})
-              </Label>
-              <Input
+              <Label htmlFor="waist">{t('checkIn.waist', 'Waist')}</Label>
+              <UnitInput
                 id="waist"
-                type="number"
-                step="0.1"
+                type="measurement"
+                unit={defaultMeasurementUnit}
                 value={waist}
-                onChange={(e) => {
-                  setWaist(e.target.value);
-                }}
-                placeholder={`${t('checkIn.enterWaistMeasurement', 'Enter waist measurement in')} ${defaultMeasurementUnit}`}
+                onChange={(val) => setWaist(val.toString())}
               />
             </div>
 
             <div>
-              <Label htmlFor="hips">
-                {t('checkIn.hips', 'Hips')} ({defaultMeasurementUnit})
-              </Label>
-              <Input
+              <Label htmlFor="hips">{t('checkIn.hips', 'Hips')}</Label>
+              <UnitInput
                 id="hips"
-                type="number"
-                step="0.1"
+                type="measurement"
+                unit={defaultMeasurementUnit}
                 value={hips}
-                onChange={(e) => {
-                  setHips(e.target.value);
-                }}
-                placeholder={`${t('checkIn.enterHipsMeasurement', 'Enter hips measurement in')} ${defaultMeasurementUnit}`}
+                onChange={(val) => setHips(val.toString())}
               />
             </div>
 
             <div>
-              <Label htmlFor="height">
-                {t('checkIn.height', 'Height')} ({defaultMeasurementUnit})
-              </Label>
-              <Input
+              <Label htmlFor="height">{t('checkIn.height', 'Height')}</Label>
+              <UnitInput
                 id="height"
-                type="number"
-                step="0.1"
+                type="height"
+                unit={defaultMeasurementUnit}
                 value={height}
-                onChange={(e) => setHeight(e.target.value)}
-                placeholder={`${t('checkIn.enterHeight', 'Enter height in')} ${defaultMeasurementUnit}`}
+                onChange={(val) => setHeight(val.toString())}
               />
             </div>
 
@@ -231,33 +209,62 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
               const isConvertible = shouldConvertCustomMeasurement(
                 category.measurement_type
               );
+              const unitToUse = isConvertible
+                ? category.measurement_type === 'kg' ||
+                  category.measurement_type === 'lbs' ||
+                  category.measurement_type === 'st_lbs'
+                  ? defaultWeightUnit
+                  : defaultMeasurementUnit
+                : category.measurement_type;
+
               return (
                 <div key={category.id}>
                   <Label htmlFor={`custom-${category.id}`}>
-                    {category.display_name || category.name} (
-                    {isConvertible
-                      ? defaultMeasurementUnit
-                      : category.measurement_type}
-                    )
+                    {category.display_name || category.name} ({unitToUse})
                   </Label>
-                  <Input
-                    id={`custom-${category.id}`}
-                    type={category.data_type === 'numeric' ? 'number' : 'text'}
-                    step={category.data_type === 'numeric' ? '0.01' : undefined}
-                    value={customValues[category.id] || ''}
-                    onChange={(e) => {
-                      setCustomValues((prev) => ({
-                        ...prev,
-                        [category.id]: e.target.value,
-                      }));
-                    }}
-                    placeholder={t('checkIn.enterCustomCategory', {
-                      categoryName: (
-                        category.display_name || category.name
-                      ).toLowerCase(),
-                      defaultValue: `Enter ${(category.display_name || category.name).toLowerCase()}`,
-                    })}
-                  />
+                  {isConvertible && category.data_type === 'numeric' ? (
+                    <UnitInput
+                      id={`custom-${category.id}`}
+                      type={
+                        category.measurement_type === 'kg' ||
+                        category.measurement_type === 'lbs' ||
+                        category.measurement_type === 'st_lbs'
+                          ? 'weight'
+                          : 'measurement'
+                      }
+                      unit={unitToUse}
+                      value={customValues[category.id] || ''}
+                      onChange={(val) => {
+                        setCustomValues((prev) => ({
+                          ...prev,
+                          [category.id]: val.toString(),
+                        }));
+                      }}
+                    />
+                  ) : (
+                    <Input
+                      id={`custom-${category.id}`}
+                      type={
+                        category.data_type === 'numeric' ? 'number' : 'text'
+                      }
+                      step={
+                        category.data_type === 'numeric' ? '0.01' : undefined
+                      }
+                      value={customValues[category.id] || ''}
+                      onChange={(e) => {
+                        setCustomValues((prev) => ({
+                          ...prev,
+                          [category.id]: e.target.value,
+                        }));
+                      }}
+                      placeholder={t('checkIn.enterCustomCategory', {
+                        categoryName: (
+                          category.display_name || category.name
+                        ).toLowerCase(),
+                        defaultValue: `Enter ${(category.display_name || category.name).toLowerCase()}`,
+                      })}
+                    />
+                  )}
                   <Input
                     id={`custom-notes-${category.id}`}
                     type="text"

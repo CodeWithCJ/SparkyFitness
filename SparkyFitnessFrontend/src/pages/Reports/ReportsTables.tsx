@@ -20,7 +20,7 @@ import {
   getNutrientMetadata,
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
-import { formatWeight } from '@/utils/numberFormatting';
+import { formatWeight, formatHeight } from '@/utils/numberFormatting';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import type { DailyFoodEntry, DailyExerciseEntry } from '@/types/reports';
 import {
@@ -38,34 +38,30 @@ interface PersonalRecord {
 export type PersonalRecordsMap = Record<string, PersonalRecord>;
 interface ReportsTablesProps {
   tabularData: DailyFoodEntry[];
-  exerciseEntries: DailyExerciseEntry[]; // New prop for exercise entries
+  exerciseEntries: DailyExerciseEntry[];
   measurementData: CheckInMeasurement[];
   customCategories: CustomCategory[];
   customMeasurementsData: Record<string, CustomMeasurement[]>;
   prData: PersonalRecordsMap | undefined;
-  showWeightInKg: boolean;
-  showMeasurementsInCm: boolean;
   onExportFoodDiary: () => void;
   onExportBodyMeasurements: () => void;
   onExportCustomMeasurements: (category: CustomCategory) => void;
-  onExportExerciseEntries: () => void; // New prop for exporting exercise entries
-  customNutrients: UserCustomNutrient[]; // Add customNutrients prop
+  onExportExerciseEntries: () => void;
+  customNutrients: UserCustomNutrient[];
 }
 
 const ReportsTables = ({
   tabularData,
-  exerciseEntries, // Destructure new prop
+  exerciseEntries,
   measurementData,
   customCategories,
   customMeasurementsData,
-  prData, // Destructure prData
-  showWeightInKg,
-  showMeasurementsInCm,
+  prData,
   onExportFoodDiary,
   onExportBodyMeasurements,
   onExportCustomMeasurements,
-  onExportExerciseEntries, // Destructure new prop
-  customNutrients, // Destructure customNutrients prop
+  onExportExerciseEntries,
+  customNutrients,
 }: ReportsTablesProps) => {
   const { t } = useTranslation();
   const {
@@ -74,7 +70,7 @@ const ReportsTables = ({
     formatDateInUserTimezone,
     nutrientDisplayPreferences,
     weightUnit,
-    convertWeight,
+    measurementUnit,
     energyUnit,
     convertEnergy,
     getEnergyUnitString,
@@ -590,31 +586,25 @@ const ReportsTables = ({
                         <TableCell>
                           {entry.sets.length > 0
                             ? formatWeight(
-                                convertWeight(
-                                  entry.sets.reduce(
-                                    (acc, s) => acc + Number(s.weight),
-                                    0
-                                  ) / entry.sets.length,
-                                  'kg',
-                                  weightUnit
-                                )
+                                entry.sets.reduce(
+                                  (acc, s) => acc + Number(s.weight),
+                                  0
+                                ) / entry.sets.length,
+                                weightUnit
                               )
-                            : '0.00'}
+                            : formatWeight(0, weightUnit)}
                         </TableCell>
                         <TableCell>
                           {entry.sets.length > 0
                             ? formatWeight(
-                                convertWeight(
-                                  entry.sets.reduce(
-                                    (acc, s) =>
-                                      acc + Number(s.weight) * Number(s.reps),
-                                    0
-                                  ),
-                                  'kg',
-                                  weightUnit
-                                )
+                                entry.sets.reduce(
+                                  (acc, s) =>
+                                    acc + Number(s.weight) * Number(s.reps),
+                                  0
+                                ),
+                                weightUnit
                               )
-                            : '0.00'}
+                            : formatWeight(0, weightUnit)}
                         </TableCell>
                         <TableCell>
                           {entry.sets.reduce(
@@ -651,17 +641,12 @@ const ReportsTables = ({
                             <TableCell>{set.set_type}</TableCell>
                             <TableCell>{set.reps}</TableCell>
                             <TableCell>
-                              {formatWeight(
-                                convertWeight(set.weight, 'kg', weightUnit)
-                              )}
+                              {formatWeight(set.weight, weightUnit)}
                             </TableCell>
                             <TableCell>
                               {formatWeight(
-                                convertWeight(
-                                  Number(set.weight) * Number(set.reps),
-                                  'kg',
-                                  weightUnit
-                                )
+                                Number(set.weight) * Number(set.reps),
+                                weightUnit
                               )}
                             </TableCell>
                             <TableCell>{set.duration || '-'}</TableCell>
@@ -706,25 +691,20 @@ const ReportsTables = ({
                 <TableRow>
                   <TableHead>{t('reportsTables.date', 'Date')}</TableHead>
                   <TableHead>
-                    {t('reportsTables.weight', 'Weight')} (
-                    {showWeightInKg ? 'kg' : 'lbs'})
+                    {t('reportsTables.weight', 'Weight')} ({weightUnit})
                   </TableHead>
                   <TableHead>
-                    {t('reportsTables.neck', 'Neck')} (
-                    {showMeasurementsInCm ? 'cm' : 'inches'})
+                    {t('reportsTables.neck', 'Neck')} ({measurementUnit})
                   </TableHead>
                   <TableHead>
-                    {t('reportsTables.waist', 'Waist')} (
-                    {showMeasurementsInCm ? 'cm' : 'inches'})
+                    {t('reportsTables.waist', 'Waist')} ({measurementUnit})
                   </TableHead>
                   <TableHead>
-                    {t('reportsTables.hips', 'Hips')} (
-                    {showMeasurementsInCm ? 'cm' : 'inches'})
+                    {t('reportsTables.hips', 'Hips')} ({measurementUnit})
                   </TableHead>
                   <TableHead>{t('reportsTables.steps', 'Steps')}</TableHead>
                   <TableHead>
-                    {t('reportsTables.height', 'Height')} (
-                    {showMeasurementsInCm ? 'cm' : 'inches'})
+                    {t('reportsTables.height', 'Height')} ({measurementUnit})
                   </TableHead>
                   <TableHead>
                     {t('reportsTables.bodyFatPercentage', 'Body Fat %')}
@@ -741,20 +721,20 @@ const ReportsTables = ({
                       )}
                     </TableCell>
                     <TableCell>
-                      {measurement.weight ? measurement.weight.toFixed(1) : '-'}
+                      {formatWeight(measurement.weight, weightUnit)}
                     </TableCell>
                     <TableCell>
-                      {measurement.neck ? measurement.neck.toFixed(1) : '-'}
+                      {formatHeight(measurement.neck, measurementUnit)}
                     </TableCell>
                     <TableCell>
-                      {measurement.waist ? measurement.waist.toFixed(1) : '-'}
+                      {formatHeight(measurement.waist, measurementUnit)}
                     </TableCell>
                     <TableCell>
-                      {measurement.hips ? measurement.hips.toFixed(1) : '-'}
+                      {formatHeight(measurement.hips, measurementUnit)}
                     </TableCell>
                     <TableCell>{measurement.steps || '-'}</TableCell>
                     <TableCell>
-                      {measurement.height ? measurement.height.toFixed(1) : '-'}
+                      {formatHeight(measurement.height, measurementUnit)}
                     </TableCell>
                     <TableCell>
                       {measurement.body_fat_percentage
@@ -818,9 +798,15 @@ const ReportsTables = ({
                           'Value'
                         )}{' '}
                         (
-                        {category.measurement_type === 'kg'
+                        {['kg', 'lbs', 'st_lbs'].includes(
+                          category.measurement_type.toLowerCase()
+                        )
                           ? weightUnit
-                          : category.measurement_type}
+                          : ['cm', 'inches', 'ft_in'].includes(
+                                category.measurement_type.toLowerCase()
+                              )
+                            ? measurementUnit
+                            : category.measurement_type}
                         )
                       </TableHead>
                       <TableHead>{t('reportsTables.notes', 'Notes')}</TableHead>
@@ -837,16 +823,20 @@ const ReportsTables = ({
                         formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                       }
 
-                      // Convert kg values to user's preferred weight unit
+                      const isWeight = ['kg', 'lbs', 'st_lbs'].includes(
+                        category.measurement_type.toLowerCase()
+                      );
+                      const isHeight = ['cm', 'inches', 'ft_in'].includes(
+                        category.measurement_type.toLowerCase()
+                      );
+
                       const displayValue =
                         typeof measurement.value === 'number'
-                          ? category.measurement_type === 'kg'
-                            ? convertWeight(
-                                measurement.value,
-                                'kg',
-                                weightUnit
-                              ).toFixed(2)
-                            : measurement.value.toFixed(2)
+                          ? isWeight
+                            ? formatWeight(measurement.value, weightUnit)
+                            : isHeight
+                              ? formatHeight(measurement.value, measurementUnit)
+                              : measurement.value.toFixed(2)
                           : String(measurement.value);
 
                       return (

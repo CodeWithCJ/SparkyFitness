@@ -13,8 +13,6 @@ import { OnboardingData } from '@/types/onboarding';
 
 export const createInitialPlan = (
   formData: OnboardingData,
-  weightUnit: 'kg' | 'lbs',
-  heightUnit: 'cm' | 'inches',
   localEnergyUnit: 'kcal' | 'kJ',
   localSelectedDiet: string,
   customPercentages: { carbs: number; protein: number; fat: number },
@@ -29,21 +27,18 @@ export const createInitialPlan = (
   ) => number
 ): ExpandedGoals | null => {
   // 1. Basis Plan berechnen
+  // formData is already in Metric (kg/cm) from UnitInput
   const plan = calculateBasePlan(
     formData,
-    weightUnit,
-    heightUnit,
     localSelectedDiet,
     customPercentages
   );
 
   if (!plan) return null;
 
-  // 2. Erweitere Daten berechnen (Das, was vorher im useEffect stand)
-  const weightKg =
-    weightUnit === 'lbs'
-      ? Number(formData.currentWeight) * 0.453592
-      : Number(formData.currentWeight);
+  // 2. Erweitere Daten berechnen
+  const weightKg = Number(formData.currentWeight) || 0;
+
   const waterGoalMl = Math.round(weightKg * 35);
   const age =
     new Date().getFullYear() - new Date(formData.birthDate).getFullYear();

@@ -2,8 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { WorkoutData } from './ActivityReportVisualizer';
 import SetPerformanceAnalysisChart from './SetPerformanceAnalysisChart';
-import { usePreferences } from '@/contexts/PreferencesContext';
-import { formatNumber } from '@/utils/numberFormatting';
+import { usePreferences, type WeightUnit } from '@/contexts/PreferencesContext';
+import { formatNumber, formatWeight } from '@/utils/numberFormatting';
 import {
   FaDumbbell,
   FaClock,
@@ -54,8 +54,6 @@ interface PrProgressionData {
   weight: number;
   reps: number;
 }
-
-type AllowedWeightUnit = 'kg' | 'lbs';
 
 const WorkoutReportVisualizer = ({
   workoutData,
@@ -275,18 +273,17 @@ const WorkoutReportVisualizer = ({
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {step.weightValue
-                        ? `${formatNumber(
-                            Math.round(
-                              convertWeight(
-                                step.weightValue,
-                                (step.weightUnit?.unitKey === 'pound'
-                                  ? 'lbs'
-                                  : step.weightUnit?.unitKey ||
-                                    'kg') as AllowedWeightUnit,
-                                weightUnit as AllowedWeightUnit
-                              )
-                            )
-                          )}`
+                        ? formatWeight(
+                            convertWeight(
+                              step.weightValue,
+                              (step.weightUnit?.unitKey === 'pound'
+                                ? 'lbs'
+                                : step.weightUnit?.unitKey ||
+                                  'kg') as WeightUnit,
+                              'kg'
+                            ),
+                            weightUnit
+                          )
                         : t('common.notApplicable', 'N/A')}
                     </td>
                   </tr>
@@ -310,13 +307,7 @@ const WorkoutReportVisualizer = ({
               key={`set-performance-${exerciseName}`}
               setPerformanceData={data.map((d) => ({
                 setName: d.setName,
-                avgWeight: Math.round(
-                  convertWeight(
-                    d.avgWeight,
-                    'lbs',
-                    weightUnit as AllowedWeightUnit
-                  )
-                ),
+                avgWeight: convertWeight(d.avgWeight, 'lbs', 'kg'),
                 avgReps: d.avgReps,
               }))}
               exerciseName={exerciseName}
@@ -347,16 +338,10 @@ const WorkoutReportVisualizer = ({
                     <div className="flex flex-col items-center justify-center p-2 border rounded-lg">
                       <FaTrophy className="h-5 w-5 text-yellow-500 mb-1" />
                       <span className="text-lg font-bold">
-                        {formatNumber(
-                          Math.round(
-                            convertWeight(
-                              pr.oneRM,
-                              'lbs',
-                              weightUnit as AllowedWeightUnit
-                            )
-                          )
-                        )}{' '}
-                        {weightUnit}
+                        {formatWeight(
+                          convertWeight(pr.oneRM, 'lbs', 'kg'),
+                          weightUnit
+                        )}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {t('workoutReport.estimated1RM', 'Estimated 1RM')}
@@ -365,16 +350,10 @@ const WorkoutReportVisualizer = ({
                     <div className="flex flex-col items-center justify-center p-2 border rounded-lg">
                       <FaWeight className="h-5 w-5 text-red-500 mb-1" />
                       <span className="text-lg font-bold">
-                        {formatNumber(
-                          Math.round(
-                            convertWeight(
-                              pr.weight,
-                              'lbs',
-                              weightUnit as AllowedWeightUnit
-                            )
-                          )
-                        )}{' '}
-                        {weightUnit}
+                        {formatWeight(
+                          convertWeight(pr.weight, 'lbs', 'kg'),
+                          weightUnit
+                        )}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {t('workoutReport.maxWeight', 'Max Weight')}

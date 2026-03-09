@@ -30,14 +30,23 @@ import {
 import { getErrorMessage } from '@/utils/api';
 import { CalorieGoalAdjustmentMode } from '@/utils/calorieCalculations';
 
+import {
+  kgToLbs,
+  lbsToKg,
+  cmToInches,
+  inchesToCm,
+  stonesLbsToKg,
+  feetInchesToCm,
+} from '@/utils/unitConversions';
+
 // Function to fetch user preferences from the backend
 
 // Function to upsert user preferences to the backend
 
 export type EnergyUnit = 'kcal' | 'kJ';
 export type ActivityLevel = 'not_much' | 'light' | 'moderate' | 'heavy';
-export type WeightUnit = 'kg' | 'lbs';
-export type MeasurementUnit = 'cm' | 'inches';
+export type WeightUnit = 'kg' | 'lbs' | 'st_lbs';
+export type MeasurementUnit = 'cm' | 'inches' | 'ft_in';
 export type DistanceUnit = 'km' | 'miles';
 export type LoggingLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT';
 export type calorieGoalAdjustmentMode =
@@ -198,10 +207,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useCreateWaterContainerMutation();
   const { mutateAsync: setPrimaryWaterContainer } =
     useSetPrimaryWaterContainerMutation();
-  const [weightUnit, setWeightUnitState] = useState<'kg' | 'lbs'>('kg');
-  const [measurementUnit, setMeasurementUnitState] = useState<'cm' | 'inches'>(
-    'cm'
-  );
+  const [weightUnit, setWeightUnitState] = useState<WeightUnit>('kg');
+  const [measurementUnit, setMeasurementUnitState] =
+    useState<MeasurementUnit>('cm');
   const [distanceUnit, setDistanceUnitState] = useState<'km' | 'miles'>('km');
   const [dateFormat, setDateFormatState] = useState<string>('MM/dd/yyyy');
   const [autoClearHistory, setAutoClearHistoryState] =
@@ -280,13 +288,23 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const convertWeight = useCallback(
     (
       value: number | string | null | undefined,
-      from: 'kg' | 'lbs',
-      to: 'kg' | 'lbs'
+      from: WeightUnit,
+      to: WeightUnit
     ) => {
       const numValue =
         typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
       if (isNaN(numValue) || from === to) return numValue;
-      return from === 'kg' ? numValue * 2.20462 : numValue / 2.20462;
+
+      // Convert from source unit to kg first
+      let kgValue = numValue;
+      if (from === 'lbs') kgValue = lbsToKg(numValue);
+      else if (from === 'st_lbs') kgValue = stonesLbsToKg(numValue, 0); // Simplified for single-value conversion
+
+      // Convert from kg to target unit
+      if (to === 'lbs') return kgToLbs(kgValue);
+      if (to === 'st_lbs') return kgToLbs(kgValue) / 14; // Returns decimal stones
+
+      return kgValue;
     },
     []
   );
@@ -294,13 +312,23 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const convertMeasurement = useCallback(
     (
       value: number | string | null | undefined,
-      from: 'cm' | 'inches',
-      to: 'cm' | 'inches'
+      from: MeasurementUnit,
+      to: MeasurementUnit
     ) => {
       const numValue =
         typeof value === 'string' ? parseFloat(value) : (value ?? NaN);
       if (isNaN(numValue) || from === to) return numValue;
-      return from === 'cm' ? numValue / 2.54 : numValue * 2.54;
+
+      // Convert from source unit to cm first
+      let cmValue = numValue;
+      if (from === 'inches') cmValue = inchesToCm(numValue);
+      else if (from === 'ft_in') cmValue = feetInchesToCm(numValue, 0);
+
+      // Convert from cm to target unit
+      if (to === 'inches') return cmToInches(cmValue);
+      if (to === 'ft_in') return cmToInches(cmValue) / 12; // Returns decimal feet
+
+      return cmValue;
     },
     []
   );
@@ -731,11 +759,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // --- Setters ---
 
-  const setWeightUnit = useCallback((unit: 'kg' | 'lbs') => {
+  const setWeightUnit = useCallback((unit: WeightUnit) => {
     setWeightUnitState(unit);
   }, []);
 
-  const setMeasurementUnit = useCallback((unit: 'cm' | 'inches') => {
+  const setMeasurementUnit = useCallback((unit: MeasurementUnit) => {
     setMeasurementUnitState(unit);
   }, []);
 
@@ -833,12 +861,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         loadPreferences();
         loadNutrientDisplayPreferences();
       } else {
-        const savedWeightUnit = localStorage.getItem('weightUnit') as
-          | 'kg'
-          | 'lbs';
-        const savedMeasurementUnit = localStorage.getItem('measurementUnit') as
-          | 'cm'
-          | 'inches';
+        const savedWeightUnit = localStorage.getItem(
+          'weightUnit'
+        ) as WeightUnit;
+        const savedMeasurementUnit = localStorage.getItem(
+          'measurementUnit'
+        ) as MeasurementUnit;
         const savedDistanceUnit = localStorage.getItem('distanceUnit') as
           | 'km'
           | 'miles';

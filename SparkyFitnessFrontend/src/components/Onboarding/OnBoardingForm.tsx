@@ -38,18 +38,12 @@ export const OnBoardingForm = ({
   const [formData, setFormData] = useState<OnboardingData>(() => {
     let currentWeight: number | '' = '';
     if (weightData && weightData.weight) {
-      currentWeight =
-        preferredWeightUnit === 'lbs'
-          ? Number((weightData.weight * 2.20462).toFixed(1))
-          : Number(weightData.weight.toFixed(1));
+      currentWeight = Number(weightData.weight.toFixed(1));
     }
 
     let currentHeight: number | '' = '';
     if (heightData && heightData.height) {
-      currentHeight =
-        preferredMeasurementUnit === 'inches'
-          ? Number((heightData.height / 2.54).toFixed(1))
-          : Number(heightData.height.toFixed(1));
+      currentHeight = Number(heightData.height.toFixed(1));
     }
 
     return {
@@ -67,12 +61,12 @@ export const OnBoardingForm = ({
   });
 
   // Local unit states (can differ from saved preferences during onboarding)
-  const [localWeightUnit, setLocalWeightUnit] = useState<'kg' | 'lbs'>(
-    preferredWeightUnit
-  );
-  const [localHeightUnit, setLocalHeightUnit] = useState<'cm' | 'inches'>(
-    preferredMeasurementUnit
-  );
+  const [localWeightUnit, setLocalWeightUnit] = useState<
+    'kg' | 'lbs' | 'st_lbs'
+  >(preferredWeightUnit);
+  const [localHeightUnit, setLocalHeightUnit] = useState<
+    'cm' | 'inches' | 'ft_in'
+  >(preferredMeasurementUnit);
   const [localDateFormat, setLocalDateFormat] = useState(dateFormat);
 
   // Computed unit values (use local units during onboarding)
