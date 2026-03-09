@@ -75,6 +75,10 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 // Incremented each time rebuildSubscriptions is called so that stale async
 // rebuilds discard their results instead of registering orphaned observers.
 let rebuildGeneration = 0;
+// Same pattern for background delivery registration — bumped by
+// startObservers/stopObservers so in-flight enableBackgroundDelivery
+// calls are discarded after teardown.
+let deliveryGeneration = 0;
 
 /**
  * Resolve a metric recordType to the set of real HK identifiers it maps to.
@@ -149,12 +153,22 @@ export async function disableBackgroundDeliveryForMetric(recordType: string): Pr
   }
 }
 
-export async function setupBackgroundDeliveryForEnabledMetrics(): Promise<void> {
+export async function setupBackgroundDeliveryForEnabledMetrics(generation?: number): Promise<void> {
+  const gen = generation ?? deliveryGeneration;
   const identifierFrequencies = await getEnabledIdentifierFrequencies();
+
+  if (gen !== deliveryGeneration) {
+    addLog(`[BackgroundDelivery] Discarding stale delivery setup (generation ${gen}, current ${deliveryGeneration})`, 'DEBUG');
+    return;
+  }
 
   addLog(`[BackgroundDelivery] Registering background delivery for ${identifierFrequencies.size} HK types`, 'DEBUG');
 
   for (const [id, freq] of identifierFrequencies) {
+    if (gen !== deliveryGeneration) {
+      addLog(`[BackgroundDelivery] Aborting delivery registration mid-loop (generation ${gen}, current ${deliveryGeneration})`, 'DEBUG');
+      return;
+    }
     try {
       await enableBackgroundDelivery(id as ObjectTypeIdentifier, freq);
     } catch (error) {
@@ -267,7 +281,8 @@ export function refreshSubscriptions(): void {
  * health data is available.
  */
 export function startObservers(onDataAvailable: () => void): void {
-  setupBackgroundDeliveryForEnabledMetrics().catch(error => {
+  const generation = ++deliveryGeneration;
+  setupBackgroundDeliveryForEnabledMetrics(generation).catch(error => {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[BackgroundDelivery] Failed to setup background delivery: ${message}`, 'ERROR');
   });
@@ -280,6 +295,7 @@ export function startObservers(onDataAvailable: () => void): void {
  * Stop all HealthKit observers and disable background delivery.
  */
 export function stopObservers(): void {
+  ++deliveryGeneration; // Cancel any in-flight delivery registration
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = null;
   cleanupAllSubscriptions();

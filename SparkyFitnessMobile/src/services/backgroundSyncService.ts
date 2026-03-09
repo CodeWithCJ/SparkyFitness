@@ -27,7 +27,23 @@ const BACKGROUND_TASK_NAME = 'healthDataSync';
 // upserts by record identity, so duplicates are harmless.
 const SESSION_OVERLAP_MS = 6 * 60 * 60 * 1000; // 6 hours
 
+// Guard against overlapping syncs from concurrent triggers (background task,
+// manual trigger, HealthKit observer). Second caller awaits the in-flight run.
+let inflightSync: Promise<void> | null = null;
+
 export const performBackgroundSync = async (taskId: string): Promise<void> => {
+  if (inflightSync) {
+    addLog(`[Background Sync] Sync already in progress, waiting for it to finish (triggered by ${taskId})`, 'DEBUG');
+    return inflightSync;
+  }
+
+  inflightSync = performBackgroundSyncInternal(taskId).finally(() => {
+    inflightSync = null;
+  });
+  return inflightSync;
+};
+
+const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
   console.log('[BackgroundSync] taskId', taskId);
   addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'INFO');
 
