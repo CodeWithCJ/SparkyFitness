@@ -5,19 +5,14 @@ import { Switch } from '@/components/ui/switch';
 import { Edit, Trash2, Globe, User } from 'lucide-react';
 import { getServiceTypes } from '@/utils/aiServiceUtils';
 import { ServiceForm } from './ServiceForm';
-import { AIService } from '@/types/settings';
+import { AiServiceSettingsResponse } from '@workspace/shared';
+import { UpdateAiServiceSettingsFormInput } from '@/schemas/form/AiServiceSettings.form.zod';
 
 interface UserServiceListItemProps {
-  service: AIService;
+  service: AiServiceSettingsResponse;
   isEditing: boolean;
-  editData: Partial<
-    AIService & { showCustomModelInput?: boolean; api_key?: string }
-  >;
-  onEditDataChange: (
-    data: Partial<
-      AIService & { showCustomModelInput?: boolean; api_key?: string }
-    >
-  ) => void;
+  editData: UpdateAiServiceSettingsFormInput;
+  onEditDataChange: (data: UpdateAiServiceSettingsFormInput) => void;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onUpdate: () => void;
@@ -47,7 +42,7 @@ export const UserServiceListItem = ({
     service.service_type;
 
   if (isEditing) {
-    const formData = {
+    const formData: UpdateAiServiceSettingsFormInput = {
       service_name: editData.service_name || service.service_name,
       service_type: editData.service_type || service.service_type,
       api_key: editData.api_key || '',
@@ -58,8 +53,8 @@ export const UserServiceListItem = ({
           ? editData.is_active
           : service.is_active,
       model_name: editData.model_name || service.model_name || '',
-      custom_model_name: editData.custom_model_name || service.model_name || '',
-      showCustomModelInput: editData.showCustomModelInput || false,
+      showCustomModelInput: editData.showCustomModelInput ?? false,
+      custom_model_name: editData.custom_model_name ?? service.model_name ?? '',
     };
 
     return (

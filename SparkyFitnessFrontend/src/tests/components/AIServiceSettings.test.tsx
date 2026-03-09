@@ -2,7 +2,8 @@ import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AIServiceSettings from '@/pages/Settings/AIServiceSettings';
 import { renderWithClient } from '../test-utils';
-import { AIService, UserPreferencesChat } from '@/types/settings';
+import { UserPreferencesChat } from '@/types/settings';
+import { AiServiceSettingsResponse } from '@workspace/shared';
 
 // Mock react-i18next
 const translations: Record<string, string> = {
@@ -154,15 +155,15 @@ jest.mock('@/api/Admin/globalSettingsService', () => ({
 const mockConfirm = jest.fn();
 window.confirm = mockConfirm;
 
-const mockUserServices: AIService[] = [
+const mockUserServices: AiServiceSettingsResponse[] = [
   {
     id: 'user-service1',
+    user_id: '',
     service_name: 'My OpenAI',
     service_type: 'openai',
-    api_key: undefined,
     custom_url: null,
-    system_prompt: 'Custom prompt',
     is_active: true,
+    system_prompt: 'Custom prompt',
     model_name: 'gpt-4o',
     is_public: false,
     source: 'user',

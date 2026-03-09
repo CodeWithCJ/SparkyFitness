@@ -1,20 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import { Separator } from '@/components/ui/separator';
 import { ServiceListItem } from './ServiceListItem';
-import { AIService } from '@/types/settings';
+import { AiServiceSettingsResponse } from '@workspace/shared';
+import { UpdateAiServiceSettingsFormInput } from '@/schemas/form/AiServiceSettings.form.zod';
 
 interface ServiceListProps {
-  services: AIService[];
+  services: AiServiceSettingsResponse[];
   editingService: string | null;
-  editData: Partial<
-    AIService & { showCustomModelInput?: boolean; api_key?: string }
-  >;
-  onEditDataChange: (
-    data: Partial<
-      AIService & { showCustomModelInput?: boolean; api_key?: string }
-    >
-  ) => void;
-  onStartEdit: (service: AIService) => void;
+  editData: UpdateAiServiceSettingsFormInput;
+  onEditDataChange: (data: UpdateAiServiceSettingsFormInput) => void;
+  onStartEdit: (service: AiServiceSettingsResponse) => void;
   onCancelEdit: () => void;
   onUpdate: (serviceId: string) => void;
   onDelete: (serviceId: string) => void;

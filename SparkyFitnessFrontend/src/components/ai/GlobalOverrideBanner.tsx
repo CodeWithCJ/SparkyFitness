@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
-import { AIService } from '@/types/settings';
+import { AiServiceSettingsResponse } from '@workspace/shared';
 import { Globe, User, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface GlobalOverrideBannerProps {
-  activeGlobalSetting: AIService | undefined;
+  activeGlobalSetting: AiServiceSettingsResponse | undefined;
   hasUserOverride: boolean;
   onOverride: () => void;
   onRevert: () => void;

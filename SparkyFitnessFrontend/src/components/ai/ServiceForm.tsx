@@ -13,22 +13,14 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Save, X } from 'lucide-react';
 import { getServiceTypes, getModelOptions } from '@/utils/aiServiceUtils';
-
-interface ServiceFormData {
-  service_name: string;
-  service_type: string;
-  api_key: string;
-  custom_url: string;
-  system_prompt: string;
-  is_active: boolean;
-  model_name: string;
-  custom_model_name: string;
-  showCustomModelInput: boolean;
-}
+import {
+  AiServiceSettingsFormInput,
+  UpdateAiServiceSettingsFormInput,
+} from '@/schemas/form/AiServiceSettings.form.zod';
 
 interface ServiceFormProps {
-  formData: ServiceFormData;
-  onFormDataChange: (data: Partial<ServiceFormData>) => void;
+  formData: AiServiceSettingsFormInput;
+  onFormDataChange: (data: UpdateAiServiceSettingsFormInput) => void;
   onSubmit: () => void;
   onCancel: () => void;
   loading?: boolean;
@@ -47,7 +39,7 @@ export const ServiceForm = ({
 }: ServiceFormProps) => {
   const { t } = useTranslation();
   const serviceTypes = getServiceTypes(t);
-  const modelOptions = getModelOptions(formData.service_type);
+  const modelOptions = getModelOptions(formData.service_type ?? '');
 
   const requiresCustomUrl =
     formData.service_type === 'custom' ||
@@ -136,7 +128,7 @@ export const ServiceForm = ({
           </Label>
           <Input
             id="custom_url"
-            value={formData.custom_url}
+            value={formData.custom_url ?? ''}
             onChange={(e) => onFormDataChange({ custom_url: e.target.value })}
             placeholder={
               formData.service_type === 'ollama'
@@ -150,11 +142,9 @@ export const ServiceForm = ({
       <div className="flex items-center space-x-2 mb-4">
         <Switch
           id="use_custom_model"
-          checked={formData.showCustomModelInput}
+          checked={formData.showCustomModelInput ?? false}
           onCheckedChange={(checked) =>
-            onFormDataChange({
-              showCustomModelInput: checked,
-            })
+            onFormDataChange({ showCustomModelInput: checked })
           }
         />
         <Label htmlFor="use_custom_model">
@@ -168,7 +158,7 @@ export const ServiceForm = ({
             {t(`${translationPrefix}.model`)}
           </Label>
           <Select
-            value={formData.model_name}
+            value={formData.model_name ?? ''}
             onValueChange={(value) => onFormDataChange({ model_name: value })}
           >
             <SelectTrigger id="model_name_select">
@@ -194,7 +184,7 @@ export const ServiceForm = ({
           </Label>
           <Input
             id="custom_model_name_input"
-            value={formData.custom_model_name}
+            value={formData.custom_model_name ?? ''}
             onChange={(e) =>
               onFormDataChange({ custom_model_name: e.target.value })
             }
@@ -209,7 +199,7 @@ export const ServiceForm = ({
         </Label>
         <Textarea
           id="system_prompt"
-          value={formData.system_prompt}
+          value={formData.system_prompt ?? ''}
           onChange={(e) => onFormDataChange({ system_prompt: e.target.value })}
           placeholder={t(`${translationPrefix}.systemPromptPlaceholder`)}
           rows={3}

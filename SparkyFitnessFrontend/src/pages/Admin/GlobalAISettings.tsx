@@ -32,8 +32,14 @@ import {
   useDeleteGlobalAIService,
 } from '@/hooks/AI/useGlobalAIServiceSettings';
 import { GlobalSettings } from '@/types/admin';
-import { AIService } from '@/types/settings';
 import { useAiConfigInvalidation } from '@/hooks/useInvalidateKeys';
+import { AiServiceSettingsResponse } from '@workspace/shared';
+import {
+  CreateAiServiceSettingsFormInput,
+  UpdateAiServiceSettingsFormInput,
+  createAiServiceSettingsFormSchema,
+  updateAiServiceSettingsFormSchema,
+} from '@/schemas/form/AiServiceSettings.form.zod';
 
 const GlobalAISettings = () => {
   const { t } = useTranslation();
@@ -55,24 +61,24 @@ const GlobalAISettings = () => {
 
   const loading = isCreating || isUpdating || isDeleting;
 
-  const [newService, setNewService] = useState({
-    service_name: '',
-    service_type: 'openai',
-    api_key: '',
-    custom_url: '',
-    system_prompt: '',
-    is_active: false,
-    model_name: '',
-    custom_model_name: '',
-    showCustomModelInput: false,
-  });
+  const [newService, setNewService] =
+    useState<CreateAiServiceSettingsFormInput>({
+      service_name: '',
+      service_type: 'openai',
+      api_key: '',
+      custom_url: '',
+      system_prompt: '',
+      is_active: false,
+      model_name: '',
+      showCustomModelInput: false,
+      custom_model_name: '',
+    });
+
   const [editingService, setEditingService] = useState<string | null>(null);
-  const [editData, setEditData] = useState<
-    Partial<AIService & { showCustomModelInput?: boolean; api_key?: string }>
-  >({
+  const [editData, setEditData] = useState<UpdateAiServiceSettingsFormInput>({
     api_key: '',
-    custom_model_name: '',
     showCustomModelInput: false,
+    custom_model_name: '',
   });
   const [showAddForm, setShowAddForm] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -123,17 +129,7 @@ const GlobalAISettings = () => {
     }
 
     try {
-      const serviceData = {
-        service_name: newService.service_name,
-        service_type: newService.service_type,
-        api_key: newService.api_key,
-        custom_url: newService.custom_url || null,
-        system_prompt: newService.system_prompt || '',
-        is_active: newService.is_active,
-        model_name: newService.showCustomModelInput
-          ? newService.custom_model_name
-          : newService.model_name || null,
-      };
+      const serviceData = createAiServiceSettingsFormSchema.parse(newService);
       await createService(serviceData);
       // Reset form
       setNewService({
@@ -144,8 +140,8 @@ const GlobalAISettings = () => {
         system_prompt: '',
         is_active: false,
         model_name: '',
-        custom_model_name: '',
         showCustomModelInput: false,
+        custom_model_name: '',
       });
       setShowAddForm(false);
       // Success toast is handled by the mutation meta
@@ -169,14 +165,10 @@ const GlobalAISettings = () => {
       return;
     }
 
-    const serviceToUpdate: Partial<AIService> = {
-      ...originalService,
+    const serviceToUpdate = updateAiServiceSettingsFormSchema.parse({
       ...editData,
       id: serviceId,
-      model_name: editData.showCustomModelInput
-        ? editData.custom_model_name
-        : editData.model_name || '',
-    };
+    });
 
     if (serviceToUpdate.api_key === '') {
       delete serviceToUpdate.api_key;
@@ -185,7 +177,7 @@ const GlobalAISettings = () => {
     try {
       await updateService({ serviceId, serviceData: serviceToUpdate });
       setEditingService(null);
-      setEditData({});
+      setEditData({ showCustomModelInput: false, custom_model_name: '' });
       // Success toast is handled by the mutation meta
     } catch (error) {
       // Error toast is handled by the mutation meta
@@ -207,8 +199,13 @@ const GlobalAISettings = () => {
     }
   };
 
-  const startEditing = (service: AIService) => {
+  const startEditing = (service: AiServiceSettingsResponse) => {
     setEditingService(service.id);
+    const isCustomModel = service.model_name
+      ? !getModelOptions(service.service_type ?? '').includes(
+          service.model_name
+        )
+      : false;
     setEditData({
       service_name: service.service_name,
       service_type: service.service_type,
@@ -216,17 +213,15 @@ const GlobalAISettings = () => {
       custom_url: service.custom_url,
       system_prompt: service.system_prompt || '',
       is_active: service.is_active,
-      model_name: service.model_name || '',
-      custom_model_name: service.model_name || '',
-      showCustomModelInput: service.model_name
-        ? !getModelOptions(service.service_type).includes(service.model_name)
-        : false,
+      model_name: isCustomModel ? '' : service.model_name || '',
+      showCustomModelInput: isCustomModel,
+      custom_model_name: service.model_name ?? '',
     });
   };
 
   const cancelEditing = () => {
     setEditingService(null);
-    setEditData({});
+    setEditData({ showCustomModelInput: false, custom_model_name: '' });
   };
 
   const openDeleteDialog = (serviceId: string) => {

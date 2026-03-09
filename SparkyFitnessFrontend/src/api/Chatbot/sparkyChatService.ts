@@ -32,8 +32,8 @@ import {
   RawFoodOption,
 } from '@/types/Chatbot_types';
 import { processChatInput } from '@/utils/Chatbot_utils';
-import { AIService } from '@/types/settings';
 import { getErrorMessage } from '@/utils/api';
+import { AiServiceSettingsResponse } from '@workspace/shared';
 
 export interface UserPreferences {
   auto_clear_history: 'never' | '7days' | 'all';
@@ -163,7 +163,7 @@ export const processUserInput = async (
   lastBotMessageMetadata: MessageMetadata,
   userLoggingLevel: UserLoggingLevel,
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string,
-  activeAIServiceSetting: AIService | null,
+  activeAIServiceSetting: AiServiceSettingsResponse | null,
   messages: Message[],
   userDate: string
 ): Promise<CoachResponse> => {
@@ -203,7 +203,7 @@ export const processUserInput = async (
       imageData,
       transactionId,
       userLoggingLevel,
-      activeAIServiceSetting as AIService,
+      activeAIServiceSetting as AiServiceSettingsResponse,
       messages,
       userDate
     );
@@ -272,7 +272,7 @@ export const processUserInput = async (
             foodName ?? '',
             unit ?? '',
             userLoggingLevel,
-            activeAIServiceSetting as AIService
+            activeAIServiceSetting as AiServiceSettingsResponse
           );
 
           if (foodOptions.length > 0) {
@@ -412,7 +412,7 @@ const getAIResponse = async (
   imageData: string | null = null,
   transactionId: string,
   userLoggingLevel: UserLoggingLevel,
-  activeAIServiceSetting: AIService,
+  activeAIServiceSetting: AiServiceSettingsResponse,
   messages: Message[],
   userDate: string
 ): Promise<CoachResponse> => {
@@ -499,7 +499,7 @@ const callAIForFoodOptions = async (
   foodName: string,
   unit: string,
   userLoggingLevel: UserLoggingLevel,
-  activeAIServiceSetting: AIService
+  activeAIServiceSetting: AiServiceSettingsResponse
 ): Promise<FoodOption[]> => {
   try {
     const response = await apiCall('/chat/food-options', {

@@ -10,8 +10,8 @@ import {
 } from '@/api/Chatbot/sparkyChatService';
 import { UserLoggingLevel } from '@/utils/logging';
 import { chatbotKeys } from '@/api/keys/ai';
-import { AIService } from '@/types/settings';
 import { MessageMetadata } from '@/types/Chatbot_types';
+import { AiServiceSettingsResponse } from '@workspace/shared';
 
 export const useChatPreferencesQuery = () => {
   const { t } = useTranslation();
@@ -120,7 +120,7 @@ interface ProcessUserInputParams {
   lastBotMessageMetadata: MessageMetadata;
   userLoggingLevel: UserLoggingLevel;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
-  activeAIServiceSetting: AIService | null;
+  activeAIServiceSetting: AiServiceSettingsResponse | null;
   messages: unknown[];
   userDate: string;
 }
