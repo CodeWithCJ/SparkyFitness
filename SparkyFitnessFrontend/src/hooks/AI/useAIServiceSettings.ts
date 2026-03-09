@@ -10,7 +10,11 @@ import {
   getActiveAiServiceSetting,
 } from '@/api/Settings/aiServiceSettingsService';
 import { aiServiceKeys, userPreferencesKeys } from '@/api/keys/admin';
-import { AIService, UserPreferencesChat } from '@/types/settings';
+import { UserPreferencesChat } from '@/types/settings';
+import {
+  CreateAiServiceSettingsRequest,
+  UpdateAiServiceSettingsRequest,
+} from '@workspace/shared';
 
 // Query hooks for fetching data
 export const useAIServices = () => {
@@ -65,7 +69,8 @@ export const useAddAIService = () => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: (serviceData: Partial<AIService>) => addAIService(serviceData),
+    mutationFn: (serviceData: CreateAiServiceSettingsRequest) =>
+      addAIService(serviceData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.user() });
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.active() });
@@ -93,7 +98,7 @@ export const useUpdateAIService = () => {
       serviceData,
     }: {
       serviceId: string;
-      serviceData: Partial<AIService>;
+      serviceData: UpdateAiServiceSettingsRequest;
     }) => updateAIService(serviceId, serviceData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.user() });

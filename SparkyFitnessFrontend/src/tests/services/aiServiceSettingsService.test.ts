@@ -6,6 +6,19 @@ jest.mock('@/api/api', () => ({
   apiCall: (...args: unknown[]) => mockApiCall(...args),
 }));
 
+// Reusable complete mock data that satisfies aiServiceSettingsResponseSchema
+const completeMockService = {
+  id: '1',
+  user_id: 'user1',
+  service_name: 'OpenAI',
+  service_type: 'openai',
+  custom_url: null,
+  is_active: true,
+  system_prompt: null,
+  model_name: null,
+  is_public: false,
+};
+
 describe('aiServiceSettingsService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -13,14 +26,7 @@ describe('aiServiceSettingsService', () => {
 
   describe('getAIServices', () => {
     it('returns services array on success', async () => {
-      const mockServices = [
-        {
-          id: '1',
-          service_name: 'OpenAI',
-          service_type: 'openai',
-          is_active: true,
-        },
-      ];
+      const mockServices = [{ ...completeMockService }];
       mockApiCall.mockResolvedValue(mockServices);
 
       const result = await aiServiceSettingsService.getAIServices();
@@ -80,8 +86,7 @@ describe('aiServiceSettingsService', () => {
   describe('getActiveAiServiceSetting', () => {
     it('returns active service on success', async () => {
       const mockService = {
-        id: '1',
-        service_name: 'OpenAI',
+        ...completeMockService,
         is_active: true,
       };
       mockApiCall.mockResolvedValue(mockService);
@@ -115,7 +120,15 @@ describe('aiServiceSettingsService', () => {
         service_type: 'openai',
         api_key: 'sk-test',
       };
-      const mockResponse = { id: '1', ...serviceData };
+      const mockResponse = {
+        message: 'AI service added successfully',
+        setting: {
+          ...completeMockService,
+          service_name: serviceData.service_name,
+          service_type: serviceData.service_type,
+          // api_key is not returned in the response schema (server returns encrypted form only)
+        },
+      };
       mockApiCall.mockResolvedValue(mockResponse);
 
       const result = await aiServiceSettingsService.addAIService(serviceData);
@@ -137,7 +150,13 @@ describe('aiServiceSettingsService', () => {
       const updateData = {
         service_name: 'Updated OpenAI',
       };
-      const mockResponse = { id: serviceId, ...updateData };
+      const mockResponse = {
+        message: 'AI service updated successfully',
+        setting: {
+          ...completeMockService,
+          ...updateData,
+        },
+      };
       mockApiCall.mockResolvedValue(mockResponse);
 
       const result = await aiServiceSettingsService.updateAIService(
@@ -176,7 +195,14 @@ describe('aiServiceSettingsService', () => {
     it('updates service active status', async () => {
       const serviceId = '1';
       const isActive = true;
-      const mockResponse = { id: serviceId, is_active: isActive };
+      const mockResponse = {
+        message: 'AI service status updated successfully',
+        setting: {
+          ...completeMockService,
+          id: serviceId,
+          is_active: isActive,
+        },
+      };
       mockApiCall.mockResolvedValue(mockResponse);
 
       const result = await aiServiceSettingsService.updateAIServiceStatus(
@@ -217,9 +243,8 @@ describe('aiServiceSettingsService', () => {
     it('returns global services array on success', async () => {
       const mockServices = [
         {
-          id: '1',
+          ...completeMockService,
           service_name: 'Global OpenAI',
-          service_type: 'openai',
           is_public: true,
         },
       ];
@@ -254,7 +279,16 @@ describe('aiServiceSettingsService', () => {
         service_type: 'openai',
         api_key: 'sk-test',
       };
-      const mockResponse = { id: '1', ...serviceData, is_public: true };
+      const mockResponse = {
+        message: 'Global AI service created successfully',
+        setting: {
+          ...completeMockService,
+          service_name: serviceData.service_name,
+          service_type: serviceData.service_type,
+          is_public: true,
+          // api_key is not returned in the response schema (server returns encrypted form only)
+        },
+      };
       mockApiCall.mockResolvedValue(mockResponse);
 
       const result =
@@ -277,7 +311,15 @@ describe('aiServiceSettingsService', () => {
       const updateData = {
         service_name: 'Updated Global OpenAI',
       };
-      const mockResponse = { id: serviceId, ...updateData };
+      const mockResponse = {
+        message: 'Global AI service updated successfully',
+        setting: {
+          ...completeMockService,
+          id: serviceId,
+          ...updateData,
+          is_public: true,
+        },
+      };
       mockApiCall.mockResolvedValue(mockResponse);
 
       const result = await aiServiceSettingsService.updateGlobalAIService(

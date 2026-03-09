@@ -1,3 +1,4 @@
+export * from "./api/AiServiceSettings.api.zod";
 export * from "./schemas/Account.zod";
 export * from "./schemas/AdminActivityLogs.zod";
 export * from "./schemas/AiServiceSettings.zod";

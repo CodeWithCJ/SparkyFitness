@@ -7,7 +7,10 @@ import {
   deleteGlobalAIService,
 } from '@/api/Settings/aiServiceSettingsService';
 import { aiServiceKeys } from '@/api/keys/admin';
-import { AIService } from '@/types/settings';
+import {
+  CreateAiServiceSettingsRequest,
+  UpdateAiServiceSettingsRequest,
+} from '@workspace/shared';
 
 // Query hook for fetching global AI services
 export const useGlobalAIServices = () => {
@@ -31,7 +34,7 @@ export const useCreateGlobalAIService = () => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: (serviceData: Partial<AIService>) =>
+    mutationFn: (serviceData: CreateAiServiceSettingsRequest) =>
       createGlobalAIService(serviceData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.global() });
@@ -62,7 +65,7 @@ export const useUpdateGlobalAIService = () => {
       serviceData,
     }: {
       serviceId: string;
-      serviceData: Partial<AIService>;
+      serviceData: UpdateAiServiceSettingsRequest;
     }) => updateGlobalAIService(serviceId, serviceData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiServiceKeys.global() });

@@ -25,7 +25,9 @@
     ],
     "moduleNameMapper": {
       "\\.(css|less|sass|scss)$": "identity-obj-proxy",
-      "^@/(.*)$": "<rootDir>/src/$1"
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@workspace/shared$": "<rootDir>/../shared/src/index.ts",
+      "^@workspace/shared/(.*)$": "<rootDir>/../shared/src/$1"
     },
     "transform": {
       "^.+\\.tsx?$": [
