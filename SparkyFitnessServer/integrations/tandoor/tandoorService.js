@@ -189,8 +189,12 @@ class TandoorService {
             .toLowerCase()
             .replace(/[^a-z0-9]/g, "");
 
-          // Match against name OR the slug (e.g., "property-calories" matches "calories")
-          return nameNorm === candNorm || slugNorm.includes(candNorm);
+          // Match against name OR strict slug (e.g., "property-calories" or "calories")
+          return (
+            nameNorm === candNorm ||
+            slugNorm === candNorm ||
+            slugNorm === `property-${candNorm}`
+          );
         });
 
         if (
@@ -225,10 +229,10 @@ class TandoorService {
         `[Tandoor Mapping] Searching for "${label}" (Candidates: ${candidates.join(", ")})`,
       );
 
+      let bestValue = null;
+
       // 1. Check nutrition (Explicit structured data)
       if (nutritionData) {
-        // Shape A: Object with direct keys (e.g., { calories: 100, proteins: 10 })
-        // Tandoor uses plural keys: proteins, fats, carbohydrates
         const nutritionKeys = {
           calories: ["calories", "cal", "kcal"],
           protein: ["proteins", "protein"],
@@ -236,7 +240,6 @@ class TandoorService {
           fat: ["fats", "fat"],
         };
 
-        // Specific check for core nutrients if they exist as direct keys
         if (
           typeof nutritionData === "object" &&
           !Array.isArray(nutritionData)
@@ -250,13 +253,13 @@ class TandoorService {
                   "debug",
                   `[Tandoor Mapping] Nutrition Object Match: Found "${label}" via key "${k}" = ${num}`,
                 );
-                return num;
+                if (num > 0) return num;
+                bestValue = num;
               }
             }
           }
         }
 
-        // Shape B: Array of objects { name: "...", value: ... }
         if (Array.isArray(nutritionData)) {
           for (const item of nutritionData) {
             if (item.name && item.value !== undefined) {
@@ -270,7 +273,8 @@ class TandoorService {
                       "debug",
                       `[Tandoor Mapping] Nutrition Array Match: Found "${label}" via Tandoor key "${item.name}" = ${num}`,
                     );
-                    return num;
+                    if (num > 0) return num;
+                    bestValue = num;
                   }
                 }
               }
@@ -293,14 +297,20 @@ class TandoorService {
 
             for (const cand of candidates) {
               const candNorm = cand.toLowerCase().replace(/[^a-z0-9]/g, "");
-              if (nameNorm === candNorm || slugNorm.includes(candNorm)) {
+              // Stricter check for slugs
+              if (
+                nameNorm === candNorm ||
+                slugNorm === candNorm ||
+                slugNorm === `property-${candNorm}`
+              ) {
                 const num = Number(prop.total_value);
                 if (!Number.isNaN(num)) {
                   log(
                     "debug",
                     `[Tandoor Mapping] Food Property Match: Found "${label}" via "${prop.name}" (slug: ${prop.open_data_slug}) = ${num}`,
                   );
-                  return num;
+                  if (num > 0) return num;
+                  if (bestValue === null) bestValue = num;
                 }
               }
             }
@@ -311,7 +321,12 @@ class TandoorService {
       // 3. Fallback to properties (Array shape)
       const fallbackVal = extractFromProperties(properties, candidates);
       if (fallbackVal !== null) {
-        return fallbackVal;
+        if (fallbackVal > 0) return fallbackVal;
+        if (bestValue === null) bestValue = fallbackVal;
+      }
+
+      if (bestValue !== null) {
+        return bestValue;
       }
 
       log(

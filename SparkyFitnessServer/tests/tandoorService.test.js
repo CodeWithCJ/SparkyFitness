@@ -152,18 +152,41 @@ describe("TandoorService.mapTandoorRecipeToSparkyFood", () => {
     expect(result.variant.carbs).toBe(50);
   });
 
-  it("should handle empty or missing nutrition data", () => {
+  it("should ignore 0 values in food_properties and fallback to non-zero values in properties", () => {
     const mockRecipe = {
-      id: 13,
-      name: "Empty Test",
-      nutrition: null,
-      food_properties: null,
-      properties: null,
+      id: 14,
+      name: "Chicken Pasta (0-value fallback test)",
+      food_properties: {
+        1: { name: "Calories", total_value: 0 },
+        2: { name: "Proteins", total_value: 0 },
+      },
+      properties: [
+        { property_type: { name: "Calories" }, property_amount: 482 },
+        { property_type: { name: "Proteins" }, property_amount: 34 },
+      ],
     };
 
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
 
-    expect(result.variant.calories).toBe(0);
-    expect(result.variant.protein).toBe(0);
+    expect(result.variant.calories).toBe(482);
+    expect(result.variant.protein).toBe(34);
+  });
+
+  it("should not match 'ca' as 'calories' (partial slug bug fix)", () => {
+    const mockRecipe = {
+      id: 15,
+      name: "Partial match test",
+      properties: [
+        {
+          property_type: { name: "ca", open_data_slug: "ca" },
+          property_amount: 50,
+        },
+      ],
+    };
+
+    const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
+
+    expect(result.variant.calories).toBe(0); // Should NOT match 'ca'
+    expect(result.variant.calcium).toBe(50); // Should match 'calcium'
   });
 });
