@@ -127,7 +127,7 @@ class TandoorService {
       throw new Error("Tandoor API key not provided.");
     }
 
-    const url = `${this.baseUrl}/api/recipe/${id}/`;
+    const url = `${this.baseUrl}/api/recipe/${encodeURIComponent(id)}/`;
 
     try {
       const authHeader =
