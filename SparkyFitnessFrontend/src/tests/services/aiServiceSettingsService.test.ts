@@ -280,14 +280,11 @@ describe('aiServiceSettingsService', () => {
         api_key: 'sk-test',
       };
       const mockResponse = {
-        message: 'Global AI service created successfully',
-        setting: {
-          ...completeMockService,
-          service_name: serviceData.service_name,
-          service_type: serviceData.service_type,
-          is_public: true,
-          // api_key is not returned in the response schema (server returns encrypted form only)
-        },
+        ...completeMockService,
+        service_name: serviceData.service_name,
+        service_type: serviceData.service_type,
+        is_public: true,
+        // api_key is not returned in the response schema (server returns encrypted form only)
       };
       mockApiCall.mockResolvedValue(mockResponse);
 
@@ -312,13 +309,10 @@ describe('aiServiceSettingsService', () => {
         service_name: 'Updated Global OpenAI',
       };
       const mockResponse = {
-        message: 'Global AI service updated successfully',
-        setting: {
-          ...completeMockService,
-          id: serviceId,
-          ...updateData,
-          is_public: true,
-        },
+        ...completeMockService,
+        id: serviceId,
+        ...updateData,
+        is_public: true,
       };
       mockApiCall.mockResolvedValue(mockResponse);
 
