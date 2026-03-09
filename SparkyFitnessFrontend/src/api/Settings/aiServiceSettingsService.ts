@@ -91,7 +91,7 @@ export const updateAIService = async (
 };
 
 export const deleteAIService = async (serviceId: string): Promise<void> => {
-  return await apiCall(`/chat/ai-service-settings/${serviceId}`, {
+  return apiCall(`/chat/ai-service-settings/${serviceId}`, {
     method: 'DELETE',
   });
 };
@@ -167,7 +167,7 @@ export const updateGlobalAIService = async (
 export const deleteGlobalAIService = async (
   serviceId: string
 ): Promise<void> => {
-  return await apiCall(`/admin/ai-service-settings/global/${serviceId}`, {
+  return apiCall(`/admin/ai-service-settings/global/${serviceId}`, {
     method: 'DELETE',
   });
 };

@@ -200,7 +200,7 @@ const GlobalAISettings = () => {
   };
 
   const startEditing = (service: AiServiceSettingsResponse) => {
-    setEditingService(service.id ?? '');
+    setEditingService(service.id);
     const isCustomModel = service.model_name
       ? !getModelOptions(service.service_type ?? '').includes(
           service.model_name

@@ -294,10 +294,8 @@ const AIServiceSettings = () => {
       return;
     }
 
-    const { created_at, updated_at, ...safeOriginalService } = originalService;
-
     const serviceToUpdate = updateAiServiceSettingsFormSchema.parse({
-      ...safeOriginalService,
+      ...originalService,
       ...editData,
       id: serviceId,
     });
@@ -436,15 +434,8 @@ const AIServiceSettings = () => {
       return;
     }
 
-    const { created_at, updated_at, ...safeOriginalService } = originalService;
-
-    const serviceToUpdate = {
-      ...safeOriginalService,
-      is_active: isActive,
-    };
-
     try {
-      await updateService({ serviceId, serviceData: serviceToUpdate });
+      await updateService({ serviceId, serviceData: { is_active: isActive } });
       toast({
         title: t('settings.aiService.userSettings.success'),
         description: isActive

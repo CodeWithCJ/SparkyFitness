@@ -13,10 +13,13 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Save, X } from 'lucide-react';
 import { getServiceTypes, getModelOptions } from '@/utils/aiServiceUtils';
-import { UpdateAiServiceSettingsFormInput } from '@/schemas/form/AiServiceSettings.form.zod';
+import {
+  AiServiceSettingsFormInput,
+  UpdateAiServiceSettingsFormInput,
+} from '@/schemas/form/AiServiceSettings.form.zod';
 
 interface ServiceFormProps {
-  formData: UpdateAiServiceSettingsFormInput;
+  formData: AiServiceSettingsFormInput;
   onFormDataChange: (data: UpdateAiServiceSettingsFormInput) => void;
   onSubmit: () => void;
   onCancel: () => void;

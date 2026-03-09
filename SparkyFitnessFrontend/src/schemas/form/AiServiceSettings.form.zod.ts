@@ -33,3 +33,8 @@ export type CreateAiServiceSettingsFormInput = z.input<
 export type UpdateAiServiceSettingsFormInput = z.input<
   typeof updateAiServiceSettingsFormSchema
 >;
+
+// Union type representing form data for both create and edit modes
+export type AiServiceSettingsFormInput =
+  | CreateAiServiceSettingsFormInput
+  | UpdateAiServiceSettingsFormInput;
