@@ -239,11 +239,7 @@ const Reports = () => {
               />
             </ChartErrorBoundary>
             <ChartErrorBoundary>
-              <MeasurementChartsGrid
-                measurementData={measurementData ?? []}
-                showWeightInKg={defaultWeightUnit === 'kg'}
-                showMeasurementsInCm={defaultMeasurementUnit === 'cm'}
-              />
+              <MeasurementChartsGrid measurementData={measurementData ?? []} />
             </ChartErrorBoundary>
 
             {/* Body Battery Card */}

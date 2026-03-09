@@ -21,7 +21,7 @@ import {
 import ZoomableChart from '@/components/ZoomableChart';
 import WorkoutHeatmap from './WorkoutHeatmap';
 import MuscleGroupRecoveryTracker from './MuscleGroupRecoveryTracker';
-import PrProgressionChart from './PrProgressionChart';
+import { PrProgressionChart } from './PrProgressionChart';
 import ExerciseVarietyScore from './ExerciseVarietyScore';
 import SetPerformanceAnalysisChart from './SetPerformanceAnalysisChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -193,8 +193,10 @@ const ExerciseReportsDashboard = ({
               </div>
               <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-green-500 to-teal-600 text-white shadow-lg h-full">
                 <span className="text-3xl font-bold">
-                  {formatWeight(convertWeight(totalTonnage, 'kg', weightUnit))}{' '}
-                  {weightUnit}
+                  {formatWeight(
+                    convertWeight(totalTonnage, 'kg', weightUnit),
+                    weightUnit
+                  )}
                 </span>
                 <span className="text-sm text-center">
                   {t('exerciseReportsDashboard.totalTonnage', 'Total Tonnage')}
@@ -207,9 +209,9 @@ const ExerciseReportsDashboard = ({
                       exerciseDashboardData.keyStats.totalVolume,
                       'kg',
                       weightUnit
-                    )
-                  )}{' '}
-                  {weightUnit}
+                    ),
+                    weightUnit
+                  )}
                 </span>
                 <span className="text-sm text-center">
                   {t('exerciseReportsDashboard.totalVolume', 'Total Volume')}
@@ -620,7 +622,7 @@ const ExerciseReportsDashboard = ({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis
-                      tickFormatter={(value) => formatWeight(value)}
+                      tickFormatter={(value) => formatWeight(value, weightUnit)}
                       label={{
                         value: t(
                           'exerciseReportsDashboard.volumeCurrent',
@@ -634,7 +636,7 @@ const ExerciseReportsDashboard = ({
                     />
                     <Tooltip
                       formatter={(value: number | undefined) =>
-                        value ? `${formatWeight(value)} ${weightUnit}` : 0
+                        value ? formatWeight(value, weightUnit) : 0
                       }
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
@@ -779,7 +781,7 @@ const ExerciseReportsDashboard = ({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis
-                      tickFormatter={(value) => formatWeight(value)}
+                      tickFormatter={(value) => formatWeight(value, weightUnit)}
                       label={{
                         value: t(
                           'exerciseReportsDashboard.maxWeightCurrent',
@@ -793,7 +795,7 @@ const ExerciseReportsDashboard = ({
                     />
                     <Tooltip
                       formatter={(value: number | undefined) =>
-                        value ? `${formatWeight(value)} ${weightUnit}` : 0
+                        value ? formatWeight(value, weightUnit) : 0
                       }
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
@@ -938,7 +940,7 @@ const ExerciseReportsDashboard = ({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis
-                      tickFormatter={(value) => formatWeight(value)}
+                      tickFormatter={(value) => formatWeight(value, weightUnit)}
                       label={{
                         value: t(
                           'exerciseReportsDashboard.estimated1RMCurrent',
@@ -952,7 +954,7 @@ const ExerciseReportsDashboard = ({
                     />
                     <Tooltip
                       formatter={(value: number | undefined) =>
-                        value ? `${formatWeight(value)} ${weightUnit}` : 0
+                        value ? formatWeight(value, weightUnit) : 0
                       }
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
@@ -1351,9 +1353,9 @@ const ExerciseReportsDashboard = ({
                           prVisualizationData.oneRM,
                           'kg',
                           weightUnit
-                        )
-                      )}{' '}
-                      {weightUnit}
+                        ),
+                        weightUnit
+                      )}
                     </span>
                     <span className="text-sm text-muted-foreground">
                       {t(
@@ -1369,9 +1371,10 @@ const ExerciseReportsDashboard = ({
                           prVisualizationData.weight,
                           'kg',
                           weightUnit
-                        )
+                        ),
+                        weightUnit
                       )}{' '}
-                      {weightUnit} {t('exerciseReportsDashboard.on', 'on')}{' '}
+                      {t('exerciseReportsDashboard.on', 'on')}{' '}
                       {formatDateInUserTimezone(
                         prVisualizationData.date,
                         'MMM dd, yyyy'
@@ -1386,9 +1389,9 @@ const ExerciseReportsDashboard = ({
                           prVisualizationData.weight,
                           'kg',
                           weightUnit
-                        )
-                      )}{' '}
-                      {weightUnit}
+                        ),
+                        weightUnit
+                      )}
                     </span>
                     <span className="text-sm text-muted-foreground">
                       {t('exerciseReportsDashboard.maxWeight', 'Max Weight')}
@@ -1419,9 +1422,10 @@ const ExerciseReportsDashboard = ({
                           prVisualizationData.weight,
                           'kg',
                           weightUnit
-                        )
+                        ),
+                        weightUnit
                       )}{' '}
-                      {weightUnit} {t('exerciseReportsDashboard.on', 'on')}{' '}
+                      {t('exerciseReportsDashboard.on', 'on')}{' '}
                       {formatDateInUserTimezone(
                         prVisualizationData.date,
                         'MMM dd, yyyy'

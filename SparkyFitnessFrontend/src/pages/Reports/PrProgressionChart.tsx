@@ -1,6 +1,4 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -11,165 +9,92 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import ZoomableChart from '@/components/ZoomableChart';
 import { formatWeight } from '@/utils/numberFormatting';
 
-interface PrProgressionChartProps {
-  prProgressionData:
-    | {
-        date: string;
-        oneRM: number;
-        maxWeight: number;
-        maxReps: number;
-      }[]
-    | null;
+interface PrData {
+  date: string;
+  oneRM: number;
+  maxWeight: number;
+  maxReps: number;
 }
 
-const PrProgressionChart = ({ prProgressionData }: PrProgressionChartProps) => {
-  const { t } = useTranslation();
-  const { formatDateInUserTimezone, weightUnit, convertWeight } =
-    usePreferences();
-  const [isMounted, setIsMounted] = React.useState(false);
+interface PrProgressionChartProps {
+  prProgressionData: PrData[];
+}
 
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+export const PrProgressionChart = ({
+  prProgressionData,
+}: PrProgressionChartProps) => {
+  const { weightUnit, formatDate } = usePreferences();
 
-  if (!prProgressionData || prProgressionData.length === 0) {
-    return null;
-  }
+  const sortedData = useMemo(() => {
+    return [...prProgressionData].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+  }, [prProgressionData]);
 
-  if (!isMounted) {
+  if (prProgressionData.length === 0) {
     return (
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">
-            {t('prProgressionChart.title', 'Personal Record Progression')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-            <span className="text-xs text-muted-foreground">
-              {t('common.loading', 'Loading...')}
-            </span>
-          </div>
+        <CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">
+          No PR data available for this period.
         </CardContent>
       </Card>
     );
   }
 
-  const formattedData = prProgressionData.map((d) => ({
-    ...d,
-    date: formatDateInUserTimezone(d.date, 'MMM dd, yyyy'),
-    oneRM: parseFloat(convertWeight(d.oneRM, 'kg', weightUnit).toFixed(1)),
-    maxWeight: parseFloat(
-      convertWeight(d.maxWeight, 'kg', weightUnit).toFixed(1)
-    ),
-  }));
-
   return (
-    <ZoomableChart
-      title={t('prProgressionChart.title', 'Personal Record Progression')}
-    >
-      {(isMaximized, zoomLevel) => (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">
-              {t('prProgressionChart.title', 'Personal Record Progression')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48'}>
-              <ResponsiveContainer
-                width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                minWidth={0}
-                minHeight={0}
-                debounce={100}
-              >
-                <LineChart data={formattedData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    tickCount={
-                      isMaximized
-                        ? Math.max(formattedData.length, 10)
-                        : undefined
-                    }
-                  />
-                  <YAxis
-                    yAxisId="left"
-                    tickFormatter={(value) => formatWeight(value)}
-                    label={{
-                      value: t('prProgressionChart.weightUnit', {
-                        unit: weightUnit,
-                      }),
-                      angle: -90,
-                      position: 'insideLeft',
-                    }}
-                  />
-                  <YAxis
-                    yAxisId="right"
-                    orientation="right"
-                    label={{
-                      value: t('prProgressionChart.reps', 'Reps'),
-                      angle: -90,
-                      position: 'insideRight',
-                    }}
-                  />
-                  <Tooltip
-                    formatter={(
-                      value: number | undefined,
-                      name: string | undefined
-                    ) => {
-                      const finalName = name || '';
-                      if (
-                        finalName ===
-                        t('prProgressionChart.maxReps', 'Max Reps')
-                      ) {
-                        return [value ?? 0, finalName];
-                      }
-                      return [
-                        `${formatWeight(value ?? 0)} ${weightUnit}`,
-                        finalName,
-                      ];
-                    }}
-                    contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
-                  />
-                  <Legend />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="oneRM"
-                    stroke="#8884d8"
-                    name={t('prProgressionChart.estimated1RM', 'Estimated 1RM')}
-                    isAnimationActive={false}
-                  />
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    dataKey="maxWeight"
-                    stroke="#82ca9d"
-                    name={t('prProgressionChart.maxWeight', 'Max Weight')}
-                    isAnimationActive={false}
-                  />
-                  <Line
-                    yAxisId="right"
-                    type="monotone"
-                    dataKey="maxReps"
-                    stroke="#ffc658"
-                    name={t('prProgressionChart.maxReps', 'Max Reps')}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </ZoomableChart>
+    <Card>
+      <CardHeader>
+        <CardTitle>PR Progression</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={sortedData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="date"
+                tickFormatter={(date) => formatDate(date)}
+                minTickGap={30}
+              />
+              <YAxis
+                tickFormatter={(value) => formatWeight(value, weightUnit)}
+              />
+              <Tooltip
+                labelFormatter={(label) => formatDate(label)}
+                formatter={(value: number | undefined, name?: string) => {
+                  if (name === 'maxReps') return [value, 'Max Reps'];
+                  return [
+                    formatWeight(value ?? 0, weightUnit),
+                    name === 'oneRM' ? 'Est. 1RM' : 'Max Weight',
+                  ];
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="oneRM"
+                name="oneRM"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="maxWeight"
+                name="maxWeight"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
-
-export default PrProgressionChart;

@@ -16,6 +16,7 @@ import {
 } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
 import { CombinedMeasurement } from '@/types/checkin';
+import { formatWeight, formatHeight } from '@/utils/numberFormatting';
 
 interface RecentActivityProps {
   convertMeasurement: (
@@ -36,8 +37,6 @@ interface RecentActivityProps {
 }
 
 export const RecentActivity: React.FC<RecentActivityProps> = ({
-  convertMeasurement,
-  convertWeight,
   handleDeleteMeasurementClick,
   recentMeasurements,
   shouldConvertCustomMeasurement,
@@ -69,8 +68,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
               </div>
             ) : (
               recentMeasurements.map((measurement) => {
-                let displayValue = measurement.value;
-                let displayUnit = measurement.display_unit;
+                let displayString = '';
                 let measurementName = measurement.display_name;
 
                 if (
@@ -80,68 +78,55 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                   const isConvertible = shouldConvertCustomMeasurement(
                     measurement.custom_categories.measurement_type
                   );
-                  displayValue = isConvertible
-                    ? typeof measurement.value === 'number'
-                      ? convertMeasurement(
-                          measurement.value,
-                          'cm',
-                          defaultMeasurementUnit
+                  if (isConvertible) {
+                    const isWeight =
+                      measurement.custom_categories.measurement_type === 'kg' ||
+                      measurement.custom_categories.measurement_type === 'lbs';
+                    displayString = isWeight
+                      ? formatWeight(
+                          Number(measurement.value),
+                          defaultWeightUnit
                         )
-                      : measurement.value
-                    : measurement.value;
-                  displayUnit = isConvertible
-                    ? defaultMeasurementUnit
-                    : measurement.custom_categories.measurement_type;
+                      : formatHeight(
+                          Number(measurement.value),
+                          defaultMeasurementUnit
+                        );
+                  } else {
+                    displayString = `${measurement.value} ${measurement.custom_categories.measurement_type}`;
+                  }
                 } else if (measurement.type === 'standard') {
-                  // Apply unit conversion for standard measurements if applicable
                   if (measurement.display_name === 'Weight') {
-                    displayValue =
-                      typeof measurement.value === 'number'
-                        ? convertWeight(
-                            measurement.value,
-                            'kg',
-                            defaultWeightUnit
-                          )
-                        : measurement.value;
-                    displayUnit = defaultWeightUnit;
+                    displayString = formatWeight(
+                      Number(measurement.value),
+                      defaultWeightUnit
+                    );
                   } else if (
-                    ['Neck', 'Waist', 'Hips'].includes(measurement.display_name)
+                    ['Neck', 'Waist', 'Hips', 'Height'].includes(
+                      measurement.display_name
+                    )
                   ) {
-                    displayValue =
-                      typeof measurement.value === 'number'
-                        ? convertMeasurement(
-                            measurement.value,
-                            'cm',
-                            defaultMeasurementUnit
-                          )
-                        : measurement.value;
-                    displayUnit = defaultMeasurementUnit;
-                  } else if (measurement.display_name === 'Height') {
-                    displayValue =
-                      typeof measurement.value === 'number'
-                        ? convertMeasurement(
-                            measurement.value,
-                            'cm',
-                            defaultMeasurementUnit
-                          )
-                        : measurement.value;
-                    displayUnit = defaultMeasurementUnit;
+                    displayString = formatHeight(
+                      Number(measurement.value),
+                      defaultMeasurementUnit
+                    );
+                  } else {
+                    displayString = `${measurement.value} ${measurement.display_unit || ''}`;
                   }
                 } else if (measurement.type === 'stress') {
                   measurementName = t('checkIn.stressLevel', 'Stress Level');
-                  displayUnit = t('checkIn.level', 'level');
+                  displayString = `${measurement.value} ${t('checkIn.level', 'level')}`;
                 } else if (measurement.type === 'exercise') {
                   measurementName =
                     measurement.exercise_name ||
                     t('checkIn.exercise', 'Exercise');
-                  displayValue = `${measurement.duration_minutes?.toFixed(0) || 0} min`;
-                  displayUnit = `${measurement.calories_burned?.toFixed(0) || 0} kcal`;
+                  displayString = `${measurement.duration_minutes?.toFixed(0) || 0} min / ${measurement.calories_burned?.toFixed(0) || 0} kcal`;
+                } else if (measurement.type === 'fasting') {
+                  displayString = measurement.duration_minutes
+                    ? `${Math.floor(measurement.duration_minutes / 60)}h ${measurement.duration_minutes % 60}m`
+                    : '0h 0m';
+                } else {
+                  displayString = `${measurement.value} ${measurement.display_unit || ''}`;
                 }
-                // Format displayValue to one decimal place if it's a number
-                const formattedDisplayValue =
-                  typeof displayValue === 'number'
-                    ? displayValue.toFixed(1)
-                    : displayValue;
 
                 return (
                   <div
@@ -179,18 +164,9 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                     </div>
                     <div className="font-semibold tabular-nums text-right">
                       {measurement.type === 'fasting' ? (
-                        <span className="text-orange-600">
-                          {measurement.duration_minutes
-                            ? `${Math.floor(measurement.duration_minutes / 60)}h ${measurement.duration_minutes % 60}m`
-                            : '0h 0m'}
-                        </span>
+                        <span className="text-orange-600">{displayString}</span>
                       ) : (
-                        <span>
-                          {formattedDisplayValue?.toString()?.slice(0, 50)}{' '}
-                          <span className="text-xs text-muted-foreground ml-0.5">
-                            {displayUnit}
-                          </span>
-                        </span>
+                        <span>{displayString}</span>
                       )}
                       {(measurement.type === 'custom' ||
                         measurement.type === 'standard' ||

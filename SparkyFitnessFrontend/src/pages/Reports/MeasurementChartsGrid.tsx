@@ -17,6 +17,7 @@ import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { info, error } from '@/utils/logging';
 import { parseISO } from 'date-fns';
+import { formatWeight, formatHeight } from '@/utils/numberFormatting';
 import {
   calculateSmartYAxisDomain,
   ChartDataPoint,
@@ -26,33 +27,32 @@ import { CheckInMeasurement } from '@/types/checkin';
 
 interface MeasurementChartsGridProps {
   measurementData: CheckInMeasurement[];
-  showWeightInKg: boolean;
-  showMeasurementsInCm: boolean;
 }
 
 const MeasurementChartsGrid = ({
   measurementData,
-  showWeightInKg,
-  showMeasurementsInCm,
 }: MeasurementChartsGridProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, formatDateInUserTimezone } = usePreferences(); // Destructure formatDateInUserTimezone
+  const {
+    loggingLevel,
+    formatDateInUserTimezone,
+    weightUnit,
+    measurementUnit,
+  } = usePreferences();
   info(loggingLevel, 'MeasurementChartsGrid: Rendering component.');
 
   const formatDateForChart = (date: string) => {
-    // Ensure date is a valid string before parsing
     if (!date || typeof date !== 'string') {
       error(
         loggingLevel,
         `MeasurementChartsGrid: Invalid date string provided to formatDateForChart:`,
         date
       );
-      return ''; // Return empty string for invalid input
+      return '';
     }
     return formatDateInUserTimezone(parseISO(date), 'MMM dd');
   };
 
-  // Helper function to get smart Y-axis domain for measurements
   const getYAxisDomain = (data: CheckInMeasurement[], dataKey: string) => {
     const config = getChartConfig(dataKey);
     return calculateSmartYAxisDomain(
@@ -61,7 +61,7 @@ const MeasurementChartsGrid = ({
       {
         marginPercent: config.marginPercent,
         minRangeThreshold: config.minRangeThreshold,
-        useZeroBaseline: config.useZeroBaseline, // Pass useZeroBaseline from config
+        useZeroBaseline: config.useZeroBaseline,
       }
     );
   };
@@ -113,18 +113,14 @@ const MeasurementChartsGrid = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
         {/* Weight Chart */}
         <ZoomableChart
-          title={`${t('reports.weight', 'Weight')} (${showWeightInKg ? t('reports.kg', 'kg') : t('reports.lbs', 'lbs')})`}
+          title={`${t('reports.weight', 'Weight')} (${weightUnit})`}
         >
           {(isMaximized, zoomLevel) => (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center">
                   <Scale className="w-4 h-4 mr-2" />
-                  {t('reports.weight', 'Weight')} (
-                  {showWeightInKg
-                    ? t('reports.kg', 'kg')
-                    : t('reports.lbs', 'lbs')}
-                  )
+                  {t('reports.weight', 'Weight')} ({weightUnit})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -167,8 +163,8 @@ const MeasurementChartsGrid = ({
                           formatDateForChart(value as string)
                         }
                         formatter={(value: number | undefined) => [
-                          value &&
-                            `${value.toFixed(1)} ${showWeightInKg ? t('reports.kg', 'kg') : t('reports.lbs', 'lbs')}`,
+                          value ? formatWeight(value, weightUnit) : '-',
+                          t('reports.weight', 'Weight'),
                         ]}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--background))',
@@ -192,17 +188,13 @@ const MeasurementChartsGrid = ({
 
         {/* Neck Chart */}
         <ZoomableChart
-          title={`${t('reports.neck', 'Neck')} (${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})`}
+          title={`${t('reports.neck', 'Neck')} (${measurementUnit})`}
         >
           {(isMaximized, zoomLevel) => (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">
-                  {t('reports.neck', 'Neck')} (
-                  {showMeasurementsInCm
-                    ? t('reports.cm', 'cm')
-                    : t('reports.inches', 'inches')}
-                  )
+                  {t('reports.neck', 'Neck')} ({measurementUnit})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -238,14 +230,15 @@ const MeasurementChartsGrid = ({
                             'neck'
                           ) || undefined
                         }
+                        tickFormatter={(value) => value.toFixed(1)}
                       />
                       <Tooltip
                         labelFormatter={(value) =>
                           formatDateForChart(value as string)
                         }
                         formatter={(value: number | undefined) => [
-                          value &&
-                            `${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`,
+                          value ? formatHeight(value, measurementUnit) : '-',
+                          t('reports.neck', 'Neck'),
                         ]}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--background))',
@@ -269,17 +262,13 @@ const MeasurementChartsGrid = ({
 
         {/* Waist Chart */}
         <ZoomableChart
-          title={`${t('reports.waist', 'Waist')} (${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})`}
+          title={`${t('reports.waist', 'Waist')} (${measurementUnit})`}
         >
           {(isMaximized, zoomLevel) => (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">
-                  {t('reports.waist', 'Waist')} (
-                  {showMeasurementsInCm
-                    ? t('reports.cm', 'cm')
-                    : t('reports.inches', 'inches')}
-                  )
+                  {t('reports.waist', 'Waist')} ({measurementUnit})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -322,8 +311,8 @@ const MeasurementChartsGrid = ({
                           formatDateForChart(value as string)
                         }
                         formatter={(value: number | undefined) => [
-                          value &&
-                            `${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`,
+                          value ? formatHeight(value, measurementUnit) : '-',
+                          t('reports.waist', 'Waist'),
                         ]}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--background))',
@@ -347,17 +336,13 @@ const MeasurementChartsGrid = ({
 
         {/* Hips Chart */}
         <ZoomableChart
-          title={`${t('reports.hips', 'Hips')} (${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')})`}
+          title={`${t('reports.hips', 'Hips')} (${measurementUnit})`}
         >
           {(isMaximized, zoomLevel) => (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">
-                  {t('reports.hips', 'Hips')} (
-                  {showMeasurementsInCm
-                    ? t('reports.cm', 'cm')
-                    : t('reports.inches', 'inches')}
-                  )
+                  {t('reports.hips', 'Hips')} ({measurementUnit})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -393,14 +378,15 @@ const MeasurementChartsGrid = ({
                             'hips'
                           ) || undefined
                         }
+                        tickFormatter={(value) => value.toFixed(1)}
                       />
                       <Tooltip
                         labelFormatter={(value) =>
                           formatDateForChart(value as string)
                         }
                         formatter={(value: number | undefined) => [
-                          value &&
-                            `${value.toFixed(1)} ${showMeasurementsInCm ? t('reports.cm', 'cm') : t('reports.inches', 'inches')}`,
+                          value ? formatHeight(value, measurementUnit) : '-',
+                          t('reports.hips', 'Hips'),
                         ]}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--background))',

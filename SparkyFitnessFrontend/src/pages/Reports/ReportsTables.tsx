@@ -590,31 +590,25 @@ const ReportsTables = ({
                         <TableCell>
                           {entry.sets.length > 0
                             ? formatWeight(
-                                convertWeight(
-                                  entry.sets.reduce(
-                                    (acc, s) => acc + Number(s.weight),
-                                    0
-                                  ) / entry.sets.length,
-                                  'kg',
-                                  weightUnit
-                                )
+                                entry.sets.reduce(
+                                  (acc, s) => acc + Number(s.weight),
+                                  0
+                                ) / entry.sets.length,
+                                weightUnit
                               )
-                            : '0.00'}
+                            : formatWeight(0, weightUnit)}
                         </TableCell>
                         <TableCell>
                           {entry.sets.length > 0
                             ? formatWeight(
-                                convertWeight(
-                                  entry.sets.reduce(
-                                    (acc, s) =>
-                                      acc + Number(s.weight) * Number(s.reps),
-                                    0
-                                  ),
-                                  'kg',
-                                  weightUnit
-                                )
+                                entry.sets.reduce(
+                                  (acc, s) =>
+                                    acc + Number(s.weight) * Number(s.reps),
+                                  0
+                                ),
+                                weightUnit
                               )
-                            : '0.00'}
+                            : formatWeight(0, weightUnit)}
                         </TableCell>
                         <TableCell>
                           {entry.sets.reduce(
@@ -651,17 +645,12 @@ const ReportsTables = ({
                             <TableCell>{set.set_type}</TableCell>
                             <TableCell>{set.reps}</TableCell>
                             <TableCell>
-                              {formatWeight(
-                                convertWeight(set.weight, 'kg', weightUnit)
-                              )}
+                              {formatWeight(set.weight, weightUnit)}
                             </TableCell>
                             <TableCell>
                               {formatWeight(
-                                convertWeight(
-                                  Number(set.weight) * Number(set.reps),
-                                  'kg',
-                                  weightUnit
-                                )
+                                Number(set.weight) * Number(set.reps),
+                                weightUnit
                               )}
                             </TableCell>
                             <TableCell>{set.duration || '-'}</TableCell>

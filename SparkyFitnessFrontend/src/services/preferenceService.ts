@@ -16,8 +16,8 @@ export interface UserPreferences {
   language: string;
   timezone: string;
 
-  default_weight_unit: 'kg' | 'lbs';
-  default_measurement_unit: 'cm' | 'in';
+  default_weight_unit: 'kg' | 'lbs' | 'st_lbs';
+  default_measurement_unit: 'cm' | 'inches' | 'ft_in';
   default_distance_unit: 'km' | 'miles';
   energy_unit: 'kcal' | 'kJ';
   water_display_unit: 'ml' | 'oz' | string;

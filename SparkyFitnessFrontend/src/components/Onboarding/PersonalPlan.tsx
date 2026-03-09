@@ -29,8 +29,8 @@ import { OnboardingData } from '@/types/onboarding';
 
 interface PersonalPlanProps {
   formData: OnboardingData;
-  weightUnit: 'kg' | 'lbs';
-  heightUnit: 'cm' | 'inches';
+  weightUnit: 'kg' | 'lbs' | 'st_lbs';
+  heightUnit: 'cm' | 'inches' | 'ft_in';
   localDateFormat: string;
   onOnboardingComplete: () => void;
 }
@@ -88,8 +88,6 @@ const PersonalPlan = ({
   const [editedPlan, setEditedPlan] = useState<ExpandedGoals | null>(() => {
     return createInitialPlan(
       formData,
-      weightUnit,
-      heightUnit,
       localEnergyUnit,
       localSelectedDiet,
       customPercentages,
@@ -115,8 +113,6 @@ const PersonalPlan = ({
 
     const updatedPlan = createInitialPlan(
       formData,
-      weightUnit,
-      heightUnit,
       localEnergyUnit,
       newDiet,
       customPercentages,
@@ -140,14 +136,8 @@ const PersonalPlan = ({
   };
 
   const plan = useMemo(() => {
-    return calculateBasePlan(
-      formData,
-      weightUnit,
-      heightUnit,
-      localSelectedDiet,
-      customPercentages
-    );
-  }, [formData, weightUnit, heightUnit, localSelectedDiet, customPercentages]);
+    return calculateBasePlan(formData, localSelectedDiet, customPercentages);
+  }, [formData, localSelectedDiet, customPercentages]);
 
   const handleMacroValueChange = (
     changedMacro: keyof typeof customPercentages,
@@ -214,8 +204,6 @@ const PersonalPlan = ({
 
     const updatedPlan = createInitialPlan(
       formData,
-      weightUnit,
-      heightUnit,
       localEnergyUnit,
       localSelectedDiet,
       newPercentages,
@@ -232,26 +220,17 @@ const PersonalPlan = ({
     if (!user?.activeUserId) {
       return;
     }
+
+    // formData values are already in Metric (kg/cm) because they come from UnitInput
+    const metricWeight = Number(formData.currentWeight) || 0;
+    const metricHeight = Number(formData.height) || 0;
+    const metricTargetWeight = Number(formData.targetWeight) || 0;
+
     const dataToSubmit: OnboardingData = {
       ...formData,
-      currentWeight:
-        formData.currentWeight === ''
-          ? 0
-          : weightUnit === 'lbs'
-            ? Number(formData.currentWeight) * 0.453592
-            : Number(formData.currentWeight),
-      height:
-        formData.height === ''
-          ? 0
-          : heightUnit === 'inches'
-            ? Number(formData.height) * 2.54
-            : Number(formData.height),
-      targetWeight:
-        formData.targetWeight === ''
-          ? 0
-          : weightUnit === 'lbs'
-            ? Number(formData.targetWeight) * 0.453592
-            : Number(formData.targetWeight),
+      currentWeight: metricWeight,
+      height: metricHeight,
+      targetWeight: metricTargetWeight,
       mealsPerDay: !formData.mealsPerDay ? 3 : Number(formData.mealsPerDay),
     };
 
@@ -280,15 +259,6 @@ const PersonalPlan = ({
     }
 
     try {
-      const metricWeight =
-        weightUnit === 'lbs'
-          ? Number(formData.currentWeight) * 0.453592
-          : Number(formData.currentWeight);
-      const metricHeight =
-        heightUnit === 'inches'
-          ? Number(formData.height) * 2.54
-          : Number(formData.height);
-
       await saveCheckInMeasurements({
         entry_date: todayStr,
         weight: metricWeight,

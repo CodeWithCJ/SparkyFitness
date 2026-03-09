@@ -63,8 +63,6 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     weightUnit: defaultWeightUnit,
     measurementUnit: defaultMeasurementUnit,
     formatDateInUserTimezone,
-    convertWeight,
-    convertMeasurement,
     bodyFatAlgorithm,
   } = usePreferences();
 
@@ -118,37 +116,37 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   const derivedWeight = useMemo(() => {
     const w = existingCheckIn?.weight;
     if (w == null) return '';
-    const converted = convertWeight(w, 'kg', defaultWeightUnit);
-    return !isNaN(converted) ? converted.toFixed(1) : '';
-  }, [existingCheckIn?.weight, convertWeight, defaultWeightUnit]);
+    // State should be Metric (kg). UnitInput handles preferred unit display.
+    return w.toString();
+  }, [existingCheckIn?.weight]);
 
   const derivedNeck = useMemo(() => {
     const n = existingCheckIn?.neck;
     if (n == null) return '';
-    const converted = convertMeasurement(n, 'cm', defaultMeasurementUnit);
-    return !isNaN(converted) ? converted.toFixed(1) : '';
-  }, [existingCheckIn?.neck, convertMeasurement, defaultMeasurementUnit]);
+    // State should be Metric (cm).
+    return n.toString();
+  }, [existingCheckIn?.neck]);
 
   const derivedWaist = useMemo(() => {
     const w = existingCheckIn?.waist;
     if (w == null) return '';
-    const converted = convertMeasurement(w, 'cm', defaultMeasurementUnit);
-    return !isNaN(converted) ? converted.toFixed(1) : '';
-  }, [existingCheckIn?.waist, convertMeasurement, defaultMeasurementUnit]);
+    // State should be Metric (cm).
+    return w.toString();
+  }, [existingCheckIn?.waist]);
 
   const derivedHips = useMemo(() => {
     const h = existingCheckIn?.hips;
     if (h == null) return '';
-    const converted = convertMeasurement(h, 'cm', defaultMeasurementUnit);
-    return !isNaN(converted) ? converted.toFixed(1) : '';
-  }, [existingCheckIn?.hips, convertMeasurement, defaultMeasurementUnit]);
+    // State should be Metric (cm).
+    return h.toString();
+  }, [existingCheckIn?.hips]);
 
   const derivedHeight = useMemo(() => {
     const h = existingCheckIn?.height;
     if (h == null) return '';
-    const converted = convertMeasurement(h, 'cm', defaultMeasurementUnit);
-    return !isNaN(converted) ? converted.toFixed(1) : '';
-  }, [existingCheckIn?.height, convertMeasurement, defaultMeasurementUnit]);
+    // State should be Metric (cm).
+    return h.toString();
+  }, [existingCheckIn?.height]);
 
   const derivedBodyFat = useMemo(() => {
     return existingCheckIn?.body_fat_percentage?.toString() || '';
@@ -181,22 +179,10 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           (c) => c.id === measurement.category_id
         );
         if (category && category.frequency !== 'Unlimited') {
-          const isConvertible = shouldConvertCustomMeasurement(
-            category.measurement_type
-          );
           if (category.data_type === 'numeric') {
-            newCustomValues[measurement.category_id] = isConvertible
-              ? (() => {
-                  const converted = convertMeasurement(
-                    Number(measurement.value),
-                    'cm',
-                    defaultMeasurementUnit
-                  );
-                  return typeof converted === 'number' && !isNaN(converted)
-                    ? converted.toFixed(1)
-                    : '';
-                })()
-              : measurement.value !== null && measurement.value !== undefined
+            // Keep value in Metric (cm/kg) as stored in DB. UnitInput handles preferred display.
+            newCustomValues[measurement.category_id] =
+              measurement.value !== null && measurement.value !== undefined
                 ? measurement.value.toString()
                 : '';
           } else {
@@ -211,13 +197,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       derivedCustomValues: newCustomValues,
       derivedCustomNotes: newCustomNotes,
     };
-  }, [
-    existingCustom,
-    customCategories,
-    convertMeasurement,
-    defaultMeasurementUnit,
-    shouldConvertCustomMeasurement,
-  ]);
+  }, [existingCustom, customCategories]);
 
   const [weight, setWeight] = useDerivedState<string>(
     derivedWeight,
@@ -453,42 +433,22 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       };
 
       if (weight) {
-        measurementData.weight = convertWeight(
-          parseFloat(weight),
-          defaultWeightUnit,
-          'kg'
-        );
+        measurementData.weight = parseFloat(weight);
       }
       if (neck) {
-        measurementData.neck = convertMeasurement(
-          parseFloat(neck),
-          defaultMeasurementUnit,
-          'cm'
-        );
+        measurementData.neck = parseFloat(neck);
       }
       if (waist) {
-        measurementData.waist = convertMeasurement(
-          parseFloat(waist),
-          defaultMeasurementUnit,
-          'cm'
-        );
+        measurementData.waist = parseFloat(waist);
       }
       if (hips) {
-        measurementData.hips = convertMeasurement(
-          parseFloat(hips),
-          defaultMeasurementUnit,
-          'cm'
-        );
+        measurementData.hips = parseFloat(hips);
       }
       if (steps) {
         measurementData.steps = parseInt(steps);
       }
       if (height) {
-        measurementData.height = convertMeasurement(
-          parseFloat(height),
-          defaultMeasurementUnit,
-          'cm'
-        );
+        measurementData.height = parseFloat(height);
       }
       if (bodyFatPercentage) {
         measurementData.body_fat_percentage = parseFloat(bodyFatPercentage);
@@ -533,12 +493,9 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           if (category.data_type === 'numeric') {
             const numericValue = parseFloat(inputValue);
             if (!isNaN(numericValue)) {
-              const isConvertible = shouldConvertCustomMeasurement(
-                category.measurement_type
-              );
-              customMeasurementData.value = isConvertible
-                ? convertMeasurement(numericValue, defaultMeasurementUnit, 'cm')
-                : numericValue;
+              // Now that custom measurements also use UnitInput in the form,
+              // they are already normalized to Metric (kg/cm) in the state.
+              customMeasurementData.value = numericValue;
             }
           } else {
             customMeasurementData.value = inputValue;
@@ -598,43 +555,17 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           getMostRecentMeasurement('hips'),
         ]);
 
-        weightKg =
-          recentWeight?.weight ??
-          convertWeight(parseFloat(weight), defaultWeightUnit, 'kg');
-        heightCm =
-          recentHeight?.height ??
-          convertMeasurement(parseFloat(height), defaultMeasurementUnit, 'cm');
-        waistCm =
-          recentWaist?.waist ??
-          convertMeasurement(parseFloat(waist), defaultMeasurementUnit, 'cm');
-        neckCm =
-          recentNeck?.neck ??
-          convertMeasurement(parseFloat(neck), defaultMeasurementUnit, 'cm');
-        hipsCm =
-          recentHips?.hips ??
-          convertMeasurement(parseFloat(hips), defaultMeasurementUnit, 'cm');
+        weightKg = recentWeight?.weight ?? parseFloat(weight);
+        heightCm = recentHeight?.height ?? parseFloat(height);
+        waistCm = recentWaist?.waist ?? parseFloat(waist);
+        neckCm = recentNeck?.neck ?? parseFloat(neck);
+        hipsCm = recentHips?.hips ?? parseFloat(hips);
       } else {
-        weightKg = convertWeight(parseFloat(weight), defaultWeightUnit, 'kg');
-        heightCm = convertMeasurement(
-          parseFloat(height),
-          defaultMeasurementUnit,
-          'cm'
-        );
-        waistCm = convertMeasurement(
-          parseFloat(waist),
-          defaultMeasurementUnit,
-          'cm'
-        );
-        neckCm = convertMeasurement(
-          parseFloat(neck),
-          defaultMeasurementUnit,
-          'cm'
-        );
-        hipsCm = convertMeasurement(
-          parseFloat(hips),
-          defaultMeasurementUnit,
-          'cm'
-        );
+        weightKg = parseFloat(weight);
+        heightCm = parseFloat(height);
+        waistCm = parseFloat(waist);
+        neckCm = parseFloat(neck);
+        hipsCm = parseFloat(hips);
       }
 
       let bfp = 0;
