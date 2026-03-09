@@ -1,4 +1,5 @@
 export * from "./schemas/api/AiServiceSettings.api.zod";
+export * from "./schemas/api/CheckInMeasurements.api.zod";
 export * from "./schemas/database/Account.zod";
 export * from "./schemas/database/AdminActivityLogs.zod";
 export * from "./schemas/database/AiServiceSettings.zod";

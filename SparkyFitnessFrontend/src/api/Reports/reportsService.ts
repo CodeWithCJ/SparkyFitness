@@ -1,16 +1,13 @@
 import { apiCall } from '@/api/api';
 import type { SleepAnalyticsData } from '../../types';
-import {
-  CheckInMeasurement,
-  CustomCategory,
-  CustomMeasurement,
-} from '@/types/checkin';
+import { CustomCategory, CustomMeasurement } from '@/types/checkin';
 import {
   DailyExerciseEntry,
   DailyFoodEntry,
   ExerciseDashboardData,
   NutritionData,
 } from '@/types/reports';
+import { CheckInMeasurementsResponse } from '@workspace/shared';
 
 export const loadReportsData = async (
   startDate: string,
@@ -20,7 +17,7 @@ export const loadReportsData = async (
   nutritionData: NutritionData[];
   tabularData: DailyFoodEntry[];
   exerciseEntries: DailyExerciseEntry[];
-  measurementData: CheckInMeasurement[];
+  measurementData: CheckInMeasurementsResponse[];
   customCategories: CustomCategory[];
   customMeasurementsData: Record<string, CustomMeasurement[]>;
   sleepAnalyticsData: SleepAnalyticsData[];

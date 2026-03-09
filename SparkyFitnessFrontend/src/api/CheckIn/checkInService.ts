@@ -1,9 +1,11 @@
 import { apiCall } from '@/api/api';
+import { CustomMeasurement, CustomCategory } from '@/types/checkin';
 import {
-  CustomMeasurement,
-  CustomCategory,
-  CheckInMeasurement,
-} from '@/types/checkin';
+  CheckInMeasurementsResponse,
+  checkInMeasurementsResponseSchema,
+  UpdateCheckInMeasurementsRequest,
+} from '@workspace/shared';
+import z from 'zod';
 
 export const loadCustomCategories = async (
   userId?: string
@@ -27,14 +29,15 @@ export const fetchRecentCustomMeasurements = async (): Promise<
 export const fetchRecentStandardMeasurements = async (
   startDate: string,
   endDate: string
-): Promise<CheckInMeasurement[]> => {
-  return apiCall(
+): Promise<CheckInMeasurementsResponse[]> => {
+  const response = await apiCall(
     `/measurements/check-in-measurements-range/${startDate}/${endDate}`,
     {
       method: 'GET',
       suppress404Toast: true,
     }
   );
+  return z.array(checkInMeasurementsResponseSchema).parse(response);
 };
 
 export const deleteCustomMeasurement = async (id: string): Promise<void> => {
@@ -58,11 +61,16 @@ export const updateCheckInMeasurementField = async (payload: {
 
 export const loadExistingCheckInMeasurements = async (
   selectedDate: string
-): Promise<CheckInMeasurement> => {
-  return apiCall(`/measurements/check-in/${selectedDate}`, {
+): Promise<CheckInMeasurementsResponse | null> => {
+  const response = await apiCall(`/measurements/check-in/${selectedDate}`, {
     method: 'GET',
     suppress404Toast: true,
   });
+  // if there are no entries the backend returns an empty object
+  if (!response || Object.keys(response).length === 0) {
+    return null;
+  }
+  return checkInMeasurementsResponseSchema.parse(response);
 };
 
 export const loadExistingCustomMeasurements = async (
@@ -75,7 +83,7 @@ export const loadExistingCustomMeasurements = async (
 };
 
 export const saveCheckInMeasurements = async (
-  payload: Partial<CheckInMeasurement>
+  payload: UpdateCheckInMeasurementsRequest
 ): Promise<void> => {
   await apiCall('/measurements/check-in', {
     method: 'POST',
@@ -94,8 +102,16 @@ export const saveCustomMeasurement = async (
 
 export const getMostRecentMeasurement = async (
   measurementType: string
-): Promise<CheckInMeasurement | null> => {
-  return apiCall(`/measurements/most-recent/${measurementType}`);
+): Promise<CheckInMeasurementsResponse | null> => {
+  const response = await apiCall(
+    `/measurements/most-recent/${measurementType}`
+  );
+
+  // if there are no entries the backend returns an empty object
+  if (!response || Object.keys(response).length === 0) {
+    return null;
+  }
+  return checkInMeasurementsResponseSchema.parse(response);
 };
 
 export const fetchCustomEntries = async (

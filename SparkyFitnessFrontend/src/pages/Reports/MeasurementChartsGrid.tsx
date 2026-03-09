@@ -23,10 +23,10 @@ import {
   ChartDataPoint,
   getChartConfig,
 } from '@/utils/chartUtils';
-import { CheckInMeasurement } from '@/types/checkin';
+import { CheckInMeasurementsResponse } from '@workspace/shared';
 
 interface MeasurementChartsGridProps {
-  measurementData: CheckInMeasurement[];
+  measurementData: CheckInMeasurementsResponse[];
 }
 
 const MeasurementChartsGrid = ({

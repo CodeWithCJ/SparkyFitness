@@ -23,11 +23,8 @@ import {
 import { formatWeight, formatHeight } from '@/utils/numberFormatting';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import type { DailyFoodEntry, DailyExerciseEntry } from '@/types/reports';
-import {
-  CheckInMeasurement,
-  CustomCategory,
-  CustomMeasurement,
-} from '@/types/checkin';
+import { CustomCategory, CustomMeasurement } from '@/types/checkin';
+import { CheckInMeasurementsResponse } from '@workspace/shared';
 
 interface PersonalRecord {
   date: string;
@@ -39,7 +36,7 @@ export type PersonalRecordsMap = Record<string, PersonalRecord>;
 interface ReportsTablesProps {
   tabularData: DailyFoodEntry[];
   exerciseEntries: DailyExerciseEntry[];
-  measurementData: CheckInMeasurement[];
+  measurementData: CheckInMeasurementsResponse[];
   customCategories: CustomCategory[];
   customMeasurementsData: Record<string, CustomMeasurement[]>;
   prData: PersonalRecordsMap | undefined;

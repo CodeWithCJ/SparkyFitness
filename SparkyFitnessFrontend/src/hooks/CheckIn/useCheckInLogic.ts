@@ -25,11 +25,11 @@ import {
   useSaveMoodEntryMutation,
 } from '@/hooks/CheckIn/useMood';
 import { useFastingHistory } from '@/hooks/Fasting/useFasting';
+import { CustomMeasurement, CombinedMeasurement } from '@/types/checkin';
 import {
-  CustomMeasurement,
-  CombinedMeasurement,
-  CheckInMeasurement,
-} from '@/types/checkin';
+  CheckInMeasurementsResponse,
+  UpdateCheckInMeasurementsRequest,
+} from '@workspace/shared';
 
 function useDerivedState<T>(derivedValue: T, selectedDate: string) {
   const [stateMap, setStateMap] = useState<Record<string, T>>({});
@@ -246,7 +246,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       });
     });
 
-    recentStandard.forEach((s: CheckInMeasurement) => {
+    recentStandard.forEach((s: CheckInMeasurementsResponse) => {
       if (s.weight !== null)
         allMeasurements.push({
           id: `${s.id}-weight`,
@@ -428,7 +428,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
         entryDate: selectedDate,
       });
 
-      const measurementData: Partial<CheckInMeasurement> = {
+      const measurementData: UpdateCheckInMeasurementsRequest = {
         entry_date: selectedDate,
       };
 
