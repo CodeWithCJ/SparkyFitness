@@ -42,6 +42,7 @@ import {
 } from '@/hooks/Diary/useDailyProgress';
 import { DailyProgressSkeleton } from './DailyProgressSkeleton';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
+import { formatWeight } from '@/utils/numberFormatting';
 import { EnergyCircle } from './EnergyProgressCircle';
 import { useDailyGoals } from '@/hooks/Goals/useGoals';
 
@@ -57,7 +58,6 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     energyUnit,
     convertEnergy,
     weightUnit,
-    convertWeight,
   } = usePreferences();
 
   const { bmr, includeInNet } = useCalculatedBMR();
@@ -452,7 +452,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                   </span>
                   <span className="font-semibold text-gray-800 dark:text-slate-200">
                     {adaptiveTdeeData.weightTrend
-                      ? `${convertWeight(adaptiveTdeeData.weightTrend, 'kg', weightUnit).toFixed(1)} ${t(`units.${weightUnit}`, weightUnit)}`
+                      ? formatWeight(adaptiveTdeeData.weightTrend, weightUnit)
                       : t('common.calculating', 'Calculating...')}
                   </span>
                 </div>

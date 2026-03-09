@@ -202,11 +202,7 @@ const ExerciseReportsDashboard = ({
               <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-600 text-white shadow-lg h-full">
                 <span className="text-3xl font-bold">
                   {formatWeight(
-                    convertWeight(
-                      exerciseDashboardData.keyStats.totalVolume,
-                      'kg',
-                      weightUnit
-                    ),
+                    exerciseDashboardData.keyStats.totalVolume,
                     weightUnit
                   )}
                 </span>
@@ -1325,14 +1321,7 @@ const ExerciseReportsDashboard = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
                     <span className="text-xl font-bold">
-                      {formatWeight(
-                        convertWeight(
-                          prVisualizationData.oneRM,
-                          'kg',
-                          weightUnit
-                        ),
-                        weightUnit
-                      )}
+                      {formatWeight(prVisualizationData.oneRM, weightUnit)}
                     </span>
                     <span className="text-sm text-muted-foreground">
                       {t(
@@ -1361,14 +1350,7 @@ const ExerciseReportsDashboard = ({
                   </div>
                   <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
                     <span className="text-xl font-bold">
-                      {formatWeight(
-                        convertWeight(
-                          prVisualizationData.weight,
-                          'kg',
-                          weightUnit
-                        ),
-                        weightUnit
-                      )}
+                      {formatWeight(prVisualizationData.weight, weightUnit)}
                     </span>
                     <span className="text-sm text-muted-foreground">
                       {t('exerciseReportsDashboard.maxWeight', 'Max Weight')}

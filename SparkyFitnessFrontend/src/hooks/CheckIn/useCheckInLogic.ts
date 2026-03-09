@@ -109,7 +109,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     useState(false);
 
   const shouldConvertCustomMeasurement = useCallback((unit: string) => {
-    const convertibleUnits = ['kg', 'lbs', 'cm', 'inches'];
+    const convertibleUnits = ['kg', 'lbs', 'st_lbs', 'cm', 'inches', 'ft_in'];
     return convertibleUnits.includes(unit.toLowerCase());
   }, []);
 

@@ -81,7 +81,10 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                   if (isConvertible) {
                     const isWeight =
                       measurement.custom_categories.measurement_type === 'kg' ||
-                      measurement.custom_categories.measurement_type === 'lbs';
+                      measurement.custom_categories.measurement_type ===
+                        'lbs' ||
+                      measurement.custom_categories.measurement_type ===
+                        'st_lbs';
                     displayString = isWeight
                       ? formatWeight(
                           Number(measurement.value),

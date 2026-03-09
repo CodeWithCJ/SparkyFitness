@@ -71,7 +71,6 @@ const ReportsTables = ({
     nutrientDisplayPreferences,
     weightUnit,
     measurementUnit,
-    convertWeight,
     energyUnit,
     convertEnergy,
     getEnergyUnitString,
@@ -799,9 +798,15 @@ const ReportsTables = ({
                           'Value'
                         )}{' '}
                         (
-                        {category.measurement_type === 'kg'
+                        {['kg', 'lbs', 'st_lbs'].includes(
+                          category.measurement_type.toLowerCase()
+                        )
                           ? weightUnit
-                          : category.measurement_type}
+                          : ['cm', 'inches', 'ft_in'].includes(
+                                category.measurement_type.toLowerCase()
+                              )
+                            ? measurementUnit
+                            : category.measurement_type}
                         )
                       </TableHead>
                       <TableHead>{t('reportsTables.notes', 'Notes')}</TableHead>
@@ -818,16 +823,20 @@ const ReportsTables = ({
                         formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                       }
 
-                      // Convert kg values to user's preferred weight unit
+                      const isWeight = ['kg', 'lbs', 'st_lbs'].includes(
+                        category.measurement_type.toLowerCase()
+                      );
+                      const isHeight = ['cm', 'inches', 'ft_in'].includes(
+                        category.measurement_type.toLowerCase()
+                      );
+
                       const displayValue =
                         typeof measurement.value === 'number'
-                          ? category.measurement_type === 'kg'
-                            ? convertWeight(
-                                measurement.value,
-                                'kg',
-                                weightUnit
-                              ).toFixed(2)
-                            : measurement.value.toFixed(2)
+                          ? isWeight
+                            ? formatWeight(measurement.value, weightUnit)
+                            : isHeight
+                              ? formatHeight(measurement.value, measurementUnit)
+                              : measurement.value.toFixed(2)
                           : String(measurement.value);
 
                       return (
