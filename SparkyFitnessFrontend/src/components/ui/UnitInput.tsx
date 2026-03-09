@@ -81,8 +81,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   const handleSingleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     setVal1(raw);
-    const num = parseFloat(raw);
-    if (isNaN(num)) return;
+    const num = parseFloat(raw) || 0;
 
     let converted = num;
     if (unit === 'lbs') converted = lbsToKg(num);

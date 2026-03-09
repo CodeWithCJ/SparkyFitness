@@ -193,10 +193,7 @@ const ExerciseReportsDashboard = ({
               </div>
               <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-gradient-to-br from-green-500 to-teal-600 text-white shadow-lg h-full">
                 <span className="text-3xl font-bold">
-                  {formatWeight(
-                    convertWeight(totalTonnage, 'kg', weightUnit),
-                    weightUnit
-                  )}
+                  {formatWeight(totalTonnage, weightUnit)}
                 </span>
                 <span className="text-sm text-center">
                   {t('exerciseReportsDashboard.totalTonnage', 'Total Tonnage')}
@@ -547,9 +544,7 @@ const ExerciseReportsDashboard = ({
                       (sum, set) => sum + set.reps * set.weight,
                       0
                     );
-                    existingEntry.volume += parseFloat(
-                      convertWeight(currentVolume, 'kg', weightUnit).toFixed(1)
-                    );
+                    existingEntry.volume += currentVolume;
                     // For comparison, we need to find the corresponding entry in comparisonExerciseProgressData
                     // This assumes a 1:1 date mapping for simplicity, might need more complex logic for real-world scenarios
                     const comparisonEntry = Object.values(
@@ -564,9 +559,7 @@ const ExerciseReportsDashboard = ({
                         (sum, set) => sum + set.reps * set.weight,
                         0
                       );
-                      existingEntry.comparisonVolume += parseFloat(
-                        convertWeight(compVolume, 'kg', weightUnit).toFixed(1)
-                      );
+                      existingEntry.comparisonVolume += compVolume;
                     }
                     return acc;
                   },
@@ -691,12 +684,8 @@ const ExerciseReportsDashboard = ({
                       };
                       acc.push(existingEntry);
                     }
-                    const currentMaxWeight = parseFloat(
-                      convertWeight(
-                        Math.max(...entry.sets.map((set) => set.weight)),
-                        'kg',
-                        weightUnit
-                      ).toFixed(1)
+                    const currentMaxWeight = Math.max(
+                      ...entry.sets.map((set) => set.weight)
                     );
                     existingEntry.maxWeight = Math.max(
                       existingEntry.maxWeight,
@@ -710,14 +699,8 @@ const ExerciseReportsDashboard = ({
                         (compEntry) => compEntry.entry_date === entry.entry_date
                       );
                     if (comparisonEntry) {
-                      const compMaxWeight = parseFloat(
-                        convertWeight(
-                          Math.max(
-                            ...comparisonEntry.sets.map((set) => set.weight)
-                          ),
-                          'kg',
-                          weightUnit
-                        ).toFixed(1)
+                      const compMaxWeight = Math.max(
+                        ...comparisonEntry.sets.map((set) => set.weight)
                       );
                       existingEntry.comparisonMaxWeight = Math.max(
                         existingEntry.comparisonMaxWeight,
@@ -855,12 +838,9 @@ const ExerciseReportsDashboard = ({
                         (set) => set.weight * (1 + set.reps / 30)
                       )
                     );
-                    const converted1RM = parseFloat(
-                      convertWeight(currentMax1RM, 'kg', weightUnit).toFixed(1)
-                    );
                     existingEntry.estimated1RM = Math.max(
                       existingEntry.estimated1RM,
-                      converted1RM
+                      currentMax1RM
                     );
                     const comparisonEntry = Object.values(
                       comparisonExerciseProgressData
@@ -875,12 +855,9 @@ const ExerciseReportsDashboard = ({
                           (set) => set.weight * (1 + set.reps / 30)
                         )
                       );
-                      const convertedComp1RM = parseFloat(
-                        convertWeight(compMax1RM, 'kg', weightUnit).toFixed(1)
-                      );
                       existingEntry.comparisonEstimated1RM = Math.max(
                         existingEntry.comparisonEstimated1RM,
-                        convertedComp1RM
+                        compMax1RM
                       );
                     }
                     return acc;

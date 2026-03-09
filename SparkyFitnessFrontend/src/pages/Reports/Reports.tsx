@@ -48,14 +48,12 @@ const Reports = () => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
   const {
-    weightUnit: defaultWeightUnit,
-    measurementUnit: defaultMeasurementUnit,
-    convertWeight,
-    convertMeasurement,
     formatDateInUserTimezone,
     loggingLevel,
     energyUnit,
     convertEnergy,
+    weightUnit: defaultWeightUnit,
+    measurementUnit: defaultMeasurementUnit,
   } = usePreferences();
 
   // Suppress specific Recharts warning in hidden tabs
@@ -106,13 +104,7 @@ const Reports = () => {
   const { data: reportsData, isLoading: reportsLoading } = useReportsData(
     startDate,
     endDate,
-    activeUserId,
-    {
-      convertWeight,
-      convertMeasurement,
-      defaultWeightUnit,
-      defaultMeasurementUnit,
-    }
+    activeUserId
   );
 
   // Der globale Ladezustand
@@ -332,8 +324,6 @@ const Reports = () => {
                 customCategories={customCategories}
                 customMeasurementsData={customMeasurementsData}
                 prData={exerciseDashboardData?.prData}
-                showWeightInKg={defaultWeightUnit === 'kg'}
-                showMeasurementsInCm={defaultMeasurementUnit === 'cm'}
                 onExportFoodDiary={() =>
                   exportFoodDiary({
                     loggingLevel,

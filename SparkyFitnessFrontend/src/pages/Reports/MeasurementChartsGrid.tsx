@@ -38,7 +38,62 @@ const MeasurementChartsGrid = ({
     formatDateInUserTimezone,
     weightUnit,
     measurementUnit,
+    convertWeight,
+    convertMeasurement,
   } = usePreferences();
+
+  const chartData = React.useMemo(() => {
+    return measurementData.map((d) => ({
+      ...d,
+      rawWeight: d.weight,
+      rawNeck: d.neck,
+      rawWaist: d.waist,
+      rawHips: d.hips,
+      rawHeight: d.height,
+      weight: d.weight
+        ? convertWeight(
+            d.weight,
+            'kg',
+            weightUnit === 'st_lbs' ? 'lbs' : weightUnit
+          )
+        : 0,
+      neck: d.neck
+        ? convertMeasurement(
+            d.neck,
+            'cm',
+            measurementUnit === 'ft_in' ? 'inches' : measurementUnit
+          )
+        : 0,
+      waist: d.waist
+        ? convertMeasurement(
+            d.waist,
+            'cm',
+            measurementUnit === 'ft_in' ? 'inches' : measurementUnit
+          )
+        : 0,
+      hips: d.hips
+        ? convertMeasurement(
+            d.hips,
+            'cm',
+            measurementUnit === 'ft_in' ? 'inches' : measurementUnit
+          )
+        : 0,
+      height: d.height
+        ? convertMeasurement(
+            d.height,
+            'cm',
+            measurementUnit === 'ft_in' ? 'inches' : measurementUnit
+          )
+        : 0,
+    }));
+  }, [
+    measurementData,
+    weightUnit,
+    measurementUnit,
+    convertWeight,
+    convertMeasurement,
+  ]);
+
   info(loggingLevel, 'MeasurementChartsGrid: Rendering component.');
 
   const formatDateForChart = (date: string) => {
@@ -53,7 +108,7 @@ const MeasurementChartsGrid = ({
     return formatDateInUserTimezone(parseISO(date), 'MMM dd');
   };
 
-  const getYAxisDomain = (data: CheckInMeasurement[], dataKey: string) => {
+  const getYAxisDomain = (data: unknown[], dataKey: string) => {
     const config = getChartConfig(dataKey);
     return calculateSmartYAxisDomain(
       data as unknown as ChartDataPoint[],
@@ -136,7 +191,7 @@ const MeasurementChartsGrid = ({
                     minHeight={0}
                     debounce={100}
                   >
-                    <LineChart data={measurementData.filter((d) => d.weight)}>
+                    <LineChart data={chartData.filter((d) => d.weight)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
                         dataKey="entry_date"
@@ -144,7 +199,7 @@ const MeasurementChartsGrid = ({
                         tickFormatter={formatDateForChart}
                         tickCount={
                           isMaximized
-                            ? Math.max(measurementData.length, 10)
+                            ? Math.max(chartData.length, 10)
                             : undefined
                         }
                       />
@@ -152,7 +207,7 @@ const MeasurementChartsGrid = ({
                         fontSize={10}
                         domain={
                           getYAxisDomain(
-                            measurementData.filter((d) => d.weight),
+                            chartData.filter((d) => d.weight),
                             'weight'
                           ) || undefined
                         }
@@ -162,8 +217,14 @@ const MeasurementChartsGrid = ({
                         labelFormatter={(value) =>
                           formatDateForChart(value as string)
                         }
-                        formatter={(value: number | undefined) => [
-                          value ? formatWeight(value, weightUnit) : '-',
+                        formatter={(
+                          _value: unknown,
+                          _name: unknown,
+                          props: { payload?: { rawWeight?: number } }
+                        ) => [
+                          props.payload?.rawWeight
+                            ? formatWeight(props.payload.rawWeight, weightUnit)
+                            : '-',
                           t('reports.weight', 'Weight'),
                         ]}
                         contentStyle={{
@@ -210,7 +271,7 @@ const MeasurementChartsGrid = ({
                     minHeight={0}
                     debounce={100}
                   >
-                    <LineChart data={measurementData.filter((d) => d.neck)}>
+                    <LineChart data={chartData.filter((d) => d.neck)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
                         dataKey="entry_date"
@@ -218,7 +279,7 @@ const MeasurementChartsGrid = ({
                         tickFormatter={formatDateForChart}
                         tickCount={
                           isMaximized
-                            ? Math.max(measurementData.length, 10)
+                            ? Math.max(chartData.length, 10)
                             : undefined
                         }
                       />
@@ -226,7 +287,7 @@ const MeasurementChartsGrid = ({
                         fontSize={10}
                         domain={
                           getYAxisDomain(
-                            measurementData.filter((d) => d.neck),
+                            chartData.filter((d) => d.neck),
                             'neck'
                           ) || undefined
                         }
@@ -236,8 +297,17 @@ const MeasurementChartsGrid = ({
                         labelFormatter={(value) =>
                           formatDateForChart(value as string)
                         }
-                        formatter={(value: number | undefined) => [
-                          value ? formatHeight(value, measurementUnit) : '-',
+                        formatter={(
+                          _value: unknown,
+                          _name: unknown,
+                          props: { payload?: { rawNeck?: number } }
+                        ) => [
+                          props.payload?.rawNeck
+                            ? formatHeight(
+                                props.payload.rawNeck,
+                                measurementUnit
+                              )
+                            : '-',
                           t('reports.neck', 'Neck'),
                         ]}
                         contentStyle={{
@@ -284,7 +354,7 @@ const MeasurementChartsGrid = ({
                     minHeight={0}
                     debounce={100}
                   >
-                    <LineChart data={measurementData.filter((d) => d.waist)}>
+                    <LineChart data={chartData.filter((d) => d.waist)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
                         dataKey="entry_date"
@@ -292,7 +362,7 @@ const MeasurementChartsGrid = ({
                         tickFormatter={formatDateForChart}
                         tickCount={
                           isMaximized
-                            ? Math.max(measurementData.length, 10)
+                            ? Math.max(chartData.length, 10)
                             : undefined
                         }
                       />
@@ -300,7 +370,7 @@ const MeasurementChartsGrid = ({
                         fontSize={10}
                         domain={
                           getYAxisDomain(
-                            measurementData.filter((d) => d.waist),
+                            chartData.filter((d) => d.waist),
                             'waist'
                           ) || undefined
                         }
@@ -310,8 +380,17 @@ const MeasurementChartsGrid = ({
                         labelFormatter={(value) =>
                           formatDateForChart(value as string)
                         }
-                        formatter={(value: number | undefined) => [
-                          value ? formatHeight(value, measurementUnit) : '-',
+                        formatter={(
+                          _value: unknown,
+                          _name: unknown,
+                          props: { payload?: { rawWaist?: number } }
+                        ) => [
+                          props.payload?.rawWaist
+                            ? formatHeight(
+                                props.payload.rawWaist,
+                                measurementUnit
+                              )
+                            : '-',
                           t('reports.waist', 'Waist'),
                         ]}
                         contentStyle={{
@@ -358,7 +437,7 @@ const MeasurementChartsGrid = ({
                     minHeight={0}
                     debounce={100}
                   >
-                    <LineChart data={measurementData.filter((d) => d.hips)}>
+                    <LineChart data={chartData.filter((d) => d.hips)}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
                         dataKey="entry_date"
@@ -366,7 +445,7 @@ const MeasurementChartsGrid = ({
                         tickFormatter={formatDateForChart}
                         tickCount={
                           isMaximized
-                            ? Math.max(measurementData.length, 10)
+                            ? Math.max(chartData.length, 10)
                             : undefined
                         }
                       />
@@ -374,7 +453,7 @@ const MeasurementChartsGrid = ({
                         fontSize={10}
                         domain={
                           getYAxisDomain(
-                            measurementData.filter((d) => d.hips),
+                            chartData.filter((d) => d.hips),
                             'hips'
                           ) || undefined
                         }
@@ -384,8 +463,17 @@ const MeasurementChartsGrid = ({
                         labelFormatter={(value) =>
                           formatDateForChart(value as string)
                         }
-                        formatter={(value: number | undefined) => [
-                          value ? formatHeight(value, measurementUnit) : '-',
+                        formatter={(
+                          _value: unknown,
+                          _name: unknown,
+                          props: { payload?: { rawHips?: number } }
+                        ) => [
+                          props.payload?.rawHips
+                            ? formatHeight(
+                                props.payload.rawHips,
+                                measurementUnit
+                              )
+                            : '-',
                           t('reports.hips', 'Hips'),
                         ]}
                         contentStyle={{
@@ -432,21 +520,19 @@ const MeasurementChartsGrid = ({
                   minHeight={0}
                   debounce={100}
                 >
-                  <BarChart data={measurementData.filter((d) => d.steps)}>
+                  <BarChart data={chartData.filter((d) => d.steps)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="entry_date"
                       tickFormatter={formatDateForChart}
                       tickCount={
-                        isMaximized
-                          ? Math.max(measurementData.length, 10)
-                          : undefined
+                        isMaximized ? Math.max(chartData.length, 10) : undefined
                       }
                     />
                     <YAxis
                       domain={
                         getYAxisDomain(
-                          measurementData.filter((d) => d.steps),
+                          chartData.filter((d) => d.steps),
                           'steps'
                         ) || undefined
                       }

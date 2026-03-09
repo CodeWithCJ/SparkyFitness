@@ -66,7 +66,6 @@ export const PrProgressionChart = ({
               <Tooltip
                 labelFormatter={(label) => formatDate(label)}
                 formatter={(value: number | undefined, name?: string) => {
-                  if (name === 'maxReps') return [value, 'Max Reps'];
                   return [
                     formatWeight(value ?? 0, weightUnit),
                     name === 'oneRM' ? 'Est. 1RM' : 'Max Weight',

@@ -7,7 +7,6 @@ import { OnboardingSteps } from './OnBoardingSteps';
 import { CheckInMeasurement } from '@/types/checkin';
 import { Profile } from '@/types/settings';
 import { OnboardingData, Sex } from '@/types/onboarding';
-import { kgToLbs, cmToInches } from '@/utils/unitConversions';
 
 interface OnBoardingProps {
   onOnboardingComplete: () => void;
@@ -39,20 +38,12 @@ export const OnBoardingForm = ({
   const [formData, setFormData] = useState<OnboardingData>(() => {
     let currentWeight: number | '' = '';
     if (weightData && weightData.weight) {
-      // Internal storage is kg, convert if preference is lbs
-      // For st_lbs, we also store decimal kg internally but UnitInput handles the split
-      currentWeight =
-        preferredWeightUnit === 'lbs'
-          ? Number(kgToLbs(weightData.weight).toFixed(1))
-          : Number(weightData.weight.toFixed(1));
+      currentWeight = Number(weightData.weight.toFixed(1));
     }
 
     let currentHeight: number | '' = '';
     if (heightData && heightData.height) {
-      currentHeight =
-        preferredMeasurementUnit === 'inches'
-          ? Number(cmToInches(heightData.height).toFixed(1))
-          : Number(heightData.height.toFixed(1));
+      currentHeight = Number(heightData.height.toFixed(1));
     }
 
     return {
