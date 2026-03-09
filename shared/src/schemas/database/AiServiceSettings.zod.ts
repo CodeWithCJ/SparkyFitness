@@ -53,3 +53,11 @@ export const aiServiceSettingsMutatorSchema = z.object({
   api_key_tag: z.string().optional().nullable(),
   is_public: z.boolean().optional(),
 });
+
+export type AiServiceSettings = z.infer<typeof aiServiceSettingsSchema>;
+export type AiServiceSettingsInitializer = z.infer<
+  typeof aiServiceSettingsInitializerSchema
+>;
+export type AiServiceSettingsMutator = z.infer<
+  typeof aiServiceSettingsMutatorSchema
+>;
