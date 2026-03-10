@@ -1,12 +1,27 @@
+# Use an official Node.js runtime as a parent image
 FROM node:20-slim
 
-WORKDIR /app/SparkyFitnessFrontend
+RUN corepack enable
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
+WORKDIR /app
 
-COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/pnpm-lock.yaml SparkyFitnessFrontend/pnpm-workspace.yaml ./
+# Copy workspace root files for pnpm resolution
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy all workspace member package.json files for dependency graph resolution
+COPY SparkyFitnessServer/package.json SparkyFitnessServer/
+COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/
+COPY SparkyFitnessMobile/package.json SparkyFitnessMobile/
+COPY shared/package.json shared/
+
+# Install workspace dependencies
 RUN pnpm install
+
+# Copy shared source (frontend imports @workspace/shared)
+COPY shared/ shared/
+
+# Set working directory to frontend for runtime
+WORKDIR /app/SparkyFitnessFrontend
 
 EXPOSE 8080
 

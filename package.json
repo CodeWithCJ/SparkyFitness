@@ -18,6 +18,10 @@
       "side-channel": "1.0.6"
     },
     "onlyBuiltDependencies": [
+      "@scarf/scarf",
+      "@swc/core",
+      "bcrypt",
+      "sharp",
       "esbuild",
       "unrs-resolver"
     ]

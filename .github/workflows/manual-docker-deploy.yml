@@ -81,7 +81,7 @@ jobs:
         id: push-server
         uses: docker/build-push-action@v6
         with:
-          context: SparkyFitnessServer
+          context: .
           file: docker/Dockerfile.backend
           push: true
           tags: ${{ steps.meta-server.outputs.tags }}

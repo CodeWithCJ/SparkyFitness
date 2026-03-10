@@ -179,7 +179,7 @@ function mapFatSecretBarcodeProduct(data) {
 
   return {
     name: food.food_name,
-    brand: food.brand_name || "",
+    brand: food.brand_name || null,
     barcode: food.barcode, // Passed in from lookupBarcode
     provider_external_id: food.food_id,
     provider_type: "fatsecret",
@@ -188,10 +188,46 @@ function mapFatSecretBarcodeProduct(data) {
   };
 }
 
+function mapFatSecretSearchItem(item) {
+  if (!item) return null;
+
+  // FatSecret search descriptions look like:
+  // "Per 100g - Calories: 165kcal | Fat: 3.57g | Carbs: 0.00g | Protein: 31.02g"
+  // "Per 1 serving (28g) - Calories: 110kcal | Fat: 2.00g | Carbs: 15.00g | Protein: 7.00g"
+  const desc = item.food_description || "";
+  const calories = parseFloat(desc.match(/Calories:\s*([\d.]+)/)?.[1]) || 0;
+  const fat = parseFloat(desc.match(/Fat:\s*([\d.]+)/)?.[1]) || 0;
+  const carbs = parseFloat(desc.match(/Carbs:\s*([\d.]+)/)?.[1]) || 0;
+  const protein = parseFloat(desc.match(/Protein:\s*([\d.]+)/)?.[1]) || 0;
+
+  // Extract serving info: "Per 100g" or "Per 1 serving (28g)"
+  const servingMatch = desc.match(/^Per\s+(?:\d+\s+\w+\s+\()?([\d.]+)(g|ml)\)?/);
+  const servingSize = servingMatch ? parseFloat(servingMatch[1]) : 100;
+  const servingUnit = servingMatch ? servingMatch[2] : "g";
+
+  return {
+    name: item.food_name,
+    brand: item.brand_name || null,
+    provider_external_id: String(item.food_id),
+    provider_type: "fatsecret",
+    is_custom: false,
+    default_variant: {
+      serving_size: servingSize,
+      serving_unit: servingUnit,
+      calories: Math.round(calories),
+      protein: Math.round(protein * 10) / 10,
+      carbs: Math.round(carbs * 10) / 10,
+      fat: Math.round(fat * 10) / 10,
+      is_default: true,
+    },
+  };
+}
+
 module.exports = {
   getFatSecretAccessToken,
   searchFatSecretByBarcode,
   mapFatSecretBarcodeProduct,
+  mapFatSecretSearchItem,
   foodNutrientCache,
   CACHE_DURATION_MS,
   FATSECRET_API_BASE_URL,

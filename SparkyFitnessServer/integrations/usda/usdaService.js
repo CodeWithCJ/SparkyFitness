@@ -87,7 +87,8 @@ async function getUsdaFoodDetails(fdcId, apiKey) {
 function mapUsdaBarcodeProduct(food) {
   const nutrients = {};
   for (const n of food.foodNutrients || []) {
-    nutrients[n.nutrientId] = n.value || 0;
+    const id = n.nutrientId ?? n.nutrient?.id;
+    nutrients[id] = n.value ?? n.amount ?? 0;
   }
   const servingSize = food.servingSize > 0 ? food.servingSize : 100;
   const scale = servingSize / 100;
@@ -117,7 +118,7 @@ function mapUsdaBarcodeProduct(food) {
 
   return {
     name: food.description,
-    brand: food.brandName || food.brandOwner || "",
+    brand: food.brandName || food.brandOwner || null,
     barcode: normalizeBarcode(food.gtinUpc),
     provider_external_id: String(food.fdcId),
     provider_type: "usda",

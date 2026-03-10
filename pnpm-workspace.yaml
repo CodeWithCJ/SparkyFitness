@@ -3,6 +3,7 @@ packages:
   - "SparkyFitnessFrontend"
   - "shared"
   - "SparkyFitnessMobile"
+  - "SparkyFitnessServer"
 
 onlyBuiltDependencies:
   - esbuild
