@@ -13,7 +13,6 @@ runPreflightChecks();
 const express = require("express");
 const cors = require("cors"); // Added this line
 const cookieParser = require("cookie-parser");
-const rateLimit = require("express-rate-limit"); // Import rate-limit
 const { getRawOwnerPool } = require("./db/poolManager");
 const { log } = require("./config/logging");
 const { getDefaultModel } = require("./ai/config");
@@ -310,16 +309,6 @@ app.use((req, res, next) => {
 app.get("/api/ping", (req, res) =>
   res.json({ status: "ok", time: new Date().toISOString() }),
 );
-
-// Rate limiting for auth
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
-  message: "Too many authentication attempts",
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use("/auth", authLimiter);
 
 // Mounting all API routes
 app.use("/api/chat", chatRoutes);

@@ -4,10 +4,10 @@
   "main": "SparkyFitnessServer.js",
   "scripts": {
     "start": "nodemon SparkyFitnessServer.js",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
+    "test:ci": "NODE_OPTIONS='--experimental-vm-modules' jest --ci --coverage --maxWorkers=2",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
@@ -28,7 +28,6 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-list-endpoints": "^7.1.1",
-    "express-rate-limit": "^8.2.1",
     "express-validator": "^7.3.1",
     "ipaddr.js": "^2.3.0",
     "jose": "^6.1.3",

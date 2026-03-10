@@ -133,6 +133,16 @@ const auth = betterAuth({
 
   basePath: "/api/auth",
 
+  // Rate limiting for auth endpoints
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    customRules: {
+      "/mfa-factors": { window: 30, max: 5 },
+    },
+  },
+
   // Email/Password authentication
   emailAndPassword: {
     enabled: true,
