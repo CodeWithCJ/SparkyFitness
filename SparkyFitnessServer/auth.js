@@ -138,9 +138,6 @@ const auth = betterAuth({
     enabled: true,
     window: 60,
     max: 100,
-    customRules: {
-      "/mfa-factors": { window: 30, max: 5 },
-    },
   },
 
   // Email/Password authentication

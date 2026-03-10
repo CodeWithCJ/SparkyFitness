@@ -4,6 +4,50 @@ const { log } = require('../../config/logging');
 const globalSettingsRepository = require('../../models/globalSettingsRepository');
 const oidcProviderRepository = require('../../models/oidcProviderRepository');
 
+// Inline rate limiter for the /mfa-factors endpoint to prevent account enumeration.
+// This endpoint reveals whether an email has an account, so it needs tighter limits
+// than the global 100/min. Better Auth's rate limiter doesn't apply here because
+// this route bypasses the betterAuthHandler.
+const mfaFactorsRateLimit = (() => {
+    const hits = new Map();
+    const MAX = 5;
+    const WINDOW_MS = 30 * 1000;
+    let lastSweepAt = 0;
+
+    function evictExpired(now) {
+        for (const [ip, entry] of hits) {
+            if (now - entry.start >= WINDOW_MS) hits.delete(ip);
+        }
+        lastSweepAt = now;
+    }
+
+    return (req, res, next) => {
+        const ip = req.ip;
+        const now = Date.now();
+
+        // Sweep at most once per window to avoid O(n) cleanup on every request.
+        if (hits.size > 0 && now - lastSweepAt >= WINDOW_MS) {
+            evictExpired(now);
+        }
+
+        const entry = hits.get(ip);
+
+        if (!entry) {
+            hits.set(ip, { start: now, count: 1 });
+            return next();
+        }
+
+        if (entry.count < MAX) {
+            entry.count++;
+            return next();
+        }
+
+        const retryAfter = Math.ceil((entry.start + WINDOW_MS - now) / 1000);
+        res.set('X-Retry-After', String(retryAfter));
+        return res.status(429).json({ message: 'Too many requests. Please try again later.' });
+    };
+})();
+
 /**
  * @swagger
  * /auth/settings:
@@ -91,7 +135,7 @@ router.get('/settings', async (req, res) => {
  *       400:
  *         description: Email is required
  */
-router.get('/mfa-factors', async (req, res) => {
+router.get('/mfa-factors', mfaFactorsRateLimit, async (req, res) => {
     const { email } = req.query;
     if (!email) {
         return res.status(400).json({ error: 'Email is required' });
