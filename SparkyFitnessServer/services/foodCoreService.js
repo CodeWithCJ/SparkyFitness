@@ -9,6 +9,9 @@ const {
 const {
   searchUsdaFoodsByBarcode,
 } = require("../integrations/usda/usdaService");
+const {
+  searchFatSecretByBarcode,
+} = require("../integrations/fatsecret/fatsecretService");
 
 async function searchFoods(
   authenticatedUserId,
@@ -780,6 +783,53 @@ function mapOpenFoodFactsProduct(product) {
   };
 }
 
+function mapFatSecretBarcodeProduct(data) {
+  const food = data.food;
+  if (!food) return null;
+
+  // Servings can be an array or a single object in FatSecret API
+  let servings = food.servings?.serving || [];
+  if (!Array.isArray(servings)) {
+    servings = [servings];
+  }
+
+  // Find the default serving or use the first one
+  const serving = servings.find((s) => s.is_default === "1") || servings[0] || {};
+
+  const defaultVariant = {
+    serving_size: parseFloat(serving.metric_serving_amount) || 100,
+    serving_unit: serving.metric_serving_unit || "g",
+    calories: Math.round(parseFloat(serving.calories) || 0),
+    protein: Math.round((parseFloat(serving.protein) || 0) * 10) / 10,
+    carbs: Math.round((parseFloat(serving.carbohydrate) || 0) * 10) / 10,
+    fat: Math.round((parseFloat(serving.fat) || 0) * 10) / 10,
+    saturated_fat: Math.round((parseFloat(serving.saturated_fat) || 0) * 10) / 10,
+    polyunsaturated_fat: Math.round((parseFloat(serving.polyunsaturated_fat) || 0) * 10) / 10,
+    monounsaturated_fat: Math.round((parseFloat(serving.monounsaturated_fat) || 0) * 10) / 10,
+    trans_fat: Math.round((parseFloat(serving.trans_fat) || 0) * 10) / 10,
+    cholesterol: Math.round(parseFloat(serving.cholesterol) || 0),
+    sodium: Math.round(parseFloat(serving.sodium) || 0),
+    potassium: Math.round(parseFloat(serving.potassium) || 0),
+    dietary_fiber: Math.round((parseFloat(serving.fiber) || 0) * 10) / 10,
+    sugars: Math.round((parseFloat(serving.sugar) || 0) * 10) / 10,
+    vitamin_a: Math.round(parseFloat(serving.vitamin_a) || 0),
+    vitamin_c: Math.round(parseFloat(serving.vitamin_c) || 0),
+    calcium: Math.round(parseFloat(serving.calcium) || 0),
+    iron: Math.round(parseFloat(serving.iron) || 0),
+    is_default: true,
+  };
+
+  return {
+    name: food.food_name,
+    brand: food.brand_name || "",
+    barcode: food.barcode, // Passed in from lookupBarcode
+    provider_external_id: food.food_id,
+    provider_type: "fatsecret",
+    is_custom: false,
+    default_variant: defaultVariant,
+  };
+}
+
 function mapUsdaBarcodeProduct(food) {
   const nutrients = {};
   for (const n of food.foodNutrients || []) {
@@ -847,6 +897,23 @@ async function lookupBarcode(barcode, userId, providerId) {
       log("warn", `Barcode provider resolution failed for user ${userId}:`, providerError);
     }
 
+    // Try FatSecret if provider is configured
+    if (provider?.provider_type === "fatsecret" && provider.app_id && provider.app_key) {
+      try {
+        const fatSecretData = await searchFatSecretByBarcode(barcode, provider.app_id, provider.app_key);
+        if (fatSecretData && fatSecretData.food) {
+          fatSecretData.food.barcode = barcode;
+          return {
+            source: "fatsecret",
+            food: mapFatSecretBarcodeProduct(fatSecretData),
+            raw: fatSecretData,
+          };
+        }
+      } catch (fsError) {
+        log("warn", `FatSecret barcode lookup failed for ${barcode}:`, fsError);
+      }
+    }
+
     // Try USDA if provider is configured
     if (provider?.provider_type === "usda" && provider.app_key) {
       try {
@@ -870,7 +937,11 @@ async function lookupBarcode(barcode, userId, providerId) {
           if (match) break;
         }
         if (match) {
-          return { source: "usda", food: mapUsdaBarcodeProduct(match) };
+          return {
+            source: "usda",
+            food: mapUsdaBarcodeProduct(match),
+            raw: match,
+          };
         }
       } catch (usdaError) {
         log("warn", `USDA barcode lookup failed for ${barcode}:`, usdaError);
@@ -890,6 +961,7 @@ async function lookupBarcode(barcode, userId, providerId) {
       return {
         source: "openfoodfacts",
         food: mapOpenFoodFactsProduct(offData.product),
+        raw: offData.product,
       };
     }
 
@@ -919,5 +991,6 @@ module.exports = {
   updateFoodEntriesSnapshot,
   lookupBarcode,
   mapOpenFoodFactsProduct,
+  mapFatSecretBarcodeProduct,
   mapUsdaBarcodeProduct,
 };

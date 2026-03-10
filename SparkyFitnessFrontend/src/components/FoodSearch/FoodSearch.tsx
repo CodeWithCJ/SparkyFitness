@@ -56,6 +56,7 @@ import { CsvImportDialog } from './CsvImportDialog.tsx';
 import { FoodFormDialog } from './FoodFormDialog.tsx';
 import { useExternalProvidersQuery } from '@/hooks/Settings/useExternalProviderSettings.ts';
 import {
+  searchBarcodeOptions,
   searchOpenFoodFactsBarcodeOptions,
   searchOpenFoodFactsOptions,
 } from '@/hooks/Foods/useOpenFoodFacts.ts';
@@ -177,6 +178,9 @@ const EnhancedFoodSearch = ({
     OpenFoodFactsProduct | Food | null
   >(null);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [barcodeProviderId, setBarcodeProviderId] = useState<string | null>(
+    null
+  );
   const [showAddFoodDialog, setShowAddFoodDialog] = useState(false);
   const [showImportFromCsvDialog, setShowImportFromCsvDialog] = useState(false);
   const isSearchEmpty = !searchTerm.trim();
@@ -216,6 +220,14 @@ const EnhancedFoodSearch = ({
     manualProviderId ||
     defaultFoodDataProviderId ||
     foodDataProviders[0]?.id ||
+    null;
+
+  const selectedBarcodeProvider =
+    barcodeProviderId ||
+    defaultFoodDataProviderId ||
+    foodDataProviders.find((p) =>
+      ['openfoodfacts', 'usda', 'fatsecret'].includes(p.provider_type)
+    )?.id ||
     null;
 
   const [hasOnlineSearchBeenPerformed, setHasOnlineSearchBeenPerformed] =
@@ -265,7 +277,7 @@ const EnhancedFoodSearch = ({
     }
   };
 
-  const searchOpenFoodFactsByBarcode = async (barcode: string) => {
+  const searchBarcode = async (barcode: string) => {
     setIsOnlineLoading(true);
 
     toast({
@@ -275,34 +287,51 @@ const EnhancedFoodSearch = ({
 
     try {
       const data = await queryClient.fetchQuery(
-        searchOpenFoodFactsBarcodeOptions(barcode)
+        searchBarcodeOptions(barcode, selectedBarcodeProvider || undefined)
       );
 
-      if (data.status === 1 && data.product) {
+      if (data.food) {
+        // Handle local source separately or map to ExternalResultWrapper
+        if (data.source === 'local') {
+          // If it's local, we might want to just show it or add to a separate list
+          // For now, let's map it but keep in mind provider_type is 'local'
+          onFoodSelect(data.food, 'food');
+          setShowBarcodeScanner(false);
+          toast({
+            title: 'Food found in database',
+            description: `Found: ${data.food.name}`,
+          });
+          return;
+        }
+
         const mapped: ExternalResultWrapper = {
-          provider_type: 'openfoodfacts',
-          raw: data.product,
-          food: convertOpenFoodFactsToFood(
-            data.product,
-            autoScaleOpenFoodFactsImports
-          ),
+          provider_type: data.source as any,
+          raw: (data.raw || data.food) as any,
+          food: data.food,
         };
 
         setExternalResults([mapped]);
         setActiveTab('online');
+        setHasOnlineSearchBeenPerformed(true);
 
         toast({
           title: 'Barcode scanned successfully',
-          description: `Found product: ${data.product.product_name}`,
+          description: `Found product: ${data.food.name}`,
         });
       } else {
         setExternalResults([]);
         toast({
           title: 'Product not found',
-          description: 'No product found for this barcode on OpenFoodFacts.',
+          description: `No product found for this barcode using selected provider.`,
           variant: 'destructive',
         });
       }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to search barcode.',
+        variant: 'destructive',
+      });
     } finally {
       setIsOnlineLoading(false);
     }
@@ -440,16 +469,26 @@ const EnhancedFoodSearch = ({
           variant: 'destructive',
         });
       }
+    } else if (activeTab === 'barcode') {
+      await searchBarcode(searchTerm);
     }
     setIsOnlineLoading(false);
   };
 
-  const handleUsdaEdit = async (item: UsdaItem) => {
+  const handleUsdaEdit = async (item: UsdaItem | Food) => {
+    // If it's already a mapped Food (from barcode search), use it directly
+    if ('provider_type' in item && item.provider_type === 'usda') {
+      setEditingProduct(item);
+      setShowEditDialog(true);
+      return;
+    }
+
+    const usdaItem = item as UsdaItem;
     if (!searchProviderId) {
       return;
     }
     const nutrientData = await queryClient.fetchQuery(
-      usdaFoodDetailsOptions(item.fdcId, searchProviderId)
+      usdaFoodDetailsOptions(usdaItem.fdcId, searchProviderId)
     );
 
     if (nutrientData) {
@@ -488,14 +527,22 @@ const EnhancedFoodSearch = ({
     }
   };
 
-  const handleFatSecretEdit = async (item: FatSecretFoodItem) => {
+  const handleFatSecretEdit = async (item: FatSecretFoodItem | Food) => {
+    // If it's already a mapped Food (from barcode search), use it directly
+    if ('provider_type' in item && item.provider_type === 'fatsecret') {
+      setEditingProduct(item);
+      setShowEditDialog(true);
+      return;
+    }
+
+    const fsItem = item as FatSecretFoodItem;
     if (!searchProviderId) {
       return;
     }
 
     const nutrientData: Partial<FatSecretFoodItem> =
       await queryClient.fetchQuery(
-        fatSecretNutrientOptions(item.food_id, searchProviderId)
+        fatSecretNutrientOptions(fsItem.food_id, searchProviderId)
       );
 
     if (nutrientData) {
@@ -711,7 +758,7 @@ const EnhancedFoodSearch = ({
           )}
 
         {!loading &&
-          activeTab === 'online' &&
+          (activeTab === 'online' || activeTab === 'barcode') &&
           !hasOnlineSearchBeenPerformed && (
             <div className="text-center py-8 text-gray-500">
               {t(
@@ -722,7 +769,7 @@ const EnhancedFoodSearch = ({
           )}
 
         {!loading &&
-          activeTab === 'online' &&
+          (activeTab === 'online' || activeTab === 'barcode') &&
           hasOnlineSearchBeenPerformed &&
           externalResults.length === 0 && (
             <div className="text-center py-8 text-gray-500">
@@ -733,7 +780,7 @@ const EnhancedFoodSearch = ({
             </div>
           )}
 
-        {activeTab === 'online' &&
+        {(activeTab === 'online' || activeTab === 'barcode') &&
           externalResults.length > 0 &&
           externalResults.map((result) => (
             <FoodResultCard
@@ -806,9 +853,12 @@ const EnhancedFoodSearch = ({
         isOpen={showBarcodeScanner}
         onOpenChange={setShowBarcodeScanner}
         onBarcodeDetected={(barcode) => {
-          searchOpenFoodFactsByBarcode(barcode);
+          searchBarcode(barcode);
           setShowBarcodeScanner(false);
         }}
+        selectedProviderId={selectedBarcodeProvider}
+        onProviderChange={setBarcodeProviderId}
+        providers={foodDataProviders}
       />
       <CsvImportDialog
         isOpen={showImportFromCsvDialog}

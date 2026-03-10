@@ -62,7 +62,7 @@ export interface ExternalDataProvider {
   is_strictly_private?: boolean | null;
 }
 
-const BARCODE_PROVIDER_TYPES = ['openfoodfacts', 'usda'];
+const BARCODE_PROVIDER_TYPES = ['openfoodfacts', 'usda', 'fatsecret'];
 
 const ExternalProviderSettings = () => {
   const [showAddForm, setShowAddForm] = useState(false);
