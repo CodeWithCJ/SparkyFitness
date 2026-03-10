@@ -319,6 +319,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+app.use("/auth", authLimiter);
 
 // Mounting all API routes
 app.use("/api/chat", chatRoutes);
@@ -343,7 +344,7 @@ app.use("/api/freeexercisedb", freeExerciseDBRoutes);
 app.use("/api/health-data", healthDataRoutes);
 app.use("/api/sleep", sleepRoutes);
 app.use("/api/sleep-science", sleepScienceRoutes);
-app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/identity", require("./routes/identityRoutes"));
 app.use("/api/health", healthRoutes);
 app.use("/api/external-providers", externalProviderRoutes);
@@ -355,7 +356,7 @@ app.use("/api/admin/global-settings", globalSettingsRoutes);
 app.use("/api/global-settings", globalSettingsRoutes); // Public route for allow-user-ai-config
 app.use("/api/admin/oidc-settings", require("./routes/oidcSettingsRoutes"));
 app.use("/api/admin/backup", backupRoutes);
-app.use("/api/admin/auth", authLimiter, adminAuthRoutes);
+app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/integrations/withings/data", withingsDataRoutes);
 app.use("/api/integrations/fitbit", fitbitRoutes);
 app.use("/api/integrations/polar", polarRoutes);
@@ -364,6 +365,7 @@ app.use("/api/integrations/hevy", hevyRoutes);
 app.use("/api/mood", moodRoutes);
 app.use("/api/fasting", fastingRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/water-containers", waterContainerRoutes);
 app.use("/api/workout-presets", require("./routes/workoutPresetRoutes"));
 app.use(
