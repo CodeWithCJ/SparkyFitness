@@ -761,8 +761,8 @@ const ReportsTables = ({
         );
         const sortedData = [...data].sort(
           (a, b) =>
-            new Date(b.updated_at || 0).getTime() -
-            new Date(a.updated_at || 0).getTime()
+            new Date(b.entry_timestamp || 0).getTime() -
+            new Date(a.entry_timestamp || 0).getTime()
         );
 
         return (

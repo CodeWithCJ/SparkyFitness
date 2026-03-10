@@ -15,7 +15,7 @@ export const customCategoriesResponseSchema = customCategoriesSchema
     updated_at: z.coerce.date().optional(),
   });
 
-export const updatCustomCategoriesRequestSchema =
+export const updateCustomCategoriesRequestSchema =
   customCategoriesMutatorSchema.omit({
     created_at: true,
     updated_at: true,
@@ -36,7 +36,7 @@ export type CustomCategoriesResponse = z.infer<
   typeof customCategoriesResponseSchema
 >;
 export type UpdateCustomCategoriesRequest = z.infer<
-  typeof updatCustomCategoriesRequestSchema
+  typeof updateCustomCategoriesRequestSchema
 >;
 
 export type CreateCustomCategoriesRequest = z.infer<
