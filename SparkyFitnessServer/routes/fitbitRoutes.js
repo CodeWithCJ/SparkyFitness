@@ -18,6 +18,18 @@ const authMiddleware = require('../middleware/authMiddleware');
  *     responses:
  *       200:
  *         description: Authorization URL.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 authUrl:
+ *                   type: string
+ *                   description: The Fitbit authorization URL to redirect the user to.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Error initiating Fitbit authorization.
  */
 router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
     try {
@@ -38,6 +50,29 @@ router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
  *   post:
  *     summary: Handle Fitbit OAuth callback
  *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - code
+ *             properties:
+ *               code:
+ *                 type: string
+ *                 description: The authorization code returned by Fitbit.
+ *     responses:
+ *       200:
+ *         description: Fitbit account linked successfully.
+ *       400:
+ *         description: Authorization code not received.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Failed to connect Fitbit account.
  */
 router.post('/callback', authMiddleware.authenticate, async (req, res) => {
     try {
@@ -69,6 +104,29 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
  *   post:
  *     summary: Manually trigger a Fitbit data sync
  *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Start date for the sync range (YYYY-MM-DD).
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 description: End date for the sync range (YYYY-MM-DD).
+ *     responses:
+ *       200:
+ *         description: Fitbit data sync completed successfully.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Error initiating manual Fitbit sync.
  */
 router.post('/sync', authMiddleware.authenticate, async (req, res) => {
     try {
@@ -92,6 +150,15 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
  *   post:
  *     summary: Disconnect a Fitbit account
  *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Fitbit account disconnected successfully.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Error disconnecting Fitbit account.
  */
 router.post('/disconnect', authMiddleware.authenticate, async (req, res) => {
     try {
@@ -110,6 +177,19 @@ router.post('/disconnect', authMiddleware.authenticate, async (req, res) => {
  *   get:
  *     summary: Get Fitbit connection status
  *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Fitbit connection status retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FitbitStatus'
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Error getting Fitbit status.
  */
 router.get('/status', authMiddleware.authenticate, async (req, res) => {
     try {

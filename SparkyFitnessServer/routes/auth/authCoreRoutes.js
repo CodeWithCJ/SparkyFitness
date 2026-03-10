@@ -9,10 +9,53 @@ const oidcProviderRepository = require('../../models/oidcProviderRepository');
  * /auth/settings:
  *   get:
  *     summary: Get public authentication settings and available OIDC providers
- *     tags: [Authentication]
+ *     tags: [Identity & Security]
+ *     description: Returns public-facing login configuration including whether email/password login is enabled, active OIDC providers, and auto-redirect settings. No authentication required.
  *     responses:
  *       200:
- *         description: Login settings and OIDC providers
+ *         description: Login settings and OIDC providers.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 trusted_origin:
+ *                   type: string
+ *                   nullable: true
+ *                   description: The trusted frontend origin URL, or null if not configured.
+ *                 email:
+ *                   type: object
+ *                   properties:
+ *                     enabled:
+ *                       type: boolean
+ *                       description: Whether email/password login is enabled.
+ *                 oidc:
+ *                   type: object
+ *                   properties:
+ *                     enabled:
+ *                       type: boolean
+ *                       description: Whether OIDC login is enabled.
+ *                     providers:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             description: Provider identifier.
+ *                           display_name:
+ *                             type: string
+ *                             description: Display name for the provider.
+ *                           logo_url:
+ *                             type: string
+ *                             nullable: true
+ *                             description: URL to the provider's logo.
+ *                           auto_register:
+ *                             type: boolean
+ *                             description: Whether users are automatically registered on first OIDC login.
+ *                     auto_redirect:
+ *                       type: boolean
+ *                       description: Whether to automatically redirect to the OIDC provider.
  */
 router.get('/settings', async (req, res) => {
     try {
@@ -78,18 +121,32 @@ router.get('/settings', async (req, res) => {
  * /auth/mfa-factors:
  *   get:
  *     summary: Get enabled MFA factors for a user by email
- *     tags: [Authentication]
+ *     tags: [Identity & Security]
+ *     description: Returns which MFA methods are enabled for a given user. Used by the login flow to determine which MFA challenge to present. No authentication required.
  *     parameters:
  *       - in: query
  *         name: email
  *         required: true
  *         schema:
  *           type: string
+ *           format: email
+ *         description: The user's email address.
  *     responses:
  *       200:
- *         description: Enabled MFA factors
+ *         description: Enabled MFA factors for the user.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mfa_totp_enabled:
+ *                   type: boolean
+ *                   description: Whether TOTP (authenticator app) MFA is enabled.
+ *                 mfa_email_enabled:
+ *                   type: boolean
+ *                   description: Whether email OTP MFA is enabled.
  *       400:
- *         description: Email is required
+ *         description: Email is required.
  */
 router.get('/mfa-factors', async (req, res) => {
     const { email } = req.query;

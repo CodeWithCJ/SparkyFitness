@@ -18,7 +18,7 @@ router.use("/", foodCrudRoutes);
 
 /**
  * @swagger
- * /food-entries/{date}:
+ * /foods/food-entries/{date}:
  *   get:
  *     summary: Get food entries by date (re-routed)
  *     tags: [Nutrition & Meals]

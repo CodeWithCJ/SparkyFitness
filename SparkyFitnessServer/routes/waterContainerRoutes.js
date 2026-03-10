@@ -38,6 +38,13 @@ router.post('/', authenticate, async (req, res, next) => {
  *     tags: [Wellness & Metrics]
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID to fetch containers for another user (requires permission).
  *     responses:
  *       200:
  *         description: A list of water containers.
@@ -47,6 +54,8 @@ router.post('/', authenticate, async (req, res, next) => {
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/WaterContainer'
+ *       403:
+ *         description: Forbidden.
  */
 router.get('/', authenticate, async (req, res, next) => {
     try {
@@ -78,8 +87,7 @@ router.get('/', authenticate, async (req, res, next) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
  *     requestBody:
  *       content:
  *         application/json:
@@ -114,8 +122,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
  *     responses:
  *       200:
  *         description: Deleted successfully.
@@ -145,8 +152,7 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
  *     responses:
  *       200:
  *         description: Primary container set successfully.
@@ -171,9 +177,22 @@ router.put('/:id/set-primary', authenticate, async (req, res, next) => {
  *     tags: [Wellness & Metrics]
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID to fetch the primary container for another user (requires permission).
  *     responses:
  *       200:
- *         description: The primary water container.
+ *         description: The primary water container (or a default container if none is set).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WaterContainer'
+ *       403:
+ *         description: Forbidden.
  */
 router.get('/primary', authenticate, async (req, res, next) => {
     try {

@@ -43,89 +43,8 @@ router.use(checkPermissionMiddleware('diary'));
 /**
  * @swagger
  * tags:
- *   name: Fitness & Workouts
+ *   name: Exercise & Workouts
  *   description: Exercise database, workout presets, and activity logging.
- */
-
-/**
- * @swagger
- * components:
- *   schemas:
- *     ExerciseEntry:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           format: uuid
- *           description: The unique identifier for the exercise entry.
- *         user_id:
- *           type: string
- *           format: uuid
- *           description: The ID of the user who owns the exercise entry.
- *         exercise_id:
- *           type: string
- *           format: uuid
- *           description: The ID of the exercise performed.
- *         duration_minutes:
- *           type: number
- *           description: The duration of the exercise in minutes.
- *         calories_burned:
- *           type: number
- *           description: The number of calories burned during the exercise.
- *         entry_date:
- *           type: string
- *           format: date
- *           description: The date of the exercise entry (YYYY-MM-DD).
- *         notes:
- *           type: string
- *           description: Any additional notes for the exercise entry.
- *         sets:
- *           type: array
- *           items:
- *             type: object
- *             properties:
- *               reps:
- *                 type: number
- *               weight:
- *                 type: number
- *               duration:
- *                 type: number
- *           description: Details of sets performed (reps, weight, duration).
- *         reps:
- *           type: number
- *           description: Total repetitions (if not detailed in sets).
- *         weight:
- *           type: number
- *           description: Weight used (if not detailed in sets).
- *         workout_plan_assignment_id:
- *           type: string
- *           format: uuid
- *           description: The ID of the workout plan assignment this entry belongs to.
- *         image_url:
- *           type: string
- *           format: url
- *           description: URL to an image associated with the exercise entry.
- *         distance:
- *           type: number
- *           description: Distance covered for cardio exercises.
- *         avg_heart_rate:
- *           type: number
- *           description: Average heart rate during the exercise.
- *         activity_details:
- *           type: object
- *           description: Additional activity-specific details (JSONB).
- *         created_at:
- *           type: string
- *           format: date-time
- *           description: The date and time when the exercise entry was created.
- *         updated_at:
- *           type: string
- *           format: date-time
- *           description: The date and time when the exercise entry was last updated.
- *       required:
- *         - user_id
- *         - exercise_id
- *         - entry_date
  */
 
 /**
@@ -133,7 +52,7 @@ router.use(checkPermissionMiddleware('diary'));
  * /exercise-entries/by-date:
  *   get:
  *     summary: Get exercise entries by selected date
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Retrieves a list of all exercise entries for a specific date, passed as a query parameter.
  *     security:
  *       - cookieAuth: []
@@ -145,6 +64,12 @@ router.use(checkPermissionMiddleware('diary'));
  *           type: string
  *           format: date
  *         description: The date to retrieve exercise entries for (YYYY-MM-DD).
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID to fetch entries for another user (requires permission).
  *     responses:
  *       200:
  *         description: A list of exercise entries for the specified date.
@@ -153,7 +78,62 @@ router.use(checkPermissionMiddleware('diary'));
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/ExerciseEntry'
+ *                 oneOf:
+ *                   - type: object
+ *                     description: Individual exercise entry.
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                         enum: [individual]
+ *                       exercise_snapshot:
+ *                         type: object
+ *                         description: Snapshot of exercise data at time of logging.
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           name:
+ *                             type: string
+ *                           category:
+ *                             type: string
+ *                           calories_per_hour:
+ *                             type: number
+ *                       activity_details:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/ExerciseEntry'
+ *                   - type: object
+ *                     description: Grouped preset entry with sub-exercises.
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                         enum: [preset]
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       workout_preset_id:
+ *                         type: string
+ *                         format: uuid
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       notes:
+ *                         type: string
+ *                       source:
+ *                         type: string
+ *                       exercises:
+ *                         type: array
+ *                         items:
+ *                           $ref: '#/components/schemas/ExerciseEntry'
+ *                       total_duration_minutes:
+ *                         type: number
+ *                       activity_details:
+ *                         type: array
+ *                         items:
+ *                           type: object
  *       400:
  *         description: Selected date parameter is missing.
  *       403:
@@ -190,7 +170,7 @@ router.get('/by-date', authenticate, async (req, res, next) => {
  * /exercise-entries:
  *   post:
  *     summary: Create a new exercise entry
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Adds a new exercise entry to the user's diary. Supports multipart/form-data for image uploads.
  *     security:
  *       - cookieAuth: []
@@ -327,7 +307,7 @@ router.post('/', authenticate, upload.single('image'), async (req, res, next) =>
  * /exercise-entries/from-plan:
  *   post:
  *     summary: Log a workout from a Workout Plan
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Logs exercises from a specified workout plan to the user's diary for a given date.
  *     security:
  *       - cookieAuth: []
@@ -433,7 +413,7 @@ router.post('/from-plan', authenticate, async (req, res, next) => {
  * /exercise-entries/history/{exerciseId}:
  *   get:
  *     summary: Get history for a specific exercise
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Retrieves the historical exercise entries for a given exercise ID.
  *     security:
  *       - cookieAuth: []
@@ -449,7 +429,7 @@ router.post('/from-plan', authenticate, async (req, res, next) => {
  *         name: limit
  *         schema:
  *           type: integer
- *           default: 10
+ *           default: 5
  *         description: The maximum number of history entries to return.
  *     responses:
  *       200:
@@ -459,7 +439,30 @@ router.post('/from-plan', authenticate, async (req, res, next) => {
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/ExerciseEntry'
+ *                 type: object
+ *                 properties:
+ *                   entry_date:
+ *                     type: string
+ *                     format: date
+ *                   duration_minutes:
+ *                     type: number
+ *                   calories_burned:
+ *                     type: number
+ *                   notes:
+ *                     type: string
+ *                   image_url:
+ *                     type: string
+ *                     nullable: true
+ *                   distance:
+ *                     type: number
+ *                     nullable: true
+ *                   avg_heart_rate:
+ *                     type: number
+ *                     nullable: true
+ *                   sets:
+ *                     type: array
+ *                     items:
+ *                       $ref: '#/components/schemas/WorkoutSet'
  *       400:
  *         description: Exercise ID is required and must be a valid UUID.
  *       403:
@@ -487,7 +490,7 @@ router.get('/history/:exerciseId', authenticate, async (req, res, next) => {
  * /exercise-entries/{id}:
  *   get:
  *     summary: Get a specific exercise entry by ID
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Retrieves a single exercise entry by its ID.
  *     security:
  *       - cookieAuth: []
@@ -540,7 +543,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
  * /exercise-entries/{id}:
  *   put:
  *     summary: Update an exercise entry
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Updates an existing exercise entry. Supports multipart/form-data for image uploads.
  *     security:
  *       - cookieAuth: []
@@ -672,7 +675,7 @@ router.put('/:id', authenticate, upload.single('image'), async (req, res, next) 
  * /exercise-entries/progress/{exerciseId}:
  *   get:
  *     summary: Get progress data for a specific exercise
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Retrieves progress data (e.g., weight, reps over time) for a given exercise.
  *     security:
  *       - cookieAuth: []
@@ -708,11 +711,34 @@ router.put('/:id', authenticate, upload.single('image'), async (req, res, next) 
  *               items:
  *                 type: object
  *                 properties:
- *                   date:
+ *                   exercise_entry_id:
+ *                     type: string
+ *                     format: uuid
+ *                   entry_date:
  *                     type: string
  *                     format: date
- *                   value:
+ *                   duration_minutes:
  *                     type: number
+ *                   calories_burned:
+ *                     type: number
+ *                   notes:
+ *                     type: string
+ *                   image_url:
+ *                     type: string
+ *                     nullable: true
+ *                   distance:
+ *                     type: number
+ *                     nullable: true
+ *                   avg_heart_rate:
+ *                     type: number
+ *                     nullable: true
+ *                   provider_name:
+ *                     type: string
+ *                     nullable: true
+ *                   sets:
+ *                     type: array
+ *                     items:
+ *                       $ref: '#/components/schemas/WorkoutSet'
  *       400:
  *         description: Exercise ID, start date, or end date is missing.
  *       403:
@@ -752,7 +778,7 @@ router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
  * /exercise-entries/{id}:
  *   delete:
  *     summary: Delete an exercise entry
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Deletes a specific exercise entry.
  *     security:
  *       - cookieAuth: []
@@ -767,6 +793,13 @@ router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
  *     responses:
  *       200:
  *         description: Exercise entry deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
  *       400:
  *         description: Exercise Entry ID is required and must be a valid UUID.
  *       403:
@@ -801,7 +834,7 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  * /exercise-entries/import-history-csv:
  *   post:
  *     summary: Import historical exercise entries from CSV
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Imports historical exercise entries from a CSV file.
  *     security:
  *       - cookieAuth: []
@@ -819,9 +852,37 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *                 items:
  *                   type: object
  *                   properties:
- *                     exercise_id:
+ *                     exercise_name:
  *                       type: string
- *                       format: uuid
+ *                       description: Name of the exercise to find or create.
+ *                     exercise_source:
+ *                       type: string
+ *                     exercise_category:
+ *                       type: string
+ *                     calories_per_hour:
+ *                       type: number
+ *                     exercise_description:
+ *                       type: string
+ *                     exercise_force:
+ *                       type: string
+ *                     exercise_level:
+ *                       type: string
+ *                     exercise_mechanic:
+ *                       type: string
+ *                     exercise_equipment:
+ *                       type: string
+ *                     primary_muscles:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     secondary_muscles:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     instructions:
+ *                       type: array
+ *                       items:
+ *                         type: string
  *                     duration_minutes:
  *                       type: number
  *                     calories_burned:
@@ -829,7 +890,7 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *                     entry_date:
  *                       type: string
  *                       format: date
- *                     notes:
+ *                     entry_notes:
  *                       type: string
  *                     sets:
  *                       type: array
@@ -846,9 +907,9 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *                       type: number
  *                     weight:
  *                       type: number
- *                     workout_plan_assignment_id:
+ *                     preset_name:
  *                       type: string
- *                       format: uuid
+ *                       description: Name of a workout preset to group this entry under.
  *                     image_url:
  *                       type: string
  *                       format: url
@@ -859,17 +920,50 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *                     activity_details:
  *                       type: object
  *                   required:
- *                     - exercise_id
+ *                     - exercise_name
  *                     - entry_date
  *     responses:
  *       201:
  *         description: The exercise entries were imported successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 created:
+ *                   type: number
+ *                 updated:
+ *                   type: number
+ *                 failed:
+ *                   type: number
  *       400:
  *         description: Invalid data format. Expected an array of entries.
  *       403:
  *         description: User does not have permission to import exercise entries.
  *       409:
  *         description: Conflict, some entries could not be imported due to existing data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 details:
+ *                   type: object
+ *                   properties:
+ *                     createdCount:
+ *                       type: number
+ *                     updatedCount:
+ *                       type: number
+ *                     failedCount:
+ *                       type: number
+ *                     failedEntries:
+ *                       type: array
+ *                       items:
+ *                         type: object
  *       500:
  *         description: Failed to import exercise entries.
  */

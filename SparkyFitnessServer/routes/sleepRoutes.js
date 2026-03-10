@@ -30,6 +30,12 @@ const { log } = require('../config/logging');
  *           type: string
  *           format: date
  *         description: End date (YYYY-MM-DD).
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID to fetch analytics for another user (requires permission).
  *     responses:
  *       200:
  *         description: Sleep analytics data.
@@ -148,6 +154,12 @@ router.post('/manual_entry', authenticate, checkPermissionMiddleware('checkin'),
  *         schema:
  *           type: string
  *           format: date
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID to fetch data for another user (requires permission).
  *     responses:
  *       200:
  *         description: A list of sleep entries.
@@ -189,7 +201,7 @@ router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, 
  *   get:
  *     summary: Get sleep entries details within a date range
  *     tags: [Wellness & Metrics]
- *     description: This endpoint currently returns the same as the main GET /sleep endpoint.
+ *     description: Retrieves detailed sleep entries for a date range. Returns the same data as GET /sleep.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -205,9 +217,23 @@ router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, 
  *         schema:
  *           type: string
  *           format: date
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID to fetch data for another user (requires permission).
  *     responses:
  *       200:
  *         description: Sleep entries details.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/SleepEntry'
+ *       403:
+ *         description: Forbidden.
  */
 router.get('/details', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   try {

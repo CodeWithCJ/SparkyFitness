@@ -188,21 +188,22 @@ app.use("/uploads", express.static(UPLOADS_BASE_DIR));
  * @swagger
  * /uploads/exercises/{exerciseId}/{imageFileName}:
  *   get:
- *     summary: serve exercise images
- *     tags: [Utility]
+ *     summary: Serve exercise images
+ *     tags: [Exercise & Workouts]
+ *     description: Returns an exercise image by ID and filename. If the image is not cached locally, it is fetched from the Free Exercise DB and stored for future requests. No authentication required.
  *     parameters:
  *       - in: path
  *         name: exerciseId
  *         required: true
  *         schema:
  *           type: string
- *         description: The ID of the exercise.
+ *         description: The source ID of the exercise.
  *       - in: path
  *         name: imageFileName
  *         required: true
  *         schema:
  *           type: string
- *         description: The filename of the image.
+ *         description: The filename of the image (e.g. "0.jpg").
  *     responses:
  *       200:
  *         description: The image file.
@@ -212,7 +213,7 @@ app.use("/uploads", express.static(UPLOADS_BASE_DIR));
  *               type: string
  *               format: binary
  *       404:
- *         description: Image not found.
+ *         description: Exercise or image not found.
  *       500:
  *         description: Server error.
  */

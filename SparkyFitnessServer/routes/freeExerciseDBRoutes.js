@@ -7,7 +7,7 @@ const exerciseService = require('../services/exerciseService'); // Import exerci
 /**
  * @swagger
  * tags:
- *   name: Fitness & Workouts
+ *   name: Exercise & Workouts
  *   description: Exercise database, workout presets, and activity logging.
  */
 
@@ -16,7 +16,7 @@ const exerciseService = require('../services/exerciseService'); // Import exerci
  * /freeexercisedb/search:
  *   get:
  *     summary: Search for exercises from the free-exercise-db
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Searches for exercises from an external free exercise database based on a query.
  *     parameters:
  *       - in: query
@@ -40,19 +40,44 @@ const exerciseService = require('../services/exerciseService'); // Import exerci
  *                   name:
  *                     type: string
  *                     description: The name of the exercise.
+ *                   force:
+ *                     type: string
+ *                     nullable: true
+ *                     description: The force type (e.g., "push", "pull", "static").
+ *                   level:
+ *                     type: string
+ *                     description: The difficulty level (e.g., "beginner", "intermediate", "expert").
+ *                   mechanic:
+ *                     type: string
+ *                     nullable: true
+ *                     description: The mechanic type (e.g., "compound", "isolation").
+ *                   equipment:
+ *                     type: string
+ *                     nullable: true
+ *                     description: The equipment required (e.g., "barbell", "dumbbell", "body only").
+ *                   primaryMuscles:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: Primary muscle groups targeted.
+ *                   secondaryMuscles:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: Secondary muscle groups targeted.
+ *                   instructions:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: Step-by-step instructions for performing the exercise.
  *                   category:
  *                     type: string
- *                     description: The category of the exercise.
- *                   equipment:
+ *                     description: The category of the exercise (e.g., "strength", "stretching", "cardio").
+ *                   images:
  *                     type: array
  *                     items:
  *                       type: string
- *                     description: Equipment needed for the exercise.
- *                   muscle_groups:
- *                     type: array
- *                     items:
- *                       type: string
- *                     description: Muscle groups targeted.
+ *                     description: Image file paths for the exercise.
  *       500:
  *         description: Error searching free-exercise-db.
  */
@@ -80,7 +105,7 @@ router.get('/search', async (req, res) => {
  * /freeexercisedb/add:
  *   post:
  *     summary: Add a free-exercise-db exercise to user's local exercises
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Adds a selected exercise from the free exercise database to the authenticated user's personal exercise list.
  *     security:
  *       - cookieAuth: []

@@ -9,6 +9,7 @@ const goalPresetService = require('../services/goalPresetService');
  *   post:
  *     summary: Create a new goal preset
  *     tags: [Goals & Personalization]
+ *     description: Creates a new goal preset for the authenticated user. If macro percentages are provided, grams are calculated automatically from calories.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -20,6 +21,12 @@ const goalPresetService = require('../services/goalPresetService');
  *     responses:
  *       201:
  *         description: Goal preset created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GoalPreset'
+ *       401:
+ *         description: Unauthorized.
  */
 router.post('/', authenticate, async (req, res, next) => {
   try {
@@ -36,6 +43,7 @@ router.post('/', authenticate, async (req, res, next) => {
  *   get:
  *     summary: Get all goal presets for the user
  *     tags: [Goals & Personalization]
+ *     description: Retrieves all goal presets for the authenticated user.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -47,6 +55,8 @@ router.post('/', authenticate, async (req, res, next) => {
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/GoalPreset'
+ *       401:
+ *         description: Unauthorized.
  */
 router.get('/', authenticate, async (req, res, next) => {
   try {
@@ -63,6 +73,7 @@ router.get('/', authenticate, async (req, res, next) => {
  *   get:
  *     summary: Get a specific goal preset by ID
  *     tags: [Goals & Personalization]
+ *     description: Retrieves a specific goal preset by its ID.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -72,6 +83,7 @@ router.get('/', authenticate, async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: The ID of the goal preset.
  *     responses:
  *       200:
  *         description: The goal preset.
@@ -79,6 +91,10 @@ router.get('/', authenticate, async (req, res, next) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/GoalPreset'
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: Goal preset not found.
  */
 router.get('/:id', authenticate, async (req, res, next) => {
   try {
@@ -98,6 +114,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *   put:
  *     summary: Update a goal preset
  *     tags: [Goals & Personalization]
+ *     description: Updates an existing goal preset. If macro percentages are provided, grams are recalculated from calories.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -107,6 +124,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: The ID of the goal preset to update.
  *     requestBody:
  *       content:
  *         application/json:
@@ -115,6 +133,14 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *     responses:
  *       200:
  *         description: Goal preset updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GoalPreset'
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: Goal preset not found or not authorized.
  */
 router.put('/:id', authenticate, async (req, res, next) => {
   try {
@@ -134,6 +160,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
  *   delete:
  *     summary: Delete a goal preset
  *     tags: [Goals & Personalization]
+ *     description: Deletes a specific goal preset.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -143,9 +170,14 @@ router.put('/:id', authenticate, async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: The ID of the goal preset to delete.
  *     responses:
  *       204:
  *         description: Deleted successfully.
+ *       401:
+ *         description: Unauthorized.
+ *       404:
+ *         description: Goal preset not found or not authorized.
  */
 router.delete('/:id', authenticate, async (req, res, next) => {
   try {

@@ -73,11 +73,10 @@ router.post('/', authenticate, async (req, res, next) => {
  *     parameters:
  *       - in: query
  *         name: userId
- *         required: true
  *         schema:
  *           type: string
  *           format: uuid
- *         description: The ID of the user to fetch entries for.
+ *         description: Optional user ID to fetch entries for another user (requires permission). Defaults to the authenticated user.
  *       - in: query
  *         name: startDate
  *         required: true
@@ -185,9 +184,17 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: date
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID to fetch data for another user (requires permission).
  *     responses:
  *       200:
  *         description: The mood entry for the date (or empty object if not found).
+ *       403:
+ *         description: Forbidden.
  */
 router.get('/date/:entryDate', authenticate, async (req, res, next) => {
   try {

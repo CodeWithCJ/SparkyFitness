@@ -47,10 +47,38 @@ const upload = multer({
  *   get:
  *     summary: Get current user's information
  *     tags: [Identity & Security]
- *     description: Retrieves the profile information for the currently authenticated user.
+ *     description: Retrieves identity information for both the authenticated user and the active user context (which may differ when using family access).
+ *     security:
+ *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: The user's profile information.
+ *         description: The user's identity information.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 authenticatedUserId:
+ *                   type: string
+ *                   format: uuid
+ *                   description: The ID of the actual logged-in user.
+ *                 authenticatedUserEmail:
+ *                   type: string
+ *                   format: email
+ *                 role:
+ *                   type: string
+ *                   description: The role of the authenticated user (e.g., "user", "admin").
+ *                 activeUserId:
+ *                   type: string
+ *                   format: uuid
+ *                   description: The ID of the user context currently being operated in.
+ *                 activeUserEmail:
+ *                   type: string
+ *                   format: email
+ *                 activeUserFullName:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized.
  *       404:
  *         description: User not found.
  */
@@ -88,7 +116,9 @@ router.get('/user', authenticate, async (req, res, next) => {
  *   post:
  *     summary: Switch active user context
  *     tags: [Identity & Security]
- *     description: Switches the active user identity for the current session.
+ *     description: Switches the active user identity for the current session. Requires family access permission to the target user. Sets a cookie with the new active user ID.
+ *     security:
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -101,13 +131,26 @@ router.get('/user', authenticate, async (req, res, next) => {
  *               targetUserId:
  *                 type: string
  *                 format: uuid
+ *                 description: The ID of the user to switch context to.
  *     responses:
  *       200:
  *         description: Context switched successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 activeUserId:
+ *                   type: string
+ *                   format: uuid
+ *       400:
+ *         description: targetUserId is required.
+ *       401:
+ *         description: Unauthorized.
  *       403:
- *         description: Forbidden.
- *       500:
- *         description: Internal server error.
+ *         description: Forbidden. No family access permission to target user.
  */
 router.post('/switch-context', authenticate, async (req, res, next) => {
   const { targetUserId } = req.body;
@@ -142,7 +185,9 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
  *   get:
  *     summary: Find a user by email
  *     tags: [Identity & Security]
- *     description: Retrieves the user ID for a given email address.
+ *     description: Retrieves the user ID for a given email address. Used for setting up family access.
+ *     security:
+ *       - cookieAuth: []
  *     parameters:
  *       - in: query
  *         name: email
@@ -150,11 +195,24 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: email
+ *         description: The email address to search for.
  *     responses:
  *       200:
  *         description: The user ID.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userId:
+ *                   type: string
+ *                   format: uuid
  *       400:
- *         description: Email parameter is missing.
+ *         description: Email parameter is required.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
  *       404:
  *         description: User not found.
  */
@@ -185,10 +243,40 @@ router.get('/users/find-by-email', authenticate, async (req, res, next) => {
  *   get:
  *     summary: Get the current user's profile
  *     tags: [Identity & Security]
- *     description: Retrieves the profile for the currently authenticated user.
+ *     description: Retrieves the profile for the active user context. Returns an empty object if no profile exists yet.
+ *     security:
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: The user's profile information.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   format: uuid
+ *                 full_name:
+ *                   type: string
+ *                 phone_number:
+ *                   type: string
+ *                   nullable: true
+ *                 date_of_birth:
+ *                   type: string
+ *                   format: date
+ *                   nullable: true
+ *                 bio:
+ *                   type: string
+ *                   nullable: true
+ *                 avatar_url:
+ *                   type: string
+ *                   nullable: true
+ *                 gender:
+ *                   type: string
+ *                   nullable: true
+ *       401:
+ *         description: Unauthorized.
  *       403:
  *         description: User is not authorized to access this profile.
  */
@@ -216,7 +304,9 @@ router.get('/profiles', authenticate, async (req, res, next) => {
  *   put:
  *     summary: Update the current user's profile
  *     tags: [Identity & Security]
- *     description: Updates the profile for the currently authenticated user.
+ *     description: Updates the profile for the active user context.
+ *     security:
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -240,6 +330,17 @@ router.get('/profiles', authenticate, async (req, res, next) => {
  *     responses:
  *       200:
  *         description: Profile updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 profile:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized.
  *       403:
  *         description: User is not authorized to update this profile.
  *       404:
@@ -490,19 +591,38 @@ router.get('/profiles/avatar/:filename', authenticate, (req, res, next) => {
  *   post:
  *     summary: Toggle Email MFA
  *     tags: [Identity & Security]
- *     description: Enables or disables Email MFA for the currently authenticated user.
+ *     description: Enables or disables Email MFA for the currently authenticated user. This applies to the authenticated user, not the active user context.
+ *     security:
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - enabled
  *             properties:
  *               enabled:
  *                 type: boolean
+ *                 description: Whether to enable or disable Email MFA.
  *     responses:
  *       200:
  *         description: MFA settings updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 mfaEmailEnabled:
+ *                   type: boolean
+ *                 twoFactorEnabled:
+ *                   type: boolean
+ *                   description: Overall MFA state (true if either TOTP or email MFA is enabled).
+ *       401:
+ *         description: Unauthorized.
  */
 router.post('/mfa/email-toggle', authenticate, async (req, res, next) => {
   const { enabled } = req.body;

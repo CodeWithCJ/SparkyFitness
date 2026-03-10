@@ -10,6 +10,12 @@ const globalSettingsRepository = require('../models/globalSettingsRepository');
  *   post:
  *     summary: Process a chat message or save AI service settings
  *     tags: [AI & Insights]
+ *     description: >
+ *       Dual-purpose endpoint. When `action` is set to `save_ai_service_settings`, it persists
+ *       user-specific AI service configuration. Otherwise it forwards the provided conversation
+ *       messages to the configured AI service and returns the response. Per-user AI configuration
+ *       must be enabled in global settings for saving to succeed, and users cannot create or
+ *       modify public/global settings through this endpoint.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -21,31 +27,82 @@ const globalSettingsRepository = require('../models/globalSettingsRepository');
  *             properties:
  *               messages:
  *                 type: array
+ *                 description: Conversation history to send to the AI service. Required when not saving settings.
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - role
+ *                     - content
  *                   properties:
  *                     role:
  *                       type: string
  *                       enum: [user, assistant, system]
+ *                       description: The role of the message author.
  *                     content:
  *                       type: string
+ *                       description: The text content of the message.
  *               service_config_id:
  *                 type: string
  *                 format: uuid
+ *                 description: The ID of the AI service configuration to use for processing chat messages.
  *               action:
  *                 type: string
  *                 enum: [save_ai_service_settings]
+ *                 description: Set to `save_ai_service_settings` to save AI configuration instead of chatting.
  *               service_data:
  *                 type: object
+ *                 description: AI service configuration to save. Required when `action` is `save_ai_service_settings`.
+ *                 properties:
+ *                   service_type:
+ *                     type: string
+ *                     description: The AI provider type (e.g., openai, anthropic, gemini, mistral, groq, ollama).
+ *                   model_name:
+ *                     type: string
+ *                     description: The model identifier (e.g., gpt-4o, claude-3-opus).
+ *                   api_url:
+ *                     type: string
+ *                     description: The API endpoint URL for the AI service.
+ *                   api_key:
+ *                     type: string
+ *                     description: The API key for authenticating with the AI service.
+ *                   is_active:
+ *                     type: boolean
+ *                     description: Whether this configuration should be the active one.
+ *                   custom_system_prompt:
+ *                     type: string
+ *                     description: A custom system prompt to prepend to conversations.
  *     responses:
  *       200:
- *         description: Successful response from the AI service or confirmation of settings save.
+ *         description: Successful response. Returns AI-generated content for chat requests or a confirmation for settings saves.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   description: Chat response.
+ *                   properties:
+ *                     content:
+ *                       type: string
+ *                       description: The AI-generated response text.
+ *                 - type: object
+ *                   description: Settings save response.
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                       example: AI service settings saved successfully.
+ *                     setting:
+ *                       type: object
+ *                       description: The saved AI service setting.
  *       400:
- *         description: Bad request.
+ *         description: Invalid message format, unsupported service type, or other validation error.
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Per-user AI configuration is disabled, or attempted to create/modify public settings.
  *       404:
- *         description: Not found.
+ *         description: AI service configuration not found or API key missing.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.post('/', authenticate, async (req, res, next) => {
   const { messages, service_config_id, action, service_data } = req.body;
@@ -99,15 +156,26 @@ router.post('/', authenticate, async (req, res, next) => {
  * @swagger
  * /chat/clear-old-history:
  *   post:
- *     summary: Clear old chat history for the authenticated user
+ *     summary: Clear old chat history
  *     tags: [AI & Insights]
+ *     description: Removes stale chat history entries for the authenticated user. Only older entries are cleared; recent history is preserved.
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Confirmation of successful clearing.
+ *         description: Old chat history cleared successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Confirmation message.
+ *       401:
+ *         description: Unauthorized.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.post('/clear-old-history', authenticate, async (req, res, next) => {
   try {
@@ -122,17 +190,52 @@ router.post('/clear-old-history', authenticate, async (req, res, next) => {
  * @swagger
  * /chat/ai-service-settings:
  *   get:
- *     summary: Retrieve AI service settings for the authenticated user
+ *     summary: Get all AI service settings
  *     tags: [AI & Insights]
+ *     description: >
+ *       Retrieves all AI service settings visible to the authenticated user. If per-user AI
+ *       configuration is disabled in global settings, only public/global settings are returned.
+ *       Otherwise, both user-specific and public settings are included.
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: List of AI service settings.
+ *         description: List of AI service settings visible to the user.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     format: uuid
+ *                     description: Unique identifier for the setting.
+ *                   service_type:
+ *                     type: string
+ *                     description: The AI provider type (e.g., openai, anthropic, gemini, mistral, groq, ollama).
+ *                   model_name:
+ *                     type: string
+ *                     description: The model identifier.
+ *                   api_url:
+ *                     type: string
+ *                     description: The API endpoint URL.
+ *                   is_active:
+ *                     type: boolean
+ *                     description: Whether this is the active configuration.
+ *                   is_public:
+ *                     type: boolean
+ *                     description: Whether this is a global/public setting managed by an administrator.
+ *                   custom_system_prompt:
+ *                     type: string
+ *                     description: A custom system prompt for conversations.
+ *       401:
+ *         description: Unauthorized.
  *       403:
  *         description: Forbidden.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.get('/ai-service-settings', authenticate, async (req, res, next) => {
   try {
@@ -158,19 +261,49 @@ router.get('/ai-service-settings', authenticate, async (req, res, next) => {
  * @swagger
  * /chat/ai-service-settings/active:
  *   get:
- *     summary: Retrieve the active AI service setting for the authenticated user
+ *     summary: Get the active AI service setting
  *     tags: [AI & Insights]
+ *     description: Retrieves the currently active AI service configuration for the authenticated user.
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Active AI service setting.
+ *         description: The active AI service setting.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   format: uuid
+ *                   description: Unique identifier for the setting.
+ *                 service_type:
+ *                   type: string
+ *                   description: The AI provider type (e.g., openai, anthropic, gemini, mistral, groq, ollama).
+ *                 model_name:
+ *                   type: string
+ *                   description: The model identifier.
+ *                 api_url:
+ *                   type: string
+ *                   description: The API endpoint URL.
+ *                 is_active:
+ *                   type: boolean
+ *                   description: Whether this is the active configuration.
+ *                 is_public:
+ *                   type: boolean
+ *                   description: Whether this is a global/public setting.
+ *                 custom_system_prompt:
+ *                   type: string
+ *                   description: A custom system prompt for conversations.
+ *       401:
+ *         description: Unauthorized.
  *       403:
  *         description: Forbidden.
  *       404:
- *         description: Not found.
+ *         description: No active AI service setting found for this user.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.get('/ai-service-settings/active', authenticate, async (req, res, next) => {
   try {
@@ -193,26 +326,41 @@ router.get('/ai-service-settings/active', authenticate, async (req, res, next) =
  *   delete:
  *     summary: Delete an AI service setting
  *     tags: [AI & Insights]
+ *     description: >
+ *       Deletes a user-specific AI service setting. Per-user AI configuration must be enabled
+ *       in global settings. Public/global settings cannot be deleted through this endpoint;
+ *       only administrators can manage those.
  *     security:
  *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
+ *         required: true
  *         schema:
  *           type: string
  *           format: uuid
- *         required: true
+ *         description: The unique identifier of the AI service setting to delete.
  *     responses:
  *       200:
- *         description: Confirmation of successful deletion.
+ *         description: AI service setting deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: AI service setting deleted successfully.
  *       400:
- *         description: Bad request.
+ *         description: AI service ID is required.
+ *       401:
+ *         description: Unauthorized.
  *       403:
- *         description: Forbidden.
+ *         description: Per-user AI configuration is disabled, or attempted to delete a global setting.
  *       404:
- *         description: Not found.
+ *         description: AI service setting not found.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.delete('/ai-service-settings/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
@@ -254,17 +402,48 @@ router.delete('/ai-service-settings/:id', authenticate, async (req, res, next) =
  * @swagger
  * /chat/sparky-chat-history:
  *   get:
- *     summary: Retrieve Sparky chat history for the authenticated user
+ *     summary: Get Sparky chat history
  *     tags: [AI & Insights]
+ *     description: Retrieves the full Sparky chat history for the authenticated user.
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Chat history.
+ *         description: Array of chat history entries.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     format: uuid
+ *                     description: Unique identifier for the history entry.
+ *                   user_id:
+ *                     type: string
+ *                     format: uuid
+ *                     description: The ID of the user who owns this entry.
+ *                   content:
+ *                     type: string
+ *                     description: The message content.
+ *                   messageType:
+ *                     type: string
+ *                     description: The type of message (e.g., user, assistant).
+ *                   metadata:
+ *                     type: object
+ *                     description: Additional metadata associated with the entry.
+ *                   created_at:
+ *                     type: string
+ *                     format: date-time
+ *                     description: When the entry was created.
+ *       401:
+ *         description: Unauthorized.
  *       403:
  *         description: Forbidden.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
   try {
@@ -282,8 +461,9 @@ router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
  * @swagger
  * /chat/sparky-chat-history/entry/{id}:
  *   get:
- *     summary: Retrieve a single Sparky chat history entry
+ *     summary: Get a single chat history entry
  *     tags: [AI & Insights]
+ *     description: Retrieves a single Sparky chat history entry by its ID.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -293,17 +473,46 @@ router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: The unique identifier of the chat history entry.
  *     responses:
  *       200:
- *         description: Chat history entry.
+ *         description: The requested chat history entry.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   format: uuid
+ *                   description: Unique identifier for the history entry.
+ *                 user_id:
+ *                   type: string
+ *                   format: uuid
+ *                   description: The ID of the user who owns this entry.
+ *                 content:
+ *                   type: string
+ *                   description: The message content.
+ *                 messageType:
+ *                   type: string
+ *                   description: The type of message (e.g., user, assistant).
+ *                 metadata:
+ *                   type: object
+ *                   description: Additional metadata associated with the entry.
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                   description: When the entry was created.
  *       400:
- *         description: Bad request.
+ *         description: Chat history entry ID is required.
+ *       401:
+ *         description: Unauthorized.
  *       403:
  *         description: Forbidden.
  *       404:
- *         description: Not found.
+ *         description: Chat history entry not found.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.get('/sparky-chat-history/entry/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
@@ -328,8 +537,9 @@ router.get('/sparky-chat-history/entry/:id', authenticate, async (req, res, next
  * @swagger
  * /chat/sparky-chat-history/{id}:
  *   put:
- *     summary: Update a Sparky chat history entry
+ *     summary: Update a chat history entry
  *     tags: [AI & Insights]
+ *     description: Updates an existing Sparky chat history entry. Only the entry owner can perform this action.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -339,23 +549,62 @@ router.get('/sparky-chat-history/entry/:id', authenticate, async (req, res, next
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: The unique identifier of the chat history entry to update.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: The message content.
+ *               messageType:
+ *                 type: string
+ *                 description: The type of message (e.g., user, assistant).
+ *               metadata:
+ *                 type: object
+ *                 description: Additional metadata associated with the entry.
  *     responses:
  *       200:
- *         description: Updated chat history entry.
+ *         description: The updated chat history entry.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   format: uuid
+ *                   description: Unique identifier for the history entry.
+ *                 user_id:
+ *                   type: string
+ *                   format: uuid
+ *                   description: The ID of the user who owns this entry.
+ *                 content:
+ *                   type: string
+ *                   description: The message content.
+ *                 messageType:
+ *                   type: string
+ *                   description: The type of message (e.g., user, assistant).
+ *                 metadata:
+ *                   type: object
+ *                   description: Additional metadata associated with the entry.
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                   description: When the entry was created.
  *       400:
- *         description: Bad request.
+ *         description: Chat history entry ID is required.
+ *       401:
+ *         description: Unauthorized.
  *       403:
  *         description: Forbidden.
  *       404:
- *         description: Not found.
+ *         description: Chat history entry not found or not authorized to update.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.put('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
@@ -381,8 +630,9 @@ router.put('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
  * @swagger
  * /chat/sparky-chat-history/{id}:
  *   delete:
- *     summary: Delete a Sparky chat history entry
+ *     summary: Delete a chat history entry
  *     tags: [AI & Insights]
+ *     description: Deletes a single Sparky chat history entry by its ID. Only the entry owner can perform this action.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -392,17 +642,28 @@ router.put('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: The unique identifier of the chat history entry to delete.
  *     responses:
  *       200:
- *         description: Confirmation of successful deletion.
+ *         description: Chat history entry deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Chat history entry deleted successfully.
  *       400:
- *         description: Bad request.
+ *         description: Chat history entry ID is required.
+ *       401:
+ *         description: Unauthorized.
  *       403:
  *         description: Forbidden.
  *       404:
- *         description: Not found.
+ *         description: Chat history entry not found or not authorized to delete.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.delete('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
@@ -427,17 +688,28 @@ router.delete('/sparky-chat-history/:id', authenticate, async (req, res, next) =
  * @swagger
  * /chat/clear-all-history:
  *   post:
- *     summary: Clear all Sparky chat history for the authenticated user
+ *     summary: Clear all Sparky chat history
  *     tags: [AI & Insights]
+ *     description: Deletes all Sparky chat history entries for the authenticated user.
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Confirmation of successful clearing.
+ *         description: All chat history cleared successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: Confirmation message.
+ *       401:
+ *         description: Unauthorized.
  *       403:
  *         description: Forbidden.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.post('/clear-all-history', authenticate, async (req, res, next) => {
   try {
@@ -455,8 +727,9 @@ router.post('/clear-all-history', authenticate, async (req, res, next) => {
  * @swagger
  * /chat/save-history:
  *   post:
- *     summary: Save a Sparky chat history entry
+ *     summary: Save a chat history entry
  *     tags: [AI & Insights]
+ *     description: Persists a single Sparky chat history entry for the authenticated user.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -465,22 +738,56 @@ router.post('/clear-all-history', authenticate, async (req, res, next) => {
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - content
+ *               - messageType
  *             properties:
  *               content:
  *                 type: string
+ *                 description: The message text to save.
  *               messageType:
  *                 type: string
+ *                 description: Identifies the sender role or purpose of the message (e.g., user, assistant, system).
  *               metadata:
  *                 type: object
+ *                 description: Optional metadata to associate with the entry (e.g., model info, token counts).
  *     responses:
  *       201:
- *         description: Confirmation of successful saving.
+ *         description: Chat history entry saved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   format: uuid
+ *                   description: Unique identifier for the saved entry.
+ *                 user_id:
+ *                   type: string
+ *                   format: uuid
+ *                   description: The ID of the user who owns this entry.
+ *                 content:
+ *                   type: string
+ *                   description: The message content.
+ *                 messageType:
+ *                   type: string
+ *                   description: The type of message.
+ *                 metadata:
+ *                   type: object
+ *                   description: Additional metadata associated with the entry.
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                   description: When the entry was created.
  *       400:
- *         description: Bad request.
+ *         description: Content and message type are required.
+ *       401:
+ *         description: Unauthorized.
  *       403:
  *         description: Forbidden.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.post('/save-history', authenticate, async (req, res, next) => {
   const { content, messageType, metadata } = req.body;
@@ -502,8 +809,12 @@ router.post('/save-history', authenticate, async (req, res, next) => {
  * @swagger
  * /chat/food-options:
  *   post:
- *     summary: Generate food options for a given food name and unit
+ *     summary: Generate AI food nutrition options
  *     tags: [AI & Insights]
+ *     description: >
+ *       Uses the configured AI service to generate realistic food nutrition options
+ *       for a given food name and unit. Returns a JSON string of food options with
+ *       estimated nutritional information.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -512,23 +823,38 @@ router.post('/save-history', authenticate, async (req, res, next) => {
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - service_config_id
  *             properties:
  *               foodName:
  *                 type: string
+ *                 description: The name of the food to generate options for (e.g., "apple", "chicken breast").
  *               unit:
  *                 type: string
+ *                 description: The unit of measurement for the food (e.g., "piece", "gram", "cup").
  *               service_config_id:
  *                 type: string
  *                 format: uuid
+ *                 description: The ID of the AI service configuration to use for generating options.
  *     responses:
  *       200:
- *         description: List of food options generated by the AI service.
+ *         description: AI-generated food nutrition options.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 content:
+ *                   type: string
+ *                   description: A JSON string containing the generated food options with estimated nutrition data.
  *       400:
- *         description: Bad request.
+ *         description: AI service configuration ID is required, or unsupported service type.
+ *       401:
+ *         description: Unauthorized.
  *       404:
- *         description: Not found.
+ *         description: AI service setting not found or API key missing.
  *       500:
- *         description: Server error.
+ *         description: Internal server error.
  */
 router.post('/food-options', authenticate, async (req, res, next) => {
   const { foodName, unit, service_config_id } = req.body;

@@ -27,6 +27,13 @@ router.use(authenticate);
  *     description: Retrieves the currently active fast for the authenticated user.
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID to fetch the active fast for another user (requires permission).
  *     responses:
  *       200:
  *         description: The active fast or null if none.

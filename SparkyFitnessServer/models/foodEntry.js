@@ -108,6 +108,24 @@ const { sanitizeCustomNutrients } = require("../utils/foodUtils");
  *         custom_nutrients:
  *           type: object
  *           description: A JSON object for storing custom nutrient data.
+ *     NutritionSummary:
+ *       type: object
+ *       properties:
+ *         total_calories:
+ *           type: number
+ *           description: Total calories consumed for the day.
+ *         total_protein:
+ *           type: number
+ *           description: Total protein in grams consumed for the day.
+ *         total_carbs:
+ *           type: number
+ *           description: Total carbohydrates in grams consumed for the day.
+ *         total_fat:
+ *           type: number
+ *           description: Total fat in grams consumed for the day.
+ *         total_dietary_fiber:
+ *           type: number
+ *           description: Total dietary fiber in grams consumed for the day.
  */
 async function createFoodEntry(entryData, createdByUserId) {
   log(

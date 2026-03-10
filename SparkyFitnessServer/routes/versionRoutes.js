@@ -31,7 +31,31 @@ router.get('/current', (req, res) => {
  *     tags: [System & Admin]
  *     responses:
  *       200:
- *         description: Latest release.
+ *         description: Latest release info from GitHub.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 version:
+ *                   type: string
+ *                   description: The latest release tag name.
+ *                   example: v1.2.3
+ *                 releaseNotes:
+ *                   type: string
+ *                   description: The release body/notes in markdown.
+ *                 publishedAt:
+ *                   type: string
+ *                   format: date-time
+ *                   description: When the release was published.
+ *                 htmlUrl:
+ *                   type: string
+ *                   description: URL to the GitHub release page.
+ *                 isNewVersionAvailable:
+ *                   type: boolean
+ *                   description: Whether the latest release is newer than the current version.
+ *       500:
+ *         description: Failed to fetch latest GitHub release.
  */
 router.get('/latest-github', async (req, res) => {
     try {

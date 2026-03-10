@@ -19,57 +19,8 @@ const isAuthenticated = (req, res, next) => {
 /**
  * @swagger
  * tags:
- *   name: Fitness & Workouts
+ *   name: Exercise & Workouts
  *   description: Exercise database, workout presets, and activity logging.
- */
-
-/**
- * @swagger
- * components:
- *   schemas:
- *     ExercisePresetEntry:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           format: uuid
- *           description: The unique identifier for the exercise preset entry.
- *         user_id:
- *           type: string
- *           format: uuid
- *           description: The ID of the user who owns the entry.
- *         workout_preset_id:
- *           type: integer
- *           description: The ID of the workout preset this entry originated from.
- *         name:
- *           type: string
- *           description: The name of the logged workout.
- *         description:
- *           type: string
- *           description: A description of the logged workout.
- *         entry_date:
- *           type: string
- *           format: date
- *           description: The date the workout was logged (YYYY-MM-DD).
- *         notes:
- *           type: string
- *           description: Additional notes for the logged workout.
- *         source:
- *           type: string
- *           description: The source of the entry (e.g., "manual", "Garmin Connect").
- *         created_at:
- *           type: string
- *           format: date-time
- *           description: The date and time when the entry was created.
- *         updated_at:
- *           type: string
- *           format: date-time
- *           description: The date and time when the entry was last updated.
- *       required:
- *         - user_id
- *         - workout_preset_id
- *         - name
- *         - entry_date
  */
 
 /**
@@ -77,7 +28,7 @@ const isAuthenticated = (req, res, next) => {
  * /exercise-preset-entries:
  *   post:
  *     summary: Add a workout preset to the diary
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Logs a workout preset as an exercise preset entry and creates individual exercise entries for each exercise within the preset.
  *     security:
  *       - cookieAuth: []
@@ -183,7 +134,7 @@ router.post(
  * /exercise-preset-entries/{id}:
  *   get:
  *     summary: Get an exercise preset entry by ID
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Retrieves a single exercise preset entry by its ID.
  *     security:
  *       - cookieAuth: []
@@ -242,7 +193,7 @@ router.get(
  * /exercise-preset-entries/{id}:
  *   put:
  *     summary: Update an exercise preset entry
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Updates an existing exercise preset entry.
  *     security:
  *       - cookieAuth: []
@@ -274,6 +225,10 @@ router.get(
  *                 type: string
  *                 format: date
  *                 description: The new date for the logged workout (YYYY-MM-DD).
+ *               workout_preset_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: The ID of the workout preset this entry originated from.
  *     responses:
  *       200:
  *         description: The exercise preset entry was updated successfully.
@@ -325,7 +280,7 @@ router.put(
  * /exercise-preset-entries/{id}:
  *   delete:
  *     summary: Delete an exercise preset entry
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Deletes a specific exercise preset entry.
  *     security:
  *       - cookieAuth: []

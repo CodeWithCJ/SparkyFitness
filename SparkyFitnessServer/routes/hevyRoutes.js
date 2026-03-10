@@ -8,10 +8,47 @@ const authMiddleware = require("../middleware/authMiddleware");
 
 /**
  * @swagger
- * /api/integrations/hevy/sync:
+ * /integrations/hevy/sync:
  *   post:
  *     summary: Manually trigger a Hevy data sync
  *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: fullSync
+ *         schema:
+ *           type: string
+ *           enum: ['true', 'false']
+ *         required: false
+ *         description: Whether to perform a full sync of all Hevy data.
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               providerId:
+ *                 type: string
+ *                 description: The unique identifier of the Hevy provider to sync.
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Start date for the sync range (YYYY-MM-DD).
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 description: End date for the sync range (YYYY-MM-DD).
+ *               fullSync:
+ *                 type: boolean
+ *                 description: Whether to perform a full sync of all Hevy data.
+ *     responses:
+ *       200:
+ *         description: Hevy data sync completed successfully.
+ *       401:
+ *         description: Invalid Hevy API Key.
+ *       500:
+ *         description: Error initiating manual Hevy sync.
  */
 router.post("/sync", authMiddleware.authenticate, async (req, res) => {
   try {
@@ -54,10 +91,32 @@ router.post("/sync", authMiddleware.authenticate, async (req, res) => {
 
 /**
  * @swagger
- * /api/integrations/hevy/status:
+ * /integrations/hevy/status:
  *   get:
  *     summary: Get Hevy connection status
  *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Hevy connection status retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isConnected:
+ *                   type: boolean
+ *                   description: Whether the user has a connected Hevy account.
+ *                 lastSyncAt:
+ *                   type: string
+ *                   format: date-time
+ *                   nullable: true
+ *                   description: The date and time of the last successful data sync.
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Error getting Hevy status.
  */
 router.get("/status", authMiddleware.authenticate, async (req, res) => {
   try {

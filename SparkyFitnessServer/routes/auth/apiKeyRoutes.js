@@ -9,7 +9,9 @@ const { auth } = require('../../auth');
  *   post:
  *     summary: Generate an API key for the current user
  *     tags: [Identity & Security]
- *     description: Creates a new Better Auth API key for the currently authenticated user.
+ *     description: Creates a new API key for the currently authenticated user.
+ *     security:
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -21,14 +23,37 @@ const { auth } = require('../../auth');
  *             properties:
  *               name:
  *                 type: string
+ *                 description: A descriptive name for the API key.
  *               expiresIn:
  *                 type: number
- *                 description: Expiration time in seconds
+ *                 description: Expiration time in seconds. Defaults to 1 year (31536000).
  *     responses:
  *       201:
  *         description: API key generated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 apiKey:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     key:
+ *                       type: string
+ *                       description: The API key value. Only returned on creation.
+ *                     name:
+ *                       type: string
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
  *       400:
- *         description: Invalid request body.
+ *         description: Name is required.
+ *       401:
+ *         description: Unauthorized.
  */
 router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
   const { name, expiresIn } = req.body;
@@ -64,16 +89,28 @@ router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
  *   delete:
  *     summary: Delete an API key
  *     tags: [Identity & Security]
- *     description: Deletes a specific Better Auth API key for the currently authenticated user.
+ *     description: Deletes a specific API key for the currently authenticated user.
+ *     security:
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: apiKeyId
  *         required: true
  *         schema:
  *           type: string
+ *         description: The ID of the API key to delete.
  *     responses:
  *       200:
  *         description: API key deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized.
  *       404:
  *         description: API key not found.
  */
@@ -101,10 +138,28 @@ router.delete('/user/api-key/:apiKeyId', authenticate, async (req, res, next) =>
  *   get:
  *     summary: Get the current user's API keys
  *     tags: [Identity & Security]
- *     description: Retrieves a list of Better Auth API keys for the currently authenticated user.
+ *     description: Retrieves a list of API keys for the currently authenticated user.
+ *     security:
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: A list of API keys.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *       401:
+ *         description: Unauthorized.
  */
 router.get('/user-api-keys', authenticate, async (req, res, next) => {
   try {

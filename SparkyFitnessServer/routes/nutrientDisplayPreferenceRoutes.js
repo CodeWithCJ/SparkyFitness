@@ -49,7 +49,7 @@ const { authenticate } = require('../middleware/authMiddleware');
 
 /**
  * @swagger
- * /nutrient-display-preferences:
+ * /preferences/nutrient-display:
  *   get:
  *     summary: Get all nutrient display preferences for the logged-in user
  *     tags: [Nutrition & Meals]
@@ -81,7 +81,7 @@ router.get('/', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /nutrient-display-preferences/{viewGroup}/{platform}:
+ * /preferences/nutrient-display/{viewGroup}/{platform}:
  *   put:
  *     summary: Upsert a nutrient display preference
  *     tags: [Nutrition & Meals]
@@ -140,7 +140,7 @@ router.put('/:viewGroup/:platform', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /nutrient-display-preferences/{viewGroup}/{platform}:
+ * /preferences/nutrient-display/{viewGroup}/{platform}:
  *   delete:
  *     summary: Reset a nutrient display preference to default
  *     tags: [Nutrition & Meals]

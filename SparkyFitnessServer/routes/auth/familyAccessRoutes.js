@@ -10,12 +10,35 @@ const { log } = require('../../config/logging');
  *   get:
  *     summary: Get accessible users
  *     tags: [Identity & Security]
- *     description: Retrieves a list of users that the current authenticated user has access to.
+ *     description: Retrieves a list of users that the current authenticated user has access to via family access.
+ *     security:
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: A list of accessible users.
- *       403:
- *         description: User is not authorized to access this resource.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   user_id:
+ *                     type: string
+ *                     format: uuid
+ *                   full_name:
+ *                     type: string
+ *                   email:
+ *                     type: string
+ *                     format: email
+ *                   permissions:
+ *                     type: object
+ *                   access_end_date:
+ *                     type: string
+ *                     format: date-time
+ *                     nullable: true
+ *       401:
+ *         description: Unauthorized.
  */
 router.get('/users/accessible-users', authenticate, async (req, res, next) => {
   try {
@@ -33,6 +56,8 @@ router.get('/users/accessible-users', authenticate, async (req, res, next) => {
  *     summary: Check if the current user can access another user's data
  *     tags: [Identity & Security]
  *     description: Verifies if the authenticated user has permission to access specific data of another user.
+ *     security:
+ *       - cookieAuth: []
  *     parameters:
  *       - in: query
  *         name: targetUserId
@@ -40,16 +65,27 @@ router.get('/users/accessible-users', authenticate, async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: The ID of the user whose data to check access for.
  *       - in: query
  *         name: permissionType
  *         required: true
  *         schema:
  *           type: string
+ *         description: The type of permission to check (e.g., "diary", "measurements").
  *     responses:
  *       200:
  *         description: Access check result.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 canAccess:
+ *                   type: boolean
  *       400:
  *         description: Missing targetUserId or permissionType.
+ *       401:
+ *         description: Unauthorized.
  */
 router.get('/access/can-access-user-data', authenticate, async (req, res, next) => {
   const { targetUserId, permissionType } = req.query;
@@ -73,6 +109,8 @@ router.get('/access/can-access-user-data', authenticate, async (req, res, next) 
  *     summary: Check family access permissions
  *     tags: [Identity & Security]
  *     description: Checks if the authenticated user has family access permissions to another user's data.
+ *     security:
+ *       - cookieAuth: []
  *     parameters:
  *       - in: query
  *         name: ownerUserId
@@ -80,16 +118,27 @@ router.get('/access/can-access-user-data', authenticate, async (req, res, next) 
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: The ID of the data owner to check access for.
  *       - in: query
  *         name: permission
  *         required: true
  *         schema:
  *           type: string
+ *         description: The permission type to check.
  *     responses:
  *       200:
  *         description: Family access check result.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 hasAccess:
+ *                   type: boolean
  *       400:
  *         description: Missing ownerUserId or permission.
+ *       401:
+ *         description: Unauthorized.
  */
 router.get('/access/check-family-access', authenticate, async (req, res, next) => {
   const { ownerUserId, permission } = req.query;
@@ -123,29 +172,9 @@ router.get('/access/check-family-access', authenticate, async (req, res, next) =
  *             schema:
  *               type: array
  *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                     format: uuid
- *                     description: The ID of the family access entry.
- *                   owner_user_id:
- *                     type: string
- *                     format: uuid
- *                     description: The ID of the user who owns the data.
- *                   family_user_id:
- *                     type: string
- *                     format: uuid
- *                     description: The ID of the family member who has access.
- *                   family_email:
- *                     type: string
- *                     format: email
- *                     description: The email of the family member.
- *                   access_permissions:
- *                     type: object
- *                     description: JSONB object defining the access permissions.
+ *                 $ref: '#/components/schemas/FamilyAccessEntry'
  *       401:
- *         description: Unauthorized, authentication token is missing or invalid.
+ *         description: Unauthorized.
  *       500:
  *         description: Server error.
  */
@@ -195,13 +224,25 @@ router.get('/family-access', authenticate, async (req, res, next) => {
  *               access_permissions:
  *                 type: object
  *                 description: JSONB object defining the access permissions.
+ *               access_end_date:
+ *                 type: string
+ *                 format: date-time
+ *                 nullable: true
+ *                 description: When the access should expire.
+ *               status:
+ *                 type: string
+ *                 description: Status of the entry (e.g., "pending").
  *     responses:
  *       201:
  *         description: Family access entry created successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FamilyAccessEntry'
  *       400:
  *         description: Missing required fields.
  *       401:
- *         description: Unauthorized, authentication token is missing or invalid.
+ *         description: Unauthorized.
  *       403:
  *         description: User is not authorized to create this entry.
  *       500:
@@ -251,7 +292,7 @@ router.post('/family-access', authenticate, async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
- *           description: The ID of the family access entry to update.
+ *         description: The ID of the family access entry to update.
  *     requestBody:
  *       required: true
  *       content:
@@ -259,24 +300,31 @@ router.post('/family-access', authenticate, async (req, res, next) => {
  *           schema:
  *             type: object
  *             properties:
- *               family_user_id:
- *                 type: string
- *                 format: uuid
- *                 description: The ID of the family member.
- *               family_email:
- *                 type: string
- *                 format: email
- *                 description: The email of the family member.
  *               access_permissions:
  *                 type: object
  *                 description: JSONB object defining the access permissions.
+ *               access_end_date:
+ *                 type: string
+ *                 format: date-time
+ *                 nullable: true
+ *                 description: When the access should expire.
+ *               is_active:
+ *                 type: boolean
+ *                 description: Whether this access entry is active.
+ *               status:
+ *                 type: string
+ *                 description: Status of the entry (e.g., "pending", "accepted").
  *     responses:
  *       200:
  *         description: Family access entry updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FamilyAccessEntry'
  *       400:
  *         description: Family Access ID is required.
  *       401:
- *         description: Unauthorized, authentication token is missing or invalid.
+ *         description: Unauthorized.
  *       403:
  *         description: User is not authorized to update this entry.
  *       404:
@@ -339,7 +387,7 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
  *       400:
  *         description: Family Access ID is required.
  *       401:
- *         description: Unauthorized, authentication token is missing or invalid.
+ *         description: Unauthorized.
  *       403:
  *         description: User is not authorized to delete this entry.
  *       404:

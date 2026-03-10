@@ -93,6 +93,12 @@ router.post('/health-data', express.text({ type: '*/*' }), async (req, res, next
  *         schema:
  *           type: string
  *           format: date
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID to fetch data for another user (requires permission).
  *     responses:
  *       200:
  *         description: Water intake data.
@@ -100,6 +106,8 @@ router.post('/health-data', express.text({ type: '*/*' }), async (req, res, next
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/WaterIntake'
+ *       403:
+ *         description: Forbidden.
  */
 router.get('/water-intake/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { date } = req.params;
@@ -387,7 +395,7 @@ router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMi
  * /measurements/check-in/{date}:
  *   get:
  *     summary: Get check-in measurements for a specific date
- *     tags: [Nutrition & Meals]
+ *     tags: [Wellness & Metrics]
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -402,9 +410,12 @@ router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMi
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: Optional user ID to fetch data for another user (requires permission).
  *     responses:
  *       200:
  *         description: Check-in measurements for the date.
+ *       403:
+ *         description: Forbidden.
  *       500:
  *         description: Internal server error.
  */
@@ -742,7 +753,34 @@ router.delete('/custom-categories/:id', authenticate, checkPermissionMiddleware(
   }
 });
 
-// Endpoint to fetch custom measurement entries for a specific user and date
+/**
+ * @swagger
+ * /measurements/custom-entries/{date}:
+ *   get:
+ *     summary: Get custom measurement entries for a specific date
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: The date to fetch entries for (YYYY-MM-DD).
+ *     responses:
+ *       200:
+ *         description: A list of custom measurement entries for the date.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/CustomMeasurementEntry'
+ *       403:
+ *         description: Forbidden.
+ */
 router.get('/custom-entries/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
   const { date } = req.params;
   if (!date) {

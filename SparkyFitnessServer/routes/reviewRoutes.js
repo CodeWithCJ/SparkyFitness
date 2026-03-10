@@ -5,7 +5,7 @@ const reviewService = require('../services/reviewService');
 
 /**
  * @swagger
- * /reviews/needs-review-count:
+ * /review/needs-review-count:
  *   get:
  *     summary: Get the count of items needing review
  *     tags: [System & Admin]
@@ -32,7 +32,7 @@ router.get('/needs-review-count', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /reviews/needs-review:
+ * /review/needs-review:
  *   get:
  *     summary: Get the list of items needing review
  *     tags: [System & Admin]

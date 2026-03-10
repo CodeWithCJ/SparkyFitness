@@ -27,7 +27,7 @@ router.use(authenticate);
  *     tags: [Nutrition & Meals]
  *     description: Retrieves all meal types available to the user, including system defaults and custom meal types.
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: A list of meal types.
@@ -61,7 +61,7 @@ router.get("/", async (req, res) => {
  *     tags: [Nutrition & Meals]
  *     description: Retrieves a single meal type by its ID.
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -110,7 +110,7 @@ router.get("/:id", async (req, res) => {
  *     tags: [Nutrition & Meals]
  *     description: Creates a new custom meal type for the authenticated user.
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -176,7 +176,7 @@ router.post("/", async (req, res) => {
  *     tags: [Nutrition & Meals]
  *     description: Updates an existing custom meal type. System default meal types cannot be updated.
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -256,7 +256,7 @@ router.put("/:id", async (req, res) => {
  *     tags: [Nutrition & Meals]
  *     description: Deletes a custom meal type. System default meal types cannot be deleted.
  *     security:
- *       - bearerAuth: []
+ *       - cookieAuth: []
  *     parameters:
  *       - in: path
  *         name: id

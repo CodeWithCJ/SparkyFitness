@@ -25,7 +25,7 @@ const upload = multer({ storage: storage });
 /**
  * @swagger
  * tags:
- *   name: Fitness & Workouts
+ *   name: Exercise & Workouts
  *   description: Exercise database, workout presets, and activity logging.
  */
 
@@ -144,9 +144,16 @@ router.get('/', authenticate, async (req, res, next) => {
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Exercise'
+ *               type: object
+ *               properties:
+ *                 recentExercises:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Exercise'
+ *                 topExercises:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Exercise'
  *       403:
  *         description: Forbidden, if the user does not have access.
  *       500:
@@ -682,7 +689,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
- * /exercises/:
+ * /exercises:
  *   post:
  *     summary: Create a new exercise
  *     tags:
@@ -764,12 +771,20 @@ router.post('/', authenticate, upload.array('images', 10), async (req, res, next
  *               properties:
  *                 message:
  *                   type: string
- *                 importedCount:
+ *                 created:
  *                   type: integer
- *                 errors:
+ *                   description: Number of exercises created.
+ *                 updated:
+ *                   type: integer
+ *                   description: Number of exercises updated.
+ *                 failed:
+ *                   type: integer
+ *                   description: Number of exercises that failed to import.
+ *                 failedRows:
  *                   type: array
  *                   items:
- *                     type: string
+ *                     type: object
+ *                   description: Details about rows that failed to import.
  *       500:
  *         description: Server error.
  */
@@ -815,16 +830,35 @@ router.post('/import', authenticate, upload.single('file'), async (req, res, nex
  *               properties:
  *                 message:
  *                   type: string
- *                 importedCount:
+ *                 created:
  *                   type: integer
- *                 errors:
+ *                   description: Number of exercises created.
+ *                 updated:
+ *                   type: integer
+ *                   description: Number of exercises updated.
+ *                 failed:
+ *                   type: integer
+ *                   description: Number of exercises that failed to import.
+ *                 failedRows:
  *                   type: array
  *                   items:
- *                     type: string
+ *                     type: object
+ *                   description: Details about rows that failed to import.
  *       400:
  *         description: Bad request, if data format is invalid.
  *       409:
- *         description: Conflict, if there are duplicate exercises.
+ *         description: Conflict - duplicate exercises detected.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 duplicates:
+ *                   type: array
+ *                   items:
+ *                     type: object
  *       500:
  *         description: Server error.
  */
@@ -950,15 +984,32 @@ router.put('/:id', authenticate, upload.array('images', 10), async (req, res, ne
  *             schema:
  *               type: object
  *               properties:
- *                 canDelete:
- *                   type: boolean
- *                   description: Indicates if the exercise can be safely deleted.
- *                 linkedEntries:
+ *                 exerciseEntriesCount:
  *                   type: integer
- *                   description: Number of exercise entries linked to this exercise.
- *                 message:
- *                   type: string
- *                   description: A message explaining the deletion impact.
+ *                   description: Number of exercise entries using this exercise.
+ *                 workoutPlansCount:
+ *                   type: integer
+ *                   description: Number of workout plans using this exercise.
+ *                 workoutPresetsCount:
+ *                   type: integer
+ *                   description: Number of workout presets using this exercise.
+ *                 totalReferences:
+ *                   type: integer
+ *                   description: Total number of references to this exercise.
+ *                 currentUserReferences:
+ *                   type: integer
+ *                   description: Number of references owned by the current user.
+ *                 otherUserReferences:
+ *                   type: integer
+ *                   description: Number of references owned by other users.
+ *                 isPubliclyShared:
+ *                   type: boolean
+ *                   description: Whether the exercise is shared publicly.
+ *                 familySharedUsers:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: List of family members using this exercise.
  *       400:
  *         description: Bad request, if exercise ID is invalid.
  *       403:
@@ -1156,48 +1207,6 @@ router.post(
  * @swagger
  * /exercises/garmin-activity-details/{exerciseEntryId}:
  *   get:
- *     summary: Retrieve Garmin activity details by exercise entry ID
- *     tags:
- *       - Exercise & Workouts
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: exerciseEntryId
- *         schema:
- *           type: string
- *           format: uuid
- *         required: true
- *         description: The ID of the exercise entry to retrieve Garmin details for.
- *     responses:
- *       200:
- *         description: Garmin activity details.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 garminActivityId:
- *                   type: string
- *                 activityType:
- *                   type: string
- *                 duration:
- *                   type: number
- *                 calories:
- *                   type: number
- *                 distance:
- *                   type: number
- *       400:
- *         description: Bad request, if exercise entry ID is invalid.
- *       404:
- *         description: Garmin activity details not found for this exercise entry.
- *       500:
- *         description: Server error.
- */
-/**
- * @swagger
- * /exercises/garmin-activity-details/{exerciseEntryId}:
- *   get:
  *     summary: Retrieve detailed Garmin activity data for an exercise entry
  *     tags:
  *       - Exercise & Workouts
@@ -1273,16 +1282,14 @@ router.get('/garmin-activity-details/:exerciseEntryId', authenticate, async (req
  *             schema:
  *               type: object
  *               properties:
- *                 activityId:
- *                   type: string
- *                 activityType:
- *                   type: string
- *                 duration:
- *                   type: number
- *                 calories:
- *                   type: number
- *                 distance:
- *                   type: number
+ *                 activity:
+ *                   type: object
+ *                   nullable: true
+ *                   description: Provider-specific activity detail data.
+ *                 workout:
+ *                   type: object
+ *                   nullable: true
+ *                   description: Provider-specific workout detail data.
  *       400:
  *         description: Bad request, if exercise entry ID or provider name is invalid.
  *       404:

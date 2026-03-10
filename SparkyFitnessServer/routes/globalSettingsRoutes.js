@@ -62,7 +62,7 @@ router.put('/', isAdmin, async (req, res) => {
 
 /**
  * @swagger
- * /api/global-settings/allow-user-ai-config:
+ * /global-settings/allow-user-ai-config:
  *   get:
  *     summary: Check if users are allowed to configure AI services (Public)
  *     tags: [System & Admin]

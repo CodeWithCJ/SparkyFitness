@@ -8,7 +8,7 @@ const workoutPlanTemplateService = require('../services/workoutPlanTemplateServi
  * /workout-plan-templates:
  *   post:
  *     summary: Create a new workout plan template
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Creates a new workout plan template for the authenticated user.
  *     security:
  *       - cookieAuth: []
@@ -17,7 +17,14 @@ const workoutPlanTemplateService = require('../services/workoutPlanTemplateServi
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/WorkoutPlanTemplate'
+ *             allOf:
+ *               - $ref: '#/components/schemas/WorkoutPlanTemplate'
+ *               - type: object
+ *                 properties:
+ *                   currentClientDate:
+ *                     type: string
+ *                     format: date
+ *                     description: The current date on the client (YYYY-MM-DD). Used for date-sensitive operations like deactivating overlapping plans.
  *     responses:
  *       201:
  *         description: The workout plan template was created successfully.
@@ -45,7 +52,7 @@ router.post('/', authenticate, async (req, res, next) => {
  * /workout-plan-templates:
  *   get:
  *     summary: Get all workout plan templates
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Retrieves all workout plan templates for the authenticated user.
  *     security:
  *       - cookieAuth: []
@@ -77,7 +84,7 @@ router.get('/', authenticate, async (req, res, next) => {
  * /workout-plan-templates/{id}:
  *   get:
  *     summary: Get a specific workout plan template by ID
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Retrieves a specific workout plan template by its ID.
  *     security:
  *       - cookieAuth: []
@@ -125,7 +132,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
  * /workout-plan-templates/{id}:
  *   put:
  *     summary: Update an existing workout plan template
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Updates an existing workout plan template.
  *     security:
  *       - cookieAuth: []
@@ -142,7 +149,14 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/WorkoutPlanTemplate'
+ *             allOf:
+ *               - $ref: '#/components/schemas/WorkoutPlanTemplate'
+ *               - type: object
+ *                 properties:
+ *                   currentClientDate:
+ *                     type: string
+ *                     format: date
+ *                     description: The current date on the client (YYYY-MM-DD). Used for date-sensitive operations like deactivating overlapping plans.
  *     responses:
  *       200:
  *         description: The workout plan template was updated successfully.
@@ -180,7 +194,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
  * /workout-plan-templates/{id}:
  *   delete:
  *     summary: Delete a workout plan template
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Deletes a specific workout plan template.
  *     security:
  *       - cookieAuth: []
@@ -195,6 +209,14 @@ router.put('/:id', authenticate, async (req, res, next) => {
  *     responses:
  *       200:
  *         description: Workout plan template deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Workout plan template deleted successfully.
  *       401:
  *         description: Unauthorized.
  *       403:
@@ -224,8 +246,8 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  * /workout-plan-templates/active/{date}:
  *   get:
  *     summary: Get the active workout plan for a specific date
- *     tags: [Fitness & Workouts]
- *     description: Retrieves the active workout plan for the authenticated user on a given date.
+ *     tags: [Exercise & Workouts]
+ *     description: Retrieves the active workout plan for the authenticated user on a given date. Returns null if no active plan exists for the specified date.
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -238,11 +260,13 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *         description: The date to check for an active plan (YYYY-MM-DD).
  *     responses:
  *       200:
- *         description: The active workout plan for the date.
+ *         description: The active workout plan for the date, or null if none exists.
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/WorkoutPlanTemplate'
+ *               nullable: true
+ *               allOf:
+ *                 - $ref: '#/components/schemas/WorkoutPlanTemplate'
  *       401:
  *         description: Unauthorized.
  *       500:

@@ -8,7 +8,7 @@ const workoutPresetService = require('../services/workoutPresetService');
  * /workout-presets:
  *   post:
  *     summary: Create a new workout preset
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Creates a new workout preset for the authenticated user.
  *     security:
  *       - cookieAuth: []
@@ -17,7 +17,34 @@ const workoutPresetService = require('../services/workoutPresetService');
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/WorkoutPreset'
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: The name of the workout preset.
+ *               description:
+ *                 type: string
+ *                 description: A description of the workout preset.
+ *               is_public:
+ *                 type: boolean
+ *                 description: Whether the preset is publicly visible to other users.
+ *               exercises:
+ *                 type: array
+ *                 description: The exercises included in this preset.
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     exercise_id:
+ *                       type: string
+ *                       format: uuid
+ *                     sort_order:
+ *                       type: integer
+ *                     sets:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/WorkoutSet'
  *     responses:
  *       201:
  *         description: The workout preset was created successfully.
@@ -44,7 +71,7 @@ router.post('/', authenticate, async (req, res, next) => {
  * /workout-presets:
  *   get:
  *     summary: Get all workout presets
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Retrieves all workout presets available to the authenticated user (including public ones).
  *     security:
  *       - cookieAuth: []
@@ -100,7 +127,7 @@ router.get('/', authenticate, async (req, res, next) => {
  * /workout-presets/{id}:
  *   get:
  *     summary: Get a specific workout preset by ID
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Retrieves a specific workout preset by its ID.
  *     security:
  *       - cookieAuth: []
@@ -148,7 +175,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
  * /workout-presets/{id}:
  *   put:
  *     summary: Update an existing workout preset
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Updates an existing workout preset.
  *     security:
  *       - cookieAuth: []
@@ -165,7 +192,32 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/WorkoutPreset'
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: The name of the workout preset.
+ *               description:
+ *                 type: string
+ *                 description: A description of the workout preset.
+ *               is_public:
+ *                 type: boolean
+ *                 description: Whether the preset is publicly visible to other users.
+ *               exercises:
+ *                 type: array
+ *                 description: The exercises included in this preset.
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     exercise_id:
+ *                       type: string
+ *                       format: uuid
+ *                     sort_order:
+ *                       type: integer
+ *                     sets:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/WorkoutSet'
  *     responses:
  *       200:
  *         description: The workout preset was updated successfully.
@@ -202,7 +254,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
  * /workout-presets/{id}:
  *   delete:
  *     summary: Delete a workout preset
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Deletes a specific workout preset.
  *     security:
  *       - cookieAuth: []
@@ -217,6 +269,14 @@ router.put('/:id', authenticate, async (req, res, next) => {
  *     responses:
  *       200:
  *         description: Workout preset deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Workout preset deleted successfully.
  *       401:
  *         description: Unauthorized.
  *       403:
@@ -246,7 +306,7 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  * /workout-presets/search:
  *   get:
  *     summary: Search for workout presets
- *     tags: [Fitness & Workouts]
+ *     tags: [Exercise & Workouts]
  *     description: Searches for workout presets based on a name search term.
  *     security:
  *       - cookieAuth: []

@@ -48,6 +48,10 @@ const options = {
               type: 'string',
               description: 'The category of the exercise (e.g., "Strength", "Cardio").',
             },
+            description: {
+              type: 'string',
+              description: 'A detailed description of the exercise.',
+            },
             equipment: {
               type: 'array',
               items: {
@@ -55,16 +59,19 @@ const options = {
               },
               description: 'A list of equipment required for the exercise.',
             },
-            muscle_groups: {
+            primary_muscles: {
               type: 'array',
               items: {
                 type: 'string',
               },
-              description: 'A list of muscle groups targeted by the exercise.',
+              description: 'Primary muscle groups targeted by the exercise.',
             },
-            description: {
-              type: 'string',
-              description: 'A detailed description of the exercise.',
+            secondary_muscles: {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+              description: 'Secondary muscle groups targeted by the exercise.',
             },
             instructions: {
               type: 'array',
@@ -80,9 +87,45 @@ const options = {
               },
               description: 'URLs or paths to images demonstrating the exercise.',
             },
-            is_public: {
+            source: {
+              type: 'string',
+              description: 'The origin of the exercise data (e.g., "Manual", "Wger", "FreeExerciseDB").',
+            },
+            source_id: {
+              type: 'string',
+              description: 'The identifier from the external source, if applicable.',
+            },
+            force: {
+              type: 'string',
+              nullable: true,
+              description: 'The force type of the exercise (e.g., "push", "pull", "static").',
+            },
+            level: {
+              type: 'string',
+              nullable: true,
+              description: 'The difficulty level (e.g., "beginner", "intermediate", "expert").',
+            },
+            mechanic: {
+              type: 'string',
+              nullable: true,
+              description: 'The mechanic type (e.g., "compound", "isolation").',
+            },
+            calories_per_hour: {
+              type: 'number',
+              nullable: true,
+              description: 'Estimated calories burned per hour for this exercise.',
+            },
+            is_custom: {
+              type: 'boolean',
+              description: 'Whether the exercise was created by the user.',
+            },
+            shared_with_public: {
               type: 'boolean',
               description: 'Indicates if the exercise is publicly available.',
+            },
+            is_quick_exercise: {
+              type: 'boolean',
+              description: 'Whether the exercise is a quick-log exercise (no sets/reps tracking).',
             },
             created_at: {
               type: 'string',
@@ -511,6 +554,20 @@ const options = {
               format: 'uuid',
               description: 'The ID of the exercise performed.',
             },
+            exercise_name: {
+              type: 'string',
+              description: 'Snapshot of the exercise name at time of logging.',
+            },
+            calories_per_hour: {
+              type: 'number',
+              nullable: true,
+              description: 'Snapshot of the exercise calories per hour.',
+            },
+            category: {
+              type: 'string',
+              nullable: true,
+              description: 'Snapshot of the exercise category.',
+            },
             duration_minutes: {
               type: 'number',
               description: 'The duration of the exercise in minutes.',
@@ -530,51 +587,124 @@ const options = {
             },
             sets: {
               type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  reps: {
-                    type: 'number',
-                  },
-                  weight: {
-                    type: 'number',
-                  },
-                  duration: {
-                    type: 'number',
-                  },
-                },
-              },
-              description: 'Details of sets performed (reps, weight, duration).',
-            },
-            reps: {
-              type: 'number',
-              description: 'Total repetitions (if not detailed in sets).',
-            },
-            weight: {
-              type: 'number',
-              description: 'Weight used (if not detailed in sets).',
+              items: { $ref: '#/components/schemas/WorkoutSet' },
+              description: 'Details of sets performed.',
             },
             workout_plan_assignment_id: {
               type: 'string',
               format: 'uuid',
+              nullable: true,
               description: 'The ID of the workout plan assignment this entry belongs to.',
+            },
+            exercise_preset_entry_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'The ID of the exercise preset entry this belongs to.',
             },
             image_url: {
               type: 'string',
-              format: 'url',
+              nullable: true,
               description: 'URL to an image associated with the exercise entry.',
             },
             distance: {
               type: 'number',
+              nullable: true,
               description: 'Distance covered for cardio exercises.',
             },
             avg_heart_rate: {
               type: 'number',
+              nullable: true,
               description: 'Average heart rate during the exercise.',
             },
+            sort_order: {
+              type: 'integer',
+              nullable: true,
+              description: 'Ordering of the entry within a day.',
+            },
+            source: {
+              type: 'string',
+              nullable: true,
+              description: 'Snapshot of the exercise source provider.',
+            },
+            source_id: {
+              type: 'string',
+              nullable: true,
+              description: 'Snapshot of the exercise source identifier.',
+            },
+            force: {
+              type: 'string',
+              nullable: true,
+              description: 'Snapshot of the exercise force type.',
+            },
+            level: {
+              type: 'string',
+              nullable: true,
+              description: 'Snapshot of the exercise difficulty level.',
+            },
+            mechanic: {
+              type: 'string',
+              nullable: true,
+              description: 'Snapshot of the exercise mechanic type.',
+            },
+            equipment: {
+              type: 'array',
+              items: { type: 'string' },
+              nullable: true,
+              description: 'Snapshot of the exercise equipment.',
+            },
+            primary_muscles: {
+              type: 'array',
+              items: { type: 'string' },
+              nullable: true,
+              description: 'Snapshot of the exercise primary muscles.',
+            },
+            secondary_muscles: {
+              type: 'array',
+              items: { type: 'string' },
+              nullable: true,
+              description: 'Snapshot of the exercise secondary muscles.',
+            },
+            instructions: {
+              type: 'array',
+              items: { type: 'string' },
+              nullable: true,
+              description: 'Snapshot of the exercise instructions.',
+            },
+            images: {
+              type: 'array',
+              items: { type: 'string' },
+              nullable: true,
+              description: 'Snapshot of the exercise image URLs.',
+            },
             activity_details: {
-              type: 'object',
-              description: 'Additional activity-specific details (JSONB).',
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  exercise_entry_id: { type: 'string', format: 'uuid', nullable: true },
+                  exercise_preset_entry_id: { type: 'string', format: 'uuid', nullable: true },
+                  provider_name: { type: 'string', description: 'The provider name (e.g., "garmin", "strava").' },
+                  detail_type: { type: 'string', description: 'The type of detail (e.g., "activity_summary").' },
+                  detail_data: { type: 'object', description: 'Provider-specific activity data.' },
+                  created_at: { type: 'string', format: 'date-time' },
+                  updated_at: { type: 'string', format: 'date-time' },
+                },
+              },
+              description: 'Activity details from external providers.',
+            },
+            created_by_user_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'The ID of the user who created this entry.',
+            },
+            updated_by_user_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'The ID of the user who last updated this entry.',
             },
             created_at: {
               type: 'string',
@@ -638,6 +768,12 @@ const options = {
               format: 'date-time',
               description: 'The date and time when the entry was last updated.',
             },
+            created_by_user_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'The ID of the user who created this entry.',
+            },
           },
           required: ['user_id', 'workout_preset_id', 'name', 'entry_date'],
         },
@@ -679,7 +815,7 @@ const options = {
             },
             status: {
               type: 'string',
-              enum: ['ACTIVE', 'COMPLETED'],
+              enum: ['ACTIVE', 'COMPLETED', 'CANCELLED'],
               description: 'The status of the fasting log.',
             },
             created_at: {
@@ -712,6 +848,7 @@ const options = {
                   exercise_id: { type: 'string', format: 'uuid' },
                   exercise_name: { type: 'string' },
                   image_url: { type: 'string', nullable: true },
+                  sort_order: { type: 'integer', description: 'Ordering of the exercise within the preset.' },
                   sets: {
                     type: 'array',
                     items: { $ref: '#/components/schemas/WorkoutSet' }
@@ -734,7 +871,8 @@ const options = {
             weight: { type: 'number', nullable: true },
             duration: { type: 'integer', nullable: true, description: 'Duration in seconds' },
             rest_time: { type: 'integer', nullable: true, description: 'Rest time in seconds' },
-            notes: { type: 'string', nullable: true }
+            notes: { type: 'string', nullable: true },
+            rpe: { type: 'number', nullable: true, description: 'Rate of Perceived Exertion (exercise entry sets only).' }
           },
           required: ['set_number', 'set_type']
         },
@@ -759,6 +897,7 @@ const options = {
                   workout_preset_name: { type: 'string', nullable: true },
                   exercise_id: { type: 'string', format: 'uuid', nullable: true },
                   exercise_name: { type: 'string', nullable: true },
+                  sort_order: { type: 'integer', description: 'Ordering of the assignment within the plan.' },
                   sets: {
                     type: 'array',
                     items: { $ref: '#/components/schemas/WorkoutSet' }
@@ -814,8 +953,25 @@ const options = {
             bedtime: { type: 'string', format: 'date-time' },
             wake_time: { type: 'string', format: 'date-time' },
             duration_in_seconds: { type: 'integer' },
+            time_asleep_in_seconds: { type: 'integer', nullable: true },
             source: { type: 'string' },
-            sleep_score: { type: 'integer', nullable: true },
+            sleep_score: { type: 'number', nullable: true },
+            deep_sleep_seconds: { type: 'integer', nullable: true },
+            light_sleep_seconds: { type: 'integer', nullable: true },
+            rem_sleep_seconds: { type: 'integer', nullable: true },
+            awake_sleep_seconds: { type: 'integer', nullable: true },
+            average_spo2_value: { type: 'number', nullable: true },
+            lowest_spo2_value: { type: 'number', nullable: true },
+            highest_spo2_value: { type: 'number', nullable: true },
+            average_respiration_value: { type: 'number', nullable: true },
+            lowest_respiration_value: { type: 'number', nullable: true },
+            highest_respiration_value: { type: 'number', nullable: true },
+            awake_count: { type: 'integer', nullable: true },
+            avg_sleep_stress: { type: 'number', nullable: true },
+            restless_moments_count: { type: 'integer', nullable: true },
+            avg_overnight_hrv: { type: 'number', nullable: true },
+            body_battery_change: { type: 'number', nullable: true },
+            resting_heart_rate: { type: 'number', nullable: true },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' }
           },
@@ -846,24 +1002,22 @@ const options = {
             id: { type: 'string', format: 'uuid' },
             user_id: { type: 'string', format: 'uuid' },
             entry_date: { type: 'string', format: 'date' },
-            total_volume: { type: 'number' },
-            servings_count: { type: 'number' },
-            container_id: { type: 'string', format: 'uuid', nullable: true },
+            water_ml: { type: 'number', description: 'Water intake in milliliters.' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' }
           },
-          required: ['entry_date', 'total_volume']
+          required: ['entry_date', 'water_ml']
         },
         WaterContainer: {
           type: 'object',
           properties: {
-            id: { type: 'string', format: 'uuid' },
+            id: { type: 'integer', description: 'Auto-incrementing primary key.' },
             user_id: { type: 'string', format: 'uuid' },
             name: { type: 'string' },
-            volume: { type: 'number', description: 'Volume in specified unit' },
-            unit: { type: 'string', description: 'ml, oz, etc.' },
+            volume: { type: 'number', description: 'Volume in specified unit.' },
+            unit: { type: 'string', description: 'Unit of measurement (e.g., ml, oz, cup).' },
             is_primary: { type: 'boolean' },
-            servings_per_container: { type: 'number' },
+            servings_per_container: { type: 'integer' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' }
           },
@@ -877,12 +1031,11 @@ const options = {
             entry_date: { type: 'string', format: 'date' },
             weight: { type: 'number', nullable: true },
             body_fat_percentage: { type: 'number', nullable: true },
-            waist_circumference: { type: 'number', nullable: true },
-            hip_circumference: { type: 'number', nullable: true },
-            chest_circumference: { type: 'number', nullable: true },
-            thigh_circumference: { type: 'number', nullable: true },
-            bicep_circumference: { type: 'number', nullable: true },
-            neck_circumference: { type: 'number', nullable: true },
+            neck: { type: 'number', nullable: true, description: 'Neck circumference.' },
+            waist: { type: 'number', nullable: true, description: 'Waist circumference.' },
+            hips: { type: 'number', nullable: true, description: 'Hip circumference.' },
+            steps: { type: 'integer', nullable: true },
+            height: { type: 'number', nullable: true },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' }
           },
@@ -892,15 +1045,16 @@ const options = {
           type: 'object',
           properties: {
             id: { type: 'string', format: 'uuid' },
-            user_id: { type: 'string', format: 'uuid', nullable: true },
-            category_name: { type: 'string' },
-            unit: { type: 'string', nullable: true },
+            user_id: { type: 'string', format: 'uuid' },
+            name: { type: 'string', description: 'Stable identifier name for the category.' },
+            display_name: { type: 'string', nullable: true, description: 'User-facing display name.' },
+            measurement_type: { type: 'string' },
+            frequency: { type: 'string', enum: ['All', 'Daily', 'Hourly'], description: 'How often entries can be recorded.' },
             data_type: { type: 'string', enum: ['numeric', 'boolean', 'text'] },
-            measurement_type: { type: 'string', nullable: true },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' }
           },
-          required: ['category_name', 'data_type']
+          required: ['name', 'measurement_type', 'frequency']
         },
         CustomMeasurementEntry: {
           type: 'object',
@@ -922,17 +1076,35 @@ const options = {
         UserGoal: {
           type: 'object',
           properties: {
-            goal_date: { type: 'string', format: 'date', nullable: true },
-            calories: { type: 'number' },
-            protein: { type: 'number' },
-            carbs: { type: 'number' },
-            fat: { type: 'number' },
-            water_goal_ml: { type: 'number' },
-            protein_percentage: { type: 'number' },
-            carbs_percentage: { type: 'number' },
-            fat_percentage: { type: 'number' },
-            target_exercise_calories_burned: { type: 'number', nullable: true },
-            target_exercise_duration_minutes: { type: 'integer', nullable: true }
+            goal_date: { type: 'string', format: 'date', nullable: true, description: 'The date this goal applies to. Null represents the default goal.' },
+            calories: { type: 'number', description: 'Daily calorie target.' },
+            protein: { type: 'number', description: 'Protein target in grams.' },
+            carbs: { type: 'number', description: 'Carbohydrate target in grams.' },
+            fat: { type: 'number', description: 'Fat target in grams.' },
+            water_goal_ml: { type: 'number', description: 'Daily water intake goal in milliliters.' },
+            saturated_fat: { type: 'number', nullable: true, description: 'Saturated fat target in grams.' },
+            polyunsaturated_fat: { type: 'number', nullable: true, description: 'Polyunsaturated fat target in grams.' },
+            monounsaturated_fat: { type: 'number', nullable: true, description: 'Monounsaturated fat target in grams.' },
+            trans_fat: { type: 'number', nullable: true, description: 'Trans fat target in grams.' },
+            cholesterol: { type: 'number', nullable: true, description: 'Cholesterol target in milligrams.' },
+            sodium: { type: 'number', nullable: true, description: 'Sodium target in milligrams.' },
+            potassium: { type: 'number', nullable: true, description: 'Potassium target in milligrams.' },
+            dietary_fiber: { type: 'number', nullable: true, description: 'Dietary fiber target in grams.' },
+            sugars: { type: 'number', nullable: true, description: 'Sugar target in grams.' },
+            vitamin_a: { type: 'number', nullable: true, description: 'Vitamin A target in micrograms.' },
+            vitamin_c: { type: 'number', nullable: true, description: 'Vitamin C target in milligrams.' },
+            calcium: { type: 'number', nullable: true, description: 'Calcium target in milligrams.' },
+            iron: { type: 'number', nullable: true, description: 'Iron target in milligrams.' },
+            protein_percentage: { type: 'number', nullable: true, description: 'Protein as a percentage of total calories.' },
+            carbs_percentage: { type: 'number', nullable: true, description: 'Carbs as a percentage of total calories.' },
+            fat_percentage: { type: 'number', nullable: true, description: 'Fat as a percentage of total calories.' },
+            breakfast_percentage: { type: 'number', nullable: true, description: 'Percentage of daily calories allocated to breakfast.' },
+            lunch_percentage: { type: 'number', nullable: true, description: 'Percentage of daily calories allocated to lunch.' },
+            dinner_percentage: { type: 'number', nullable: true, description: 'Percentage of daily calories allocated to dinner.' },
+            snacks_percentage: { type: 'number', nullable: true, description: 'Percentage of daily calories allocated to snacks.' },
+            target_exercise_calories_burned: { type: 'number', nullable: true, description: 'Daily exercise calorie burn target.' },
+            target_exercise_duration_minutes: { type: 'integer', nullable: true, description: 'Daily exercise duration target in minutes.' },
+            custom_nutrients: { type: 'object', nullable: true, description: 'JSONB object of custom nutrient targets keyed by nutrient definition ID.' }
           }
         },
         GoalPreset: {
@@ -940,15 +1112,35 @@ const options = {
           properties: {
             id: { type: 'string', format: 'uuid' },
             user_id: { type: 'string', format: 'uuid' },
-            preset_name: { type: 'string' },
-            calories: { type: 'number' },
-            protein: { type: 'number' },
-            carbs: { type: 'number' },
-            fat: { type: 'number' },
-            water_goal: { type: 'number' },
-            protein_percentage: { type: 'number' },
-            carbs_percentage: { type: 'number' },
-            fat_percentage: { type: 'number' }
+            preset_name: { type: 'string', description: 'Display name for the preset.' },
+            calories: { type: 'number', description: 'Daily calorie target.' },
+            protein: { type: 'number', description: 'Protein target in grams.' },
+            carbs: { type: 'number', description: 'Carbohydrate target in grams.' },
+            fat: { type: 'number', description: 'Fat target in grams.' },
+            water_goal_ml: { type: 'number', description: 'Daily water intake goal in milliliters.' },
+            saturated_fat: { type: 'number', nullable: true },
+            polyunsaturated_fat: { type: 'number', nullable: true },
+            monounsaturated_fat: { type: 'number', nullable: true },
+            trans_fat: { type: 'number', nullable: true },
+            cholesterol: { type: 'number', nullable: true },
+            sodium: { type: 'number', nullable: true },
+            potassium: { type: 'number', nullable: true },
+            dietary_fiber: { type: 'number', nullable: true },
+            sugars: { type: 'number', nullable: true },
+            vitamin_a: { type: 'number', nullable: true },
+            vitamin_c: { type: 'number', nullable: true },
+            calcium: { type: 'number', nullable: true },
+            iron: { type: 'number', nullable: true },
+            protein_percentage: { type: 'number', nullable: true, description: 'Protein as a percentage of total calories.' },
+            carbs_percentage: { type: 'number', nullable: true, description: 'Carbs as a percentage of total calories.' },
+            fat_percentage: { type: 'number', nullable: true, description: 'Fat as a percentage of total calories.' },
+            breakfast_percentage: { type: 'number', nullable: true },
+            lunch_percentage: { type: 'number', nullable: true },
+            dinner_percentage: { type: 'number', nullable: true },
+            snacks_percentage: { type: 'number', nullable: true },
+            target_exercise_calories_burned: { type: 'number', nullable: true },
+            target_exercise_duration_minutes: { type: 'integer', nullable: true },
+            custom_nutrients: { type: 'object', nullable: true, description: 'JSONB object of custom nutrient targets keyed by nutrient definition ID.' }
           },
           required: ['preset_name', 'calories']
         },
@@ -956,17 +1148,67 @@ const options = {
           type: 'object',
           properties: {
             user_id: { type: 'string', format: 'uuid' },
-            language: { type: 'string' },
-            theme: { type: 'string' },
-            timezone: { type: 'string' },
-            unit_system: { type: 'string', enum: ['metric', 'imperial'] },
-            meal_calorie_distribution: { type: 'object' }
+            language: { type: 'string', description: 'UI language code (e.g., "en").' },
+            timezone: { type: 'string', description: 'IANA timezone (e.g., "UTC", "America/New_York").' },
+            date_format: { type: 'string', description: 'Date display format (e.g., "yyyy-MM-dd").' },
+            default_weight_unit: { type: 'string', description: 'Default unit for weight (e.g., "lbs", "kg").' },
+            default_measurement_unit: { type: 'string', description: 'Default unit for body measurements (e.g., "in", "cm").' },
+            default_distance_unit: { type: 'string', description: 'Default unit for distance (e.g., "km", "mi").' },
+            energy_unit: { type: 'string', description: 'Energy display unit (e.g., "kcal", "kJ").' },
+            water_display_unit: { type: 'string', description: 'Water display unit (e.g., "ml", "oz").' },
+            item_display_limit: { type: 'integer', description: 'Number of items to display in lists.' },
+            system_prompt: { type: 'string', description: 'Custom system prompt for AI features.' },
+            auto_clear_history: { type: 'string', description: 'Auto-clear history setting (e.g., "never").' },
+            logging_level: { type: 'string', description: 'Client-side logging level (e.g., "INFO").' },
+            default_food_data_provider_id: { type: 'string', nullable: true, description: 'Default food data provider ID.' },
+            default_barcode_provider_id: { type: 'string', nullable: true, description: 'Default barcode data provider ID.' },
+            bmr_algorithm: { type: 'string', description: 'BMR calculation algorithm (e.g., "Mifflin-St Jeor").' },
+            body_fat_algorithm: { type: 'string', description: 'Body fat calculation algorithm (e.g., "U.S. Navy").' },
+            fat_breakdown_algorithm: { type: 'string', description: 'Fat breakdown calculation algorithm (e.g., "AHA Guidelines").' },
+            mineral_calculation_algorithm: { type: 'string', description: 'Mineral calculation algorithm (e.g., "RDA Standard").' },
+            vitamin_calculation_algorithm: { type: 'string', description: 'Vitamin calculation algorithm (e.g., "RDA Standard").' },
+            sugar_calculation_algorithm: { type: 'string', description: 'Sugar calculation algorithm (e.g., "WHO Guidelines").' },
+            include_bmr_in_net_calories: { type: 'boolean', description: 'Whether to include BMR in net calorie calculations.' },
+            calorie_goal_adjustment_mode: { type: 'string', description: 'How calorie goals are adjusted (e.g., "dynamic", "static").' },
+            auto_scale_open_food_facts_imports: { type: 'boolean', description: 'Whether to auto-scale imported Open Food Facts data.' },
+            exercise_calorie_percentage: { type: 'number', description: 'Percentage of exercise calories to apply to daily goal.' },
+            activity_level: { type: 'string', description: 'User activity level (e.g., "not_much", "moderate", "active").' },
+            tdee_allow_negative_adjustment: { type: 'boolean', description: 'Whether to allow negative TDEE adjustments.' }
           }
         },
         OnboardingStatus: {
           type: 'object',
           properties: {
-            onboarding_complete: { type: 'boolean' }
+            onboardingComplete: { type: 'boolean', description: 'Whether the user has completed onboarding.' }
+          }
+        },
+        AdaptiveTdeeResult: {
+          type: 'object',
+          properties: {
+            tdee: { type: 'number', description: 'Calculated Total Daily Energy Expenditure in kcal.' },
+            confidence: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'], description: 'Confidence level of the calculation.' },
+            weightTrend: { type: 'number', nullable: true, description: 'Weekly weight trend in the user\'s weight unit.' },
+            isFallback: { type: 'boolean', description: 'Whether the result is a fallback estimate (insufficient data).' },
+            fallbackReason: { type: 'string', nullable: true, description: 'Reason for fallback, if applicable.' },
+            avgIntake: { type: 'number', nullable: true, description: 'Average daily calorie intake over the calculation window.' },
+            daysOfData: { type: 'integer', description: 'Number of days of data used in the calculation.' },
+            lastCalculated: { type: 'string', format: 'date-time', description: 'Timestamp of when this value was last calculated.' }
+          }
+        },
+        FamilyAccessEntry: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            owner_user_id: { type: 'string', format: 'uuid', description: 'The ID of the user who owns the data.' },
+            family_user_id: { type: 'string', format: 'uuid', nullable: true, description: 'The ID of the family member who has access.' },
+            family_email: { type: 'string', format: 'email', description: 'The email of the family member.' },
+            access_permissions: { type: 'object', description: 'JSONB object defining access permissions.' },
+            access_start_date: { type: 'string', format: 'date-time', description: 'When access was granted.' },
+            access_end_date: { type: 'string', format: 'date-time', nullable: true, description: 'When access expires, if set.' },
+            is_active: { type: 'boolean', description: 'Whether this access entry is currently active.' },
+            status: { type: 'string', description: 'Status of the access entry (e.g., "pending", "accepted").' },
+            created_at: { type: 'string', format: 'date-time' },
+            updated_at: { type: 'string', format: 'date-time' }
           }
         },
         OidcProvider: {
@@ -1003,7 +1245,10 @@ const options = {
           properties: {
             enable_email_password_login: { type: 'boolean' },
             is_oidc_active: { type: 'boolean' },
-            is_mfa_mandatory: { type: 'boolean' }
+            is_mfa_mandatory: { type: 'boolean' },
+            allow_user_ai_config: { type: 'boolean' },
+            is_email_login_env_configured: { type: 'boolean', description: 'Whether email login is configured via environment variables.' },
+            is_oidc_active_env_configured: { type: 'boolean', description: 'Whether OIDC is configured via environment variables.' }
           }
         },
         AppReview: {
@@ -1078,122 +1323,6 @@ const options = {
           },
         },
       },
-      '/admin/auth/settings/mfa-mandatory': {
-        get: {
-          tags: ['Identity & Security'],
-          summary: 'Get global MFA mandatory setting',
-          description: 'Retrieves the current global setting for mandatory Multi-Factor Authentication. Requires admin privileges.',
-          security: [{ cookieAuth: [] }],
-          responses: {
-            '200': {
-              description: 'Successfully retrieved MFA mandatory setting.',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      isMfaMandatory: {
-                        type: 'boolean',
-                        description: 'Indicates if MFA is globally mandatory.',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            '401': { description: 'Unauthorized: Authentication token missing or invalid.' },
-            '403': { description: 'Forbidden: User does not have admin privileges.' },
-            '500': { description: 'Internal Server Error.' },
-          },
-        },
-        put: {
-          tags: ['Identity & Security'],
-          summary: 'Update global MFA mandatory setting',
-          description: 'Updates the global setting for mandatory Multi-Factor Authentication. Requires admin privileges.',
-          security: [{ cookieAuth: [] }],
-          requestBody: {
-            required: true,
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    isMfaMandatory: {
-                      type: 'boolean',
-                      description: 'New value for the global MFA mandatory setting.',
-                    },
-                  },
-                  required: ['isMfaMandatory'],
-                },
-              },
-            },
-          },
-          responses: {
-            '200': {
-              description: 'Global MFA mandatory setting updated successfully.',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      message: {
-                        type: 'string',
-                        example: 'Global MFA mandatory setting updated to true.',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            '400': { description: 'Bad Request: Invalid input data.' },
-            '401': { description: 'Unauthorized: Authentication token missing or invalid.' },
-            '403': { description: 'Forbidden: User does not have admin privileges.' },
-            '500': { description: 'Internal Server Error.' },
-          },
-        },
-      },
-      '/admin/auth/users/{userId}/mfa/reset': {
-        post: {
-          tags: ['Identity & Security'],
-          summary: 'Reset a user\'s MFA',
-          description: 'Allows an administrator to reset Multi-Factor Authentication for a specific user. Requires admin privileges.',
-          security: [{ cookieAuth: [] }],
-          parameters: [
-            {
-              in: 'path',
-              name: 'userId',
-              required: true,
-              schema: {
-                type: 'string',
-                format: 'uuid',
-              },
-              description: 'The unique identifier of the user whose MFA is to be reset.',
-            },
-          ],
-          responses: {
-            '200': {
-              description: 'User MFA reset successfully.',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      message: {
-                        type: 'string',
-                        example: 'MFA for user {userId} has been reset.',
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            '401': { description: 'Unauthorized: Authentication token missing or invalid.' },
-            '403': { description: 'Forbidden: User does not have admin privileges.' },
-            '404': { description: 'Not Found: User not found.' },
-            '500': { description: 'Internal Server Error.' },
-          },
-        },
-      },
     },
     security: [
       {
@@ -1203,12 +1332,13 @@ const options = {
     tags: [
       { name: 'Identity & Security', description: 'User authentication, registration, profile management, MFA, and access control.' },
       { name: 'Nutrition & Meals', description: 'Food database, diary logging, meal planning, and nutritional preferences.' },
-      { name: 'Fitness & Workouts', description: 'Exercise database, workout presets, plan templates, and activity logging.' },
+      { name: 'Exercise & Workouts', description: 'Exercise database, workout presets, plan templates, and activity logging.' },
       { name: 'Wellness & Metrics', description: 'Health metrics tracking (weight, measurements, sleep, mood) and fasting.' },
       { name: 'Goals & Personalization', description: 'Personal goal setting, goal presets, and application preferences.' },
       { name: 'External Integrations', description: 'Third-party service connections (Garmin, Withings, OIDC, etc.).' },
       { name: 'System & Admin', description: 'System configuration, administrative tasks, backups, reviews, and versioning.' },
       { name: 'AI & Insights', description: 'AI-powered chat assistance, reports, trends, and analytical insights.' },
+      { name: 'SleepScience', description: 'Sleep science endpoints including MCTQ baseline calculation, sleep debt tracking, energy curves, and chronotype analysis.' },
     ],
 
   },

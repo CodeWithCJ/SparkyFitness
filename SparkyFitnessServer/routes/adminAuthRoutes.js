@@ -23,6 +23,7 @@ router.use(isAdmin);
  *   get:
  *     summary: Get global MFA mandatory setting
  *     tags: [Identity & Security]
+ *     description: Retrieves the global setting for whether MFA is mandatory for all users. Requires admin privileges.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -38,7 +39,7 @@ router.use(isAdmin);
  *       401:
  *         description: Unauthorized.
  *       403:
- *         description: Forbidden.
+ *         description: Forbidden. Admin privileges required.
  *       500:
  *         description: Server error.
  */
@@ -58,6 +59,7 @@ router.get('/settings/mfa-mandatory', async (req, res, next) => {
  *   put:
  *     summary: Update global MFA mandatory setting
  *     tags: [Identity & Security]
+ *     description: Updates the global setting for whether MFA is mandatory for all users. Requires admin privileges. Logs the action to the admin audit trail.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -86,7 +88,7 @@ router.get('/settings/mfa-mandatory', async (req, res, next) => {
  *       401:
  *         description: Unauthorized.
  *       403:
- *         description: Forbidden.
+ *         description: Forbidden. Admin privileges required.
  *       500:
  *         description: Server error.
  */
@@ -115,6 +117,7 @@ router.put('/settings/mfa-mandatory',
  *   post:
  *     summary: Reset a user's MFA
  *     tags: [Identity & Security]
+ *     description: Resets all MFA settings (TOTP, email, recovery codes) for a specific user. Requires admin privileges. Logs the action to the admin audit trail.
  *     security:
  *       - cookieAuth: []
  *     parameters:

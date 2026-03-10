@@ -16,6 +16,7 @@ router.use(express.json());
  *   post:
  *     summary: Submit user onboarding data
  *     tags: [Goals & Personalization]
+ *     description: Submits initial onboarding data for a new user. Sets up their profile, goals, and preferences based on the provided information.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -24,18 +25,51 @@ router.use(express.json());
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - sex
+ *               - primaryGoal
+ *               - currentWeight
+ *               - height
+ *               - birthDate
+ *               - activityLevel
+ *               - targetWeight
  *             properties:
- *               sex: { type: 'string' }
- *               primaryGoal: { type: 'string' }
- *               currentWeight: { type: 'number' }
- *               height: { type: 'number' }
- *               birthDate: { type: 'string', format: 'date' }
- *               activityLevel: { type: 'string' }
- *               targetWeight: { type: 'number' }
- *             required: [sex, primaryGoal, currentWeight, height, birthDate, activityLevel, targetWeight]
+ *               sex:
+ *                 type: string
+ *                 description: Biological sex (e.g., "male", "female").
+ *               primaryGoal:
+ *                 type: string
+ *                 description: Primary fitness goal (e.g., "lose_weight", "gain_muscle", "maintain").
+ *               currentWeight:
+ *                 type: number
+ *                 description: Current weight.
+ *               height:
+ *                 type: number
+ *                 description: Height.
+ *               birthDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Date of birth (YYYY-MM-DD).
+ *               activityLevel:
+ *                 type: string
+ *                 description: Activity level (e.g., "sedentary", "light", "moderate", "active", "very_active").
+ *               targetWeight:
+ *                 type: number
+ *                 description: Target weight.
  *     responses:
  *       201:
  *         description: Onboarding completed successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Missing one or more required onboarding fields.
+ *       401:
+ *         description: Unauthorized.
  */
 router.post("/", authenticate, async (req, res, next) => {
   try {
@@ -87,6 +121,7 @@ router.post("/", authenticate, async (req, res, next) => {
  *   get:
  *     summary: Check if the current user has completed onboarding
  *     tags: [Goals & Personalization]
+ *     description: Checks whether the authenticated user has completed the onboarding process.
  *     security:
  *       - cookieAuth: []
  *     responses:
@@ -96,6 +131,8 @@ router.post("/", authenticate, async (req, res, next) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/OnboardingStatus'
+ *       401:
+ *         description: Unauthorized.
  */
 router.get("/status", authenticate, async (req, res, next) => {
   try {
@@ -115,11 +152,23 @@ router.get("/status", authenticate, async (req, res, next) => {
  *   post:
  *     summary: Reset onboarding status for the user
  *     tags: [Goals & Personalization]
+ *     description: Resets the onboarding status for the authenticated user, allowing them to go through onboarding again.
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Onboarding status reset successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Failed to reset onboarding status.
  */
 router.post("/reset", authenticate, async (req, res) => {
   try {

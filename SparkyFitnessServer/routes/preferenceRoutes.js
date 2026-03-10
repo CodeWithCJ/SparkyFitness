@@ -10,6 +10,7 @@ const preferenceService = require('../services/preferenceService');
  *   put:
  *     summary: Update user preferences
  *     tags: [Goals & Personalization]
+ *     description: Updates existing user preferences. Only provided fields are updated.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -21,6 +22,16 @@ const preferenceService = require('../services/preferenceService');
  *     responses:
  *       200:
  *         description: Preferences updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserPreferences'
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: User preferences not found.
  */
 router.put('/', authenticate, async (req, res, next) => {
   const preferenceData = req.body;
@@ -46,11 +57,25 @@ router.put('/', authenticate, async (req, res, next) => {
  *   delete:
  *     summary: Delete user preferences
  *     tags: [Goals & Personalization]
+ *     description: Deletes all preferences for the authenticated user, resetting to defaults.
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
  *         description: Preferences deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: User preferences not found.
  */
 router.delete('/', authenticate, async (req, res, next) => {
   try {
@@ -74,15 +99,18 @@ router.delete('/', authenticate, async (req, res, next) => {
  *   get:
  *     summary: Get user preferences
  *     tags: [Goals & Personalization]
+ *     description: Retrieves preferences for the authenticated user. Returns default values if no preferences exist.
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: User preferences.
+ *         description: User preferences. Returns defaults (e.g., calorie_goal_adjustment_mode "dynamic") if no preferences are saved.
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/UserPreferences'
+ *       401:
+ *         description: Unauthorized.
  */
 router.get('/', authenticate, async (req, res, next) => {
   try {
@@ -106,6 +134,7 @@ router.get('/', authenticate, async (req, res, next) => {
  *   post:
  *     summary: Upsert user preferences
  *     tags: [Goals & Personalization]
+ *     description: Creates or updates user preferences. If preferences already exist, they are updated; otherwise, new preferences are created with the provided values.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -117,6 +146,14 @@ router.get('/', authenticate, async (req, res, next) => {
  *     responses:
  *       200:
  *         description: Preferences upserted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserPreferences'
+ *       401:
+ *         description: Unauthorized.
+ *       403:
+ *         description: Forbidden.
  */
 router.post('/', authenticate, async (req, res, next) => {
   const preferenceData = req.body;
