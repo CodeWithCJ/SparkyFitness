@@ -618,7 +618,7 @@ router.delete(
  *               properties:
  *                 source:
  *                   type: string
- *                   enum: [local, openfoodfacts, usda, not_found]
+ *                   enum: [local, openfoodfacts, usda, fatsecret, not_found]
  *                 food:
  *                   $ref: '#/components/schemas/Food'
  *       400:

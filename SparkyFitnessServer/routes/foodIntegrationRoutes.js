@@ -280,6 +280,62 @@ router.get(
 
 /**
  * @swagger
+ * /food-integration/fatsecret/barcode/{barcode}:
+ *   get:
+ *     summary: Search for food by barcode on FatSecret
+ *     tags: [External Integrations]
+ *     description: Retrieves food details by barcode using the FatSecret API.
+ *     parameters:
+ *       - in: path
+ *         name: barcode
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The barcode to search for.
+ *       - in: header
+ *         name: x-provider-id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: The ID of the FatSecret data provider.
+ *     responses:
+ *       200:
+ *         description: Food details for the given barcode.
+ *       400:
+ *         description: Missing barcode or x-provider-id header.
+ */
+router.get(
+  "/fatsecret/barcode/:barcode",
+  authenticate,
+  async (req, res, next) => {
+    const { barcode } = req.params;
+    const { clientId, clientSecret } = req;
+
+    if (!barcode) {
+      return res.status(400).json({ error: "Missing barcode" });
+    }
+
+    try {
+      const data = await foodService.searchFatSecretByBarcode(
+        barcode,
+        clientId,
+        clientSecret
+      );
+      if (data && data.food) {
+        // Map it to Sparky food format if needed, 
+        // but for now return raw so frontend can use convertFatSecretToFood
+        res.json(data);
+      } else {
+        res.status(404).json({ error: "Food not found" });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
  * /food-integration/openfoodfacts/search:
  *   get:
  *     summary: Search for foods on Open Food Facts

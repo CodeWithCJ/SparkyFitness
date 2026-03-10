@@ -213,6 +213,20 @@ export const searchOpenFoodFactsBarcodeApi = async (
   return apiCall(`/foods/openfoodfacts/barcode/${barcode}`);
 };
 
+export interface BarcodeLookupResult {
+  source: 'local' | 'openfoodfacts' | 'usda' | 'fatsecret' | 'not_found';
+  food: Food | null;
+}
+
+export const searchBarcodeApi = async (
+  barcode: string,
+  providerId?: string
+): Promise<BarcodeLookupResult> => {
+  const params = new URLSearchParams();
+  if (providerId) params.append('providerId', providerId);
+  return apiCall(`/foods/barcode/${barcode}?${params.toString()}`);
+};
+
 export const importFoodsFromCsv = async (
   foods: FoodDataForBackend[]
 ): Promise<void> => {
