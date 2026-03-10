@@ -781,7 +781,7 @@ async function lookupBarcode(barcode, userId, providerId) {
           return {
             source: "fatsecret",
             food: mapFatSecretBarcodeProduct(fatSecretData),
-            raw: fatSecretData,
+            barcode_raw: fatSecretData,
           };
         }
       } catch (fsError) {
@@ -820,7 +820,7 @@ async function lookupBarcode(barcode, userId, providerId) {
           return {
             source: "usda",
             food: mapUsdaBarcodeProduct(match),
-            raw: match,
+            barcode_raw: match,
           };
         }
       } catch (usdaError) {
@@ -841,7 +841,7 @@ async function lookupBarcode(barcode, userId, providerId) {
       return {
         source: "openfoodfacts",
         food: mapOpenFoodFactsProduct(offData.product),
-        raw: offData.product,
+        barcode_raw: offData.product,
       };
     }
 

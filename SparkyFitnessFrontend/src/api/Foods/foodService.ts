@@ -1,10 +1,12 @@
-import { OpenFoodFactsProduct } from '@/components/FoodSearch/FoodSearch';
 import { apiCall } from '../api';
 
 import type {
   Food,
   FoodDataForBackend,
   FoodDeletionImpact,
+  FatSecretFoodItem,
+  OpenFoodFactsProduct,
+  UsdaItem,
 } from '@/types/food';
 import { MealFilter } from '@/types/meal';
 
@@ -216,6 +218,7 @@ export const searchOpenFoodFactsBarcodeApi = async (
 export interface BarcodeLookupResult {
   source: 'local' | 'openfoodfacts' | 'usda' | 'fatsecret' | 'not_found';
   food: Food | null;
+  barcode_raw?: OpenFoodFactsProduct | UsdaItem | { food: FatSecretFoodItem };
 }
 
 export const searchBarcodeApi = async (

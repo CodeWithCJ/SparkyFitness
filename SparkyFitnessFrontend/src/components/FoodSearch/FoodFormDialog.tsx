@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import type { Food } from '@/types/food';
 import { convertOpenFoodFactsToFood } from '@/utils/foodSearch';
-import { OpenFoodFactsProduct } from './FoodSearch';
+import { OpenFoodFactsProduct } from '@/types/food';
 import EnhancedCustomFoodForm from './CustomFoodForm';
 import { useTranslation } from 'react-i18next';
 
@@ -40,7 +40,17 @@ export const FoodFormDialog = ({
         autoScaleOpenFoodFactsImports
       );
     }
-    return editingProduct as Food;
+    const product = editingProduct as Food;
+    if (
+      product.default_variant &&
+      (!product.variants || product.variants.length === 0)
+    ) {
+      return {
+        ...product,
+        variants: [product.default_variant],
+      };
+    }
+    return product;
   };
 
   const foodData = getFoodData();
