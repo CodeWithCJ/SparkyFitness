@@ -40,7 +40,17 @@ export const FoodFormDialog = ({
         autoScaleOpenFoodFactsImports
       );
     }
-    return editingProduct as Food;
+    const product = editingProduct as Food;
+    if (
+      product.default_variant &&
+      (!product.variants || product.variants.length === 0)
+    ) {
+      return {
+        ...product,
+        variants: [product.default_variant],
+      };
+    }
+    return product;
   };
 
   const foodData = getFoodData();

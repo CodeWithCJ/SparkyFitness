@@ -216,6 +216,7 @@ export const searchOpenFoodFactsBarcodeApi = async (
 export interface BarcodeLookupResult {
   source: 'local' | 'openfoodfacts' | 'usda' | 'fatsecret' | 'not_found';
   food: Food | null;
+  barcode_raw?: any;
 }
 
 export const searchBarcodeApi = async (

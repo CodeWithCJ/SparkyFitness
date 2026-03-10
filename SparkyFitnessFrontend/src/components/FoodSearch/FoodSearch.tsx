@@ -313,7 +313,8 @@ const EnhancedFoodSearch = ({
         // structurally match the provider-specific types at compile time.
         const mapped = {
           provider_type: data.source as BarcodeProviderType,
-          raw: data.food,
+          raw: data.food, // Use mapped food as raw for barcode results to satisfy edit handler checks
+          barcode_raw: data.barcode_raw, // Keep the actual raw provider data separate
           food: data.food,
         } as unknown as ExternalResultWrapper;
 
