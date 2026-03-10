@@ -16,12 +16,14 @@ import BodyBatteryGauge from './BodyBatteryGauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import { BODY_BATTERY_METRICS } from '@/constants/reports';
-import { CustomMeasurement } from '@/types/checkin';
-import { CustomCategoriesResponse } from '@workspace/shared';
+import {
+  CustomCategoriesResponse,
+  CustomMeasurementsResponse,
+} from '@workspace/shared';
 
 interface BodyBatteryCardProps {
   categories: CustomCategoriesResponse[];
-  measurementsData: Record<string, CustomMeasurement[]>;
+  measurementsData: CustomMeasurementsResponse[];
 }
 
 interface BodyBatteryDay {
@@ -56,7 +58,9 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
     const dataByDate: Record<string, BodyBatteryDay> = {};
 
     bodyBatteryCategories.forEach((category) => {
-      const data = measurementsData[category.id] || [];
+      const data = measurementsData.filter(
+        (m) => m.category_id === category.id
+      );
 
       data.forEach((entry) => {
         const date = entry.entry_date;

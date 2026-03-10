@@ -23,9 +23,11 @@ import {
 import { formatWeight, formatHeight } from '@/utils/numberFormatting';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import type { DailyFoodEntry, DailyExerciseEntry } from '@/types/reports';
-import { CustomMeasurement } from '@/types/checkin';
-import { CheckInMeasurementsResponse } from '@workspace/shared';
-import { CustomCategoriesResponse } from '@workspace/shared';
+import {
+  CheckInMeasurementsResponse,
+  CustomMeasurementsResponse,
+  CustomCategoriesResponse,
+} from '@workspace/shared';
 
 interface PersonalRecord {
   date: string;
@@ -39,7 +41,7 @@ interface ReportsTablesProps {
   exerciseEntries: DailyExerciseEntry[];
   measurementData: CheckInMeasurementsResponse[];
   customCategories: CustomCategoriesResponse[];
-  customMeasurementsData: Record<string, CustomMeasurement[]>;
+  customMeasurementsData: CustomMeasurementsResponse[];
   prData: PersonalRecordsMap | undefined;
   onExportFoodDiary: () => void;
   onExportBodyMeasurements: () => void;
@@ -748,8 +750,10 @@ const ReportsTables = ({
       </Card>
 
       {/* Custom Measurements Tables */}
-      {customCategories.map((category) => {
-        const data = customMeasurementsData[category.id] || [];
+      {customCategories.map((category: CustomCategoriesResponse) => {
+        const data = customMeasurementsData.filter(
+          (m) => m.category_id === category.id
+        );
         // Sort by timestamp descending (latest first)
         debug(
           loggingLevel,
@@ -757,8 +761,8 @@ const ReportsTables = ({
         );
         const sortedData = [...data].sort(
           (a, b) =>
-            new Date(b.timestamp || 0).getTime() -
-            new Date(a.timestamp || 0).getTime()
+            new Date(b.updated_at || 0).getTime() -
+            new Date(a.updated_at || 0).getTime()
         );
 
         return (
@@ -811,49 +815,54 @@ const ReportsTables = ({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedData.map((measurement, index) => {
-                      // Extract hour from timestamp
-                      let formattedHour: string = '';
-                      if (measurement.timestamp) {
-                        const timestamp = parseISO(measurement.timestamp);
-                        const hour = timestamp.getHours();
-                        const minutes = timestamp.getMinutes();
-                        formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                      }
+                    {sortedData.map(
+                      (measurement: CustomMeasurementsResponse, index) => {
+                        // Extract hour from timestamp
+                        let formattedHour: string = '';
+                        if (measurement.entry_timestamp) {
+                          const timestamp = parseISO(
+                            measurement.entry_timestamp.toString()
+                          );
+                          const hour = timestamp.getHours();
+                          const minutes = timestamp.getMinutes();
+                          formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                        }
 
-                      const isWeight = ['kg', 'lbs', 'st_lbs'].includes(
-                        category.measurement_type.toLowerCase()
-                      );
-                      const isHeight = ['cm', 'inches', 'ft_in'].includes(
-                        category.measurement_type.toLowerCase()
-                      );
+                        const isWeight = ['kg', 'lbs', 'st_lbs'].includes(
+                          category.measurement_type.toLowerCase()
+                        );
+                        const isHeight = ['cm', 'inches', 'ft_in'].includes(
+                          category.measurement_type.toLowerCase()
+                        );
 
-                      const displayValue =
-                        typeof measurement.value === 'number'
-                          ? isWeight
-                            ? formatWeight(measurement.value, weightUnit)
+                        const numericValue = parseFloat(measurement.value);
+
+                        const displayValue = Number.isNaN(numericValue)
+                          ? measurement.value
+                          : isWeight
+                            ? formatWeight(numericValue, weightUnit)
                             : isHeight
-                              ? formatHeight(measurement.value, measurementUnit)
-                              : measurement.value.toFixed(2)
-                          : String(measurement.value);
+                              ? formatHeight(numericValue, measurementUnit)
+                              : numericValue.toFixed(2);
 
-                      return (
-                        <TableRow key={index}>
-                          <TableCell>
-                            {measurement.entry_date &&
-                            !isNaN(parseISO(measurement.entry_date).getTime())
-                              ? formatDateInUserTimezone(
-                                  parseISO(measurement.entry_date),
-                                  dateFormat
-                                )
-                              : ''}
-                          </TableCell>
-                          <TableCell>{formattedHour}</TableCell>
-                          <TableCell>{displayValue}</TableCell>
-                          <TableCell>{measurement.notes || '-'}</TableCell>
-                        </TableRow>
-                      );
-                    })}
+                        return (
+                          <TableRow key={index}>
+                            <TableCell>
+                              {measurement.entry_date &&
+                              !isNaN(parseISO(measurement.entry_date).getTime())
+                                ? formatDateInUserTimezone(
+                                    parseISO(measurement.entry_date),
+                                    dateFormat
+                                  )
+                                : ''}
+                            </TableCell>
+                            <TableCell>{formattedHour}</TableCell>
+                            <TableCell>{displayValue}</TableCell>
+                            <TableCell>{measurement.notes || '-'}</TableCell>
+                          </TableRow>
+                        );
+                      }
+                    )}
                   </TableBody>
                 </Table>
               </div>

@@ -1,11 +1,13 @@
 import { apiCall } from '@/api/api';
-import { CustomMeasurement } from '@/types/checkin';
 import {
   CheckInMeasurementsResponse,
   checkInMeasurementsResponseSchema,
   UpdateCheckInMeasurementsRequest,
   CustomCategoriesResponse,
   customCategoriesResponseSchema,
+  customMeasurementsResponseSchema,
+  CustomMeasurementsResponse,
+  UpdateCustomMeasurementsRequest,
 } from '@workspace/shared';
 import z from 'zod';
 
@@ -22,11 +24,12 @@ export const loadCustomCategories = async (
 };
 
 export const fetchRecentCustomMeasurements = async (): Promise<
-  CustomMeasurement[]
+  CustomMeasurementsResponse[]
 > => {
-  return apiCall('/measurements/custom-entries', {
+  const response = await apiCall('/measurements/custom-entries', {
     params: { limit: 20, orderBy: 'entry_timestamp.desc' },
   });
+  return z.array(customMeasurementsResponseSchema).parse(response);
 };
 
 export const fetchRecentStandardMeasurements = async (
@@ -78,11 +81,15 @@ export const loadExistingCheckInMeasurements = async (
 
 export const loadExistingCustomMeasurements = async (
   selectedDate: string
-): Promise<CustomMeasurement[]> => {
-  return apiCall(`/measurements/custom-entries/${selectedDate}`, {
-    method: 'GET',
-    suppress404Toast: true,
-  });
+): Promise<CustomMeasurementsResponse[]> => {
+  const response = await apiCall(
+    `/measurements/custom-entries/${selectedDate}`,
+    {
+      method: 'GET',
+      suppress404Toast: true,
+    }
+  );
+  return z.array(customMeasurementsResponseSchema).parse(response);
 };
 
 export const saveCheckInMeasurements = async (
@@ -95,7 +102,7 @@ export const saveCheckInMeasurements = async (
 };
 
 export const saveCustomMeasurement = async (
-  payload: Partial<CustomMeasurement>
+  payload: UpdateCustomMeasurementsRequest
 ): Promise<void> => {
   await apiCall('/measurements/custom-entries', {
     method: 'POST',

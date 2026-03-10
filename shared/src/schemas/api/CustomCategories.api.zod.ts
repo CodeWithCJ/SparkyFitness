@@ -4,13 +4,16 @@ import {
 } from "../database/CustomCategories.zod";
 import { z } from "zod";
 
-export const customCategoriesResponseSchema = customCategoriesSchema.omit({
-  created_at: true,
-  updated_at: true,
-  created_by_user_id: true,
-  updated_by_user_id: true,
-  user_id: true,
-});
+export const customCategoriesResponseSchema = customCategoriesSchema
+  .omit({
+    created_at: true,
+    created_by_user_id: true,
+    updated_by_user_id: true,
+    user_id: true,
+  })
+  .extend({
+    updated_at: z.coerce.date().optional(),
+  });
 
 export const updatCustomCategoriesRequestSchema =
   customCategoriesMutatorSchema.omit({

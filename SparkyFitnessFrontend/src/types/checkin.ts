@@ -1,18 +1,5 @@
 import { CustomCategoriesResponse } from '@workspace/shared';
 
-export interface CustomMeasurement {
-  id: string;
-  category_id: string;
-  timestamp?: string;
-  hour?: number;
-  value: string | number;
-  entry_date: string;
-  entry_hour: number | null;
-  entry_timestamp: string;
-  notes?: string;
-  custom_categories: CustomCategoriesResponse;
-}
-
 export interface CombinedMeasurement {
   id: string;
   entry_date: string;

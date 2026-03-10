@@ -1,6 +1,5 @@
 import { apiCall } from '@/api/api';
 import type { SleepAnalyticsData } from '../../types';
-import { CustomMeasurement } from '@/types/checkin';
 import {
   DailyExerciseEntry,
   DailyFoodEntry,
@@ -10,6 +9,7 @@ import {
 import {
   CheckInMeasurementsResponse,
   CustomCategoriesResponse,
+  CustomMeasurementsResponse,
 } from '@workspace/shared';
 
 export const loadReportsData = async (
@@ -22,7 +22,7 @@ export const loadReportsData = async (
   exerciseEntries: DailyExerciseEntry[];
   measurementData: CheckInMeasurementsResponse[];
   customCategories: CustomCategoriesResponse[];
-  customMeasurementsData: Record<string, CustomMeasurement[]>;
+  customMeasurementsData: CustomMeasurementsResponse[];
   sleepAnalyticsData: SleepAnalyticsData[];
 }> => {
   const params = new URLSearchParams({

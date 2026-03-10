@@ -25,10 +25,12 @@ import {
   useSaveMoodEntryMutation,
 } from '@/hooks/CheckIn/useMood';
 import { useFastingHistory } from '@/hooks/Fasting/useFasting';
-import { CustomMeasurement, CombinedMeasurement } from '@/types/checkin';
+import { CombinedMeasurement } from '@/types/checkin';
 import {
   CheckInMeasurementsResponse,
+  CustomMeasurementsResponse,
   UpdateCheckInMeasurementsRequest,
+  UpdateCustomMeasurementsRequest,
 } from '@workspace/shared';
 import { useAuth } from '../useAuth';
 
@@ -178,7 +180,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       customCategories &&
       customCategories.length > 0
     ) {
-      existingCustom.forEach((measurement: CustomMeasurement) => {
+      existingCustom.forEach((measurement: CustomMeasurementsResponse) => {
         const category = customCategories.find(
           (c) => c.id === measurement.category_id
         );
@@ -236,17 +238,17 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     const allMeasurements: CombinedMeasurement[] = [];
 
     recentCustom.forEach((m) => {
+      const category = customCategories.find((c) => c.id === m.category_id);
       allMeasurements.push({
         id: m.id,
-        entry_date: m.entry_date,
+        entry_date: m.entry_date.toString(),
         entry_hour: m.entry_hour,
-        entry_timestamp: m.entry_timestamp,
+        entry_timestamp: m.entry_timestamp?.toString() ?? '',
         value: m.value,
         type: 'custom',
-        display_name:
-          m.custom_categories.display_name || m.custom_categories.name,
-        display_unit: m.custom_categories.measurement_type,
-        custom_categories: m.custom_categories,
+        display_name: (category?.display_name || category?.name) ?? '',
+        display_unit: category?.measurement_type,
+        custom_categories: category,
       });
     });
 
@@ -371,6 +373,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     defaultWeightUnit,
     defaultMeasurementUnit,
     formatDateInUserTimezone,
+    customCategories,
   ]);
 
   const handleDeleteMeasurementClick = async (
@@ -418,7 +421,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
     if (!currentUserId) return;
@@ -486,7 +489,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
 
           const isHourly = category.frequency === 'Hourly';
 
-          const customMeasurementData: Partial<CustomMeasurement> = {
+          const customMeasurementData: UpdateCustomMeasurementsRequest = {
             category_id: categoryId,
             notes: customNotes[categoryId] || '',
             entry_date: selectedDate,
@@ -499,7 +502,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
             if (!isNaN(numericValue)) {
               // Now that custom measurements also use UnitInput in the form,
               // they are already normalized to Metric (kg/cm) in the state.
-              customMeasurementData.value = numericValue;
+              customMeasurementData.value = numericValue.toString();
             }
           } else {
             customMeasurementData.value = inputValue;

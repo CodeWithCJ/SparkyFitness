@@ -129,7 +129,7 @@ const Reports = () => {
     exerciseEntries = [],
     measurementData = [],
     customCategories = [],
-    customMeasurementsData = {},
+    customMeasurementsData = [],
   } = reportsData || {};
 
   const handleStartDateChange = (date: string) => {

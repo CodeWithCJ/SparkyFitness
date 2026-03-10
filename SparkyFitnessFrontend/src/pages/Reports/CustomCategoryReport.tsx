@@ -16,8 +16,10 @@ import { RESPIRATION_METRICS } from './RespirationCard';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatCustomChartData } from '@/utils/reportUtil';
 import { calculateSmartYAxisDomain, getChartConfig } from '@/utils/chartUtils';
-import { CustomMeasurement } from '@/types/checkin';
-import { CustomCategoriesResponse } from '@workspace/shared';
+import {
+  CustomCategoriesResponse,
+  CustomMeasurementsResponse,
+} from '@workspace/shared';
 
 const HIDDEN_CUSTOM_METRICS = [
   ...BODY_BATTERY_METRICS,
@@ -30,7 +32,7 @@ export const CustomCategoryReport = ({
   customMeasurementsData,
 }: {
   customCategories: CustomCategoriesResponse[];
-  customMeasurementsData: Record<string, CustomMeasurement[]>;
+  customMeasurementsData: CustomMeasurementsResponse[];
 }) => {
   const { t } = useTranslation();
   const {
@@ -61,7 +63,9 @@ export const CustomCategoryReport = ({
               !HIDDEN_CUSTOM_METRICS.includes(c.name)
           )
           .map((category) => {
-            const data = customMeasurementsData[category.id] || [];
+            const data = customMeasurementsData.filter(
+              (m) => m.category_id === category.id
+            );
             const chartData = formatCustomChartData(
               category,
               data,
