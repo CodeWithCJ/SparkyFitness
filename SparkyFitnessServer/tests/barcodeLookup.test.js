@@ -1,6 +1,12 @@
 jest.mock("../models/foodRepository");
-jest.mock("../integrations/openfoodfacts/openFoodFactsService");
-jest.mock("../integrations/usda/usdaService");
+jest.mock("../integrations/openfoodfacts/openFoodFactsService", () => ({
+  ...jest.requireActual("../integrations/openfoodfacts/openFoodFactsService"),
+  searchOpenFoodFactsByBarcodeFields: jest.fn(),
+}));
+jest.mock("../integrations/usda/usdaService", () => ({
+  ...jest.requireActual("../integrations/usda/usdaService"),
+  searchUsdaFoodsByBarcode: jest.fn(),
+}));
 jest.mock("../services/externalProviderService");
 jest.mock("../services/preferenceService");
 jest.mock("../config/logging", () => ({ log: jest.fn() }));
@@ -8,17 +14,15 @@ jest.mock("../config/logging", () => ({ log: jest.fn() }));
 const foodRepository = require("../models/foodRepository");
 const {
   searchOpenFoodFactsByBarcodeFields,
+  mapOpenFoodFactsProduct,
 } = require("../integrations/openfoodfacts/openFoodFactsService");
 const {
   searchUsdaFoodsByBarcode,
+  mapUsdaBarcodeProduct,
 } = require("../integrations/usda/usdaService");
 const externalProviderService = require("../services/externalProviderService");
 const preferenceService = require("../services/preferenceService");
-const {
-  lookupBarcode,
-  mapOpenFoodFactsProduct,
-  mapUsdaBarcodeProduct,
-} = require("../services/foodCoreService");
+const { lookupBarcode } = require("../services/foodCoreService");
 const { normalizeBarcode } = require("../utils/foodUtils");
 
 describe("normalizeBarcode", () => {
@@ -113,13 +117,13 @@ const makeOffResponse = (overrides = {}) => ({
     serving_quantity: 37,
     nutriments: {
       "energy-kcal_100g": 539,
-      "proteins_100g": 6.3,
-      "carbohydrates_100g": 57.5,
-      "fat_100g": 30.9,
+      proteins_100g: 6.3,
+      carbohydrates_100g: 57.5,
+      fat_100g: 30.9,
       "saturated-fat_100g": 10.6,
-      "sodium_100g": 0.041,
-      "fiber_100g": 3.4,
-      "sugars_100g": 56.3,
+      sodium_100g: 0.041,
+      fiber_100g: 3.4,
+      sugars_100g: 56.3,
     },
     ...overrides.product,
   },
@@ -170,7 +174,7 @@ describe("mapOpenFoodFactsProduct", () => {
       code: "111",
       nutriments: {
         "energy-kcal_100g": 100,
-        "sodium_100g": 1.5,
+        sodium_100g: 1.5,
       },
     };
     const result = mapOpenFoodFactsProduct(product);
@@ -245,9 +249,9 @@ describe("mapOpenFoodFactsProduct", () => {
       code: "777",
       nutriments: {
         "energy-kcal_100g": 538.6,
-        "proteins_100g": 6.349,
-        "fat_100g": 6.351,
-        "carbohydrates_100g": 10.05,
+        proteins_100g: 6.349,
+        fat_100g: 6.351,
+        carbohydrates_100g: 10.05,
       },
     };
     const result = mapOpenFoodFactsProduct(product);
@@ -299,8 +303,8 @@ describe("mapOpenFoodFactsProduct", () => {
       serving_quantity: 50,
       nutriments: {
         "energy-kcal_100g": 400,
-        "proteins_100g": 20,
-        "fat_100g": 10,
+        proteins_100g: 20,
+        fat_100g: 10,
       },
     };
     const result = mapOpenFoodFactsProduct(product);
@@ -528,7 +532,7 @@ describe("lookupBarcode", () => {
       product: {
         product_name: "Missing Calories",
         code: "222",
-        nutriments: { "proteins_100g": 5 },
+        nutriments: { proteins_100g: 5 },
       },
     });
 
@@ -556,9 +560,9 @@ describe("lookupBarcode", () => {
       new Error("Database error"),
     );
 
-    await expect(
-      lookupBarcode("012345678901", TEST_USER_ID),
-    ).rejects.toThrow("Database error");
+    await expect(lookupBarcode("012345678901", TEST_USER_ID)).rejects.toThrow(
+      "Database error",
+    );
 
     expect(searchOpenFoodFactsByBarcodeFields).not.toHaveBeenCalled();
   });
@@ -610,7 +614,11 @@ describe("lookupBarcode", () => {
       foods: [makeUsdaFood()],
     });
 
-    const result = await lookupBarcode("3017620422003", TEST_USER_ID, TEST_PROVIDER_ID);
+    const result = await lookupBarcode(
+      "3017620422003",
+      TEST_USER_ID,
+      TEST_PROVIDER_ID,
+    );
 
     expect(result.source).toBe("usda");
     expect(result.food.name).toBe("CHOCOLATE HAZELNUT SPREAD");
@@ -628,7 +636,11 @@ describe("lookupBarcode", () => {
     });
     searchOpenFoodFactsByBarcodeFields.mockResolvedValue(makeOffResponse());
 
-    const result = await lookupBarcode("3017620422003", TEST_USER_ID, TEST_PROVIDER_ID);
+    const result = await lookupBarcode(
+      "3017620422003",
+      TEST_USER_ID,
+      TEST_PROVIDER_ID,
+    );
 
     expect(result.source).toBe("openfoodfacts");
     expect(result.food.name).toBe("Nutella");
@@ -642,7 +654,11 @@ describe("lookupBarcode", () => {
     searchUsdaFoodsByBarcode.mockRejectedValue(new Error("USDA API error"));
     searchOpenFoodFactsByBarcodeFields.mockResolvedValue(makeOffResponse());
 
-    const result = await lookupBarcode("3017620422003", TEST_USER_ID, TEST_PROVIDER_ID);
+    const result = await lookupBarcode(
+      "3017620422003",
+      TEST_USER_ID,
+      TEST_PROVIDER_ID,
+    );
 
     expect(result.source).toBe("openfoodfacts");
   });
@@ -654,7 +670,11 @@ describe("lookupBarcode", () => {
     );
     searchOpenFoodFactsByBarcodeFields.mockResolvedValue(makeOffResponse());
 
-    const result = await lookupBarcode("3017620422003", TEST_USER_ID, TEST_PROVIDER_ID);
+    const result = await lookupBarcode(
+      "3017620422003",
+      TEST_USER_ID,
+      TEST_PROVIDER_ID,
+    );
 
     expect(result.source).toBe("openfoodfacts");
     expect(searchUsdaFoodsByBarcode).not.toHaveBeenCalled();
@@ -675,10 +695,9 @@ describe("lookupBarcode", () => {
     const result = await lookupBarcode("3017620422003", TEST_USER_ID);
 
     expect(result.source).toBe("usda");
-    expect(externalProviderService.getExternalDataProviderDetails).toHaveBeenCalledWith(
-      TEST_USER_ID,
-      TEST_PROVIDER_ID,
-    );
+    expect(
+      externalProviderService.getExternalDataProviderDetails,
+    ).toHaveBeenCalledWith(TEST_USER_ID, TEST_PROVIDER_ID);
   });
 
   it("should skip USDA when provider is inactive", async () => {
@@ -688,7 +707,11 @@ describe("lookupBarcode", () => {
     );
     searchOpenFoodFactsByBarcodeFields.mockResolvedValue(makeOffResponse());
 
-    const result = await lookupBarcode("3017620422003", TEST_USER_ID, TEST_PROVIDER_ID);
+    const result = await lookupBarcode(
+      "3017620422003",
+      TEST_USER_ID,
+      TEST_PROVIDER_ID,
+    );
 
     expect(result.source).toBe("openfoodfacts");
     expect(searchUsdaFoodsByBarcode).not.toHaveBeenCalled();
@@ -702,7 +725,9 @@ describe("lookupBarcode", () => {
 
     expect(result.source).toBe("openfoodfacts");
     expect(searchUsdaFoodsByBarcode).not.toHaveBeenCalled();
-    expect(externalProviderService.getExternalDataProviderDetails).not.toHaveBeenCalled();
+    expect(
+      externalProviderService.getExternalDataProviderDetails,
+    ).not.toHaveBeenCalled();
   });
 
   it("should filter USDA results by exact barcode match", async () => {
@@ -713,12 +738,22 @@ describe("lookupBarcode", () => {
     // USDA returns multiple foods, only one matches the barcode
     searchUsdaFoodsByBarcode.mockResolvedValue({
       foods: [
-        makeUsdaFood({ gtinUpc: "0000000000000", description: "Wrong Product" }),
-        makeUsdaFood({ gtinUpc: "3017620422003", description: "Correct Product" }),
+        makeUsdaFood({
+          gtinUpc: "0000000000000",
+          description: "Wrong Product",
+        }),
+        makeUsdaFood({
+          gtinUpc: "3017620422003",
+          description: "Correct Product",
+        }),
       ],
     });
 
-    const result = await lookupBarcode("3017620422003", TEST_USER_ID, TEST_PROVIDER_ID);
+    const result = await lookupBarcode(
+      "3017620422003",
+      TEST_USER_ID,
+      TEST_PROVIDER_ID,
+    );
 
     expect(result.source).toBe("usda");
     expect(result.food.name).toBe("Correct Product");
@@ -730,10 +765,16 @@ describe("lookupBarcode", () => {
       makeUsdaProvider(),
     );
     searchUsdaFoodsByBarcode.mockResolvedValue({
-      foods: [makeUsdaFood({ gtinUpc: "094395000172", description: "Test Product" })],
+      foods: [
+        makeUsdaFood({ gtinUpc: "094395000172", description: "Test Product" }),
+      ],
     });
 
-    const result = await lookupBarcode("094395000172", TEST_USER_ID, TEST_PROVIDER_ID);
+    const result = await lookupBarcode(
+      "094395000172",
+      TEST_USER_ID,
+      TEST_PROVIDER_ID,
+    );
 
     expect(result.source).toBe("usda");
     expect(result.food.name).toBe("Test Product");
@@ -751,17 +792,34 @@ describe("lookupBarcode", () => {
     searchUsdaFoodsByBarcode
       .mockResolvedValueOnce({ foods: [] })
       .mockResolvedValueOnce({
-        foods: [makeUsdaFood({ gtinUpc: "094395000172", description: "Cross Format Match" })],
+        foods: [
+          makeUsdaFood({
+            gtinUpc: "094395000172",
+            description: "Cross Format Match",
+          }),
+        ],
       });
 
-    const result = await lookupBarcode("0094395000172", TEST_USER_ID, TEST_PROVIDER_ID);
+    const result = await lookupBarcode(
+      "0094395000172",
+      TEST_USER_ID,
+      TEST_PROVIDER_ID,
+    );
 
     expect(result.source).toBe("usda");
     expect(result.food.name).toBe("Cross Format Match");
     expect(result.food.barcode).toBe("0094395000172");
     expect(searchUsdaFoodsByBarcode).toHaveBeenCalledTimes(2);
-    expect(searchUsdaFoodsByBarcode).toHaveBeenNthCalledWith(1, "0094395000172", "test-usda-api-key");
-    expect(searchUsdaFoodsByBarcode).toHaveBeenNthCalledWith(2, "094395000172", "test-usda-api-key");
+    expect(searchUsdaFoodsByBarcode).toHaveBeenNthCalledWith(
+      1,
+      "0094395000172",
+      "test-usda-api-key",
+    );
+    expect(searchUsdaFoodsByBarcode).toHaveBeenNthCalledWith(
+      2,
+      "094395000172",
+      "test-usda-api-key",
+    );
   });
 
   it("should not retry USDA when 13-digit EAN search finds a match on first try", async () => {
@@ -770,10 +828,16 @@ describe("lookupBarcode", () => {
       makeUsdaProvider(),
     );
     searchUsdaFoodsByBarcode.mockResolvedValue({
-      foods: [makeUsdaFood({ gtinUpc: "0094395000172", description: "Direct Match" })],
+      foods: [
+        makeUsdaFood({ gtinUpc: "0094395000172", description: "Direct Match" }),
+      ],
     });
 
-    const result = await lookupBarcode("0094395000172", TEST_USER_ID, TEST_PROVIDER_ID);
+    const result = await lookupBarcode(
+      "0094395000172",
+      TEST_USER_ID,
+      TEST_PROVIDER_ID,
+    );
 
     expect(result.source).toBe("usda");
     expect(result.food.name).toBe("Direct Match");
