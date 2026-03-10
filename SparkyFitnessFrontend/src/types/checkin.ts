@@ -1,11 +1,4 @@
-export interface CustomCategory {
-  id: string;
-  name: string;
-  measurement_type: string;
-  frequency: string;
-  data_type: string;
-  display_name?: string | null;
-}
+import { CustomCategoriesResponse } from '@workspace/shared';
 
 export interface CustomMeasurement {
   id: string;
@@ -17,7 +10,7 @@ export interface CustomMeasurement {
   entry_hour: number | null;
   entry_timestamp: string;
   notes?: string;
-  custom_categories: CustomCategory;
+  custom_categories: CustomCategoriesResponse;
 }
 
 export interface CombinedMeasurement {
@@ -29,7 +22,7 @@ export interface CombinedMeasurement {
   type: 'custom' | 'standard' | 'fasting' | 'stress' | 'exercise';
   display_name: string;
   display_unit?: string;
-  custom_categories?: CustomCategory;
+  custom_categories?: CustomCategoriesResponse;
   fasting_type?: string;
   duration_minutes?: number;
   originalId?: string;

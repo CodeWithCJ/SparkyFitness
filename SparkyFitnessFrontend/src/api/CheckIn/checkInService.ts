@@ -1,21 +1,24 @@
 import { apiCall } from '@/api/api';
-import { CustomMeasurement, CustomCategory } from '@/types/checkin';
+import { CustomMeasurement } from '@/types/checkin';
 import {
   CheckInMeasurementsResponse,
   checkInMeasurementsResponseSchema,
   UpdateCheckInMeasurementsRequest,
+  CustomCategoriesResponse,
+  customCategoriesResponseSchema,
 } from '@workspace/shared';
 import z from 'zod';
 
 export const loadCustomCategories = async (
   userId?: string
-): Promise<CustomCategory[]> => {
+): Promise<CustomCategoriesResponse[]> => {
   const url = userId
     ? `/measurements/custom-categories?userId=${userId}`
     : '/measurements/custom-categories';
-  return apiCall(url, {
+  const response = await apiCall(url, {
     method: 'GET',
   });
+  return z.array(customCategoriesResponseSchema).parse(response);
 };
 
 export const fetchRecentCustomMeasurements = async (): Promise<

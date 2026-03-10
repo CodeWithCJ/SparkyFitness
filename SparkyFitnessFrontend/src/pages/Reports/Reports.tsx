@@ -41,8 +41,8 @@ import {
   exportFoodDiary,
 } from '@/utils/reportUtil';
 import { CustomCategoryReport } from './CustomCategoryReport';
-import { CustomCategory } from '@/types/checkin';
 import { ChartErrorBoundary } from '../Errors/ChartErrorFallback';
+import { CustomCategoriesResponse } from '@workspace/shared';
 
 const Reports = () => {
   const { t } = useTranslation();
@@ -347,7 +347,9 @@ const Reports = () => {
                     formatDateInUserTimezone,
                   })
                 }
-                onExportCustomMeasurements={(category: CustomCategory) =>
+                onExportCustomMeasurements={(
+                  category: CustomCategoriesResponse
+                ) =>
                   exportCustomMeasurement({
                     loggingLevel,
                     startDate,

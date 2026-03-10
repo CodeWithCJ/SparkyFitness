@@ -14,7 +14,8 @@ import {
 import { Wind } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
-import { CustomCategory, CustomMeasurement } from '@/types/checkin';
+import { CustomMeasurement } from '@/types/checkin';
+import { CustomCategoriesResponse } from '@workspace/shared';
 
 // Respiration metric names as they come from Garmin sync
 const RESPIRATION_METRICS = [
@@ -24,7 +25,7 @@ const RESPIRATION_METRICS = [
 ];
 
 interface RespirationCardProps {
-  categories: CustomCategory[];
+  categories: CustomCategoriesResponse[];
   measurementsData: Record<string, CustomMeasurement[]>;
 }
 

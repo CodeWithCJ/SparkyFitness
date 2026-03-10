@@ -11,16 +11,16 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
-import { CustomCategory } from '@/types/checkin';
 import { UnitInput } from '@/components/ui/UnitInput';
+import { CustomCategoriesResponse } from '@workspace/shared';
 
 interface CheckInFormProps {
   bodyFatPercentage: string;
-  customCategories: CustomCategory[];
+  customCategories: CustomCategoriesResponse[];
   customNotes: Record<string, string>;
   customValues: Record<string, string>;
   handleCalculateBodyFat: () => Promise<void>;
-  handleSubmit: (e: React.FormEvent) => Promise<void>;
+  handleSubmit: (e: React.SubmitEvent) => Promise<void>;
   height: string;
   hips: string;
   loading: boolean;

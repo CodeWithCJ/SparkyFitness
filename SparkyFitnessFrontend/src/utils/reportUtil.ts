@@ -14,10 +14,11 @@ import {
   getEnergyUnitString,
 } from './nutritionCalculations';
 import { UserCustomNutrient } from '@/types/customNutrient';
-import { CustomCategory, CustomMeasurement } from '@/types/checkin';
+import { CustomMeasurement } from '@/types/checkin';
 import { DailyExerciseEntry, DailyFoodEntry } from '@/types/reports';
 import { FoodEntry } from '@/types/food';
 import { CheckInMeasurementsResponse } from '@workspace/shared';
+import { CustomCategoriesResponse } from '@workspace/shared';
 
 interface StressDataPoint {
   time: string;
@@ -831,7 +832,7 @@ export const exportCustomMeasurement = async ({
   loggingLevel: LoggingLevel;
   startDate: string | null;
   endDate: string | null;
-  category: CustomCategory;
+  category: CustomCategoriesResponse;
   customMeasurementsData: Record<string, CustomMeasurement[]>;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
 }) => {
@@ -941,7 +942,7 @@ export const exportCustomMeasurement = async ({
 };
 
 export const formatCustomChartData = (
-  category: CustomCategory,
+  category: CustomCategoriesResponse,
   data: CustomMeasurement[],
   loggingLevel: LoggingLevel,
   convertMeasurement: (

@@ -16,10 +16,11 @@ import BodyBatteryGauge from './BodyBatteryGauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import { BODY_BATTERY_METRICS } from '@/constants/reports';
-import { CustomCategory, CustomMeasurement } from '@/types/checkin';
+import { CustomMeasurement } from '@/types/checkin';
+import { CustomCategoriesResponse } from '@workspace/shared';
 
 interface BodyBatteryCardProps {
-  categories: CustomCategory[];
+  categories: CustomCategoriesResponse[];
   measurementsData: Record<string, CustomMeasurement[]>;
 }
 

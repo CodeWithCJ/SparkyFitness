@@ -30,6 +30,7 @@ import {
   CheckInMeasurementsResponse,
   UpdateCheckInMeasurementsRequest,
 } from '@workspace/shared';
+import { useAuth } from '../useAuth';
 
 function useDerivedState<T>(derivedValue: T, selectedDate: string) {
   const [stateMap, setStateMap] = useState<Record<string, T>>({});
@@ -59,6 +60,7 @@ function useDerivedState<T>(derivedValue: T, selectedDate: string) {
 
 export const useCheckInLogic = (currentUserId: string | undefined) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const {
     weightUnit: defaultWeightUnit,
     measurementUnit: defaultMeasurementUnit,
@@ -90,7 +92,9 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     isUpdatingField ||
     isSavingMood;
 
-  const { data: customCategories = [] } = useCustomCategories();
+  const { data: customCategories = [] } = useCustomCategories(
+    user?.activeUserId
+  );
   const { data: existingCheckIn } =
     useExistingCheckInMeasurements(selectedDate);
   const { data: existingCustom } = useExistingCustomMeasurements(selectedDate);

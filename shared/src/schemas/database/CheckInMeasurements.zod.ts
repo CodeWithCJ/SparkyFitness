@@ -52,10 +52,12 @@ export const checkInMeasurementsMutatorSchema = z.object({
   updated_by_user_id: z.string().optional().nullable(),
 });
 
-export type CheckInMeasurements = z.infer<typeof checkInMeasurementsSchema>;
-export type CheckInMeasurementsInitializer = z.infer<
+export type DatabaseCheckInMeasurements = z.infer<
+  typeof checkInMeasurementsSchema
+>;
+export type DatabaseCheckInMeasurementsInitializer = z.infer<
   typeof checkInMeasurementsInitializerSchema
 >;
-export type CheckInMeasurementsMutator = z.infer<
+export type DatabaseCheckInMeasurementsMutator = z.infer<
   typeof checkInMeasurementsMutatorSchema
 >;
