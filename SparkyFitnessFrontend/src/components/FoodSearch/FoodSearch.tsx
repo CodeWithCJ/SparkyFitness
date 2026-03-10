@@ -57,7 +57,6 @@ import { FoodFormDialog } from './FoodFormDialog.tsx';
 import { useExternalProvidersQuery } from '@/hooks/Settings/useExternalProviderSettings.ts';
 import {
   searchBarcodeOptions,
-  searchOpenFoodFactsBarcodeOptions,
   searchOpenFoodFactsOptions,
 } from '@/hooks/Foods/useOpenFoodFacts.ts';
 import { mealSearchOptions } from '@/hooks/Foods/useMeals.ts';
@@ -150,6 +149,7 @@ const EnhancedFoodSearch = ({
   const {
     defaultFoodDataProviderId,
     setDefaultFoodDataProviderId,
+    defaultBarcodeProviderId,
     itemDisplayLimit,
     foodDisplayLimit,
     nutrientDisplayPreferences,
@@ -222,9 +222,12 @@ const EnhancedFoodSearch = ({
     foodDataProviders[0]?.id ||
     null;
 
+  // Barcode provider: prefer explicit user selection, then the dedicated barcode
+  // provider preference (set in External Provider Settings → Default Barcode Provider),
+  // then fall back to the first active barcode-capable provider.
   const selectedBarcodeProvider =
     barcodeProviderId ||
-    defaultFoodDataProviderId ||
+    defaultBarcodeProviderId ||
     foodDataProviders.find((p) =>
       ['openfoodfacts', 'usda', 'fatsecret'].includes(p.provider_type)
     )?.id ||
@@ -304,11 +307,15 @@ const EnhancedFoodSearch = ({
           return;
         }
 
-        const mapped: ExternalResultWrapper = {
-          provider_type: data.source as any,
-          raw: (data.raw || data.food) as any,
+        type BarcodeProviderType = 'openfoodfacts' | 'usda' | 'fatsecret';
+        // The barcode endpoint always returns a pre-mapped Food. We use
+        // `unknown` as an intermediate cast since the raw type doesn't
+        // structurally match the provider-specific types at compile time.
+        const mapped = {
+          provider_type: data.source as BarcodeProviderType,
+          raw: data.food,
           food: data.food,
-        };
+        } as unknown as ExternalResultWrapper;
 
         setExternalResults([mapped]);
         setActiveTab('online');
@@ -492,7 +499,7 @@ const EnhancedFoodSearch = ({
     );
 
     if (nutrientData) {
-      setEditingProduct(convertUsdaToFood(item, nutrientData));
+      setEditingProduct(convertUsdaToFood(usdaItem, nutrientData));
       setShowEditDialog(true);
     } else {
       toast({
@@ -546,7 +553,7 @@ const EnhancedFoodSearch = ({
       );
 
     if (nutrientData) {
-      setEditingProduct(convertFatSecretToFood(item, nutrientData));
+      setEditingProduct(convertFatSecretToFood(fsItem, nutrientData));
       setShowEditDialog(true);
     } else {
       toast({

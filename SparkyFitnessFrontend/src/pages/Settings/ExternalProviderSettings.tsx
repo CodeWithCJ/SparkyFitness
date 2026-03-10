@@ -124,36 +124,36 @@ const ExternalProviderSettings = () => {
               />
             )}
 
-            <ExternalProviderList showAddForm={showAddForm} />
-
             {barcodeProviders.length > 0 && (
-              <>
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label htmlFor="barcode-provider">Barcode (mobile app)</Label>
-                  <Select
-                    value={defaultBarcodeProviderId ?? ''}
-                    onValueChange={(value) => {
-                      const id = value || null;
-                      setDefaultBarcodeProviderId(id);
-                      saveAllPreferences({ defaultBarcodeProviderId: id });
-                    }}
-                  >
-                    <SelectTrigger id="barcode-provider">
-                      <SelectValue placeholder="Select a barcode provider" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {barcodeProviders.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.provider_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
+              <div className="space-y-2">
+                <Label htmlFor="barcode-provider">
+                  Default Barcode Provider
+                </Label>
+                <Select
+                  value={defaultBarcodeProviderId ?? ''}
+                  onValueChange={(value) => {
+                    const id = value || null;
+                    setDefaultBarcodeProviderId(id);
+                    saveAllPreferences({ defaultBarcodeProviderId: id });
+                  }}
+                >
+                  <SelectTrigger id="barcode-provider">
+                    <SelectValue placeholder="Select a barcode provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {barcodeProviders.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.provider_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
+
+            <Separator />
+
+            <ExternalProviderList showAddForm={showAddForm} />
           </CardContent>
         </Card>
       </div>
