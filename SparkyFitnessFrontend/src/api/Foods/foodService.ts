@@ -4,9 +4,6 @@ import type {
   Food,
   FoodDataForBackend,
   FoodDeletionImpact,
-  FatSecretFoodItem,
-  OpenFoodFactsProduct,
-  UsdaItem,
 } from '@/types/food';
 import { MealFilter } from '@/types/meal';
 
@@ -118,26 +115,6 @@ export const getFoodById = async (foodId: string): Promise<Food> => {
   });
 };
 
-export const searchMealieFoods = async (
-  query: string,
-  baseUrl: string,
-  apiKey: string,
-  providerId: string
-): Promise<Food[]> => {
-  const params = new URLSearchParams();
-  params.append('query', query);
-
-  const response = await apiCall(`/foods/mealie/search?${params.toString()}`, {
-    method: 'GET',
-    headers: {
-      'x-mealie-base-url': baseUrl,
-      'x-mealie-api-key': apiKey,
-      'x-provider-id': providerId,
-    },
-  });
-  return response;
-};
-
 export const updateFoodEntriesSnapshot = async (
   foodId: string
 ): Promise<void> => {
@@ -145,26 +122,6 @@ export const updateFoodEntriesSnapshot = async (
     method: 'POST',
     body: { foodId },
   });
-};
-
-export const searchTandoorFoods = async (
-  query: string,
-  baseUrl: string,
-  apiKey: string,
-  providerId: string
-): Promise<Food[]> => {
-  const params = new URLSearchParams();
-  params.append('query', query);
-
-  const response = await apiCall(`/foods/tandoor/search?${params.toString()}`, {
-    method: 'GET',
-    headers: {
-      'x-tandoor-base-url': baseUrl,
-      'x-tandoor-api-key': apiKey,
-      'x-provider-id': providerId,
-    },
-  });
-  return response || [];
 };
 
 export const getRecentAndTopFoods = async (
@@ -192,49 +149,75 @@ export const searchDatabaseFoods = async (
   return apiCall(`/foods?${params.toString()}`);
 };
 
-export interface OpenFoodFactsSearchResponse {
-  products?: OpenFoodFactsProduct[];
-}
-
-export interface OpenFoodFactsBarcodeResponse {
-  status: number;
-  product?: OpenFoodFactsProduct;
-}
-
-export const searchOpenFoodFactsApi = async (
-  query: string
-): Promise<OpenFoodFactsSearchResponse> => {
-  return apiCall(
-    `/foods/openfoodfacts/search?query=${encodeURIComponent(query)}`
-  );
-};
-
-export const searchOpenFoodFactsBarcodeApi = async (
-  barcode: string
-): Promise<OpenFoodFactsBarcodeResponse> => {
-  return apiCall(`/foods/openfoodfacts/barcode/${barcode}`);
-};
-
-export interface BarcodeLookupResult {
-  source: 'local' | 'openfoodfacts' | 'usda' | 'fatsecret' | 'not_found';
-  food: Food | null;
-  barcode_raw?: OpenFoodFactsProduct | UsdaItem | { food: FatSecretFoodItem };
-}
-
-export const searchBarcodeApi = async (
-  barcode: string,
-  providerId?: string
-): Promise<BarcodeLookupResult> => {
-  const params = new URLSearchParams();
-  if (providerId) params.append('providerId', providerId);
-  return apiCall(`/foods/barcode/${barcode}?${params.toString()}`);
-};
-
 export const importFoodsFromCsv = async (
   foods: FoodDataForBackend[]
 ): Promise<void> => {
   await apiCall('/foods/import-from-csv', {
     method: 'POST',
     body: JSON.stringify({ foods }),
+  });
+};
+
+// --- V2 API functions ---
+
+export interface V2SearchResponse {
+  foods: Food[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    hasMore: boolean;
+  };
+}
+
+export const searchFoodsV2 = async (
+  providerType: string,
+  query: string,
+  providerId?: string,
+  page?: number,
+  pageSize?: number,
+  autoScale?: boolean
+): Promise<V2SearchResponse> => {
+  const params: Record<string, string> = { query };
+  if (providerId) params['providerId'] = providerId;
+  if (page) params['page'] = String(page);
+  if (pageSize) params['pageSize'] = String(pageSize);
+  if (autoScale !== undefined) params['autoScale'] = String(autoScale);
+
+  return apiCall(`/v2/foods/search/${providerType}`, {
+    method: 'GET',
+    params,
+  });
+};
+
+export interface V2BarcodeResponse {
+  source: string;
+  food: Food | null;
+}
+
+export const searchBarcodeV2 = async (
+  barcode: string,
+  providerId?: string
+): Promise<V2BarcodeResponse> => {
+  const params: Record<string, string> = {};
+  if (providerId) params['providerId'] = providerId;
+
+  return apiCall(`/v2/foods/barcode/${barcode}`, {
+    method: 'GET',
+    params,
+  });
+};
+
+export const getFoodDetailsV2 = async (
+  providerType: string,
+  externalId: string,
+  providerId?: string
+): Promise<Food> => {
+  const params: Record<string, string> = {};
+  if (providerId) params['providerId'] = providerId;
+
+  return apiCall(`/v2/foods/details/${providerType}/${externalId}`, {
+    method: 'GET',
+    params,
   });
 };

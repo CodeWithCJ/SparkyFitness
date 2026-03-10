@@ -26,12 +26,6 @@ export const foodKeys = {
     [...foodKeys.all, 'search', term, limit, mealType] as const,
 };
 
-export const providerKeys = {
-  all: ['foodProvider'] as const,
-  one: (query: string, providerId: string) =>
-    [...providerKeys.all, providerId, query] as const,
-};
-
 export const mealPlanKeys = {
   all: ['mealPlans'] as const,
   byUser: (userId: string) => [...mealPlanKeys.all, userId] as const,
@@ -40,14 +34,6 @@ export const mealPlanKeys = {
 export const customNutrientsKeys = {
   all: ['customNutrients'] as const,
   one: (id: string) => [...customNutrientsKeys.all, id] as const,
-};
-
-export const fatSecretKeys = {
-  all: ['fatsecret'] as const,
-  search: (query: string, providerId: string) =>
-    [...fatSecretKeys.all, 'search', query, providerId] as const,
-  nutrients: (foodId: string, providerId: string) =>
-    [...fatSecretKeys.all, 'nutrients', foodId, providerId] as const,
 };
 
 export const nutritionixKeys = {
@@ -72,21 +58,7 @@ export const nutritionixKeys = {
     ] as const,
 };
 
-export const usdaKeys = {
-  all: ['usda'] as const,
-  search: (query: string, providerId: string, limit: number) =>
-    [...usdaKeys.all, 'search', query, providerId, limit] as const,
-  details: (fdcId: number, providerId: string) =>
-    [...usdaKeys.all, 'details', fdcId, providerId] as const,
-};
 export const foodVariantKeys = {
   all: [...foodKeys.all, 'variants'] as const,
   byFood: (foodId: string) => [...foodKeys.all, 'variants', foodId] as const,
-};
-export const openFoodFactsKeys = {
-  all: ['openfoodfacts'] as const,
-  search: (query: string) =>
-    [...openFoodFactsKeys.all, 'search', query] as const,
-  barcode: (barcode: string) =>
-    [...openFoodFactsKeys.all, 'barcode', barcode] as const,
 };

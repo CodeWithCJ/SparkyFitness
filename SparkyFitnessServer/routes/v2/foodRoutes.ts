@@ -182,11 +182,12 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (req, res,
 
     switch (providerType) {
       case "openfoodfacts": {
+        const autoScale = (req.query.autoScale as string ?? 'true') !== 'false';
         const result = await searchOpenFoodFacts(query, page);
         const products = (result.products || []).filter(
           (p: Record<string, unknown>) => p.product_name,
         );
-        foods = products.map(mapOpenFoodFactsProduct).filter(Boolean);
+        foods = products.map((p: Record<string, unknown>) => mapOpenFoodFactsProduct(p, { autoScale })).filter(Boolean);
         pagination = result.pagination;
         break;
       }

@@ -13,54 +13,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type {
-  Food,
-  CSVData,
-  FatSecretFoodItem,
-  OpenFoodFactsProduct,
-  NutritionixItem,
-  UsdaItem,
-} from '@/types/food';
+import type { Food, CSVData, NutritionixItem } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  searchMealieOptions,
-  searchTandoorOptions,
   useDatabaseFoodSearchQuery,
   useImportCsvMutation,
   useRecentAndTopFoodsQuery,
 } from '@/hooks/Foods/useFoods.ts';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients.ts';
 import {
-  fatSecretNutrientOptions,
-  searchFatSecretOptions,
-} from '@/hooks/Foods/useFatSecret.ts';
-import {
   nutritionixBrandedNutrientsOptions,
   nutritionixNaturalNutrientsOptions,
   searchNutritionixOptions,
 } from '@/hooks/Foods/useNutrionix.ts';
-import {
-  searchUsdaOptions,
-  usdaFoodDetailsOptions,
-} from '@/hooks/Foods/useUSDA.ts';
 import { DEFAULT_NUTRIENTS } from '@/constants/nutrients.ts';
-import {
-  convertFatSecretToFood,
-  convertNutritionixToFood,
-  convertOpenFoodFactsToFood,
-  convertUsdaToFood,
-  mapUsdaItemToDetails,
-} from '@/utils/foodSearch.ts';
+import { convertNutritionixToFood } from '@/utils/foodSearch.ts';
 import FoodResultCard from './FoodResultCard.tsx';
 import { BarcodeScannerDialog } from './BarcodeScannerDialog.tsx';
 import { CsvImportDialog } from './CsvImportDialog.tsx';
 import { FoodFormDialog } from './FoodFormDialog.tsx';
 import { useExternalProvidersQuery } from '@/hooks/Settings/useExternalProviderSettings.ts';
 import {
-  searchBarcodeOptions,
-  searchOpenFoodFactsOptions,
-} from '@/hooks/Foods/useOpenFoodFacts.ts';
+  searchFoodsV2Options,
+  searchBarcodeV2Options,
+  foodDetailsV2Options,
+} from '@/hooks/Foods/useFoodsV2.ts';
 import { mealSearchOptions } from '@/hooks/Foods/useMeals.ts';
 import { DataProvider } from '@/types/settings.ts';
 import { getProviderCategory } from '@/utils/settings.ts';
@@ -70,39 +48,28 @@ type FoodDataForBackend = Omit<CSVData, 'id'>;
 export type ExternalResultWrapper =
   | {
       provider_type: 'openfoodfacts';
-      raw: OpenFoodFactsProduct;
       food: Food;
-      barcode_raw?: OpenFoodFactsProduct;
     }
   | {
       provider_type: 'nutritionix';
       raw: NutritionixItem;
       food: Food;
-      barcode_raw?: NutritionixItem;
     }
   | {
       provider_type: 'fatsecret';
-      raw: FatSecretFoodItem;
       food: Food;
-      barcode_raw?: { food: FatSecretFoodItem };
     }
   | {
       provider_type: 'usda';
-      raw: UsdaItem;
       food: Food;
-      barcode_raw?: UsdaItem;
     }
   | {
       provider_type: 'mealie';
-      raw: Food;
       food: Food;
-      barcode_raw?: Food;
     }
   | {
       provider_type: 'tandoor';
-      raw: Food;
       food: Food;
-      barcode_raw?: Food;
     };
 
 interface EnhancedFoodSearchProps {
@@ -130,7 +97,6 @@ const EnhancedFoodSearch = ({
     convertEnergy,
     getEnergyUnitString,
     autoScaleOpenFoodFactsImports,
-    loggingLevel,
   } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
@@ -147,9 +113,7 @@ const EnhancedFoodSearch = ({
     'database' | 'meal' | 'online' | 'barcode'
   >(getInitialActiveTab());
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<
-    OpenFoodFactsProduct | Food | null
-  >(null);
+  const [editingProduct, setEditingProduct] = useState<Food | null>(null);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [barcodeProviderId, setBarcodeProviderId] = useState<string | null>(
     null
@@ -230,29 +194,6 @@ const EnhancedFoodSearch = ({
     };
   }, [searchTerm, activeTab, handleMealSearch]);
 
-  const searchOpenFoodFacts = async () => {
-    if (!searchTerm.trim()) return;
-
-    const data = await queryClient.fetchQuery(
-      searchOpenFoodFactsOptions(searchTerm)
-    );
-
-    if (data.products) {
-      const mapped: ExternalResultWrapper[] = data.products
-        .filter(
-          (p: OpenFoodFactsProduct) =>
-            p.product_name && p.nutriments && p.nutriments['energy-kcal_100g']
-        )
-        .map((p: OpenFoodFactsProduct) => ({
-          provider_type: 'openfoodfacts',
-          raw: p,
-          food: convertOpenFoodFactsToFood(p, autoScaleOpenFoodFactsImports),
-        }));
-
-      setExternalResults(mapped);
-    }
-  };
-
   const searchBarcode = async (barcode: string) => {
     setIsOnlineLoading(true);
 
@@ -263,14 +204,11 @@ const EnhancedFoodSearch = ({
 
     try {
       const data = await queryClient.fetchQuery(
-        searchBarcodeOptions(barcode, selectedBarcodeProvider || undefined)
+        searchBarcodeV2Options(barcode, selectedBarcodeProvider || undefined)
       );
 
       if (data.food) {
-        // Handle local source separately or map to ExternalResultWrapper
         if (data.source === 'local') {
-          // If it's local, we might want to just show it or add to a separate list
-          // For now, let's map it but keep in mind provider_type is 'local'
           onFoodSelect(data.food, 'food');
           setShowBarcodeScanner(false);
           toast({
@@ -280,16 +218,16 @@ const EnhancedFoodSearch = ({
           return;
         }
 
-        type BarcodeProviderType = 'openfoodfacts' | 'usda' | 'fatsecret';
-        // The barcode endpoint always returns a pre-mapped Food. We use
-        // `unknown` as an intermediate cast since the raw type doesn't
-        // structurally match the provider-specific types at compile time.
-        const mapped = {
+        type BarcodeProviderType =
+          | 'openfoodfacts'
+          | 'usda'
+          | 'fatsecret'
+          | 'mealie'
+          | 'tandoor';
+        const mapped: ExternalResultWrapper = {
           provider_type: data.source as BarcodeProviderType,
-          raw: data.food, // Use mapped food as raw for barcode results to satisfy edit handler checks
-          barcode_raw: data.barcode_raw, // Keep the actual raw provider data separate
           food: data.food,
-        } as unknown as ExternalResultWrapper;
+        } as ExternalResultWrapper;
 
         setExternalResults([mapped]);
         setActiveTab('online');
@@ -307,7 +245,7 @@ const EnhancedFoodSearch = ({
           variant: 'destructive',
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to search barcode.',
@@ -316,11 +254,6 @@ const EnhancedFoodSearch = ({
     } finally {
       setIsOnlineLoading(false);
     }
-  };
-
-  const handleOpenFoodFactsEdit = (product: OpenFoodFactsProduct) => {
-    setEditingProduct(product);
-    setShowEditDialog(true);
   };
 
   const handleSaveEditedFood = async (foodData: Food) => {
@@ -352,8 +285,30 @@ const EnhancedFoodSearch = ({
     string,
     (term: string, providerId: string, provider: DataProvider) => Promise<void>
   > = {
-    openfoodfacts: async () => {
-      await searchOpenFoodFacts();
+    openfoodfacts: async (term) => {
+      const data = await queryClient.fetchQuery(
+        searchFoodsV2Options(
+          'openfoodfacts',
+          term,
+          undefined,
+          undefined,
+          autoScaleOpenFoodFactsImports
+        )
+      );
+      setExternalResults(
+        data.foods.map((food: Food) => ({
+          provider_type: 'openfoodfacts' as const,
+          food: {
+            ...food,
+            default_variant: food.default_variant
+              ? {
+                  ...food.default_variant,
+                  is_locked: autoScaleOpenFoodFactsImports,
+                }
+              : food.default_variant,
+          },
+        }))
+      );
     },
     nutritionix: async (term, id) => {
       const data: NutritionixItem[] = await queryClient.fetchQuery(
@@ -368,53 +323,46 @@ const EnhancedFoodSearch = ({
       );
     },
     fatsecret: async (term, id) => {
-      const data: FatSecretFoodItem[] = await queryClient.fetchQuery(
-        searchFatSecretOptions(term, id)
+      const data = await queryClient.fetchQuery(
+        searchFoodsV2Options('fatsecret', term, id)
       );
       setExternalResults(
-        data.map((item) => ({
-          provider_type: 'fatsecret',
-          raw: item,
-          food: convertFatSecretToFood(item),
+        data.foods.map((food: Food) => ({
+          provider_type: 'fatsecret' as const,
+          food,
         }))
       );
     },
     usda: async (term, id) => {
-      const data: UsdaItem[] = await queryClient.fetchQuery(
-        searchUsdaOptions(term, id, foodDisplayLimit)
+      const data = await queryClient.fetchQuery(
+        searchFoodsV2Options('usda', term, id, foodDisplayLimit)
       );
       setExternalResults(
-        data.map((item) => ({
-          provider_type: 'usda',
-          raw: item,
-          food: convertUsdaToFood(
-            item,
-            mapUsdaItemToDetails(item, loggingLevel)
-          ),
+        data.foods.map((food: Food) => ({
+          provider_type: 'usda' as const,
+          food,
         }))
       );
     },
-    mealie: async (term, id, p) => {
-      const data: Food[] = await queryClient.fetchQuery(
-        searchMealieOptions(term, p.base_url ?? '', p.app_key, id)
+    mealie: async (term, id) => {
+      const data = await queryClient.fetchQuery(
+        searchFoodsV2Options('mealie', term, id)
       );
       setExternalResults(
-        data.map((item) => ({
-          provider_type: 'mealie',
-          raw: item,
-          food: item,
+        data.foods.map((food: Food) => ({
+          provider_type: 'mealie' as const,
+          food,
         }))
       );
     },
-    tandoor: async (term, id, p) => {
-      const data: Food[] = await queryClient.fetchQuery(
-        searchTandoorOptions(term, p.base_url ?? '', p.app_key, id)
+    tandoor: async (term, id) => {
+      const data = await queryClient.fetchQuery(
+        searchFoodsV2Options('tandoor', term, id)
       );
       setExternalResults(
-        data.map((item) => ({
-          provider_type: 'tandoor',
-          raw: item,
-          food: item,
+        data.foods.map((food: Food) => ({
+          provider_type: 'tandoor' as const,
+          food,
         }))
       );
     },
@@ -456,50 +404,6 @@ const EnhancedFoodSearch = ({
     setIsOnlineLoading(false);
   };
 
-  const handleUsdaEdit = async (
-    item: UsdaItem | Food,
-    barcodeRaw?: UsdaItem
-  ) => {
-    // If it's already a mapped Food (from barcode search), check if we have barcode_raw to get better details
-    if ('provider_type' in item && item.provider_type === 'usda') {
-      if (barcodeRaw) {
-        // We have the raw USDA data from barcode, use it to fetch full nutrients
-        const usdaRaw = barcodeRaw as UsdaItem;
-        const nutrientData = await queryClient.fetchQuery(
-          usdaFoodDetailsOptions(usdaRaw.fdcId, searchProviderId || '')
-        );
-        if (nutrientData) {
-          setEditingProduct(convertUsdaToFood(usdaRaw, nutrientData));
-          setShowEditDialog(true);
-          return;
-        }
-      }
-      // Fallback to the already mapped food if fetch fails or no barcodeRaw
-      setEditingProduct(item);
-      setShowEditDialog(true);
-      return;
-    }
-
-    const usdaItem = item as UsdaItem;
-    if (!searchProviderId) {
-      return;
-    }
-    const nutrientData = await queryClient.fetchQuery(
-      usdaFoodDetailsOptions(usdaItem.fdcId, searchProviderId)
-    );
-
-    if (nutrientData) {
-      setEditingProduct(convertUsdaToFood(usdaItem, nutrientData));
-      setShowEditDialog(true);
-    } else {
-      toast({
-        title: 'Error',
-        description: 'Failed to retrieve detailed nutrition for this item.',
-        variant: 'destructive',
-      });
-    }
-  };
-
   const handleNutritionixEdit = async (item: NutritionixItem) => {
     let nutrientData: NutritionixItem;
     if (item.brand) {
@@ -524,63 +428,40 @@ const EnhancedFoodSearch = ({
     }
   };
 
-  const handleFatSecretEdit = async (
-    item: FatSecretFoodItem | Food,
-    barcodeRaw?: { food: FatSecretFoodItem }
-  ) => {
-    // If it's already a mapped Food (from barcode search), check if we have barcode_raw to get better details
-    if ('provider_type' in item && item.provider_type === 'fatsecret') {
-      if (barcodeRaw && barcodeRaw.food) {
-        // We have the raw FatSecret data from barcode, use it to fetch full nutrients
-        const fsRaw = barcodeRaw.food as FatSecretFoodItem;
-        const nutrientData: Partial<FatSecretFoodItem> =
-          await queryClient.fetchQuery(
-            fatSecretNutrientOptions(fsRaw.food_id, searchProviderId || '')
-          );
-        if (nutrientData) {
-          setEditingProduct(convertFatSecretToFood(fsRaw, nutrientData));
-          setShowEditDialog(true);
-          return;
-        }
+  const handleExternalFoodEdit = async (food: Food) => {
+    const needsDetailFetch =
+      (food.provider_type === 'fatsecret' || food.provider_type === 'usda') &&
+      food.provider_external_id;
+
+    if (needsDetailFetch) {
+      const providerId = searchProviderId || undefined;
+      if (!providerId) {
+        // No provider credentials available — data is already complete (barcode flow)
+        setEditingProduct(food);
+        setShowEditDialog(true);
+        return;
       }
-      // Fallback to the already mapped food if fetch fails or no barcodeRaw
-      setEditingProduct(item);
-      setShowEditDialog(true);
-      return;
-    }
-
-    const fsItem = item as FatSecretFoodItem;
-    if (!searchProviderId) {
-      return;
-    }
-
-    const nutrientData: Partial<FatSecretFoodItem> =
-      await queryClient.fetchQuery(
-        fatSecretNutrientOptions(fsItem.food_id, searchProviderId)
-      );
-
-    if (nutrientData) {
-      setEditingProduct(convertFatSecretToFood(fsItem, nutrientData));
-      setShowEditDialog(true);
-    } else {
-      toast({
-        title: 'Error',
-        description: 'Failed to retrieve detailed nutrition for this item.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleMealieOrTandoorEdit = async (food: Food) => {
-    const provider = foodDataProviders.find(
-      (p) => p.id === selectedFoodDataProvider
-    );
-    if (!provider) {
-      toast({
-        title: 'Error',
-        description: 'Could not find the selected food provider.',
-        variant: 'destructive',
-      });
+      // Search results have partial data; fetch full nutrients
+      try {
+        const detailedFood = await queryClient.fetchQuery(
+          foodDetailsV2Options(
+            food.provider_type!,
+            food.provider_external_id!,
+            providerId
+          )
+        );
+        setEditingProduct(detailedFood);
+        setShowEditDialog(true);
+      } catch {
+        toast({
+          title: 'Error',
+          description:
+            'Failed to retrieve detailed nutrition. Using partial data.',
+          variant: 'destructive',
+        });
+        setEditingProduct(food);
+        setShowEditDialog(true);
+      }
       return;
     }
 
@@ -804,23 +685,10 @@ const EnhancedFoodSearch = ({
               providerLabel={result.provider_type.toUpperCase()}
               nutrientConfig={nutrientConfig}
               onEditClick={() => {
-                switch (result.provider_type) {
-                  case 'openfoodfacts':
-                    handleOpenFoodFactsEdit(result.raw);
-                    break;
-                  case 'nutritionix':
-                    handleNutritionixEdit(result.raw);
-                    break;
-                  case 'fatsecret':
-                    handleFatSecretEdit(result.raw, result.barcode_raw);
-                    break;
-                  case 'usda':
-                    handleUsdaEdit(result.raw, result.barcode_raw);
-                    break;
-                  case 'mealie':
-                  case 'tandoor':
-                    handleMealieOrTandoorEdit(result.raw);
-                    break;
+                if (result.provider_type === 'nutritionix') {
+                  handleNutritionixEdit(result.raw);
+                } else {
+                  handleExternalFoodEdit(result.food);
                 }
               }}
             />
@@ -853,14 +721,12 @@ const EnhancedFoodSearch = ({
         onOpenChange={setShowEditDialog}
         mode="edit"
         editingProduct={editingProduct}
-        autoScaleOpenFoodFactsImports={autoScaleOpenFoodFactsImports}
         onSave={handleSaveEditedFood}
       />
       <FoodFormDialog
         isOpen={showAddFoodDialog}
         onOpenChange={setShowAddFoodDialog}
         mode="add"
-        autoScaleOpenFoodFactsImports={autoScaleOpenFoodFactsImports}
         onSave={handleSaveEditedFood}
       />
       <BarcodeScannerDialog

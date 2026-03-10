@@ -200,10 +200,29 @@ function mapFatSecretSearchItem(item) {
   const carbs = parseFloat(desc.match(/Carbs:\s*([\d.]+)/)?.[1]) || 0;
   const protein = parseFloat(desc.match(/Protein:\s*([\d.]+)/)?.[1]) || 0;
 
-  // Extract serving info: "Per 100g" or "Per 1 serving (28g)"
-  const servingMatch = desc.match(/^Per\s+(?:\d+\s+\w+\s+\()?([\d.]+)(g|ml)\)?/);
-  const servingSize = servingMatch ? parseFloat(servingMatch[1]) : 100;
-  const servingUnit = servingMatch ? servingMatch[2] : "g";
+  // Extract serving info from formats like:
+  //   "Per 100g - ..."           → 100 g
+  //   "Per 250ml - ..."          → 250 ml
+  //   "Per 1 serving (28g) - ..." → 28 g  (prefer metric in parentheses)
+  //   "Per 1 serving - ..."      → 1 serving
+  //   "Per 1 bar - ..."          → 1 bar
+  const metricMatch = desc.match(
+    /^Per\s+(?:\d+\s+\w+\s+\()?([\d.]+)(g|ml)\)?/,
+  );
+  let servingSize, servingUnit;
+  if (metricMatch) {
+    servingSize = parseFloat(metricMatch[1]);
+    servingUnit = metricMatch[2];
+  } else {
+    const nonMetricMatch = desc.match(/^Per\s+([\d.]+)\s+(.+?)\s*-/);
+    if (nonMetricMatch) {
+      servingSize = parseFloat(nonMetricMatch[1]);
+      servingUnit = nonMetricMatch[2].trim();
+    } else {
+      servingSize = 100;
+      servingUnit = "g";
+    }
+  }
 
   return {
     name: item.food_name,

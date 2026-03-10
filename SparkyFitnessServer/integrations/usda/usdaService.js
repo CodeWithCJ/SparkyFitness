@@ -118,7 +118,7 @@ function mapUsdaBarcodeProduct(food) {
 
   return {
     name: food.description,
-    brand: food.brandName || food.brandOwner || null,
+    brand: food.brandName || food.brandOwner || "",
     barcode: normalizeBarcode(food.gtinUpc),
     provider_external_id: String(food.fdcId),
     provider_type: "usda",
