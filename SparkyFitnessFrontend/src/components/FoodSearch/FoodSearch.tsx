@@ -16,8 +16,10 @@ import {
 import type {
   Food,
   CSVData,
-  GlycemicIndex,
   FatSecretFoodItem,
+  OpenFoodFactsProduct,
+  NutritionixItem,
+  UsdaItem,
 } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import { useQueryClient } from '@tanstack/react-query';
@@ -63,22 +65,45 @@ import { mealSearchOptions } from '@/hooks/Foods/useMeals.ts';
 import { DataProvider } from '@/types/settings.ts';
 import { getProviderCategory } from '@/utils/settings.ts';
 
-export interface OpenFoodFactsProduct {
-  product_name: string;
-  brands?: string;
-  serving_quantity?: number;
-  nutriments?: {
-    'energy-kcal_100g'?: number;
-    proteins_100g?: number;
-    carbohydrates_100g?: number;
-    fat_100g?: number;
-    'saturated-fat_100g'?: number;
-    sodium_100g?: number;
-    fiber_100g?: number;
-    sugars_100g?: number;
-  };
-  code: string;
-}
+type FoodDataForBackend = Omit<CSVData, 'id'>;
+
+export type ExternalResultWrapper =
+  | {
+      provider_type: 'openfoodfacts';
+      raw: OpenFoodFactsProduct;
+      food: Food;
+      barcode_raw?: OpenFoodFactsProduct;
+    }
+  | {
+      provider_type: 'nutritionix';
+      raw: NutritionixItem;
+      food: Food;
+      barcode_raw?: NutritionixItem;
+    }
+  | {
+      provider_type: 'fatsecret';
+      raw: FatSecretFoodItem;
+      food: Food;
+      barcode_raw?: { food: FatSecretFoodItem };
+    }
+  | {
+      provider_type: 'usda';
+      raw: UsdaItem;
+      food: Food;
+      barcode_raw?: UsdaItem;
+    }
+  | {
+      provider_type: 'mealie';
+      raw: Food;
+      food: Food;
+      barcode_raw?: Food;
+    }
+  | {
+      provider_type: 'tandoor';
+      raw: Food;
+      food: Food;
+      barcode_raw?: Food;
+    };
 
 interface EnhancedFoodSearchProps {
   onFoodSelect: (item: Food | Meal, type: 'food' | 'meal') => void;
@@ -86,58 +111,6 @@ interface EnhancedFoodSearchProps {
   hideMealTab?: boolean;
   mealType?: string;
 }
-
-export interface NutritionixItem {
-  id?: string;
-  name: string;
-  food_name?: string;
-  brand?: string | null;
-  brand_name?: string;
-  image?: string;
-  serving_size?: number;
-  serving_unit?: string;
-  calories?: number;
-  protein?: number;
-  carbs?: number;
-  fat?: number;
-  saturated_fat?: number;
-  polyunsaturated_fat?: number;
-  monounsaturated_fat?: number;
-  trans_fat?: number;
-  cholesterol?: number;
-  sodium?: number;
-  potassium?: number;
-  dietary_fiber?: number;
-  sugars?: number;
-  vitamin_a?: number;
-  vitamin_c?: number;
-  calcium?: number;
-  iron?: number;
-  glycemic_index?: GlycemicIndex;
-}
-
-export interface UsdaItem {
-  fdcId: number;
-  description: string;
-  brandOwner?: string;
-  foodNutrients: Array<{
-    nutrientName: string;
-    value: number;
-    unitName: string;
-  }>;
-  servingSize?: number;
-  servingSizeUnit?: string;
-}
-
-type FoodDataForBackend = Omit<CSVData, 'id'>;
-
-export type ExternalResultWrapper =
-  | { provider_type: 'openfoodfacts'; raw: OpenFoodFactsProduct; food: Food }
-  | { provider_type: 'nutritionix'; raw: NutritionixItem; food: Food }
-  | { provider_type: 'fatsecret'; raw: FatSecretFoodItem; food: Food }
-  | { provider_type: 'usda'; raw: UsdaItem; food: Food }
-  | { provider_type: 'mealie'; raw: Food; food: Food }
-  | { provider_type: 'tandoor'; raw: Food; food: Food };
 
 const EnhancedFoodSearch = ({
   onFoodSelect,
@@ -483,9 +456,22 @@ const EnhancedFoodSearch = ({
     setIsOnlineLoading(false);
   };
 
-  const handleUsdaEdit = async (item: UsdaItem | Food) => {
-    // If it's already a mapped Food (from barcode search), use it directly
+  const handleUsdaEdit = async (item: UsdaItem | Food, barcodeRaw?: any) => {
+    // If it's already a mapped Food (from barcode search), check if we have barcode_raw to get better details
     if ('provider_type' in item && item.provider_type === 'usda') {
+      if (barcodeRaw) {
+        // We have the raw USDA data from barcode, use it to fetch full nutrients
+        const usdaRaw = barcodeRaw as UsdaItem;
+        const nutrientData = await queryClient.fetchQuery(
+          usdaFoodDetailsOptions(usdaRaw.fdcId, searchProviderId || '')
+        );
+        if (nutrientData) {
+          setEditingProduct(convertUsdaToFood(usdaRaw, nutrientData));
+          setShowEditDialog(true);
+          return;
+        }
+      }
+      // Fallback to the already mapped food if fetch fails or no barcodeRaw
       setEditingProduct(item);
       setShowEditDialog(true);
       return;
@@ -535,9 +521,26 @@ const EnhancedFoodSearch = ({
     }
   };
 
-  const handleFatSecretEdit = async (item: FatSecretFoodItem | Food) => {
-    // If it's already a mapped Food (from barcode search), use it directly
+  const handleFatSecretEdit = async (
+    item: FatSecretFoodItem | Food,
+    barcodeRaw?: any
+  ) => {
+    // If it's already a mapped Food (from barcode search), check if we have barcode_raw to get better details
     if ('provider_type' in item && item.provider_type === 'fatsecret') {
+      if (barcodeRaw && barcodeRaw.food) {
+        // We have the raw FatSecret data from barcode, use it to fetch full nutrients
+        const fsRaw = barcodeRaw.food as FatSecretFoodItem;
+        const nutrientData: Partial<FatSecretFoodItem> =
+          await queryClient.fetchQuery(
+            fatSecretNutrientOptions(fsRaw.food_id, searchProviderId || '')
+          );
+        if (nutrientData) {
+          setEditingProduct(convertFatSecretToFood(fsRaw, nutrientData));
+          setShowEditDialog(true);
+          return;
+        }
+      }
+      // Fallback to the already mapped food if fetch fails or no barcodeRaw
       setEditingProduct(item);
       setShowEditDialog(true);
       return;
@@ -806,10 +809,13 @@ const EnhancedFoodSearch = ({
                     handleNutritionixEdit(result.raw);
                     break;
                   case 'fatsecret':
-                    handleFatSecretEdit(result.raw);
+                    handleFatSecretEdit(
+                      result.raw,
+                      (result as any).barcode_raw
+                    );
                     break;
                   case 'usda':
-                    handleUsdaEdit(result.raw);
+                    handleUsdaEdit(result.raw, (result as any).barcode_raw);
                     break;
                   case 'mealie':
                   case 'tandoor':

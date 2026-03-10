@@ -1,7 +1,7 @@
 import { toast } from '@/hooks/use-toast';
 import { apiCall } from '@/api/api';
 import { getErrorMessage } from '@/utils/api';
-import { NutritionixItem } from '@/components/FoodSearch/FoodSearch';
+import { NutritionixItem } from '@/types/food';
 
 interface NutritionixFood {
   food_name: string;

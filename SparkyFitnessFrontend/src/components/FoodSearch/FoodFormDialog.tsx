@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import type { Food } from '@/types/food';
 import { convertOpenFoodFactsToFood } from '@/utils/foodSearch';
-import { OpenFoodFactsProduct } from './FoodSearch';
+import { OpenFoodFactsProduct } from '@/types/food';
 import EnhancedCustomFoodForm from './CustomFoodForm';
 import { useTranslation } from 'react-i18next';
 

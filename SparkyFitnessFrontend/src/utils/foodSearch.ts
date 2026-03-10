@@ -1,10 +1,12 @@
 import { debug } from '@/utils/logging';
-import type { FatSecretFoodItem, Food, FoodVariant } from '@/types/food';
-import {
+import type {
+  FatSecretFoodItem,
+  Food,
+  FoodVariant,
   NutritionixItem,
   OpenFoodFactsProduct,
   UsdaItem,
-} from '@/components/FoodSearch/FoodSearch';
+} from '@/types/food';
 import {
   RawUsdaNutrient,
   UsdaFoodDetails,
