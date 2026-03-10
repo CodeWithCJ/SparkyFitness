@@ -456,7 +456,10 @@ const EnhancedFoodSearch = ({
     setIsOnlineLoading(false);
   };
 
-  const handleUsdaEdit = async (item: UsdaItem | Food, barcodeRaw?: any) => {
+  const handleUsdaEdit = async (
+    item: UsdaItem | Food,
+    barcodeRaw?: UsdaItem
+  ) => {
     // If it's already a mapped Food (from barcode search), check if we have barcode_raw to get better details
     if ('provider_type' in item && item.provider_type === 'usda') {
       if (barcodeRaw) {
@@ -523,7 +526,7 @@ const EnhancedFoodSearch = ({
 
   const handleFatSecretEdit = async (
     item: FatSecretFoodItem | Food,
-    barcodeRaw?: any
+    barcodeRaw?: { food: FatSecretFoodItem }
   ) => {
     // If it's already a mapped Food (from barcode search), check if we have barcode_raw to get better details
     if ('provider_type' in item && item.provider_type === 'fatsecret') {
@@ -809,13 +812,10 @@ const EnhancedFoodSearch = ({
                     handleNutritionixEdit(result.raw);
                     break;
                   case 'fatsecret':
-                    handleFatSecretEdit(
-                      result.raw,
-                      (result as any).barcode_raw
-                    );
+                    handleFatSecretEdit(result.raw, result.barcode_raw);
                     break;
                   case 'usda':
-                    handleUsdaEdit(result.raw, (result as any).barcode_raw);
+                    handleUsdaEdit(result.raw, result.barcode_raw);
                     break;
                   case 'mealie':
                   case 'tandoor':
