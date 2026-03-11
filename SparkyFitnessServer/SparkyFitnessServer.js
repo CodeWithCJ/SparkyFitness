@@ -13,7 +13,7 @@ runPreflightChecks();
 const express = require("express");
 const cors = require("cors"); // Added this line
 const cookieParser = require("cookie-parser");
-const { getRawOwnerPool } = require("./db/poolManager");
+const { getRawOwnerPool, endPool } = require("./db/poolManager");
 const { log } = require("./config/logging");
 const { getDefaultModel } = require("./ai/config");
 const { authenticate } = require("./middleware/authMiddleware");
@@ -550,11 +550,39 @@ applyMigrations()
       if (adminUser) await userRepository.updateUserRole(adminUser.id, "admin");
     }
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`DEBUG: Server started and listening on port ${PORT}`);
       log("info", `SparkyFitnessServer listening on port ${PORT}`);
       console.log("View API documentation at: /api/api-docs/swagger");
     });
+
+    // Graceful shutdown
+    let shuttingDown = false;
+    const shutdown = async (signal) => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      log("info", `${signal} received, shutting down gracefully...`);
+
+      server.close(async () => {
+        log("info", "HTTP server closed, draining database pools...");
+        try {
+          await endPool();
+          log("info", "Database pools closed. Exiting.");
+        } catch (err) {
+          log("error", "Error closing database pools:", err);
+        }
+        process.exit(0);
+      });
+
+      // Force exit if graceful shutdown takes too long
+      setTimeout(() => {
+        log("error", "Graceful shutdown timed out after 15s, forcing exit.");
+        process.exit(1);
+      }, 15000).unref();
+    };
+
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
   })
   .catch((error) => {
     console.error("Failed to start server:", error);

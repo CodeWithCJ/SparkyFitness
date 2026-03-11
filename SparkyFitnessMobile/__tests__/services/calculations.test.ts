@@ -137,22 +137,31 @@ describe('calculations', () => {
   });
 
   describe('calculateEffectiveBurned', () => {
-    it('uses active calories when available', () => {
+    it('prioritizes exercise calories over active calories and steps', () => {
       const burned = calculateEffectiveBurned({
         activeCalories: 300,
         otherExerciseCalories: 150,
         steps: 10000,
       });
-      expect(burned).toBe(300); // active calories already include workout calories
+      expect(burned).toBe(150);
     });
 
-    it('uses steps calories when no active calories', () => {
+    it('falls back to active calories when no exercise calories', () => {
       const burned = calculateEffectiveBurned({
-        activeCalories: 0,
-        otherExerciseCalories: 150,
+        activeCalories: 300,
+        otherExerciseCalories: 0,
         steps: 10000,
       });
-      expect(burned).toBe(550); // 150 + 400 (10000 * 0.04)
+      expect(burned).toBe(300);
+    });
+
+    it('falls back to step-derived calories when no exercise or active calories', () => {
+      const burned = calculateEffectiveBurned({
+        activeCalories: 0,
+        otherExerciseCalories: 0,
+        steps: 10000,
+      });
+      expect(burned).toBe(400); // 10000 * 0.04
     });
   });
 

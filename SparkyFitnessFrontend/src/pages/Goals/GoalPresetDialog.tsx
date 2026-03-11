@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NumericInput } from '@/components/NumericInput';
 import {
   Dialog,
   DialogContent,
@@ -181,20 +182,15 @@ export const GoalPresetDialog = ({
                 <Label className="text-xs">
                   {t('nutrition.calories')} ({getEnergyUnitString(energyUnit)})
                 </Label>
-                <Input
-                  type="number"
+                <NumericInput
                   step={1}
                   value={Math.round(
                     convertEnergy(formData.calories, 'kcal', energyUnit)
-                  ).toFixed(0)}
-                  onChange={(e) =>
+                  )}
+                  onValueChange={(val) =>
                     setFormData({
                       ...formData,
-                      calories: convertEnergy(
-                        Number(e.target.value),
-                        energyUnit,
-                        'kcal'
-                      ),
+                      calories: convertEnergy(val ?? 0, energyUnit, 'kcal'),
                     })
                   }
                 />
@@ -208,25 +204,23 @@ export const GoalPresetDialog = ({
                     )}{' '}
                     {macroInputType === 'grams' ? '(g)' : '(%)'}
                   </Label>
-                  <Input
-                    max={100}
+                  <NumericInput
+                    max={macroInputType === 'percentages' ? 100 : undefined}
                     min={0}
-                    type="number"
                     step={0.1}
+                    decimals={1}
                     value={
                       macroInputType === 'grams'
-                        ? ((formData[m] as number) ?? 0).toFixed(1)
-                        : (
-                            (formData[
-                              `${m}_percentage` as keyof GoalPreset
-                            ] as number) ?? 0
-                          ).toFixed(1)
+                        ? ((formData[m] as number) ?? 0)
+                        : ((formData[
+                            `${m}_percentage` as keyof GoalPreset
+                          ] as number) ?? 0)
                     }
-                    onChange={(e) =>
+                    onValueChange={(val) =>
                       setFormData({
                         ...formData,
                         [macroInputType === 'grams' ? m : `${m}_percentage`]:
-                          Number(e.target.value),
+                          val ?? 0,
                       })
                     }
                   />

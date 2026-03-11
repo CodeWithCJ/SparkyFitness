@@ -12,17 +12,34 @@ export const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   heavy: 1.725,
 };
 
+export type ExerciseCalorieSource = 'logged' | 'active' | 'steps' | 'none';
+
+export interface ResolvedExerciseCalories {
+  calories: number;
+  source: ExerciseCalorieSource;
+}
+
 /**
- * Returns the calorie contribution to use from either active (device) calories
- * or step-based calories. Active calories take priority when available.
+ * Returns the calorie contribution from one of three mutually exclusive sources.
+ * Priority: logged exercise entries > device active calories > step-based estimate.
+ * Sources are mutually exclusive to avoid double-counting (e.g. device active
+ * calories already include calories from workouts tracked by that device).
  */
-export function resolveActiveOrStepsCalories(
+export function resolveExerciseCalories(
+  loggedExerciseCalories: number,
   activeCaloriesFromExercise: number,
   stepsCalories: number
-): number {
-  return activeCaloriesFromExercise > 0
-    ? activeCaloriesFromExercise
-    : stepsCalories;
+): ResolvedExerciseCalories {
+  if (loggedExerciseCalories > 0) {
+    return { calories: loggedExerciseCalories, source: 'logged' };
+  }
+  if (activeCaloriesFromExercise > 0) {
+    return { calories: activeCaloriesFromExercise, source: 'active' };
+  }
+  if (stepsCalories > 0) {
+    return { calories: stepsCalories, source: 'steps' };
+  }
+  return { calories: 0, source: 'none' };
 }
 
 /**

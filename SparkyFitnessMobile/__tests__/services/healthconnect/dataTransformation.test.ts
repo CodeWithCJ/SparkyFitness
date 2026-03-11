@@ -30,9 +30,9 @@ describe('transformHealthRecords', () => {
       expect(result[1]).toMatchObject({ date: '2024-01-16', value: 6000, type: 'step' });
     });
 
-    test('passes through HeartRate aggregated records', () => {
+    test('transforms raw HeartRate records via value transformer', () => {
       const records = [
-        { date: '2024-01-15', value: 72, type: 'heart_rate' },
+        { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 72 }] },
       ];
       const result = transformHealthRecords(records, { recordType: 'HeartRate', unit: 'bpm', type: 'heart_rate' });
 
