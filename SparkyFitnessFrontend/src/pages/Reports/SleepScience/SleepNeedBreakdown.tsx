@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { DailyNeedData } from '@/types/sleepScience';
+import { DailyNeedData } from '@workspace/shared';
 
 interface SleepNeedBreakdownProps {
   data: DailyNeedData;
@@ -27,22 +27,22 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
   const chartData = [
     {
       name: t('sleepScience.baseline', 'Baseline'),
-      value: data.baseline,
+      value: data.baseline_need,
       color: '#3b82f6',
     },
     {
       name: t('sleepScience.strain', 'Strain'),
-      value: data.strainAddition,
+      value: data.strain_addition,
       color: '#f97316',
     },
     {
       name: t('sleepScience.debtRecovery', 'Debt Recovery'),
-      value: data.debtAddition,
+      value: data.debt_addition,
       color: '#ef4444',
     },
     {
       name: t('sleepScience.naps', 'Naps'),
-      value: -data.napSubtraction,
+      value: -(data.nap_subtraction ?? 0),
       color: '#22c55e',
     },
   ];
@@ -55,7 +55,7 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
             {t('sleepScience.sleepNeedTonight', 'Sleep Need Tonight')}
           </span>
           <span className="text-2xl font-bold text-primary">
-            {formatSecondsToHHMM(data.totalNeed * 3600)}
+            {formatSecondsToHHMM(data.total_need * 3600)}
           </span>
         </CardTitle>
       </CardHeader>
@@ -80,7 +80,7 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
               stroke={isDark ? '#888' : '#666'}
               fontSize={11}
               domain={
-                chartData.some((d) => d.value < 0)
+                chartData.some((d) => (d.value ?? 0) < 0)
                   ? ['auto', 'auto']
                   : [0, 'auto']
               }

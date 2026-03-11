@@ -485,17 +485,17 @@ async function getDailyNeed(userId, targetDate) {
 
   const breakdown = {
     date: targetDate,
-    baseline: baselineNeed,
-    strainAddition: Math.round(strainAddition * 100) / 100,
-    debtAddition: Math.round(debtAddition * 100) / 100,
-    napSubtraction: Math.round(napSubtraction * 100) / 100,
-    totalNeed: Math.round(totalNeed * 100) / 100,
+    baseline_need: baselineNeed,
+    strain_addition: Math.round(strainAddition * 100) / 100,
+    debt_addition: Math.round(debtAddition * 100) / 100,
+    nap_subtraction: Math.round(napSubtraction * 100) / 100,
+    total_need: Math.round(totalNeed * 100) / 100,
     method: profile?.sleep_need_method || 'default',
     confidence: profile?.sleep_need_confidence || 'low',
-    trainingLoadScore: null,
-    currentDebtHours: debtData.currentDebt,
-    napMinutes: 0,
-    recoveryScoreYesterday: null,
+    training_load_score: null,
+    current_debt_hours: debtData.currentDebt,
+    nap_minutes: 0,
+    recovery_score_yesterday: null,
   };
 
   // Cache it
