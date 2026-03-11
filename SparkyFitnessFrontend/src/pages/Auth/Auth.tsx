@@ -146,7 +146,7 @@ const Auth = () => {
                   info(loggingLevel, 'Auth: Passkey autofill successful.');
                   navigate('/');
                 },
-                onError(ctx) {
+                onError(ctx: { error: { message?: string; name?: string } }) {
                   // Silently ignore "Authentication was not completed" or AbortError
                   if (
                     ctx.error.message?.includes(

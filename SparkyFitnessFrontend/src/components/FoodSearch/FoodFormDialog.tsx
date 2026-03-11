@@ -6,19 +6,14 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import type { Food } from '@/types/food';
-import { convertOpenFoodFactsToFood } from '@/utils/foodSearch';
-import { OpenFoodFactsProduct } from '@/types/food';
 import EnhancedCustomFoodForm from './CustomFoodForm';
 import { useTranslation } from 'react-i18next';
-
-// Define the type for OpenFoodFactsProduct if not exported globally
 
 interface FoodFormDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   mode: 'add' | 'edit';
-  editingProduct?: OpenFoodFactsProduct | Food | null;
-  autoScaleOpenFoodFactsImports: boolean;
+  editingProduct?: Food | null;
   onSave: (food: Food) => void;
 }
 
@@ -27,20 +22,13 @@ export const FoodFormDialog = ({
   onOpenChange,
   mode,
   editingProduct,
-  autoScaleOpenFoodFactsImports,
   onSave,
 }: FoodFormDialogProps) => {
   const { t } = useTranslation();
   const getFoodData = (): Food | undefined => {
     if (mode === 'add' || !editingProduct) return undefined;
 
-    if ('product_name' in editingProduct) {
-      return convertOpenFoodFactsToFood(
-        editingProduct as OpenFoodFactsProduct,
-        autoScaleOpenFoodFactsImports
-      );
-    }
-    const product = editingProduct as Food;
+    const product = editingProduct;
     if (
       product.default_variant &&
       (!product.variants || product.variants.length === 0)

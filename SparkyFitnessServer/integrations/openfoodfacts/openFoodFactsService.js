@@ -85,10 +85,11 @@ async function searchOpenFoodFactsByBarcodeFields(
   }
 }
 
-function mapOpenFoodFactsProduct(product) {
+function mapOpenFoodFactsProduct(product, { autoScale = true } = {}) {
   const nutriments = product.nutriments || {};
-  const servingSize =
-    product.serving_quantity > 0 ? product.serving_quantity : 100;
+  const servingSize = autoScale
+    ? (product.serving_quantity > 0 ? product.serving_quantity : 100)
+    : 100;
   const scale = servingSize / 100;
 
   const defaultVariant = {

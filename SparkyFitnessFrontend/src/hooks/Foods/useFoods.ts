@@ -1,4 +1,4 @@
-import { foodKeys, providerKeys } from '@/api/keys/meals';
+import { foodKeys } from '@/api/keys/meals';
 import {
   createFoodEntry,
   FoodEntryCreateData,
@@ -12,8 +12,6 @@ import {
   importFoodsFromCsv,
   loadFoods,
   searchDatabaseFoods,
-  searchMealieFoods,
-  searchTandoorFoods,
   togglePublicSharing,
   updateFoodEntriesSnapshot,
 } from '@/api/Foods/foodService';
@@ -121,40 +119,6 @@ export const useFoodView = (foodId: string, isEnabled: boolean = true) => {
     enabled: !!foodId && isEnabled,
   });
 };
-
-export const searchMealieOptions = (
-  query: string,
-  baseUrl: string,
-  apiKey: string,
-  providerId: string
-) => ({
-  queryKey: providerKeys.one(query, providerId),
-  queryFn: () => searchMealieFoods(query, baseUrl, apiKey, providerId),
-  staleTime: 1000 * 10,
-  meta: {
-    errorMessage: i18n.t(
-      'foodDatabaseManager.failedToSearchMealie',
-      'Failed to search Mealie foods.'
-    ),
-  },
-});
-
-export const searchTandoorOptions = (
-  query: string,
-  baseUrl: string,
-  apiKey: string,
-  providerId: string
-) => ({
-  queryKey: providerKeys.one(query, providerId),
-  queryFn: () => searchTandoorFoods(query, baseUrl, apiKey, providerId),
-  staleTime: 1000 * 10,
-  meta: {
-    errorMessage: i18n.t(
-      'foodDatabaseManager.failedToSearchTandoor',
-      'Failed to search Tandoor foods.'
-    ),
-  },
-});
 
 export const useDeleteFoodMutation = () => {
   const queryClient = useQueryClient();

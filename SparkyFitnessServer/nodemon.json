@@ -17,5 +17,9 @@
         "test",
         "coverage"
     ],
-    "ext": "js,json"
+    "ext": "js,ts,json",
+    "execMap": {
+        "js": "tsx",
+        "ts": "tsx"
+    }
 }
