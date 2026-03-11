@@ -96,9 +96,12 @@ async function getDashboardStats(userId, date) {
     const sparkyfitnessBurned = Math.round(bmr * multiplier);
     const calorieGoalOffset = bmr > 0 ? rawGoalCalories - sparkyfitnessBurned : 0;
 
-    const activeOrStepsToAdd =
-      activeCalories > 0 ? activeCalories : stepsCalories;
-    const exerciseCalories = otherCalories + activeOrStepsToAdd;
+    // 3-tier mutually exclusive fallback to avoid double-counting
+    // (device active calories already include workout calories)
+    const exerciseCalories =
+      otherCalories > 0 ? otherCalories
+      : activeCalories > 0 ? activeCalories
+      : stepsCalories;
     const bmrToAdd = includeInNet ? bmr : 0;
     const totalBurned = exerciseCalories + bmrToAdd;
 

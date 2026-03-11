@@ -117,20 +117,23 @@ interface EffectiveBurnedParams {
 }
 
 /**
- * Calculates effective burned calories.
- * If active calories exist (from watch/tracker), uses those as the total daily burn
- * since they already include workout calories. Otherwise, estimates from logged
- * exercise calories plus step-derived calories.
+ * Calculates effective burned calories using a priority cascade:
+ * 1. Manually logged exercise calories (what the user explicitly entered)
+ * 2. Active calories from a watch/tracker (more accurate than steps)
+ * 3. Step-derived calorie estimate (fallback)
  */
 export function calculateEffectiveBurned({
   activeCalories,
   otherExerciseCalories,
   steps,
 }: EffectiveBurnedParams): number {
+  if (otherExerciseCalories > 0) {
+    return otherExerciseCalories;
+  }
   if (activeCalories > 0) {
     return activeCalories;
   }
-  return otherExerciseCalories + stepsToCalories(steps);
+  return stepsToCalories(steps);
 }
 
 interface CalorieBalanceParams {

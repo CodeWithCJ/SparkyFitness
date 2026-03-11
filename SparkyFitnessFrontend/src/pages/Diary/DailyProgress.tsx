@@ -24,7 +24,7 @@ import {
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug } from '@/utils/logging';
 import {
-  resolveActiveOrStepsCalories,
+  resolveExerciseCalories,
   computeSparkyfitnessBurned,
   computeProjectedBurn,
   computeTdeeAdjustment,
@@ -107,15 +107,15 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const stepsCalories = stepsData?.calories || 0;
   const dailySteps = stepsData?.steps || 0;
 
-  const activeOrStepsCaloriesToAdd = resolveActiveOrStepsCalories(
+  const resolved = resolveExerciseCalories(
+    otherExerciseCalories,
     activeCaloriesFromExercise,
     stepsCalories
   );
 
   const bmrCalories = includeInNet && bmr ? bmr : 0;
 
-  const exerciseCaloriesBurned =
-    otherExerciseCalories + activeOrStepsCaloriesToAdd;
+  const exerciseCaloriesBurned = resolved.calories;
   const totalCaloriesBurned = exerciseCaloriesBurned + bmrCalories;
 
   const netCalories = eatenCalories - totalCaloriesBurned;
@@ -241,7 +241,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                     )}
                   </p>
 
-                  {otherExerciseCalories > 0 && (
+                  {resolved.source === 'logged' && (
                     <p>
                       {t(
                         'exercise.dailyProgress.otherExerciseCalories',
@@ -254,7 +254,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                     </p>
                   )}
 
-                  {activeCaloriesFromExercise > 0 && (
+                  {resolved.source === 'active' && (
                     <p>
                       {t(
                         'exercise.dailyProgress.activeCalories',
@@ -267,7 +267,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                     </p>
                   )}
 
-                  {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
+                  {resolved.source === 'steps' && (
                     <p>
                       {t(
                         'exercise.dailyProgress.stepsCalories',
@@ -322,7 +322,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           </div>
 
           {/* Detailed Burned Breakdown (Visible if data present) */}
-          {(otherExerciseCalories > 0 || stepsCalories > 0 || bmr) && (
+          {(resolved.source !== 'none' || bmr) && (
             <div className="text-center p-2 bg-blue-50 rounded-lg space-y-1">
               <div className="text-sm font-medium text-blue-700">
                 {t(
@@ -331,7 +331,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 )}
               </div>
 
-              {otherExerciseCalories > 0 && (
+              {resolved.source === 'logged' && (
                 <div className="text-xs text-blue-600">
                   {t(
                     'exercise.dailyProgress.otherExerciseCalories',
@@ -344,7 +344,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 </div>
               )}
 
-              {activeCaloriesFromExercise > 0 && (
+              {resolved.source === 'active' && (
                 <div className="text-xs text-blue-600">
                   {t(
                     'exercise.dailyProgress.activeCalories',
@@ -357,7 +357,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 </div>
               )}
 
-              {stepsCalories > 0 && activeCaloriesFromExercise === 0 && (
+              {resolved.source === 'steps' && (
                 <div className="text-xs text-blue-600 flex items-center justify-center gap-1">
                   <Zap className="w-3 h-3" />
                   {t(
