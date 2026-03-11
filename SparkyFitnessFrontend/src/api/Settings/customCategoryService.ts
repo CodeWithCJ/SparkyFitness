@@ -1,30 +1,29 @@
 import { apiCall } from '@/api/api';
-import { CustomCategory } from '@/types/checkin';
+import {
+  CreateCustomCategoriesRequest,
+  CustomCategoriesResponse,
+  UpdateCustomCategoriesRequest,
+} from '@workspace/shared';
 
-export const getCategories = async (): Promise<CustomCategory[]> => {
+export const getCategories = async (): Promise<CustomCategoriesResponse[]> => {
   const response = await apiCall(`/measurements/custom-categories`, {
     method: 'GET',
     suppress404Toast: true,
   });
   return response
-    .filter((cat: CustomCategory) => {
+    .filter((cat: CustomCategoriesResponse) => {
       const id = cat && cat.id ? String(cat.id) : '';
       if (!id) {
         return false; // Filter out categories without a valid ID
       }
       return true;
     })
-    .map((cat: CustomCategory) => ({ ...cat, id: String(cat.id) })); // Ensure ID is string for valid categories
+    .map((cat: CustomCategoriesResponse) => ({ ...cat, id: String(cat.id) })); // Ensure ID is string for valid categories
 };
 
-export const addCategory = async (categoryData: {
-  user_id: string;
-  name: string;
-  display_name?: string;
-  measurement_type: string;
-  frequency: string;
-  data_type: string;
-}): Promise<CustomCategory> => {
+export const addCategory = async (
+  categoryData: CreateCustomCategoriesRequest
+): Promise<CustomCategoriesResponse> => {
   const response = await apiCall('/measurements/custom-categories', {
     method: 'POST',
     body: categoryData,
@@ -41,14 +40,8 @@ export const addCategory = async (categoryData: {
 
 export const updateCategory = async (
   categoryId: string,
-  categoryData: {
-    name?: string;
-    display_name?: string;
-    measurement_type?: string;
-    frequency?: string;
-    data_type?: string;
-  }
-): Promise<CustomCategory> => {
+  categoryData: UpdateCustomCategoriesRequest
+): Promise<CustomCategoriesResponse> => {
   const response = await apiCall(
     `/measurements/custom-categories/${categoryId}`,
     {

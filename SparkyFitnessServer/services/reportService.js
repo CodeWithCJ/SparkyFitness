@@ -35,10 +35,10 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
       sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate),
     ]);
 
-    const customMeasurementsData = {};
+    const customMeasurementsData = [];
     for (const category of customCategoriesResult) {
       const customMeasurementResult = await reportRepository.getCustomMeasurementsData(targetUserId, category.id, startDate, endDate);
-      customMeasurementsData[category.id] = customMeasurementResult;
+      customMeasurementsData.push(...customMeasurementResult);
     }
 
     const tabularData = tabularDataRaw.map(row => {

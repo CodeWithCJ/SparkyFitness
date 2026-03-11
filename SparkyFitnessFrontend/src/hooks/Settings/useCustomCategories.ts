@@ -7,6 +7,10 @@ import {
   deleteCategory,
 } from '@/api/Settings/customCategoryService';
 import { checkInKeys } from '@/api/keys/checkin';
+import {
+  CreateCustomCategoriesRequest,
+  UpdateCustomCategoriesRequest,
+} from '@workspace/shared';
 
 export const useCustomCategories = (userId?: string) => {
   return useQuery({
@@ -21,14 +25,8 @@ export const useAddCategoryMutation = (userId?: string) => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: (categoryData: {
-      user_id: string;
-      name: string;
-      display_name?: string;
-      measurement_type: string;
-      frequency: string;
-      data_type: string;
-    }) => addCategory(categoryData),
+    mutationFn: (categoryData: CreateCustomCategoriesRequest) =>
+      addCategory(categoryData),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: checkInKeys.customCategories(userId),
@@ -57,13 +55,7 @@ export const useUpdateCategoryMutation = (userId?: string) => {
       categoryData,
     }: {
       categoryId: string;
-      categoryData: {
-        name?: string;
-        display_name?: string;
-        measurement_type?: string;
-        frequency?: string;
-        data_type?: string;
-      };
+      categoryData: UpdateCustomCategoriesRequest;
     }) => updateCategory(categoryId, categoryData),
     onSuccess: () => {
       queryClient.invalidateQueries({

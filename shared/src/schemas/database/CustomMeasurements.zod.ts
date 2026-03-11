@@ -51,6 +51,12 @@ export const customMeasurementsMutatorSchema = z.object({
   source: z.string().optional(),
 });
 
-export type CustomMeasurements = z.infer<typeof customMeasurementsSchema>;
-export type CustomMeasurementsInitializer = z.infer<typeof customMeasurementsInitializerSchema>;
-export type CustomMeasurementsMutator = z.infer<typeof customMeasurementsMutatorSchema>;
+export type DatabaseCustomMeasurements = z.infer<
+  typeof customMeasurementsSchema
+>;
+export type DatabaseCustomMeasurementsInitializer = z.infer<
+  typeof customMeasurementsInitializerSchema
+>;
+export type DatabaseCustomMeasurementsMutator = z.infer<
+  typeof customMeasurementsMutatorSchema
+>;

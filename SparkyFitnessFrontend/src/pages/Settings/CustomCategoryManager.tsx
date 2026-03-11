@@ -27,7 +27,10 @@ import {
   useDeleteCategoryMutation,
   useUpdateCategoryMutation,
 } from '@/hooks/Settings/useCustomCategories';
-import { CustomCategory } from '@/types/checkin';
+import {
+  CreateCustomCategoriesRequest,
+  CustomCategoriesResponse,
+} from '@workspace/shared';
 
 const CustomCategoryManager = () => {
   const { t } = useTranslation();
@@ -44,22 +47,23 @@ const CustomCategoryManager = () => {
   const { mutateAsync: deleteCategory } = useDeleteCategoryMutation(
     user?.activeUserId
   );
-  const [editingCategory, setEditingCategory] = useState<CustomCategory | null>(
-    null
+  const [editingCategory, setEditingCategory] =
+    useState<CustomCategoriesResponse | null>(null);
+  const [newCategory, setNewCategory] = useState<CreateCustomCategoriesRequest>(
+    {
+      name: '',
+      display_name: '',
+      measurement_type: '',
+      frequency: 'Daily',
+      data_type: 'numeric',
+    }
   );
-  const [newCategory, setNewCategory] = useState({
-    name: '',
-    display_name: '',
-    measurement_type: '',
-    frequency: 'Daily',
-    data_type: 'numeric',
-  });
 
   const handleAddCategory = async () => {
     if (
       !user ||
-      !newCategory.name.trim() ||
-      !newCategory.measurement_type.trim()
+      !newCategory.name?.trim() ||
+      !newCategory.measurement_type?.trim()
     ) {
       toast({
         title: t('common.errorOccurred', 'Error'),
@@ -76,7 +80,7 @@ const CustomCategoryManager = () => {
       await addCategory({
         user_id: user.id,
         name: newCategory.name.trim(),
-        display_name: newCategory.display_name.trim() || undefined,
+        display_name: newCategory.display_name?.trim() || undefined,
         measurement_type: newCategory.measurement_type.trim(),
         frequency: newCategory.frequency,
         data_type: newCategory.data_type,
@@ -168,7 +172,7 @@ const CustomCategoryManager = () => {
     }
   };
 
-  const openEditDialog = (category: CustomCategory) => {
+  const openEditDialog = (category: CustomCategoriesResponse) => {
     setEditingCategory({ ...category, id: String(category.id || '') }); // Ensure ID is string, fallback to empty
     setIsEditDialogOpen(true);
   };
@@ -237,7 +241,7 @@ const CustomCategoryManager = () => {
                 </Label>
                 <Input
                   id="display_name"
-                  value={newCategory.display_name}
+                  value={newCategory.display_name ?? ''}
                   onChange={(e) =>
                     setNewCategory({
                       ...newCategory,
@@ -285,7 +289,7 @@ const CustomCategoryManager = () => {
                   {t('customCategoryManager.dataTypeLabel', 'Data Type')}
                 </Label>
                 <Select
-                  value={newCategory.data_type}
+                  value={newCategory.data_type ?? ''}
                   onValueChange={(value) =>
                     setNewCategory({ ...newCategory, data_type: value })
                   }
@@ -498,7 +502,7 @@ const CustomCategoryManager = () => {
                   {t('customCategoryManager.dataTypeLabel', 'Data Type')}
                 </Label>
                 <Select
-                  value={editingCategory.data_type}
+                  value={editingCategory.data_type ?? ''}
                   onValueChange={(value) =>
                     setEditingCategory({ ...editingCategory, data_type: value })
                   }

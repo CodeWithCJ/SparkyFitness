@@ -14,13 +14,13 @@ import {
   getEnergyUnitString,
 } from './nutritionCalculations';
 import { UserCustomNutrient } from '@/types/customNutrient';
-import {
-  CheckInMeasurement,
-  CustomCategory,
-  CustomMeasurement,
-} from '@/types/checkin';
 import { DailyExerciseEntry, DailyFoodEntry } from '@/types/reports';
 import { FoodEntry } from '@/types/food';
+import {
+  CheckInMeasurementsResponse,
+  CustomMeasurementsResponse,
+} from '@workspace/shared';
+import { CustomCategoriesResponse } from '@workspace/shared';
 
 interface StressDataPoint {
   time: string;
@@ -707,7 +707,7 @@ export const exportBodyMeasurements = async ({
   loggingLevel: LoggingLevel;
   startDate: string | null;
   endDate: string | null;
-  measurementData: CheckInMeasurement[];
+  measurementData: CheckInMeasurementsResponse[];
   defaultWeightUnit: WeightUnit;
   defaultMeasurementUnit: MeasurementUnit;
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
@@ -834,8 +834,8 @@ export const exportCustomMeasurement = async ({
   loggingLevel: LoggingLevel;
   startDate: string | null;
   endDate: string | null;
-  category: CustomCategory;
-  customMeasurementsData: Record<string, CustomMeasurement[]>;
+  category: CustomCategoriesResponse;
+  customMeasurementsData: CustomMeasurementsResponse[];
   formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
 }) => {
   info(
@@ -843,8 +843,10 @@ export const exportCustomMeasurement = async ({
     `Reports: Attempting to export custom measurements for category: ${category.name} (${category.id})`
   );
   try {
-    const measurements = customMeasurementsData[category.id];
-    if (!measurements || measurements.length === 0) {
+    const measurements = customMeasurementsData.filter(
+      (m) => m.category_id === category.id
+    );
+    if (measurements.length === 0) {
       warn(
         loggingLevel,
         `Reports: No custom measurement data to export for category: ${category.name}.`
@@ -869,8 +871,8 @@ export const exportCustomMeasurement = async ({
     // Sort by timestamp descending
     const sortedMeasurements = [...measurements].sort(
       (a, b) =>
-        new Date(b.timestamp || 0).getTime() -
-        new Date(a.timestamp || 0).getTime()
+        new Date(b.entry_timestamp || 0).getTime() -
+        new Date(a.entry_timestamp || 0).getTime()
     );
 
     const csvHeaders = [
@@ -880,8 +882,8 @@ export const exportCustomMeasurement = async ({
     ];
     const csvRows = sortedMeasurements.map((measurement) => {
       let formattedHour: string = '';
-      if (measurement.timestamp) {
-        const timestamp = new Date(measurement.timestamp);
+      if (measurement.entry_timestamp) {
+        const timestamp = new Date(measurement.entry_timestamp);
         const hour = timestamp.getHours();
         const minutes = timestamp.getMinutes();
         formattedHour = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} `;
@@ -944,8 +946,8 @@ export const exportCustomMeasurement = async ({
 };
 
 export const formatCustomChartData = (
-  category: CustomCategory,
-  data: CustomMeasurement[],
+  category: CustomCategoriesResponse,
+  data: CustomMeasurementsResponse[],
   loggingLevel: LoggingLevel,
   convertMeasurement: (
     val: number,
@@ -992,14 +994,14 @@ export const formatCustomChartData = (
   };
 
   if (category.frequency === 'Hourly' || category.frequency === 'All') {
-    return data.map((d) => {
+    return data.map((d: CustomMeasurementsResponse) => {
       const convertedValue = convertValue(d.value);
       debug(
         loggingLevel,
         `Reports: Mapping data point - original value: ${d.value}, converted value: ${convertedValue} `
       );
       return {
-        date: `${d.entry_date} ${d.hour !== null ? String(d.hour).padStart(2, '0') + ':00' : ''} `,
+        date: `${d.entry_date} ${d.entry_hour !== null ? String(d.entry_hour).padStart(2, '0') + ':00' : ''} `,
         value: convertedValue,
         notes: d.notes,
       };
@@ -1010,14 +1012,14 @@ export const formatCustomChartData = (
       (acc, d) => {
         if (
           !acc[d.entry_date] ||
-          new Date(d.timestamp || 0) >
-            new Date(acc[d.entry_date]?.timestamp || 0)
+          new Date(d.entry_timestamp || 0) >
+            new Date(acc[d.entry_date]?.entry_timestamp || 0)
         ) {
           acc[d.entry_date] = d;
         }
         return acc;
       },
-      {} as Record<string, CustomMeasurement>
+      {} as Record<string, CustomMeasurementsResponse>
     );
 
     return Object.values(grouped).map((d) => {

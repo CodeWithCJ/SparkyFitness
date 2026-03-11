@@ -1,40 +1,49 @@
 import { apiCall } from '@/api/api';
 import {
-  CustomMeasurement,
-  CustomCategory,
-  CheckInMeasurement,
-} from '@/types/checkin';
+  CheckInMeasurementsResponse,
+  checkInMeasurementsResponseSchema,
+  UpdateCheckInMeasurementsRequest,
+  CustomCategoriesResponse,
+  customCategoriesResponseSchema,
+  customMeasurementsResponseSchema,
+  CustomMeasurementsResponse,
+  UpdateCustomMeasurementsRequest,
+} from '@workspace/shared';
+import z from 'zod';
 
 export const loadCustomCategories = async (
   userId?: string
-): Promise<CustomCategory[]> => {
+): Promise<CustomCategoriesResponse[]> => {
   const url = userId
     ? `/measurements/custom-categories?userId=${userId}`
     : '/measurements/custom-categories';
-  return apiCall(url, {
+  const response = await apiCall(url, {
     method: 'GET',
   });
+  return z.array(customCategoriesResponseSchema).parse(response);
 };
 
 export const fetchRecentCustomMeasurements = async (): Promise<
-  CustomMeasurement[]
+  CustomMeasurementsResponse[]
 > => {
-  return apiCall('/measurements/custom-entries', {
+  const response = await apiCall('/measurements/custom-entries', {
     params: { limit: 20, orderBy: 'entry_timestamp.desc' },
   });
+  return z.array(customMeasurementsResponseSchema).parse(response);
 };
 
 export const fetchRecentStandardMeasurements = async (
   startDate: string,
   endDate: string
-): Promise<CheckInMeasurement[]> => {
-  return apiCall(
+): Promise<CheckInMeasurementsResponse[]> => {
+  const response = await apiCall(
     `/measurements/check-in-measurements-range/${startDate}/${endDate}`,
     {
       method: 'GET',
       suppress404Toast: true,
     }
   );
+  return z.array(checkInMeasurementsResponseSchema).parse(response);
 };
 
 export const deleteCustomMeasurement = async (id: string): Promise<void> => {
@@ -58,24 +67,33 @@ export const updateCheckInMeasurementField = async (payload: {
 
 export const loadExistingCheckInMeasurements = async (
   selectedDate: string
-): Promise<CheckInMeasurement> => {
-  return apiCall(`/measurements/check-in/${selectedDate}`, {
+): Promise<CheckInMeasurementsResponse | null> => {
+  const response = await apiCall(`/measurements/check-in/${selectedDate}`, {
     method: 'GET',
     suppress404Toast: true,
   });
+  // if there are no entries the backend returns an empty object
+  if (!response || Object.keys(response).length === 0) {
+    return null;
+  }
+  return checkInMeasurementsResponseSchema.parse(response);
 };
 
 export const loadExistingCustomMeasurements = async (
   selectedDate: string
-): Promise<CustomMeasurement[]> => {
-  return apiCall(`/measurements/custom-entries/${selectedDate}`, {
-    method: 'GET',
-    suppress404Toast: true,
-  });
+): Promise<CustomMeasurementsResponse[]> => {
+  const response = await apiCall(
+    `/measurements/custom-entries/${selectedDate}`,
+    {
+      method: 'GET',
+      suppress404Toast: true,
+    }
+  );
+  return z.array(customMeasurementsResponseSchema).parse(response);
 };
 
 export const saveCheckInMeasurements = async (
-  payload: Partial<CheckInMeasurement>
+  payload: UpdateCheckInMeasurementsRequest
 ): Promise<void> => {
   await apiCall('/measurements/check-in', {
     method: 'POST',
@@ -84,7 +102,7 @@ export const saveCheckInMeasurements = async (
 };
 
 export const saveCustomMeasurement = async (
-  payload: Partial<CustomMeasurement>
+  payload: UpdateCustomMeasurementsRequest
 ): Promise<void> => {
   await apiCall('/measurements/custom-entries', {
     method: 'POST',
@@ -94,8 +112,16 @@ export const saveCustomMeasurement = async (
 
 export const getMostRecentMeasurement = async (
   measurementType: string
-): Promise<CheckInMeasurement | null> => {
-  return apiCall(`/measurements/most-recent/${measurementType}`);
+): Promise<CheckInMeasurementsResponse | null> => {
+  const response = await apiCall(
+    `/measurements/most-recent/${measurementType}`
+  );
+
+  // if there are no entries the backend returns an empty object
+  if (!response || Object.keys(response).length === 0) {
+    return null;
+  }
+  return checkInMeasurementsResponseSchema.parse(response);
 };
 
 export const fetchCustomEntries = async (

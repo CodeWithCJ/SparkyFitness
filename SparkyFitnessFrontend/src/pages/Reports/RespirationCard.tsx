@@ -14,7 +14,10 @@ import {
 import { Wind } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
-import { CustomCategory, CustomMeasurement } from '@/types/checkin';
+import {
+  CustomCategoriesResponse,
+  CustomMeasurementsResponse,
+} from '@workspace/shared';
 
 // Respiration metric names as they come from Garmin sync
 const RESPIRATION_METRICS = [
@@ -24,8 +27,8 @@ const RESPIRATION_METRICS = [
 ];
 
 interface RespirationCardProps {
-  categories: CustomCategory[];
-  measurementsData: Record<string, CustomMeasurement[]>;
+  categories: CustomCategoriesResponse[];
+  measurementsData: CustomMeasurementsResponse[];
 }
 
 interface RespirationDay {
@@ -90,7 +93,9 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
 
     // Process sleep respiration
     if (respirationCategories.sleepAvg) {
-      const data = measurementsData[respirationCategories.sleepAvg.id] || [];
+      const data = measurementsData.filter(
+        (m) => m.category_id === respirationCategories.sleepAvg?.id
+      );
       data.forEach((entry) => {
         const date = entry.entry_date;
         if (!dataByDate[date]) {
@@ -112,7 +117,9 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
 
     // Process awake respiration
     if (respirationCategories.awakeAvg) {
-      const data = measurementsData[respirationCategories.awakeAvg.id] || [];
+      const data = measurementsData.filter(
+        (m) => m.category_id === respirationCategories.awakeAvg?.id
+      );
       data.forEach((entry) => {
         const date = entry.entry_date;
         if (!dataByDate[date]) {
@@ -134,7 +141,9 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
 
     // Process average respiration (fallback if no sleep/awake data)
     if (respirationCategories.average) {
-      const data = measurementsData[respirationCategories.average.id] || [];
+      const data = measurementsData.filter(
+        (m) => m.category_id === respirationCategories.average?.id
+      );
       data.forEach((entry) => {
         const date = entry.entry_date;
         if (!dataByDate[date]) {

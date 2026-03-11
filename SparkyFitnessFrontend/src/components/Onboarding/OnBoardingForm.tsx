@@ -4,17 +4,17 @@ import { ChevronLeft } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import PersonalPlan from './PersonalPlan';
 import { OnboardingSteps } from './OnBoardingSteps';
-import { CheckInMeasurement } from '@/types/checkin';
 import { Profile } from '@/types/settings';
 import { OnboardingData, Sex } from '@/types/onboarding';
+import { CheckInMeasurementsResponse } from '@workspace/shared';
 
 interface OnBoardingProps {
   onOnboardingComplete: () => void;
 }
 interface OnBoardingFormProps extends OnBoardingProps {
   profileData?: Profile;
-  weightData?: CheckInMeasurement;
-  heightData?: CheckInMeasurement;
+  weightData?: CheckInMeasurementsResponse;
+  heightData?: CheckInMeasurementsResponse;
 }
 
 const TOTAL_INPUT_STEPS = 10;
