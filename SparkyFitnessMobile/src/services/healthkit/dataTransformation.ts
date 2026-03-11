@@ -144,6 +144,13 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
     return value !== null && date ? { value, date } : null;
   },
 
+  HeartRate: (rec) => {
+    const samples = rec.samples as { beatsPerMinute: number }[] | undefined;
+    const value = samples?.[0]?.beatsPerMinute ?? null;
+    const date = getDateString(rec.startTime);
+    return value !== null && date ? { value, date } : null;
+  },
+
   RespiratoryRate: (rec) => {
     const value = extractDirectValue(rec, 'rate');
     const date = getDateString(rec.time);

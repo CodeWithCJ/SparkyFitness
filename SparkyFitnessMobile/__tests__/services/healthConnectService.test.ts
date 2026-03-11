@@ -21,7 +21,7 @@ jest.mock('../../src/services/api/healthDataApi', () => ({
 jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
     { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
-    { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate' },
+    { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate', aggregationStrategy: 'min-max-avg' },
     { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories' },
     { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories' },
   ],
@@ -366,7 +366,7 @@ describe('healthConnectService.ts (Android)', () => {
       expect(calorieRecords[0].value).toBe(350);
     });
 
-    test('HeartRate records are averaged by date', async () => {
+    test('HeartRate records are aggregated with min/max/avg by date', async () => {
       mockReadRecords.mockResolvedValue({
         records: [
           { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 60 }] },
@@ -380,10 +380,16 @@ describe('healthConnectService.ts (Android)', () => {
       await androidService.syncHealthData('24h', healthMetricStates);
 
       const payload = mockApiSyncHealthData.mock.calls[0][0];
-      const hrRecords = payload.filter((r: { type: string }) => r.type === 'heart_rate');
+      const hrMin = payload.find((r: { type: string }) => r.type === 'heart_rate_min');
+      const hrMax = payload.find((r: { type: string }) => r.type === 'heart_rate_max');
+      const hrAvg = payload.find((r: { type: string }) => r.type === 'heart_rate_avg');
 
-      expect(hrRecords).toHaveLength(1);
-      expect(hrRecords[0].value).toBe(70); // Average of 60, 80, 70
+      expect(hrMin).toBeDefined();
+      expect(hrMax).toBeDefined();
+      expect(hrAvg).toBeDefined();
+      expect(hrMin.value).toBe(60);
+      expect(hrMax.value).toBe(80);
+      expect(hrAvg.value).toBe(70);
     });
 
     test('TotalCalories records are aggregated by date', async () => {
@@ -439,9 +445,9 @@ describe('healthConnectService.ts (Android)', () => {
       expect(result.success).toBe(true);
       expect(mockApiSyncHealthData).toHaveBeenCalled();
 
-      // HeartRate data should be synced despite Steps having no data
+      // HeartRate data should be synced despite Steps having no data (aggregated as min/max/avg)
       const payload = mockApiSyncHealthData.mock.calls[0][0];
-      expect(payload.some((r: { type: string }) => r.type === 'heart_rate')).toBe(true);
+      expect(payload.some((r: { type: string }) => r.type.startsWith('heart_rate_'))).toBe(true);
 
       // Steps should not be in the payload (no records)
       expect(payload.some((r: { type: string }) => r.type === 'step')).toBe(false);

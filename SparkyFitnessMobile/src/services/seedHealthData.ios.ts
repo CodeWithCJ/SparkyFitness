@@ -113,6 +113,8 @@ const WRITE_PERMISSIONS = [
   'HKQuantityTypeIdentifierHeight',
   'HKCategoryTypeIdentifierSleepAnalysis',
   'HKWorkoutTypeIdentifier',
+  'HKQuantityTypeIdentifierRunningSpeed',
+  'HKQuantityTypeIdentifierRunningPower',
 ] as const;
 
 const requestWritePermissions = async (): Promise<boolean> => {
@@ -586,6 +588,110 @@ const seedWorkouts = async (dates: Date[]): Promise<number> => {
 };
 
 // ============================================================================
+// Running Metrics Seeder (many samples per day to test daily aggregation)
+// ============================================================================
+
+interface RunningMetricConfig {
+  identifier: string;
+  unit: string;
+  label: string;
+  range: [number, number]; // [min, max] for sample values
+}
+
+const RUNNING_METRIC_CONFIGS: RunningMetricConfig[] = [
+  // Running speed: 2.5-5.0 m/s (9-18 km/h, easy jog to fast run)
+  { identifier: 'HKQuantityTypeIdentifierRunningSpeed', unit: 'm/s', label: 'RunningSpeed', range: [2.5, 5.0] },
+  // Running power: 200-450 W
+  { identifier: 'HKQuantityTypeIdentifierRunningPower', unit: 'W', label: 'RunningPower', range: [200, 450] },
+];
+
+/**
+ * Seeds running metric samples that simulate Apple Watch data during a run.
+ * Writes ~20 samples per day during a 30-minute workout window, producing
+ * enough variation for min/max/avg aggregation to be meaningful.
+ */
+const seedRunningMetric = async (
+  config: RunningMetricConfig,
+  dates: Date[]
+): Promise<number> => {
+  let count = 0;
+  const samplesPerRun = 20;
+
+  for (const date of dates) {
+    // 60% chance of a run on any given day (skip some days for realism)
+    if (!isToday(date) && Math.random() > 0.6) continue;
+
+    try {
+      const todayDate = isToday(date);
+
+      // Pick a workout start time
+      let runStartHour: number;
+      let runStartMinute: number;
+      if (todayDate) {
+        const now = new Date();
+        // Place run ending 5 minutes ago
+        const runEndTime = new Date(now.getTime() - 5 * 60000);
+        const runStartTime = new Date(runEndTime.getTime() - 30 * 60000);
+        if (runStartTime.getHours() < 1) continue; // Skip if too early
+        runStartHour = runStartTime.getHours();
+        runStartMinute = runStartTime.getMinutes();
+      } else {
+        runStartHour = randomInt(6, 18);
+        runStartMinute = randomInt(0, 30);
+      }
+
+      // Simulate a ~30 minute run with samples every ~90 seconds
+      const runDurationMinutes = todayDate ? 20 : randomInt(25, 40);
+      const intervalSeconds = Math.floor((runDurationMinutes * 60) / samplesPerRun);
+
+      // Base pace for this run (varies day to day)
+      const [minVal, maxVal] = config.range;
+      const midpoint = (minVal + maxVal) / 2;
+      const dayBaseline = midpoint + randomFloat(-0.3, 0.3) * (maxVal - minVal);
+
+      for (let i = 0; i < samplesPerRun; i++) {
+        const sampleStart = new Date(date);
+        sampleStart.setHours(runStartHour, runStartMinute, 0, 0);
+        sampleStart.setSeconds(sampleStart.getSeconds() + i * intervalSeconds);
+
+        const sampleEnd = new Date(sampleStart);
+        sampleEnd.setSeconds(sampleEnd.getSeconds() + intervalSeconds);
+
+        // Skip future samples for today
+        if (todayDate && sampleStart >= new Date()) continue;
+
+        // Vary around the day's baseline — warm-up slower, middle faster, cool-down slower
+        const progressRatio = i / (samplesPerRun - 1); // 0 to 1
+        // Bell curve: slower at start/end, faster in the middle
+        const phaseFactor = -4 * (progressRatio - 0.5) ** 2 + 1; // peaks at 0.5
+        const phaseAdjustment = phaseFactor * (maxVal - minVal) * 0.15;
+        const noise = randomFloat(-0.1, 0.1) * (maxVal - minVal);
+        const value = Math.max(minVal, Math.min(maxVal, dayBaseline + phaseAdjustment + noise));
+
+        try {
+          const success = await saveQuantitySample(
+            config.identifier as Parameters<typeof saveQuantitySample>[0],
+            config.unit,
+            parseFloat(value.toFixed(2)),
+            sampleStart,
+            sampleEnd,
+            {}
+          );
+          if (success) count++;
+        } catch {
+          // Continue with remaining samples
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed ${config.label}: ${message}`, 'WARNING');
+    }
+  }
+
+  return count;
+};
+
+// ============================================================================
 // Main Seed Function
 // ============================================================================
 
@@ -735,6 +841,19 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[SeedHealthData] Failed to seed Workout: ${message}`, 'WARNING');
+    }
+
+    // Seed running metrics (many samples per day for aggregation testing)
+    for (const config of RUNNING_METRIC_CONFIGS) {
+      try {
+        const count = await seedRunningMetric(config, dates);
+        totalRecords += count;
+        results.push({ type: config.label, count });
+        addLog(`[SeedHealthData] Seeded ${config.label}: ${count} records`, 'SUCCESS');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[SeedHealthData] Failed to seed ${config.label}: ${message}`, 'WARNING');
+      }
     }
 
     const successTypes = results.filter(r => r.count > 0).length;

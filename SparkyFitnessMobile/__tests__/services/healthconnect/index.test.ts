@@ -24,7 +24,7 @@ jest.mock('../../../src/services/LogService', () => ({
 jest.mock('../../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
     { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
-    { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate' },
+    { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate', aggregationStrategy: 'min-max-avg' },
     { recordType: 'Weight', stateKey: 'isWeightSyncEnabled', unit: 'kg', type: 'weight' },
     { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'Active Calories' },
     { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories' },
@@ -652,7 +652,7 @@ describe('syncHealthData', () => {
     // HeartRate data should still be synced
     expect(mockApi.syncHealthData).toHaveBeenCalled();
     const apiCallArgs = mockApi.syncHealthData.mock.calls[0][0];
-    expect(apiCallArgs.some((r: { type: string }) => r.type === 'heart_rate')).toBe(true);
+    expect(apiCallArgs.some((r: { type: string }) => r.type.startsWith('heart_rate_'))).toBe(true);
   });
 
   test('returns error when API call fails', async () => {
@@ -687,7 +687,7 @@ describe('syncHealthData', () => {
     expect(apiCallArgs[0].value).toBe(5000);
   });
 
-  test('aggregates HeartRate records before transformation', async () => {
+  test('aggregates HeartRate records with min/max/avg', async () => {
     mockReadRecords.mockResolvedValue({
       records: [
         { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 60 }] },
@@ -700,8 +700,13 @@ describe('syncHealthData', () => {
     await syncHealthData('24h', healthMetricStates, mockApi);
 
     const apiCallArgs = mockApi.syncHealthData.mock.calls[0][0];
-    expect(apiCallArgs).toHaveLength(1);
-    expect(apiCallArgs[0].value).toBe(70); // Average of 60 and 80
+    expect(apiCallArgs).toHaveLength(3); // min, max, avg
+    const hrMin = apiCallArgs.find((r: { type: string }) => r.type === 'heart_rate_min');
+    const hrMax = apiCallArgs.find((r: { type: string }) => r.type === 'heart_rate_max');
+    const hrAvg = apiCallArgs.find((r: { type: string }) => r.type === 'heart_rate_avg');
+    expect(hrMin.value).toBe(60);
+    expect(hrMax.value).toBe(80);
+    expect(hrAvg.value).toBe(70);
   });
 
   test('skips metric when no config found for record type', async () => {

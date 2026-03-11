@@ -60,14 +60,86 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   Speed: "m/s",
   power: "watts",
   Power: "watts",
-  steps_cadence: "steps_per_second",
-  StepsCadence: "steps_per_second",
+  steps_cadence: "steps/min",
+  StepsCadence: "steps/min",
   cycling_pedaling_cadence: "rpm",
   CyclingPedalingCadence: "rpm",
   blood_alcohol_content: "%",
   BloodAlcoholContent: "%",
   nutrition: "kcal",
   Nutrition: "kcal",
+  // Aggregated min/max/avg types from mobile health data
+  // Chunk 1: Heart rate + vitals
+  heart_rate_min: "bpm",
+  heart_rate_max: "bpm",
+  heart_rate_avg: "bpm",
+  blood_glucose_min: "mmol/L",
+  blood_glucose_max: "mmol/L",
+  blood_glucose_avg: "mmol/L",
+  blood_oxygen_saturation_min: "percent",
+  blood_oxygen_saturation_max: "percent",
+  blood_oxygen_saturation_avg: "percent",
+  respiratory_rate_min: "breaths/min",
+  respiratory_rate_max: "breaths/min",
+  respiratory_rate_avg: "breaths/min",
+  // Chunk 2: Running metrics
+  running_speed_min: "m/s",
+  running_speed_max: "m/s",
+  running_speed_avg: "m/s",
+  running_power_min: "W",
+  running_power_max: "W",
+  running_power_avg: "W",
+  running_stride_length_min: "cm",
+  running_stride_length_max: "cm",
+  running_stride_length_avg: "cm",
+  running_ground_contact_min: "ms",
+  running_ground_contact_max: "ms",
+  running_ground_contact_avg: "ms",
+  running_vertical_oscillation_min: "cm",
+  running_vertical_oscillation_max: "cm",
+  running_vertical_oscillation_avg: "cm",
+  // Chunk 3: Cycling metrics
+  cycling_speed_min: "m/s",
+  cycling_speed_max: "m/s",
+  cycling_speed_avg: "m/s",
+  cycling_power_min: "W",
+  cycling_power_max: "W",
+  cycling_power_avg: "W",
+  cycling_cadence_min: "rpm",
+  cycling_cadence_max: "rpm",
+  cycling_cadence_avg: "rpm",
+  // Chunk 4: Walking / mobility metrics
+  walking_speed_min: "m/s",
+  walking_speed_max: "m/s",
+  walking_speed_avg: "m/s",
+  walking_step_length_min: "cm",
+  walking_step_length_max: "cm",
+  walking_step_length_avg: "cm",
+  walking_asymmetry_min: "percent",
+  walking_asymmetry_max: "percent",
+  walking_asymmetry_avg: "percent",
+  walking_double_support_min: "percent",
+  walking_double_support_max: "percent",
+  walking_double_support_avg: "percent",
+  steps_cadence_min: "steps/min",
+  steps_cadence_max: "steps/min",
+  steps_cadence_avg: "steps/min",
+  // Chunk 5: Apple ring times + dietary (sum types)
+  apple_move_time: "seconds",
+  apple_exercise_time: "seconds",
+  apple_stand_time: "seconds",
+  dietary_fat_total: "g",
+  dietary_protein: "g",
+  dietary_sodium: "mg",
+  // Chunk 6: Audio exposure
+  environmental_audio_exposure_min: "dB",
+  environmental_audio_exposure_max: "dB",
+  environmental_audio_exposure_avg: "dB",
+  headphone_audio_exposure_min: "dB",
+  headphone_audio_exposure_max: "dB",
+  headphone_audio_exposure_avg: "dB",
+  // Last types
+  cycling_ftp: "W",
 };
 const userRepository = require("../models/userRepository");
 const exerciseRepository = require("../models/exerciseRepository"); // For active calories
@@ -602,6 +674,7 @@ async function processMobileHealthData(
       source,
       timestamp,
       value,
+      unit,
       bedtime,
       wake_time,
       duration_in_seconds,
@@ -762,10 +835,52 @@ async function processMobileHealthData(
           });
           break;
         default:
-          errors.push({
-            error: `Unsupported mobile health data type: ${type}`,
-            entry: dataEntry,
-          });
+          // Route unknown types through the custom measurement system
+          // (mirrors processHealthData default case)
+          const unitFromPayload =
+            unit && typeof unit === "string" && unit.trim()
+              ? unit.trim()
+              : undefined;
+          const resolvedUnit =
+            unitFromPayload || DEFAULT_UNITS_BY_HEALTH_TYPE[type] || "N/A";
+
+          const category = await getOrCreateCustomCategory(
+            userId,
+            actingUserId,
+            type,
+            "numeric",
+            resolvedUnit,
+          );
+          if (!category || !category.id) {
+            errors.push({
+              error: `Failed to get or create custom category for type: ${type}`,
+              entry: dataEntry,
+            });
+            break;
+          }
+
+          const numericValue = parseFloat(value);
+          if (isNaN(numericValue)) {
+            errors.push({
+              error: `Invalid numeric value for type: ${type}. Value: ${value}`,
+              entry: dataEntry,
+            });
+            break;
+          }
+
+          result = await measurementRepository.upsertCustomMeasurement(
+            userId,
+            actingUserId,
+            category.id,
+            numericValue,
+            parsedDate,
+            entryHour,
+            entryTimestamp,
+            dataEntry.notes,
+            category.frequency,
+            source,
+          );
+          processedResults.push({ type, status: "success", data: result });
           break;
       }
     } catch (error) {

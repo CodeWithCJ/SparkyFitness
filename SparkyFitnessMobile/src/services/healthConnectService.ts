@@ -10,6 +10,7 @@ import {
   AggregatedHealthRecord,
   SyncResult,
   HealthMetricStates,
+  type TransformedRecord,
 } from '../types/healthRecords';
 import { SyncDuration } from './healthconnect/preferences';
 
@@ -46,6 +47,7 @@ export const readWorkoutRecords = async (startDate: Date, endDate: Date): Promis
   HealthConnect.readHealthRecords('Workout', startDate, endDate);
 
 export const aggregateHeartRateByDate = HealthConnectAggregation.aggregateHeartRateByDate;
+export const aggregateByDay = HealthConnectAggregation.aggregateByDay;
 export const aggregateStepsByDate = HealthConnectAggregation.aggregateStepsByDate;
 export const aggregateTotalCaloriesByDate = HealthConnectAggregation.aggregateTotalCaloriesByDate;
 export const aggregateActiveCaloriesByDate = HealthConnectAggregation.aggregateActiveCaloriesByDate;
@@ -186,11 +188,7 @@ export const syncHealthData = async (
 
         dataToTransform = rawRecords;
 
-        if (type === 'HeartRate') {
-          dataToTransform = HealthConnectAggregation.aggregateHeartRateByDate(
-            rawRecords as Parameters<typeof HealthConnectAggregation.aggregateHeartRateByDate>[0]
-          );
-        } else if (type === 'TotalCaloriesBurned') {
+        if (type === 'TotalCaloriesBurned') {
           dataToTransform = HealthConnectAggregation.aggregateTotalCaloriesByDate(
             rawRecords as Parameters<typeof HealthConnectAggregation.aggregateTotalCaloriesByDate>[0]
           );
@@ -199,7 +197,17 @@ export const syncHealthData = async (
 
       const transformed = HealthConnectTransformation.transformHealthRecords(dataToTransform, metricConfig);
 
-      if (transformed.length > 0) {
+      if (metricConfig.aggregationStrategy) {
+        const aggregated = HealthConnectAggregation.aggregateByDay(
+          transformed as TransformedRecord[],
+          metricConfig.type,
+          metricConfig.unit,
+          metricConfig.aggregationStrategy,
+        );
+        if (aggregated.length > 0) {
+          allTransformedData.push(...(aggregated as HealthDataPayload));
+        }
+      } else if (transformed.length > 0) {
         allTransformedData.push(...(transformed as HealthDataPayload));
       }
     } catch (error) {

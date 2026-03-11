@@ -7,6 +7,7 @@ import {
   SleepStageType,
   AggregatedHealthRecord,
   AggregatedSleepSession,
+  type TransformedRecord,
 } from '../../types/healthRecords';
 import { SleepStageEvent } from '../../types/mobileHealthData';
 import { toLocalDateString } from '../../utils/dateUtils';
@@ -154,4 +155,56 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
   }
 
   return aggregatedSessions;
+};
+
+export const aggregateByDay = (
+  records: TransformedRecord[],
+  baseType: string,
+  unit: string,
+  strategy: 'min-max-avg' | 'sum' | 'last'
+): TransformedRecord[] => {
+  if (records.length === 0) return [];
+
+  // Group records by date
+  const groups = new Map<string, TransformedRecord[]>();
+  for (const record of records) {
+    const existing = groups.get(record.date);
+    if (existing) {
+      existing.push(record);
+    } else {
+      groups.set(record.date, [record]);
+    }
+  }
+
+  const result: TransformedRecord[] = [];
+
+  for (const [date, dayRecords] of groups) {
+    if (strategy === 'min-max-avg') {
+      let min = dayRecords[0].value;
+      let max = dayRecords[0].value;
+      let total = 0;
+      for (const rec of dayRecords) {
+        if (rec.value < min) min = rec.value;
+        if (rec.value > max) max = rec.value;
+        total += rec.value;
+      }
+      const avg = total / dayRecords.length;
+      result.push(
+        { value: parseFloat(min.toFixed(2)), type: `${baseType}_min`, date, unit },
+        { value: parseFloat(max.toFixed(2)), type: `${baseType}_max`, date, unit },
+        { value: parseFloat(avg.toFixed(2)), type: `${baseType}_avg`, date, unit },
+      );
+    } else if (strategy === 'sum') {
+      let total = 0;
+      for (const rec of dayRecords) {
+        total += rec.value;
+      }
+      result.push({ value: parseFloat(total.toFixed(2)), type: baseType, date, unit });
+    } else if (strategy === 'last') {
+      // Take first record: HealthKit queries use ascending: false (newest-first)
+      result.push({ value: dayRecords[0].value, type: baseType, date, unit });
+    }
+  }
+
+  return result;
 };
