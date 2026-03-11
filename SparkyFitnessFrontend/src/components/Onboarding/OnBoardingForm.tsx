@@ -13,8 +13,8 @@ interface OnBoardingProps {
 }
 interface OnBoardingFormProps extends OnBoardingProps {
   profileData?: Profile;
-  weightData?: CheckInMeasurementsResponse;
-  heightData?: CheckInMeasurementsResponse;
+  weightData?: Partial<CheckInMeasurementsResponse>;
+  heightData?: Partial<CheckInMeasurementsResponse>;
 }
 
 const TOTAL_INPUT_STEPS = 10;

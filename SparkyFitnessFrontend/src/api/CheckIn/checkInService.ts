@@ -112,7 +112,7 @@ export const saveCustomMeasurement = async (
 
 export const getMostRecentMeasurement = async (
   measurementType: string
-): Promise<CheckInMeasurementsResponse | null> => {
+): Promise<Partial<CheckInMeasurementsResponse> | null> => {
   const response = await apiCall(
     `/measurements/most-recent/${measurementType}`
   );
@@ -121,7 +121,9 @@ export const getMostRecentMeasurement = async (
   if (!response || Object.keys(response).length === 0) {
     return null;
   }
-  return checkInMeasurementsResponseSchema.parse(response);
+  // The endpoint only returns the single requested column (e.g. { weight: 180 }),
+  // not the full check-in row, so we cannot validate against the full schema.
+  return response as Partial<CheckInMeasurementsResponse>;
 };
 
 export const fetchCustomEntries = async (
