@@ -269,15 +269,15 @@ async function upsertDailyNeed(userId, targetDate, breakdown) {
       [
         userId,
         targetDate,
-        breakdown.baseline,
-        breakdown.strainAddition,
-        breakdown.debtAddition,
-        breakdown.napSubtraction,
-        breakdown.totalNeed,
-        breakdown.trainingLoadScore,
-        breakdown.currentDebtHours,
-        breakdown.napMinutes,
-        breakdown.recoveryScoreYesterday,
+        breakdown.baseline_need,
+        breakdown.strain_addition,
+        breakdown.debt_addition,
+        breakdown.nap_subtraction,
+        breakdown.total_need,
+        breakdown.training_load_score,
+        breakdown.current_debt_hours,
+        breakdown.nap_minutes,
+        breakdown.recovery_score_yesterday,
       ]
     );
   } finally {

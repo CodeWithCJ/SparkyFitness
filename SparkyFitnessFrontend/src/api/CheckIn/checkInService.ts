@@ -8,6 +8,8 @@ import {
   customMeasurementsResponseSchema,
   CustomMeasurementsResponse,
   UpdateCustomMeasurementsRequest,
+  recentCheckInMeasurementsSchema,
+  RecentCheckInMeasurementsResponse,
 } from '@workspace/shared';
 import z from 'zod';
 
@@ -112,7 +114,7 @@ export const saveCustomMeasurement = async (
 
 export const getMostRecentMeasurement = async (
   measurementType: string
-): Promise<CheckInMeasurementsResponse | null> => {
+): Promise<RecentCheckInMeasurementsResponse | null> => {
   const response = await apiCall(
     `/measurements/most-recent/${measurementType}`
   );
@@ -121,7 +123,7 @@ export const getMostRecentMeasurement = async (
   if (!response || Object.keys(response).length === 0) {
     return null;
   }
-  return checkInMeasurementsResponseSchema.parse(response);
+  return recentCheckInMeasurementsSchema.parse(response);
 };
 
 export const fetchCustomEntries = async (

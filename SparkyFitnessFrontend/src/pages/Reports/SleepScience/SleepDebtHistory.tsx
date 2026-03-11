@@ -17,7 +17,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { SleepDebtData } from '@/types/sleepScience';
+import { SleepDebtData } from '@workspace/shared';
 
 interface SleepDebtHistoryProps {
   data: SleepDebtData;

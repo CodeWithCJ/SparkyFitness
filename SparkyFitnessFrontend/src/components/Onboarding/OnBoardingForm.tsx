@@ -6,15 +6,15 @@ import PersonalPlan from './PersonalPlan';
 import { OnboardingSteps } from './OnBoardingSteps';
 import { Profile } from '@/types/settings';
 import { OnboardingData, Sex } from '@/types/onboarding';
-import { CheckInMeasurementsResponse } from '@workspace/shared';
+import { RecentCheckInMeasurementsResponse } from '@workspace/shared';
 
 interface OnBoardingProps {
   onOnboardingComplete: () => void;
 }
 interface OnBoardingFormProps extends OnBoardingProps {
   profileData?: Profile;
-  weightData?: CheckInMeasurementsResponse;
-  heightData?: CheckInMeasurementsResponse;
+  weightData?: RecentCheckInMeasurementsResponse;
+  heightData?: RecentCheckInMeasurementsResponse;
 }
 
 const TOTAL_INPUT_STEPS = 10;
