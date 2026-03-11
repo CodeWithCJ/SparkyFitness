@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NumericInput } from '@/components/NumericInput';
 import MealPercentageManager from '@/components/MealPercentageManager';
 import { Separator } from '@/components/ui/separator';
 
@@ -106,21 +106,16 @@ export const DailyGoals = ({
                     `Calories (${getEnergyUnitString(energyUnit)})`
                   )}
                 </Label>
-                <Input
+                <NumericInput
                   id="calories"
-                  type="number"
                   step={1}
                   value={Math.round(
                     convertEnergy(goals.calories, 'kcal', energyUnit)
-                  ).toFixed(0)}
-                  onChange={(e) =>
+                  )}
+                  onValueChange={(val) =>
                     setGoals({
                       ...goals,
-                      calories: convertEnergy(
-                        Number(e.target.value),
-                        energyUnit,
-                        'kcal'
-                      ),
+                      calories: convertEnergy(val ?? 0, energyUnit, 'kcal'),
                     })
                   }
                 />
