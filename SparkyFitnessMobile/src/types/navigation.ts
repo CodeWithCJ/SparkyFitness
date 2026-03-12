@@ -8,7 +8,7 @@ export type TabParamList = {
   Dashboard: undefined;
   Diary: { selectedDate?: string } | undefined;
   Add: undefined;
-  Sync: undefined;
+  Workouts: undefined;
   Settings: undefined;
 };
 
@@ -22,6 +22,7 @@ export type RootStackParamList = {
     | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string };
   FoodScan: { date?: string } | undefined;
   Logs: undefined;
+  Sync: undefined;
 };
 
 declare global {

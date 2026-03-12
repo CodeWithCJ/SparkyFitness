@@ -412,6 +412,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             isEditing={!!currentConfigId}
           />
 
+          <TouchableOpacity
+            className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+            onPress={() => navigation.navigate('Sync')}
+            activeOpacity={0.7}
+          >
+            <Text className="text-base font-semibold text-text-primary">Sync Health Data</Text>
+            <Icon name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+
           <SyncFrequency
             isEnabled={isBackgroundSyncEnabled}
             onToggle={async (newValue) => {

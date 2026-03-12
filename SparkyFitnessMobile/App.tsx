@@ -1,5 +1,5 @@
 import './global.css'
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, Alert, type ImageSourcePropType } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -14,8 +14,9 @@ import { useUniwind, useCSSVariable } from 'uniwind';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey } from './src/hooks';
 
-import { createStackNavigator, type StackNavigationProp } from '@react-navigation/stack';
+import { createStackNavigator } from '@react-navigation/stack';
 import SyncScreen from './src/screens/SyncScreen';
+import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import DiaryScreen from './src/screens/DiaryScreen';
@@ -37,12 +38,13 @@ import { initLogService } from './src/services/LogService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
+import AddSheet, { type AddSheetRef } from './src/components/AddSheet';
 
 const Tab = createNativeBottomTabNavigator<TabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 
 type TabIcons = {
-  sync: ImageSourcePropType;
+  workouts: ImageSourcePropType;
   dashboard: ImageSourcePropType;
   book: ImageSourcePropType;
   settings: ImageSourcePropType;
@@ -56,6 +58,9 @@ function AppContent() {
   const [apiKeyUrl, setApiKeyUrl] = useState('');
   const [apiKeyValue, setApiKeyValue] = useState('');
   const [apiKeyProxyHeaders, setApiKeyProxyHeaders] = useState<import('./src/services/storage').ProxyHeader[]>([]);
+
+  const addSheetRef = useRef<AddSheetRef>(null);
+  const navigationRef = useRef<any>(null);
 
   const [primary, chrome, chromeBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
     '--color-accent-primary',
@@ -89,17 +94,30 @@ function AppContent() {
     },
   }), [isDarkMode, primary, bgPrimary, chrome, textPrimary, chromeBorder]);
 
+  const handleAddFood = useCallback(() => {
+    const navigation = navigationRef.current;
+    if (!navigation) return;
+    const state = navigation.getState();
+    const activeRoute = state.routes[state.index];
+    const diaryParams =
+      activeRoute.name === 'Diary'
+        ? (activeRoute.params as { selectedDate?: string } | undefined)
+        : undefined;
+    const date = diaryParams?.selectedDate;
+    navigation.getParent()?.navigate('FoodSearch', { date });
+  }, []);
+
   useEffect(() => {
     if (Platform.OS !== 'ios') {
       Promise.all([
-        Ionicons.getImageSource('sync', 24, '#999999'),
+        Ionicons.getImageSource('barbell-outline', 24, '#999999'),
         Ionicons.getImageSource('grid', 24, '#999999'),
         Ionicons.getImageSource('book', 24, '#999999'),
         Ionicons.getImageSource('settings', 24, '#999999'),
         Ionicons.getImageSource('add-circle', 24, '#999999'),
-      ]).then(([sync, dashboard, book, settings, add]) => {
-        if (sync && dashboard && book && settings && add) {
-          setIcons({ sync, dashboard, book, settings, add });
+      ]).then(([workouts, dashboard, book, settings, add]) => {
+        if (workouts && dashboard && book && settings && add) {
+          setIcons({ workouts, dashboard, book, settings, add });
         }
       }).catch(error => {
         console.error('Failed to load tab icons:', error);
@@ -194,24 +212,17 @@ function AppContent() {
                   }}
                   listeners={({ navigation }) => ({
                     tabPress: () => {
-                      // preventsDefault skips the tab switch, so state.index still points to the previously active tab
-                      const state = navigation.getState();
-                      const activeRoute = state.routes[state.index];
-                      const diaryParams =
-                        activeRoute.name === 'Diary'
-                          ? (activeRoute.params as { selectedDate?: string } | undefined)
-                          : undefined;
-                      const date = diaryParams?.selectedDate;
-                      navigation.getParent<StackNavigationProp<RootStackParamList>>()?.navigate('FoodSearch', { date });
+                      navigationRef.current = navigation;
+                      addSheetRef.current?.present();
                     },
                   })}
                 />
                 <Tab.Screen
-                  name="Sync"
-                  component={SyncScreen}
+                  name="Workouts"
+                  component={WorkoutsScreen}
                   options={{
                     tabBarIcon: () =>
-                      Platform.OS === 'ios' ? { sfSymbol: 'arrow.triangle.2.circlepath' } : icons!.sync,
+                      Platform.OS === 'ios' ? { sfSymbol: 'dumbbell.fill' } : icons!.workouts,
                   }}
                 />
                 <Tab.Screen
@@ -280,7 +291,15 @@ function AppContent() {
               headerBackTitle: 'Back',
             }}
           />
+          <Stack.Screen
+            name="Sync"
+            component={SyncScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
         </Stack.Navigator>
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} />
         <LoginModal
           visible={showLoginModal}
           defaultConfigId={expiredConfigId}
