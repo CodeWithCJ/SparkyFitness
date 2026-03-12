@@ -36,7 +36,7 @@ jobs:
           # chart version while preserving extra segments as build metadata.
           # Example: 1.2.3.4 -> 1.2.3+4, 1.2.3.4.5 -> 1.2.3+4.5
           if [[ "$RAW_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.(.+)$ ]]; then
-            CHART_VERSION="${BASH_REMATCH[1]}+${BASH_REMATCH[2]}"
+            CHART_VERSION="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
           else
             CHART_VERSION="$RAW_VERSION"
           fi
