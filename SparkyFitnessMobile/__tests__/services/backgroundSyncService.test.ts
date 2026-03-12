@@ -21,7 +21,7 @@ jest.mock('../../src/HealthMetrics', () => ({
     { id: 'total-calories', recordType: 'TotalCaloriesBurned', preferenceKey: 'isTotalCaloriesSyncEnabled', label: 'Total Calories' },
     { id: 'distance', recordType: 'Distance', preferenceKey: 'isDistanceSyncEnabled', label: 'Distance' },
     { id: 'floors', recordType: 'FloorsClimbed', preferenceKey: 'isFloorsClimbedSyncEnabled', label: 'Floors' },
-    { id: 'heart-rate', recordType: 'HeartRate', preferenceKey: 'isHeartRateSyncEnabled', label: 'Heart Rate' },
+    { id: 'heart-rate', recordType: 'HeartRate', preferenceKey: 'isHeartRateSyncEnabled', label: 'Heart Rate', type: 'heart_rate', unit: 'bpm', aggregationStrategy: 'min-max-avg' },
     { id: 'sleep', recordType: 'SleepSession', preferenceKey: 'isSleepSyncEnabled', label: 'Sleep' },
     { id: 'weight', recordType: 'Weight', preferenceKey: 'isWeightSyncEnabled', label: 'Weight' },
   ],
@@ -32,7 +32,7 @@ jest.mock('../../src/services/healthConnectService', () => ({
   readHealthRecords: jest.fn(),
   transformHealthRecords: jest.fn((data) => data),
   aggregateSleepSessions: jest.fn((data) => data),
-  aggregateHeartRateByDate: jest.fn((data) => data),
+  aggregateByDay: jest.fn((data) => data),
   getAggregatedStepsByDate: jest.fn(),
   getAggregatedActiveCaloriesByDate: jest.fn(),
   getAggregatedTotalCaloriesByDate: jest.fn(),
@@ -53,7 +53,7 @@ const healthService = require('../../src/services/healthConnectService') as {
   readHealthRecords: jest.Mock;
   transformHealthRecords: jest.Mock;
   aggregateSleepSessions: jest.Mock;
-  aggregateHeartRateByDate: jest.Mock;
+  aggregateByDay: jest.Mock;
   getAggregatedStepsByDate: jest.Mock;
   getAggregatedActiveCaloriesByDate: jest.Mock;
   getAggregatedTotalCaloriesByDate: jest.Mock;
@@ -224,22 +224,33 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       );
     });
 
-    test('routes HeartRate through readHealthRecords then aggregateHeartRateByDate', async () => {
+    test('routes HeartRate through readHealthRecords then aggregateByDay', async () => {
       healthService.loadHealthPreference.mockImplementation((key: string) =>
         Promise.resolve(key === 'isHeartRateSyncEnabled')
       );
       const rawHeartRate = [{ value: 72 }, { value: 75 }];
-      const aggregatedHeartRate = [{ avg: 73.5 }];
+      const transformedHeartRate = [{ value: 72, type: 'heart_rate', date: '2024-01-15', unit: 'bpm' }, { value: 75, type: 'heart_rate', date: '2024-01-15', unit: 'bpm' }];
+      const aggregatedHeartRate = [
+        { value: 72, type: 'heart_rate_min', date: '2024-01-15', unit: 'bpm' },
+        { value: 75, type: 'heart_rate_max', date: '2024-01-15', unit: 'bpm' },
+        { value: 73.5, type: 'heart_rate_avg', date: '2024-01-15', unit: 'bpm' },
+      ];
       healthService.readHealthRecords.mockResolvedValue(rawHeartRate);
-      healthService.aggregateHeartRateByDate.mockReturnValue(aggregatedHeartRate);
+      healthService.transformHealthRecords.mockReturnValue(transformedHeartRate);
+      healthService.aggregateByDay.mockReturnValue(aggregatedHeartRate);
 
       await triggerManualSync();
 
       expect(healthService.readHealthRecords).toHaveBeenCalledWith('HeartRate', expect.any(Date), expect.any(Date));
-      expect(healthService.aggregateHeartRateByDate).toHaveBeenCalledWith(rawHeartRate);
       expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
-        aggregatedHeartRate,
+        rawHeartRate,
         expect.objectContaining({ recordType: 'HeartRate' })
+      );
+      expect(healthService.aggregateByDay).toHaveBeenCalledWith(
+        transformedHeartRate,
+        'heart_rate',
+        'bpm',
+        'min-max-avg',
       );
     });
 
@@ -272,7 +283,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       await triggerManualSync();
 
       expect(healthService.readHealthRecords).toHaveBeenCalledWith('Weight', expect.any(Date), expect.any(Date));
-      expect(healthService.aggregateHeartRateByDate).not.toHaveBeenCalled();
+      expect(healthService.aggregateByDay).not.toHaveBeenCalled();
       expect(healthService.aggregateSleepSessions).not.toHaveBeenCalled();
       expect(healthService.transformHealthRecords).toHaveBeenCalledWith(
         rawWeight,
@@ -382,8 +393,8 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
         if (type === 'HeartRate') return Promise.resolve([{ value: 72 }, { value: 75 }]);
         return Promise.resolve([]);
       });
-      healthService.aggregateHeartRateByDate.mockImplementation((data) => data);
-      healthService.transformHealthRecords.mockImplementation((data) => data);
+      healthService.transformHealthRecords.mockImplementation((data: unknown[]) => data);
+      healthService.aggregateByDay.mockImplementation((data: unknown[]) => data);
       api.syncHealthData.mockResolvedValue(undefined);
 
       await triggerManualSync();
@@ -452,8 +463,8 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
         if (type === 'HeartRate') return Promise.resolve([{ value: 72 }]);
         return Promise.resolve([]);
       });
-      healthService.aggregateHeartRateByDate.mockImplementation((data) => data);
-      healthService.transformHealthRecords.mockImplementation((data) => data);
+      healthService.transformHealthRecords.mockImplementation((data: unknown[]) => data);
+      healthService.aggregateByDay.mockImplementation((data: unknown[]) => data);
 
       await triggerManualSync();
 
@@ -484,10 +495,10 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
         if (type === 'HeartRate') return Promise.resolve([{ value: 72 }]);
         return Promise.resolve([]);
       });
-      healthService.aggregateHeartRateByDate.mockImplementation(() => {
+      healthService.transformHealthRecords.mockImplementation((data: unknown[]) => data);
+      healthService.aggregateByDay.mockImplementation(() => {
         throw new Error('Aggregation logic failed');
       });
-      healthService.transformHealthRecords.mockImplementation((data) => data);
 
       await triggerManualSync();
 
@@ -506,8 +517,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
         if (type === 'HeartRate') return Promise.resolve([{ value: 72 }]);
         return Promise.resolve([]);
       });
-      healthService.aggregateHeartRateByDate.mockImplementation((data) => data);
-      healthService.transformHealthRecords.mockImplementation((data, metric) => {
+      healthService.transformHealthRecords.mockImplementation((data: unknown[], metric: { recordType: string }) => {
         if (metric.recordType === 'HeartRate') throw new Error('Transform failed');
         return data;
       });

@@ -6,7 +6,6 @@ import ConnectionStatus from '../components/ConnectionStatus';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   initHealthConnect,
-  aggregateHeartRateByDate,
   loadHealthPreference,
   getSyncStartDate,
   readHealthRecords,
@@ -165,14 +164,18 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
 
           switch (metric.recordType) {
 
-            case 'HeartRate':
-              const aggregatedHeartRate = aggregateHeartRateByDate(records as { startTime: string; samples: { beatsPerMinute: number }[] }[]);
-              const totalHeartRateSum = aggregatedHeartRate.reduce((sum, record) => sum + record.value, 0);
-              const avgHeartRate = totalHeartRateSum > 0 && aggregatedHeartRate.length > 0
-                ? Math.round(totalHeartRateSum / aggregatedHeartRate.length)
+            case 'HeartRate': {
+              const hrRecords = records as { samples?: { beatsPerMinute: number }[] }[];
+              const bpmValues = hrRecords
+                .flatMap(r => r.samples ?? [])
+                .map(s => s.beatsPerMinute)
+                .filter((v): v is number => v != null && !isNaN(v));
+              const avgHeartRate = bpmValues.length > 0
+                ? Math.round(bpmValues.reduce((sum, v) => sum + v, 0) / bpmValues.length)
                 : 0;
               displayValue = avgHeartRate > 0 ? `${avgHeartRate} bpm` : '0 bpm';
               break;
+            }
 
             case 'Weight':
               const latestWeight = (records as { time: string; weight?: { inKilograms: number } }[]).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];

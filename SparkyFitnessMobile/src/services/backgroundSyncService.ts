@@ -8,7 +8,7 @@ import {
   readHealthRecords,
   transformHealthRecords,
   aggregateSleepSessions,
-  aggregateHeartRateByDate,
+  aggregateByDay,
   getAggregatedStepsByDate,
   getAggregatedActiveCaloriesByDate,
   getAggregatedTotalCaloriesByDate,
@@ -17,6 +17,7 @@ import {
   resetDatabaseInaccessibleCount,
   getDatabaseInaccessibleCount,
 } from './healthConnectService';
+import type { TransformedRecord } from '../types/healthRecords';
 import { loadLastSyncedTime, saveLastSyncedTime, loadBackgroundSyncEnabled } from './storage';
 
 const BACKGROUND_TASK_NAME = 'healthDataSync';
@@ -98,17 +99,28 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
         dataToTransform = rawRecords;
 
         // Post-read aggregation for specific types
-        if (type === 'HeartRate') {
-          dataToTransform = aggregateHeartRateByDate(
-            rawRecords as Parameters<typeof aggregateHeartRateByDate>[0]
-          );
-        } else if (type === 'SleepSession') {
+        if (type === 'SleepSession') {
           dataToTransform = aggregateSleepSessions(rawRecords);
         }
       }
 
       const transformed = transformHealthRecords(dataToTransform, metric);
-      if (transformed.length > 0) {
+      if (transformed.length === 0) {
+        continue;
+      }
+
+      if (metric.aggregationStrategy) {
+        const aggregated = aggregateByDay(
+          transformed as TransformedRecord[],
+          metric.type,
+          metric.unit,
+          metric.aggregationStrategy,
+        );
+        if (aggregated.length > 0) {
+          allData.push(...(aggregated as HealthDataPayload));
+          collectedCounts.push(`${metric.id}: ${aggregated.length}`);
+        }
+      } else {
         allData.push(...(transformed as HealthDataPayload));
         collectedCounts.push(`${metric.id}: ${transformed.length}`);
       }

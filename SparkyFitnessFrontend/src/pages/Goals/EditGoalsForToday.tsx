@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NumericInput } from '@/components/NumericInput';
 import {
   Dialog,
   DialogContent,
@@ -172,21 +172,16 @@ const EditGoalsForm = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
         <div className="space-y-1.5">
           <Label>Calories ({getEnergyUnitString(energyUnit)})</Label>
-          <Input
+          <NumericInput
             id="calories"
-            type="number"
             step={1}
             value={Math.round(
               convertEnergy(goals.calories, 'kcal', energyUnit)
-            ).toFixed(0)}
-            onChange={(e) =>
+            )}
+            onValueChange={(val) =>
               setGoals((prev) => ({
                 ...prev,
-                calories: convertEnergy(
-                  Number(e.target.value),
-                  energyUnit,
-                  'kcal'
-                ),
+                calories: convertEnergy(val ?? 0, energyUnit, 'kcal'),
               }))
             }
           />
@@ -220,23 +215,21 @@ const EditGoalsForm = ({
             <Label className="text-xs capitalize">
               {m} {macroInputType === 'grams' ? '(g)' : '(%)'}
             </Label>
-            <Input
-              type="number"
+            <NumericInput
               step={0.1}
+              decimals={1}
+              min={0}
+              max={macroInputType === 'percentages' ? 100 : undefined}
               value={
                 macroInputType === 'grams'
-                  ? (goals[m] ?? 0).toFixed(1)
-                  : Number(
-                      goals[`${m}_percentage` as keyof ExpandedGoals] ?? 0
-                    ).toFixed(1)
+                  ? (goals[m] ?? 0)
+                  : Number(goals[`${m}_percentage` as keyof ExpandedGoals] ?? 0)
               }
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                if (val < 0 || (macroInputType === 'percentages' && val > 100))
-                  return;
+              onValueChange={(val) => {
                 setGoals((prev) => ({
                   ...prev,
-                  [macroInputType === 'grams' ? m : `${m}_percentage`]: val,
+                  [macroInputType === 'grams' ? m : `${m}_percentage`]:
+                    val ?? 0,
                 }));
               }}
             />

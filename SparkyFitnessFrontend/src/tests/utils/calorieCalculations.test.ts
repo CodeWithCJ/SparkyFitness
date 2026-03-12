@@ -1,6 +1,6 @@
 import {
   ACTIVITY_MULTIPLIERS,
-  resolveActiveOrStepsCalories,
+  resolveExerciseCalories,
   computeSparkyfitnessBurned,
   computeProjectedBurn,
   computeTdeeAdjustment,
@@ -22,19 +22,49 @@ describe('ACTIVITY_MULTIPLIERS', () => {
 });
 
 // ---------------------------------------------------------------------------
-// resolveActiveOrStepsCalories
+// resolveExerciseCalories
 // ---------------------------------------------------------------------------
-describe('resolveActiveOrStepsCalories', () => {
-  it('returns active calories when they are > 0', () => {
-    expect(resolveActiveOrStepsCalories(300, 200)).toBe(300);
+describe('resolveExerciseCalories', () => {
+  it('returns logged exercise calories when present', () => {
+    expect(resolveExerciseCalories(300, 200, 100)).toEqual({
+      calories: 300,
+      source: 'logged',
+    });
   });
 
-  it('falls back to steps calories when active calories are 0', () => {
-    expect(resolveActiveOrStepsCalories(0, 150)).toBe(150);
+  it('logged exercises take priority even when lower than active', () => {
+    expect(resolveExerciseCalories(100, 500, 300)).toEqual({
+      calories: 100,
+      source: 'logged',
+    });
   });
 
-  it('returns 0 when both are 0', () => {
-    expect(resolveActiveOrStepsCalories(0, 0)).toBe(0);
+  it('falls back to active calories when no logged exercises', () => {
+    expect(resolveExerciseCalories(0, 200, 100)).toEqual({
+      calories: 200,
+      source: 'active',
+    });
+  });
+
+  it('active calories take priority over higher steps', () => {
+    expect(resolveExerciseCalories(0, 100, 500)).toEqual({
+      calories: 100,
+      source: 'active',
+    });
+  });
+
+  it('falls back to steps when no logged exercises or active calories', () => {
+    expect(resolveExerciseCalories(0, 0, 150)).toEqual({
+      calories: 150,
+      source: 'steps',
+    });
+  });
+
+  it('returns none when all sources are 0', () => {
+    expect(resolveExerciseCalories(0, 0, 0)).toEqual({
+      calories: 0,
+      source: 'none',
+    });
   });
 });
 

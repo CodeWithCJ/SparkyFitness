@@ -425,6 +425,21 @@ const EXERCISE_MAP: Record<number, string> = {
 } as const;
 
 const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
+  HeartRate: (rec, _record, metricConfig, output) => {
+    const samples = rec.samples as { beatsPerMinute: number }[] | undefined;
+    if (!rec.startTime || !samples) return;
+
+    const { unit, type } = metricConfig;
+    const date = getDateString(rec.startTime);
+    if (!date) return;
+
+    for (const sample of samples) {
+      if (sample.beatsPerMinute != null && !isNaN(sample.beatsPerMinute)) {
+        output.push({ value: sample.beatsPerMinute, type, date, unit });
+      }
+    }
+  },
+
   BloodPressure: (rec, _record, metricConfig, output) => {
     const { unit, type } = metricConfig;
     if (!rec.time) return;
@@ -678,7 +693,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
 
       // Handle pre-aggregated records (from aggregation functions like aggregateStepsByDate)
       // These have value and date at top level
-      if (['Steps', 'HeartRate'].includes(recordType) && rec.value !== undefined && rec.date) {
+      if (recordType === 'Steps' && rec.value !== undefined && rec.date) {
         const value = rec.value as number;
         const recordDate = rec.date as string;
         const outputType = (rec.type as string) || type;

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTheme } from '@/contexts/ThemeContext';
-import { EnergyCurveData } from '@/types/sleepScience';
+import { EnergyCurveData } from '@workspace/shared';
 import type React from 'react';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';

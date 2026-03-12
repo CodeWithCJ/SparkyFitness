@@ -7,9 +7,9 @@ import { addLog } from '../LogService';
 import { HEALTH_METRICS } from '../../HealthMetrics';
 import {
   aggregateStepsByDate,
-  aggregateHeartRateByDate,
   aggregateActiveCaloriesByDate,
   aggregateTotalCaloriesByDate,
+  aggregateByDay,
   toLocalDateString,
 } from './dataAggregation';
 import { transformHealthRecords } from './dataTransformation';
@@ -19,6 +19,7 @@ import {
   GrantedPermission,
   SyncResult,
   HealthMetricStates,
+  type TransformedRecord,
 } from '../../types/healthRecords';
 import { SyncDuration, getSyncStartDate } from '../../utils/syncUtils';
 
@@ -274,8 +275,6 @@ export const syncHealthData = async (
 
       if (type === 'Steps') {
         dataToTransform = aggregateStepsByDate(rawRecords as Parameters<typeof aggregateStepsByDate>[0]);
-      } else if (type === 'HeartRate') {
-        dataToTransform = aggregateHeartRateByDate(rawRecords as Parameters<typeof aggregateHeartRateByDate>[0]);
       } else if (type === 'ActiveCaloriesBurned') {
         dataToTransform = aggregateActiveCaloriesByDate(rawRecords as Parameters<typeof aggregateActiveCaloriesByDate>[0]);
       } else if (type === 'TotalCaloriesBurned') {
@@ -284,7 +283,17 @@ export const syncHealthData = async (
 
       const transformed = transformHealthRecords(dataToTransform, metricConfig);
 
-      if (transformed.length > 0) {
+      if (metricConfig.aggregationStrategy) {
+        const aggregated = aggregateByDay(
+          transformed as TransformedRecord[],
+          metricConfig.type,
+          metricConfig.unit,
+          metricConfig.aggregationStrategy,
+        );
+        if (aggregated.length > 0) {
+          allTransformedData = allTransformedData.concat(aggregated);
+        }
+      } else if (transformed.length > 0) {
         allTransformedData = allTransformedData.concat(transformed);
       } else {
         addLog(`[HealthConnectService] No ${type} records were transformed (all may have been invalid)`, 'WARNING');

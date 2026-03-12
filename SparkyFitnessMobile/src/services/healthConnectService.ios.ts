@@ -9,6 +9,7 @@ import { addLog } from './LogService';
 import {
   SyncResult,
   HealthMetricStates,
+  type TransformedRecord,
 } from '../types/healthRecords';
 import { SyncDuration } from './healthkit/preferences';
 
@@ -44,6 +45,7 @@ export const readWorkoutRecords = async (startDate: Date, endDate: Date): Promis
   HealthKit.readHealthRecords('Workout', startDate, endDate);
 
 export const aggregateHeartRateByDate = HealthKitAggregation.aggregateHeartRateByDate;
+export const aggregateByDay = HealthKitAggregation.aggregateByDay;
 
 // Deduplicated aggregation functions (use HealthKit's statistics API)
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
@@ -120,11 +122,7 @@ export const syncHealthData = async (
 
         dataToTransform = rawRecords;
 
-        if (type === 'HeartRate') {
-          dataToTransform = HealthKitAggregation.aggregateHeartRateByDate(
-            rawRecords as Parameters<typeof HealthKitAggregation.aggregateHeartRateByDate>[0]
-          );
-        } else if (type === 'TotalCaloriesBurned') {
+        if (type === 'TotalCaloriesBurned') {
           // Use deduplicated statistics query (matches Health app behavior)
           dataToTransform = await HealthKit.getAggregatedTotalCaloriesByDate(startDate, endDate);
         } else if (type === 'SleepSession') {
@@ -136,7 +134,17 @@ export const syncHealthData = async (
 
       const transformed = HealthKitTransformation.transformHealthRecords(dataToTransform, metricConfig);
 
-      if (transformed.length > 0) {
+      if (metricConfig.aggregationStrategy) {
+        const aggregated = HealthKitAggregation.aggregateByDay(
+          transformed as TransformedRecord[],
+          metricConfig.type,
+          metricConfig.unit,
+          metricConfig.aggregationStrategy,
+        );
+        if (aggregated.length > 0) {
+          allTransformedData.push(...(aggregated as HealthDataPayload));
+        }
+      } else if (transformed.length > 0) {
         allTransformedData.push(...(transformed as HealthDataPayload));
       }
     } catch (error) {

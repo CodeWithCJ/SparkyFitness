@@ -133,13 +133,13 @@ const DevTools: React.FC = () => {
       {Platform.OS === 'android' && (
         <View className="flex-row gap-2 flex-wrap justify-between mt-4">
           <Pressable
-            className="bg-accent-muted py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
+            className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
             onPress={() => openHealthConnectSettings()}
           >
             <Text className="text-white text-base font-bold">Health Connect</Text>
           </Pressable>
           <Pressable
-            className="bg-accent-muted py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
+            className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
             onPress={() => openHealthConnectDataManagement()}
           >
             <Text className="text-white text-base font-bold">Health Connect Data</Text>
@@ -166,7 +166,7 @@ const DevTools: React.FC = () => {
           </TouchableOpacity>
           {Platform.OS === 'android' && (
             <TouchableOpacity
-              className="bg-accent-muted py-2 px-4 rounded-lg my-1 items-center self-center min-w-30"
+              className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-30"
               onPress={handleCheckBackgroundPermissions}
             >
               <Text className="text-white text-base font-bold">Check BG Permission</Text>
