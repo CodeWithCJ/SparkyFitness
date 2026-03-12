@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@bottom-tabs/react-navigation": "^1.1.0",
+    "@workspace/shared": "workspace:*",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@kingstinct/react-native-healthkit": "^13.3.1",
@@ -57,7 +58,8 @@
     "react-native-worklets": "0.5.1",
     "tailwindcss": "^4.1.18",
     "uniwind": "^1.2.7",
-    "victory-native": "^41.20.2"
+    "victory-native": "^41.20.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -85,8 +87,11 @@
     "testPathIgnorePatterns": [
       "__tests__/hooks/queryTestUtils\\.ts$"
     ],
+    "moduleNameMapper": {
+      "^@workspace/shared$": "<rootDir>/../shared/src/index.ts"
+    },
     "transformIgnorePatterns": [
-      "node_modules/(?!(?:.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo[^/]*|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@shopify/react-native-skia|react-native-ui-datepicker)/)"
+      "node_modules/(?!(?:.pnpm/[^/]+/node_modules/)?((jest-)?react-native|@react-native(-community)?|expo[^/]*|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|@shopify/react-native-skia|react-native-ui-datepicker|@workspace/shared|zod)/)"
     ],
     "collectCoverage": true,
     "collectCoverageFrom": [
