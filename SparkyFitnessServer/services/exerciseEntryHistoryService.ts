@@ -9,10 +9,10 @@ import type {
 const { getClient } = require("../db/poolManager");
 const { log } = require("../config/logging");
 
-/** Convert a pg date/timestamp value to a string, or return null. */
+/** Convert a pg date value to a YYYY-MM-DD string, or return null. */
 function _dateToString(value: unknown): string | null {
   if (value == null) return null;
-  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Date) return value.toISOString().split('T')[0];
   return String(value);
 }
 
@@ -160,6 +160,12 @@ async function getExerciseEntryHistorySessions(
   const batchQueries: Promise<void>[] = [];
 
   if (presetIds.length > 0) {
+    // Initialize child buckets before parallel fetches so the child-entries
+    // query can safely append regardless of resolution order.
+    for (const id of presetIds) {
+      presetChildrenMap.set(id, []);
+    }
+
     // Preset metadata
     batchQueries.push(
       client
@@ -171,7 +177,6 @@ async function getExerciseEntryHistorySessions(
         .then((r: { rows: Record<string, unknown>[] }) => {
           for (const row of r.rows) {
             presetMetaMap.set(row.id as string, row);
-            presetChildrenMap.set(row.id as string, []);
           }
         }),
     );
@@ -303,7 +308,7 @@ async function getExerciseEntryHistorySessions(
         type: "preset" as const,
         id: meta.id as string,
         entry_date: _dateToString(stub.entry_date),
-        workout_preset_id: (meta.workout_preset_id as string) ?? null,
+        workout_preset_id: (meta.workout_preset_id as number) ?? null,
         name: meta.name as string,
         description: (meta.description as string) ?? null,
         notes: (meta.notes as string) ?? null,

@@ -74,7 +74,7 @@ export const presetSessionResponseSchema = z.object({
   type: z.literal("preset"),
   id: z.string(),
   entry_date: z.string().nullable(),
-  workout_preset_id: z.string().nullable(),
+  workout_preset_id: z.number().int().nullable(),
   name: z.string(),
   description: z.string().nullable(),
   notes: z.string().nullable(),

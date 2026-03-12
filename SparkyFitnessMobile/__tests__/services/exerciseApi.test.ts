@@ -1,5 +1,6 @@
 import {
   fetchExerciseEntries,
+  fetchExerciseHistory,
   calculateCaloriesBurned,
   calculateActiveCalories,
   calculateOtherExerciseCalories,
@@ -182,6 +183,95 @@ describe('exerciseApi', () => {
         { id: '2', calories_burned: 300, exercise_snapshot: { id: 'e2', name: 'Active Calories', category: 'Tracking', calories_per_hour: 0, source: 'Watch' } },
       ];
       expect(calculateActiveCalories(entries)).toBe(300);
+    });
+  });
+
+  describe('fetchExerciseHistory', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    test('throws error when no server config exists', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(null);
+
+      await expect(fetchExerciseHistory()).rejects.toThrow(
+        'Server configuration not found.'
+      );
+    });
+
+    test('sends GET request to /v2/exercise-entries/history with default params', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ sessions: [], pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
+      });
+
+      await fetchExerciseHistory();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/v2/exercise-entries/history?page=1&pageSize=20',
+        expect.objectContaining({
+          method: 'GET',
+          headers: {
+            Authorization: 'Bearer test-api-key-12345',
+          },
+        })
+      );
+    });
+
+    test('passes custom page and pageSize params', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ sessions: [], pagination: { page: 3, pageSize: 10, totalCount: 50, hasMore: true } }),
+      });
+
+      await fetchExerciseHistory(3, 10);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/v2/exercise-entries/history?page=3&pageSize=10',
+        expect.anything()
+      );
+    });
+
+    test('returns parsed JSON response on success', async () => {
+      const responseData = {
+        sessions: [{ id: '1', type: 'individual', calories_burned: 250 }],
+        pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+      };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseData),
+      });
+
+      const result = await fetchExerciseHistory();
+
+      expect(result).toEqual(responseData);
+    });
+
+    test('throws error on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve('Internal Server Error'),
+      });
+
+      await expect(fetchExerciseHistory()).rejects.toThrow(
+        'Server error: 500 - Internal Server Error'
+      );
+    });
+
+    test('rethrows on network failure', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockRejectedValue(new Error('Network request failed'));
+
+      await expect(fetchExerciseHistory()).rejects.toThrow(
+        'Network request failed'
+      );
     });
   });
 

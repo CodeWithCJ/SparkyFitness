@@ -1,5 +1,6 @@
 import { apiFetch } from './apiClient';
 import type { ExerciseEntry } from '../../types/exercise';
+import type { ExerciseHistoryResponse } from '@workspace/shared';
 
 /**
  * Fetches exercise entries for a given date.
@@ -44,4 +45,18 @@ export const calculateExerciseDuration = (entries: ExerciseEntry[]): number => {
   return entries
     .filter(entry => entry.exercise_snapshot?.name !== 'Active Calories')
     .reduce((total, entry) => total + (entry.duration_minutes ?? 0), 0);
+};
+
+/**
+ * Fetches paginated exercise session history.
+ */
+export const fetchExerciseHistory = async (
+  page: number = 1,
+  pageSize: number = 20,
+): Promise<ExerciseHistoryResponse> => {
+  return apiFetch<ExerciseHistoryResponse>({
+    endpoint: `/api/v2/exercise-entries/history?page=${page}&pageSize=${pageSize}`,
+    serviceName: 'Exercise API',
+    operation: 'fetch exercise history',
+  });
 };

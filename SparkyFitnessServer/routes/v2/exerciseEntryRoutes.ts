@@ -64,11 +64,13 @@ const historyHandler: RequestHandler = async (req, res, next) => {
     // Family access permission check
     const targetUserId = queryUserId || req.userId;
 
-    if (queryUserId && queryUserId !== req.userId) {
+    const actorUserId = req.originalUserId || req.userId;
+
+    if (queryUserId && queryUserId !== actorUserId) {
       const hasPermission = await canAccessUserData(
         queryUserId,
         "diary",
-        req.userId,
+        actorUserId,
       );
       if (!hasPermission) {
         res.status(403).json({ error: "Forbidden" });

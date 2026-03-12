@@ -14,6 +14,7 @@ export {
   mealTypesQueryKey,
   foodVariantsQueryKey,
   measurementsRangeQueryKey,
+  exerciseHistoryQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useSyncHealthData } from './useSyncHealthData';
@@ -37,3 +38,4 @@ export { useSaveFood } from './useSaveFood';
 export { useAddFoodEntry } from './useAddFoodEntry';
 export { useMeasurementsRange } from './useMeasurementsRange';
 export type { StepsDataPoint, StepsRange, WeightDataPoint } from './useMeasurementsRange';
+export { useExerciseHistory } from './useExerciseHistory';

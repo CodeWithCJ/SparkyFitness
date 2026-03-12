@@ -31,3 +31,5 @@ export const foodVariantsQueryKey = (foodId: string) => ['foodVariants', foodId]
 
 export const measurementsRangeQueryKey = (startDate: string, endDate: string) =>
   ['measurementsRange', startDate, endDate] as const;
+
+export const exerciseHistoryQueryKey = ['exerciseHistory'] as const;
