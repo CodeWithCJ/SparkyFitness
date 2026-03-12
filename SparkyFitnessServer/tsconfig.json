@@ -12,8 +12,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "@workspace/shared": ["../shared/src/index.ts"]
+    }
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "../shared/src"],
   "exclude": ["node_modules", "dist", "coverage", "backup", "uploads", "temp_uploads", "mock_data"]
 }

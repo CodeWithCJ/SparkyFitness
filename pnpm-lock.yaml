@@ -481,6 +481,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.90.1
         version: 2.99.0
+      '@workspace/shared':
+        specifier: workspace:*
+        version: link:../shared
       axios:
         specifier: ^1.13.2
         version: 1.13.6
