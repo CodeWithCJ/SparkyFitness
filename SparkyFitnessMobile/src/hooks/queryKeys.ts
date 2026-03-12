@@ -33,3 +33,9 @@ export const measurementsRangeQueryKey = (startDate: string, endDate: string) =>
   ['measurementsRange', startDate, endDate] as const;
 
 export const exerciseHistoryQueryKey = ['exerciseHistory'] as const;
+
+export const exerciseHistoryResetQueryKey = ['exerciseHistoryReset'] as const;
+
+export const suggestedExercisesQueryKey = ['suggestedExercises'] as const;
+
+export const exerciseSearchQueryKey = (searchTerm: string) => ['exerciseSearch', searchTerm] as const;

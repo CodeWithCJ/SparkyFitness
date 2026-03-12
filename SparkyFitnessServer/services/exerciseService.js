@@ -21,6 +21,10 @@ const path = require("path"); // Import path module
 const { isValidUuid, resolveExerciseIdToUuid } = require("../utils/uuidUtils"); // Import uuidUtils
 const papa = require("papaparse");
 const {
+  getGroupedExerciseSessionById,
+  getGroupedExerciseSessionByIdWithClient,
+} = require("./exerciseEntryHistoryService");
+const {
   checkFamilyAccessPermission,
 } = require("../models/familyAccessRepository");
 
@@ -176,64 +180,67 @@ async function createExercise(authenticatedUserId, exerciseData) {
   }
 }
 
+async function prepareExerciseEntryForCreate(
+  authenticatedUserId,
+  entryData,
+) {
+  const resolvedExerciseId = await resolveExerciseIdToUuid(entryData.exercise_id);
+  const exercise = await exerciseDb.getExerciseById(
+    resolvedExerciseId,
+    authenticatedUserId,
+  );
+
+  if (!exercise) {
+    throw new Error("Exercise not found for snapshot.");
+  }
+
+  const durationFromSets = Array.isArray(entryData.sets)
+    ? entryData.sets.reduce((sum, set) => sum + (set.duration || 0), 0)
+    : 0;
+  const durationMinutes =
+    typeof entryData.duration_minutes === "number"
+      ? entryData.duration_minutes
+      : durationFromSets;
+
+  let calculatedCaloriesBurned = entryData.calories_burned;
+  if (
+    calculatedCaloriesBurned === undefined ||
+    calculatedCaloriesBurned === null
+  ) {
+    const caloriesPerHour =
+      await calorieCalculationService.estimateCaloriesBurnedPerHour(
+        exercise,
+        authenticatedUserId,
+        entryData.sets,
+      );
+    calculatedCaloriesBurned = (caloriesPerHour / 60) * durationMinutes;
+  }
+
+  return {
+    ...entryData,
+    user_id: authenticatedUserId,
+    exercise_id: resolvedExerciseId,
+    exercise_name: exercise.name,
+    calories_per_hour: exercise.calories_per_hour,
+    calories_burned: calculatedCaloriesBurned ?? 0,
+    duration_minutes: durationMinutes ?? 0,
+    workout_plan_assignment_id: entryData.workout_plan_assignment_id || null,
+    image_url: entryData.image_url || null,
+    distance: entryData.distance ?? null,
+    avg_heart_rate: entryData.avg_heart_rate ?? null,
+  };
+}
+
 async function createExerciseEntry(
   authenticatedUserId,
   actingUserId,
   entryData,
 ) {
   try {
-    // Resolve exercise_id to a UUID
-    const resolvedExerciseId = await resolveExerciseIdToUuid(
-      entryData.exercise_id,
-    );
-    entryData.exercise_id = resolvedExerciseId;
-
-    // Fetch exercise details to create the snapshot
-    const exercise = await exerciseDb.getExerciseById(
-      entryData.exercise_id,
+    const snapshotEntryData = await prepareExerciseEntryForCreate(
       authenticatedUserId,
+      entryData,
     );
-    if (!exercise) {
-      throw new Error("Exercise not found for snapshot.");
-    }
-
-    // If calories_burned is not provided, calculate it using the calorieCalculationService
-    let calculatedCaloriesBurned = entryData.calories_burned;
-    if (
-      !calculatedCaloriesBurned &&
-      entryData.exercise_id &&
-      entryData.duration_minutes !== null &&
-      entryData.duration_minutes !== undefined
-    ) {
-      const caloriesPerHour =
-        await calorieCalculationService.estimateCaloriesBurnedPerHour(
-          exercise,
-          authenticatedUserId,
-          entryData.sets,
-        );
-      calculatedCaloriesBurned =
-        (caloriesPerHour / 60) * entryData.duration_minutes;
-    } else if (!calculatedCaloriesBurned) {
-      calculatedCaloriesBurned = 0;
-    }
-
-    // Populate snapshot fields
-    const snapshotEntryData = {
-      ...entryData,
-      user_id: authenticatedUserId,
-      created_by_user_id: actingUserId, // Use actingUserId for audit
-      exercise_name: exercise.name,
-      calories_per_hour: exercise.calories_per_hour, // Snapshot the exercise's base calories_per_hour
-      calories_burned: calculatedCaloriesBurned,
-      duration_minutes:
-        typeof entryData.duration_minutes === "number"
-          ? entryData.duration_minutes
-          : 0,
-      workout_plan_assignment_id: entryData.workout_plan_assignment_id || null,
-      image_url: entryData.image_url || null,
-      distance: entryData.distance || null,
-      avg_heart_rate: entryData.avg_heart_rate || null,
-    };
 
     // Use exerciseEntry module to create the entry (handles sets and snapshot inserts)
     const newEntry = await exerciseEntryDb.createExerciseEntry(
@@ -1468,6 +1475,259 @@ async function getExerciseDeletionImpact(authenticatedUserId, exerciseId) {
   }
 }
 
+function createServiceError(status, message) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+async function createGroupedExerciseEntriesWithClient(
+  client,
+  userId,
+  actingUserId,
+  presetEntryId,
+  entryDate,
+  exercises,
+  options = {},
+) {
+  const {
+    entrySource = "manual",
+    workoutPlanAssignmentId = null,
+    preserveLegacyPresetDurationFallback = false,
+  } = options;
+
+  const createdEntries = [];
+  for (const exercise of exercises || []) {
+    const durationFromSets =
+      exercise.sets?.reduce((sum, set) => sum + (set.duration || 0), 0) || 0;
+    const durationMinutes =
+      typeof exercise.duration_minutes === "number"
+        ? exercise.duration_minutes
+        : preserveLegacyPresetDurationFallback && durationFromSets === 0
+          ? 30
+          : durationFromSets;
+
+    const preparedEntry = await prepareExerciseEntryForCreate(userId, {
+      exercise_id: exercise.exercise_id,
+      entry_date: entryDate,
+      notes: exercise.notes ?? null,
+      sets: exercise.sets || [],
+      duration_minutes: durationMinutes,
+      sort_order: exercise.sort_order ?? 0,
+      workout_plan_assignment_id: workoutPlanAssignmentId,
+      distance: exercise.distance,
+      avg_heart_rate: exercise.avg_heart_rate,
+    });
+
+    const createdEntry = await exerciseEntryDb._createExerciseEntryWithClient(
+      client,
+      userId,
+      preparedEntry,
+      actingUserId,
+      entrySource,
+      presetEntryId,
+    );
+    createdEntries.push(createdEntry);
+  }
+
+  return createdEntries;
+}
+
+async function getGroupedWorkoutSessionById(userId, presetEntryId) {
+  return getGroupedExerciseSessionById(userId, presetEntryId);
+}
+
+async function createGroupedWorkoutSession(
+  userId,
+  actingUserId,
+  sessionData,
+) {
+  const client = await getClient(userId);
+  try {
+    await client.query("BEGIN");
+
+    const {
+      workout_preset_id,
+      entry_date,
+      name,
+      description,
+      notes,
+      source = "manual",
+      exercises,
+      workoutPlanAssignmentId = null,
+    } = sessionData;
+
+    let presetEntry;
+    let exerciseDefinitions;
+    let childEntrySource = source;
+    let preserveLegacyPresetDurationFallback = false;
+
+    if (workout_preset_id !== undefined && workout_preset_id !== null) {
+      const workoutPreset = await workoutPresetRepository.getWorkoutPresetById(
+        workout_preset_id,
+        userId,
+      );
+      if (!workoutPreset) {
+        throw createServiceError(404, "Workout preset not found.");
+      }
+
+      presetEntry =
+        await exercisePresetEntryRepository.createExercisePresetEntryWithClient(
+          client,
+          userId,
+          {
+            workout_preset_id,
+            name: name || workoutPreset.name,
+            description:
+              description !== undefined
+                ? description
+                : workoutPreset.description,
+            entry_date,
+            notes,
+            source,
+          },
+          actingUserId,
+        );
+      exerciseDefinitions = workoutPreset.exercises || [];
+      childEntrySource = "Workout Preset";
+      preserveLegacyPresetDurationFallback = true;
+    } else {
+      presetEntry =
+        await exercisePresetEntryRepository.createExercisePresetEntryWithClient(
+          client,
+          userId,
+          {
+            workout_preset_id: null,
+            name,
+            description: description ?? null,
+            entry_date,
+            notes: notes ?? null,
+            source,
+          },
+          actingUserId,
+        );
+      exerciseDefinitions = exercises || [];
+    }
+
+    await createGroupedExerciseEntriesWithClient(
+      client,
+      userId,
+      actingUserId,
+      presetEntry.id,
+      entry_date,
+      exerciseDefinitions,
+      {
+        entrySource: childEntrySource,
+        workoutPlanAssignmentId,
+        preserveLegacyPresetDurationFallback,
+      },
+    );
+
+    const groupedSession = await getGroupedExerciseSessionByIdWithClient(
+      client,
+      userId,
+      presetEntry.id,
+    );
+
+    await client.query("COMMIT");
+    return groupedSession;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log("error", `Error creating grouped workout session:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function updateGroupedWorkoutSession(
+  userId,
+  actingUserId,
+  presetEntryId,
+  updateData,
+) {
+  const client = await getClient(userId);
+  try {
+    await client.query("BEGIN");
+
+    const existingSession = await getGroupedExerciseSessionByIdWithClient(
+      client,
+      userId,
+      presetEntryId,
+    );
+    if (!existingSession) {
+      throw createServiceError(404, "Exercise preset entry not found.");
+    }
+
+    await exercisePresetEntryRepository.updateExercisePresetEntryWithClient(
+      client,
+      presetEntryId,
+      userId,
+      {
+        name: updateData.name,
+        description: updateData.description,
+        notes: updateData.notes,
+        entry_date: updateData.entry_date,
+      },
+    );
+
+    const targetEntryDate = updateData.entry_date || existingSession.entry_date;
+
+    if (updateData.exercises !== undefined) {
+      if (!["manual", "sparky"].includes(existingSession.source)) {
+        throw createServiceError(
+          409,
+          "Nested exercise editing is only supported for manual or sparky workouts.",
+        );
+      }
+
+      await exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient(
+        client,
+        userId,
+        presetEntryId,
+      );
+
+      await createGroupedExerciseEntriesWithClient(
+        client,
+        userId,
+        actingUserId,
+        presetEntryId,
+        targetEntryDate,
+        updateData.exercises,
+        {
+          entrySource: existingSession.source,
+        },
+      );
+    } else if (
+      updateData.entry_date !== undefined &&
+      updateData.entry_date !== existingSession.entry_date
+    ) {
+      await exerciseEntryDb.updateExerciseEntriesDateByPresetEntryIdWithClient(
+        client,
+        userId,
+        presetEntryId,
+        updateData.entry_date,
+        actingUserId,
+      );
+    }
+
+    const groupedSession = await getGroupedExerciseSessionByIdWithClient(
+      client,
+      userId,
+      presetEntryId,
+    );
+
+    await client.query("COMMIT");
+    return groupedSession;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    log("error", `Error updating grouped workout session:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function logWorkoutPresetGrouped(
   userId,
   actingUserId,
@@ -1475,104 +1735,11 @@ async function logWorkoutPresetGrouped(
   entryDate,
   options = {},
 ) {
-  const {
-    name,
-    description,
-    notes,
-    source = "manual",
-    workoutPlanAssignmentId = null,
-  } = options;
-
-  try {
-    // 1. Fetch the workout preset details
-    const workoutPreset = await workoutPresetRepository.getWorkoutPresetById(
-      workoutPresetId,
-      userId,
-    );
-    if (!workoutPreset) {
-      throw new Error("Workout preset not found.");
-    }
-
-    // 2. Create the exercise_preset_entry
-    const newExercisePresetEntry =
-      await exercisePresetEntryRepository.createExercisePresetEntry(
-        userId,
-        {
-          workout_preset_id: workoutPresetId,
-          name: name || workoutPreset.name, // Use provided name or preset name
-          description: description || workoutPreset.description, // Use provided description or preset description
-          entry_date: entryDate,
-          notes: notes,
-          source: source,
-        },
-        actingUserId,
-      );
-
-    const createdExerciseEntries = []; // Array to store created exercise entries
-
-    // 3. Create individual exercise_entries for each exercise in the preset
-    if (workoutPreset.exercises && workoutPreset.exercises.length > 0) {
-      for (const exercise of workoutPreset.exercises) {
-        // Fetch the full exercise details to get calories_per_hour
-        const fullExercise = await exerciseDb.getExerciseById(
-          exercise.exercise_id,
-          userId,
-        );
-        if (!fullExercise) {
-          log(
-            "warn",
-            `Exercise with ID ${exercise.exercise_id} not found for preset. Skipping.`,
-          );
-          continue; // Skip this exercise if not found
-        }
-
-        // Determine duration_minutes, defaulting to 30 or summing from sets
-        const durationFromSets =
-          exercise.sets?.reduce((acc, set) => acc + (set.duration || 0), 0) ||
-          0;
-        const durationMinutes = durationFromSets || 30;
-
-        // Calculate calories burned
-        const caloriesPerHour = fullExercise.calories_per_hour || 0;
-        const caloriesBurned = Math.round(
-          (caloriesPerHour / 60) * durationMinutes,
-        );
-
-        const exerciseEntryData = {
-          exercise_id: exercise.exercise_id,
-          entry_date: entryDate,
-          notes: exercise.notes, // Use notes from preset exercise if available
-          sets: exercise.sets, // Copy sets from preset exercise
-          duration_minutes: durationMinutes,
-          calories_burned: caloriesBurned,
-          avg_heart_rate: null, // Set to null as it's not available from preset definition
-          workout_plan_assignment_id: workoutPlanAssignmentId,
-        };
-
-        const newEntry = await exerciseEntryDb.createExerciseEntry(
-          userId,
-          exerciseEntryData,
-          actingUserId,
-          "Workout Preset", // entrySource
-          newExercisePresetEntry.id, // Link to the newly created exercise_preset_entry
-        );
-        createdExerciseEntries.push(newEntry); // Add the created entry to the array
-      }
-    }
-
-    return {
-      ...newExercisePresetEntry,
-      type: "preset",
-      exercises: createdExerciseEntries,
-      total_duration_minutes: createdExerciseEntries.reduce(
-        (sum, e) => sum + (e.duration_minutes || 0),
-        0,
-      ),
-    };
-  } catch (error) {
-    log("error", `Error logging workout preset grouped:`, error);
-    throw error;
-  }
+  return createGroupedWorkoutSession(userId, actingUserId, {
+    workout_preset_id: workoutPresetId,
+    entry_date: entryDate,
+    ...options,
+  });
 }
 
 module.exports = {
@@ -1607,6 +1774,9 @@ module.exports = {
   updateExerciseEntriesSnapshot, // New export
   getActivityDetailsByExerciseEntryIdAndProvider, // Renamed export
   logWorkoutPresetGrouped, // New export
+  createGroupedWorkoutSession,
+  updateGroupedWorkoutSession,
+  getGroupedWorkoutSessionById,
 };
 
 async function getActivityDetailsByExerciseEntryIdAndProvider(

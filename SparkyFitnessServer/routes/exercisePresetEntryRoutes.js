@@ -1,20 +1,49 @@
-const express = require('express');
-const router = express.Router();
-const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepository');
-const workoutPresetRepository = require('../models/workoutPresetRepository');
-const exerciseEntryRepository = require('../models/exerciseEntry');
-const exerciseRepository = require('../models/exercise'); // Import exerciseRepository
-const exerciseService = require('../services/exerciseService'); // Import exerciseService
-const { log } = require('../config/logging');
-const { body, param, validationResult } = require('express-validator');
+const express = require("express");
+const { z } = require("zod");
+const {
+  createPresetSessionRequestSchema,
+  updatePresetSessionRequestSchema,
+  presetSessionResponseSchema,
+} = require("@workspace/shared");
+const exercisePresetEntryRepository = require("../models/exercisePresetEntryRepository");
+const exerciseService = require("../services/exerciseService");
+const { log } = require("../config/logging");
 
-// Middleware to check if the user is authenticated
+const router = express.Router();
+const presetEntryIdParamSchema = z.object({
+  id: z.string().uuid(),
+});
+
 const isAuthenticated = (req, res, next) => {
   if (!req.userId) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ message: "Unauthorized" });
   }
   next();
 };
+
+function sendValidationError(res, message, error) {
+  return res.status(400).json({
+    error: message,
+    details: error.flatten(),
+  });
+}
+
+function handleRouteError(error, res, next) {
+  if (error?.status) {
+    return res.status(error.status).json({ message: error.message });
+  }
+
+  if (error instanceof z.ZodError) {
+    log("error", "Grouped workout response validation failed:", error);
+    return next(
+      Object.assign(new Error("Internal response validation failed"), {
+        status: 500,
+      }),
+    );
+  }
+
+  return next(error);
+}
 
 /**
  * @swagger
@@ -25,354 +54,198 @@ const isAuthenticated = (req, res, next) => {
 
 /**
  * @swagger
- * components:
- *   schemas:
- *     ExercisePresetEntry:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           format: uuid
- *           description: The unique identifier for the exercise preset entry.
- *         user_id:
- *           type: string
- *           format: uuid
- *           description: The ID of the user who owns the entry.
- *         workout_preset_id:
- *           type: integer
- *           description: The ID of the workout preset this entry originated from.
- *         name:
- *           type: string
- *           description: The name of the logged workout.
- *         description:
- *           type: string
- *           description: A description of the logged workout.
- *         entry_date:
- *           type: string
- *           format: date
- *           description: The date the workout was logged (YYYY-MM-DD).
- *         notes:
- *           type: string
- *           description: Additional notes for the logged workout.
- *         source:
- *           type: string
- *           description: The source of the entry (e.g., "manual", "Garmin Connect").
- *         created_at:
- *           type: string
- *           format: date-time
- *           description: The date and time when the entry was created.
- *         updated_at:
- *           type: string
- *           format: date-time
- *           description: The date and time when the entry was last updated.
- *       required:
- *         - user_id
- *         - workout_preset_id
- *         - name
- *         - entry_date
- */
-
-/**
- * @swagger
  * /exercise-preset-entries:
  *   post:
- *     summary: Add a workout preset to the diary
+ *     summary: Create a grouped workout session
  *     tags: [Fitness & Workouts]
- *     description: Logs a workout preset as an exercise preset entry and creates individual exercise entries for each exercise within the preset.
+ *     description: Creates a grouped workout from either a workout preset or an inline exercises array. Returns the full nested grouped session payload used by the mobile client.
  *     security:
  *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - workout_preset_id
- *               - entry_date
- *             properties:
- *               workout_preset_id:
- *                 type: integer
- *                 description: The ID of the workout preset to log.
- *               entry_date:
- *                 type: string
- *                 format: date
- *                 description: The date for which the workout is logged (YYYY-MM-DD).
- *               name:
- *                 type: string
- *                 description: Optional name for the logged workout. If not provided, uses preset name.
- *               description:
- *                 type: string
- *                 description: Optional description for the logged workout. If not provided, uses preset description.
- *               notes:
- *                 type: string
- *                 description: Optional notes for the logged workout.
- *               source:
- *                 type: string
- *                 description: The source of the entry (e.g., "manual", "Garmin Connect"). Defaults to "manual".
  *     responses:
  *       201:
- *         description: The exercise preset entry and associated exercise entries were created successfully.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               allOf:
- *                 - $ref: '#/components/schemas/ExercisePresetEntry'
- *                 - type: object
- *                   properties:
- *                     type:
- *                       type: string
- *                       example: preset
- *                     exercises:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/ExerciseEntry'
- *                     total_duration_minutes:
- *                       type: integer
- *                       example: 45
+ *         description: The grouped workout session was created successfully.
  *       400:
- *         description: Invalid request body or validation errors.
+ *         description: Invalid request body.
  *       401:
- *         description: Unauthorized, authentication token is missing or invalid.
+ *         description: Unauthorized.
  *       404:
  *         description: Workout preset not found.
- *       500:
- *         description: Failed to add workout preset to diary.
  */
-router.post(
-  '/',
-  isAuthenticated,
-  [
-    body('workout_preset_id').isInt().withMessage('Workout preset ID must be an integer.'),
-    body('entry_date').isISO8601().withMessage('Entry date must be a valid ISO 8601 date.'),
-    body('name').optional().notEmpty().withMessage('Preset name cannot be empty.'),
-    body('description').optional().isString().withMessage('Description must be a string.'),
-    body('notes').optional().isString().withMessage('Notes must be a string.'),
-  ],
-  async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+router.post("/", isAuthenticated, async (req, res, next) => {
+  try {
+    const parsedBody = createPresetSessionRequestSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return sendValidationError(
+        res,
+        "Invalid grouped workout payload.",
+        parsedBody.error,
+      );
     }
-    try {
-      const { workout_preset_id, entry_date, name, description, notes, source } = req.body;
-      const userId = req.userId;
-      const createdByUserId = req.userId;
 
-      const groupedPresetEntry = await exerciseService.logWorkoutPresetGrouped(userId, createdByUserId, workout_preset_id, entry_date, {
-        name,
-        description,
-        notes,
-        source: source !== undefined ? source : 'manual',
-      });
+    const groupedWorkout = await exerciseService.createGroupedWorkoutSession(
+      req.userId,
+      req.originalUserId || req.userId,
+      parsedBody.data,
+    );
 
-      res.status(201).json(groupedPresetEntry);
-    } catch (error) {
-      if (error.message === 'Workout preset not found.') {
-        return res.status(404).json({ message: error.message });
-      }
-      log('error', `Error adding workout preset to diary:`, error);
-      next(error);
-    }
+    const response = presetSessionResponseSchema.parse(groupedWorkout);
+    res.status(201).json(response);
+  } catch (error) {
+    log("error", "Error creating grouped workout session:", error);
+    handleRouteError(error, res, next);
   }
-);
+});
 
 /**
  * @swagger
  * /exercise-preset-entries/{id}:
  *   get:
- *     summary: Get an exercise preset entry by ID
+ *     summary: Get a grouped workout session by ID
  *     tags: [Fitness & Workouts]
- *     description: Retrieves a single exercise preset entry by its ID.
+ *     description: Returns the full nested grouped workout session, including child exercises and sets.
  *     security:
  *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The ID of the exercise preset entry to retrieve.
  *     responses:
  *       200:
- *         description: The requested exercise preset entry.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ExercisePresetEntry'
+ *         description: The grouped workout session.
  *       400:
- *         description: Invalid exercise preset entry ID.
+ *         description: Invalid grouped workout ID.
  *       401:
- *         description: Unauthorized, authentication token is missing or invalid.
+ *         description: Unauthorized.
  *       404:
- *         description: Exercise preset entry not found.
- *       500:
- *         description: Failed to fetch exercise preset entry.
+ *         description: Grouped workout session not found.
  */
-router.get(
-  '/:id',
-  isAuthenticated,
-  [
-    param('id').isUUID().withMessage('Exercise preset entry ID must be a valid UUID.'),
-  ],
-  async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+router.get("/:id", isAuthenticated, async (req, res, next) => {
+  try {
+    const parsedParams = presetEntryIdParamSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return sendValidationError(
+        res,
+        "Invalid grouped workout id.",
+        parsedParams.error,
+      );
     }
-    try {
-      const { id } = req.params;
-      const userId = req.userId;
-      const entry = await exercisePresetEntryRepository.getExercisePresetEntryById(id, userId);
-      if (!entry) {
-        return res.status(404).json({ message: 'Exercise preset entry not found.' });
-      }
-      res.json(entry);
-    } catch (error) {
-      log('error', `Error getting exercise preset entry by ID ${req.params.id}:`, error);
-      next(error);
+
+    const groupedWorkout = await exerciseService.getGroupedWorkoutSessionById(
+      req.userId,
+      parsedParams.data.id,
+    );
+
+    if (!groupedWorkout) {
+      return res
+        .status(404)
+        .json({ message: "Exercise preset entry not found." });
     }
+
+    const response = presetSessionResponseSchema.parse(groupedWorkout);
+    res.status(200).json(response);
+  } catch (error) {
+    log("error", `Error getting grouped workout session ${req.params.id}:`, error);
+    handleRouteError(error, res, next);
   }
-);
+});
 
 /**
  * @swagger
  * /exercise-preset-entries/{id}:
  *   put:
- *     summary: Update an exercise preset entry
+ *     summary: Update a grouped workout session
  *     tags: [Fitness & Workouts]
- *     description: Updates an existing exercise preset entry.
+ *     description: Updates grouped workout header fields and, for manual or sparky workouts, can replace the child exercises array in one request. Returns the full nested grouped session payload.
  *     security:
  *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The ID of the exercise preset entry to update.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 description: The new name for the logged workout.
- *               description:
- *                 type: string
- *                 description: A new description for the logged workout.
- *               notes:
- *                 type: string
- *                 description: New notes for the logged workout.
- *               entry_date:
- *                 type: string
- *                 format: date
- *                 description: The new date for the logged workout (YYYY-MM-DD).
  *     responses:
  *       200:
- *         description: The exercise preset entry was updated successfully.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ExercisePresetEntry'
+ *         description: The grouped workout session was updated successfully.
  *       400:
- *         description: Invalid request body or validation errors.
+ *         description: Invalid request body or grouped workout ID.
  *       401:
- *         description: Unauthorized, authentication token is missing or invalid.
+ *         description: Unauthorized.
  *       404:
- *         description: Exercise preset entry not found or not authorized.
- *       500:
- *         description: Failed to update exercise preset entry.
+ *         description: Grouped workout session not found.
+ *       409:
+ *         description: Nested exercise edits are not supported for synced/imported grouped workouts.
  */
-router.put(
-  '/:id',
-  isAuthenticated,
-  [
-    param('id').isUUID().withMessage('Exercise preset entry ID must be a valid UUID.'),
-    body('name').optional().notEmpty().withMessage('Preset name cannot be empty.'),
-    body('description').optional().isString().withMessage('Description must be a string.'),
-    body('notes').optional().isString().withMessage('Notes must be a string.'),
-    body('entry_date').optional().isISO8601().withMessage('Entry date must be a valid ISO 8601 date.'),
-  ],
-  async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+router.put("/:id", isAuthenticated, async (req, res, next) => {
+  try {
+    const parsedParams = presetEntryIdParamSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return sendValidationError(
+        res,
+        "Invalid grouped workout id.",
+        parsedParams.error,
+      );
     }
-    try {
-      const { id } = req.params;
-      const userId = req.userId;
-      const updatedEntry = await exercisePresetEntryRepository.updateExercisePresetEntry(id, userId, req.body);
-      if (!updatedEntry) {
-        return res.status(404).json({ message: 'Exercise preset entry not found or not authorized.' });
-      }
-      res.json(updatedEntry);
-    } catch (error) {
-      log('error', `Error updating exercise preset entry ${req.params.id}:`, error);
-      next(error);
+
+    const parsedBody = updatePresetSessionRequestSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      return sendValidationError(
+        res,
+        "Invalid grouped workout update payload.",
+        parsedBody.error,
+      );
     }
+
+    const groupedWorkout = await exerciseService.updateGroupedWorkoutSession(
+      req.userId,
+      req.originalUserId || req.userId,
+      parsedParams.data.id,
+      parsedBody.data,
+    );
+
+    const response = presetSessionResponseSchema.parse(groupedWorkout);
+    res.status(200).json(response);
+  } catch (error) {
+    log("error", `Error updating grouped workout session ${req.params.id}:`, error);
+    handleRouteError(error, res, next);
   }
-);
+});
 
 /**
  * @swagger
  * /exercise-preset-entries/{id}:
  *   delete:
- *     summary: Delete an exercise preset entry
+ *     summary: Delete a grouped workout session
  *     tags: [Fitness & Workouts]
- *     description: Deletes a specific exercise preset entry.
+ *     description: Deletes a grouped workout session and cascades to its child exercise entries.
  *     security:
  *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: The ID of the exercise preset entry to delete.
  *     responses:
  *       204:
- *         description: Exercise preset entry deleted successfully.
+ *         description: Grouped workout session deleted successfully.
  *       400:
- *         description: Invalid exercise preset entry ID.
+ *         description: Invalid grouped workout ID.
  *       401:
- *         description: Unauthorized, authentication token is missing or invalid.
+ *         description: Unauthorized.
  *       404:
- *         description: Exercise preset entry not found or not authorized.
- *       500:
- *         description: Failed to delete exercise preset entry.
+ *         description: Grouped workout session not found.
  */
-router.delete(
-  '/:id',
-  isAuthenticated,
-  [
-    param('id').isUUID().withMessage('Exercise preset entry ID must be a valid UUID.'),
-  ],
-  async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+router.delete("/:id", isAuthenticated, async (req, res, next) => {
+  try {
+    const parsedParams = presetEntryIdParamSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return sendValidationError(
+        res,
+        "Invalid grouped workout id.",
+        parsedParams.error,
+      );
     }
-    try {
-      const { id } = req.params;
-      const userId = req.userId;
-      const deleted = await exercisePresetEntryRepository.deleteExercisePresetEntry(id, userId);
-      if (!deleted) {
-        return res.status(404).json({ message: 'Exercise preset entry not found or not authorized.' });
-      }
-      res.status(204).send(); // No content
-    } catch (error) {
-      log('error', `Error deleting exercise preset entry ${req.params.id}:`, error);
-      next(error);
+
+    const deleted = await exercisePresetEntryRepository.deleteExercisePresetEntry(
+      parsedParams.data.id,
+      req.userId,
+    );
+    if (!deleted) {
+      return res
+        .status(404)
+        .json({ message: "Exercise preset entry not found or not authorized." });
     }
+
+    res.status(204).send();
+  } catch (error) {
+    log("error", `Error deleting grouped workout session ${req.params.id}:`, error);
+    next(error);
   }
-);
+});
 
 module.exports = router;

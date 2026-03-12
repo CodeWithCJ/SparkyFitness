@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Alert } from 'react-native';
+import { loadSessionDraft, clearSessionDraft } from '../services/workoutDraftService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -37,7 +38,28 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
     setRefreshing(false);
   }, [refetch]);
 
-  const handleStartWorkout = () => Alert.alert('Coming Soon', 'Workout tracking will be available in a future update.');
+  const handleStartWorkout = useCallback(async () => {
+    const draft = await loadSessionDraft();
+    if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
+      Alert.alert('Resume Workout?', 'You have a workout in progress.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start Fresh',
+          style: 'destructive',
+          onPress: async () => {
+            await clearSessionDraft();
+            navigation.navigate('WorkoutForm');
+          },
+        },
+        {
+          text: 'Resume',
+          onPress: () => navigation.navigate('WorkoutForm'),
+        },
+      ]);
+    } else {
+      navigation.navigate('WorkoutForm');
+    }
+  }, [navigation]);
   const handleLogActivity = () => Alert.alert('Coming Soon', 'Activity logging will be available in a future update.');
 
   const renderActionButtons = () => (

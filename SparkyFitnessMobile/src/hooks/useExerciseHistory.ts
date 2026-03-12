@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { fetchExerciseHistory } from '../services/api/exerciseApi';
-import { exerciseHistoryQueryKey } from './queryKeys';
+import { exerciseHistoryQueryKey, exerciseHistoryResetQueryKey } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 
 interface UseExerciseHistoryOptions {
@@ -27,11 +27,19 @@ export function useExerciseHistory(
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [sessions, setSessions] = useState<ExerciseSessionResponse[]>([]);
+  const lastResetTokenRef = useRef(0);
 
   const query = useQuery({
     queryKey: [...exerciseHistoryQueryKey, page],
     queryFn: () => fetchExerciseHistory(page),
     enabled,
+  });
+
+  const resetTokenQuery = useQuery({
+    queryKey: exerciseHistoryResetQueryKey,
+    queryFn: () => 0,
+    initialData: 0,
+    staleTime: Infinity,
   });
 
   useEffect(() => {
@@ -42,6 +50,15 @@ export function useExerciseHistory(
       setSessions(prev => [...prev, ...query.data.sessions]);
     }
   }, [query.data, page]);
+
+  useEffect(() => {
+    const resetToken = resetTokenQuery.data ?? 0;
+    if (resetToken === lastResetTokenRef.current) return;
+
+    lastResetTokenRef.current = resetToken;
+    setPage(1);
+    setSessions([]);
+  }, [resetTokenQuery.data]);
 
   const refetch = useCallback(async () => {
     queryClient.removeQueries({ queryKey: exerciseHistoryQueryKey });

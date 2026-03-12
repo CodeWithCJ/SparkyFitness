@@ -26,10 +26,12 @@ import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
+import WorkoutFormScreen from './src/screens/WorkoutFormScreen';
 import LoginModal from './src/components/LoginModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
 import { saveServerConfig, getActiveServerConfig, loadBackgroundSyncEnabled } from './src/services/storage';
+import { loadSessionDraft, clearSessionDraft } from './src/services/workoutDraftService';
 import { notifyNoConfigs } from './src/services/api/authService';
 import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
 import { startObservers, stopObservers } from './src/services/healthConnectService';
@@ -105,6 +107,48 @@ function AppContent() {
         : undefined;
     const date = diaryParams?.selectedDate;
     navigation.getParent()?.navigate('FoodSearch', { date });
+  }, []);
+
+  const handleAddWorkout = useCallback(async () => {
+    const navigation = navigationRef.current;
+    if (!navigation) return;
+
+    const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
+    if (!isConnected) {
+      Alert.alert(
+        'No Server Connected',
+        'Configure your server connection in Settings to start a workout.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Go to Settings',
+            onPress: () => navigation.getParent()?.navigate('Tabs', { screen: 'Settings' }),
+          },
+        ],
+      );
+      return;
+    }
+
+    const draft = await loadSessionDraft();
+    if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
+      Alert.alert('Resume Workout?', 'You have a workout in progress.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start Fresh',
+          style: 'destructive',
+          onPress: async () => {
+            await clearSessionDraft();
+            navigation.getParent()?.navigate('WorkoutForm');
+          },
+        },
+        {
+          text: 'Resume',
+          onPress: () => navigation.getParent()?.navigate('WorkoutForm'),
+        },
+      ]);
+    } else {
+      navigation.getParent()?.navigate('WorkoutForm');
+    }
   }, []);
 
   useEffect(() => {
@@ -283,6 +327,14 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="WorkoutForm"
+            component={WorkoutFormScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
             name="Logs"
             component={LogScreen}
             options={{
@@ -299,7 +351,7 @@ function AppContent() {
             }}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} />
         <LoginModal
           visible={showLoginModal}
           defaultConfigId={expiredConfigId}

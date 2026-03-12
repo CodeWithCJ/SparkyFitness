@@ -1,6 +1,6 @@
 import { apiFetch } from './apiClient';
-import type { ExerciseEntry } from '../../types/exercise';
-import type { ExerciseHistoryResponse } from '@workspace/shared';
+import type { ExerciseEntry, Exercise, SuggestedExercisesResponse } from '../../types/exercise';
+import type { ExerciseHistoryResponse, CreatePresetSessionRequest, PresetSessionResponse } from '@workspace/shared';
 
 /**
  * Fetches exercise entries for a given date.
@@ -58,5 +58,44 @@ export const fetchExerciseHistory = async (
     endpoint: `/api/v2/exercise-entries/history?page=${page}&pageSize=${pageSize}`,
     serviceName: 'Exercise API',
     operation: 'fetch exercise history',
+  });
+};
+
+/**
+ * Fetches suggested exercises (recent + popular).
+ */
+export const fetchSuggestedExercises = async (
+  limit: number = 10,
+): Promise<SuggestedExercisesResponse> => {
+  return apiFetch<SuggestedExercisesResponse>({
+    endpoint: `/api/exercises/suggested?limit=${limit}`,
+    serviceName: 'Exercise API',
+    operation: 'fetch suggested exercises',
+  });
+};
+
+/**
+ * Searches exercises by name.
+ */
+export const searchExercises = async (searchTerm: string): Promise<Exercise[]> => {
+  return apiFetch<Exercise[]>({
+    endpoint: `/api/exercises/search?searchTerm=${encodeURIComponent(searchTerm)}`,
+    serviceName: 'Exercise API',
+    operation: 'search exercises',
+  });
+};
+
+/**
+ * Creates a workout session from preset entries.
+ */
+export const createWorkoutSession = async (
+  payload: CreatePresetSessionRequest,
+): Promise<PresetSessionResponse> => {
+  return apiFetch<PresetSessionResponse>({
+    endpoint: '/api/exercise-preset-entries/',
+    serviceName: 'Exercise API',
+    operation: 'create workout session',
+    method: 'POST',
+    body: payload,
   });
 };

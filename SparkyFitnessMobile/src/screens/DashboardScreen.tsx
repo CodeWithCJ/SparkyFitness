@@ -12,6 +12,7 @@ import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { calculateEffectiveBurned, calculateCalorieBalance } from '../services/calculations';
 import { addDays, getTodayDate } from '../utils/dateUtils';
+import { weightFromKg } from '../utils/unitConversions';
 import HydrationGauge from '../components/HydrationGauge';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import HealthTrendsPager from '../components/HealthTrendsPager';
@@ -84,8 +85,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
   const weightData = useMemo(() => {
     if (weightUnit === 'kg') return rawWeightData;
-    const KG_TO_LBS = 2.20462;
-    return rawWeightData.map(p => ({ ...p, weight: p.weight * KG_TO_LBS }));
+    return rawWeightData.map(p => ({ ...p, weight: weightFromKg(p.weight, weightUnit) }));
   }, [rawWeightData, weightUnit]);
 
   // Get macro colors from CSS variables (theme-aware)

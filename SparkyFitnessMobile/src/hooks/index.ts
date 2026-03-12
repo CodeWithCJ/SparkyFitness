@@ -39,3 +39,7 @@ export { useAddFoodEntry } from './useAddFoodEntry';
 export { useMeasurementsRange } from './useMeasurementsRange';
 export type { StepsDataPoint, StepsRange, WeightDataPoint } from './useMeasurementsRange';
 export { useExerciseHistory } from './useExerciseHistory';
+export { useSuggestedExercises } from './useSuggestedExercises';
+export { useExerciseSearch } from './useExerciseSearch';
+export { useCreateWorkoutSession } from './useCreateWorkoutSession';
+export { suggestedExercisesQueryKey, exerciseSearchQueryKey } from './queryKeys';

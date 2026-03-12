@@ -1,6 +1,9 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useExerciseHistory } from '../../src/hooks/useExerciseHistory';
-import { exerciseHistoryQueryKey } from '../../src/hooks/queryKeys';
+import {
+  exerciseHistoryQueryKey,
+  exerciseHistoryResetQueryKey,
+} from '../../src/hooks/queryKeys';
 import { fetchExerciseHistory } from '../../src/services/api/exerciseApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 import type { ExerciseHistoryResponse } from '@workspace/shared';
@@ -248,6 +251,46 @@ describe('useExerciseHistory', () => {
 
     await act(async () => {
       await result.current.refetch();
+    });
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(1);
+      expect(result.current.sessions[0].id).toBe('3');
+    });
+
+    expect(mockFetchExerciseHistory).toHaveBeenLastCalledWith(1);
+  });
+
+  test('external history reset returns the hook to page 1 without duplicating sessions', async () => {
+    const page1Session = makeIndividualSession('1', 'Bench Press');
+    const page2Session = makeIndividualSession('2', 'Deadlift');
+
+    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page1Session], 1, true, 2));
+
+    const { result } = renderHook(() => useExerciseHistory(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(1);
+    });
+
+    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page2Session], 2, false, 2));
+
+    act(() => {
+      result.current.loadMore();
+    });
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(2);
+    });
+
+    const freshSession = makeIndividualSession('3', 'Overhead Press');
+    mockFetchExerciseHistory.mockResolvedValue(makePage([freshSession], 1, false));
+
+    await act(async () => {
+      queryClient.removeQueries({ queryKey: exerciseHistoryQueryKey });
+      queryClient.setQueryData(exerciseHistoryResetQueryKey, Date.now());
     });
 
     await waitFor(() => {

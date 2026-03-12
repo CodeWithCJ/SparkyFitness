@@ -1,0 +1,243 @@
+import { useReducer, useEffect, useRef, useCallback } from 'react';
+import { AppState } from 'react-native';
+import { saveSessionDraft, loadSessionDraft, clearSessionDraft } from '../services/workoutDraftService';
+import { getTodayDate } from '../utils/dateUtils';
+import type { Exercise } from '../types/exercise';
+
+// --- Draft types ---
+
+export interface WorkoutDraftSet {
+  clientId: string;
+  weight: string;
+  reps: string;
+}
+
+export interface WorkoutDraftExercise {
+  clientId: string;
+  exerciseId: string;
+  exerciseName: string;
+  exerciseCategory: string | null;
+  sets: WorkoutDraftSet[];
+}
+
+export interface WorkoutDraft {
+  type: 'workout';
+  name: string;
+  entryDate: string;
+  exercises: WorkoutDraftExercise[];
+}
+
+// --- Helpers ---
+
+function generateClientId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function createEmptyDraft(): WorkoutDraft {
+  return {
+    type: 'workout',
+    name: 'Workout',
+    entryDate: getTodayDate(),
+    exercises: [],
+  };
+}
+
+function createEmptySet(): WorkoutDraftSet {
+  return { clientId: generateClientId(), weight: '', reps: '' };
+}
+
+// --- Reducer ---
+
+type WorkoutFormAction =
+  | { type: 'RESTORE_DRAFT'; draft: WorkoutDraft }
+  | { type: 'SET_NAME'; name: string }
+  | { type: 'ADD_EXERCISE'; exercise: Exercise }
+  | { type: 'REMOVE_EXERCISE'; clientId: string }
+  | { type: 'ADD_SET'; exerciseClientId: string }
+  | { type: 'REMOVE_SET'; exerciseClientId: string; setClientId: string }
+  | { type: 'UPDATE_SET_FIELD'; exerciseClientId: string; setClientId: string; field: 'weight' | 'reps'; value: string }
+  | { type: 'RESET' };
+
+export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormAction): WorkoutDraft {
+  switch (action.type) {
+    case 'RESTORE_DRAFT':
+      return action.draft;
+
+    case 'SET_NAME':
+      return { ...state, name: action.name };
+
+    case 'ADD_EXERCISE':
+      return {
+        ...state,
+        exercises: [
+          ...state.exercises,
+          {
+            clientId: generateClientId(),
+            exerciseId: action.exercise.id,
+            exerciseName: action.exercise.name,
+            exerciseCategory: action.exercise.category,
+            sets: [createEmptySet()],
+          },
+        ],
+      };
+
+    case 'REMOVE_EXERCISE':
+      return {
+        ...state,
+        exercises: state.exercises.filter(e => e.clientId !== action.clientId),
+      };
+
+    case 'ADD_SET': {
+      return {
+        ...state,
+        exercises: state.exercises.map(exercise => {
+          if (exercise.clientId !== action.exerciseClientId) return exercise;
+          const lastSet = exercise.sets[exercise.sets.length - 1];
+          const newSet: WorkoutDraftSet = {
+            clientId: generateClientId(),
+            weight: lastSet?.weight ?? '',
+            reps: lastSet?.reps ?? '',
+          };
+          return { ...exercise, sets: [...exercise.sets, newSet] };
+        }),
+      };
+    }
+
+    case 'REMOVE_SET': {
+      return {
+        ...state,
+        exercises: state.exercises.map(exercise => {
+          if (exercise.clientId !== action.exerciseClientId) return exercise;
+          return {
+            ...exercise,
+            sets: exercise.sets.filter(s => s.clientId !== action.setClientId),
+          };
+        }),
+      };
+    }
+
+    case 'UPDATE_SET_FIELD': {
+      return {
+        ...state,
+        exercises: state.exercises.map(exercise => {
+          if (exercise.clientId !== action.exerciseClientId) return exercise;
+          return {
+            ...exercise,
+            sets: exercise.sets.map(set => {
+              if (set.clientId !== action.setClientId) return set;
+              return { ...set, [action.field]: action.value };
+            }),
+          };
+        }),
+      };
+    }
+
+    case 'RESET':
+      return createEmptyDraft();
+
+    default:
+      return state;
+  }
+}
+
+// --- Hook ---
+
+export function useWorkoutForm() {
+  const [state, dispatch] = useReducer(workoutFormReducer, undefined, createEmptyDraft);
+  const isDraftLoadedRef = useRef(false);
+  const skipNextSaveRef = useRef(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  // Load draft on mount
+  useEffect(() => {
+    loadSessionDraft().then(draft => {
+      if (draft && draft.type === 'workout') {
+        skipNextSaveRef.current = true;
+        dispatch({ type: 'RESTORE_DRAFT', draft });
+      }
+      isDraftLoadedRef.current = true;
+    });
+  }, []);
+
+  // Debounced save on state changes
+  useEffect(() => {
+    if (!isDraftLoadedRef.current) return;
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      saveSessionDraft(state);
+    }, 300);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [state]);
+
+  // Save immediately when app goes to background
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+          saveTimeoutRef.current = null;
+        }
+        saveSessionDraft(stateRef.current);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const addExercise = useCallback((exercise: Exercise) => {
+    dispatch({ type: 'ADD_EXERCISE', exercise });
+  }, []);
+
+  const removeExercise = useCallback((clientId: string) => {
+    dispatch({ type: 'REMOVE_EXERCISE', clientId });
+  }, []);
+
+  const addSet = useCallback((exerciseClientId: string) => {
+    dispatch({ type: 'ADD_SET', exerciseClientId });
+  }, []);
+
+  const removeSet = useCallback((exerciseClientId: string, setClientId: string) => {
+    dispatch({ type: 'REMOVE_SET', exerciseClientId, setClientId });
+  }, []);
+
+  const updateSetField = useCallback(
+    (exerciseClientId: string, setClientId: string, field: 'weight' | 'reps', value: string) => {
+      dispatch({ type: 'UPDATE_SET_FIELD', exerciseClientId, setClientId, field, value });
+    },
+    [],
+  );
+
+  const setName = useCallback((name: string) => {
+    dispatch({ type: 'SET_NAME', name });
+  }, []);
+
+  const reset = useCallback(() => {
+    dispatch({ type: 'RESET' });
+    clearSessionDraft();
+  }, []);
+
+  return {
+    state,
+    addExercise,
+    removeExercise,
+    addSet,
+    removeSet,
+    updateSetField,
+    setName,
+    reset,
+    hasDraftData: state.exercises.length > 0,
+  };
+}

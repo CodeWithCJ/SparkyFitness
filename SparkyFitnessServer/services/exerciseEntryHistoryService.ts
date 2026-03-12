@@ -1,9 +1,11 @@
-import type {
-  ActivityDetailResponse,
-  ExerciseEntryResponse,
-  ExerciseEntrySetResponse,
-  ExerciseHistoryResponse,
-  ExerciseSessionResponse,
+import {
+  presetSessionResponseSchema,
+  type PresetSessionResponse,
+  type ActivityDetailResponse,
+  type ExerciseEntryResponse,
+  type ExerciseEntrySetResponse,
+  type ExerciseHistoryResponse,
+  type ExerciseSessionResponse,
 } from "@workspace/shared";
 
 const { getClient } = require("../db/poolManager");
@@ -37,6 +39,17 @@ interface ActivityDetailRow {
   detail_type: string;
   detail_data: unknown;
 }
+
+const SETS_SUBQUERY = `COALESCE(
+  (SELECT json_agg(set_data ORDER BY set_data.set_number)
+   FROM (
+     SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight,
+            ees.duration, ees.rest_time, ees.notes, ees.rpe
+     FROM exercise_entry_sets ees
+     WHERE ees.exercise_entry_id = ee.id
+   ) AS set_data
+  ), '[]'::json
+) AS sets`;
 
 /**
  * Transform a raw exercise_entries row (with snapshot columns and inline sets)
@@ -144,18 +157,6 @@ async function getExerciseEntryHistorySessions(
   const presetActivityMap = new Map<string, ActivityDetailRow[]>();
   const individualMap = new Map<string, ExerciseEntryResponse>();
   const allExerciseEntryIds: string[] = [];
-
-  // Inline sets subquery used for exercise entries
-  const SETS_SUBQUERY = `COALESCE(
-    (SELECT json_agg(set_data ORDER BY set_data.set_number)
-     FROM (
-       SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight,
-              ees.duration, ees.rest_time, ees.notes, ees.rpe
-       FROM exercise_entry_sets ees
-       WHERE ees.exercise_entry_id = ee.id
-     ) AS set_data
-    ), '[]'::json
-  ) AS sets`;
 
   const batchQueries: Promise<void>[] = [];
 
@@ -362,4 +363,115 @@ export async function getExerciseEntryHistory(
   } finally {
     client.release();
   }
+}
+
+export async function getGroupedExerciseSessionById(
+  targetUserId: string,
+  presetEntryId: string,
+): Promise<PresetSessionResponse | null> {
+  const client = await getClient(targetUserId);
+  try {
+    return getGroupedExerciseSessionByIdWithClient(
+      client,
+      targetUserId,
+      presetEntryId,
+    );
+  } catch (error) {
+    log("error", "Error fetching grouped exercise session:", error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getGroupedExerciseSessionByIdWithClient(
+  client: { query: Function },
+  targetUserId: string,
+  presetEntryId: string,
+): Promise<PresetSessionResponse | null> {
+  const metaResult = await client.query(
+    `SELECT id, workout_preset_id, name, description, notes, source, entry_date
+     FROM exercise_preset_entries
+     WHERE user_id = $1 AND id = $2`,
+    [targetUserId, presetEntryId],
+  );
+
+  if (metaResult.rows.length === 0) {
+    return null;
+  }
+
+  const [childEntriesResult, presetActivityResult] = await Promise.all([
+    client.query(
+      `SELECT ee.*, ${SETS_SUBQUERY}
+       FROM exercise_entries ee
+       WHERE ee.user_id = $1 AND ee.exercise_preset_entry_id = $2
+       ORDER BY ee.sort_order ASC, ee.created_at ASC`,
+      [targetUserId, presetEntryId],
+    ),
+    client.query(
+      `SELECT * FROM exercise_entry_activity_details
+       WHERE exercise_preset_entry_id = $1`,
+      [presetEntryId],
+    ),
+  ]);
+
+  const childRows = childEntriesResult.rows as Record<string, unknown>[];
+  const childEntryIds = childRows.map((row) => row.id as string);
+  const entryActivityMap = new Map<string, ActivityDetailRow[]>();
+
+  if (childEntryIds.length > 0) {
+    const childActivityResult = await client.query(
+      `SELECT * FROM exercise_entry_activity_details
+       WHERE exercise_entry_id = ANY($1::uuid[])`,
+      [childEntryIds],
+    );
+
+    for (const row of childActivityResult.rows as ActivityDetailRow[]) {
+      const entryId = row.exercise_entry_id as string;
+      if (!entryActivityMap.has(entryId)) {
+        entryActivityMap.set(entryId, []);
+      }
+      entryActivityMap.get(entryId)!.push(row);
+    }
+  }
+
+  const exercises = childRows.map((row) => {
+    const entry = _buildExerciseEntryWithSnapshot(row);
+    const activityDetails = entryActivityMap.get(entry.id) ?? [];
+    entry.activity_details = activityDetails.map((detail) => ({
+      id: detail.id,
+      provider_name: detail.provider_name,
+      detail_type: detail.detail_type,
+      detail_data: _parseDetailData(detail.detail_data),
+    }));
+    return entry;
+  });
+
+  const presetActivityDetails = (
+    presetActivityResult.rows as ActivityDetailRow[]
+  ).map((detail) => ({
+    id: detail.id,
+    provider_name: detail.provider_name,
+    detail_type: detail.detail_type,
+    detail_data: _parseDetailData(detail.detail_data),
+  }));
+
+  const meta = metaResult.rows[0] as Record<string, unknown>;
+
+  return presetSessionResponseSchema.parse({
+    type: "preset",
+    id: meta.id as string,
+    entry_date: _dateToString(meta.entry_date),
+    workout_preset_id: (meta.workout_preset_id as number) ?? null,
+    name: meta.name as string,
+    description: (meta.description as string) ?? null,
+    notes: (meta.notes as string) ?? null,
+    source: meta.source as string,
+    total_duration_minutes: exercises.reduce(
+      (sum, exercise) => sum + (exercise.duration_minutes ?? 0),
+      0,
+    ),
+    exercises,
+    activity_details: presetActivityDetails,
+  });
 }

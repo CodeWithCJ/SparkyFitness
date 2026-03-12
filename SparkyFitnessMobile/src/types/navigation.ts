@@ -21,6 +21,7 @@ export type RootStackParamList = {
     | { mode: 'create-food'; date?: string; initialFood?: Partial<FoodFormData>; barcode?: string; providerType?: string }
     | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string };
   FoodScan: { date?: string } | undefined;
+  WorkoutForm: undefined;
   Logs: undefined;
   Sync: undefined;
 };
