@@ -48,13 +48,13 @@ async function upsertWaterData(userId, actingUserId, waterMl, date, source = 'ma
       );
 
       if (existingSourceRecord.rows.length === 0) {
-        // SMART ADOPTION: Look for a manual record within a 5ml tolerance (handles rounding differences)
+        // SMART ADOPTION: Look for a manual record within a tolerance (handles rounding differences)
         const matchingManualRecord = await client.query(
           `SELECT id, water_ml FROM water_intake 
            WHERE user_id = $1 AND entry_date = $2 AND source = 'manual' 
-           AND water_ml BETWEEN $3 - 5 AND $3 + 5
+           AND water_ml BETWEEN $3 - $4 AND $3 + $4
            LIMIT 1`,
-          [userId, date, waterMl]
+          [userId, date, waterMl, WATER_ADOPTION_TOLERANCE_ML]
         );
 
         if (matchingManualRecord.rows.length > 0) {
