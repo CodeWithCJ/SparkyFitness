@@ -27,7 +27,7 @@ export const useCreateCustomNutrientMutation = () => {
       queryClient.invalidateQueries({
         queryKey: ['preferences', 'nutrients'],
       });
-      return queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: customNutrientsKeys.all,
       });
     },
@@ -56,7 +56,7 @@ export const useUpdateCustomNutrientMutation = () => {
       queryClient.invalidateQueries({
         queryKey: ['preferences', 'nutrients'],
       });
-      return queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: customNutrientsKeys.all,
       });
     },
@@ -82,7 +82,7 @@ export const useDeleteCustomNutrientMutation = () => {
       queryClient.invalidateQueries({
         queryKey: ['preferences', 'nutrients'],
       });
-      return queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: customNutrientsKeys.all,
       });
     },
