@@ -562,6 +562,7 @@ async function processFitbitWater(
       createdByUserId,
       Math.round(water),
       entryDate,
+      'fitbit',
     );
     log(
       "info",
