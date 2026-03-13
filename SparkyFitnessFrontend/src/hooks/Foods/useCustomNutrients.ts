@@ -24,6 +24,9 @@ export const useCreateCustomNutrientMutation = () => {
     mutationFn: ({ name, unit }: { name: string; unit: string }) =>
       customNutrientService.createCustomNutrient({ name, unit }),
     onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['preferences', 'nutrients'],
+      });
       return queryClient.invalidateQueries({
         queryKey: customNutrientsKeys.all,
       });
@@ -50,6 +53,9 @@ export const useUpdateCustomNutrientMutation = () => {
     }) =>
       customNutrientService.updateCustomNutrient(nutrientId, { name, unit }),
     onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['preferences', 'nutrients'],
+      });
       return queryClient.invalidateQueries({
         queryKey: customNutrientsKeys.all,
       });
@@ -73,6 +79,9 @@ export const useDeleteCustomNutrientMutation = () => {
       deleteAllHistory?: boolean;
     }) => customNutrientService.deleteCustomNutrient(id, deleteAllHistory),
     onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['preferences', 'nutrients'],
+      });
       return queryClient.invalidateQueries({
         queryKey: customNutrientsKeys.all,
       });
