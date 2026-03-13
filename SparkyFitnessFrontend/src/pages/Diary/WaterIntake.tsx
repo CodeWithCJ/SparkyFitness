@@ -1,7 +1,15 @@
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Droplet } from 'lucide-react';
+import {
+  Droplet,
+  ChevronLeft,
+  ChevronRight,
+  Star,
+  Plus,
+  Minus,
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { convertMlToSelectedUnit } from '@/utils/nutritionCalculations';
@@ -21,13 +29,46 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser(); // Get activeUserId
-  const { activeContainer } = useWaterContainer(); // Use activeContainer from context
+  const { activeContainer, containers } = useWaterContainer(); // Use activeContainer and containers from context
   const { water_display_unit } = usePreferences();
   const userId = activeUserId || user?.id;
   const { data: waterGoalMl = 1920 } = useWaterGoalQuery(selectedDate, userId);
   const { data: waterMl = 0 } = useWaterIntakeQuery(selectedDate, userId);
   const { mutate: updateWaterIntake, isPending: loading } =
     useUpdateWaterIntakeMutation();
+
+  // Local state for the selected container in the diary
+  const [selectedContainerId, setSelectedContainerId] = useState<number | null>(
+    null
+  );
+
+  // Initialize selected container from active container
+  useEffect(() => {
+    if (activeContainer && selectedContainerId === null) {
+      setSelectedContainerId(activeContainer.id);
+    }
+  }, [activeContainer, selectedContainerId]);
+
+  // Derived selected container
+  const currentContainer =
+    containers.find((c) => c.id === selectedContainerId) || activeContainer;
+
+  const cycleContainer = (direction: 'next' | 'prev') => {
+    if (containers.length <= 1) return;
+
+    const currentIndex = containers.findIndex(
+      (c) => c.id === currentContainer?.id
+    );
+    let nextIndex;
+
+    if (direction === 'next') {
+      nextIndex = (currentIndex + 1) % containers.length;
+    } else {
+      nextIndex = (currentIndex - 1 + containers.length) % containers.length;
+    }
+
+    setSelectedContainerId(containers[nextIndex].id);
+  };
 
   const saveWaterIntake = (
     changeDrinks: number,
@@ -45,7 +86,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   };
 
   const adjustWater = (changeDrinks: number) => {
-    saveWaterIntake(changeDrinks, activeContainer?.id || null);
+    saveWaterIntake(changeDrinks, currentContainer?.id || null);
   };
 
   if (!user) {
@@ -68,16 +109,16 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
           <div className="text-xl font-bold">
             {convertMlToSelectedUnit(
               waterMl,
-              activeContainer?.unit || water_display_unit
-            ).toFixed(activeContainer?.unit === 'ml' ? 0 : 2)}{' '}
+              currentContainer?.unit || water_display_unit
+            ).toFixed(currentContainer?.unit === 'ml' ? 0 : 2)}{' '}
             /{' '}
             {convertMlToSelectedUnit(
               waterGoalMl,
-              activeContainer?.unit || water_display_unit
-            ).toFixed(activeContainer?.unit === 'ml' ? 0 : 2)}
+              currentContainer?.unit || water_display_unit
+            ).toFixed(currentContainer?.unit === 'ml' ? 0 : 2)}
           </div>
           <div className="text-gray-500 text-xs">
-            {activeContainer?.unit || water_display_unit}
+            {currentContainer?.unit || water_display_unit}
           </div>
         </div>
 
@@ -124,45 +165,82 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
           </div>
         </div>
 
-        {/* Water Control Buttons */}
-        <div className="flex justify-center space-x-2">
+        {/* Intuitive Water Controls: [ - ] VOLUME [ + ] */}
+        <div className="flex items-center justify-center space-x-3">
           <Button
             variant="outline"
             onClick={() => adjustWater(-1)}
             disabled={waterMl === 0 || loading}
-            size="sm"
-            className="w-9 h-7 text-xs"
+            size="icon"
+            className="h-8 w-8 rounded-full"
           >
-            -1
+            <Minus className="h-4 w-4" />
           </Button>
+
+          <div className="text-center min-w-[70px]">
+            <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
+              {currentContainer
+                ? t('foodDiary.waterIntake.perDrink', {
+                    volume: convertMlToSelectedUnit(
+                      currentContainer.volume /
+                        currentContainer.servings_per_container,
+                      currentContainer.unit
+                    ).toFixed(currentContainer.unit === 'ml' ? 0 : 2),
+                    unit: currentContainer.unit,
+                    defaultValue: `${convertMlToSelectedUnit(currentContainer.volume / currentContainer.servings_per_container, currentContainer.unit).toFixed(currentContainer.unit === 'ml' ? 0 : 2)} ${currentContainer.unit}`,
+                  })
+                : t('foodDiary.waterIntake.defaultPerDrink', {
+                    volume: convertMlToSelectedUnit(
+                      250,
+                      water_display_unit
+                    ).toFixed(water_display_unit === 'ml' ? 0 : 2),
+                    unit: water_display_unit,
+                    defaultValue: `${convertMlToSelectedUnit(250, water_display_unit).toFixed(water_display_unit === 'ml' ? 0 : 2)} ${water_display_unit}`,
+                  })}
+            </div>
+          </div>
+
           <Button
             onClick={() => adjustWater(1)}
             disabled={loading}
-            size="sm"
-            className="w-9 h-7 text-xs"
+            size="icon"
+            className="h-8 w-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white"
           >
-            +1
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
-        <div className="text-center text-gray-500 text-xs mt-2">
-          {activeContainer
-            ? t('foodDiary.waterIntake.perDrink', {
-                volume: convertMlToSelectedUnit(
-                  activeContainer.volume /
-                    activeContainer.servings_per_container,
-                  activeContainer.unit
-                ).toFixed(activeContainer.unit === 'ml' ? 0 : 2),
-                unit: activeContainer.unit,
-                defaultValue: `${convertMlToSelectedUnit(activeContainer.volume / activeContainer.servings_per_container, activeContainer.unit).toFixed(activeContainer.unit === 'ml' ? 0 : 2)} ${activeContainer.unit} per drink`,
-              })
-            : t('foodDiary.waterIntake.defaultPerDrink', {
-                volume: convertMlToSelectedUnit(
-                  250,
-                  water_display_unit
-                ).toFixed(water_display_unit === 'ml' ? 0 : 2),
-                unit: water_display_unit,
-                defaultValue: `${convertMlToSelectedUnit(250, water_display_unit).toFixed(water_display_unit === 'ml' ? 0 : 2)} ${water_display_unit} per drink (default)`,
-              })}
+
+        {/* Container Toggle (Source) */}
+        <div className="flex items-center justify-center mt-3 pt-2 border-t border-gray-100 dark:border-slate-800 space-x-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => cycleContainer('prev')}
+            disabled={containers.length <= 1}
+            className="h-6 w-6 text-gray-400 hover:text-gray-600"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+
+          <div className="flex items-center justify-center space-x-1 px-1">
+            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest truncate max-w-[110px]">
+              {currentContainer?.name ||
+                t('foodDiary.waterIntake.defaultContainer', 'Container')}
+            </div>
+            {currentContainer?.is_primary && (
+              <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
+            )}
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => cycleContainer('next')}
+            disabled={containers.length <= 1}
+            className="h-6 w-6 text-gray-400 hover:text-gray-600"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>
