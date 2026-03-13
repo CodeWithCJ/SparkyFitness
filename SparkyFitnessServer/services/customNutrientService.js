@@ -28,12 +28,30 @@ class CustomNutrientService {
           userId,
           name,
         );
-      } catch (prefError) {
+
+        // Also add to goal_presets and future user_goals with 0 value
+        // This ensures they show up in the goal editing and progress tracking
+        await client.query(
+          `UPDATE goal_presets 
+           SET custom_nutrients = jsonb_set(custom_nutrients, ARRAY[$1], '0'::jsonb) 
+           WHERE user_id = $2`,
+          [name, userId]
+        );
+
+        const today = new Date().toISOString().split("T")[0];
+        await client.query(
+          `UPDATE user_goals 
+           SET custom_nutrients = jsonb_set(custom_nutrients, ARRAY[$1], '0'::jsonb) 
+           WHERE user_id = $2 AND (goal_date >= $3 OR goal_date IS NULL)`,
+          [name, userId, today]
+        );
+
+      } catch (autoAddError) {
         log(
           "error",
-          `Failed to automatically add custom nutrient visibility for ${name}: ${prefError.message}`,
+          `Failed to automatically add custom nutrient ${name} to views or goals: ${autoAddError.message}`,
         );
-        // We don't want to fail the whole creation if preference update fails
+        // We don't want to fail the whole creation if preference/goal update fails
       }
 
       return result.rows[0];
