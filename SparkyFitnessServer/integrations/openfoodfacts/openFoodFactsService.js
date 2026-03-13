@@ -17,9 +17,9 @@ const OFF_FIELDS = [
   "nutriments",
 ];
 
-async function searchOpenFoodFacts(query, page = 1) {
+async function searchOpenFoodFacts(query, page = 1, language = "en") {
   try {
-    const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${OFF_FIELDS.join(",")}`;
+    const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${OFF_FIELDS.join(",")}&lc=${language}`;
     const response = await fetch(searchUrl, {
       method: "GET",
       headers: OFF_HEADERS,
@@ -53,10 +53,11 @@ async function searchOpenFoodFacts(query, page = 1) {
 async function searchOpenFoodFactsByBarcodeFields(
   barcode,
   fields = OFF_FIELDS,
+  language = "en",
 ) {
   try {
     const fieldsParam = fields.join(",");
-    const searchUrl = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=${fieldsParam}`;
+    const searchUrl = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
     const response = await fetch(searchUrl, {
       method: "GET",
       headers: OFF_HEADERS,

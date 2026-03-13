@@ -605,8 +605,36 @@ describe("lookupBarcode", () => {
 
   // --- USDA provider path tests ---
 
-  it("should return USDA result when providerId is given and USDA matches", async () => {
+  it("should pass the user's language preference to OpenFoodFacts", async () => {
+    const barcode = "9876543210123";
     foodRepository.findFoodByBarcode.mockResolvedValue(null);
+    preferenceService.getUserPreferences.mockResolvedValue({
+      language: "fr",
+    });
+    searchOpenFoodFactsByBarcodeFields.mockResolvedValue({
+      status: 1,
+      product: {
+        product_name: "Produit Français",
+        code: barcode,
+      },
+    });
+
+    const result = await lookupBarcode(barcode, TEST_USER_ID);
+
+    expect(preferenceService.getUserPreferences).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      TEST_USER_ID,
+    );
+    expect(searchOpenFoodFactsByBarcodeFields).toHaveBeenCalledWith(
+      barcode,
+      undefined,
+      "fr",
+    );
+    expect(result.source).toBe("openfoodfacts");
+    expect(result.food.name).toBe("Produit Français");
+  });
+
+  it("should return USDA result when providerId is given and USDA matches", async () => {    foodRepository.findFoodByBarcode.mockResolvedValue(null);
     externalProviderService.getExternalDataProviderDetails.mockResolvedValue(
       makeUsdaProvider(),
     );

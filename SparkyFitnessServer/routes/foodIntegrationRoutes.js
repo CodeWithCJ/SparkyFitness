@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { authenticate } = require("../middleware/authMiddleware");
+const preferenceService = require("../services/preferenceService");
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 const foodService = require("../services/foodService");
 const { log } = require("../config/logging");
@@ -371,7 +372,9 @@ router.get(
     }
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     try {
-      const data = await searchOpenFoodFacts(query, page);
+      const userPrefs = await preferenceService.getUserPreferences(req.userId, req.userId);
+      const language = userPrefs?.language || "en";
+      const data = await searchOpenFoodFacts(query, page, language);
       res.json(data);
     } catch (error) {
       next(error);
@@ -408,7 +411,9 @@ router.get(
       return res.status(400).json({ error: "Missing barcode" });
     }
     try {
-      const data = await searchOpenFoodFactsByBarcodeFields(barcode);
+      const userPrefs = await preferenceService.getUserPreferences(req.userId, req.userId);
+      const language = userPrefs?.language || "en";
+      const data = await searchOpenFoodFactsByBarcodeFields(barcode, undefined, language);
       res.json(data);
     } catch (error) {
       next(error);
