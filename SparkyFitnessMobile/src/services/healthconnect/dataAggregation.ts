@@ -245,19 +245,19 @@ export const aggregateByDay = (
       }
       const avg = total / dayRecords.length;
       result.push(
-        { value: parseFloat(min.toFixed(2)), type: `${baseType}_min`, date, unit },
-        { value: parseFloat(max.toFixed(2)), type: `${baseType}_max`, date, unit },
-        { value: parseFloat(avg.toFixed(2)), type: `${baseType}_avg`, date, unit },
+        { value: parseFloat(min.toFixed(2)), type: `${baseType}_min`, date, unit, source: dayRecords[0].source },
+        { value: parseFloat(max.toFixed(2)), type: `${baseType}_max`, date, unit, source: dayRecords[0].source },
+        { value: parseFloat(avg.toFixed(2)), type: `${baseType}_avg`, date, unit, source: dayRecords[0].source },
       );
     } else if (strategy === 'sum') {
       let total = 0;
       for (const rec of dayRecords) {
         total += rec.value;
       }
-      result.push({ value: parseFloat(total.toFixed(2)), type: baseType, date, unit });
+      result.push({ value: parseFloat(total.toFixed(2)), type: baseType, date, unit, source: dayRecords[0].source });
     } else if (strategy === 'last') {
       // Take first record: source queries return newest-first ordering
-      result.push({ value: dayRecords[0].value, type: baseType, date, unit });
+      result.push({ value: dayRecords[0].value, type: baseType, date, unit, source: dayRecords[0].source });
     }
   }
 
