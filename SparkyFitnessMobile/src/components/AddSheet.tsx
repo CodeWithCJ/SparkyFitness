@@ -17,6 +17,7 @@ export interface AddSheetRef {
 interface AddSheetProps {
   onAddFood: () => void;
   onAddWorkout: () => void;
+  onAddActivity: () => void;
 }
 
 interface ActionCard {
@@ -26,7 +27,7 @@ interface ActionCard {
 }
 
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
-  ({ onAddFood, onAddWorkout }, ref) => {
+  ({ onAddFood, onAddWorkout, onAddActivity }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -73,10 +74,15 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       onAddWorkout();
     }, [onAddWorkout]);
 
+    const handleAddActivity = useCallback(() => {
+      bottomSheetRef.current?.dismiss();
+      onAddActivity();
+    }, [onAddActivity]);
+
     const cards: ActionCard[] = [
       { label: 'Add Food', icon: 'meal-snack', onPress: handleAddFood },
       { label: 'Add Workout', icon: 'exercise-weights', onPress: handleAddWorkout },
-      { label: 'Add Activity', icon: 'exercise' },
+      { label: 'Add Activity', icon: 'exercise', onPress: handleAddActivity },
       { label: 'Add Measurement', icon: 'chart-bar' },
     ];
 

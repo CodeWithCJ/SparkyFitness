@@ -1,12 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { WorkoutDraft } from '../hooks/useWorkoutForm';
+import type { SessionDraft } from '../types/drafts';
 
 const SESSION_DRAFT_KEY = '@SessionDraft';
 
 // TODO: handle multi server configs - just clear the draft when switching. or namespace
 // if feeling fancy
 
-export type SessionDraft = WorkoutDraft; // | ActivityDraft (future)
+export type { SessionDraft } from '../types/drafts';
 
 export async function loadSessionDraft(): Promise<SessionDraft | null> {
   try {

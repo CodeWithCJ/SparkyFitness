@@ -27,6 +27,7 @@ import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import WorkoutFormScreen from './src/screens/WorkoutFormScreen';
+import ActivityFormScreen from './src/screens/ActivityFormScreen';
 import LoginModal from './src/components/LoginModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
@@ -96,18 +97,26 @@ function AppContent() {
     },
   }), [isDarkMode, primary, bgPrimary, chrome, textPrimary, chromeBorder]);
 
-  const handleAddFood = useCallback(() => {
+  const getActiveDiaryDate = useCallback(() => {
     const navigation = navigationRef.current;
-    if (!navigation) return;
+    if (!navigation) return undefined;
+
     const state = navigation.getState();
     const activeRoute = state.routes[state.index];
     const diaryParams =
       activeRoute.name === 'Diary'
         ? (activeRoute.params as { selectedDate?: string } | undefined)
         : undefined;
-    const date = diaryParams?.selectedDate;
-    navigation.getParent()?.navigate('FoodSearch', { date });
+
+    return diaryParams?.selectedDate;
   }, []);
+
+  const handleAddFood = useCallback(() => {
+    const navigation = navigationRef.current;
+    if (!navigation) return;
+    const date = getActiveDiaryDate();
+    navigation.getParent()?.navigate('FoodSearch', { date });
+  }, [getActiveDiaryDate]);
 
   const handleAddWorkout = useCallback(async () => {
     const navigation = navigationRef.current;
@@ -130,6 +139,20 @@ function AppContent() {
     }
 
     const draft = await loadSessionDraft();
+    if (draft && draft.type === 'activity' && draft.exerciseId) {
+      Alert.alert('Activity in Progress', 'You have an unsaved activity draft.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Discard & Start Workout',
+          style: 'destructive',
+          onPress: async () => {
+            await clearSessionDraft();
+            navigation.getParent()?.navigate('WorkoutForm');
+          },
+        },
+      ]);
+      return;
+    }
     if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
       Alert.alert('Resume Workout?', 'You have a workout in progress.', [
         { text: 'Cancel', style: 'cancel' },
@@ -150,6 +173,63 @@ function AppContent() {
       navigation.getParent()?.navigate('WorkoutForm');
     }
   }, []);
+
+  const handleAddActivity = useCallback(async () => {
+    const navigation = navigationRef.current;
+    if (!navigation) return;
+    const date = getActiveDiaryDate();
+
+    const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
+    if (!isConnected) {
+      Alert.alert(
+        'No Server Connected',
+        'Configure your server connection in Settings to log an activity.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Go to Settings',
+            onPress: () => navigation.getParent()?.navigate('Tabs', { screen: 'Settings' }),
+          },
+        ],
+      );
+      return;
+    }
+
+    const draft = await loadSessionDraft();
+    if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
+      Alert.alert('Workout in Progress', 'You have an unsaved workout draft.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Discard & Log Activity',
+          style: 'destructive',
+          onPress: async () => {
+            await clearSessionDraft();
+            navigation.getParent()?.navigate('ActivityForm', { date });
+          },
+        },
+      ]);
+      return;
+    }
+    if (draft && draft.type === 'activity' && draft.exerciseId) {
+      Alert.alert('Resume Activity?', 'You have an activity in progress.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start Fresh',
+          style: 'destructive',
+          onPress: async () => {
+            await clearSessionDraft();
+            navigation.getParent()?.navigate('ActivityForm', { date });
+          },
+        },
+        {
+          text: 'Resume',
+          onPress: () => navigation.getParent()?.navigate('ActivityForm'),
+        },
+      ]);
+    } else {
+      navigation.getParent()?.navigate('ActivityForm', { date });
+    }
+  }, [getActiveDiaryDate]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') {
@@ -335,6 +415,14 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="ActivityForm"
+            component={ActivityFormScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
             name="Logs"
             component={LogScreen}
             options={{
@@ -351,7 +439,7 @@ function AppContent() {
             }}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} />
         <LoginModal
           visible={showLoginModal}
           defaultConfigId={expiredConfigId}

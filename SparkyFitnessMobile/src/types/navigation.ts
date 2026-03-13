@@ -1,5 +1,6 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
+import type { IndividualSessionResponse } from '@workspace/shared';
 import type { FoodInfoItem } from './foodInfo';
 import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';
@@ -22,6 +23,7 @@ export type RootStackParamList = {
     | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string };
   FoodScan: { date?: string } | undefined;
   WorkoutForm: undefined;
+  ActivityForm: { entry?: IndividualSessionResponse; date?: string } | undefined;
   Logs: undefined;
   Sync: undefined;
 };

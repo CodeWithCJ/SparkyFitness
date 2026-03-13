@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Alert } from 'react-native';
 import { loadSessionDraft, clearSessionDraft } from '../services/workoutDraftService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import SessionCard from '../components/SessionCard';
@@ -18,7 +19,9 @@ type WorkoutsScreenProps = CompositeScreenProps<
 
 const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+  const scrollBottomPadding = Math.max(tabBarHeight, insets.bottom) + 16;
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const {
@@ -40,6 +43,20 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
 
   const handleStartWorkout = useCallback(async () => {
     const draft = await loadSessionDraft();
+    if (draft && draft.type === 'activity' && draft.exerciseId) {
+      Alert.alert('Activity in Progress', 'You have an unsaved activity draft.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Discard & Start Workout',
+          style: 'destructive',
+          onPress: async () => {
+            await clearSessionDraft();
+            navigation.navigate('WorkoutForm');
+          },
+        },
+      ]);
+      return;
+    }
     if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
       Alert.alert('Resume Workout?', 'You have a workout in progress.', [
         { text: 'Cancel', style: 'cancel' },
@@ -60,7 +77,43 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
       navigation.navigate('WorkoutForm');
     }
   }, [navigation]);
-  const handleLogActivity = () => Alert.alert('Coming Soon', 'Activity logging will be available in a future update.');
+
+  const handleLogActivity = useCallback(async () => {
+    const draft = await loadSessionDraft();
+    if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
+      Alert.alert('Workout in Progress', 'You have an unsaved workout draft.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Discard & Log Activity',
+          style: 'destructive',
+          onPress: async () => {
+            await clearSessionDraft();
+            navigation.navigate('ActivityForm');
+          },
+        },
+      ]);
+      return;
+    }
+    if (draft && draft.type === 'activity' && draft.exerciseId) {
+      Alert.alert('Resume Activity?', 'You have an activity in progress.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start Fresh',
+          style: 'destructive',
+          onPress: async () => {
+            await clearSessionDraft();
+            navigation.navigate('ActivityForm');
+          },
+        },
+        {
+          text: 'Resume',
+          onPress: () => navigation.navigate('ActivityForm'),
+        },
+      ]);
+    } else {
+      navigation.navigate('ActivityForm');
+    }
+  }, [navigation]);
 
   const renderActionButtons = () => (
     <View className="flex-row gap-3 px-4 mb-4">
@@ -157,6 +210,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
 
     return (
       <ScrollView
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentPrimary} />
         }

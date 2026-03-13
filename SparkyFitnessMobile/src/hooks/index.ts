@@ -42,4 +42,7 @@ export { useExerciseHistory } from './useExerciseHistory';
 export { useSuggestedExercises } from './useSuggestedExercises';
 export { useExerciseSearch } from './useExerciseSearch';
 export { useCreateWorkoutSession } from './useCreateWorkoutSession';
+export { useCreateExerciseEntry } from './useCreateExerciseEntry';
+export { useUpdateExerciseEntry } from './useUpdateExerciseEntry';
+export { useActivityForm, isDistanceExercise, MILES_TO_KM } from './useActivityForm';
 export { suggestedExercisesQueryKey, exerciseSearchQueryKey } from './queryKeys';

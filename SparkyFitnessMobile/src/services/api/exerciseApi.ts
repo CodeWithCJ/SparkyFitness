@@ -1,6 +1,11 @@
 import { apiFetch } from './apiClient';
 import type { ExerciseEntry, Exercise, SuggestedExercisesResponse } from '../../types/exercise';
-import type { ExerciseHistoryResponse, CreatePresetSessionRequest, PresetSessionResponse } from '@workspace/shared';
+import type {
+  ExerciseHistoryResponse,
+  CreatePresetSessionRequest,
+  PresetSessionResponse,
+  ExerciseEntryResponse,
+} from '@workspace/shared';
 
 /**
  * Fetches exercise entries for a given date.
@@ -96,6 +101,40 @@ export const createWorkoutSession = async (
     serviceName: 'Exercise API',
     operation: 'create workout session',
     method: 'POST',
+    body: payload,
+  });
+};
+
+export interface CreateExerciseEntryPayload {
+  exercise_id: string;
+  duration_minutes: number;
+  calories_burned: number;
+  entry_date: string;
+  distance?: number | null;
+  notes?: string | null;
+}
+
+export const createExerciseEntry = async (
+  payload: CreateExerciseEntryPayload,
+): Promise<ExerciseEntryResponse> => {
+  return apiFetch<ExerciseEntryResponse>({
+    endpoint: '/api/exercise-entries/',
+    serviceName: 'Exercise API',
+    operation: 'create exercise entry',
+    method: 'POST',
+    body: payload,
+  });
+};
+
+export const updateExerciseEntry = async (
+  id: string,
+  payload: CreateExerciseEntryPayload,
+): Promise<ExerciseEntryResponse> => {
+  return apiFetch<ExerciseEntryResponse>({
+    endpoint: `/api/exercise-entries/${id}`,
+    serviceName: 'Exercise API',
+    operation: 'update exercise entry',
+    method: 'PUT',
     body: payload,
   });
 };

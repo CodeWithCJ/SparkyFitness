@@ -3,29 +3,9 @@ import { AppState } from 'react-native';
 import { saveSessionDraft, loadSessionDraft, clearSessionDraft } from '../services/workoutDraftService';
 import { getTodayDate } from '../utils/dateUtils';
 import type { Exercise } from '../types/exercise';
+import type { WorkoutDraft, WorkoutDraftSet } from '../types/drafts';
 
-// --- Draft types ---
-
-export interface WorkoutDraftSet {
-  clientId: string;
-  weight: string;
-  reps: string;
-}
-
-export interface WorkoutDraftExercise {
-  clientId: string;
-  exerciseId: string;
-  exerciseName: string;
-  exerciseCategory: string | null;
-  sets: WorkoutDraftSet[];
-}
-
-export interface WorkoutDraft {
-  type: 'workout';
-  name: string;
-  entryDate: string;
-  exercises: WorkoutDraftExercise[];
-}
+export type { WorkoutDraft, WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 
 // --- Helpers ---
 
