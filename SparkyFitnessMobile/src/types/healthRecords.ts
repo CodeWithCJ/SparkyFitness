@@ -147,6 +147,7 @@ export interface TransformedRecord {
   type: string;
   date: string;
   unit: string;
+  source: string;
 }
 
 /** Union type for all possible transform outputs */

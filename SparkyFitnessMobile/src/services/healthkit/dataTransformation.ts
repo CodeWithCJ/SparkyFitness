@@ -266,6 +266,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         unit,
         date,
         type: `${type}_systolic`,
+        source: 'HealthKit',
       });
     }
     if (diastolic?.inMillimetersOfMercury) {
@@ -274,6 +275,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         unit,
         date,
         type: `${type}_diastolic`,
+        source: 'HealthKit',
       });
     }
   },
@@ -368,6 +370,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: outputType,
             date: recordDate,
             unit,
+            source: 'HealthKit',
           };
           transformedData.push(transformedRecord);
           successCount++;
@@ -392,6 +395,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: result.type || type,
             date: result.date,
             unit,
+            source: 'HealthKit',
           };
           transformedData.push(transformedRecord);
           successCount++;
@@ -413,6 +417,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: outputType,
             date: recordDate,
             unit,
+            source: 'HealthKit',
           };
           transformedData.push(transformedRecord);
           successCount++;

@@ -435,7 +435,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
     for (const sample of samples) {
       if (sample.beatsPerMinute != null && !isNaN(sample.beatsPerMinute)) {
-        output.push({ value: sample.beatsPerMinute, type, date, unit });
+        output.push({ value: sample.beatsPerMinute, type, date, unit, source: 'Health Connect' });
       }
     }
   },
@@ -456,6 +456,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         unit,
         date,
         type: `${type}_systolic`,
+        source: 'Health Connect',
       });
     }
     if (diastolic?.inMillimetersOfMercury) {
@@ -464,6 +465,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         unit,
         date,
         type: `${type}_diastolic`,
+        source: 'Health Connect',
       });
     }
   },
@@ -561,6 +563,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         type,
         date: toLocalDateString(d),
         unit,
+        source: 'Health Connect',
       });
     }
   },
@@ -578,6 +581,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         type,
         date,
         unit,
+        source: 'Health Connect',
       });
     });
   },
@@ -595,6 +599,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         type,
         date,
         unit,
+        source: 'Health Connect',
       });
     });
   },
@@ -704,6 +709,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: outputType,
             date: recordDate,
             unit,
+            source: 'Health Connect',
           });
           successCount++;
         } else {
@@ -731,6 +737,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: result.type || type,
             date: result.date,
             unit,
+            source: 'Health Connect',
           };
           transformedData.push(transformedRecord);
           successCount++;
@@ -752,6 +759,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: outputType,
             date: recordDate,
             unit,
+            source: 'Health Connect',
           });
           successCount++;
         } else {
