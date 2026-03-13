@@ -5,6 +5,7 @@ import {
   TransformedRecord,
   TransformedExerciseSession,
   AggregatedSleepSession,
+  HEALTHKIT_SOURCE,
 } from '../../types/healthRecords';
 import { toLocalDateString } from './dataAggregation';
 
@@ -266,7 +267,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         unit,
         date,
         type: `${type}_systolic`,
-        source: 'HealthKit',
+        source: HEALTHKIT_SOURCE,
       });
     }
     if (diastolic?.inMillimetersOfMercury) {
@@ -275,7 +276,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         unit,
         date,
         type: `${type}_diastolic`,
-        source: 'HealthKit',
+        source: HEALTHKIT_SOURCE,
       });
     }
   },
@@ -318,7 +319,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
     const exerciseSession: TransformedExerciseSession = {
       type: 'ExerciseSession',
-      source: 'HealthKit',
+      source: HEALTHKIT_SOURCE,
       date: getDateString(rec.startTime) || '',
       entry_date: getDateString(rec.startTime) || '',
       timestamp: rec.startTime as string,
@@ -370,7 +371,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: outputType,
             date: recordDate,
             unit,
-            source: 'HealthKit',
+            source: HEALTHKIT_SOURCE,
           };
           transformedData.push(transformedRecord);
           successCount++;
@@ -395,7 +396,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: result.type || type,
             date: result.date,
             unit,
-            source: 'HealthKit',
+            source: HEALTHKIT_SOURCE,
           };
           transformedData.push(transformedRecord);
           successCount++;
@@ -417,7 +418,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: outputType,
             date: recordDate,
             unit,
-            source: 'HealthKit',
+            source: HEALTHKIT_SOURCE,
           };
           transformedData.push(transformedRecord);
           successCount++;

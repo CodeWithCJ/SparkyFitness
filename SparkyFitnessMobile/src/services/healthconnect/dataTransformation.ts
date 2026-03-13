@@ -5,6 +5,7 @@ import {
   TransformedRecord,
   TransformedExerciseSession,
   AggregatedSleepSession,
+  HEALTH_CONNECT_SOURCE,
 } from '../../types/healthRecords';
 import { toLocalDateString } from '../../utils/dateUtils';
 
@@ -435,7 +436,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
     for (const sample of samples) {
       if (sample.beatsPerMinute != null && !isNaN(sample.beatsPerMinute)) {
-        output.push({ value: sample.beatsPerMinute, type, date, unit, source: 'Health Connect' });
+        output.push({ value: sample.beatsPerMinute, type, date, unit, source: HEALTH_CONNECT_SOURCE });
       }
     }
   },
@@ -456,7 +457,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         unit,
         date,
         type: `${type}_systolic`,
-        source: 'Health Connect',
+        source: HEALTH_CONNECT_SOURCE,
       });
     }
     if (diastolic?.inMillimetersOfMercury) {
@@ -465,7 +466,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         unit,
         date,
         type: `${type}_diastolic`,
-        source: 'Health Connect',
+        source: HEALTH_CONNECT_SOURCE,
       });
     }
   },
@@ -482,7 +483,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
     const sleepSession: AggregatedSleepSession = {
       type: 'SleepSession',
-      source: 'Health Connect',
+      source: HEALTH_CONNECT_SOURCE,
       timestamp: rec.startTime as string,
       entry_date: recordDate,
       bedtime: rec.startTime as string,
@@ -532,7 +533,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
     const exerciseSession: TransformedExerciseSession = {
       type: 'ExerciseSession',
-      source: 'Health Connect',
+      source: HEALTH_CONNECT_SOURCE,
       date: recordDate,
       entry_date: recordDate,
       timestamp: rec.startTime as string,
@@ -563,7 +564,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         type,
         date: toLocalDateString(d),
         unit,
-        source: 'Health Connect',
+        source: HEALTH_CONNECT_SOURCE,
       });
     }
   },
@@ -581,7 +582,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         type,
         date,
         unit,
-        source: 'Health Connect',
+        source: HEALTH_CONNECT_SOURCE,
       });
     });
   },
@@ -599,7 +600,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         type,
         date,
         unit,
-        source: 'Health Connect',
+        source: HEALTH_CONNECT_SOURCE,
       });
     });
   },
@@ -709,7 +710,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: outputType,
             date: recordDate,
             unit,
-            source: 'Health Connect',
+            source: HEALTH_CONNECT_SOURCE,
           });
           successCount++;
         } else {
@@ -737,7 +738,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: result.type || type,
             date: result.date,
             unit,
-            source: 'Health Connect',
+            source: HEALTH_CONNECT_SOURCE,
           };
           transformedData.push(transformedRecord);
           successCount++;
@@ -759,7 +760,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             type: outputType,
             date: recordDate,
             unit,
-            source: 'Health Connect',
+            source: HEALTH_CONNECT_SOURCE,
           });
           successCount++;
         } else {
