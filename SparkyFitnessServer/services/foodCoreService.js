@@ -831,7 +831,16 @@ async function lookupBarcode(barcode, userId, providerId) {
     // Fall back to OpenFoodFacts
     let offData;
     try {
-      offData = await searchOpenFoodFactsByBarcodeFields(barcode);
+      const userPreferences = await preferenceService.getUserPreferences(
+        userId,
+        userId,
+      );
+      const language = userPreferences?.language || "en";
+      offData = await searchOpenFoodFactsByBarcodeFields(
+        barcode,
+        undefined,
+        language,
+      );
     } catch (error) {
       log("warn", `OpenFoodFacts lookup failed for barcode ${barcode}:`, error);
       return { source: "not_found", food: null };

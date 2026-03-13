@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict XMPoZfhXx6XolCQ8XUXABdlRy833TlKTMbiOHW15an1W9JHKJsCk1zPAT9ZyU3V
+\restrict hmnn8vTKiwqbmCWCTgcN8xKnPFVCnYvDAyIZZpP9YBoOEbxYqNaVfbMLbgrqgcG
 
 -- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
@@ -2447,7 +2447,8 @@ CREATE TABLE public.water_intake (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     water_ml numeric(10,3),
     created_by_user_id uuid,
-    updated_by_user_id uuid
+    updated_by_user_id uuid,
+    source character varying(50) DEFAULT 'manual'::character varying NOT NULL
 );
 
 
@@ -3312,6 +3313,14 @@ ALTER TABLE ONLY public.user_water_containers
 
 ALTER TABLE ONLY public.verification
     ADD CONSTRAINT verification_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: water_intake water_intake_user_date_source_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.water_intake
+    ADD CONSTRAINT water_intake_user_date_source_unique UNIQUE (user_id, entry_date, source);
 
 
 --
@@ -4584,7 +4593,7 @@ ALTER TABLE ONLY public.water_intake
 --
 
 ALTER TABLE ONLY public.water_intake
-    ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -7207,5 +7216,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict XMPoZfhXx6XolCQ8XUXABdlRy833TlKTMbiOHW15an1W9JHKJsCk1zPAT9ZyU3V
+\unrestrict hmnn8vTKiwqbmCWCTgcN8xKnPFVCnYvDAyIZZpP9YBoOEbxYqNaVfbMLbgrqgcG
 
