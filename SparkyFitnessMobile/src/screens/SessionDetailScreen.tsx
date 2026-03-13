@@ -1,0 +1,282 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
+import Icon from '../components/Icon';
+import { getSourceLabel, getSessionIcon, formatDuration } from '../components/SessionCard';
+import { useDeleteExerciseEntry } from '../hooks/useDeleteExerciseEntry';
+import { useDeleteWorkoutSession } from '../hooks/useDeleteWorkoutSession';
+import { usePreferences } from '../hooks/usePreferences';
+import { formatDate } from '../utils/dateUtils';
+import { weightFromKg } from '../utils/unitConversions';
+import type { RootStackScreenProps } from '../types/navigation';
+import type { ExerciseEntryResponse } from '@workspace/shared';
+
+type Props = RootStackScreenProps<'SessionDetail'>;
+
+const SessionDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { session } = route.params;
+  const insets = useSafeAreaInsets();
+  const { preferences } = usePreferences();
+  const weightUnit = preferences?.default_weight_unit ?? 'kg';
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+
+  const [accentPrimary, textMuted, borderSubtle] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-muted',
+    '--color-border-subtle',
+  ]) as [string, string, string];
+
+  const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
+  const iconName = getSessionIcon(session);
+  const entryDate = session.entry_date ?? '';
+  const normalizedDate = entryDate.split('T')[0];
+
+  // Session data
+  const isPreset = session.type === 'preset';
+  const name = isPreset ? session.name : (session.exercise_snapshot?.name ?? 'Unknown exercise');
+  const duration = isPreset ? session.total_duration_minutes : session.duration_minutes;
+  const calories = isPreset
+    ? session.exercises.reduce((sum, e) => sum + e.calories_burned, 0)
+    : session.calories_burned;
+
+  // Delete hooks (only one will be used based on session type)
+  const deleteActivity = useDeleteExerciseEntry({
+    entryId: session.id,
+    entryDate: normalizedDate,
+    onSuccess: () => {
+      deleteActivity.invalidateCache();
+      navigation.goBack();
+    },
+  });
+
+  const deleteWorkout = useDeleteWorkoutSession({
+    sessionId: session.id,
+    entryDate: normalizedDate,
+    onSuccess: () => {
+      deleteWorkout.invalidateCache();
+      navigation.goBack();
+    },
+  });
+
+  const handleEdit = () => {
+    if (isPreset) {
+      navigation.navigate('WorkoutForm', { session });
+    } else {
+      navigation.navigate('ActivityForm', { entry: session, popCount: 2 });
+    }
+  };
+
+  const handleDelete = () => {
+    if (isPreset) {
+      deleteWorkout.confirmAndDelete();
+    } else {
+      deleteActivity.confirmAndDelete();
+    }
+  };
+
+  const isDeleting = deleteActivity.isPending || deleteWorkout.isPending;
+
+  const formatDistance = (distanceKm: number): string => {
+    if (distanceUnit === 'miles') {
+      const miles = distanceKm / 1.60934;
+      return `${miles.toFixed(2)} mi`;
+    }
+    return `${distanceKm.toFixed(2)} km`;
+  };
+
+  const renderSetTable = (exercise: ExerciseEntryResponse) => {
+    if (exercise.sets.length === 0) return null;
+
+    return (
+      <View className="mt-2">
+        {/* Header */}
+        <View className="flex-row py-1 mb-1">
+          <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
+          <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
+          <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+        </View>
+        {exercise.sets.map(set => {
+          const displayWeight = set.weight != null
+            ? `${parseFloat(weightFromKg(set.weight, weightUnit as 'kg' | 'lbs').toFixed(1))} ${weightUnit}`
+            : '—';
+          const displayReps = set.reps != null ? String(set.reps) : '—';
+
+          return (
+            <View key={set.id} className="flex-row py-1.5">
+              <Text className="text-sm text-text-muted w-10 text-center">{set.set_number}</Text>
+              <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
+              <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
+  const renderPresetContent = () => {
+    if (session.type !== 'preset') return null;
+
+    return (
+      <View className="mt-4">
+        {session.exercises.map(exercise => (
+          <View key={exercise.id} className="bg-surface rounded-xl p-4 mb-3">
+            <View className="flex-row items-center">
+              <View className="flex-1">
+                <Text className="text-base font-semibold text-text-primary">
+                  {exercise.exercise_snapshot?.name ?? 'Unknown exercise'}
+                </Text>
+                {exercise.exercise_snapshot?.category && (
+                  <Text className="text-xs text-text-muted mt-0.5">
+                    {exercise.exercise_snapshot.category}
+                  </Text>
+                )}
+              </View>
+              <Text className="text-sm text-text-secondary">
+                {Math.round(exercise.calories_burned)} Cal
+              </Text>
+            </View>
+            {renderSetTable(exercise)}
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderIndividualContent = () => {
+    if (session.type !== 'individual') return null;
+
+    const metrics: { label: string; value: string }[] = [];
+
+    if (session.distance != null && session.distance > 0) {
+      metrics.push({ label: 'Distance', value: formatDistance(session.distance) });
+    }
+    if (session.avg_heart_rate != null) {
+      metrics.push({ label: 'Avg Heart Rate', value: `${session.avg_heart_rate} bpm` });
+    }
+    if (session.notes) {
+      metrics.push({ label: 'Notes', value: session.notes });
+    }
+
+    if (metrics.length === 0) return null;
+
+    return (
+      <View className="bg-surface rounded-xl p-4 mt-4">
+        {metrics.map((metric, i) => (
+          <View
+            key={metric.label}
+            className={`flex-row justify-between py-2 ${i < metrics.length - 1 ? 'border-b border-border-subtle' : ''}`}
+          >
+            <Text className="text-sm text-text-secondary">{metric.label}</Text>
+            <Text className="text-sm text-text-primary flex-1 text-right ml-4" numberOfLines={2}>
+              {metric.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  return (
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      {/* Header */}
+      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Icon name="chevron-back" size={22} color={accentPrimary} />
+        </TouchableOpacity>
+        {isSparky && (
+          <TouchableOpacity
+            onPress={handleEdit}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{ marginLeft: 'auto' }}
+          >
+            <Text className="text-accent-primary text-base font-medium">Edit</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <ScrollView className="flex-1" contentContainerClassName="px-4 py-4">
+        {/* Title area */}
+        <View className="mb-4">
+          <View className="flex-row items-center mb-2">
+            <Icon name={iconName} size={28} color={accentPrimary} />
+            <Text className="text-2xl font-bold text-text-primary ml-3 flex-1" numberOfLines={2}>
+              {name}
+            </Text>
+          </View>
+          <View className="flex-row items-center">
+            <View
+              className="rounded-full px-2 py-0.5 mr-2"
+              style={{ backgroundColor: isSparky ? `${accentPrimary}20` : `${textMuted}20` }}
+            >
+              <Text
+                className="text-xs font-medium"
+                style={{ color: isSparky ? accentPrimary : textMuted }}
+              >
+                {sourceLabel}
+              </Text>
+            </View>
+            {entryDate ? (
+              <Text className="text-sm text-text-muted">{formatDate(entryDate)}</Text>
+            ) : null}
+          </View>
+        </View>
+
+        {/* Summary card */}
+        <View className="bg-surface rounded-xl p-4">
+          <View className="flex-row items-center justify-around">
+            <View className="items-center">
+              <Text className="text-lg font-semibold text-text-primary">
+                {formatDuration(duration)}
+              </Text>
+              <Text className="text-xs text-text-muted mt-0.5">Duration</Text>
+            </View>
+            <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
+            <View className="items-center">
+              <Text className="text-lg font-semibold text-text-primary">
+                {Math.round(calories)}
+              </Text>
+              <Text className="text-xs text-text-muted mt-0.5">Calories</Text>
+            </View>
+            {isPreset && (
+              <>
+                <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
+                <View className="items-center">
+                  <Text className="text-lg font-semibold text-text-primary">
+                    {session.exercises.length}
+                  </Text>
+                  <Text className="text-xs text-text-muted mt-0.5">
+                    {session.exercises.length === 1 ? 'Exercise' : 'Exercises'}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* Variant-specific content */}
+        {renderPresetContent()}
+        {renderIndividualContent()}
+
+        {/* Delete button — only for Sparky sessions */}
+        {isSparky && (
+          <TouchableOpacity
+            onPress={handleDelete}
+            disabled={isDeleting}
+            className="items-center py-3 mt-6"
+            activeOpacity={0.6}
+          >
+            <Text className="text-bg-danger text-base font-medium">
+              {isDeleting ? 'Deleting...' : 'Delete Session'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    </View>
+  );
+};
+
+export default SessionDetailScreen;

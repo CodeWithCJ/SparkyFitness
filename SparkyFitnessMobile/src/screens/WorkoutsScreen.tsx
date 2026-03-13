@@ -219,7 +219,13 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
         <View className="px-4">
           <Text className="text-lg font-bold text-text-primary mb-3">Recent Activity</Text>
           {sessions.map(session => (
-            <SessionCard key={session.id} session={session} />
+            <TouchableOpacity
+              key={session.id}
+              onPress={() => navigation.navigate('SessionDetail', { session })}
+              activeOpacity={0.7}
+            >
+              <SessionCard session={session} />
+            </TouchableOpacity>
           ))}
           {hasMore && (
             <TouchableOpacity

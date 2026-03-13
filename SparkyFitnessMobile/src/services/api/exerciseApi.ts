@@ -3,6 +3,7 @@ import type { ExerciseEntry, Exercise, SuggestedExercisesResponse } from '../../
 import type {
   ExerciseHistoryResponse,
   CreatePresetSessionRequest,
+  UpdatePresetSessionRequest,
   PresetSessionResponse,
   ExerciseEntryResponse,
 } from '@workspace/shared';
@@ -136,5 +137,45 @@ export const updateExerciseEntry = async (
     operation: 'update exercise entry',
     method: 'PUT',
     body: payload,
+  });
+};
+
+/**
+ * Updates a workout session.
+ */
+export const updateWorkoutSession = async (
+  id: string,
+  payload: UpdatePresetSessionRequest,
+): Promise<PresetSessionResponse> => {
+  return apiFetch<PresetSessionResponse>({
+    endpoint: `/api/exercise-preset-entries/${id}`,
+    serviceName: 'Exercise API',
+    operation: 'update workout session',
+    method: 'PUT',
+    body: payload,
+  });
+};
+
+/**
+ * Deletes a workout session (returns 204 No Content).
+ */
+export const deleteWorkoutSession = async (id: string): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/exercise-preset-entries/${id}`,
+    serviceName: 'Exercise API',
+    operation: 'delete workout session',
+    method: 'DELETE',
+  });
+};
+
+/**
+ * Deletes an exercise entry.
+ */
+export const deleteExerciseEntry = async (id: string): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/exercise-entries/${id}`,
+    serviceName: 'Exercise API',
+    operation: 'delete exercise entry',
+    method: 'DELETE',
   });
 };

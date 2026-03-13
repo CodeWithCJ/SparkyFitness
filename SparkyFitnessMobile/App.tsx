@@ -28,6 +28,7 @@ import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import WorkoutFormScreen from './src/screens/WorkoutFormScreen';
 import ActivityFormScreen from './src/screens/ActivityFormScreen';
+import SessionDetailScreen from './src/screens/SessionDetailScreen';
 import LoginModal from './src/components/LoginModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
@@ -420,6 +421,15 @@ function AppContent() {
             options={{
               headerShown: false,
               gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="SessionDetail"
+            component={SessionDetailScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen

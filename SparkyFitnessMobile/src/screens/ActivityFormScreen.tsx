@@ -28,6 +28,7 @@ type Props = RootStackScreenProps<'ActivityForm'>;
 const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const entry = route.params?.entry;
   const initialDate = route.params?.date;
+  const popCount = route.params?.popCount ?? 1;
   const isEditMode = !!entry;
 
   const insets = useSafeAreaInsets();
@@ -63,12 +64,14 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const showDistance = isDistanceExercise(state.exerciseName);
 
-  // Populate form in edit mode
+  // Populate form once in edit mode (wait for preferences to resolve)
+  const hasPopulatedRef = useRef(false);
   useEffect(() => {
-    if (isEditMode && entry) {
+    if (isEditMode && entry && preferences && !hasPopulatedRef.current) {
+      hasPopulatedRef.current = true;
       populate(entry, distanceUnit);
     }
-  }, [isEditMode, entry, populate, distanceUnit]);
+  }, [isEditMode, entry, preferences, populate, distanceUnit]);
 
   const canSave = state.exerciseId && state.duration && parseFloat(state.duration) > 0;
 
@@ -118,17 +121,18 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
       if (isEditMode && entry) {
         await updateEntry({ id: entry.id, payload });
         invalidateUpdateCache(state.entryDate);
+        navigation.pop(popCount);
       } else {
         await createEntry(payload);
         await clearSessionDraft();
         invalidateCreateCache(state.entryDate);
+        navigation.goBack();
       }
-      navigation.goBack();
     } catch {
       // Error handled by mutation onError
     }
   }, [
-    state, distanceUnit, isEditMode, entry,
+    state, distanceUnit, isEditMode, entry, popCount,
     createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, navigation,
   ]);
 

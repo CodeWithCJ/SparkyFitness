@@ -45,4 +45,7 @@ export { useCreateWorkoutSession } from './useCreateWorkoutSession';
 export { useCreateExerciseEntry } from './useCreateExerciseEntry';
 export { useUpdateExerciseEntry } from './useUpdateExerciseEntry';
 export { useActivityForm, isDistanceExercise, MILES_TO_KM } from './useActivityForm';
+export { useDeleteExerciseEntry } from './useDeleteExerciseEntry';
+export { useDeleteWorkoutSession } from './useDeleteWorkoutSession';
+export { useUpdateWorkoutSession } from './useUpdateWorkoutSession';
 export { suggestedExercisesQueryKey, exerciseSearchQueryKey } from './queryKeys';

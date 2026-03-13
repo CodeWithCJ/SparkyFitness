@@ -9,7 +9,7 @@ interface SessionCardProps {
   session: ExerciseSessionResponse;
 }
 
-const CATEGORY_ICON_MAP: Record<string, IconName> = {
+export const CATEGORY_ICON_MAP: Record<string, IconName> = {
   Strength: 'exercise-weights',
   Cardio: 'exercise-running',
   Running: 'exercise-running',
@@ -29,7 +29,7 @@ const CATEGORY_ICON_MAP: Record<string, IconName> = {
   'Stair Stepper': 'exercise-stair',
 };
 
-function getSessionIcon(session: ExerciseSessionResponse): IconName {
+export function getSessionIcon(session: ExerciseSessionResponse): IconName {
   if (session.type === 'preset') return 'exercise-weights';
   const category = session.exercise_snapshot?.category;
   if (category && category in CATEGORY_ICON_MAP) {
@@ -38,14 +38,14 @@ function getSessionIcon(session: ExerciseSessionResponse): IconName {
   return 'exercise-default';
 }
 
-function getSourceLabel(source: string | null): { label: string; isSparky: boolean } {
+export function getSourceLabel(source: string | null): { label: string; isSparky: boolean } {
   if (source == null || source === 'manual' || source === 'sparky') {
     return { label: 'Sparky', isSparky: true };
   }
   return { label: 'Synced', isSparky: false };
 }
 
-function formatDuration(minutes: number): string {
+export function formatDuration(minutes: number): string {
   if (minutes < 60) return `${Math.round(minutes)} min`;
   const hrs = Math.floor(minutes / 60);
   const mins = Math.round(minutes % 60);

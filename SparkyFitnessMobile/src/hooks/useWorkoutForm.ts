@@ -2,8 +2,10 @@ import { useReducer, useEffect, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
 import { saveSessionDraft, loadSessionDraft, clearSessionDraft } from '../services/workoutDraftService';
 import { getTodayDate } from '../utils/dateUtils';
+import { weightFromKg } from '../utils/unitConversions';
 import type { Exercise } from '../types/exercise';
 import type { WorkoutDraft, WorkoutDraftSet } from '../types/drafts';
+import type { PresetSessionResponse } from '@workspace/shared';
 
 export type { WorkoutDraft, WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 
@@ -36,7 +38,8 @@ type WorkoutFormAction =
   | { type: 'ADD_SET'; exerciseClientId: string }
   | { type: 'REMOVE_SET'; exerciseClientId: string; setClientId: string }
   | { type: 'UPDATE_SET_FIELD'; exerciseClientId: string; setClientId: string; field: 'weight' | 'reps'; value: string }
-  | { type: 'RESET' };
+  | { type: 'RESET' }
+  | { type: 'POPULATE'; session: PresetSessionResponse; weightUnit: 'kg' | 'lbs' };
 
 export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormAction): WorkoutDraft {
   switch (action.type) {
@@ -115,6 +118,26 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
     case 'RESET':
       return createEmptyDraft();
 
+    case 'POPULATE':
+      return {
+        type: 'workout',
+        name: action.session.name,
+        entryDate: action.session.entry_date?.split('T')[0] ?? getTodayDate(),
+        exercises: action.session.exercises.map(exercise => ({
+          clientId: generateClientId(),
+          exerciseId: exercise.exercise_id,
+          exerciseName: exercise.exercise_snapshot?.name ?? 'Unknown',
+          exerciseCategory: exercise.exercise_snapshot?.category ?? null,
+          sets: exercise.sets.map(set => ({
+            clientId: generateClientId(),
+            weight: set.weight != null
+              ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(2)))
+              : '',
+            reps: set.reps != null ? String(set.reps) : '',
+          })),
+        })),
+      };
+
     default:
       return state;
   }
@@ -122,16 +145,26 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
 
 // --- Hook ---
 
-export function useWorkoutForm() {
+interface UseWorkoutFormOptions {
+  isEditMode?: boolean;
+}
+
+export function useWorkoutForm(options?: UseWorkoutFormOptions) {
+  const isEditMode = options?.isEditMode ?? false;
   const [state, dispatch] = useReducer(workoutFormReducer, undefined, createEmptyDraft);
   const isDraftLoadedRef = useRef(false);
   const skipNextSaveRef = useRef(false);
+  const exercisesModifiedRef = useRef(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Load draft on mount
+  // Load draft on mount (skip in edit mode)
   useEffect(() => {
+    if (isEditMode) {
+      isDraftLoadedRef.current = true;
+      return;
+    }
     loadSessionDraft().then(draft => {
       if (draft && draft.type === 'workout') {
         skipNextSaveRef.current = true;
@@ -139,10 +172,11 @@ export function useWorkoutForm() {
       }
       isDraftLoadedRef.current = true;
     });
-  }, []);
+  }, [isEditMode]);
 
-  // Debounced save on state changes
+  // Debounced save on state changes (skip in edit mode)
   useEffect(() => {
+    if (isEditMode) return;
     if (!isDraftLoadedRef.current) return;
     if (skipNextSaveRef.current) {
       skipNextSaveRef.current = false;
@@ -161,10 +195,11 @@ export function useWorkoutForm() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [state]);
+  }, [state, isEditMode]);
 
-  // Save immediately when app goes to background
+  // Save immediately when app goes to background (skip in edit mode)
   useEffect(() => {
+    if (isEditMode) return;
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'background' || nextState === 'inactive') {
         if (saveTimeoutRef.current) {
@@ -175,26 +210,31 @@ export function useWorkoutForm() {
       }
     });
     return () => subscription.remove();
-  }, []);
+  }, [isEditMode]);
 
   const addExercise = useCallback((exercise: Exercise) => {
+    exercisesModifiedRef.current = true;
     dispatch({ type: 'ADD_EXERCISE', exercise });
   }, []);
 
   const removeExercise = useCallback((clientId: string) => {
+    exercisesModifiedRef.current = true;
     dispatch({ type: 'REMOVE_EXERCISE', clientId });
   }, []);
 
   const addSet = useCallback((exerciseClientId: string) => {
+    exercisesModifiedRef.current = true;
     dispatch({ type: 'ADD_SET', exerciseClientId });
   }, []);
 
   const removeSet = useCallback((exerciseClientId: string, setClientId: string) => {
+    exercisesModifiedRef.current = true;
     dispatch({ type: 'REMOVE_SET', exerciseClientId, setClientId });
   }, []);
 
   const updateSetField = useCallback(
     (exerciseClientId: string, setClientId: string, field: 'weight' | 'reps', value: string) => {
+      exercisesModifiedRef.current = true;
       dispatch({ type: 'UPDATE_SET_FIELD', exerciseClientId, setClientId, field, value });
     },
     [],
@@ -206,7 +246,14 @@ export function useWorkoutForm() {
 
   const reset = useCallback(() => {
     dispatch({ type: 'RESET' });
-    clearSessionDraft();
+    if (!isEditMode) {
+      clearSessionDraft();
+    }
+  }, [isEditMode]);
+
+  const populate = useCallback((session: PresetSessionResponse, weightUnit: 'kg' | 'lbs') => {
+    exercisesModifiedRef.current = false;
+    dispatch({ type: 'POPULATE', session, weightUnit });
   }, []);
 
   return {
@@ -218,6 +265,8 @@ export function useWorkoutForm() {
     updateSetField,
     setName,
     reset,
+    populate,
     hasDraftData: state.exercises.length > 0,
+    exercisesModifiedRef,
   };
 }
