@@ -337,6 +337,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             actingUserId,
             waterValue,
             parsedDate,
+            source, // Use the provided source (e.g., 'fitbit', 'garmin', 'apple_health')
           );
           processedResults.push({ type, status: "success", data: result });
           break;
@@ -725,6 +726,24 @@ async function processMobileHealthData(
     try {
       let result;
       switch (type) {
+        case "water":
+          const waterValue = parseInt(value, 10);
+          if (isNaN(waterValue) || !Number.isInteger(waterValue)) {
+            errors.push({
+              error: "Invalid value for water. Must be an integer.",
+              entry: dataEntry,
+            });
+            break;
+          }
+          result = await measurementRepository.upsertWaterData(
+            userId,
+            actingUserId,
+            waterValue,
+            parsedDate,
+            source,
+          );
+          processedResults.push({ type, status: "success", data: result });
+          break;
         case "Stress":
           // Map incoming stress data to the existing custom measurement system
           const stressCategory = await getOrCreateCustomCategory(
@@ -950,7 +969,8 @@ async function getWaterIntake(authenticatedUserId, targetUserId, date) {
       targetUserId,
       date,
     );
-    return waterData || { glasses_consumed: 0 };
+    // waterData will be { water_ml: SUM(...) } from the new repository logic
+    return waterData || { water_ml: 0 };
   } catch (error) {
     log(
       "error",
@@ -969,13 +989,14 @@ async function upsertWaterIntake(
   containerId,
 ) {
   try {
-    // 1. Get current water intake for the day
-    const currentWaterRecord = await measurementRepository.getWaterIntakeByDate(
+    // 1. Get current MANUAL water intake for the day to avoid mixing with syncs
+    const currentManualRecord = await measurementRepository.getWaterIntakeByDate(
       authenticatedUserId,
       entryDate,
+      'manual'
     );
-    const currentWaterMl = currentWaterRecord
-      ? Number(currentWaterRecord.water_ml)
+    const currentManualMl = currentManualRecord
+      ? Number(currentManualRecord.water_ml)
       : 0;
 
     // 2. Determine amount per drink based on container
@@ -989,7 +1010,7 @@ async function upsertWaterIntake(
         amountPerDrink =
           Number(container.volume) / Number(container.servings_per_container);
       } else {
-        // Fallback to default if container not found (shouldn't happen if frontend sends valid ID)
+        // Fallback to default if container not found
         log(
           "warn",
           `Container with ID ${containerId} not found for user ${authenticatedUserId}. Using default amount per drink.`,
@@ -997,22 +1018,23 @@ async function upsertWaterIntake(
         amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
       }
     } else {
-      // Use default amount per drink if no container ID is provided (e.g., for default container)
+      // Use default amount per drink if no container ID is provided
       amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
     }
 
-    // 3. Calculate new total water intake
-    const newTotalWaterMl = Math.max(
+    // 3. Calculate new total water intake for the MANUAL bucket
+    const newManualTotalWaterMl = Math.max(
       0,
-      currentWaterMl + changeDrinks * amountPerDrink,
+      currentManualMl + changeDrinks * amountPerDrink,
     );
 
-    // 4. Upsert the new total water intake
+    // 4. Upsert the new manual water intake
     const result = await measurementRepository.upsertWaterData(
       authenticatedUserId,
       actingUserId,
-      newTotalWaterMl,
+      newManualTotalWaterMl,
       entryDate,
+      'manual'
     );
     return result;
   } catch (error) {

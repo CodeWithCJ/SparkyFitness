@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict t9CuSs2YnePO9KyLZUL4yxaa8ne4crxjv0739eZzBTIfhVpDBH5oyhlh0uNFcjC
+\restrict XMPoZfhXx6XolCQ8XUXABdlRy833TlKTMbiOHW15an1W9JHKJsCk1zPAT9ZyU3V
 
 -- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
@@ -2271,6 +2271,7 @@ CREATE TABLE public.user_preferences (
     exercise_calorie_percentage integer DEFAULT 100,
     activity_level character varying(20) DEFAULT 'not_much'::character varying,
     tdee_allow_negative_adjustment boolean DEFAULT false,
+    default_barcode_provider_id uuid,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
 );
@@ -2935,6 +2936,14 @@ ALTER TABLE ONLY public.exercise_preset_entries
 
 ALTER TABLE ONLY public.exercises
     ADD CONSTRAINT exercises_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: external_data_providers external_data_providers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_data_providers
+    ADD CONSTRAINT external_data_providers_pkey PRIMARY KEY (id);
 
 
 --
@@ -4096,6 +4105,14 @@ ALTER TABLE ONLY public.family_access
 
 ALTER TABLE ONLY public.fasting_logs
     ADD CONSTRAINT fasting_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_preferences fk_default_barcode_provider; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_preferences
+    ADD CONSTRAINT fk_default_barcode_provider FOREIGN KEY (default_barcode_provider_id) REFERENCES public.external_data_providers(id) ON DELETE SET NULL;
 
 
 --
@@ -7190,5 +7207,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict t9CuSs2YnePO9KyLZUL4yxaa8ne4crxjv0739eZzBTIfhVpDBH5oyhlh0uNFcjC
+\unrestrict XMPoZfhXx6XolCQ8XUXABdlRy833TlKTMbiOHW15an1W9JHKJsCk1zPAT9ZyU3V
 
