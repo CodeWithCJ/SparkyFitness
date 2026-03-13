@@ -5,6 +5,9 @@ const { log } = require('../config/logging');
 // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
 const ALLOWED_CHECK_IN_COLUMNS = ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'];
 
+// Tolerance in milliliters for matching historical manual records with incoming sync data
+const WATER_ADOPTION_TOLERANCE_ML = 5;
+
 async function upsertStepData(userId, actingUserId, value, date) {
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
