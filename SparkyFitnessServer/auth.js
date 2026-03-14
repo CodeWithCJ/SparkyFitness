@@ -372,6 +372,7 @@ const auth = betterAuth({
             await ensureUserInitialization(
               user.id,
               user.name || user.email.split("@")[0],
+              user.image,
             );
 
             // Also initialize default nutrient preferences
