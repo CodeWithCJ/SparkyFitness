@@ -299,7 +299,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           disableDecrement={summary.waterConsumed <= 0}
         />
 
-        <Text className="text-text-primary text-xl font-bold mt-24 mb-2">Health Trends</Text>
+        <Text className="text-text-primary text-xl font-bold mt-2 mb-2">Health Trends</Text>
         <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />
 
         <HealthTrendsPager

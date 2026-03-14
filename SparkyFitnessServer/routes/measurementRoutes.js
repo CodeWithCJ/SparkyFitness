@@ -405,10 +405,6 @@ router.delete('/water-intake/:id', authenticate, checkPermissionMiddleware('chec
  *               body_fat_percentage:
  *                 type: number
  *                 nullable: true
- *               user_id:
- *                 type: string
- *                 format: uuid
- *                 description: Optional target user ID.
  *             required: [entry_date]
  *     responses:
  *       200:
@@ -421,7 +417,7 @@ router.post('/check-in', authenticate, checkPermissionMiddleware('checkin'), asy
   if (!bodyResult.success) {
     return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
   }
-  const { entry_date, user_id, ...measurements } = bodyResult.data;
+  const { entry_date, ...measurements } = bodyResult.data;
   try {
     const result = await measurementService.upsertCheckInMeasurements(req.userId, req.originalUserId || req.userId, entry_date, measurements);
     res.status(200).json(result);
@@ -585,7 +581,7 @@ router.put('/check-in/:id', authenticate, checkPermissionMiddleware('checkin'), 
   if (!bodyResult.success) {
     return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
   }
-  const { entry_date, user_id, ...updateData } = bodyResult.data;
+  const { entry_date, ...updateData } = bodyResult.data;
   if (!entry_date) {
     return res.status(400).json({ error: 'Entry date is required.' });
   }

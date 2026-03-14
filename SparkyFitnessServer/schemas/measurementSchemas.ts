@@ -101,7 +101,6 @@ export const UpsertCheckInBodySchema = z.object({
   steps: optionalLegacyNumber,
   height: optionalLegacyNumber,
   body_fat_percentage: optionalLegacyNumber,
-  user_id: optionalLegacyString,
 }).loose();
 
 export type UpsertCheckInBody = z.infer<typeof UpsertCheckInBodySchema>;
@@ -115,7 +114,6 @@ export const UpdateCheckInBodySchema = z.object({
   steps: nullableOptionalLegacyNumber,
   height: nullableOptionalLegacyNumber,
   body_fat_percentage: nullableOptionalLegacyNumber,
-  user_id: optionalLegacyString,
 }).loose();
 
 export type UpdateCheckInBody = z.infer<typeof UpdateCheckInBodySchema>;
