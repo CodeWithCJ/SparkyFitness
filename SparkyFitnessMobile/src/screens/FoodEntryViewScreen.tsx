@@ -354,7 +354,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
         {/* Food name & brand */}
-        <Animated.View layout={LinearTransition.duration(300)} className="pb-4">
+        <Animated.View layout={LinearTransition.duration(300)}>
           <Text className="text-text-primary text-3xl font-bold">
             {(isEditing && adjustedValues?.name) || entry.food_name || 'Unknown food'}
           </Text>
@@ -485,7 +485,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           </Animated.View>
           {isEditing && (
             <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
-              <Text className="text-text-muted text-xs text-center mt-4">Tap to edit nutrition</Text>
+              <Text className="text-text-secondary text-xs text-center mt-4">Tap to edit nutrition</Text>
             </Animated.View>
           )}
         </Pressable>
@@ -561,20 +561,21 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           </View>
         </Animated.View>
 
-        {/* Delete button */}
-        <Animated.View layout={LinearTransition.duration(300)}>
-          <TouchableOpacity
-            onPress={confirmAndDelete}
-            disabled={isDeletePending}
-            className="items-center py-3 mt-2"
-            activeOpacity={0.6}
-          >
-            <Text className="text-bg-danger text-base font-medium">
-              {isDeletePending ? 'Deleting...' : 'Delete Entry'}
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
       </ScrollView>
+
+      {/* Delete button pinned to bottom */}
+      <View className="border-t border-border-subtle" style={{ paddingBottom: insets.bottom }}>
+        <TouchableOpacity
+          onPress={confirmAndDelete}
+          disabled={isDeletePending}
+          className="items-center py-3"
+          activeOpacity={0.6}
+        >
+          <Text className="text-bg-danger text-base font-medium">
+            {isDeletePending ? 'Deleting...' : 'Delete Entry'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {isEditing && (
         <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={(date) => updateEdit({ selectedDate: date })} />

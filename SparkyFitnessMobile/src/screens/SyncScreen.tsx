@@ -507,10 +507,13 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 80 }}>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 80 }}
+        contentInsetAdjustmentBehavior="never"
+      >
         {/* Header */}
-        <View className="flex-row justify-between items-center mb-4">
+        <View className="flex-row justify-between items-center mb-5">
           <Text className="text-2xl font-bold text-text-primary">Sync</Text>
           <ConnectionStatus isConnected={isConnected} variant="header" />
         </View>
@@ -596,12 +599,12 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
             {HEALTH_METRICS.map(metric => healthMetricStates[metric.stateKey] && (
               <View
                 key={metric.id}
-                className="w-[48%] bg-raised rounded-lg p-2 mb-2 items-start flex-row border border-border"
+                className="w-[48%] bg-raised rounded-lg p-2 mb-2 items-center flex-row border border-border"
               >
                 <Image source={metric.icon} className="w-6 h-6 mr-2" />
                 <View>
                   <Text className="text-lg font-bold text-text-primary">{healthData[metric.id] || '0'}</Text>
-                  <Text className="text-sm text-text-secondary">{metric.label}</Text>
+                  <Text className="text-xs text-text-secondary">{metric.label}</Text>
                 </View>
               </View>
             ))}

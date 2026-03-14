@@ -86,7 +86,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
         overshootRight={false}
         rightThreshold={40}
       >
-        <View className="py-2 flex-row items-center bg-surface">
+        <View className="py-1.5 flex-row items-center bg-surface">
           <TouchableOpacity
             className="flex-1 mr-2"
             activeOpacity={0.7}

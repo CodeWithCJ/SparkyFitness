@@ -5,20 +5,25 @@ import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-nativ
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 
-interface MacroCardProps {
+interface MacroData {
   label: string;
   consumed: number;
   goal: number;
   color: string;
+}
+
+interface MacroSummaryCardProps {
+  macros: MacroData[];
   overfillColor: string;
   unit?: string;
 }
 
-const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, overfillColor, unit = 'g' }) => {
+const BAR_HEIGHT = 8;
+const BORDER_RADIUS = 4;
+
+const MacroRow: React.FC<{ macro: MacroData; overfillColor: string; unit: string }> = ({ macro, overfillColor, unit }) => {
   const [barWidth, setBarWidth] = useState(0);
-  const progress = goal > 0 ? consumed / goal : 0;
-  const barHeight = 8;
-  const borderRadius = 4;
+  const progress = macro.goal > 0 ? macro.consumed / macro.goal : 0;
   const trackColor = useCSSVariable('--color-progress-track') as string;
 
   const animatedProgress = useSharedValue(0);
@@ -53,35 +58,27 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
   }, [barWidth]);
 
   return (
-    <View className="w-[48%] p-1 mb-2">
-      <View className="flex-row justify-between items-center mb-2">
-        <Text className="text-sm font-medium text-text-primary">{label}</Text>
+    <View>
+      <View className="flex-row justify-between items-center mb-1">
+        <View className="flex-row items-center gap-1.5">
+          <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: macro.color }} />
+          <Text className="text-sm font-medium text-text-primary">{macro.label}</Text>
+        </View>
         <Text className="text-xs text-text-secondary">
-          {Math.round(consumed)}{unit} / {Math.round(goal)}{unit}
+          {Math.round(macro.consumed)}{unit} / {Math.round(macro.goal)}{unit}
         </Text>
       </View>
-      {/* Progress bar container */}
       <View
-        className="h-2"
+        className="h-2 mb-3"
         onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
       >
         {barWidth > 0 && (
-          <Canvas style={{ width: barWidth, height: barHeight }}>
-            {/* Clip entire bar for rounded corners */}
-            <Group clip={rrect(rect(0, 0, barWidth, barHeight), borderRadius, borderRadius)}>
-              {/* Track background */}
-              <Rect
-                x={0}
-                y={0}
-                width={barWidth}
-                height={barHeight}
-                color={trackColor}
-              />
-              {/* Animated fill portion */}
-              <Rect x={0} y={0} width={fillWidth} height={barHeight} color={color} />
-              {/* Overflow portion with reduced opacity */}
+          <Canvas style={{ width: barWidth, height: BAR_HEIGHT }}>
+            <Group clip={rrect(rect(0, 0, barWidth, BAR_HEIGHT), BORDER_RADIUS, BORDER_RADIUS)}>
+              <Rect x={0} y={0} width={barWidth} height={BAR_HEIGHT} color={trackColor} />
+              <Rect x={0} y={0} width={fillWidth} height={BAR_HEIGHT} color={macro.color} />
               <Group opacity={0.65}>
-                <Rect x={overflowX} y={0} width={overflowWidth} height={barHeight} color={color} />
+                <Rect x={overflowX} y={0} width={overflowWidth} height={BAR_HEIGHT} color={macro.color} />
               </Group>
             </Group>
           </Canvas>
@@ -91,4 +88,15 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
   );
 };
 
-export default MacroCard;
+const MacroSummaryCard: React.FC<MacroSummaryCardProps> = ({ macros, overfillColor, unit = 'g' }) => {
+  return (
+    <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+      <Text className="text-md font-bold text-text-primary mb-3">Macros</Text>
+      {macros.map((macro) => (
+        <MacroRow key={macro.label} macro={macro} overfillColor={overfillColor} unit={unit} />
+      ))}
+    </View>
+  );
+};
+
+export default MacroSummaryCard;

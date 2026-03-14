@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Platform } from 'react-native';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import DateNavigator from '../components/DateNavigator';
@@ -23,6 +24,7 @@ type DiaryScreenProps = CompositeScreenProps<
 >;
 
 const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const lastKnownToday = useRef(getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
@@ -63,6 +65,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
   const [refreshing, setRefreshing] = useState(false);
+  const topSafeAreaStyle = Platform.OS === 'ios' ? { paddingTop: insets.top } : undefined;
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
@@ -127,6 +130,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
@@ -153,7 +157,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   return (
     <GestureDetector gesture={swipeGesture}>
-      <View className="flex-1 bg-background">
+      <View className="flex-1 bg-background" style={topSafeAreaStyle}>
         {!isConnectionLoading && isConnected && (
           <DateNavigator
             title="Diary"
@@ -164,6 +168,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             onDatePress={openCalendar}
             hideChevrons
             showDateAlways
+            skipSafeAreaTop
           />
         )}
         {renderContent()}

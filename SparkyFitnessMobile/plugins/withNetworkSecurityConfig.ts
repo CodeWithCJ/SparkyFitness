@@ -2,7 +2,7 @@ import {
   ConfigPlugin,
   withAndroidManifest,
   withDangerousMod,
-} from '@expo/config-plugins';
+} from 'expo/config-plugins';
 import fs from 'fs';
 import path from 'path';
 
