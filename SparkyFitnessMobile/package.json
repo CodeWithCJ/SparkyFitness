@@ -17,7 +17,7 @@
     "@bottom-tabs/react-navigation": "^1.1.0",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
-    "@kingstinct/react-native-healthkit": "^13.2.3",
+    "@kingstinct/react-native-healthkit": "^13.3.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-clipboard/clipboard": "^1.16.0",
     "@react-navigation/native": "^7.1.14",
@@ -62,7 +62,6 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/runtime": "^7.25.0",
-    "@expo/config-plugins": "^55.0.6",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "29.5.14",
     "@types/react": "~19.1.10",
