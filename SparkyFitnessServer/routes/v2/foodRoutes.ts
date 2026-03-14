@@ -188,7 +188,10 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (req, res,
         const autoScale = (req.query.autoScale as string ?? 'true') !== 'false';
         const result = await searchOpenFoodFacts(query, page, language);
         const products = (result.products || []).filter(
-          (p: Record<string, unknown>) => p.product_name,
+          (p: Record<string, any>) => 
+            p.product_name || 
+            p[`product_name_${language}`] || 
+            p.product_name_en,
         );
         foods = products.map((p: Record<string, unknown>) => mapOpenFoodFactsProduct(p, { autoScale, language })).filter(Boolean);
         pagination = result.pagination;

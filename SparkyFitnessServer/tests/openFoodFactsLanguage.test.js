@@ -32,10 +32,10 @@ describe("OpenFoodFacts Language Handling", () => {
     });
 
     it("should fall back to default product_name if both requested and English names are missing", () => {
-      const productNoEn = { 
-        ...mockProduct, 
+      const productNoEn = {
+        ...mockProduct,
         product_name_en: undefined,
-        product_name_fr: undefined 
+        product_name_fr: undefined,
       };
       const result = mapOpenFoodFactsProduct(productNoEn, { language: "fr" });
       expect(result.name).toBe("Pâtes spaghetti au blé complet integral 500g");

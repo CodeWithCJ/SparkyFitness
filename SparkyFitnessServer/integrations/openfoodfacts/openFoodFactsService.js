@@ -20,10 +20,11 @@ const OFF_FIELDS = [
 
 async function searchOpenFoodFacts(query, page = 1, language = "en") {
   try {
-    const fields = [...OFF_FIELDS];
-    if (language !== "en" && !fields.includes(`product_name_${language}`)) {
-      fields.push(`product_name_${language}`);
+    const fieldSet = new Set(OFF_FIELDS);
+    if (language !== "en") {
+      fieldSet.add(`product_name_${language}`);
     }
+    const fields = [...fieldSet];
 
     const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${fields.join(",")}&lc=${language}`;
     const response = await fetch(searchUrl, {
@@ -62,10 +63,11 @@ async function searchOpenFoodFactsByBarcodeFields(
   language = "en",
 ) {
   try {
-    const finalFields = [...fields];
-    if (language !== "en" && !finalFields.includes(`product_name_${language}`)) {
-      finalFields.push(`product_name_${language}`);
+    const fieldSet = new Set(fields);
+    if (language !== "en") {
+      fieldSet.add(`product_name_${language}`);
     }
+    const finalFields = [...fieldSet];
     const fieldsParam = finalFields.join(",");
     const searchUrl = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
     const response = await fetch(searchUrl, {
@@ -161,7 +163,7 @@ function mapOpenFoodFactsProduct(
     product.product_name;
 
   return {
-    name: name,
+    name,
     brand: product.brands?.split(",")[0]?.trim() || "",
     barcode: normalizeBarcode(product.code),
     provider_external_id: product.code,
