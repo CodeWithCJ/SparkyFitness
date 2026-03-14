@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { UnitInput } from '@/components/ui/UnitInput';
 
 interface SortableSetItemProps {
   set: WorkoutPresetSet;
@@ -127,20 +128,14 @@ export const SortableSetItem = React.memo(
                 {t('exercise.editExerciseEntryDialog.weightLabel', 'Weight')} (
                 {weightUnit})
               </Label>
-              <Input
+              <UnitInput
                 id={`weight-${setIndex}`}
-                type="number"
-                value={set.weight ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const newValue = val === '' ? undefined : Number(val);
-                  handleSetChange(setIndex, 'weight', newValue);
-                }}
-                onBlur={(e) => {
-                  if (e.target.value === '') {
-                    handleSetChange(setIndex, 'weight', 0);
-                  }
-                }}
+                type="weight"
+                unit={weightUnit}
+                value={set.weight ?? 0}
+                onChange={(metricValue) =>
+                  handleSetChange(setIndex, 'weight', metricValue)
+                }
               />
             </div>
             <div className="md:col-span-1">

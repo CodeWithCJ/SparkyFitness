@@ -10,6 +10,7 @@ import {
   cmToFeetInches,
   feetInchesToCm,
 } from '@/utils/unitConversions';
+import { getPrecision } from '@workspace/shared';
 
 interface UnitInputProps {
   id?: string;
@@ -26,6 +27,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   value,
   unit,
   onChange,
+  type,
   placeholder,
   className,
 }) => {
@@ -51,29 +53,30 @@ export const UnitInput: React.FC<UnitInputProps> = ({
       switch (unit) {
         case 'st_lbs': {
           const { stones, lbs } = kgToStonesLbs(metricValue);
+          const precision = getPrecision(type, 'st_lbs');
           setVal1(stones.toString());
-          setVal2(Math.round(lbs).toString());
+          setVal2(Number(lbs.toFixed(precision)).toString());
           break;
         }
         case 'ft_in': {
           const { feet, inches } = cmToFeetInches(metricValue);
+          const precision = getPrecision(type, 'ft_in');
           setVal1(feet.toString());
-          setVal2(Math.round(inches).toString());
+          setVal2(Number(inches.toFixed(precision)).toString());
           break;
         }
         case 'lbs':
-          setVal1(Math.round(kgToLbs(metricValue)).toString());
-          break;
         case 'inches':
-          setVal1(Math.round(cmToInches(metricValue)).toString());
-          break;
         case 'cm':
-          setVal1(Math.round(metricValue).toString());
-          break;
         case 'kg':
-        default:
-          setVal1(Number(metricValue.toFixed(1)).toString());
+        default: {
+          const precision = getPrecision(type, unit);
+          let displayVal = metricValue;
+          if (unit === 'lbs') displayVal = kgToLbs(metricValue);
+          if (unit === 'inches') displayVal = cmToInches(metricValue);
+          setVal1(Number(displayVal.toFixed(precision)).toString());
           break;
+        }
       }
     }
   }
@@ -138,7 +141,11 @@ export const UnitInput: React.FC<UnitInputProps> = ({
           <Input
             id={`${id}-2`}
             type="number"
-            step="1"
+            step={
+              getPrecision(type, unit) > 0
+                ? (1 / Math.pow(10, getPrecision(type, unit))).toString()
+                : '1'
+            }
             value={val2}
             onChange={(e) => handleSplitChange(val1, e.target.value)}
             className="pr-8"
@@ -153,18 +160,21 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   }
 
   // Render standard single input
+  const precision = getPrecision(type, unit);
+  const step = precision > 0 ? (1 / Math.pow(10, precision)).toString() : '1';
+
   return (
     <div className={`relative ${className}`}>
       <Input
         id={id}
         type="number"
-        step={unit === 'kg' ? '0.1' : '1'}
+        step={step}
         value={val1}
         onChange={handleSingleChange}
         placeholder={placeholder}
-        className="pr-12"
+        className="pr-9"
       />
-      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
         {unit}
       </span>
     </div>

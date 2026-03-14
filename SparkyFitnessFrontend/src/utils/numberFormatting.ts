@@ -1,6 +1,7 @@
 import {
   formatWeight as formatWeightInternal,
   formatHeight as formatHeightInternal,
+  formatMeasurement as formatMeasurementInternal,
 } from './unitConversions';
 
 export const formatNumber = (num: number): string => {
@@ -31,4 +32,14 @@ export const formatHeight = (
   unit: string = 'cm'
 ): string => {
   return formatHeightInternal(cm, unit);
+};
+
+/**
+ * Formats a body measurement (waist, neck, hips, etc.) based on the user's preferred unit.
+ */
+export const formatMeasurement = (
+  cm: number | null | undefined,
+  unit: string = 'cm'
+): string => {
+  return formatMeasurementInternal(cm, unit);
 };

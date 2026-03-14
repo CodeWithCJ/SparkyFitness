@@ -20,13 +20,18 @@ import {
   getNutrientMetadata,
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
-import { formatWeight, formatHeight } from '@/utils/numberFormatting';
+import {
+  formatWeight,
+  formatHeight,
+  formatMeasurement,
+} from '@/utils/numberFormatting';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import type { DailyFoodEntry, DailyExerciseEntry } from '@/types/reports';
 import {
   CheckInMeasurementsResponse,
   CustomMeasurementsResponse,
   CustomCategoriesResponse,
+  getPrecision,
 } from '@workspace/shared';
 
 interface PersonalRecord {
@@ -724,13 +729,13 @@ const ReportsTables = ({
                       {formatWeight(measurement.weight, weightUnit)}
                     </TableCell>
                     <TableCell>
-                      {formatHeight(measurement.neck, measurementUnit)}
+                      {formatMeasurement(measurement.neck, measurementUnit)}
                     </TableCell>
                     <TableCell>
-                      {formatHeight(measurement.waist, measurementUnit)}
+                      {formatMeasurement(measurement.waist, measurementUnit)}
                     </TableCell>
                     <TableCell>
-                      {formatHeight(measurement.hips, measurementUnit)}
+                      {formatMeasurement(measurement.hips, measurementUnit)}
                     </TableCell>
                     <TableCell>{measurement.steps || '-'}</TableCell>
                     <TableCell>
@@ -842,8 +847,13 @@ const ReportsTables = ({
                           : isWeight
                             ? formatWeight(numericValue, weightUnit)
                             : isHeight
-                              ? formatHeight(numericValue, measurementUnit)
-                              : numericValue.toFixed(2);
+                              ? formatMeasurement(numericValue, measurementUnit)
+                              : numericValue.toFixed(
+                                  getPrecision(
+                                    'measurement',
+                                    category.measurement_type
+                                  )
+                                );
 
                         return (
                           <TableRow key={index}>

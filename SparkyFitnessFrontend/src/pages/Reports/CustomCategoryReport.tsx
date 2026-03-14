@@ -19,6 +19,7 @@ import { calculateSmartYAxisDomain, getChartConfig } from '@/utils/chartUtils';
 import {
   CustomCategoriesResponse,
   CustomMeasurementsResponse,
+  getPrecision,
 } from '@workspace/shared';
 
 const HIDDEN_CUSTOM_METRICS = [
@@ -113,15 +114,14 @@ export const CustomCategoryReport = ({
                             domain={
                               getCustomYAxisDomain(chartData) || undefined
                             }
-                            tickFormatter={(value) => {
-                              if (
-                                category.measurement_type.toLowerCase() ===
-                                'waist'
-                              ) {
-                                return value.toFixed(1);
-                              }
-                              return value.toFixed(2);
-                            }}
+                            tickFormatter={(value) =>
+                              value.toFixed(
+                                getPrecision(
+                                  'measurement',
+                                  category.measurement_type
+                                )
+                              )
+                            }
                           />
                           <Tooltip
                             content={({ active, payload, label }) => {
@@ -140,7 +140,7 @@ export const CustomCategoryReport = ({
                                   <div className="p-2 bg-background border rounded-md shadow-md">
                                     <p className="label">{`${label} `}</p>
                                     {!isNaN(numericValue) ? (
-                                      <p className="intro">{`${numericValue.toFixed(1)} ${unit} `}</p>
+                                      <p className="intro">{`${numericValue.toFixed(getPrecision('measurement', unit))} ${unit} `}</p>
                                     ) : (
                                       <p className="intro">
                                         {t('reports.notApplicable', 'N/A')}
