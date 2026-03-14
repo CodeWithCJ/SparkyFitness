@@ -54,4 +54,6 @@ jobs:
             --app-version "${{ steps.release_tag.outputs.app_version }}"
 
       - name: Push Helm chart to GHCR
-        run: helm push sparkyfitness-${{ steps.release_tag.outputs.chart_version }}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          helm push sparkyfitness-${{ steps.release_tag.outputs.chart_version }}.tgz oci://ghcr.io/${OWNER_LC}/charts
