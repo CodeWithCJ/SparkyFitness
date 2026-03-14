@@ -133,17 +133,13 @@ describe('WaterIntake Component', () => {
   });
 
   it('disables the minus button when intake is 0', () => {
-    // We already mock useWaterIntakeQuery at the top level
-    // To test 0 intake, we can either mock it differently or
-    // simply trust the logic if we've verified the component renders disabled.
-    // For this test, we'll re-mock the hook module if necessary,
-    // but the best practice is to handle it via the QueryClient state.
+    // Override the mock to simulate zero water intake for this test
+    const useWaterIntakeModule = require('@/hooks/Diary/useWaterIntake');
+    useWaterIntakeModule.useWaterIntakeQuery = () => ({ data: 0 });
 
-    // Simplified verification for now to pass lint
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
-    // In our beforeEach mock, we return 500. Let's just verify minus is enabled first.
     const minusButton = screen.getByTestId('minus-icon').parentElement;
-    expect(minusButton).not.toBeDisabled();
+    expect(minusButton).toBeDisabled();
   });
 });
