@@ -80,6 +80,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - `SparkyFitnessServer.js` is the single app entrypoint. Do not create alternate boot paths unless the task explicitly calls for one.
 - Route mounting is centralized in `SparkyFitnessServer.js`. If you add a new router, wire it there.
 - Public API changes should keep Swagger output accurate. Update the relevant JSDoc-backed route docs when endpoints or payloads change.
+- Prefer Zod schemas in `schemas/` for route request/param validation. For existing public endpoints, add compatibility-first validation that matches current client contracts unless the task explicitly introduces a stricter API version.
 - Graceful shutdown drains the HTTP server and database pools through `endPool()`.
 
 ### Database and RLS
@@ -89,6 +90,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - Use `getSystemClient()` only for admin, migration, startup, or policy-management tasks that intentionally bypass RLS.
 - Always release database clients in a `finally` block.
 - New migrations belong in `db/migrations/` and should use `YYYYMMDDHHMMSS_description.sql`.
+- When you add or modify a migration, also update the repo-root schema snapshot at `../db_schema_backup.sql` in the same change.
 - Startup automatically applies pending migrations via `utils/dbMigrations.js`, then reapplies `db/rls_policies.sql` via `utils/applyRlsPolicies.js`.
 - If you add a table, add user-visible data, or change access behavior, update `db/rls_policies.sql` in the same change.
 
