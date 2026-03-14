@@ -17,6 +17,7 @@ import { WaterContainer } from '@/types/settings';
 
 interface WaterContainerContextType {
   activeContainer: WaterContainer | undefined | null;
+  containers: WaterContainer[];
 }
 
 const WaterContainerContext = createContext<
@@ -71,7 +72,7 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({
   }, [containers, currentUserId, isSuccess, loading, water_display_unit]);
 
   return (
-    <WaterContainerContext.Provider value={{ activeContainer }}>
+    <WaterContainerContext.Provider value={{ activeContainer, containers }}>
       {children}
     </WaterContainerContext.Provider>
   );
