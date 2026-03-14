@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import type { ExerciseHistoryResponse, ExerciseSessionResponse } from '@workspace/shared';
 import type { DailySummaryRawData } from './useDailySummary';
+import { normalizeDate } from '../utils/dateUtils';
 import { dailySummaryQueryKey, exerciseHistoryQueryKey } from './queryKeys';
 
 function replaceSession(
@@ -42,7 +43,7 @@ export function syncExerciseSessionInCache(
     },
   );
 
-  const entryDate = updatedSession.entry_date?.split('T')[0];
+  const entryDate = updatedSession.entry_date ? normalizeDate(updatedSession.entry_date) : undefined;
   if (!entryDate) {
     return;
   }

@@ -16,9 +16,9 @@ import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useWorkoutForm } from '../hooks/useWorkoutForm';
+import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { formatDateLabel } from '../utils/dateUtils';
-import { useCreateWorkout } from '../hooks/useCreateWorkout';
-import { useUpdateWorkout } from '../hooks/useUpdateWorkout';
+import { useCreateWorkout, useUpdateWorkout } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { clearDraft } from '../services/workoutDraftService';
 import { weightToKg } from '../utils/unitConversions';
@@ -107,16 +107,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const isInitializingEditForm = isEditMode && !hasPopulatedRef.current;
 
-  // Listen for exercise selection from ExerciseSearchScreen
-  const lastNonceRef = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    const selectedExercise = route.params?.selectedExercise;
-    const nonce = route.params?.selectionNonce;
-    if (selectedExercise && nonce && nonce !== lastNonceRef.current) {
-      lastNonceRef.current = nonce;
-      addExercise(selectedExercise);
-    }
-  }, [route.params?.selectedExercise, route.params?.selectionNonce, addExercise]);
+  useSelectedExercise(route.params, addExercise);
 
   const handleCancel = useCallback(() => {
     if (!isEditMode && !hasDraftData) {
@@ -188,9 +179,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
               invalidateCreateCache(state.entryDate);
               navigation.pop(popCount);
             }
-          } catch {
-            // Error is handled by the mutation's onError
-          }
+          } catch {}
         },
       },
     ]);

@@ -418,7 +418,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             onPress={() => navigation.navigate('Sync')}
             activeOpacity={0.7}
           >
-            <Text className="text-base font-semibold text-text-primary">Sync Health Data</Text>
+            <Text className="text-base font-semibold text-text-primary">View Sync Data</Text>
             <Icon name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 

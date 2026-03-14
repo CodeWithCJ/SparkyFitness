@@ -26,7 +26,6 @@ export async function clearDraft(): Promise<void> {
   await AsyncStorage.removeItem(DRAFT_KEY);
 }
 
-/** Returns the draft if it has meaningful data, or null otherwise. */
 export async function loadActiveDraft(): Promise<FormDraft | null> {
   const draft = await loadDraft();
   if (!draft) return null;

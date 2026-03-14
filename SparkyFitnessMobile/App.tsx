@@ -42,7 +42,7 @@ import { useSyncHealthData } from './src/hooks';
 import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
 import { startObservers, stopObservers } from './src/services/healthConnectService';
 import { initializeTheme } from './src/services/themeService';
-import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
+import { useStartExercise } from './src/hooks/useStartExercise';
 import { initLogService } from './src/services/LogService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
@@ -124,59 +124,16 @@ function AppContent() {
     navigation.getParent()?.navigate('FoodSearch', { date });
   }, [getActiveDiaryDate]);
 
-  const handleAddExercise = useCallback(async () => {
-    const navigation = navigationRef.current;
-    if (!navigation) return;
-    const date = getActiveDiaryDate();
+  const addSheetNavigation = useMemo(() => ({
+    navigate: (screen: string, params?: Record<string, unknown>) => {
+      navigationRef.current?.getParent()?.navigate(screen, params);
+    },
+  }), []);
 
-    const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
-    if (!isConnected) {
-      Alert.alert(
-        'No Server Connected',
-        'Configure your server connection in Settings to add an exercise.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Go to Settings',
-            onPress: () => navigation.getParent()?.navigate('Tabs', { screen: 'Settings' }),
-          },
-        ],
-      );
-      return;
-    }
-
-    const draft = await loadActiveDraft();
-    if (draft) {
-      Alert.alert(
-        'Draft in Progress',
-        `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Resume Draft',
-            onPress: () => {
-              if (draft.type === 'workout') {
-                navigation.getParent()?.navigate('WorkoutForm');
-              } else {
-                navigation.getParent()?.navigate('ActivityForm');
-              }
-            },
-          },
-          {
-            text: 'Discard & Continue',
-            style: 'destructive',
-            onPress: async () => {
-              await clearDraft();
-              navigation.getParent()?.navigate('ExerciseSearch', { mode: 'entry', date });
-            },
-          },
-        ],
-      );
-      return;
-    }
-
-    navigation.getParent()?.navigate('ExerciseSearch', { mode: 'entry', date });
-  }, [getActiveDiaryDate]);
+  const handleAddExercise = useStartExercise({
+    navigation: addSheetNavigation,
+    getDate: getActiveDiaryDate,
+  });
 
   const syncMutation = useSyncHealthData();
 

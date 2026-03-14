@@ -27,6 +27,9 @@ export const addDays = (dateString: string, days: number): string => {
   return `${y}-${m}-${d}`;
 };
 
+// Strip any time/timezone suffix from a date string, returning just YYYY-MM-DD
+export const normalizeDate = (dateString: string): string => dateString.split('T')[0];
+
 // Format a YYYY-MM-DD date for display ("Mon, Jan 6")
 export const formatDate = (dateString: string): string => {
   const [year, month, day] = dateString.split('-').map(Number);

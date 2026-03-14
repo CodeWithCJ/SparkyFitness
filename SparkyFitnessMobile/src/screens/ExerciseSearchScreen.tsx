@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import Button from '../components/ui/Button';
+import StatusView from '../components/StatusView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useQueryClient } from '@tanstack/react-query';
@@ -124,7 +125,6 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     enabled: isConnected && isEntryMode && activeTab === 'workouts',
   });
 
-  // Default to first provider when providers load
   useEffect(() => {
     if (providers.length === 0) return;
     if (hasUserSelectedProvider.current && providers.some((p) => p.id === selectedProvider)) return;
@@ -232,32 +232,15 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
 
   const renderSearchResults = () => {
     if (isSearching && searchResults.length === 0) {
-      return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
-      );
+      return <StatusView loading />;
     }
 
     if (isSearchError) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to search exercises
-          </Text>
-        </View>
-      );
+      return <StatusView icon="alert-circle" title="Failed to search exercises" />;
     }
 
     if (searchResults.length === 0) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
-            No matching exercises found
-          </Text>
-        </View>
-      );
+      return <StatusView title="No matching exercises found" />;
     }
 
     return (
@@ -272,14 +255,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
 
   const renderSearchTab = () => {
     if (!isConnected) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="cloud-offline" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to view exercises
-          </Text>
-        </View>
-      );
+      return <StatusView icon="cloud-offline" title="Connect to a server to view exercises" />;
     }
 
     if (isSearchActive) {
@@ -287,39 +263,21 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     }
 
     if (isSuggestedLoading) {
-      return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
-      );
+      return <StatusView loading />;
     }
 
     if (isSuggestedError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to load exercises
-          </Text>
-          <Button
-            variant="secondary"
-            onPress={() => refetchSuggested()}
-            className="mt-4 px-6"
-          >
-            Retry
-          </Button>
-        </View>
+        <StatusView
+          icon="alert-circle"
+          title="Failed to load exercises"
+          action={{ label: 'Retry', onPress: () => refetchSuggested() }}
+        />
       );
     }
 
     if (sections.length === 0) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
-            Search for an exercise to get started
-          </Text>
-        </View>
-      );
+      return <StatusView title="Search for an exercise to get started" />;
     }
 
     return (
@@ -359,34 +317,52 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     </TouchableOpacity>
   );
 
-  const renderOnlineSearchResults = () => {
-    if (isOnlineSearching && onlineSearchResults.length === 0) {
+  const renderOnlineFooter = () => {
+    if (isFetchNextPageError) {
       return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
+        <Button
+          variant="ghost"
+          onPress={() => fetchNextPage()}
+          className="py-3"
+          textClassName="text-sm"
+        >
+          Failed to load more. Tap to retry
+        </Button>
+      );
+    }
+    if (isFetchingNextPage) {
+      return (
+        <View className="py-3 items-center">
+          <ActivityIndicator size="small" color={accentColor} />
         </View>
       );
+    }
+    if (hasNextPage) {
+      return (
+        <Button
+          variant="ghost"
+          onPress={() => fetchNextPage()}
+          className="py-4 mb-4"
+          textClassName="text-sm"
+        >
+          Load More
+        </Button>
+      );
+    }
+    return null;
+  };
+
+  const renderOnlineSearchResults = () => {
+    if (isOnlineSearching && onlineSearchResults.length === 0) {
+      return <StatusView loading />;
     }
 
     if (isOnlineSearchError) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to search {selectedProviderName}
-          </Text>
-        </View>
-      );
+      return <StatusView icon="alert-circle" title={`Failed to search ${selectedProviderName}`} />;
     }
 
     if (onlineSearchResults.length === 0) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
-            No matching exercises found
-          </Text>
-        </View>
-      );
+      return <StatusView title="No matching exercises found" />;
     }
 
     return (
@@ -395,82 +371,32 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
         keyExtractor={(item, index) => `${item.source}-${item.id}-${index}`}
         renderItem={renderExternalExerciseItem}
         keyboardShouldPersistTaps="handled"
-        ListFooterComponent={
-          isFetchNextPageError ? (
-            <Button
-              variant="ghost"
-              onPress={() => fetchNextPage()}
-              className="py-3"
-              textClassName="text-sm"
-            >
-              Failed to load more. Tap to retry
-            </Button>
-          ) : isFetchingNextPage ? (
-            <View className="py-3 items-center">
-              <ActivityIndicator size="small" color={accentColor} />
-            </View>
-          ) : hasNextPage ? (
-            <Button
-              variant="ghost"
-              onPress={() => fetchNextPage()}
-              className="py-4 mb-4"
-              textClassName="text-sm"
-            >
-              Load More
-            </Button>
-          ) : null
-        }
+        ListFooterComponent={renderOnlineFooter()}
       />
     );
   };
 
   const renderOnlineTab = () => {
     if (!isConnected) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="cloud-offline" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to search online exercises
-          </Text>
-        </View>
-      );
+      return <StatusView icon="cloud-offline" title="Connect to a server to search online exercises" />;
     }
 
     if (isProvidersLoading) {
-      return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
-      );
+      return <StatusView loading />;
     }
 
     if (isProvidersError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to load providers
-          </Text>
-          <Button
-            variant="secondary"
-            onPress={() => refetchProviders()}
-            className="mt-4 px-6"
-          >
-            Retry
-          </Button>
-        </View>
+        <StatusView
+          icon="alert-circle"
+          title="Failed to load providers"
+          action={{ label: 'Retry', onPress: () => refetchProviders() }}
+        />
       );
     }
 
     if (providers.length === 0) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="globe" size={48} color={textMuted} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            No online exercise providers configured
-          </Text>
-        </View>
-      );
+      return <StatusView icon="globe" iconColor={textMuted} title="No online exercise providers configured" />;
     }
 
     return (
@@ -511,12 +437,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
         {isOnlineSearchActive ? (
           renderOnlineSearchResults()
         ) : (
-          <View className="flex-1 justify-center items-center px-6">
-            <Icon name="search" size={48} color={textSecondary} />
-            <Text className="text-text-secondary text-base mt-4 text-center">
-              Search {selectedProviderName} for exercises
-            </Text>
-          </View>
+          <StatusView icon="search" iconColor={textSecondary} title={`Search ${selectedProviderName} for exercises`} />
         )}
       </View>
     );
@@ -542,32 +463,15 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
 
   const renderPresetSearchResults = () => {
     if (isPresetSearching && presetSearchResults.length === 0) {
-      return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
-      );
+      return <StatusView loading />;
     }
 
     if (isPresetSearchError) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to search workouts
-          </Text>
-        </View>
-      );
+      return <StatusView icon="alert-circle" title="Failed to search workouts" />;
     }
 
     if (presetSearchResults.length === 0) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
-            No matching workouts found
-          </Text>
-        </View>
-      );
+      return <StatusView title="No matching workouts found" />;
     }
 
     return (
@@ -582,14 +486,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
 
   const renderWorkoutsTab = () => {
     if (!isConnected) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="cloud-offline" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to view workouts
-          </Text>
-        </View>
-      );
+      return <StatusView icon="cloud-offline" title="Connect to a server to view workouts" />;
     }
 
     if (isPresetSearchActive) {
@@ -597,39 +494,21 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     }
 
     if (isPresetsLoading) {
-      return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
-      );
+      return <StatusView loading />;
     }
 
     if (isPresetsError) {
       return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={48} color={accentColor} />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to load workouts
-          </Text>
-          <Button
-            variant="secondary"
-            onPress={() => refetchPresets()}
-            className="mt-4 px-6"
-          >
-            Retry
-          </Button>
-        </View>
+        <StatusView
+          icon="alert-circle"
+          title="Failed to load workouts"
+          action={{ label: 'Retry', onPress: () => refetchPresets() }}
+        />
       );
     }
 
     if (presets.length === 0) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-text-secondary text-base text-center">
-            No workout presets found
-          </Text>
-        </View>
-      );
+      return <StatusView title="No workout presets found" />;
     }
 
     return (

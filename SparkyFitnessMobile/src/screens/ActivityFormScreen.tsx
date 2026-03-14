@@ -14,10 +14,11 @@ import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { useActivityForm, isDistanceExercise } from '../hooks/useActivityForm';
+import { useActivityForm } from '../hooks/useActivityForm';
+import { isDistanceExercise } from '../constants/exercise';
+import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { distanceToKm } from '../utils/unitConversions';
-import { useCreateExerciseEntry } from '../hooks/useCreateExerciseEntry';
-import { useUpdateExerciseEntry } from '../hooks/useUpdateExerciseEntry';
+import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { clearDraft } from '../services/workoutDraftService';
 import { formatDateLabel } from '../utils/dateUtils';
@@ -76,16 +77,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [isEditMode, entry, preferences, populate, distanceUnit]);
 
-  // Listen for exercise selection from ExerciseSearchScreen
-  const lastNonceRef = useRef<number | undefined>(undefined);
-  useEffect(() => {
-    const selectedExercise = route.params?.selectedExercise;
-    const nonce = route.params?.selectionNonce;
-    if (selectedExercise && nonce && nonce !== lastNonceRef.current) {
-      lastNonceRef.current = nonce;
-      setExercise(selectedExercise);
-    }
-  }, [route.params?.selectedExercise, route.params?.selectionNonce, setExercise]);
+  useSelectedExercise(route.params, setExercise);
 
   const canSave = state.exerciseId && state.duration && parseFloat(state.duration) > 0;
 
@@ -131,9 +123,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
         invalidateCreateCache(state.entryDate);
         navigation.pop(popCount);
       }
-    } catch {
-      // Error handled by mutation onError
-    }
+    } catch {}
   }, [
     state, distanceUnit, isEditMode, entry, popCount,
     createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, navigation,
@@ -160,7 +150,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
               className="text-base font-semibold"
               style={{ color: canSave ? accentPrimary : textMuted }}
             >
-              {isEditMode ? 'Save' : 'Save'}
+              Save
             </Text>
           )}
         </Button>

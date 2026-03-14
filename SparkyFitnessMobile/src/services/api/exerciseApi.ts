@@ -1,4 +1,5 @@
 import { apiFetch } from './apiClient';
+import { getSessionCalories } from '../../utils/workoutSession';
 import type { Exercise, SuggestedExercisesResponse } from '../../types/exercise';
 import type {
   ExerciseHistoryResponse,
@@ -9,9 +10,6 @@ import type {
   ExerciseEntryResponse,
 } from '@workspace/shared';
 
-/**
- * Fetches exercise entries for a given date.
- */
 export const fetchExerciseEntries = async (date: string): Promise<ExerciseSessionResponse[]> => {
   return apiFetch<ExerciseSessionResponse[]>({
     endpoint: `/api/v2/exercise-entries/by-date?selectedDate=${date}`,
@@ -20,21 +18,13 @@ export const fetchExerciseEntries = async (date: string): Promise<ExerciseSessio
   });
 };
 
-/**
- * Calculates total calories burned from exercise entries.
- */
 export const calculateCaloriesBurned = (entries: ExerciseSessionResponse[]): number => {
-  return entries.reduce((total, session) => {
-    if (session.type === 'preset') {
-      return total + session.exercises.reduce((sum, e) => sum + e.calories_burned, 0);
-    }
-    return total + (session.calories_burned || 0);
-  }, 0);
+  return entries.reduce((total, session) => total + getSessionCalories(session), 0);
 };
 
 /**
- * Calculates calories from "Active Calories" exercises (e.g., from watch/fitness tracker).
- * Active Calories entries are always individual synced entries, never part of preset workouts.
+ * Active Calories entries are always individual synced entries (e.g., from watch/fitness tracker),
+ * never part of preset workouts.
  */
 export const calculateActiveCalories = (entries: ExerciseSessionResponse[]): number => {
   return entries.reduce((total, session) => {
@@ -46,24 +36,15 @@ export const calculateActiveCalories = (entries: ExerciseSessionResponse[]): num
   }, 0);
 };
 
-/**
- * Calculates calories from non-"Active Calories" exercises.
- */
 export const calculateOtherExerciseCalories = (entries: ExerciseSessionResponse[]): number => {
   return entries.reduce((total, session) => {
-    if (session.type === 'preset') {
-      return total + session.exercises.reduce((sum, e) => sum + e.calories_burned, 0);
+    if (session.type === 'individual' && session.exercise_snapshot?.name === 'Active Calories') {
+      return total;
     }
-    if (session.exercise_snapshot?.name !== 'Active Calories') {
-      return total + (session.calories_burned || 0);
-    }
-    return total;
+    return total + getSessionCalories(session);
   }, 0);
 };
 
-/**
- * Calculates total exercise duration in minutes, excluding "Active Calories" entries.
- */
 export const calculateExerciseDuration = (entries: ExerciseSessionResponse[]): number => {
   return entries.reduce((total, session) => {
     if (session.type === 'preset') {
@@ -76,9 +57,6 @@ export const calculateExerciseDuration = (entries: ExerciseSessionResponse[]): n
   }, 0);
 };
 
-/**
- * Fetches paginated exercise session history.
- */
 export const fetchExerciseHistory = async (
   page: number = 1,
   pageSize: number = 20,
@@ -90,9 +68,7 @@ export const fetchExerciseHistory = async (
   });
 };
 
-/**
- * Fetches suggested exercises (recent + popular).
- */
+/** Returns recent + popular exercises. */
 export const fetchSuggestedExercises = async (
   limit: number = 10,
 ): Promise<SuggestedExercisesResponse> => {
@@ -103,9 +79,6 @@ export const fetchSuggestedExercises = async (
   });
 };
 
-/**
- * Searches exercises by name.
- */
 export const searchExercises = async (searchTerm: string): Promise<Exercise[]> => {
   return apiFetch<Exercise[]>({
     endpoint: `/api/exercises/search?searchTerm=${encodeURIComponent(searchTerm)}`,
@@ -114,9 +87,6 @@ export const searchExercises = async (searchTerm: string): Promise<Exercise[]> =
   });
 };
 
-/**
- * Creates a workout from preset entries.
- */
 export const createWorkout = async (
   payload: CreatePresetSessionRequest,
 ): Promise<PresetSessionResponse> => {
@@ -165,9 +135,6 @@ export const updateExerciseEntry = async (
   });
 };
 
-/**
- * Updates a workout.
- */
 export const updateWorkout = async (
   id: string,
   payload: UpdatePresetSessionRequest,
@@ -181,9 +148,6 @@ export const updateWorkout = async (
   });
 };
 
-/**
- * Deletes a workout (returns 204 No Content).
- */
 export const deleteWorkout = async (id: string): Promise<void> => {
   return apiFetch<void>({
     endpoint: `/api/exercise-preset-entries/${id}`,
@@ -193,9 +157,6 @@ export const deleteWorkout = async (id: string): Promise<void> => {
   });
 };
 
-/**
- * Deletes an exercise entry.
- */
 export const deleteExerciseEntry = async (id: string): Promise<void> => {
   return apiFetch<void>({
     endpoint: `/api/exercise-entries/${id}`,

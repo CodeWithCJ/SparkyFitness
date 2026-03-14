@@ -1,7 +1,7 @@
-import { useReducer, useEffect, useRef, useCallback } from 'react';
-import { AppState } from 'react-native';
-import { saveDraft, loadDraft, clearDraft } from '../services/workoutDraftService';
-import { getTodayDate } from '../utils/dateUtils';
+import { useReducer, useRef, useCallback } from 'react';
+import { clearDraft } from '../services/workoutDraftService';
+import { useDraftPersistence } from './useDraftPersistence';
+import { getTodayDate, normalizeDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
 import type { Exercise } from '../types/exercise';
 import type { WorkoutDraft, WorkoutDraftSet } from '../types/drafts';
@@ -128,7 +128,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
       return {
         type: 'workout',
         name: action.session.name,
-        entryDate: action.session.entry_date?.split('T')[0] ?? getTodayDate(),
+        entryDate: action.session.entry_date ? normalizeDate(action.session.entry_date) : getTodayDate(),
         exercises: action.session.exercises.map(exercise => ({
           clientId: generateClientId(),
           exerciseId: exercise.exercise_id,
@@ -182,70 +182,16 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
   const skipDraftLoad = options?.skipDraftLoad ?? false;
   const initialDate = options?.initialDate;
   const [state, dispatch] = useReducer(workoutFormReducer, undefined, createEmptyDraft);
-  const isDraftLoadedRef = useRef(false);
-  const skipNextSaveRef = useRef(false);
   const exercisesModifiedRef = useRef(false);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stateRef = useRef(state);
-  stateRef.current = state;
 
-  // Load draft on mount (skip in edit mode and when populating from preset)
-  useEffect(() => {
-    if (isEditMode || skipDraftLoad) {
-      if (skipDraftLoad && initialDate) {
-        dispatch({ type: 'SET_DATE', date: initialDate });
-      }
-      isDraftLoadedRef.current = true;
-      return;
-    }
-    loadDraft().then(draft => {
-      if (draft && draft.type === 'workout') {
-        skipNextSaveRef.current = true;
-        dispatch({ type: 'RESTORE_DRAFT', draft });
-      } else if (initialDate) {
-        dispatch({ type: 'SET_DATE', date: initialDate });
-      }
-      isDraftLoadedRef.current = true;
-    });
-  }, [isEditMode, skipDraftLoad, initialDate]);
-
-  // Debounced save on state changes (skip in edit mode)
-  useEffect(() => {
-    if (isEditMode) return;
-    if (!isDraftLoadedRef.current) return;
-    if (skipNextSaveRef.current) {
-      skipNextSaveRef.current = false;
-      return;
-    }
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    saveTimeoutRef.current = setTimeout(() => {
-      saveDraft(state);
-    }, 300);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [state, isEditMode]);
-
-  // Save immediately when app goes to background (skip in edit mode)
-  useEffect(() => {
-    if (isEditMode) return;
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'background' || nextState === 'inactive') {
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-          saveTimeoutRef.current = null;
-        }
-        saveDraft(stateRef.current);
-      }
-    });
-    return () => subscription.remove();
-  }, [isEditMode]);
+  useDraftPersistence({
+    state,
+    draftType: 'workout',
+    isEditMode,
+    skipDraftLoad,
+    onDraftLoaded: (draft) => dispatch({ type: 'RESTORE_DRAFT', draft }),
+    onInitialDate: initialDate ? () => dispatch({ type: 'SET_DATE', date: initialDate }) : undefined,
+  });
 
   const addExercise = useCallback((exercise: Exercise) => {
     exercisesModifiedRef.current = true;

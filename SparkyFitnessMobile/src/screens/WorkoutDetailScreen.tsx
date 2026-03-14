@@ -1,89 +1,31 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
+import SafeImage from '../components/SafeImage';
 import CollapsibleSection from '../components/CollapsibleSection';
-import { getSourceLabel, getWorkoutIcon, formatDuration, getWorkoutSummary } from '../components/WorkoutCard';
-import { useDeleteExerciseEntry } from '../hooks/useDeleteExerciseEntry';
-import { useDeleteWorkout } from '../hooks/useDeleteWorkout';
-import { useUpdateExerciseEntry } from '../hooks/useUpdateExerciseEntry';
-import { useUpdateWorkout } from '../hooks/useUpdateWorkout';
+import { getSourceLabel, getWorkoutIcon, formatDuration, getWorkoutSummary } from '../utils/workoutSession';
+import {
+  useDeleteExerciseEntry,
+  useDeleteWorkout,
+  useUpdateExerciseEntry,
+  useUpdateWorkout,
+} from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { syncExerciseSessionInCache } from '../hooks/syncExerciseSessionInCache';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { formatDate, formatDateLabel } from '../utils/dateUtils';
+import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
 import { extractActivitySummary } from '../utils/activityDetails';
 import { weightFromKg, distanceFromKm, distanceToKm } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { ExerciseEntryResponse, ExerciseSnapshotResponse } from '@workspace/shared';
 
-import type { GetImageSource } from '../hooks/useExerciseImageSource';
-
 type Props = RootStackScreenProps<'WorkoutDetail'>;
-
-function getImageSourceSignature(
-  source: { uri: string; headers: Record<string, string> } | null,
-): string {
-  if (!source) return '';
-
-  const headerSignature = Object.entries(source.headers)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}:${value}`)
-    .join('|');
-
-  return `${source.uri}|${headerSignature}`;
-}
-
-const ExerciseImage: React.FC<{
-  source: { uri: string; headers: Record<string, string> };
-  size: number;
-}> = ({ source, size }) => {
-  const [error, setError] = useState(false);
-  const sourceSignature = getImageSourceSignature(source);
-
-  useEffect(() => {
-    setError(false);
-  }, [sourceSignature]);
-
-  if (error) return null;
-
-  return (
-    <Image
-      source={{ uri: source.uri, headers: source.headers }}
-      style={{ width: size, height: size, borderRadius: 12 }}
-      onError={() => setError(true)}
-    />
-  );
-};
-
-const ExerciseThumbnail: React.FC<{
-  images: string[] | null | undefined;
-  getImageSource: GetImageSource;
-}> = ({ images, getImageSource }) => {
-  const [error, setError] = useState(false);
-  const firstImage = images?.[0];
-  const source = firstImage ? getImageSource(firstImage) : null;
-  const sourceSignature = getImageSourceSignature(source);
-
-  useEffect(() => {
-    setError(false);
-  }, [sourceSignature]);
-
-  if (!source || error) return null;
-
-  return (
-    <Image
-      source={{ uri: source.uri, headers: source.headers }}
-      style={{ width: 48, height: 48, borderRadius: 8, marginRight: 12 }}
-      onError={() => setError(true)}
-    />
-  );
-};
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [session, setSession] = useState(route.params.session);
@@ -111,9 +53,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
   const iconName = getWorkoutIcon(session);
   const entryDate = session.entry_date ?? '';
-  const normalizedDate = entryDate.split('T')[0];
+  const normalizedDate = normalizeDate(entryDate);
 
-  // Session data
   const isPreset = session.type === 'preset';
   const { name, duration, calories } = getWorkoutSummary(session);
 
@@ -146,7 +87,6 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const isDeleting = deleteActivity.isPending || deleteWorkout.isPending;
 
-  // Inline editing
   const { updateEntry, isPending: isUpdatingEntry, invalidateCache: invalidateEntryCache } = useUpdateExerciseEntry();
   const { updateSession, isPending: isUpdatingSession, invalidateCache: invalidateSessionCache } = useUpdateWorkout();
   const isSaving = isUpdatingEntry || isUpdatingSession;
@@ -232,9 +172,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       setIsEditing(false);
       setEditValues({});
-    } catch {
-      // Error alert shown by mutation hook's onError
-    }
+    } catch {}
   };
 
   const formatDistance = (distanceKm: number): string => {
@@ -300,7 +238,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (sources.length === 1) {
       return (
         <View className="items-center mt-3 mb-1">
-          <ExerciseImage source={sources[0]!} size={size} />
+          <SafeImage source={sources[0]!} style={{ width: size, height: size, borderRadius: 12 }} />
         </View>
       );
     }
@@ -309,7 +247,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 mb-1">
         <View className="flex-row gap-3">
           {sources.map((src, i) => (
-            <ExerciseImage key={i} source={src!} size={size} />
+            <SafeImage key={i} source={src!} style={{ width: size, height: size, borderRadius: 12 }} />
           ))}
         </View>
       </ScrollView>
@@ -405,9 +343,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {session.exercises.map(exercise => (
           <View key={exercise.id} className="bg-surface rounded-xl p-4 mb-3">
             <View className="flex-row items-center">
-              <ExerciseThumbnail
-                images={exercise.exercise_snapshot?.images}
-                getImageSource={getImageSource}
+              <SafeImage
+                source={exercise.exercise_snapshot?.images?.[0] ? getImageSource(exercise.exercise_snapshot.images[0]) : null}
+                style={{ width: 48, height: 48, borderRadius: 8, marginRight: 12 }}
               />
               <View className="flex-1">
                 <Text className="text-base font-semibold text-text-primary">

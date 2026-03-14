@@ -7,7 +7,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { formatDateLabel } from '../utils/dateUtils';
+import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { useMealTypes } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
@@ -44,7 +44,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     adjustedValues: FoodFormData | null;
   }
 
-  const initialDate = entry.entry_date.split('T')[0];
+  const initialDate = normalizeDate(entry.entry_date);
   const [editState, setEditState] = useState<EditState>({
     isEditing: false,
     selectedDate: initialDate,
@@ -219,7 +219,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       setEntry(mergedEntry);
       setEditState({
         isEditing: false,
-        selectedDate: mergedEntry.entry_date.split('T')[0],
+        selectedDate: normalizeDate(mergedEntry.entry_date),
         selectedMealId: mergedEntry.meal_type_id,
         selectedVariantId: mergedEntry.variant_id,
         quantityText: String(mergedEntry.quantity),
@@ -529,7 +529,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
               </TouchableOpacity>
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {formatDateLabel(entry.entry_date.split('T')[0])}
+                {formatDateLabel(normalizeDate(entry.entry_date))}
               </Text>
             )}
           </View>

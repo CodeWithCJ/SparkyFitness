@@ -1,6 +1,6 @@
-import { useReducer, useEffect, useRef, useCallback } from 'react';
-import { AppState } from 'react-native';
-import { saveDraft, loadDraft, clearDraft } from '../services/workoutDraftService';
+import { useReducer, useCallback } from 'react';
+import { clearDraft } from '../services/workoutDraftService';
+import { useDraftPersistence } from './useDraftPersistence';
 import { getTodayDate } from '../utils/dateUtils';
 import { kmToMiles } from '../utils/unitConversions';
 import type { Exercise } from '../types/exercise';
@@ -130,69 +130,15 @@ interface UseActivityFormOptions {
 
 export function useActivityForm({ isEditMode = false, initialDate, skipDraftLoad = false }: UseActivityFormOptions = {}) {
   const [state, dispatch] = useReducer(activityFormReducer, undefined, createEmptyDraft);
-  const isDraftLoadedRef = useRef(false);
-  const skipNextSaveRef = useRef(false);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stateRef = useRef(state);
-  stateRef.current = state;
 
-  // Load draft on mount (skip in edit mode and when exercise is pre-selected from entry mode)
-  useEffect(() => {
-    if (isEditMode || skipDraftLoad) {
-      isDraftLoadedRef.current = true;
-      if (skipDraftLoad && initialDate) {
-        dispatch({ type: 'SET_DATE', value: initialDate });
-      }
-      return;
-    }
-    loadDraft().then(draft => {
-      if (draft && draft.type === 'activity') {
-        skipNextSaveRef.current = true;
-        dispatch({ type: 'RESTORE_DRAFT', draft });
-      } else if (initialDate) {
-        dispatch({ type: 'SET_DATE', value: initialDate });
-      }
-      isDraftLoadedRef.current = true;
-    });
-  }, [initialDate, isEditMode, skipDraftLoad]);
-
-  // Debounced save on state changes (skip in edit mode)
-  useEffect(() => {
-    if (isEditMode) return;
-    if (!isDraftLoadedRef.current) return;
-    if (skipNextSaveRef.current) {
-      skipNextSaveRef.current = false;
-      return;
-    }
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    saveTimeoutRef.current = setTimeout(() => {
-      saveDraft(state);
-    }, 300);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [state, isEditMode]);
-
-  // Save immediately when app goes to background (skip in edit mode)
-  useEffect(() => {
-    if (isEditMode) return;
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'background' || nextState === 'inactive') {
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-          saveTimeoutRef.current = null;
-        }
-        saveDraft(stateRef.current);
-      }
-    });
-    return () => subscription.remove();
-  }, [isEditMode]);
+  useDraftPersistence({
+    state,
+    draftType: 'activity',
+    isEditMode,
+    skipDraftLoad,
+    onDraftLoaded: (draft) => dispatch({ type: 'RESTORE_DRAFT', draft }),
+    onInitialDate: initialDate ? () => dispatch({ type: 'SET_DATE', value: initialDate }) : undefined,
+  });
 
   const setExercise = useCallback((exercise: Exercise) => {
     dispatch({ type: 'SET_EXERCISE', exercise });
@@ -246,11 +192,3 @@ export function useActivityForm({ isEditMode = false, initialDate, skipDraftLoad
   };
 }
 
-export const DISTANCE_EXERCISE_NAMES = [
-  'Running', 'Cycling', 'Swimming', 'Walking', 'Hiking',
-] as const;
-
-export function isDistanceExercise(exerciseName: string | null): boolean {
-  if (!exerciseName) return false;
-  return DISTANCE_EXERCISE_NAMES.some(name => exerciseName.startsWith(name));
-}

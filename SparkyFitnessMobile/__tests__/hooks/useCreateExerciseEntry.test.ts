@@ -1,6 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
-import { useCreateExerciseEntry } from '../../src/hooks/useCreateExerciseEntry';
+import { useCreateExerciseEntry } from '../../src/hooks/useExerciseMutations';
 import { createExerciseEntry } from '../../src/services/api/exerciseApi';
 import {
   exerciseHistoryQueryKey,
