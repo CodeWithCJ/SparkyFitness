@@ -20,6 +20,7 @@ const ENV_TOKEN_AUTH_METHOD = 'SPARKY_FITNESS_OIDC_TOKEN_AUTH_METHOD';
 const ENV_ID_TOKEN_SIGNED_ALG = 'SPARKY_FITNESS_OIDC_ID_TOKEN_SIGNED_ALG';
 const ENV_USERINFO_SIGNED_ALG = 'SPARKY_FITNESS_OIDC_USERINFO_SIGNED_ALG';
 const ENV_TIMEOUT = 'SPARKY_FITNESS_OIDC_TIMEOUT';
+const ENV_ADMIN_GROUP = 'SPARKY_FITNESS_OIDC_ADMIN_GROUP';
 
 /**
  * Returns OIDC provider payload from env, or null if any required var is missing.
@@ -39,6 +40,7 @@ function getEnvOidcConfig() {
     const userInfoAlg = process.env[ENV_USERINFO_SIGNED_ALG]?.trim();
     const timeout = process.env[ENV_TIMEOUT]?.trim();
     const autoRegister = process.env[ENV_AUTO_REGISTER]?.trim();
+    const adminGroup = process.env[ENV_ADMIN_GROUP]?.trim();
 
     if (!issuer || !clientId || !clientSecret || !slug) {
         return null;
@@ -60,6 +62,7 @@ function getEnvOidcConfig() {
         auto_register: autoRegister !== undefined ? autoRegister === 'true' : true,
         is_env_configured: true,
         scope: scope || 'openid email profile',
+        admin_group: adminGroup || null,
     };
 }
 

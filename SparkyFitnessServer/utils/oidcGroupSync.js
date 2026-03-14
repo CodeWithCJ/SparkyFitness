@@ -1,58 +1,78 @@
-// Utility to sync user roles based on OIDC groups found in the id_token.
-
-const jose = require('jose');
-const { log } = require('../config/logging');
-
 /**
- * Syncs user roles based on OIDC groups found in the id_token.
- * @param {Object} deps Dependencies: { pool, userRepository }
+ * Syncs user roles based on OIDC groups found in the id_token or UserInfo endpoint.
+ * @param {Object} deps Dependencies: { pool, userRepository, oidcProviderRepository }
  * @param {string} userId The user ID to sync
  * @param {string} adminGroup The OIDC group name that grants admin access
+ * @param {string} [providerId] Optional provider ID to help fetch UserInfo if id_token is insufficient
  */
-async function syncUserGroups(deps, userId, adminGroup) {
-    const { pool, userRepository } = deps;
+async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
+    const { pool, userRepository, oidcProviderRepository } = deps;
 
     if (!adminGroup) return;
 
     try {
         const { rows: allAccounts } = await pool.query(
-            'SELECT provider_id, id_token FROM "account" WHERE user_id = $1 ORDER BY updated_at DESC',
+            'SELECT provider_id, id_token, access_token FROM "account" WHERE user_id = $1 ORDER BY updated_at DESC',
             [userId]
         );
 
-        const oidcAccount = allAccounts.find(a => a.id_token);
+        const oidcAccount = allAccounts.find(a => a.provider_id.startsWith('oidc-'));
 
         if (!oidcAccount) {
-            log('info', `[AUTH] OIDC Sync: No account with id_token found for user ${userId}. Skipping group sync.`);
+            log('info', `[AUTH] OIDC Sync: No OIDC account found for user ${userId}. Skipping group sync.`);
             return;
         }
 
-        if (oidcAccount?.id_token) {
+        let groups = [];
+        let decodedPayload = null;
+
+        // 1. Try id_token first
+        if (oidcAccount.id_token) {
             try {
-                const payload = jose.decodeJwt(oidcAccount.id_token);
-                const now = Math.floor(Date.now() / 1000);
-                if (payload.exp && payload.exp < now) {
-                    log('info', `[AUTH] OIDC Sync: ID token for user ${userId} is expired. Skipping group sync.`);
-                    return;
-                }
-                const groupsClaim = payload.groups || [];
-                const groups = Array.isArray(groupsClaim) ? groupsClaim : [groupsClaim];
-
-                const currentRole = await userRepository.getUserRole(userId);
-
-                if (groups.includes(adminGroup)) {
-                    if (currentRole !== 'admin') {
-                        log('info', `[AUTH] OIDC Sync: Promoting user ${userId} to admin (Group: ${adminGroup})`);
-                        await userRepository.updateUserRole(userId, 'admin');
-                    }
-                } else {
-                    if (currentRole === 'admin') {
-                        log('info', `[AUTH] OIDC Sync: Revoking admin from user ${userId} (Not in group: ${adminGroup})`);
-                        await userRepository.updateUserRole(userId, 'user');
-                    }
-                }
+                decodedPayload = jose.decodeJwt(oidcAccount.id_token);
+                const groupsClaim = decodedPayload.groups || [];
+                groups = Array.isArray(groupsClaim) ? groupsClaim : [groupsClaim];
             } catch (e) {
                 log('error', `[AUTH] OIDC Sync: Failed to decode id_token for user ${userId}:`, e);
+            }
+        }
+
+        // 2. If no groups found in id_token and we have an access_token, try UserInfo
+        if (groups.length === 0 && oidcAccount.access_token && oidcProviderRepository) {
+            try {
+                const pid = providerId || oidcAccount.provider_id.replace('oidc-', '');
+                const provider = await oidcProviderRepository.getOidcProviderById(pid);
+                
+                if (provider && provider.userInfoEndpoint) {
+                    log('info', `[AUTH] OIDC Sync: No groups in id_token. Fetching from UserInfo: ${provider.userInfoEndpoint}`);
+                    const response = await fetch(provider.userInfoEndpoint, {
+                        headers: { 'Authorization': `Bearer ${oidcAccount.access_token}` }
+                    });
+                    
+                    if (response.ok) {
+                        const userInfo = await response.json();
+                        const groupsClaim = userInfo.groups || [];
+                        groups = Array.isArray(groupsClaim) ? groupsClaim : [groupsClaim];
+                        log('info', `[AUTH] OIDC Sync: Fetched ${groups.length} groups from UserInfo.`);
+                    }
+                }
+            } catch (error) {
+                log('error', `[AUTH] OIDC Sync: UserInfo fetch failed:`, error);
+            }
+        }
+
+        if (groups.length > 0) {
+            const currentRole = await userRepository.getUserRole(userId);
+            if (groups.includes(adminGroup)) {
+                if (currentRole !== 'admin') {
+                    log('info', `[AUTH] OIDC Sync: Promoting user ${userId} to admin (Group: ${adminGroup})`);
+                    await userRepository.updateUserRole(userId, 'admin');
+                }
+            } else {
+                if (currentRole === 'admin') {
+                    log('info', `[AUTH] OIDC Sync: Revoking admin from user ${userId} (Not in group: ${adminGroup})`);
+                    await userRepository.updateUserRole(userId, 'user');
+                }
             }
         }
     } catch (err) {
