@@ -64,7 +64,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
     setFormData({
       name: exerciseToEdit.name || '',
       category: exerciseToEdit.category || '',
-      calories_per_hour: exerciseToEdit.calories_per_hour || 0,
+      calories_per_hour: exerciseToEdit.calories_per_hour ?? 0,
       description: exerciseToEdit.description || '',
       level: exerciseToEdit.level?.toLowerCase() || '',
       force: exerciseToEdit.force?.toLowerCase() || '',
@@ -151,7 +151,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
               {t('exerciseCard.category', 'Category')}
             </Label>
             <Select
-              value={formData.category}
+              value={formData.category ?? undefined}
               onValueChange={(val) => handleFieldChange('category', val)}
             >
               <SelectTrigger className="col-span-3">
@@ -194,7 +194,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
               type="number"
               value={Math.round(
                 convertEnergy(
-                  formData.calories_per_hour || 0,
+                  formData.calories_per_hour ?? 0,
                   'kcal',
                   energyUnit
                 )
@@ -215,7 +215,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
               {t('exerciseCard.level', 'Level')}
             </Label>
             <Select
-              value={formData.level}
+              value={formData.level ?? undefined}
               onValueChange={(val) => handleFieldChange('level', val)}
             >
               <SelectTrigger className="col-span-3">
@@ -240,7 +240,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
               {t('exerciseCard.force', 'Force')}
             </Label>
             <Select
-              value={formData.force}
+              value={formData.force ?? undefined}
               onValueChange={(val) => handleFieldChange('force', val)}
             >
               <SelectTrigger className="col-span-3">
@@ -266,7 +266,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
               {t('exerciseCard.mechanic', 'Mechanic')}
             </Label>
             <Select
-              value={formData.mechanic}
+              value={formData.mechanic ?? undefined}
               onValueChange={(val) => handleFieldChange('mechanic', val)}
             >
               <SelectTrigger className="col-span-3">

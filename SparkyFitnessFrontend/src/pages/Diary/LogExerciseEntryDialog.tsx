@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useAuth } from '@/hooks/useAuth';
 import { error } from '@/utils/logging';
 import ExerciseHistoryDisplay from '../../components/ExerciseHistoryDisplay';
 import type { ExerciseToLog, WorkoutPresetSet } from '@/types/workout';
@@ -86,6 +87,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
 
   const { mutateAsync: createExerciseEntry, isPending: loading } =
     useCreateExerciseEntryMutation();
+  const { user } = useAuth();
 
   const [sets, setSets] = useState<WorkoutPresetSet[]>(() => {
     if (initialSets && initialSets.length > 0) {
@@ -101,9 +103,9 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
 
   const [caloriesBurnedInput, setCaloriesBurnedInput] = useState<number | ''>(
     () => {
-      if (exercise?.calories_per_hour && exercise.duration) {
+      if ((exercise?.calories_per_hour ?? 0) && exercise?.duration) {
         return Math.round(
-          (exercise.calories_per_hour / 60) * exercise.duration
+          ((exercise.calories_per_hour ?? 0) / 60) * exercise.duration
         );
       }
       return '';
@@ -213,7 +215,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   }, [previewUrl]);
 
   const handleSave = async () => {
-    if (!exercise) {
+    if (!exercise || !user?.id) {
       return;
     }
 
@@ -249,7 +251,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         ...(mappedDetails.length > 0 && { activity_details: mappedDetails }),
       };
 
-      await createExerciseEntry(entryData);
+      await createExerciseEntry({ ...entryData, user_id: user.id });
       onSaveSuccess();
       onClose();
     } catch (err) {

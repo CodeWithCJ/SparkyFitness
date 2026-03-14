@@ -6,11 +6,20 @@ import {
   ExerciseOwnershipFilter,
   HistoryImportEntry,
 } from '@/types/exercises';
+import {
+  CreateExercisesRequest,
+  UpdateExercisesRequest,
+  exercisesResponseSchema,
+} from '@workspace/shared';
+import { z } from 'zod';
 
 // Helper function to safely parse JSON strings that might be arrays
 export const parseJsonArray = (
-  value: string | string[] | undefined
+  value: string | string[] | undefined | null
 ): string[] | undefined => {
+  if (!value) {
+    return undefined;
+  }
   if (Array.isArray(value)) {
     return value;
   }
@@ -58,25 +67,6 @@ export const parseJsonArray = (
   return undefined;
 };
 
-export interface ExercisePayload {
-  name: string;
-  category: string;
-  calories_per_hour: number;
-  description?: string | null;
-  user_id?: string | null;
-  is_custom?: boolean;
-  shared_with_public?: boolean;
-  source?: string;
-  force?: string;
-  level?: string;
-  mechanic?: string;
-  equipment?: string[];
-  primary_muscles?: string[];
-  secondary_muscles?: string[];
-  instructions?: string[];
-  images?: string[];
-}
-
 export const loadExercises = async (
   searchTerm: string = '',
   categoryFilter: string = 'all',
@@ -96,8 +86,16 @@ export const loadExercises = async (
     method: 'GET',
   });
 
-  const parsedExercises = response.exercises.map((exercise: Exercise) => ({
+  const validatedResponse = z
+    .object({
+      exercises: z.array(exercisesResponseSchema),
+      totalCount: z.number(),
+    })
+    .parse(response);
+
+  const parsedExercises = validatedResponse.exercises.map((exercise) => ({
     ...exercise,
+    id: String(exercise.id),
     equipment: parseJsonArray(exercise.equipment),
     primary_muscles: parseJsonArray(exercise.primary_muscles),
     secondary_muscles: parseJsonArray(exercise.secondary_muscles),
@@ -106,44 +104,68 @@ export const loadExercises = async (
   }));
 
   return {
-    exercises: parsedExercises,
-    totalCount: response.totalCount,
+    exercises: parsedExercises as Exercise[],
+    totalCount: validatedResponse.totalCount,
   };
 };
 
 export const createExercise = async (
-  payload: ExercisePayload | FormData
+  payload: CreateExercisesRequest | FormData
 ): Promise<Exercise> => {
+  let response;
   if (payload instanceof FormData) {
-    return apiCall('/exercises', {
+    response = await apiCall('/exercises', {
       method: 'POST',
       body: payload,
       isFormData: true, // Custom flag to indicate FormData
     });
   } else {
-    return apiCall('/exercises', {
+    response = await apiCall('/exercises', {
       method: 'POST',
       body: payload,
     });
   }
+
+  const validated = exercisesResponseSchema.parse(response);
+  return {
+    ...validated,
+    id: String(validated.id),
+    equipment: parseJsonArray(validated.equipment),
+    primary_muscles: parseJsonArray(validated.primary_muscles),
+    secondary_muscles: parseJsonArray(validated.secondary_muscles),
+    instructions: parseJsonArray(validated.instructions),
+    images: parseJsonArray(validated.images),
+  } as Exercise;
 };
 
 export const updateExercise = async (
   id: string,
-  payload: Partial<ExercisePayload> | FormData
+  payload: UpdateExercisesRequest | FormData
 ): Promise<Exercise> => {
+  let response;
   if (payload instanceof FormData) {
-    return apiCall(`/exercises/${id}`, {
+    response = await apiCall(`/exercises/${id}`, {
       method: 'PUT',
       body: payload,
       isFormData: true,
     });
   } else {
-    return apiCall(`/exercises/${id}`, {
+    response = await apiCall(`/exercises/${id}`, {
       method: 'PUT',
       body: payload,
     });
   }
+
+  const validated = exercisesResponseSchema.parse(response);
+  return {
+    ...validated,
+    id: String(validated.id),
+    equipment: parseJsonArray(validated.equipment),
+    primary_muscles: parseJsonArray(validated.primary_muscles),
+    secondary_muscles: parseJsonArray(validated.secondary_muscles),
+    instructions: parseJsonArray(validated.instructions),
+    images: parseJsonArray(validated.images),
+  } as Exercise;
 };
 
 export const deleteExercise = async (
@@ -168,11 +190,22 @@ export const updateExerciseShareStatus = async (
     'exerciseData',
     JSON.stringify({ shared_with_public: sharedWithPublic })
   );
-  return apiCall(`/exercises/${id}`, {
+  const response = await apiCall(`/exercises/${id}`, {
     method: 'PUT',
     body: payload,
     isFormData: true,
   });
+
+  const validated = exercisesResponseSchema.parse(response);
+  return {
+    ...validated,
+    id: String(validated.id),
+    equipment: parseJsonArray(validated.equipment),
+    primary_muscles: parseJsonArray(validated.primary_muscles),
+    secondary_muscles: parseJsonArray(validated.secondary_muscles),
+    instructions: parseJsonArray(validated.instructions),
+    images: parseJsonArray(validated.images),
+  } as Exercise;
 };
 
 export const getExerciseDeletionImpact = async (
@@ -193,9 +226,32 @@ export const getExerciseDeletionImpact = async (
 export const getSuggestedExercises = async (
   limit: number
 ): Promise<{ recentExercises: Exercise[]; topExercises: Exercise[] }> => {
-  return apiCall(`/exercises/suggested?limit=${limit}`, {
+  const response = await apiCall(`/exercises/suggested?limit=${limit}`, {
     method: 'GET',
   });
+
+  const validated = z
+    .object({
+      recentExercises: z.array(exercisesResponseSchema),
+      topExercises: z.array(exercisesResponseSchema),
+    })
+    .parse(response);
+
+  const mapper = (ex: z.infer<typeof exercisesResponseSchema>) =>
+    ({
+      ...ex,
+      id: String(ex.id),
+      equipment: parseJsonArray(ex.equipment),
+      primary_muscles: parseJsonArray(ex.primary_muscles),
+      secondary_muscles: parseJsonArray(ex.secondary_muscles),
+      instructions: parseJsonArray(ex.instructions),
+      images: parseJsonArray(ex.images),
+    }) as Exercise;
+
+  return {
+    recentExercises: validated.recentExercises.map(mapper),
+    topExercises: validated.topExercises.map(mapper),
+  };
 };
 
 export const updateExerciseEntriesSnapshot = async (
@@ -211,15 +267,17 @@ export const getExerciseById = async (id: string): Promise<Exercise> => {
   const response = await apiCall(`/exercises/${id}`, {
     method: 'GET',
   });
+  const validated = exercisesResponseSchema.parse(response);
   // Ensure arrays are parsed correctly
   return {
-    ...response,
-    equipment: parseJsonArray(response.equipment),
-    primary_muscles: parseJsonArray(response.primary_muscles),
-    secondary_muscles: parseJsonArray(response.secondary_muscles),
-    instructions: parseJsonArray(response.instructions),
-    images: parseJsonArray(response.images),
-  };
+    ...validated,
+    id: String(validated.id),
+    equipment: parseJsonArray(validated.equipment),
+    primary_muscles: parseJsonArray(validated.primary_muscles),
+    secondary_muscles: parseJsonArray(validated.secondary_muscles),
+    instructions: parseJsonArray(validated.instructions),
+    images: parseJsonArray(validated.images),
+  } as Exercise;
 };
 
 export const importExercisesFromCSV = async (

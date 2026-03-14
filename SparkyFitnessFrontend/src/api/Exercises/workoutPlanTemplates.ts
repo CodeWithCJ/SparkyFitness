@@ -1,35 +1,46 @@
 import { apiCall } from '@/api/api';
 import type { WorkoutPlanTemplate } from '@/types/workout';
+import {
+  CreateWorkoutPlanTemplatesRequest,
+  UpdateWorkoutPlanTemplatesRequest,
+  workoutPlanTemplatesResponseSchema,
+} from '@workspace/shared';
+import { z } from 'zod';
 
 export const getWorkoutPlanTemplates = async (): Promise<
   WorkoutPlanTemplate[]
 > => {
-  return apiCall('/workout-plan-templates', {
+  const response = await apiCall('/workout-plan-templates', {
     method: 'GET',
   });
+  return z
+    .array(workoutPlanTemplatesResponseSchema)
+    .parse(response) as unknown as WorkoutPlanTemplate[];
 };
 
 export const createWorkoutPlanTemplate = async (
-  userId: string,
-  planData: Omit<
-    WorkoutPlanTemplate,
-    'id' | 'user_id' | 'created_at' | 'updated_at'
-  >
+  planData: CreateWorkoutPlanTemplatesRequest
 ): Promise<WorkoutPlanTemplate> => {
-  return apiCall('/workout-plan-templates', {
+  const response = await apiCall('/workout-plan-templates', {
     method: 'POST',
-    body: JSON.stringify({ ...planData, user_id: userId }),
+    body: JSON.stringify(planData),
   });
+  return workoutPlanTemplatesResponseSchema.parse(
+    response
+  ) as unknown as WorkoutPlanTemplate;
 };
 
 export const updateWorkoutPlanTemplate = async (
   id: string,
-  planData: Partial<WorkoutPlanTemplate>
+  planData: UpdateWorkoutPlanTemplatesRequest
 ): Promise<WorkoutPlanTemplate> => {
-  return apiCall(`/workout-plan-templates/${id}`, {
+  const response = await apiCall(`/workout-plan-templates/${id}`, {
     method: 'PUT',
     body: JSON.stringify(planData),
   });
+  return workoutPlanTemplatesResponseSchema.parse(
+    response
+  ) as unknown as WorkoutPlanTemplate;
 };
 
 export const deleteWorkoutPlanTemplate = async (

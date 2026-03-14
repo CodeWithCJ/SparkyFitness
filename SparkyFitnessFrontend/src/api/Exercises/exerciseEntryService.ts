@@ -3,20 +3,35 @@ import { parseJsonArray } from './exerciseService';
 import type { WorkoutPresetSet } from '@/types/workout';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
-import type { ExerciseEntry } from '@/types/diary';
-import type { GroupedExerciseEntry, LapDTO } from '@/types/exercises';
+import type {
+  Exercise,
+  ExerciseEntry,
+  GroupedExerciseEntry,
+  LapDTO,
+} from '@/types/exercises';
 import type { ExerciseProgressData } from '@/types/reports';
 import { ActivityDetailMetric } from '@/pages/Reports/ActivityReportVisualizer';
+import {
+  CreateExerciseEntriesRequest,
+  UpdateExerciseEntriesRequest,
+  exerciseEntriesResponseSchema,
+} from '@workspace/shared';
+import { z } from 'zod';
 
 export const getExerciseEntriesForDate = async (
   date: string
 ): Promise<GroupedExerciseEntry[]> => {
   const params = new URLSearchParams({ selectedDate: date });
-  const data = await apiCall(`/exercise-entries/by-date?${params.toString()}`, {
-    method: 'GET',
-    suppress404Toast: true,
-  });
-  return data || [];
+  const response = await apiCall(
+    `/exercise-entries/by-date?${params.toString()}`,
+    {
+      method: 'GET',
+      suppress404Toast: true,
+    }
+  );
+
+  const validated = z.array(exerciseEntriesResponseSchema).parse(response);
+  return validated as unknown as GroupedExerciseEntry[];
 };
 
 export const fetchExerciseEntries = async (
@@ -25,80 +40,107 @@ export const fetchExerciseEntries = async (
   const loggingLevel = getUserLoggingLevel();
   const response = await getExerciseEntriesForDate(selectedDate);
 
-  const parsedEntries: GroupedExerciseEntry[] = response.map((entry) => {
-    if (entry.type === 'preset') {
-      return {
-        ...(entry as unknown as GroupedExerciseEntry),
-        exercises: entry.exercises
-          ? entry.exercises.map((ex) => ({
-              ...ex,
-              sets: ex.sets ? ex.sets : [], // Parse sets if it's a JSON string
-              exercise_snapshot: {
-                ...ex.exercise_snapshot, // Use the existing snapshot
-                id: ex.exercise_snapshot.id ?? '',
-                name: ex.exercise_snapshot.name ?? '',
-                calories_per_hour: ex.exercise_snapshot.calories_per_hour ?? 0,
-                category: ex.exercise_snapshot.category ?? '',
-                equipment: parseJsonArray(ex.exercise_snapshot.equipment),
+  const parsedEntries: GroupedExerciseEntry[] = (response || []).map(
+    (entry) => {
+      if (entry.type === 'preset') {
+        return {
+          ...entry,
+          exercises: entry.exercises
+            ? entry.exercises.map((ex) => ({
+                ...ex,
+                sets: ex.sets ? ex.sets : [],
+                exercise_snapshot: {
+                  ...ex.exercise_snapshot,
+                  id: ex.exercise_snapshot.id ?? '',
+                  name: ex.exercise_snapshot.name ?? '',
+                  description: ex.exercise_snapshot.description ?? null,
+                  calories_per_hour:
+                    ex.exercise_snapshot.calories_per_hour ?? 0,
+                  category: ex.exercise_snapshot.category ?? '',
+                  equipment: parseJsonArray(ex.exercise_snapshot.equipment),
+                  primary_muscles: parseJsonArray(
+                    ex.exercise_snapshot.primary_muscles
+                  ),
+                  secondary_muscles: parseJsonArray(
+                    ex.exercise_snapshot.secondary_muscles
+                  ),
+                  instructions: parseJsonArray(
+                    ex.exercise_snapshot.instructions
+                  ),
+                  images: parseJsonArray(ex.exercise_snapshot.images),
+                } as Exercise,
+                activity_details: ex.activity_details
+                  ? ex.activity_details.map((detail) => ({
+                      id: detail.id ?? '',
+                      key: detail.detail_type ?? '',
+                      value:
+                        typeof detail.detail_data === 'object'
+                          ? JSON.stringify(detail.detail_data, null, 2)
+                          : String(detail.detail_data),
+                      provider_name: detail.provider_name,
+                      detail_type: detail.detail_type ?? '',
+                    }))
+                  : [],
+              }))
+            : [],
+        };
+      } else {
+        return {
+          ...entry,
+          sets: entry.sets ? entry.sets : [],
+          exercise_snapshot: (entry.exercise_snapshot
+            ? {
+                ...entry.exercise_snapshot,
+                id: entry.exercise_snapshot.id ?? '',
+                name: entry.exercise_snapshot.name ?? '',
+                description: entry.exercise_snapshot.description ?? null,
+                category: entry.exercise_snapshot.category ?? '',
+                calories_per_hour:
+                  entry.exercise_snapshot.calories_per_hour ?? 0,
+                equipment: parseJsonArray(entry.exercise_snapshot.equipment),
                 primary_muscles: parseJsonArray(
-                  ex.exercise_snapshot.primary_muscles
+                  entry.exercise_snapshot.primary_muscles
                 ),
                 secondary_muscles: parseJsonArray(
-                  ex.exercise_snapshot.secondary_muscles
+                  entry.exercise_snapshot.secondary_muscles
                 ),
-                instructions: parseJsonArray(ex.exercise_snapshot.instructions),
-                images: parseJsonArray(ex.exercise_snapshot.images),
-              },
-              activity_details: ex.activity_details
-                ? ex.activity_details.map((detail) => ({
-                    id: detail.id ?? '',
-                    key: detail.detail_type ?? '',
-                    value:
-                      typeof detail.detail_data === 'object'
-                        ? JSON.stringify(detail.detail_data, null, 2)
-                        : String(detail.detail_data),
-                    provider_name: detail.provider_name,
-                    detail_type: detail.detail_type ?? '',
-                  }))
-                : [],
-            }))
-          : [],
-      };
-    } else {
-      return {
-        ...entry,
-        sets: entry.sets ? entry.sets : [], // Parse sets if it's a JSON string
-        exercise_snapshot: {
-          ...entry.exercise_snapshot, // Use the existing snapshot
-          id: entry.exercise_snapshot?.id ?? '',
-          name: entry.exercise_snapshot?.name ?? '',
-          category: entry.exercise_snapshot?.category ?? '',
-          calories_per_hour: entry.exercise_snapshot?.calories_per_hour ?? 0,
-          equipment: parseJsonArray(entry.exercise_snapshot?.equipment),
-          primary_muscles: parseJsonArray(
-            entry.exercise_snapshot?.primary_muscles
-          ),
-          secondary_muscles: parseJsonArray(
-            entry.exercise_snapshot?.secondary_muscles
-          ),
-          instructions: parseJsonArray(entry.exercise_snapshot?.instructions),
-          images: parseJsonArray(entry.exercise_snapshot?.images),
-        },
-        activity_details: entry.activity_details
-          ? entry.activity_details.map((detail) => ({
-              id: detail.id ?? '',
-              key: detail.detail_type ?? '',
-              value:
-                typeof detail.detail_data === 'object'
-                  ? JSON.stringify(detail.detail_data, null, 2)
-                  : String(detail.detail_data),
-              provider_name: detail.provider_name,
-              detail_type: detail.detail_type ?? '',
-            }))
-          : [],
-      };
+                instructions: parseJsonArray(
+                  entry.exercise_snapshot.instructions
+                ),
+                images: parseJsonArray(entry.exercise_snapshot.images),
+              }
+            : {
+                id: '',
+                name: '',
+                category: '',
+                calories_per_hour: 0,
+                description: null,
+                equipment: [],
+                primary_muscles: [],
+                secondary_muscles: [],
+                instructions: [],
+                images: [],
+                user_id: null,
+                is_custom: false,
+                created_at: '',
+                updated_at: '',
+              }) as Exercise,
+          activity_details: entry.activity_details
+            ? entry.activity_details.map((detail) => ({
+                id: detail.id ?? '',
+                key: detail.detail_type ?? '',
+                value:
+                  typeof detail.detail_data === 'object'
+                    ? JSON.stringify(detail.detail_data, null, 2)
+                    : String(detail.detail_data),
+                provider_name: detail.provider_name,
+                detail_type: detail.detail_type ?? '',
+              }))
+            : [],
+        };
+      }
     }
-  });
+  ) as GroupedExerciseEntry[];
 
   debug(
     loggingLevel,
@@ -108,22 +150,12 @@ export const fetchExerciseEntries = async (
   return parsedEntries;
 };
 
-export const createExerciseEntry = async (payload: {
-  exercise_id: string;
-  entry_date: string;
-  notes?: string;
-  sets: WorkoutPresetSet[];
-  image_url?: string;
-  calories_burned?: number;
-  distance?: number | null;
-  avg_heart_rate?: number | null;
-  imageFile?: File | null;
-  activity_details?: {
-    provider_name?: string;
-    detail_type: string;
-    detail_data: string;
-  }[]; // New field
-}): Promise<ExerciseEntry> => {
+export const createExerciseEntry = async (
+  payload: CreateExerciseEntriesRequest & {
+    sets: WorkoutPresetSet[];
+    imageFile?: File | null;
+  }
+): Promise<ExerciseEntry> => {
   const { imageFile, ...entryData } = payload;
 
   if (imageFile) {
@@ -146,17 +178,23 @@ export const createExerciseEntry = async (payload: {
       }
     });
 
-    return apiCall('/exercise-entries', {
+    const response = await apiCall('/exercise-entries', {
       method: 'POST',
       body: formData,
       isFormData: true, // Explicitly mark as FormData
     });
+    return exerciseEntriesResponseSchema.parse(
+      response
+    ) as unknown as ExerciseEntry;
   } else {
-    return apiCall('/exercise-entries', {
+    const response = await apiCall('/exercise-entries', {
       method: 'POST',
       body: entryData,
       headers: { 'Content-Type': 'application/json' },
     });
+    return exerciseEntriesResponseSchema.parse(
+      response
+    ) as unknown as ExerciseEntry;
   }
 };
 
@@ -187,22 +225,10 @@ export const deleteExercisePresetEntry = async (
   });
 };
 
-export interface UpdateExerciseEntryPayload {
-  duration_minutes?: number;
-  calories_burned?: number;
-  notes?: string;
+export type UpdateExerciseEntryPayload = UpdateExerciseEntriesRequest & {
   sets?: WorkoutPresetSet[];
-  image_url?: string | null;
-  distance?: number | null;
-  avg_heart_rate?: number | null;
   imageFile?: File | null;
-  activity_details?: {
-    id?: string;
-    provider_name?: string;
-    detail_type: string;
-    detail_data: string;
-  }[];
-}
+};
 
 export const updateExerciseEntry = async (
   entryId: string,
@@ -231,20 +257,26 @@ export const updateExerciseEntry = async (
       }
     });
 
-    return apiCall(`/exercise-entries/${entryId}`, {
+    const response = await apiCall(`/exercise-entries/${entryId}`, {
       method: 'PUT',
       body: formData,
       isFormData: true,
     });
+    return exerciseEntriesResponseSchema.parse(
+      response
+    ) as unknown as ExerciseEntry;
   } else {
     // workaround because the backend deletes the image when an url is in the request
     const { image_url, ...dataToSend } = entryData;
     // If no new image, send as JSON
-    return apiCall(`/exercise-entries/${entryId}`, {
+    const response = await apiCall(`/exercise-entries/${entryId}`, {
       method: 'PUT',
       body: dataToSend,
       headers: { 'Content-Type': 'application/json' },
     });
+    return exerciseEntriesResponseSchema.parse(
+      response
+    ) as unknown as ExerciseEntry;
   }
 };
 
@@ -286,7 +318,8 @@ export const getExerciseHistory = async (
       method: 'GET',
     }
   );
-  return response;
+  const validated = z.array(exerciseEntriesResponseSchema).parse(response);
+  return validated as unknown as ExerciseEntry[];
 };
 
 export const fetchExerciseDetails = async (

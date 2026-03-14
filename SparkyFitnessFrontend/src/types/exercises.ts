@@ -1,5 +1,67 @@
 import { ActivityDetailKeyValuePair } from '@/components/ExerciseActivityDetailsEditor';
+import { ExercisesResponse, ExerciseEntriesResponse } from '@workspace/shared';
 import { WorkoutPresetSet } from './workout';
+
+/**
+ * Frontend representation of an Exercise - extends the API response schema
+ * but overrides JSON-serialized fields (equipment, muscles, etc.) with
+ * their parsed array equivalents after `parseJsonArray` processing.
+ */
+export type Exercise = Omit<
+  ExercisesResponse,
+  | 'id'
+  | 'equipment'
+  | 'primary_muscles'
+  | 'secondary_muscles'
+  | 'instructions'
+  | 'images'
+  | 'created_at'
+  | 'updated_at'
+  | 'description'
+> & {
+  id: string;
+  equipment?: string[];
+  primary_muscles?: string[];
+  secondary_muscles?: string[];
+  instructions?: string[];
+  images?: string[];
+  created_at?: string;
+  updated_at?: string;
+  description?: string | null;
+  // Frontend-only fields
+  duration_min?: number;
+  tags?: string[];
+};
+
+/**
+ * Frontend representation of an ExerciseEntry - derives from the API schema
+ * but uses the parsed Exercise snapshot and WorkoutPresetSet[] for sets.
+ */
+export type ExerciseEntry = Omit<
+  ExerciseEntriesResponse,
+  | 'id'
+  | 'entry_date'
+  | 'created_at'
+  | 'updated_at'
+  | 'sets'
+  | 'activity_details'
+  | 'workout_plan_assignment_id'
+  | 'created_by_user_id'
+  | 'updated_by_user_id'
+  | 'exercise_id'
+  | 'exercise_preset_entry_id'
+  | 'user_id'
+> & {
+  id: string;
+  exercise_id: string;
+  entry_date: string;
+  created_at: string;
+  updated_at?: string;
+  exercise_preset_entry_id?: string;
+  sets: WorkoutPresetSet[];
+  exercise_snapshot: Exercise;
+  activity_details?: ActivityDetailKeyValuePair[];
+};
 
 export interface GroupedExerciseEntry {
   type: 'individual' | 'preset';
@@ -40,48 +102,6 @@ export interface GroupedExerciseEntry {
   // Array of individual exercise entries within this preset
   exercises?: ExerciseEntry[]; // This will hold the individual exercise entries
   activity_details?: ActivityDetailKeyValuePair[];
-}
-
-export interface ExerciseEntry {
-  id: string;
-  exercise_id: string;
-  duration_minutes?: number;
-  calories_burned: number;
-  entry_date: string;
-  notes?: string;
-  sets: WorkoutPresetSet[];
-  image_url?: string;
-  distance?: number;
-  avg_heart_rate?: number;
-  exercise_snapshot: Exercise; // Renamed from 'exercises' to 'exercise_snapshot'
-  activity_details?: ActivityDetailKeyValuePair[]; // New field
-  exercise_preset_entry_id?: string; // New field
-  created_at: string; // Add created_at for sorting
-}
-
-export interface Exercise {
-  id: string;
-  source?: string; // e.g., 'manual', 'wger', 'free-exercise-db'
-  source_id?: string; // ID from the external source
-  name: string;
-  force?: string; // e.g., 'static', 'pull', 'push'
-  level?: string; // e.g., 'beginner', 'intermediate', 'expert'
-  mechanic?: string; // e.g., 'isolation', 'compound'
-  equipment?: string[]; // Stored as JSON array of strings
-  primary_muscles?: string[]; // Stored as JSON array of strings
-  secondary_muscles?: string[]; // Stored as JSON array of strings
-  instructions?: string[]; // Stored as JSON array of strings
-  category: string; // e.g., 'strength', 'cardio'
-  images?: string[]; // Stored as JSON array of URLs (local paths after download)
-  calories_per_hour: number;
-  description?: string;
-  duration_min?: number; // Added duration_min
-  user_id?: string;
-  is_custom?: boolean;
-  shared_with_public?: boolean;
-  created_at?: string;
-  updated_at?: string;
-  tags?: string[];
 }
 
 export interface HistoryImportEntry {

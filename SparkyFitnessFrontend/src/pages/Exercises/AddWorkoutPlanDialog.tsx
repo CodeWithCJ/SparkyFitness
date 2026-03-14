@@ -895,7 +895,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
     if (initialData && onUpdate) {
       onUpdate(initialData.id, planData);
     } else if (onSave) {
-      onSave(planData);
+      onSave({ ...planData, start_date: planData.start_date ?? null });
     }
     onClose();
   };

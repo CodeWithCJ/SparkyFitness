@@ -87,7 +87,9 @@ const EditExerciseEntryDialog = ({
   );
   const [distanceInput, setDistanceInput] = useState<number | ''>(
     entry.distance !== undefined
-      ? Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1))
+      ? Number(
+          convertDistance(entry.distance ?? 0, 'km', distanceUnit).toFixed(1)
+        )
       : ''
   );
   const [avgHeartRateInput, setAvgHeartRateInput] = useState<number | ''>(
@@ -239,7 +241,7 @@ const EditExerciseEntryDialog = ({
         exerciseDetailsOptions(entry.exercise_id)
       );
 
-      const caloriesPerHour = exerciseData?.calories_per_hour || 300;
+      const caloriesPerHour = exerciseData?.calories_per_hour ?? 300;
       const totalDurationFromSets = sets.reduce(
         (acc, set) => acc + (set.duration || 0),
         0
@@ -259,6 +261,15 @@ const EditExerciseEntryDialog = ({
         caloriesBurned
       );
 
+      const mappedDetails = activityDetails
+        .map((detail) => ({
+          id: detail.id,
+          provider_name: detail.provider_name,
+          detail_type: detail.key || detail.detail_type || '',
+          detail_data: detail.value,
+        }))
+        .filter((detail) => detail.detail_type !== '');
+
       await updateExerciseEntry({
         id: entry.id,
         data: {
@@ -276,13 +287,8 @@ const EditExerciseEntryDialog = ({
               ? null
               : convertDistance(Number(distanceInput), distanceUnit, 'km'),
           avg_heart_rate:
-            avgHeartRateInput === '' ? 0 : Number(avgHeartRateInput),
-          activity_details: activityDetails.map((detail) => ({
-            id: detail.id,
-            provider_name: detail.provider_name,
-            detail_type: detail.key, // Use key as detail_type
-            detail_data: detail.value, // Send the raw value, backend will handle JSONB storage
-          })),
+            avgHeartRateInput === '' ? null : Number(avgHeartRateInput),
+          ...(mappedDetails.length > 0 && { activity_details: mappedDetails }),
         },
       });
 

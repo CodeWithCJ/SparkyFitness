@@ -1,4 +1,9 @@
 import { Exercise } from './exercises';
+import {
+  WorkoutPresetsResponse,
+  WorkoutPlanTemplatesResponse,
+  WorkoutPlanTemplateAssignmentsResponse,
+} from '@workspace/shared';
 
 export interface PresetExercise {
   id: string;
@@ -40,16 +45,14 @@ export interface WorkoutPresetExercise {
   sets: WorkoutPresetSet[];
 }
 
-export interface WorkoutPreset {
+export type WorkoutPreset = Omit<
+  WorkoutPresetsResponse,
+  'id' | 'user_id' | 'exercises'
+> & {
   id: number | string;
   user_id: string;
-  name: string;
-  description?: string;
-  is_public?: boolean;
-  created_at?: string;
-  updated_at?: string;
   exercises: WorkoutPresetExercise[];
-}
+};
 
 export interface PaginatedWorkoutPresets {
   presets: WorkoutPreset[];
@@ -58,31 +61,41 @@ export interface PaginatedWorkoutPresets {
   limit: number;
 }
 
-export interface WorkoutPlanAssignment {
+export type WorkoutPlanAssignment = Omit<
+  WorkoutPlanTemplateAssignmentsResponse,
+  | 'id'
+  | 'template_id'
+  | 'workout_preset_id'
+  | 'exercise_id'
+  | 'sets'
+  | 'workout_preset'
+  | 'exercise'
+  | 'created_at'
+  | 'updated_at'
+  | 'sort_order'
+> & {
   id?: string;
   template_id: string;
-  day_of_week: number;
   workout_preset_id?: string;
   workout_preset_name?: string; // Populated from backend join
   exercise_id?: string;
   exercise_name?: string; // Populated from backend join
   sets: WorkoutPresetSet[];
-  created_at?: string;
-  updated_at?: string;
-}
+  created_at?: string | null;
+  updated_at?: string | null;
+  sort_order?: number | null;
+};
 
-export interface WorkoutPlanTemplate {
+export type WorkoutPlanTemplate = Omit<
+  WorkoutPlanTemplatesResponse,
+  'id' | 'user_id' | 'assignments' | 'created_at' | 'updated_at'
+> & {
   id: string;
   user_id: string;
-  plan_name: string;
-  description?: string;
-  start_date?: string;
-  end_date?: string | null;
-  is_active?: boolean;
-  created_at?: string;
-  updated_at?: string;
   assignments?: WorkoutPlanAssignment[];
-}
+  created_at?: string | null;
+  updated_at?: string | null;
+};
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
 export interface ExerciseToLog extends Exercise {

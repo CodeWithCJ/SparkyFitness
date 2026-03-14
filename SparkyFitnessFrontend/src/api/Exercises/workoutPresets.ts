@@ -1,41 +1,64 @@
 import { apiCall } from '@/api/api';
 import type { PaginatedWorkoutPresets, WorkoutPreset } from '@/types/workout';
+import {
+  CreateWorkoutPresetsRequest,
+  UpdateWorkoutPresetsRequest,
+  workoutPresetsResponseSchema,
+} from '@workspace/shared';
+import { z } from 'zod';
 
 export const getWorkoutPresets = async (
   page: number,
   limit: number
 ): Promise<PaginatedWorkoutPresets> => {
-  return apiCall('/workout-presets', {
+  const response = await apiCall('/workout-presets', {
     method: 'GET',
     params: { page, limit },
   });
+  return z
+    .object({
+      presets: z.array(workoutPresetsResponseSchema),
+      total: z.number(),
+      page: z.number(),
+      limit: z.number(),
+    })
+    .parse(response) as unknown as PaginatedWorkoutPresets;
 };
 
 export const getWorkoutPresetById = async (
   id: string
 ): Promise<WorkoutPreset> => {
-  return apiCall(`/workout-presets/${id}`, {
+  const response = await apiCall(`/workout-presets/${id}`, {
     method: 'GET',
   });
+  return workoutPresetsResponseSchema.parse(
+    response
+  ) as unknown as WorkoutPreset;
 };
 
 export const createWorkoutPreset = async (
-  presetData: Omit<WorkoutPreset, 'id' | 'created_at' | 'updated_at'>
+  presetData: CreateWorkoutPresetsRequest
 ): Promise<WorkoutPreset> => {
-  return apiCall('/workout-presets', {
+  const response = await apiCall('/workout-presets', {
     method: 'POST',
     body: JSON.stringify(presetData),
   });
+  return workoutPresetsResponseSchema.parse(
+    response
+  ) as unknown as WorkoutPreset;
 };
 
 export const updateWorkoutPreset = async (
   id: string,
-  presetData: Partial<WorkoutPreset>
+  presetData: UpdateWorkoutPresetsRequest
 ): Promise<WorkoutPreset> => {
-  return apiCall(`/workout-presets/${id}`, {
+  const response = await apiCall(`/workout-presets/${id}`, {
     method: 'PUT',
     body: JSON.stringify(presetData),
   });
+  return workoutPresetsResponseSchema.parse(
+    response
+  ) as unknown as WorkoutPreset;
 };
 
 export const deleteWorkoutPreset = async (
@@ -59,8 +82,11 @@ export const searchWorkoutPresets = async (
   if (limit !== undefined) {
     params.limit = limit;
   }
-  return apiCall('/workout-presets/search', {
+  const response = await apiCall('/workout-presets/search', {
     method: 'GET',
     params: params,
   });
+  return z
+    .array(workoutPresetsResponseSchema)
+    .parse(response) as unknown as WorkoutPreset[];
 };

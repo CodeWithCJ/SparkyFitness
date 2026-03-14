@@ -208,7 +208,7 @@ const WorkoutPlansManager = () => {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id={`plan-active-${plan.id}`}
-                      checked={plan.is_active}
+                      checked={plan.is_active ?? undefined}
                       onCheckedChange={(checked) =>
                         handleTogglePlanActive(plan.id, checked)
                       }

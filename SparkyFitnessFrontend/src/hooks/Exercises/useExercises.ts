@@ -20,7 +20,6 @@ import {
   updateExerciseShareStatus,
   getExerciseDeletionImpact,
   updateExerciseEntriesSnapshot,
-  ExercisePayload,
   importExercisesFromJson,
   importExerciseHistory,
   getExerciseById,
@@ -36,6 +35,10 @@ import {
 import { ExerciseOwnershipFilter } from '@/types/exercises';
 import { getComparisonDates } from '@/utils/reportUtil';
 import { useMemo } from 'react';
+import {
+  CreateExercisesRequest,
+  UpdateExercisesRequest,
+} from '@workspace/shared';
 
 // --- Queries ---
 
@@ -93,7 +96,7 @@ export const useCreateExerciseMutation = () => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: (payload: ExercisePayload | FormData) =>
+    mutationFn: (payload: CreateExercisesRequest | FormData) =>
       createExercise(payload),
     onSuccess: () => {
       return queryClient.invalidateQueries({
@@ -117,7 +120,7 @@ export const useUpdateExerciseMutation = () => {
       payload,
     }: {
       id: string;
-      payload: Partial<ExercisePayload> | FormData;
+      payload: UpdateExercisesRequest | FormData;
     }) => updateExercise(id, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: exerciseKeys.lists() });

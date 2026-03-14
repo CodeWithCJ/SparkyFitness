@@ -425,7 +425,7 @@ const ExerciseCard = ({
                 return (
                   <ExerciseEntryDisplay
                     key={entry.id}
-                    exerciseEntry={entry as ExerciseEntry} // Cast to ExerciseEntry
+                    exerciseEntry={entry as unknown as ExerciseEntry}
                     currentUserId={currentUserId}
                     handleEdit={handleEdit}
                     handleDelete={handleDeleteExerciseEntry} // Pass the handler for individual entries

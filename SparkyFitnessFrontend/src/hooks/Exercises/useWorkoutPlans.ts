@@ -51,7 +51,7 @@ export const useCreateWorkoutPlanTemplateMutation = () => {
         WorkoutPlanTemplate,
         'id' | 'user_id' | 'created_at' | 'updated_at'
       >;
-    }) => createWorkoutPlanTemplate(userId, data),
+    }) => createWorkoutPlanTemplate({ ...data, user_id: userId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: workoutPlanKeys.lists() });
     },
@@ -79,7 +79,10 @@ export const useUpdateWorkoutPlanTemplateMutation = () => {
     }: {
       id: string;
       data: Partial<WorkoutPlanTemplate>;
-    }) => updateWorkoutPlanTemplate(id, data),
+    }) => {
+      const { id: _id, assignments: _assignments, ...rest } = data;
+      return updateWorkoutPlanTemplate(id, rest);
+    },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: workoutPlanKeys.lists() });
       queryClient.invalidateQueries({

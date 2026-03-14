@@ -65,8 +65,16 @@ export const useUpdateWorkoutPresetMutation = () => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<WorkoutPreset> }) =>
-      updateWorkoutPreset(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<WorkoutPreset>;
+    }) => {
+      const { id: _id, exercises: _exercises, ...rest } = data;
+      return updateWorkoutPreset(id, rest);
+    },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: presetKeys.lists() });
       queryClient.invalidateQueries({
