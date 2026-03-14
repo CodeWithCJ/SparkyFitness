@@ -234,7 +234,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         )}
         {/* Macros Section - 2x2 grid in one card */}
         {summary.foodEntries.length > 0 ? (
-          <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm flex-row flex-wrap justify-between">
+          <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
+            <Text className="text-md font-bold text-text-secondary mb-2 px-1">Macronutrients</Text>
+            <View className="flex-row flex-wrap justify-between">
             <MacroCard
               label="Protein"
               consumed={summary.protein.consumed}
@@ -263,6 +265,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               color={fiberColor}
               overfillColor={progressTrackOverfillColor}
             />
+            </View>
           </View>
         ) : null}
 
@@ -296,7 +299,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           disableDecrement={summary.waterConsumed <= 0}
         />
 
-        <Text className="text-text-primary text-xl font-bold mt-4 mb-2">Health Trends</Text>
+        <Text className="text-text-primary text-xl font-bold mt-24 mb-2">Health Trends</Text>
         <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />
 
         <HealthTrendsPager
