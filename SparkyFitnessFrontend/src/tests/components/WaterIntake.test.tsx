@@ -2,7 +2,10 @@ import { screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import WaterIntake from '@/pages/Diary/WaterIntake';
 import { useWaterContainer } from '@/contexts/WaterContainerContext';
-import { useUpdateWaterIntakeMutation } from '@/hooks/Diary/useWaterIntake';
+import {
+  useWaterIntakeQuery,
+  useUpdateWaterIntakeMutation,
+} from '@/hooks/Diary/useWaterIntake';
 import { renderWithClient } from '../test-utils';
 
 // Mock hooks and contexts
@@ -44,8 +47,8 @@ jest.mock('@/contexts/WaterContainerContext', () => ({
 }));
 
 jest.mock('@/hooks/Diary/useWaterIntake', () => ({
-  useWaterGoalQuery: () => ({ data: 2000 }),
-  useWaterIntakeQuery: () => ({ data: 500 }),
+  useWaterGoalQuery: jest.fn().mockReturnValue({ data: 2000 }),
+  useWaterIntakeQuery: jest.fn().mockReturnValue({ data: 500 }),
   useUpdateWaterIntakeMutation: jest.fn(),
 }));
 
@@ -83,6 +86,7 @@ describe('WaterIntake Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (useWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 500 });
     (useWaterContainer as jest.Mock).mockReturnValue({
       activeContainer: mockContainers[0],
       containers: mockContainers,
@@ -134,8 +138,7 @@ describe('WaterIntake Component', () => {
 
   it('disables the minus button when intake is 0', () => {
     // Override the mock to simulate zero water intake for this test
-    const useWaterIntakeModule = require('@/hooks/Diary/useWaterIntake');
-    useWaterIntakeModule.useWaterIntakeQuery = () => ({ data: 0 });
+    (useWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 0 });
 
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
