@@ -34,7 +34,6 @@ import LoginModal from './src/components/LoginModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
 import { saveServerConfig, getActiveServerConfig, loadBackgroundSyncEnabled } from './src/services/storage';
-import { loadDraft, clearDraft } from './src/services/workoutDraftService';
 import { notifyNoConfigs } from './src/services/api/authService';
 import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
 import { startObservers, stopObservers } from './src/services/healthConnectService';
@@ -120,63 +119,7 @@ function AppContent() {
     navigation.getParent()?.navigate('FoodSearch', { date });
   }, [getActiveDiaryDate]);
 
-  const handleAddWorkout = useCallback(async () => {
-    const navigation = navigationRef.current;
-    if (!navigation) return;
-
-    const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
-    if (!isConnected) {
-      Alert.alert(
-        'No Server Connected',
-        'Configure your server connection in Settings to start a workout.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Go to Settings',
-            onPress: () => navigation.getParent()?.navigate('Tabs', { screen: 'Settings' }),
-          },
-        ],
-      );
-      return;
-    }
-
-    const draft = await loadDraft();
-    if (draft && draft.type === 'activity' && draft.exerciseId) {
-      Alert.alert('Activity in Progress', 'You have an unsaved activity draft.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Discard & Start Workout',
-          style: 'destructive',
-          onPress: async () => {
-            await clearDraft();
-            navigation.getParent()?.navigate('WorkoutForm');
-          },
-        },
-      ]);
-      return;
-    }
-    if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
-      Alert.alert('Resume Workout?', 'You have a workout in progress.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start Fresh',
-          style: 'destructive',
-          onPress: async () => {
-            await clearDraft();
-            navigation.getParent()?.navigate('WorkoutForm');
-          },
-        },
-        {
-          text: 'Resume',
-          onPress: () => navigation.getParent()?.navigate('WorkoutForm'),
-        },
-      ]);
-    } else {
-      navigation.getParent()?.navigate('WorkoutForm');
-    }
-  }, []);
-
-  const handleAddActivity = useCallback(async () => {
+  const handleAddExercise = useCallback(() => {
     const navigation = navigationRef.current;
     if (!navigation) return;
     const date = getActiveDiaryDate();
@@ -185,7 +128,7 @@ function AppContent() {
     if (!isConnected) {
       Alert.alert(
         'No Server Connected',
-        'Configure your server connection in Settings to log an activity.',
+        'Configure your server connection in Settings to add an exercise.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -197,40 +140,7 @@ function AppContent() {
       return;
     }
 
-    const draft = await loadDraft();
-    if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
-      Alert.alert('Workout in Progress', 'You have an unsaved workout draft.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Discard & Log Activity',
-          style: 'destructive',
-          onPress: async () => {
-            await clearDraft();
-            navigation.getParent()?.navigate('ActivityForm', { date });
-          },
-        },
-      ]);
-      return;
-    }
-    if (draft && draft.type === 'activity' && draft.exerciseId) {
-      Alert.alert('Resume Activity?', 'You have an activity in progress.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start Fresh',
-          style: 'destructive',
-          onPress: async () => {
-            await clearDraft();
-            navigation.getParent()?.navigate('ActivityForm', { date });
-          },
-        },
-        {
-          text: 'Resume',
-          onPress: () => navigation.getParent()?.navigate('ActivityForm'),
-        },
-      ]);
-    } else {
-      navigation.getParent()?.navigate('ActivityForm', { date });
-    }
+    navigation.getParent()?.navigate('ExerciseSearch', { mode: 'entry', date });
   }, [getActiveDiaryDate]);
 
   useEffect(() => {
@@ -462,7 +372,7 @@ function AppContent() {
             }}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddExercise={handleAddExercise} />
         <LoginModal
           visible={showLoginModal}
           defaultConfigId={expiredConfigId}

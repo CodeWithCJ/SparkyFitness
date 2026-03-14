@@ -6,6 +6,7 @@ import { weightFromKg } from '../utils/unitConversions';
 import type { Exercise } from '../types/exercise';
 import type { WorkoutDraft, WorkoutDraftSet } from '../types/drafts';
 import type { PresetSessionResponse } from '@workspace/shared';
+import type { WorkoutPreset } from '../types/workoutPresets';
 
 export type { WorkoutDraft, WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 
@@ -32,6 +33,7 @@ function createEmptySet(): WorkoutDraftSet {
 
 type WorkoutFormAction =
   | { type: 'RESTORE_DRAFT'; draft: WorkoutDraft }
+  | { type: 'SET_DATE'; date: string }
   | { type: 'SET_NAME'; name: string }
   | { type: 'ADD_EXERCISE'; exercise: Exercise }
   | { type: 'REMOVE_EXERCISE'; clientId: string }
@@ -39,12 +41,16 @@ type WorkoutFormAction =
   | { type: 'REMOVE_SET'; exerciseClientId: string; setClientId: string }
   | { type: 'UPDATE_SET_FIELD'; exerciseClientId: string; setClientId: string; field: 'weight' | 'reps'; value: string }
   | { type: 'RESET' }
-  | { type: 'POPULATE'; session: PresetSessionResponse; weightUnit: 'kg' | 'lbs' };
+  | { type: 'POPULATE'; session: PresetSessionResponse; weightUnit: 'kg' | 'lbs' }
+  | { type: 'POPULATE_FROM_PRESET'; preset: WorkoutPreset; weightUnit: 'kg' | 'lbs'; date?: string };
 
 export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormAction): WorkoutDraft {
   switch (action.type) {
     case 'RESTORE_DRAFT':
       return action.draft;
+
+    case 'SET_DATE':
+      return { ...state, entryDate: action.date };
 
     case 'SET_NAME':
       return { ...state, name: action.name };
@@ -138,6 +144,26 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
         })),
       };
 
+    case 'POPULATE_FROM_PRESET':
+      return {
+        type: 'workout',
+        name: action.preset.name,
+        entryDate: action.date ?? getTodayDate(),
+        exercises: action.preset.exercises.map(exercise => ({
+          clientId: generateClientId(),
+          exerciseId: exercise.exercise_id,
+          exerciseName: exercise.exercise_name,
+          exerciseCategory: null,
+          sets: exercise.sets.map(set => ({
+            clientId: generateClientId(),
+            weight: set.weight != null
+              ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
+              : '',
+            reps: set.reps != null ? String(set.reps) : '',
+          })),
+        })),
+      };
+
     default:
       return state;
   }
@@ -147,10 +173,14 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
 
 interface UseWorkoutFormOptions {
   isEditMode?: boolean;
+  skipDraftLoad?: boolean;
+  initialDate?: string;
 }
 
 export function useWorkoutForm(options?: UseWorkoutFormOptions) {
   const isEditMode = options?.isEditMode ?? false;
+  const skipDraftLoad = options?.skipDraftLoad ?? false;
+  const initialDate = options?.initialDate;
   const [state, dispatch] = useReducer(workoutFormReducer, undefined, createEmptyDraft);
   const isDraftLoadedRef = useRef(false);
   const skipNextSaveRef = useRef(false);
@@ -159,9 +189,12 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Load draft on mount (skip in edit mode)
+  // Load draft on mount (skip in edit mode and when populating from preset)
   useEffect(() => {
-    if (isEditMode) {
+    if (isEditMode || skipDraftLoad) {
+      if (skipDraftLoad && initialDate) {
+        dispatch({ type: 'SET_DATE', date: initialDate });
+      }
       isDraftLoadedRef.current = true;
       return;
     }
@@ -169,10 +202,12 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
       if (draft && draft.type === 'workout') {
         skipNextSaveRef.current = true;
         dispatch({ type: 'RESTORE_DRAFT', draft });
+      } else if (initialDate) {
+        dispatch({ type: 'SET_DATE', date: initialDate });
       }
       isDraftLoadedRef.current = true;
     });
-  }, [isEditMode]);
+  }, [isEditMode, skipDraftLoad, initialDate]);
 
   // Debounced save on state changes (skip in edit mode)
   useEffect(() => {
@@ -256,6 +291,11 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     dispatch({ type: 'POPULATE', session, weightUnit });
   }, []);
 
+  const populateFromPreset = useCallback((preset: WorkoutPreset, weightUnit: 'kg' | 'lbs', date?: string) => {
+    exercisesModifiedRef.current = false;
+    dispatch({ type: 'POPULATE_FROM_PRESET', preset, weightUnit, date });
+  }, []);
+
   return {
     state,
     addExercise,
@@ -266,6 +306,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     setName,
     reset,
     populate,
+    populateFromPreset,
     hasDraftData: state.exercises.length > 0,
     exercisesModifiedRef,
   };

@@ -34,6 +34,9 @@ type Props = RootStackScreenProps<'WorkoutForm'>;
 
 const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const session = route.params?.session;
+  const preset = route.params?.preset;
+  const initialDate = route.params?.date;
+  const popCount = route.params?.popCount ?? 1;
   const isEditMode = !!session;
 
   const insets = useSafeAreaInsets();
@@ -53,9 +56,10 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     updateSetField,
     setName,
     populate,
+    populateFromPreset,
     hasDraftData,
     exercisesModifiedRef,
-  } = useWorkoutForm({ isEditMode });
+  } = useWorkoutForm({ isEditMode, skipDraftLoad: !!preset, initialDate });
 
   const {
     createSession,
@@ -87,6 +91,15 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     hasPopulatedRef.current = true;
     populate(session, weightUnit as 'kg' | 'lbs');
   }, [isEditMode, session, isPreferencesLoading, populate, weightUnit]);
+
+  // Populate from preset once after preferences load
+  const hasPopulatedPresetRef = useRef(false);
+  useEffect(() => {
+    if (!preset || isEditMode || hasPopulatedPresetRef.current || isPreferencesLoading) return;
+    hasPopulatedPresetRef.current = true;
+    populateFromPreset(preset, weightUnit as 'kg' | 'lbs', initialDate);
+  }, [preset, isEditMode, isPreferencesLoading, populateFromPreset, weightUnit, initialDate]);
+
   const isInitializingEditForm = isEditMode && !hasPopulatedRef.current;
 
   // Listen for exercise selection from ExerciseSearchScreen
@@ -168,7 +181,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
               await createSession(payload);
               await clearDraft();
               invalidateCreateCache(state.entryDate);
-              navigation.goBack();
+              navigation.pop(popCount);
             }
           } catch {
             // Error is handled by the mutation's onError
@@ -187,6 +200,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     invalidateCreateCache,
     invalidateUpdateCache,
     navigation,
+    popCount,
   ]);
 
   const handleRemoveExercise = useCallback(

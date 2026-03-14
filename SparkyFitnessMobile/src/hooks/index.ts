@@ -50,3 +50,6 @@ export { useDeleteWorkout } from './useDeleteWorkout';
 export { useUpdateWorkout } from './useUpdateWorkout';
 export { suggestedExercisesQueryKey, exerciseSearchQueryKey, externalExerciseSearchQueryKey } from './queryKeys';
 export { useExternalExerciseSearch } from './useExternalExerciseSearch';
+export { useWorkoutPresets } from './useWorkoutPresets';
+export { useWorkoutPresetSearch } from './useWorkoutPresetSearch';
+export { workoutPresetsQueryKey, workoutPresetSearchQueryKey } from './queryKeys';

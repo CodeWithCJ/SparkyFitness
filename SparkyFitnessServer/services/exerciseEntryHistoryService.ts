@@ -155,7 +155,7 @@ async function getExerciseEntryHistorySessions(
   const presetMetaMap = new Map<string, Record<string, unknown>>();
   const presetChildrenMap = new Map<string, ExerciseEntryResponse[]>();
   const presetActivityMap = new Map<string, ActivityDetailRow[]>();
-  const individualMap = new Map<string, ExerciseEntryResponse>();
+  const individualMap = new Map<string, ExerciseEntryResponse & { name: string | null }>();
   const allExerciseEntryIds: string[] = [];
 
   const batchQueries: Promise<void>[] = [];
@@ -239,7 +239,10 @@ async function getExerciseEntryHistorySessions(
           for (const row of r.rows) {
             const entry = _buildExerciseEntryWithSnapshot(row);
             allExerciseEntryIds.push(entry.id);
-            individualMap.set(entry.id, entry);
+            individualMap.set(entry.id, {
+              ...entry,
+              name: (row.exercise_name as string) ?? null,
+            });
           }
         }),
     );
@@ -310,7 +313,7 @@ async function getExerciseEntryHistorySessions(
         id: meta.id as string,
         entry_date: _dateToString(stub.entry_date),
         workout_preset_id: (meta.workout_preset_id as number) ?? null,
-        name: meta.name as string,
+        name: (meta.name as string) ?? "Workout",
         description: (meta.description as string) ?? null,
         notes: (meta.notes as string) ?? null,
         source: meta.source as string,

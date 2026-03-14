@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Alert } from 'react-native';
-import { loadDraft, clearDraft } from '../services/workoutDraftService';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
 import { useCSSVariable } from 'uniwind';
@@ -63,105 +62,19 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
     setRefreshing(false);
   }, [refetch]);
 
-  const navigateWithDraftCheck = useCallback(
-    async (
-      targetScreen: 'WorkoutForm' | 'ActivityForm',
-      targetType: 'workout' | 'activity',
-    ) => {
-      const draft = await loadDraft();
-      const conflictType = targetType === 'workout' ? 'activity' : 'workout';
-      const targetLabel = targetType === 'workout' ? 'Workout' : 'Activity';
-      const conflictLabel = conflictType === 'workout' ? 'Workout' : 'Activity';
-
-      // Check for a conflicting draft type
-      const hasConflict =
-        draft &&
-        draft.type === conflictType &&
-        (draft.type === 'workout'
-          ? draft.exercises.length > 0
-          : draft.exerciseId != null);
-
-      if (hasConflict) {
-        Alert.alert(
-          `${conflictLabel} in Progress`,
-          `You have an unsaved ${conflictLabel.toLowerCase()} draft.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: `Discard & ${targetType === 'workout' ? 'Start Workout' : 'Log Activity'}`,
-              style: 'destructive',
-              onPress: async () => {
-                await clearDraft();
-                navigation.navigate(targetScreen);
-              },
-            },
-          ],
-        );
-        return;
-      }
-
-      // Check for a matching draft type (resume)
-      const hasMatchingDraft =
-        draft &&
-        draft.type === targetType &&
-        (draft.type === 'workout'
-          ? draft.exercises.length > 0
-          : draft.exerciseId != null);
-
-      if (hasMatchingDraft) {
-        Alert.alert(
-          `Resume ${targetLabel}?`,
-          `You have a ${targetLabel.toLowerCase()} in progress.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Start Fresh',
-              style: 'destructive',
-              onPress: async () => {
-                await clearDraft();
-                navigation.navigate(targetScreen);
-              },
-            },
-            {
-              text: 'Resume',
-              onPress: () => navigation.navigate(targetScreen),
-            },
-          ],
-        );
-      } else {
-        navigation.navigate(targetScreen);
-      }
-    },
-    [navigation],
-  );
-
-  const handleStartWorkout = useCallback(
-    () => navigateWithDraftCheck('WorkoutForm', 'workout'),
-    [navigateWithDraftCheck],
-  );
-
-  const handleLogActivity = useCallback(
-    () => navigateWithDraftCheck('ActivityForm', 'activity'),
-    [navigateWithDraftCheck],
-  );
+  const handleAddExercise = useCallback(() => {
+    navigation.navigate('ExerciseSearch', { mode: 'entry' });
+  }, [navigation]);
 
   const renderActionButtons = () => (
-    <View className="flex-row gap-3 px-4 mb-4">
+    <View className="px-4 mb-4">
       <Button
         variant="primary"
-        onPress={handleStartWorkout}
-        className="flex-1 flex-row gap-2 py-4"
-      >
-        <Icon name="exercise-weights" size={20} color={accentText} />
-        <Text className="text-base font-semibold text-accent-text">Start Workout</Text>
-      </Button>
-      <Button
-        variant="primary"
-        onPress={handleLogActivity}
-        className="flex-1 flex-row gap-2 py-4"
+        onPress={handleAddExercise}
+        className="flex-row gap-2 py-4"
       >
         <Icon name="exercise" size={20} color={accentText} />
-        <Text className="text-base font-semibold text-accent-text">Log Activity</Text>
+        <Text className="text-base font-semibold text-accent-text">Add Exercise</Text>
       </Button>
     </View>
   );

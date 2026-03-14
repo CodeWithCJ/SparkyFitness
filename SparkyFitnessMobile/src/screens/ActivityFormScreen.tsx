@@ -52,7 +52,11 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
     setNotes,
     populate,
     hasDraftData,
-  } = useActivityForm({ isEditMode, initialDate });
+  } = useActivityForm({
+    isEditMode,
+    initialDate,
+    skipDraftLoad: !!route.params?.selectedExercise && !isEditMode,
+  });
 
   const { createEntry, isPending: isCreating, invalidateCache: invalidateCreateCache } = useCreateExerciseEntry();
   const { updateEntry, isPending: isUpdating, invalidateCache: invalidateUpdateCache } = useUpdateExerciseEntry();
@@ -125,7 +129,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
         await createEntry(payload);
         await clearDraft();
         invalidateCreateCache(state.entryDate);
-        navigation.goBack();
+        navigation.pop(popCount);
       }
     } catch {
       // Error handled by mutation onError

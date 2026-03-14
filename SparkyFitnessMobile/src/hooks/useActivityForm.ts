@@ -125,9 +125,10 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
 interface UseActivityFormOptions {
   isEditMode?: boolean;
   initialDate?: string;
+  skipDraftLoad?: boolean;
 }
 
-export function useActivityForm({ isEditMode = false, initialDate }: UseActivityFormOptions = {}) {
+export function useActivityForm({ isEditMode = false, initialDate, skipDraftLoad = false }: UseActivityFormOptions = {}) {
   const [state, dispatch] = useReducer(activityFormReducer, undefined, createEmptyDraft);
   const isDraftLoadedRef = useRef(false);
   const skipNextSaveRef = useRef(false);
@@ -135,10 +136,13 @@ export function useActivityForm({ isEditMode = false, initialDate }: UseActivity
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Load draft on mount (skip in edit mode)
+  // Load draft on mount (skip in edit mode and when exercise is pre-selected from entry mode)
   useEffect(() => {
-    if (isEditMode) {
+    if (isEditMode || skipDraftLoad) {
       isDraftLoadedRef.current = true;
+      if (skipDraftLoad && initialDate) {
+        dispatch({ type: 'SET_DATE', value: initialDate });
+      }
       return;
     }
     loadDraft().then(draft => {
@@ -150,7 +154,7 @@ export function useActivityForm({ isEditMode = false, initialDate }: UseActivity
       }
       isDraftLoadedRef.current = true;
     });
-  }, [initialDate, isEditMode]);
+  }, [initialDate, isEditMode, skipDraftLoad]);
 
   // Debounced save on state changes (skip in edit mode)
   useEffect(() => {

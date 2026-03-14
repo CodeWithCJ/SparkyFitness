@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ScrollView,
   TextInput,
   Platform,
+  Alert,
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import Button from '../components/ui/Button';
@@ -17,13 +18,15 @@ import { useCSSVariable } from 'uniwind';
 import { useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import SegmentedControl from '../components/SegmentedControl';
-import { useServerConnection, useExternalProviders, useSuggestedExercises, useExerciseSearch } from '../hooks';
+import { useServerConnection, useExternalProviders, useSuggestedExercises, useExerciseSearch, useWorkoutPresets, useWorkoutPresetSearch } from '../hooks';
 import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
 import { importExercise } from '../services/api/externalExerciseSearchApi';
+import { loadDraft, clearDraft } from '../services/workoutDraftService';
 import { EXERCISE_PROVIDER_TYPES } from '../types/externalProviders';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
+import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type ExerciseSearchScreenProps = RootStackScreenProps<'ExerciseSearch'>;
@@ -33,15 +36,25 @@ type ExerciseSection = {
   data: Exercise[];
 };
 
-type TabKey = 'search' | 'online';
+type TabKey = 'search' | 'online' | 'workouts';
 
-const TABS: { key: TabKey; label: string }[] = [
+const PICKER_TABS: { key: TabKey; label: string }[] = [
   { key: 'search', label: 'Search' },
   { key: 'online', label: 'Online' },
 ] as const;
 
+const ENTRY_TABS: { key: TabKey; label: string }[] = [
+  { key: 'search', label: 'Search' },
+  { key: 'online', label: 'Online' },
+  { key: 'workouts', label: 'Workouts' },
+] as const;
+
 const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation, route }) => {
-  const { returnKey } = route.params;
+  const params = route.params;
+  const isEntryMode = 'mode' in params && params.mode === 'entry';
+  const returnKey = 'returnKey' in params ? params.returnKey : undefined;
+  const entryDate = isEntryMode ? params.date : undefined;
+
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [accentColor, textMuted, textSecondary] = useCSSVariable([
@@ -50,6 +63,8 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     '--color-text-secondary',
   ]) as [string, string, string];
   const { isConnected } = useServerConnection();
+
+  const tabs = isEntryMode ? ENTRY_TABS : PICKER_TABS;
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
   const [searchText, setSearchText] = useState('');
@@ -95,6 +110,22 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     providerId: selectedProvider ?? undefined,
   });
 
+  // Workout presets (entry mode only)
+  const {
+    presets,
+    isLoading: isPresetsLoading,
+    isError: isPresetsError,
+    refetch: refetchPresets,
+  } = useWorkoutPresets({ enabled: isConnected && isEntryMode && activeTab === 'workouts' });
+  const {
+    searchResults: presetSearchResults,
+    isSearching: isPresetSearching,
+    isSearchActive: isPresetSearchActive,
+    isSearchError: isPresetSearchError,
+  } = useWorkoutPresetSearch(searchText, {
+    enabled: isConnected && isEntryMode && activeTab === 'workouts',
+  });
+
   // Default to first provider when providers load
   useEffect(() => {
     if (providers.length === 0) return;
@@ -102,15 +133,68 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     setSelectedProvider(providers[0].id);
   }, [providers, selectedProvider]);
 
-  const handleSelectExercise = (exercise: Exercise) => {
-    navigation.dispatch({
-      ...CommonActions.setParams({ selectedExercise: exercise, selectionNonce: Date.now() }),
-      source: returnKey,
-    });
-    navigation.goBack();
-  };
+  // --- Draft check helper ---
 
-  const handleImportExercise = async (item: ExternalExerciseItem) => {
+  const checkDraftAndNavigate = useCallback(async (onProceed: () => void) => {
+    const draft = await loadDraft();
+    const hasDraftData = draft && (
+      (draft.type === 'workout' && draft.exercises.length > 0) ||
+      (draft.type === 'activity' && draft.exerciseId != null)
+    );
+
+    if (hasDraftData) {
+      Alert.alert(
+        'Draft in Progress',
+        `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Resume Draft',
+            onPress: () => {
+              if (draft.type === 'workout') {
+                navigation.navigate('WorkoutForm', { popCount: 2 });
+              } else {
+                navigation.navigate('ActivityForm', { popCount: 2 });
+              }
+            },
+          },
+          {
+            text: 'Discard & Continue',
+            style: 'destructive',
+            onPress: async () => {
+              await clearDraft();
+              onProceed();
+            },
+          },
+        ],
+      );
+      return;
+    }
+    onProceed();
+  }, [navigation]);
+
+  // --- Selection handlers ---
+
+  const handleSelectExercise = useCallback((exercise: Exercise) => {
+    if (isEntryMode) {
+      checkDraftAndNavigate(() => {
+        navigation.navigate('ActivityForm', {
+          date: entryDate,
+          selectedExercise: exercise,
+          selectionNonce: Date.now(),
+          popCount: 2,
+        });
+      });
+    } else {
+      navigation.dispatch({
+        ...CommonActions.setParams({ selectedExercise: exercise, selectionNonce: Date.now() }),
+        source: returnKey!,
+      });
+      navigation.goBack();
+    }
+  }, [isEntryMode, returnKey, entryDate, navigation, checkDraftAndNavigate]);
+
+  const handleImportExercise = useCallback(async (item: ExternalExerciseItem) => {
     setImportingExerciseId(item.id);
     try {
       const exercise = await importExercise(item.source, item.id);
@@ -118,13 +202,26 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
       handleSelectExercise(exercise);
     } catch {
       // Silently fail — user can retry
+    } finally {
       setImportingExerciseId(null);
     }
-  };
+  }, [queryClient, handleSelectExercise]);
+
+  const handleSelectPreset = useCallback((preset: WorkoutPreset) => {
+    checkDraftAndNavigate(() => {
+      navigation.navigate('WorkoutForm', { preset, date: entryDate, popCount: 2 });
+    });
+  }, [entryDate, navigation, checkDraftAndNavigate]);
+
+  const handleNewWorkout = useCallback(() => {
+    checkDraftAndNavigate(() => {
+      navigation.navigate('WorkoutForm', { date: entryDate, popCount: 2 });
+    });
+  }, [entryDate, navigation, checkDraftAndNavigate]);
 
   // --- Shared renderers ---
 
-  const renderExerciseRow = ({ item }: { item: Exercise }) => (
+  const renderExerciseRow = useCallback(({ item }: { item: Exercise }) => (
     <TouchableOpacity
       className="px-4 py-3 border-b border-border-subtle"
       activeOpacity={0.7}
@@ -137,7 +234,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
         </Text>
       )}
     </TouchableOpacity>
-  );
+  ), [handleSelectExercise, textSecondary]);
 
   const sections = useMemo(() => {
     const allSections: ExerciseSection[] = [
@@ -162,7 +259,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
         <TextInput
           className="flex-1 text-text-primary ml-2"
           style={{ fontSize: 16, lineHeight: 20 }}
-          placeholder="Search exercises..."
+          placeholder={activeTab === 'workouts' ? 'Search workouts...' : 'Search exercises...'}
           placeholderTextColor={textMuted}
           value={searchText}
           onChangeText={setSearchText}
@@ -473,12 +570,134 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     );
   };
 
+  // --- Workouts tab (entry mode only) ---
+
+  const renderPresetItem = ({ item }: { item: WorkoutPreset }) => (
+    <TouchableOpacity
+      className="px-4 py-3 border-b border-border-subtle"
+      activeOpacity={0.7}
+      onPress={() => handleSelectPreset(item)}
+    >
+      <Text className="text-text-primary text-base font-medium">{item.name}</Text>
+      {item.description && (
+        <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>{item.description}</Text>
+      )}
+      <Text className="text-text-muted text-xs mt-0.5">
+        {item.exercises.length} exercise{item.exercises.length !== 1 ? 's' : ''}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderPresetSearchResults = () => {
+    if (isPresetSearching && presetSearchResults.length === 0) {
+      return (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={accentColor} />
+        </View>
+      );
+    }
+
+    if (isPresetSearchError) {
+      return (
+        <View className="flex-1 justify-center items-center px-6">
+          <Icon name="alert-circle" size={48} color={accentColor} />
+          <Text className="text-text-secondary text-base mt-4 text-center">
+            Failed to search workouts
+          </Text>
+        </View>
+      );
+    }
+
+    if (presetSearchResults.length === 0) {
+      return (
+        <View className="flex-1 justify-center items-center px-6">
+          <Text className="text-text-secondary text-base text-center">
+            No matching workouts found
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={presetSearchResults}
+        keyExtractor={(item) => item.id}
+        renderItem={renderPresetItem}
+        keyboardShouldPersistTaps="handled"
+      />
+    );
+  };
+
+  const renderWorkoutsTab = () => {
+    if (!isConnected) {
+      return (
+        <View className="flex-1 justify-center items-center px-6">
+          <Icon name="cloud-offline" size={48} color={accentColor} />
+          <Text className="text-text-secondary text-base mt-4 text-center">
+            Connect to a server to view workouts
+          </Text>
+        </View>
+      );
+    }
+
+    if (isPresetSearchActive) {
+      return renderPresetSearchResults();
+    }
+
+    if (isPresetsLoading) {
+      return (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={accentColor} />
+        </View>
+      );
+    }
+
+    if (isPresetsError) {
+      return (
+        <View className="flex-1 justify-center items-center px-6">
+          <Icon name="alert-circle" size={48} color={accentColor} />
+          <Text className="text-text-secondary text-base mt-4 text-center">
+            Failed to load workouts
+          </Text>
+          <Button
+            variant="secondary"
+            onPress={() => refetchPresets()}
+            className="mt-4 px-6"
+          >
+            Retry
+          </Button>
+        </View>
+      );
+    }
+
+    if (presets.length === 0) {
+      return (
+        <View className="flex-1 justify-center items-center px-6">
+          <Text className="text-text-secondary text-base text-center">
+            No workout presets found
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={presets}
+        keyExtractor={(item) => item.id}
+        renderItem={renderPresetItem}
+        keyboardShouldPersistTaps="handled"
+      />
+    );
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'search':
         return renderSearchTab();
       case 'online':
         return renderOnlineTab();
+      case 'workouts':
+        return renderWorkoutsTab();
     }
   };
 
@@ -497,13 +716,23 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Exercises
         </Text>
-        {/* Spacer to keep title centered */}
-        <View style={{ width: 22 }} />
+        {isEntryMode ? (
+          <Button
+            variant="ghost"
+            onPress={handleNewWorkout}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            className="z-10 p-0"
+          >
+            <Icon name="add" size={26} color={accentColor} />
+          </Button>
+        ) : (
+          <View style={{ width: 22 }} />
+        )}
       </View>
 
       {/* Segmented control */}
       <View className="px-4 mt-2">
-        <SegmentedControl segments={TABS} activeKey={activeTab} onSelect={setActiveTab} />
+        <SegmentedControl segments={tabs} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
 
       {/* Search bar */}

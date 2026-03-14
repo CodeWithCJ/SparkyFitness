@@ -17,8 +17,7 @@ export interface AddSheetRef {
 
 interface AddSheetProps {
   onAddFood: () => void;
-  onAddWorkout: () => void;
-  onAddActivity: () => void;
+  onAddExercise: () => void;
 }
 
 interface ActionCard {
@@ -28,7 +27,7 @@ interface ActionCard {
 }
 
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
-  ({ onAddFood, onAddWorkout, onAddActivity }, ref) => {
+  ({ onAddFood, onAddExercise }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -72,8 +71,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
 
     const cards: ActionCard[] = [
       { label: 'Add Food', icon: 'meal-snack', onPress: onAddFood },
-      { label: 'Add Workout', icon: 'exercise-weights', onPress: onAddWorkout },
-      { label: 'Add Activity', icon: 'exercise', onPress: onAddActivity },
+      { label: 'Add Exercise', icon: 'exercise', onPress: onAddExercise },
       { label: 'Add Measurement', icon: 'chart-bar' },
     ];
 
@@ -105,9 +103,10 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
             {renderCard(cards[0], true)}
             {renderCard(cards[1], false)}
           </View>
-          <View className="flex-row">
-            {renderCard(cards[2], true)}
-            {renderCard(cards[3], false)}
+          <View className="flex-row justify-center">
+            <View className="flex-1 max-w-[50%]">
+              {renderCard(cards[2], true)}
+            </View>
           </View>
         </BottomSheetView>
       </BottomSheetModal>
