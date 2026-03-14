@@ -17,7 +17,8 @@ import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { info, error } from '@/utils/logging';
 import { parseISO } from 'date-fns';
-import { formatWeight, formatHeight } from '@/utils/numberFormatting';
+import { formatWeight, formatMeasurement } from '@/utils/numberFormatting';
+import { getPrecision } from '@workspace/shared';
 import {
   calculateSmartYAxisDomain,
   ChartDataPoint,
@@ -211,7 +212,9 @@ const MeasurementChartsGrid = ({
                             'weight'
                           ) || undefined
                         }
-                        tickFormatter={(value) => value.toFixed(1)}
+                        tickFormatter={(value: number) =>
+                          value.toFixed(getPrecision('weight', weightUnit))
+                        }
                       />
                       <Tooltip
                         labelFormatter={(value) =>
@@ -291,7 +294,11 @@ const MeasurementChartsGrid = ({
                             'neck'
                           ) || undefined
                         }
-                        tickFormatter={(value) => value.toFixed(1)}
+                        tickFormatter={(value: number) =>
+                          value.toFixed(
+                            getPrecision('measurement', measurementUnit)
+                          )
+                        }
                       />
                       <Tooltip
                         labelFormatter={(value) =>
@@ -303,7 +310,7 @@ const MeasurementChartsGrid = ({
                           props: { payload?: { rawNeck?: number } }
                         ) => [
                           props.payload?.rawNeck
-                            ? formatHeight(
+                            ? formatMeasurement(
                                 props.payload.rawNeck,
                                 measurementUnit
                               )
@@ -374,7 +381,11 @@ const MeasurementChartsGrid = ({
                             'waist'
                           ) || undefined
                         }
-                        tickFormatter={(value) => value.toFixed(1)}
+                        tickFormatter={(value: number) =>
+                          value.toFixed(
+                            getPrecision('measurement', measurementUnit)
+                          )
+                        }
                       />
                       <Tooltip
                         labelFormatter={(value) =>
@@ -386,7 +397,7 @@ const MeasurementChartsGrid = ({
                           props: { payload?: { rawWaist?: number } }
                         ) => [
                           props.payload?.rawWaist
-                            ? formatHeight(
+                            ? formatMeasurement(
                                 props.payload.rawWaist,
                                 measurementUnit
                               )
@@ -457,7 +468,11 @@ const MeasurementChartsGrid = ({
                             'hips'
                           ) || undefined
                         }
-                        tickFormatter={(value) => value.toFixed(1)}
+                        tickFormatter={(value: number) =>
+                          value.toFixed(
+                            getPrecision('measurement', measurementUnit)
+                          )
+                        }
                       />
                       <Tooltip
                         labelFormatter={(value) =>
@@ -469,7 +484,7 @@ const MeasurementChartsGrid = ({
                           props: { payload?: { rawHips?: number } }
                         ) => [
                           props.payload?.rawHips
-                            ? formatHeight(
+                            ? formatMeasurement(
                                 props.payload.rawHips,
                                 measurementUnit
                               )

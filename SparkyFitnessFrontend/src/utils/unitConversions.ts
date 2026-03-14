@@ -2,6 +2,7 @@
  * Utility for converting between metric and imperial units.
  * All internal storage is in Metric (kg, cm).
  */
+import { getPrecision } from '@workspace/shared';
 
 export const CONVERSION_FACTORS = {
   LBS_TO_KG: 0.45359237,
@@ -63,18 +64,20 @@ export const formatWeight = (
 ): string => {
   if (kg === null || kg === undefined || isNaN(kg)) return '-';
 
+  const precision = getPrecision('weight', unit);
+
   switch (unit) {
     case 'lbs': {
       const val = kgToLbs(kg);
-      return `${Math.round(val)} lbs`;
+      return `${Number(val.toFixed(precision))} lbs`;
     }
     case 'st_lbs': {
       const { stones, lbs } = kgToStonesLbs(kg);
-      return `${stones}st ${Math.round(lbs)}lbs`;
+      return `${stones}st ${Number(lbs.toFixed(precision))}lbs`;
     }
     case 'kg':
     default:
-      return `${Number(kg.toFixed(1))} kg`;
+      return `${Number(kg.toFixed(precision))} kg`;
   }
 };
 
@@ -84,17 +87,41 @@ export const formatHeight = (
 ): string => {
   if (cm === null || cm === undefined || isNaN(cm)) return '-';
 
+  const precision = getPrecision('height', unit);
+
   switch (unit) {
     case 'inches': {
       const val = cmToInches(cm);
-      return `${Math.round(val)} in`;
+      return `${Number(val.toFixed(precision))} in`;
     }
     case 'ft_in': {
       const { feet, inches } = cmToFeetInches(cm);
-      return `${feet}'${Math.round(inches)}"`;
+      return `${feet}'${Number(inches.toFixed(precision))}"`;
     }
     case 'cm':
     default:
-      return `${Math.round(cm)} cm`;
+      return `${Number(cm.toFixed(precision))} cm`;
+  }
+};
+
+/**
+ * Formats a body measurement (waist, neck, hips, etc.)
+ */
+export const formatMeasurement = (
+  cm: number | null | undefined,
+  unit: string
+): string => {
+  if (cm === null || cm === undefined || isNaN(cm)) return '-';
+
+  const precision = getPrecision('measurement', unit);
+
+  switch (unit) {
+    case 'inches': {
+      const val = cmToInches(cm);
+      return `${Number(val.toFixed(precision))} in`;
+    }
+    case 'cm':
+    default:
+      return `${Number(cm.toFixed(precision))} cm`;
   }
 };
