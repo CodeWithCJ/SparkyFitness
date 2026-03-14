@@ -19,8 +19,9 @@ COPY shared/package.json shared/
 # Install workspace dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy server source
+# Copy server and shared source
 COPY SparkyFitnessServer/ SparkyFitnessServer/
+COPY shared/ shared/
 
 # Deploy server to standalone directory (flat node_modules, no workspace symlinks)
 RUN pnpm --filter=sparkyfitnessserver deploy --legacy /deploy
