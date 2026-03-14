@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
+import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import {
@@ -55,19 +56,18 @@ const PrimaryButton = ({
 }) => {
   const isDisabled = disabled ?? loading;
   return (
-    <TouchableOpacity
-      className="items-center justify-center py-3.5 rounded-[10px] bg-accent-primary"
+    <Button
+      variant="primary"
       onPress={onPress}
-      activeOpacity={0.8}
       disabled={isDisabled}
-      style={{ opacity: isDisabled ? 0.7 : 1 }}
+      textClassName="text-[17px]"
     >
       {loading ? (
         <ActivityIndicator color="#fff" />
       ) : (
         <Text className="text-white text-[17px] font-semibold">{label}</Text>
       )}
-    </TouchableOpacity>
+    </Button>
   );
 };
 
@@ -210,26 +210,24 @@ const CredentialsForm: React.FC<CredentialsFormProps> = ({
       <PrimaryButton label="Sign In" onPress={onSignIn} loading={loading} />
 
       {/* Use API Key Instead */}
-      <TouchableOpacity
-        className="items-center py-3 mt-2"
+      <Button
+        variant="ghost"
         onPress={onUseApiKey}
-        activeOpacity={0.7}
+        className="mt-2 py-3"
+        textClassName="text-sm text-text-muted"
       >
-        <Text className="text-sm text-text-muted">
-          Use API Key Instead
-        </Text>
-      </TouchableOpacity>
+        Use API Key Instead
+      </Button>
 
       {canDismiss && (
-        <TouchableOpacity
-          className="items-center py-2.5"
+        <Button
+          variant="ghost"
           onPress={onDismiss}
-          activeOpacity={0.7}
+          className="py-2.5"
+          textClassName="text-base text-text-muted"
         >
-          <Text className="text-base text-text-muted">
-            {hasExistingConfigs ? 'Later' : 'Cancel'}
-          </Text>
-        </TouchableOpacity>
+          {hasExistingConfigs ? 'Later' : 'Cancel'}
+        </Button>
       )}
     </>
   );
@@ -347,32 +345,35 @@ const MfaForm: React.FC<MfaFormProps> = ({
 
       {/* Resend email code */}
       {mfaMethod === 'email' && emailOtpSent && (
-        <TouchableOpacity
-          className="items-center py-3 mt-2"
+        <Button
+          variant="ghost"
           onPress={onSendEmailOtp}
-          activeOpacity={0.7}
           disabled={loading}
+          className="mt-2 py-3"
+          textClassName="text-sm"
         >
-          <Text className="text-sm text-accent-primary">Resend Code</Text>
-        </TouchableOpacity>
+          Resend Code
+        </Button>
       )}
 
       {/* Back */}
-      <TouchableOpacity
-        className="items-center py-3 mt-2"
+      <Button
+        variant="ghost"
         onPress={onBack}
-        activeOpacity={0.7}
+        className="mt-2 py-3"
+        textClassName="text-base text-text-muted"
       >
-        <Text className="text-base text-text-muted">Back</Text>
-      </TouchableOpacity>
+        Back
+      </Button>
 
-      <TouchableOpacity
-        className="items-center py-2"
+      <Button
+        variant="ghost"
         onPress={onUseApiKey}
-        activeOpacity={0.7}
+        className="py-2"
+        textClassName="text-sm text-text-muted"
       >
-        <Text className="text-sm text-text-muted">Use API Key Instead</Text>
-      </TouchableOpacity>
+        Use API Key Instead
+      </Button>
     </>
   );
 };

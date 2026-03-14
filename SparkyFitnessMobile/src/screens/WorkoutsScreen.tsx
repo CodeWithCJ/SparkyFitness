@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import Button from '../components/ui/Button';
 import WorkoutCard from '../components/WorkoutCard';
 import { useServerConnection, useExerciseHistory } from '../hooks';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -21,6 +22,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+  const accentText = useCSSVariable('--color-accent-text') as string;
   const scrollBottomPadding = Math.max(tabBarHeight, insets.bottom) + 16;
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -125,22 +127,22 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
 
   const renderActionButtons = () => (
     <View className="flex-row gap-3 px-4 mb-4">
-      <TouchableOpacity
-        className="bg-raised rounded-xl py-4 flex-1 items-center flex-row justify-center gap-2"
+      <Button
+        variant="primary"
         onPress={handleStartWorkout}
-        activeOpacity={0.7}
+        className="flex-1 flex-row gap-2 py-4"
       >
-        <Icon name="exercise-weights" size={20} color={accentPrimary} />
-        <Text className="text-base font-semibold text-text-primary">Start Workout</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        className="bg-raised rounded-xl py-4 flex-1 items-center flex-row justify-center gap-2"
+        <Icon name="exercise-weights" size={20} color={accentText} />
+        <Text className="text-base font-semibold text-accent-text">Start Workout</Text>
+      </Button>
+      <Button
+        variant="primary"
         onPress={handleLogActivity}
-        activeOpacity={0.7}
+        className="flex-1 flex-row gap-2 py-4"
       >
-        <Icon name="exercise" size={20} color={accentPrimary} />
-        <Text className="text-base font-semibold text-text-primary">Log Activity</Text>
-      </TouchableOpacity>
+        <Icon name="exercise" size={20} color={accentText} />
+        <Text className="text-base font-semibold text-accent-text">Log Activity</Text>
+      </Button>
     </View>
   );
 
@@ -155,12 +157,13 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
           <Text className="text-text-muted text-sm text-center mt-2">
             Configure your server connection in Settings to view your workouts.
           </Text>
-          <TouchableOpacity
-            className="bg-accent-primary rounded-xl py-3 px-6 mt-6"
+          <Button
+            variant="primary"
             onPress={() => navigation.navigate('Tabs', { screen: 'Settings' })}
+            className="px-6 mt-6"
           >
-            <Text className="text-white font-semibold">Go to Settings</Text>
-          </TouchableOpacity>
+            Go to Settings
+          </Button>
         </View>
       );
     }
@@ -184,12 +187,13 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
           <Text className="text-text-muted text-sm text-center mt-2">
             Please check your connection and try again.
           </Text>
-          <TouchableOpacity
-            className="bg-accent-primary rounded-xl py-3 px-6 mt-6"
+          <Button
+            variant="primary"
             onPress={() => refetch()}
+            className="px-6 mt-6"
           >
-            <Text className="text-white font-semibold">Retry</Text>
-          </TouchableOpacity>
+            Retry
+          </Button>
         </View>
       );
     }
@@ -236,11 +240,11 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
           ))}
           {hasMore && (
-            <TouchableOpacity
-              className="bg-raised rounded-xl py-3 items-center mt-1 mb-4"
+            <Button
+              variant="secondary"
               onPress={loadMore}
               disabled={isLoadingMore}
-              activeOpacity={0.7}
+              className="mt-1 mb-4"
             >
               {isLoadingMore ? (
                 <ActivityIndicator size="small" color={accentPrimary} />
@@ -249,7 +253,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
                   Load More
                 </Text>
               )}
-            </TouchableOpacity>
+            </Button>
           )}
         </View>
       </ScrollView>

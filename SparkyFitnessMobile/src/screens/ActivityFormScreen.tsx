@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import ExercisePicker, { type ExercisePickerRef } from '../components/ExercisePicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -127,9 +128,9 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3">
-        <TouchableOpacity onPress={handleCancel} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Button variant="ghost" onPress={handleCancel} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} className="py-0 px-0">
           <Icon name="close" size={24} color={accentPrimary} />
-        </TouchableOpacity>
+        </Button>
         <TouchableOpacity
           onPress={handleSave}
           disabled={isPending || !canSave}

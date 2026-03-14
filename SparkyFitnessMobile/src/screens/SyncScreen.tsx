@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, Platform } from 'react-native';
+import { View, Text, Image, ScrollView, Platform } from 'react-native';
+import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import ConnectionStatus from '../components/ConnectionStatus';
@@ -538,8 +539,9 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
           )}
         </View>
         {/* Sync Now Button */}
-        <TouchableOpacity
-          className="bg-accent-primary rounded-xl py-3.5 px-4 flex-row items-center mb-2"
+        <Button
+          variant="primary"
+          className="flex-row items-center mb-2"
           onPress={handleSync}
           disabled={syncMutation.isPending || !isHealthConnectInitialized}
         >
@@ -552,7 +554,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
             <Text className="text-white text-lg font-semibold">{syncMutation.isPending ? "Syncing..." : "Sync Now"}</Text>
             <Text className="text-white/80 text-sm mt-0.5">Send your health data to your server</Text>
           </View>
-        </TouchableOpacity>
+        </Button>
 
 
         {!isHealthConnectInitialized && (

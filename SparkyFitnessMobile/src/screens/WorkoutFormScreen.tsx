@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import ExercisePicker, {
   type ExercisePickerRef,
@@ -234,13 +235,14 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
         keyboardType="number-pad"
         returnKeyType="done"
       />
-      <TouchableOpacity
+      <Button
+        variant="ghost"
         onPress={() => removeSet(exercise.clientId, set.clientId)}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        className="ml-auto"
+        className="ml-auto py-0 px-0"
       >
         <Icon name="remove-circle" size={20} color={textMuted} />
-      </TouchableOpacity>
+      </Button>
     </View>
   );
 
@@ -257,12 +259,14 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
             </Text>
           )}
         </View>
-        <TouchableOpacity
+        <Button
+          variant="ghost"
           onPress={() => handleRemoveExercise(exercise)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          className="py-0 px-0"
         >
           <Icon name="close" size={20} color={textMuted} />
-        </TouchableOpacity>
+        </Button>
       </View>
 
       {/* Set header */}
@@ -287,9 +291,10 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
       {exercise.sets.map((set, index) => renderSetRow(exercise, set, index))}
 
-      <TouchableOpacity
-        className="flex-row items-center justify-center py-2 mt-2"
+      <Button
+        variant="ghost"
         onPress={() => addSet(exercise.clientId)}
+        className="flex-row py-2 mt-2"
       >
         <Icon name="add-circle" size={18} color={accentPrimary} />
         <Text
@@ -298,7 +303,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           Add Set
         </Text>
-      </TouchableOpacity>
+      </Button>
     </View>
   );
 
@@ -312,12 +317,14 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
         <>
           {/* Header */}
           <View className="flex-row items-center justify-between px-4 py-3">
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={handleCancel}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              className="py-0 px-0"
             >
               <Icon name="close" size={24} color={accentPrimary} />
-            </TouchableOpacity>
+            </Button>
             <TouchableOpacity
               onPress={handleFinish}
               disabled={isPending || !hasDraftData}

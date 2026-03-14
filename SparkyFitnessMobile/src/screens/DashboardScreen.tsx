@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Pressable, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable, Platform } from 'react-native';
+import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -121,12 +122,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <Text className="text-text-muted text-sm text-center mt-2">
             Configure your server connection in Settings to view your daily summary.
           </Text>
-          <TouchableOpacity
-            className="bg-accent-primary rounded-xl py-3 px-6 mt-6"
+          <Button
+            variant="primary"
+            className="px-6 mt-6"
             onPress={() => navigation.navigate('Settings')}
           >
-            <Text className="text-white font-semibold">Go to Settings</Text>
-          </TouchableOpacity>
+            Go to Settings
+          </Button>
         </View>
       );
     }
@@ -175,12 +177,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             <Text className="text-text-muted text-sm text-center mt-2">
               Please check your connection and try again.
             </Text>
-            <TouchableOpacity
-              className="bg-accent-primary rounded-xl py-3 px-6 mt-6"
+            <Button
+              variant="primary"
+              className="px-6 mt-6"
               onPress={() => refetch()}
             >
-              <Text className="text-white font-semibold">Retry</Text>
-            </TouchableOpacity>
+              Retry
+            </Button>
           </View>
         </View>
       );

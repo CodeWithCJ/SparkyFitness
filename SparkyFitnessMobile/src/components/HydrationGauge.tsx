@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import { Canvas, Group, Path, Rect, Skia } from '@shopify/react-native-skia';
+import Button from './ui/Button';
 import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -114,14 +115,15 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
       <View className="flex-row items-center">
         <View className="flex-row items-center mr-4">
           {showButtons && (
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={onDecrement}
               disabled={disableDecrement || noContainer}
-              style={disableDecrement || noContainer ? { opacity: 0.3 } : undefined}
               className="p-2"
+              style={disableDecrement || noContainer ? { opacity: 0.3 } : undefined}
             >
               <Icon name="remove-circle" size={28} color={hydrationColor} />
-            </TouchableOpacity>
+            </Button>
           )}
           <Canvas style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}>
             {/* Fill clipped to bottle shape */}
@@ -133,14 +135,15 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({ consumed, goal, unit = 
             <Path path={bottlePath} style="stroke" strokeWidth={2} color={outlineColor} />
           </Canvas>
           {showButtons && (
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={onIncrement}
               disabled={noContainer}
-              style={noContainer ? { opacity: 0.3 } : undefined}
               className="p-2"
+              style={noContainer ? { opacity: 0.3 } : undefined}
             >
               <Icon name="add-circle" size={28} color={hydrationColor} />
-            </TouchableOpacity>
+            </Button>
           )}
         </View>
         <View className="flex-1 items-center mr-2">

@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@bottom-tabs/react-navigation": "^1.1.0",
-    "@workspace/shared": "workspace:*",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@kingstinct/react-native-healthkit": "^13.3.1",
@@ -25,6 +24,7 @@
     "@react-navigation/stack": "^7.4.2",
     "@shopify/react-native-skia": "2.2.12",
     "@tanstack/react-query": "^5.90.20",
+    "@workspace/shared": "workspace:*",
     "expo": "~54.0.33",
     "expo-application": "~7.0.8",
     "expo-asset": "~12.0.12",
@@ -75,6 +75,7 @@
     "jest-environment-jsdom": "29.7.0",
     "jest-expo": "~54.0.17",
     "prettier": "2.8.8",
+    "radon-ide": "^0.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5.8.3"
   },

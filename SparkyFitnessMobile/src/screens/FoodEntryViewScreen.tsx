@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Pressable, ScrollView, TextInput } from 'react-native';
+import Button from '../components/ui/Button';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -330,24 +331,26 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         </TouchableOpacity>
         {canEdit && !isEditing && (
           <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={{ marginLeft: 'auto', zIndex: 10 }}>
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={() => updateEdit({ isEditing: true })}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              textClassName="font-medium"
             >
-              <Text className="text-accent-primary text-base font-medium">Edit</Text>
-            </TouchableOpacity>
+              Edit
+            </Button>
           </Animated.View>
         )}
         {isEditing && (
           <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={{ marginLeft: 'auto', zIndex: 10 }}>
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={handleSave}
               disabled={isUpdatePending || quantity <= 0}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={quantity <= 0 ? { opacity: 0.5 } : undefined}
             >
-              <Text className="text-accent-primary text-base font-semibold">Done</Text>
-            </TouchableOpacity>
+              Done
+            </Button>
           </Animated.View>
         )}
       </View>
@@ -561,21 +564,19 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           </View>
         </Animated.View>
 
-      </ScrollView>
-
-      {/* Delete button pinned to bottom */}
-      <View className="border-t border-border-subtle" style={{ paddingBottom: insets.bottom }}>
-        <TouchableOpacity
-          onPress={confirmAndDelete}
-          disabled={isDeletePending}
-          className="items-center py-3"
-          activeOpacity={0.6}
-        >
-          <Text className="text-bg-danger text-base font-medium">
+        {/* Delete button */}
+        <Animated.View layout={LinearTransition.duration(300)}>
+          <Button
+            variant="ghost"
+            onPress={confirmAndDelete}
+            disabled={isDeletePending}
+            className="mt-2"
+            textClassName="text-bg-danger font-medium"
+          >
             {isDeletePending ? 'Deleting...' : 'Delete Entry'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+          </Button>
+        </Animated.View>
+      </ScrollView>
 
       {isEditing && (
         <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={(date) => updateEdit({ selectedDate: date })} />

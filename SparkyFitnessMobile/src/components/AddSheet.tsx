@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -8,6 +8,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useUniwind, useCSSVariable } from 'uniwind';
 import Icon, { type IconName } from './Icon';
+import Button from './ui/Button';
 
 export interface AddSheetRef {
   present: () => void;
@@ -77,18 +78,18 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     ];
 
     const renderCard = (card: ActionCard, isLeft: boolean) => (
-      <TouchableOpacity
+      <Button
         key={card.label}
-        className={`flex-1 items-center rounded-xl py-5 ${isLeft ? 'mr-1.5' : 'ml-1.5'}`}
+        variant="primary"
+        className={`flex-1 py-5 ${isLeft ? 'mr-1.5' : 'ml-1.5'}`}
         style={{ backgroundColor: raisedBg }}
-        activeOpacity={0.7}
         onPress={() => handleAction(card.onPress)}
       >
         <Icon name={card.icon} size={32} color={accentPrimary} />
         <Text className="text-text-primary text-sm font-medium mt-2">
           {card.label}
         </Text>
-      </TouchableOpacity>
+      </Button>
     );
 
     return (

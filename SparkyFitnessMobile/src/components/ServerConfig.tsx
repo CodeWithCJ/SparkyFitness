@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
+import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
 import { ServerConfig as ServerConfigType } from '../services/storage';
 import ConnectionStatus from './ConnectionStatus';
@@ -144,22 +145,22 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
           </TouchableOpacity>
         ))}
         <View className="flex-row align-items-baseline justify-start gap-4">
-          <TouchableOpacity
+          <Button
+            variant="ghost"
             onPress={handleAddNewConfig}
             accessibilityLabel="Add new configuration"
-            accessibilityRole="button"
-            className="flex-row items-center mt-2 py-1"
+            className="flex-row mt-2 py-1 px-0"
           >
             <Icon name="add" size={24} color={accentPrimary} />
             <Text className="ml-2 text-base font-medium" style={{ color: accentPrimary }}>Add Server</Text>
-          </TouchableOpacity>
-          
+          </Button>
+
           {activeConfigId && (
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={onOpenWebDashboard}
               accessibilityLabel="Open web dashboard"
-              accessibilityRole="button"
-              className="flex-row items-center mt-2 py-1"
+              className="flex-row mt-2 py-1 px-0"
             >
               <Icon name="globe" size={20} color={accentPrimary} />
               <Text
@@ -168,7 +169,7 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
               >
                 Open Web
               </Text>
-            </TouchableOpacity>
+            </Button>
           )}
         </View>
       </View>

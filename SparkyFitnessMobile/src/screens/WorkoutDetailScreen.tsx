@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import Button from '../components/ui/Button';
 import { getSourceLabel, getWorkoutIcon, formatDuration, getWorkoutSummary } from '../components/WorkoutCard';
 import { useDeleteExerciseEntry } from '../hooks/useDeleteExerciseEntry';
 import { useDeleteWorkout } from '../hooks/useDeleteWorkout';
@@ -199,20 +200,23 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
+        <Button
+          variant="ghost"
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="py-0 px-0"
         >
           <Icon name="chevron-back" size={22} color={accentPrimary} />
-        </TouchableOpacity>
+        </Button>
         {isSparky && (
-          <TouchableOpacity
+          <Button
+            variant="ghost"
             onPress={handleEdit}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            style={{ marginLeft: 'auto' }}
+            className="py-0 px-0 ml-auto"
           >
             <Text className="text-accent-primary text-base font-medium">Edit</Text>
-          </TouchableOpacity>
+          </Button>
         )}
       </View>
 
@@ -282,16 +286,16 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Delete button — only for Sparky sessions */}
         {isSparky && (
-          <TouchableOpacity
+          <Button
+            variant="ghost"
             onPress={handleDelete}
             disabled={isDeleting}
-            className="items-center py-3 mt-6"
-            activeOpacity={0.6}
+            className="mt-6"
           >
             <Text className="text-bg-danger text-base font-medium">
               {isDeleting ? 'Deleting...' : 'Delete Workout'}
             </Text>
-          </TouchableOpacity>
+          </Button>
         )}
       </ScrollView>
     </View>
