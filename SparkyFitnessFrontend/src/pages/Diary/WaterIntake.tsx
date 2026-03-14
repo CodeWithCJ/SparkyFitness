@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,15 +39,8 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
 
   // Local state for the selected container in the diary
   const [selectedContainerId, setSelectedContainerId] = useState<number | null>(
-    null
+    () => activeContainer?.id ?? null
   );
-
-  // Initialize selected container from active container
-  useEffect(() => {
-    if (activeContainer && selectedContainerId === null) {
-      setSelectedContainerId(activeContainer.id);
-    }
-  }, [activeContainer, selectedContainerId]);
 
   // Derived selected container
   const currentContainer =
@@ -67,9 +60,11 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       nextIndex = (currentIndex - 1 + containers.length) % containers.length;
     }
 
-    setSelectedContainerId(containers[nextIndex].id);
+    const nextContainer = containers[nextIndex];
+    if (nextContainer) {
+      setSelectedContainerId(nextContainer.id);
+    }
   };
-
   const saveWaterIntake = (
     changeDrinks: number,
     containerId: number | null
@@ -87,6 +82,34 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
 
   const adjustWater = (changeDrinks: number) => {
     saveWaterIntake(changeDrinks, currentContainer?.id || null);
+  };
+
+  const getVolumeDisplay = () => {
+    if (currentContainer) {
+      const servings = Math.max(
+        1,
+        currentContainer.servings_per_container || 1
+      );
+      const volumePerDrink = currentContainer.volume / servings;
+      const displayVolume = convertMlToSelectedUnit(
+        volumePerDrink,
+        currentContainer.unit
+      ).toFixed(currentContainer.unit === 'ml' ? 0 : 2);
+
+      return t('foodDiary.waterIntake.perDrink', {
+        volume: displayVolume,
+        unit: currentContainer.unit,
+      });
+    }
+
+    const displayVolume = convertMlToSelectedUnit(
+      250,
+      water_display_unit
+    ).toFixed(water_display_unit === 'ml' ? 0 : 2);
+    return t('foodDiary.waterIntake.defaultPerDrink', {
+      volume: displayVolume,
+      unit: water_display_unit,
+    });
   };
 
   if (!user) {
@@ -179,24 +202,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
 
           <div className="text-center min-w-[70px]">
             <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
-              {currentContainer
-                ? t('foodDiary.waterIntake.perDrink', {
-                    volume: convertMlToSelectedUnit(
-                      currentContainer.volume /
-                        currentContainer.servings_per_container,
-                      currentContainer.unit
-                    ).toFixed(currentContainer.unit === 'ml' ? 0 : 2),
-                    unit: currentContainer.unit,
-                    defaultValue: `${convertMlToSelectedUnit(currentContainer.volume / currentContainer.servings_per_container, currentContainer.unit).toFixed(currentContainer.unit === 'ml' ? 0 : 2)} ${currentContainer.unit}`,
-                  })
-                : t('foodDiary.waterIntake.defaultPerDrink', {
-                    volume: convertMlToSelectedUnit(
-                      250,
-                      water_display_unit
-                    ).toFixed(water_display_unit === 'ml' ? 0 : 2),
-                    unit: water_display_unit,
-                    defaultValue: `${convertMlToSelectedUnit(250, water_display_unit).toFixed(water_display_unit === 'ml' ? 0 : 2)} ${water_display_unit}`,
-                  })}
+              {getVolumeDisplay()}
             </div>
           </div>
 
