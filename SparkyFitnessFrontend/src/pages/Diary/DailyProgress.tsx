@@ -85,13 +85,17 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const rawGoalCalories = goals?.calories || 2000;
 
   // Calculate the user's intended deficit/surplus from their manual goal vs predicted maintenance.
-  // This allows us to apply the same intention to the adaptive TDEE.
+  // We use a FIXED 'not_much' (1.2) multiplier as the baseline for the offset.
+  // This ensures that the user's dietary "intent" (e.g., -500 kcal) is stable
+  // and doesn't invert the goal when they change their activity level setting.
+  const baselineMaintenance = computeSparkyfitnessBurned(bmr || 0, 'not_much');
+  const calorieGoalOffset = bmr > 0 ? rawGoalCalories - baselineMaintenance : 0;
+
+  // Actual TDEE baseline (displayed for reference)
   const sparkyfitnessBurned = computeSparkyfitnessBurned(
     bmr || 0,
     activityLevel
   );
-  // Only calculate offset if BMR is available, otherwise fallback to 0.
-  const calorieGoalOffset = bmr > 0 ? rawGoalCalories - sparkyfitnessBurned : 0;
 
   // If adaptive mode is on, we use the adaptive TDEE as the baseline and apply the offset.
   // We apply a 1200 kcal "Safety Floor" to ensure the goal never drops to dangerous levels.
@@ -465,6 +469,18 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                     {t('exercise.dailyProgress.days', 'days')}
                   </span>
                 </div>
+              </div>
+
+              <div className="pt-1 border-t border-green-200 dark:border-slate-600 flex justify-between items-center">
+                <span className="text-[10px] text-gray-500 dark:text-slate-400">
+                  {t('exercise.dailyProgress.expenditure', 'Expenditure')}
+                </span>
+                <span className="text-[11px] font-bold text-green-700 dark:text-green-400">
+                  {Math.round(
+                    convertEnergy(adaptiveTdeeData.tdee, 'kcal', energyUnit)
+                  )}{' '}
+                  {getEnergyUnitString(energyUnit)}
+                </span>
               </div>
 
               {adaptiveTdeeData.isFallback && (
