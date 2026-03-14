@@ -34,8 +34,10 @@ export const formatDate = (dateString: string): string => {
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
-// Format a YYYY-MM-DD date for display ("Today" or "Mon, Jan 6")
+// Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
 export const formatDateLabel = (dateString: string): string => {
-  if (dateString === getTodayDate()) return 'Today';
+  const today = getTodayDate();
+  if (dateString === today) return 'Today';
+  if (dateString === addDays(today, -1)) return 'Yesterday';
   return formatDate(dateString);
 };

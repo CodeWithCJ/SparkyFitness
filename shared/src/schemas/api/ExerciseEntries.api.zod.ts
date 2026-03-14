@@ -154,6 +154,7 @@ export const exerciseEntryResponseSchema = z.object({
 export const individualSessionResponseSchema = exerciseEntryResponseSchema.extend(
   {
     type: z.literal("individual"),
+    name: z.string().nullable(),
   },
 );
 

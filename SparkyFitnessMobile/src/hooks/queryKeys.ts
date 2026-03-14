@@ -39,3 +39,6 @@ export const exerciseHistoryResetQueryKey = ['exerciseHistoryReset'] as const;
 export const suggestedExercisesQueryKey = ['suggestedExercises'] as const;
 
 export const exerciseSearchQueryKey = (searchTerm: string) => ['exerciseSearch', searchTerm] as const;
+
+export const externalExerciseSearchQueryKey = (providerType: string, searchTerm: string, providerId?: string) =>
+  ['externalExerciseSearch', providerType, searchTerm, providerId] as const;

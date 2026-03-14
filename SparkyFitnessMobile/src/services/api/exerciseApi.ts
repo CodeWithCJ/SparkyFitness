@@ -131,6 +131,7 @@ export const createWorkout = async (
 
 export interface CreateExerciseEntryPayload {
   exercise_id: string;
+  exercise_name?: string | null;
   duration_minutes: number;
   calories_burned: number;
   entry_date: string;

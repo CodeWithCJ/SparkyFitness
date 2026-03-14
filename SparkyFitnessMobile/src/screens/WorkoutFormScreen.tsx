@@ -14,9 +14,6 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
-import ExercisePicker, {
-  type ExercisePickerRef,
-} from '../components/ExercisePicker';
 import { useWorkoutForm } from '../hooks/useWorkoutForm';
 import { useCreateWorkout } from '../hooks/useCreateWorkout';
 import { useUpdateWorkout } from '../hooks/useUpdateWorkout';
@@ -40,7 +37,6 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const isEditMode = !!session;
 
   const insets = useSafeAreaInsets();
-  const exercisePickerRef = useRef<ExercisePickerRef>(null);
 
   const [accentPrimary, textMuted, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -92,6 +88,17 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     populate(session, weightUnit as 'kg' | 'lbs');
   }, [isEditMode, session, isPreferencesLoading, populate, weightUnit]);
   const isInitializingEditForm = isEditMode && !hasPopulatedRef.current;
+
+  // Listen for exercise selection from ExerciseSearchScreen
+  const lastNonceRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    const selectedExercise = route.params?.selectedExercise;
+    const nonce = route.params?.selectionNonce;
+    if (selectedExercise && nonce && nonce !== lastNonceRef.current) {
+      lastNonceRef.current = nonce;
+      addExercise(selectedExercise);
+    }
+  }, [route.params?.selectedExercise, route.params?.selectionNonce, addExercise]);
 
   const handleCancel = useCallback(() => {
     if (!isEditMode && !hasDraftData) {
@@ -356,7 +363,6 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
               {/* Workout name */}
               <FormInput
                 className="text-xl font-bold text-text-primary mb-4"
-                style={{ backgroundColor: 'transparent', borderWidth: 0, paddingLeft: 0 }}
                 value={state.name}
                 onChangeText={setName}
                 placeholder="Workout"
@@ -374,7 +380,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
                   borderStyle: 'dashed',
                   borderColor: borderSubtle,
                 }}
-                onPress={() => exercisePickerRef.current?.present()}
+                onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
                 activeOpacity={0.7}
               >
                 <Icon name="add-circle" size={24} color={accentPrimary} />
@@ -388,10 +394,6 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
             </ScrollView>
           </KeyboardAvoidingView>
 
-          <ExercisePicker
-            ref={exercisePickerRef}
-            onSelectExercise={addExercise}
-          />
         </>
       )}
     </View>

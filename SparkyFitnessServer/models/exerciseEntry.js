@@ -504,7 +504,7 @@ async function _createExerciseEntryWithClient(
           entryData.workout_plan_assignment_id || null,
           entryData.image_url || null,
           createdByUserId,
-          snapshot.name, // exercise_name
+          entryData.exercise_name || snapshot.name, // exercise_name
           snapshot.calories_per_hour,
           snapshot.category,
           entrySource,
@@ -628,9 +628,10 @@ async function updateExerciseEntry(id, userId, actingUserId, updateData) {
         distance = COALESCE($8, distance),
         avg_heart_rate = COALESCE($9, avg_heart_rate),
         sort_order = COALESCE($10, sort_order),
-        updated_by_user_id = $11,
+        exercise_name = COALESCE($11, exercise_name),
+        updated_by_user_id = $12,
         updated_at = now()
-      WHERE id = $12 AND user_id = $13
+      WHERE id = $13 AND user_id = $14
       RETURNING id`,
       [
         updateData.exercise_id,
@@ -643,6 +644,7 @@ async function updateExerciseEntry(id, userId, actingUserId, updateData) {
         updateData.distance || null,
         updateData.avg_heart_rate || null,
         updateData.sort_order !== undefined ? updateData.sort_order : null,
+        updateData.exercise_name || null,
         actingUserId,
         id,
         userId,
@@ -813,6 +815,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
 
         return {
           ...entryData,
+          name: exercise_name,
           exercise_snapshot: {
             // Renamed from 'exercises' to 'exercise_snapshot' to avoid confusion with the grouping
             id: entryData.exercise_id, // Add the exercise_id here

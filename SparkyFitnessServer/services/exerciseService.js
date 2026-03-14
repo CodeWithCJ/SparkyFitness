@@ -763,14 +763,24 @@ async function searchExternalExercises(
   providerType,
   equipmentFilter,
   muscleGroupFilter,
-  limit = 50,
+  page = 1,
+  pageSize = 20,
 ) {
   log(
     "info",
-    `[exerciseService] searchExternalExercises called with: query='${query}', providerType='${providerType}', equipmentFilter='${equipmentFilter}', muscleGroupFilter='${muscleGroupFilter}'`,
+    `[exerciseService] searchExternalExercises called with: query='${query}', providerType='${providerType}', equipmentFilter='${equipmentFilter}', muscleGroupFilter='${muscleGroupFilter}', page=${page}, pageSize=${pageSize}`,
   );
+
+  const emptyResponse = {
+    items: [],
+    pagination: { page, pageSize, totalCount: 0, hasMore: false },
+  };
+
   try {
-    let exercises = [];
+    let items = [];
+    let totalCount = 0;
+    const offset = (page - 1) * pageSize;
+
     const latestMeasurement =
       await measurementRepository.getLatestMeasurement(authenticatedUserId);
     const userWeightKg =
@@ -783,14 +793,14 @@ async function searchExternalExercises(
     const hasQuery = query.trim().length > 0;
 
     // If there's no search query but filters are present, and the provider doesn't support filters,
-    // return an empty array to avoid returning a large, unfiltered list.
+    // return an empty result to avoid returning a large, unfiltered list.
     if (!hasQuery && hasFilters) {
       if (providerType === "nutritionix") {
         log(
           "warn",
           `External search for provider ${providerType} received filters but no search query. Filters are not supported for this provider without a search query. Returning empty results.`,
         );
-        return [];
+        return emptyResponse;
       }
     }
 
@@ -805,15 +815,17 @@ async function searchExternalExercises(
         .flatMap((name) => equipmentIdMap[name] || [])
         .filter((id) => id);
 
-      const wgerSearchResults = await wgerService.searchWgerExercises(
+      const wgerResult = await wgerService.searchWgerExercises(
         query,
         muscleIds,
         equipmentIds,
         "en",
-        limit,
+        pageSize,
+        offset,
       );
 
-      exercises = wgerSearchResults.map((exercise) => {
+      totalCount = wgerResult.totalCount;
+      items = wgerResult.exercises.map((exercise) => {
         let caloriesPerHour = 0;
         if (exercise.met && exercise.met > 0) {
           caloriesPerHour = Math.round(
@@ -828,6 +840,7 @@ async function searchExternalExercises(
             ? exercise.category.name
             : "Uncategorized",
           calories_per_hour: caloriesPerHour,
+          source: "wger",
           description: exercise.description || exercise.name,
           force: exercise.force,
           mechanic: exercise.mechanic,
@@ -839,16 +852,21 @@ async function searchExternalExercises(
       // For Nutritionix, we are not using user demographics for now, as per user feedback.
       const nutritionixSearchResults =
         await nutritionixService.searchNutritionixExercises(query, providerId);
-      exercises = nutritionixSearchResults;
+
+      totalCount = nutritionixSearchResults.length;
+      items = nutritionixSearchResults.slice(offset, offset + pageSize);
     } else if (providerType === "free-exercise-db") {
-      const freeExerciseDBSearchResults =
+      const freeExerciseDBResult =
         await freeExerciseDBService.searchExercises(
           query,
           equipmentFilter,
           muscleGroupFilter,
-          limit,
-        ); // Pass filters and limit
-      exercises = freeExerciseDBSearchResults.map((exercise) => ({
+          pageSize,
+          offset,
+        );
+
+      totalCount = freeExerciseDBResult.totalCount;
+      items = freeExerciseDBResult.exercises.map((exercise) => ({
         id: exercise.id,
         name: exercise.name,
         category: exercise.category,
@@ -887,7 +905,16 @@ async function searchExternalExercises(
         `Unsupported external exercise provider: ${providerType}`,
       );
     }
-    return exercises;
+
+    return {
+      items,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        hasMore: page * pageSize < totalCount,
+      },
+    };
   } catch (error) {
     log(
       "error",

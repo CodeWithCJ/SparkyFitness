@@ -117,8 +117,10 @@ async function searchWgerExercises(query, muscleIds = [], equipmentIds = [], lan
 
     let validExercises = detailedExercises.filter(d => d !== null);
 
-
-    return validExercises.slice(offset, offset + limit);
+    return {
+        exercises: validExercises.slice(offset, offset + limit),
+        totalCount: validExercises.length,
+    };
 }
 
 async function getWgerExerciseDetails(exerciseId) {

@@ -4,6 +4,7 @@ import type { ExerciseSessionResponse, IndividualSessionResponse, PresetSessionR
 import type { FoodInfoItem } from './foodInfo';
 import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';
+import type { Exercise } from './exercise';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -22,8 +23,9 @@ export type RootStackParamList = {
     | { mode: 'create-food'; date?: string; initialFood?: Partial<FoodFormData>; barcode?: string; providerType?: string }
     | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string };
   FoodScan: { date?: string } | undefined;
-  WorkoutForm: { session?: PresetSessionResponse } | undefined;
-  ActivityForm: { entry?: IndividualSessionResponse; date?: string; popCount?: number } | undefined;
+  ExerciseSearch: { returnKey: string };
+  WorkoutForm: { session?: PresetSessionResponse; selectedExercise?: Exercise; selectionNonce?: number } | undefined;
+  ActivityForm: { entry?: IndividualSessionResponse; date?: string; popCount?: number; selectedExercise?: Exercise; selectionNonce?: number } | undefined;
   WorkoutDetail: { session: ExerciseSessionResponse };
   Logs: undefined;
   Sync: undefined;

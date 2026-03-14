@@ -344,22 +344,53 @@ router.get('/search', authenticate, async (req, res, next) => {
  *         schema:
  *           type: string
  *         description: Comma-separated list of muscle groups to filter by.
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (1-based).
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *         description: Number of results per page.
  *     responses:
  *       200:
- *         description: A list of external exercises matching the search criteria.
+ *         description: Paginated list of external exercises matching the search criteria.
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Exercise'
+ *               type: object
+ *               properties:
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Exercise'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     totalCount:
+ *                       type: integer
+ *                     hasMore:
+ *                       type: boolean
  *       400:
  *         description: Bad request, if search query/filters or provider details are missing.
  *       500:
  *         description: Server error.
  */
 router.get('/search-external', authenticate, async (req, res, next) => {
-  const { query, providerId, providerType, equipmentFilter, muscleGroupFilter } = req.query; // Get providerId and providerType from query
+  const { query, providerId, providerType, equipmentFilter, muscleGroupFilter } = req.query;
+  const paginated = req.query.page !== undefined || req.query.pageSize !== undefined;
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const rawSize = parseInt(req.query.pageSize, 10) || parseInt(req.query.limit, 10) || 20;
+  const pageSize = Math.min(100, Math.max(1, rawSize));
   const equipmentFilterArray = equipmentFilter && equipmentFilter.length > 0 ? equipmentFilter.split(',') : [];
   const muscleGroupFilterArray = muscleGroupFilter && muscleGroupFilter.length > 0 ? muscleGroupFilter.split(',') : [];
 
@@ -373,8 +404,8 @@ router.get('/search-external', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Provider ID and Type are required for external search.' });
   }
   try {
-    const exercises = await exerciseService.searchExternalExercises(req.userId, query, providerId, providerType, equipmentFilterArray, muscleGroupFilterArray); // Pass authenticatedUserId, query, providerId, and providerType
-    res.status(200).json(exercises);
+    const result = await exerciseService.searchExternalExercises(req.userId, query, providerId, providerType, equipmentFilterArray, muscleGroupFilterArray, page, pageSize);
+    res.status(200).json(paginated ? result : result.items);
   } catch (error) {
     next(error);
   }

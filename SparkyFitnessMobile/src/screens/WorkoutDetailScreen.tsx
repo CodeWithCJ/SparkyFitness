@@ -128,9 +128,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   </Text>
                 )}
               </View>
-              <Text className="text-sm text-text-secondary">
-                {Math.round(exercise.calories_burned)} Cal
-              </Text>
+              {exercise.calories_burned > 0 && (
+                <Text className="text-sm text-text-secondary">
+                  {Math.round(exercise.calories_burned)} Cal
+                </Text>
+              )}
             </View>
             {renderSetTable(exercise)}
           </View>
@@ -250,22 +252,30 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Summary card */}
         <View className="bg-surface rounded-xl p-4">
           <View className="flex-row items-center justify-around">
-            <View className="items-center">
-              <Text className="text-lg font-semibold text-text-primary">
-                {formatDuration(duration)}
-              </Text>
-              <Text className="text-xs text-text-muted mt-0.5">Duration</Text>
-            </View>
-            <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
-            <View className="items-center">
-              <Text className="text-lg font-semibold text-text-primary">
-                {Math.round(calories)}
-              </Text>
-              <Text className="text-xs text-text-muted mt-0.5">Calories</Text>
-            </View>
+            {duration > 0 && (
+              <View className="items-center">
+                <Text className="text-lg font-semibold text-text-primary">
+                  {formatDuration(duration)}
+                </Text>
+                <Text className="text-xs text-text-muted mt-0.5">Duration</Text>
+              </View>
+            )}
+            {duration > 0 && calories > 0 && (
+              <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
+            )}
+            {calories > 0 && (
+              <View className="items-center">
+                <Text className="text-lg font-semibold text-text-primary">
+                  {Math.round(calories)}
+                </Text>
+                <Text className="text-xs text-text-muted mt-0.5">Calories</Text>
+              </View>
+            )}
             {isPreset && (
               <>
-                <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
+                {(duration > 0 || calories > 0) && (
+                  <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
+                )}
                 <View className="items-center">
                   <Text className="text-lg font-semibold text-text-primary">
                     {session.exercises.length}

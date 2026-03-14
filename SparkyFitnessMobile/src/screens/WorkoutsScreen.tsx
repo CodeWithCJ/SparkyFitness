@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Alert } from 'react-native';
 import { loadDraft, clearDraft } from '../services/workoutDraftService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,10 +8,12 @@ import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import WorkoutCard from '../components/WorkoutCard';
 import { useServerConnection, useExerciseHistory } from '../hooks';
+import { formatDateLabel } from '../utils/dateUtils';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
+import type { ExerciseSessionResponse } from '@workspace/shared';
 
 type WorkoutsScreenProps = CompositeScreenProps<
   NativeBottomTabScreenProps<TabParamList, 'Workouts'>,
@@ -35,6 +37,24 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
     loadMore,
     hasMore,
   } = useExerciseHistory({ enabled: isConnected });
+
+  const groupedSessions = useMemo(() => {
+    const groups: { date: string; label: string; sessions: ExerciseSessionResponse[] }[] = [];
+    const dateMap = new Map<string, ExerciseSessionResponse[]>();
+
+    for (const session of sessions) {
+      const date = session.entry_date?.split('T')[0] ?? '';
+      let group = dateMap.get(date);
+      if (!group) {
+        group = [];
+        dateMap.set(date, group);
+        groups.push({ date, label: date ? formatDateLabel(date) : 'Unknown', sessions: group });
+      }
+      group.push(session);
+    }
+
+    return groups;
+  }, [sessions]);
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -229,15 +249,21 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
       >
         {renderActionButtons()}
         <View className="px-4">
-          <Text className="text-lg font-bold text-text-primary mb-3">Recent Activity</Text>
-          {sessions.map(session => (
-            <TouchableOpacity
-              key={session.id}
-              onPress={() => navigation.navigate('WorkoutDetail', { session })}
-              activeOpacity={0.7}
-            >
-              <WorkoutCard session={session} />
-            </TouchableOpacity>
+          {groupedSessions.map(group => (
+            <View key={group.date}>
+              <Text className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2 mt-3">
+                {group.label}
+              </Text>
+              {group.sessions.map(session => (
+                <TouchableOpacity
+                  key={session.id}
+                  onPress={() => navigation.navigate('WorkoutDetail', { session })}
+                  activeOpacity={0.7}
+                >
+                  <WorkoutCard session={session} />
+                </TouchableOpacity>
+              ))}
+            </View>
           ))}
           {hasMore && (
             <Button

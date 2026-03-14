@@ -12,6 +12,7 @@ export type { ActivityDraft } from '../types/drafts';
 function createEmptyDraft(): ActivityDraft {
   return {
     type: 'activity',
+    name: '',
     exerciseId: null,
     exerciseName: '',
     exerciseCategory: null,
@@ -34,6 +35,7 @@ function calculateCalories(caloriesPerHour: number, durationStr: string): string
 type ActivityFormAction =
   | { type: 'RESTORE_DRAFT'; draft: ActivityDraft }
   | { type: 'SET_EXERCISE'; exercise: Exercise }
+  | { type: 'SET_NAME'; value: string }
   | { type: 'SET_DURATION'; value: string }
   | { type: 'SET_DISTANCE'; value: string }
   | { type: 'SET_CALORIES'; value: string }
@@ -54,12 +56,16 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         exerciseName: action.exercise.name,
         exerciseCategory: action.exercise.category,
         caloriesPerHour: action.exercise.calories_per_hour,
+        name: state.name || action.exercise.name,
       };
       if (!state.caloriesManuallySet) {
         newState.calories = calculateCalories(action.exercise.calories_per_hour, state.duration);
       }
       return newState;
     }
+
+    case 'SET_NAME':
+      return { ...state, name: action.value };
 
     case 'SET_DURATION': {
       const newState = { ...state, duration: action.value };
@@ -97,6 +103,7 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
       }
       return {
         type: 'activity',
+        name: entry.name ?? entry.exercise_snapshot?.name ?? '',
         exerciseId: entry.exercise_id,
         exerciseName: entry.exercise_snapshot?.name ?? '',
         exerciseCategory: entry.exercise_snapshot?.category ?? null,
@@ -187,6 +194,10 @@ export function useActivityForm({ isEditMode = false, initialDate }: UseActivity
     dispatch({ type: 'SET_EXERCISE', exercise });
   }, []);
 
+  const setName = useCallback((value: string) => {
+    dispatch({ type: 'SET_NAME', value });
+  }, []);
+
   const setDuration = useCallback((value: string) => {
     dispatch({ type: 'SET_DURATION', value });
   }, []);
@@ -219,6 +230,7 @@ export function useActivityForm({ isEditMode = false, initialDate }: UseActivity
   return {
     state,
     setExercise,
+    setName,
     setDuration,
     setDistance,
     setCalories,

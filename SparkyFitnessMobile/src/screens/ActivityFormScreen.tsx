@@ -13,7 +13,6 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
-import ExercisePicker, { type ExercisePickerRef } from '../components/ExercisePicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useActivityForm, isDistanceExercise } from '../hooks/useActivityForm';
 import { distanceToKm } from '../utils/unitConversions';
@@ -33,7 +32,6 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const isEditMode = !!entry;
 
   const insets = useSafeAreaInsets();
-  const exercisePickerRef = useRef<ExercisePickerRef>(null);
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
   const [accentPrimary, textMuted, borderSubtle, raisedBg] = useCSSVariable([
@@ -46,6 +44,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const {
     state,
     setExercise,
+    setName,
     setDuration,
     setDistance,
     setCalories,
@@ -73,6 +72,17 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [isEditMode, entry, preferences, populate, distanceUnit]);
 
+  // Listen for exercise selection from ExerciseSearchScreen
+  const lastNonceRef = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    const selectedExercise = route.params?.selectedExercise;
+    const nonce = route.params?.selectionNonce;
+    if (selectedExercise && nonce && nonce !== lastNonceRef.current) {
+      lastNonceRef.current = nonce;
+      setExercise(selectedExercise);
+    }
+  }, [route.params?.selectedExercise, route.params?.selectionNonce, setExercise]);
+
   const canSave = state.exerciseId && state.duration && parseFloat(state.duration) > 0;
 
   const handleCancel = useCallback(() => {
@@ -98,6 +108,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
     const payload = {
       exercise_id: state.exerciseId,
+      exercise_name: state.name.trim() || state.exerciseName || null,
       duration_minutes: durationMinutes,
       calories_burned: caloriesBurned,
       entry_date: state.entryDate,
@@ -155,16 +166,20 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
         keyboardVerticalOffset={insets.top}
       >
         <ScrollView className="flex-1 px-4" keyboardShouldPersistTaps="handled">
-          {/* Title */}
-          <Text className="text-xl font-bold text-text-primary py-2 mb-4">
-            {isEditMode ? 'Edit Activity' : 'Log Activity'}
-          </Text>
+          {/* Activity name */}
+          <FormInput
+            className="text-xl font-bold text-text-primary mb-4"
+            value={state.name}
+            onChangeText={setName}
+            placeholder="Activity"
+            returnKeyType="done"
+          />
 
           {/* Exercise picker row */}
           <TouchableOpacity
             className="rounded-xl p-4 mb-4"
             style={{ backgroundColor: raisedBg }}
-            onPress={() => exercisePickerRef.current?.present()}
+            onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
             activeOpacity={0.7}
           >
             {state.exerciseId ? (
@@ -265,7 +280,6 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <ExercisePicker ref={exercisePickerRef} onSelectExercise={setExercise} />
       <CalendarSheet
         ref={calendarSheetRef}
         selectedDate={state.entryDate}

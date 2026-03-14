@@ -3,7 +3,6 @@ import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import Icon, { type IconName } from './Icon';
-import { formatDate } from '../utils/dateUtils';
 
 interface WorkoutCardProps {
   session: ExerciseSessionResponse;
@@ -93,7 +92,6 @@ const WorkoutCard = React.memo<WorkoutCardProps>(({ session }) => {
     : undefined;
 
   const { label: sourceLabel, isSparky } = getSourceLabel(source);
-  const dateStr = session.entry_date ? formatDate(session.entry_date) : '';
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm">
@@ -119,12 +117,12 @@ const WorkoutCard = React.memo<WorkoutCardProps>(({ session }) => {
             </View>
           </View>
           <Text className="text-sm text-text-secondary mt-0.5">
-            {formatDuration(duration)} · {Math.round(calories)} Cal
-            {subtitle ? ` · ${subtitle}` : ''}
+            {[
+              duration > 0 ? formatDuration(duration) : null,
+              calories > 0 ? `${Math.round(calories)} Cal` : null,
+              subtitle,
+            ].filter(Boolean).join(' · ')}
           </Text>
-          {dateStr ? (
-            <Text className="text-xs text-text-muted mt-0.5">{dateStr}</Text>
-          ) : null}
         </View>
       </View>
     </View>

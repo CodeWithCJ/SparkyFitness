@@ -29,6 +29,7 @@ import FoodScanScreen from './src/screens/FoodScanScreen';
 import WorkoutFormScreen from './src/screens/WorkoutFormScreen';
 import ActivityFormScreen from './src/screens/ActivityFormScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
+import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import LoginModal from './src/components/LoginModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
@@ -408,11 +409,22 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="ExerciseSearch"
+            component={ExerciseSearchScreen}
+            options={{
+              presentation: 'modal',
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          />
+          <Stack.Screen
             name="WorkoutForm"
             component={WorkoutFormScreen}
             options={{
               headerShown: false,
-              gestureEnabled: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen
@@ -420,7 +432,8 @@ function AppContent() {
             component={ActivityFormScreen}
             options={{
               headerShown: false,
-              gestureEnabled: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
             }}
           />
           <Stack.Screen

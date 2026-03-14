@@ -48,4 +48,5 @@ export { useActivityForm, isDistanceExercise } from './useActivityForm';
 export { useDeleteExerciseEntry } from './useDeleteExerciseEntry';
 export { useDeleteWorkout } from './useDeleteWorkout';
 export { useUpdateWorkout } from './useUpdateWorkout';
-export { suggestedExercisesQueryKey, exerciseSearchQueryKey } from './queryKeys';
+export { suggestedExercisesQueryKey, exerciseSearchQueryKey, externalExerciseSearchQueryKey } from './queryKeys';
+export { useExternalExerciseSearch } from './useExternalExerciseSearch';
