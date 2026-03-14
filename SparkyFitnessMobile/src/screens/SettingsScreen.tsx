@@ -386,8 +386,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 130 }}>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 130 }} contentInsetAdjustmentBehavior="never">
         <View className="flex-1 p-4 pb-20">
           <ServerConfigComponent
             url={url}

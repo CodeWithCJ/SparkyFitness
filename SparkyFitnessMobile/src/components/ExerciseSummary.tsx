@@ -28,7 +28,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries }) =>
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <View className="flex-row items-center gap-2 mb-2">
         <Icon name="exercise" size={18} color={accentPrimary} />
-      <Text className="text-base font-bold text-text-primary">Exercise</Text>
+      <Text className="text-base font-bold text-text-muted">Exercise</Text>
       </View>
       {filtered.map((entry, index) => {
         const name = entry.exercise_snapshot?.name || 'Unknown exercise';

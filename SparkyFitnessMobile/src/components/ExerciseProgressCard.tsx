@@ -106,7 +106,7 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm">
-      <Text className="text-md font-bold text-text-primary mb-4">Exercise</Text>
+      <Text className="text-md font-bold text-text-secondary mb-4">Exercise</Text>
       {hasEntries ? (
         <>
           <ProgressBar

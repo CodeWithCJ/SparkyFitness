@@ -166,7 +166,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderSectionHeader = ({ section }: { section: FoodSection }) => (
     <View className="px-4 py-2 bg-surface">
-      <Text className="text-text-secondary text-sm font-semibold uppercase tracking-wider">
+      <Text className="text-text-muted text-xs font-semibold uppercase">
         {section.title}
       </Text>
     </View>
@@ -174,7 +174,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderSearchBar = () => (
     <View className="px-4 py-2">
-      <View className="flex-row items-center bg-raised rounded-lg border border-border-subtle px-3 py-2.5">
+      <View className="flex-row items-center bg-raised rounded-lg px-3 py-2.5">
         <Icon name="search" size={18} color={textMuted} />
         <TextInput
           className="flex-1 text-text-primary ml-2"

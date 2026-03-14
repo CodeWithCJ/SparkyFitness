@@ -108,6 +108,9 @@ const WRITE_PERMISSIONS = [
   'HKQuantityTypeIdentifierActiveEnergyBurned',
   'HKQuantityTypeIdentifierBasalEnergyBurned',
   'HKQuantityTypeIdentifierDistanceWalkingRunning',
+  'HKQuantityTypeIdentifierFlightsClimbed',
+  'HKQuantityTypeIdentifierDietaryWater',
+  'HKQuantityTypeIdentifierBodyTemperature',
   'HKQuantityTypeIdentifierHeartRate',
   'HKQuantityTypeIdentifierBodyMass',
   'HKQuantityTypeIdentifierHeight',
@@ -148,6 +151,8 @@ const QUANTITY_CONFIGS: QuantitySeedConfig[] = [
   { identifier: 'HKQuantityTypeIdentifierBasalEnergyBurned', unit: 'kcal', range: [1400, 1800], samplesPerDay: 4 },
   // Distance: 3000-8000 meters per day
   { identifier: 'HKQuantityTypeIdentifierDistanceWalkingRunning', unit: 'm', range: [3000, 8000], samplesPerDay: 6 },
+  // Floors climbed: 5-25 flights per day
+  { identifier: 'HKQuantityTypeIdentifierFlightsClimbed', unit: 'count', range: [5, 25], samplesPerDay: 4 },
 ];
 
 const seedQuantitySamples = async (
@@ -411,6 +416,106 @@ const seedHeight = async (): Promise<number> => {
     addLog(`[SeedHealthData] Failed to seed height: ${message}`, 'WARNING');
     return 0;
   }
+};
+
+// ============================================================================
+// Hydration Seeder (multiple water intake records per day)
+// ============================================================================
+
+const seedHydration = async (dates: Date[]): Promise<number> => {
+  let count = 0;
+
+  for (const date of dates) {
+    const entriesPerDay = isToday(date) ? 2 : randomInt(4, 8);
+
+    for (let i = 0; i < entriesPerDay; i++) {
+      try {
+        let startTime: Date;
+
+        if (isToday(date)) {
+          const now = new Date();
+          // Place entries earlier today
+          startTime = new Date(date);
+          startTime.setHours(0, 0, 0, 0);
+          startTime.setMinutes(i * 10 + 5);
+
+          if (startTime >= now) continue;
+        } else {
+          const hour = 7 + Math.floor((i / entriesPerDay) * 14); // Spread 7 AM to 9 PM
+          startTime = new Date(date);
+          startTime.setHours(hour, randomInt(0, 59), 0, 0);
+        }
+
+        const endTime = new Date(startTime);
+        endTime.setMinutes(endTime.getMinutes() + 5);
+
+        const volumeMl = randomInt(200, 500);
+
+        const success = await saveQuantitySample(
+          'HKQuantityTypeIdentifierDietaryWater',
+          'mL',
+          volumeMl,
+          startTime,
+          endTime,
+          {}
+        );
+
+        if (success) {
+          count++;
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(`[SeedHealthData] Failed to seed hydration: ${message}`, 'WARNING');
+      }
+    }
+  }
+
+  return count;
+};
+
+// ============================================================================
+// Body Temperature Seeder (one reading per day)
+// ============================================================================
+
+const seedBodyTemperature = async (dates: Date[]): Promise<number> => {
+  let count = 0;
+
+  for (const date of dates) {
+    try {
+      const sampleTime = new Date(date);
+
+      if (isToday(date)) {
+        const now = new Date();
+        sampleTime.setTime(now.getTime() - 60000);
+      } else {
+        sampleTime.setHours(7, randomInt(0, 30), 0, 0);
+      }
+
+      const endTime = new Date(sampleTime);
+      endTime.setMinutes(endTime.getMinutes() + 1);
+
+      // Normal body temperature range: 36.1–37.2°C
+      const temperature = randomFloat(36.1, 37.2);
+
+      const success = await saveQuantitySample(
+        'HKQuantityTypeIdentifierBodyTemperature',
+        'degC',
+        parseFloat(temperature.toFixed(1)),
+        sampleTime,
+        endTime,
+        {}
+      );
+
+      if (success) {
+        count++;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed body temperature: ${message}`, 'WARNING');
+    }
+  }
+
+  return count;
 };
 
 // ============================================================================
@@ -819,6 +924,28 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[SeedHealthData] Failed to seed Height: ${message}`, 'WARNING');
+    }
+
+    // Seed hydration
+    try {
+      const count = await seedHydration(dates);
+      totalRecords += count;
+      results.push({ type: 'Hydration', count });
+      addLog(`[SeedHealthData] Seeded Hydration: ${count} records`, 'SUCCESS');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed Hydration: ${message}`, 'WARNING');
+    }
+
+    // Seed body temperature
+    try {
+      const count = await seedBodyTemperature(dates);
+      totalRecords += count;
+      results.push({ type: 'BodyTemperature', count });
+      addLog(`[SeedHealthData] Seeded BodyTemperature: ${count} records`, 'SUCCESS');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed BodyTemperature: ${message}`, 'WARNING');
     }
 
     // Seed sleep

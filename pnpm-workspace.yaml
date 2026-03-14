@@ -5,6 +5,11 @@ packages:
   - "SparkyFitnessMobile"
   - "SparkyFitnessServer"
 
+packageExtensions:
+  "@kingstinct/react-native-healthkit@13":
+    dependencies:
+      "@expo/config-plugins": "^54.0.0"
+
 onlyBuiltDependencies:
   - esbuild
   - unrs-resolver

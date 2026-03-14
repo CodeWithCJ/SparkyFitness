@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Pressable, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation, useMeasurementsRange } from '../hooks';
@@ -32,6 +33,7 @@ type DashboardScreenProps = CompositeScreenProps<
 >;
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
   const lastKnownToday = useRef(getTodayDate());
@@ -99,6 +101,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   const [chartPage, setChartPage] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const topSafeAreaStyle = Platform.OS === 'ios' ? { paddingTop: insets.top } : undefined;
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetch(), refetchPreferences(), refetchMeasurements(), refetchSteps()]);
@@ -140,6 +143,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               onNextDay={goToNextDay}
               onToday={goToToday}
               onDatePress={openCalendar}
+              skipSafeAreaTop
             />
           )}
           <View className="flex-1 items-center justify-center p-8 shadow-sm">
@@ -161,6 +165,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             onNextDay={goToNextDay}
             onToday={goToToday}
             onDatePress={openCalendar}
+            skipSafeAreaTop
           />
           <View className="flex-1 items-center justify-center p-8 shadow-sm">
             <Icon name="alert-circle" size={64} color="#EF4444" />
@@ -203,7 +208,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
+        contentInsetAdjustmentBehavior="never"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor || '#3B82F6'} />
         }
@@ -216,6 +221,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           onToday={goToToday}
           onDatePress={openCalendar}
           skipSafeAreaTop
+          skipHorizontalPadding
         />
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (
           <CalorieRingCard
@@ -226,9 +232,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             progressPercent={progressPercent}
           />
         )}
-        {/* Macros Section - 2x2 grid */}
+        {/* Macros Section - 2x2 grid in one card */}
         {summary.foodEntries.length > 0 ? (
-          <View className="flex-row flex-wrap justify-between">
+          <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
+            <Text className="text-md font-bold text-text-secondary mb-2 px-1">Macronutrients</Text>
+            <View className="flex-row flex-wrap justify-between">
             <MacroCard
               label="Protein"
               consumed={summary.protein.consumed}
@@ -257,6 +265,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               color={fiberColor}
               overfillColor={progressTrackOverfillColor}
             />
+            </View>
           </View>
         ) : null}
 
@@ -290,7 +299,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           disableDecrement={summary.waterConsumed <= 0}
         />
 
-        <Text className="text-text-primary text-xl font-bold mt-4 mb-2">Health Trends</Text>
+        <Text className="text-text-primary text-xl font-bold mt-2 mb-2">Health Trends</Text>
         <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />
 
         <HealthTrendsPager
@@ -308,7 +317,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <View className="flex-1 bg-background" style={topSafeAreaStyle}>
       {renderContent()}
 
       <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
