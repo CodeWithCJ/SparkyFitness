@@ -142,7 +142,7 @@ const auth = betterAuth({
 
   // Email/Password authentication
   emailAndPassword: {
-    enabled: true,
+    enabled: process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN !== "true",
     requireEmailVerification: false,
     sendResetPassword: async ({ user, url }, request) => {
       const { sendPasswordResetEmail } = require("./services/emailService");
@@ -419,10 +419,45 @@ const auth = betterAuth({
               userId: account.userId,
             }),
           );
+          }
         },
       },
+      session: {
+        create: {
+          after: async (session) => {
+            console.log(`[AUTH] Hook: Session created for user ${session.userId}. Checking group sync.`);
+            try {
+              const { syncUserGroups } = require("./utils/oidcGroupSync");
+              const oidcProviderRepository = require("./models/oidcProviderRepository");
+              const userRepository = require("./models/userRepository");
+              
+              // Get all accounts for this user to find the OIDC provider used
+              const client = await authPool.connect();
+              try {
+                const { rows: accounts } = await client.query(
+                  'SELECT provider_id FROM "account" WHERE user_id = $1 AND provider_id LIKE \'oidc-%\'',
+                  [session.userId]
+                );
+                
+                for (const acc of accounts) {
+                  const providerId = acc.provider_id.replace('oidc-', '');
+                  const provider = await oidcProviderRepository.getOidcProviderById(providerId);
+                  
+                  if (provider && provider.admin_group) {
+                    console.log(`[AUTH] Syncing groups for user ${session.userId} using provider ${providerId} (Admin Group: ${provider.admin_group})`);
+                    await syncUserGroups({ pool: authPool, userRepository }, session.userId, provider.admin_group);
+                  }
+                }
+              } finally {
+                client.release();
+              }
+            } catch (error) {
+              console.error(`[AUTH] Hook Error: Group sync failed for session ${session.id}:`, error);
+            }
+          }
+        }
+      }
     },
-  },
 
   plugins: [
     require("better-auth/plugins").magicLink({
