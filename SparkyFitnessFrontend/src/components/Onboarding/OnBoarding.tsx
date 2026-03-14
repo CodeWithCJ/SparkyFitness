@@ -25,15 +25,12 @@ const OnBoarding = ({ onOnboardingComplete }: OnBoardingProps) => {
   }
 
   return (
-    weightData &&
-    heightData && (
-      <OnBoardingForm
-        onOnboardingComplete={onOnboardingComplete}
-        profileData={profileData}
-        weightData={weightData}
-        heightData={heightData}
-      />
-    )
+    <OnBoardingForm
+      onOnboardingComplete={onOnboardingComplete}
+      profileData={profileData ?? undefined}
+      weightData={weightData ?? undefined}
+      heightData={heightData ?? undefined}
+    />
   );
 };
 

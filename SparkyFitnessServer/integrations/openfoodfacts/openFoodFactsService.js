@@ -10,6 +10,7 @@ const OFF_HEADERS = {
 
 const OFF_FIELDS = [
   "product_name",
+  "product_name_en",
   "brands",
   "code",
   "serving_size",
@@ -19,7 +20,13 @@ const OFF_FIELDS = [
 
 async function searchOpenFoodFacts(query, page = 1, language = "en") {
   try {
-    const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${OFF_FIELDS.join(",")}&lc=${language}`;
+    const fieldSet = new Set(OFF_FIELDS);
+    if (language !== "en") {
+      fieldSet.add(`product_name_${language}`);
+    }
+    const fields = [...fieldSet];
+
+    const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${fields.join(",")}&lc=${language}`;
     const response = await fetch(searchUrl, {
       method: "GET",
       headers: OFF_HEADERS,
@@ -56,7 +63,12 @@ async function searchOpenFoodFactsByBarcodeFields(
   language = "en",
 ) {
   try {
-    const fieldsParam = fields.join(",");
+    const fieldSet = new Set(fields);
+    if (language !== "en") {
+      fieldSet.add(`product_name_${language}`);
+    }
+    const finalFields = [...fieldSet];
+    const fieldsParam = finalFields.join(",");
     const searchUrl = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
     const response = await fetch(searchUrl, {
       method: "GET",
@@ -86,7 +98,10 @@ async function searchOpenFoodFactsByBarcodeFields(
   }
 }
 
-function mapOpenFoodFactsProduct(product, { autoScale = true } = {}) {
+function mapOpenFoodFactsProduct(
+  product,
+  { autoScale = true, language = "en" } = {},
+) {
   const nutriments = product.nutriments || {};
   const servingSize = autoScale
     ? (product.serving_quantity > 0 ? product.serving_quantity : 100)
@@ -138,8 +153,17 @@ function mapOpenFoodFactsProduct(product, { autoScale = true } = {}) {
     is_default: true,
   };
 
+  // Language fallback priority:
+  // 1. product_name_${language}
+  // 2. product_name_en
+  // 3. product_name (default/original)
+  const name =
+    product[`product_name_${language}`] ||
+    product.product_name_en ||
+    product.product_name;
+
   return {
-    name: product.product_name,
+    name,
     brand: product.brands?.split(",")[0]?.trim() || "",
     barcode: normalizeBarcode(product.code),
     provider_external_id: product.code,
