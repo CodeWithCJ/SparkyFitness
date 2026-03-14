@@ -830,12 +830,13 @@ async function lookupBarcode(barcode, userId, providerId) {
 
     // Fall back to OpenFoodFacts
     let offData;
+    let language = "en";
     try {
       const userPreferences = await preferenceService.getUserPreferences(
         userId,
         userId,
       );
-      const language = userPreferences?.language || "en";
+      language = userPreferences?.language || "en";
       offData = await searchOpenFoodFactsByBarcodeFields(
         barcode,
         undefined,
