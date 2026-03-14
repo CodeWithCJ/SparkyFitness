@@ -31,6 +31,7 @@ import {
   CheckInMeasurementsResponse,
   CustomMeasurementsResponse,
   CustomCategoriesResponse,
+  getPrecision,
 } from '@workspace/shared';
 
 interface PersonalRecord {
@@ -847,7 +848,12 @@ const ReportsTables = ({
                             ? formatWeight(numericValue, weightUnit)
                             : isHeight
                               ? formatMeasurement(numericValue, measurementUnit)
-                              : numericValue.toFixed(1);
+                              : numericValue.toFixed(
+                                  getPrecision(
+                                    'measurement',
+                                    category.measurement_type
+                                  )
+                                );
 
                         return (
                           <TableRow key={index}>

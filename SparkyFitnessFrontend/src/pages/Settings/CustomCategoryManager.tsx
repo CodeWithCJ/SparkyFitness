@@ -32,6 +32,18 @@ import {
   CustomCategoriesResponse,
 } from '@workspace/shared';
 
+const COMMON_UNITS = [
+  { unit: 'kcal', icon: '🔥' },
+  { unit: 'mmHg', icon: '🩸' },
+  { unit: 'bpm', icon: '❤️' },
+  { unit: 'g', icon: '⚖️' },
+  { unit: 'km', icon: '🏃' },
+  { unit: 'miles', icon: '🏁' },
+  { unit: '%', icon: '📊' },
+  { unit: '°C', icon: '🌡️' },
+  { unit: '°F', icon: '🌡️' },
+];
+
 const CustomCategoryManager = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -283,6 +295,31 @@ const CustomCategoryManager = () => {
                   )}
                   maxLength={50}
                 />
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {COMMON_UNITS.map(({ unit, icon }) => (
+                    <Button
+                      key={unit}
+                      variant="outline"
+                      size="sm"
+                      className="text-[10px] h-7 px-2"
+                      onClick={() =>
+                        setNewCategory({
+                          ...newCategory,
+                          measurement_type: unit,
+                        })
+                      }
+                    >
+                      {icon} {unit}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2 italic">
+                  💡{' '}
+                  {t(
+                    'customCategoryManager.unitPrecisionNote',
+                    'Using standard units (like kcal, mmHg, BPM) automatically optimizes chart precision.'
+                  )}
+                </p>
               </div>
               <div>
                 <Label htmlFor="data_type">
@@ -496,6 +533,24 @@ const CustomCategoryManager = () => {
                   )}
                   maxLength={50}
                 />
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {COMMON_UNITS.map(({ unit, icon }) => (
+                    <Button
+                      key={unit}
+                      variant="outline"
+                      size="sm"
+                      className="text-[10px] h-7 px-2"
+                      onClick={() =>
+                        setEditingCategory({
+                          ...editingCategory,
+                          measurement_type: unit,
+                        })
+                      }
+                    >
+                      {icon} {unit}
+                    </Button>
+                  ))}
+                </div>
               </div>
               <div>
                 <Label htmlFor="edit-data_type">
