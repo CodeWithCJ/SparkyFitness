@@ -1,11 +1,13 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Image } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import Icon, { type IconName } from './Icon';
+import type { GetImageSource } from '../hooks/useExerciseImageSource';
 
 interface WorkoutCardProps {
   session: ExerciseSessionResponse;
+  getImageSource?: GetImageSource;
 }
 
 export const CATEGORY_ICON_MAP: Record<string, IconName> = {
@@ -61,6 +63,17 @@ export function formatDuration(minutes: number): string {
   return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
 }
 
+export function getFirstImage(session: ExerciseSessionResponse): string | null {
+  if (session.type === 'individual') {
+    return session.exercise_snapshot?.images?.[0] ?? null;
+  }
+  for (const exercise of session.exercises) {
+    const img = exercise.exercise_snapshot?.images?.[0];
+    if (img) return img;
+  }
+  return null;
+}
+
 export function getWorkoutSummary(session: ExerciseSessionResponse): {
   name: string;
   duration: number;
@@ -80,7 +93,20 @@ export function getWorkoutSummary(session: ExerciseSessionResponse): {
   };
 }
 
-const WorkoutCard = React.memo<WorkoutCardProps>(({ session }) => {
+function getImageSourceSignature(
+  source: { uri: string; headers: Record<string, string> } | null,
+): string {
+  if (!source) return '';
+
+  const headerSignature = Object.entries(source.headers)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}:${value}`)
+    .join('|');
+
+  return `${source.uri}|${headerSignature}`;
+}
+
+const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
   const textMuted = useCSSVariable('--color-text-muted') as string;
 
@@ -93,11 +119,30 @@ const WorkoutCard = React.memo<WorkoutCardProps>(({ session }) => {
 
   const { label: sourceLabel, isSparky } = getSourceLabel(source);
 
+  const firstImage = getFirstImage(session);
+  const imageSource = firstImage && getImageSource ? getImageSource(firstImage) : null;
+  const [imageError, setImageError] = useState(false);
+  const imageSourceSignature = getImageSourceSignature(imageSource);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [imageSourceSignature]);
+
+  const showImage = imageSource && !imageError;
+
   return (
     <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm">
       <View className="flex-row items-center">
-        <View className="mr-3">
-          <Icon name={iconName} size={24} color={accentPrimary} />
+        <View className="mr-3 items-center justify-center" style={{ width: 40, height: 40 }}>
+          {showImage ? (
+            <Image
+              source={{ uri: imageSource.uri, headers: imageSource.headers }}
+              style={{ width: 40, height: 40, borderRadius: 8 }}
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <Icon name={iconName} size={24} color={accentPrimary} />
+          )}
         </View>
         <View className="flex-1">
           <View className="flex-row items-center justify-between">

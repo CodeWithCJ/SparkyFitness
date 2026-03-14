@@ -29,7 +29,9 @@
       --color-text-primary:      hsl(222, 47%, 11%);
       --color-text-secondary:    hsl(215, 19%, 40%);
       --color-text-muted:        hsl(215, 20%, 65%);
-
+      
+      --color-text-link:         hsl(220, 90%, 65%);
+      
       /* --color-accent-primary:    hsl(20, 89%, 48%);    */
       --color-accent-primary:    hsl(220, 91%, 64%);
       --color-accent-muted:      hsl(220, 49%, 55%);
@@ -82,6 +84,8 @@
       --color-accent-muted:      hsl(220, 65%, 66%);
       --color-accent-text:    hsl(221, 100%, 97%);
 
+      --color-text-link:        hsl(220, 80%, 65%);
+
       --color-tab-active:        hsl(220, 85%, 65%);
       --color-tab-inactive:      hsl(215, 15%, 55%);
       --color-form-enabled:      hsl(220, 30%, 62%);
@@ -126,6 +130,8 @@
       --color-accent-primary:    hsl(220, 85%, 60%);
       --color-accent-muted:      hsl(220, 65%, 66%);
       --color-accent-text:    hsl(221, 100%, 97%);
+
+      --color-text-link:        hsl(220, 80%, 65%);
 
       --color-tab-active:        hsl(220, 85%, 65%);
       --color-tab-inactive:      hsl(215, 15%, 55%);

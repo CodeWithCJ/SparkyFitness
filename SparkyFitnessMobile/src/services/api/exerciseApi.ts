@@ -14,7 +14,7 @@ import type {
  */
 export const fetchExerciseEntries = async (date: string): Promise<ExerciseSessionResponse[]> => {
   return apiFetch<ExerciseSessionResponse[]>({
-    endpoint: `/api/exercise-entries/by-date?selectedDate=${date}`,
+    endpoint: `/api/v2/exercise-entries/by-date?selectedDate=${date}`,
     serviceName: 'Exercise API',
     operation: 'fetch exercise entries',
   });

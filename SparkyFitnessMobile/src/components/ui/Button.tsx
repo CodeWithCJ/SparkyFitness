@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, type PressableProps, type ViewStyle } from 'react-native';
 import { preview } from 'radon-ide';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'header';
 
 interface ButtonProps extends Omit<PressableProps, 'children'> {
   variant?: ButtonVariant;
@@ -32,6 +32,11 @@ const variantClasses: Record<ButtonVariant, { container: string; text: string; p
     text: 'text-accent-primary font-semibold',
     pressed: 'opacity-70',
   },
+  header: {
+    container: 'bg-transparent',
+    text: 'text-accent-primary font-semibold',
+    pressed: 'opacity-70',
+  },
 };
 
 const Button: React.FC<ButtonProps> = ({
@@ -44,10 +49,13 @@ const Button: React.FC<ButtonProps> = ({
 }) => {
   const styles = variantClasses[variant];
 
+  const basePadding = variant === 'header' ? '' : 'py-3.5 px-4';
+
   return (
     <Pressable
-      className={`py-3.5 px-4 items-center justify-center ${styles.container} ${disabled ? 'opacity-50' : ''} ${className}`}
+      className={`${basePadding} items-center justify-center ${styles.container} ${disabled ? 'opacity-50' : ''} ${className}`}
       disabled={disabled}
+      {...(variant === 'header' && !rest.hitSlop ? { hitSlop: { top: 10, bottom: 10, left: 10, right: 10 } } : {})}
       {...rest}
       style={({ pressed }) => [
         pressed && !disabled ? { opacity: 0.8 } : {},

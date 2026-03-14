@@ -24,6 +24,14 @@ export const exerciseSnapshotResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
   category: z.string().nullable(),
+  images: z.array(z.string()).nullable(),
+  primary_muscles: z.array(z.string()).nullable(),
+  secondary_muscles: z.array(z.string()).nullable(),
+  equipment: z.array(z.string()).nullable(),
+  instructions: z.array(z.string()).nullable(),
+  force: z.string().nullable(),
+  level: z.string().nullable(),
+  mechanic: z.string().nullable(),
 }).strict();
 
 /** A single set within an exercise entry */

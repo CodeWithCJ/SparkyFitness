@@ -1,20 +1,83 @@
-import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
+import CollapsibleSection from '../components/CollapsibleSection';
 import { getSourceLabel, getWorkoutIcon, formatDuration, getWorkoutSummary } from '../components/WorkoutCard';
 import { useDeleteExerciseEntry } from '../hooks/useDeleteExerciseEntry';
 import { useDeleteWorkout } from '../hooks/useDeleteWorkout';
 import { usePreferences } from '../hooks/usePreferences';
+import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { formatDate } from '../utils/dateUtils';
 import { extractActivitySummary } from '../utils/activityDetails';
 import { weightFromKg, distanceFromKm } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
-import type { ExerciseEntryResponse } from '@workspace/shared';
+import type { ExerciseEntryResponse, ExerciseSnapshotResponse } from '@workspace/shared';
+
+import type { GetImageSource } from '../hooks/useExerciseImageSource';
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
+
+function getImageSourceSignature(
+  source: { uri: string; headers: Record<string, string> } | null,
+): string {
+  if (!source) return '';
+
+  const headerSignature = Object.entries(source.headers)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}:${value}`)
+    .join('|');
+
+  return `${source.uri}|${headerSignature}`;
+}
+
+const ExerciseImage: React.FC<{
+  source: { uri: string; headers: Record<string, string> };
+  size: number;
+}> = ({ source, size }) => {
+  const [error, setError] = useState(false);
+  const sourceSignature = getImageSourceSignature(source);
+
+  useEffect(() => {
+    setError(false);
+  }, [sourceSignature]);
+
+  if (error) return null;
+
+  return (
+    <Image
+      source={{ uri: source.uri, headers: source.headers }}
+      style={{ width: size, height: size, borderRadius: 12 }}
+      onError={() => setError(true)}
+    />
+  );
+};
+
+const ExerciseThumbnail: React.FC<{
+  images: string[] | null | undefined;
+  getImageSource: GetImageSource;
+}> = ({ images, getImageSource }) => {
+  const [error, setError] = useState(false);
+  const firstImage = images?.[0];
+  const source = firstImage ? getImageSource(firstImage) : null;
+  const sourceSignature = getImageSourceSignature(source);
+
+  useEffect(() => {
+    setError(false);
+  }, [sourceSignature]);
+
+  if (!source || error) return null;
+
+  return (
+    <Image
+      source={{ uri: source.uri, headers: source.headers }}
+      style={{ width: 48, height: 48, borderRadius: 8, marginRight: 12 }}
+      onError={() => setError(true)}
+    />
+  );
+};
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { session } = route.params;
@@ -28,6 +91,13 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-text-muted',
     '--color-border-subtle',
   ]) as [string, string, string];
+
+  const { getImageSource } = useExerciseImageSource();
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  const toggleSection = (key: string) => {
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
   const iconName = getWorkoutIcon(session);
@@ -110,6 +180,131 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
+  const renderMetadataBadges = (snapshot: ExerciseSnapshotResponse | null | undefined) => {
+    if (!snapshot) return null;
+    const badges = [snapshot.level, snapshot.force, snapshot.mechanic].filter(Boolean);
+    if (badges.length === 0) return null;
+
+    return (
+      <View className="flex-row flex-wrap gap-1 mt-1">
+        {badges.map(badge => (
+          <View
+            key={badge}
+            className="rounded-full px-2 py-0.5"
+            style={{ backgroundColor: `${textMuted}15` }}
+          >
+            <Text className="text-xs text-text-muted capitalize">{badge}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderExerciseImages = (images: string[] | null | undefined, size: number = 200) => {
+    if (!images?.length) return null;
+    const sources = images.map(img => getImageSource(img)).filter(Boolean);
+    if (sources.length === 0) return null;
+
+    if (sources.length === 1) {
+      return (
+        <View className="items-center mt-3 mb-1">
+          <ExerciseImage source={sources[0]!} size={size} />
+        </View>
+      );
+    }
+
+    return (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 mb-1">
+        <View className="flex-row gap-3">
+          {sources.map((src, i) => (
+            <ExerciseImage key={i} source={src!} size={size} />
+          ))}
+        </View>
+      </ScrollView>
+    );
+  };
+
+  const renderExerciseDetails = (snapshot: ExerciseSnapshotResponse | null | undefined, keyPrefix: string) => {
+    if (!snapshot) return null;
+
+    const hasMuscles = (snapshot.primary_muscles?.length ?? 0) > 0 || (snapshot.secondary_muscles?.length ?? 0) > 0;
+    const hasEquipment = (snapshot.equipment?.length ?? 0) > 0;
+    const hasInstructions = (snapshot.instructions?.length ?? 0) > 0;
+
+    if (!hasMuscles && !hasEquipment && !hasInstructions) return null;
+
+    return (
+      <View className="mt-1">
+        {hasMuscles && (
+          <CollapsibleSection
+            title="Muscles"
+            expanded={!!expandedSections[`muscles-${keyPrefix}`]}
+            onToggle={() => toggleSection(`muscles-${keyPrefix}`)}
+            itemCount={(snapshot.primary_muscles?.length ?? 0) + (snapshot.secondary_muscles?.length ?? 0)}
+          >
+            {(snapshot.primary_muscles?.length ?? 0) > 0 && (
+              <View className="mb-2">
+                <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-1">Primary</Text>
+                <View className="flex-row flex-wrap gap-1">
+                  {snapshot.primary_muscles!.map(muscle => (
+                    <View key={muscle} className="rounded-full px-2.5 py-1" style={{ backgroundColor: `${accentPrimary}15` }}>
+                      <Text className="text-xs capitalize" style={{ color: accentPrimary }}>{muscle}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+            {(snapshot.secondary_muscles?.length ?? 0) > 0 && (
+              <View className="mb-1">
+                <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide mb-1">Secondary</Text>
+                <View className="flex-row flex-wrap gap-1">
+                  {snapshot.secondary_muscles!.map(muscle => (
+                    <View key={muscle} className="rounded-full px-2.5 py-1" style={{ backgroundColor: `${textMuted}15` }}>
+                      <Text className="text-xs text-text-secondary capitalize">{muscle}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </CollapsibleSection>
+        )}
+
+        {hasEquipment && (
+          <CollapsibleSection
+            title="Equipment"
+            expanded={!!expandedSections[`equipment-${keyPrefix}`]}
+            onToggle={() => toggleSection(`equipment-${keyPrefix}`)}
+            itemCount={snapshot.equipment!.length}
+          >
+            <View className="flex-row flex-wrap gap-1">
+              {snapshot.equipment!.map(item => (
+                <View key={item} className="rounded-full px-2.5 py-1" style={{ backgroundColor: `${textMuted}15` }}>
+                  <Text className="text-xs text-text-secondary capitalize">{item}</Text>
+                </View>
+              ))}
+            </View>
+          </CollapsibleSection>
+        )}
+
+        {hasInstructions && (
+          <CollapsibleSection
+            title="Instructions"
+            expanded={!!expandedSections[`instructions-${keyPrefix}`]}
+            onToggle={() => toggleSection(`instructions-${keyPrefix}`)}
+            itemCount={snapshot.instructions!.length}
+          >
+            {snapshot.instructions!.map((step, i) => (
+              <View key={i} className="flex-row mb-2">
+                <Text className="text-sm text-text-muted w-6">{i + 1}.</Text>
+                <Text className="text-sm text-text-primary flex-1">{step}</Text>
+              </View>
+            ))}
+          </CollapsibleSection>
+        )}
+      </View>
+    );
+  };
+
   const renderPresetContent = () => {
     if (session.type !== 'preset') return null;
 
@@ -118,6 +313,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {session.exercises.map(exercise => (
           <View key={exercise.id} className="bg-surface rounded-xl p-4 mb-3">
             <View className="flex-row items-center">
+              <ExerciseThumbnail
+                images={exercise.exercise_snapshot?.images}
+                getImageSource={getImageSource}
+              />
               <View className="flex-1">
                 <Text className="text-base font-semibold text-text-primary">
                   {exercise.exercise_snapshot?.name ?? 'Unknown exercise'}
@@ -127,6 +326,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                     {exercise.exercise_snapshot.category}
                   </Text>
                 )}
+                {renderMetadataBadges(exercise.exercise_snapshot)}
               </View>
               {exercise.calories_burned > 0 && (
                 <Text className="text-sm text-text-secondary">
@@ -135,6 +335,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               )}
             </View>
             {renderSetTable(exercise)}
+            {renderExerciseDetails(exercise.exercise_snapshot, exercise.id)}
           </View>
         ))}
       </View>
@@ -289,9 +490,19 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
+        {/* Exercise images (individual sessions only) */}
+        {session.type === 'individual' && renderExerciseImages(session.exercise_snapshot?.images)}
+
+        {/* Metadata badges (individual sessions only) */}
+        {session.type === 'individual' && renderMetadataBadges(session.exercise_snapshot)}
+
         {/* Variant-specific content */}
         {renderPresetContent()}
         {renderIndividualContent()}
+
+        {/* Exercise details (individual sessions only) */}
+        {session.type === 'individual' && renderExerciseDetails(session.exercise_snapshot, 'individual')}
+
         {renderActivityDetails()}
 
         {/* Delete button — only for Sparky sessions */}

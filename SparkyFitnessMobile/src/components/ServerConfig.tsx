@@ -52,11 +52,11 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
   onCloseModal,
   isEditing,
 }) => {
-  const [success, successBackground, accentPrimary, textSecondary] = useCSSVariable([
+  const [success, successBackground, textSecondary, textLink] = useCSSVariable([
     '--color-text-success',
     '--color-bg-success',
-    '--color-accent-primary',
-    '--color-text-secondary'
+    '--color-text-secondary',
+    '--color-text-link'
   ]) as [string, string, string, string];
 
   const showAndroidConfigDetailsMenu = (item: ServerConfigType) => {
@@ -151,8 +151,8 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
             accessibilityLabel="Add new configuration"
             className="flex-row mt-2 py-1 px-0"
           >
-            <Icon name="add" size={24} color={accentPrimary} />
-            <Text className="ml-2 text-base font-medium" style={{ color: accentPrimary }}>Add Server</Text>
+            <Icon name="add" size={24} color={textLink} />
+            <Text className="ml-2 text-base font-medium" style={{ color: textLink }}>Add Server</Text>
           </Button>
 
           {activeConfigId && (
@@ -162,10 +162,10 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
               accessibilityLabel="Open web dashboard"
               className="flex-row mt-2 py-1 px-0"
             >
-              <Icon name="globe" size={20} color={accentPrimary} />
+              <Icon name="globe" size={20} color={textLink} />
               <Text
                 className="ml-2 text-base font-medium"
-                style={{ color: accentPrimary }}
+                style={{ color: textLink }}
               >
                 Open Web
               </Text>

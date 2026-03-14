@@ -25,3 +25,12 @@ export async function saveDraft(draft: FormDraft): Promise<void> {
 export async function clearDraft(): Promise<void> {
   await AsyncStorage.removeItem(DRAFT_KEY);
 }
+
+/** Returns the draft if it has meaningful data, or null otherwise. */
+export async function loadActiveDraft(): Promise<FormDraft | null> {
+  const draft = await loadDraft();
+  if (!draft) return null;
+  if (draft.type === 'workout' && draft.exercises.length > 0) return draft;
+  if (draft.type === 'activity' && draft.exerciseId != null) return draft;
+  return null;
+}

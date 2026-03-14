@@ -91,7 +91,7 @@ describe('exerciseApi', () => {
       );
     });
 
-    test('sends GET request to /api/exercise-entries/by-date with date param', async () => {
+    test('sends GET request to /api/v2/exercise-entries/by-date with date param', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -101,7 +101,7 @@ describe('exerciseApi', () => {
       await fetchExerciseEntries(testDate);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/exercise-entries/by-date?selectedDate=2024-06-15',
+        'https://example.com/api/v2/exercise-entries/by-date?selectedDate=2024-06-15',
         expect.objectContaining({
           method: 'GET',
           headers: {
@@ -124,7 +124,7 @@ describe('exerciseApi', () => {
       await fetchExerciseEntries(testDate);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/exercise-entries/by-date?selectedDate=2024-06-15',
+        'https://example.com/api/v2/exercise-entries/by-date?selectedDate=2024-06-15',
         expect.anything()
       );
     });

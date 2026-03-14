@@ -1156,7 +1156,7 @@ async function addFreeExerciseDBExerciseToUserExercises(
       secondary_muscles: exerciseDetails.secondaryMuscles,
       instructions: exerciseDetails.instructions,
       category: exerciseDetails.category,
-      images: JSON.stringify(exerciseDetails.images), // Store original relative paths as JSON string
+      images: exerciseDetails.images, // Original relative paths — createExercise handles JSON.stringify
       calories_per_hour:
         await calorieCalculationService.estimateCaloriesBurnedPerHour(
           exerciseDetails,

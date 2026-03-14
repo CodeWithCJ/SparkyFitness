@@ -9,7 +9,6 @@ import {
   ScrollView,
   TextInput,
   Platform,
-  Alert,
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import Button from '../components/ui/Button';
@@ -22,7 +21,6 @@ import { useServerConnection, useExternalProviders, useSuggestedExercises, useEx
 import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
 import { importExercise } from '../services/api/externalExerciseSearchApi';
-import { loadDraft, clearDraft } from '../services/workoutDraftService';
 import { EXERCISE_PROVIDER_TYPES } from '../types/externalProviders';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
@@ -133,57 +131,15 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     setSelectedProvider(providers[0].id);
   }, [providers, selectedProvider]);
 
-  // --- Draft check helper ---
-
-  const checkDraftAndNavigate = useCallback(async (onProceed: () => void) => {
-    const draft = await loadDraft();
-    const hasDraftData = draft && (
-      (draft.type === 'workout' && draft.exercises.length > 0) ||
-      (draft.type === 'activity' && draft.exerciseId != null)
-    );
-
-    if (hasDraftData) {
-      Alert.alert(
-        'Draft in Progress',
-        `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Resume Draft',
-            onPress: () => {
-              if (draft.type === 'workout') {
-                navigation.navigate('WorkoutForm', { popCount: 2 });
-              } else {
-                navigation.navigate('ActivityForm', { popCount: 2 });
-              }
-            },
-          },
-          {
-            text: 'Discard & Continue',
-            style: 'destructive',
-            onPress: async () => {
-              await clearDraft();
-              onProceed();
-            },
-          },
-        ],
-      );
-      return;
-    }
-    onProceed();
-  }, [navigation]);
-
   // --- Selection handlers ---
 
   const handleSelectExercise = useCallback((exercise: Exercise) => {
     if (isEntryMode) {
-      checkDraftAndNavigate(() => {
-        navigation.navigate('ActivityForm', {
-          date: entryDate,
-          selectedExercise: exercise,
-          selectionNonce: Date.now(),
-          popCount: 2,
-        });
+      navigation.navigate('ActivityForm', {
+        date: entryDate,
+        selectedExercise: exercise,
+        selectionNonce: Date.now(),
+        popCount: 2,
       });
     } else {
       navigation.dispatch({
@@ -192,7 +148,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
       });
       navigation.goBack();
     }
-  }, [isEntryMode, returnKey, entryDate, navigation, checkDraftAndNavigate]);
+  }, [isEntryMode, returnKey, entryDate, navigation]);
 
   const handleImportExercise = useCallback(async (item: ExternalExerciseItem) => {
     setImportingExerciseId(item.id);
@@ -208,16 +164,12 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
   }, [queryClient, handleSelectExercise]);
 
   const handleSelectPreset = useCallback((preset: WorkoutPreset) => {
-    checkDraftAndNavigate(() => {
-      navigation.navigate('WorkoutForm', { preset, date: entryDate, popCount: 2 });
-    });
-  }, [entryDate, navigation, checkDraftAndNavigate]);
+    navigation.navigate('WorkoutForm', { preset, date: entryDate, popCount: 2 });
+  }, [entryDate, navigation]);
 
   const handleNewWorkout = useCallback(() => {
-    checkDraftAndNavigate(() => {
-      navigation.navigate('WorkoutForm', { date: entryDate, popCount: 2 });
-    });
-  }, [entryDate, navigation, checkDraftAndNavigate]);
+    navigation.navigate('WorkoutForm', { date: entryDate, popCount: 2 });
+  }, [entryDate, navigation]);
 
   // --- Shared renderers ---
 

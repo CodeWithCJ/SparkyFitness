@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
 import { useCSSVariable } from 'uniwind';
@@ -7,12 +7,14 @@ import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import WorkoutCard from '../components/WorkoutCard';
 import { useServerConnection, useExerciseHistory } from '../hooks';
+import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { formatDateLabel } from '../utils/dateUtils';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import type { ExerciseSessionResponse } from '@workspace/shared';
+import { loadActiveDraft, clearDraft } from '../services/workoutDraftService';
 
 type WorkoutsScreenProps = CompositeScreenProps<
   NativeBottomTabScreenProps<TabParamList, 'Workouts'>,
@@ -27,6 +29,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
   const scrollBottomPadding = Math.max(tabBarHeight, insets.bottom) + 16;
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { getImageSource } = useExerciseImageSource();
   const {
     sessions,
     isLoading,
@@ -62,7 +65,36 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
     setRefreshing(false);
   }, [refetch]);
 
-  const handleAddExercise = useCallback(() => {
+  const handleAddExercise = useCallback(async () => {
+    const draft = await loadActiveDraft();
+    if (draft) {
+      Alert.alert(
+        'Draft in Progress',
+        `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Resume Draft',
+            onPress: () => {
+              if (draft.type === 'workout') {
+                navigation.navigate('WorkoutForm');
+              } else {
+                navigation.navigate('ActivityForm');
+              }
+            },
+          },
+          {
+            text: 'Discard & Continue',
+            style: 'destructive',
+            onPress: async () => {
+              await clearDraft();
+              navigation.navigate('ExerciseSearch', { mode: 'entry' });
+            },
+          },
+        ],
+      );
+      return;
+    }
     navigation.navigate('ExerciseSearch', { mode: 'entry' });
   }, [navigation]);
 
@@ -74,7 +106,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
         className="flex-row gap-2 py-4"
       >
         <Icon name="exercise" size={20} color={accentText} />
-        <Text className="text-base font-semibold text-accent-text">Add Exercise</Text>
+        <Text className="text-base font-semibold text-accent-text">Add Workout</Text>
       </Button>
     </View>
   );
@@ -173,7 +205,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
                   onPress={() => navigation.navigate('WorkoutDetail', { session })}
                   activeOpacity={0.7}
                 >
-                  <WorkoutCard session={session} />
+                  <WorkoutCard session={session} getImageSource={getImageSource} />
                 </TouchableOpacity>
               ))}
             </View>
