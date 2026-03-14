@@ -846,10 +846,15 @@ async function lookupBarcode(barcode, userId, providerId) {
       return { source: "not_found", food: null };
     }
 
-    if (offData?.status === 1 && offData.product?.product_name) {
+    if (
+      offData?.status === 1 &&
+      (offData.product?.product_name ||
+        offData.product?.[`product_name_${language}`] ||
+        offData.product?.product_name_en)
+    ) {
       return {
         source: "openfoodfacts",
-        food: mapOpenFoodFactsProduct(offData.product),
+        food: mapOpenFoodFactsProduct(offData.product, { language }),
         barcode_raw: offData.product,
       };
     }

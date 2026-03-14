@@ -190,7 +190,7 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (req, res,
         const products = (result.products || []).filter(
           (p: Record<string, unknown>) => p.product_name,
         );
-        foods = products.map((p: Record<string, unknown>) => mapOpenFoodFactsProduct(p, { autoScale })).filter(Boolean);
+        foods = products.map((p: Record<string, unknown>) => mapOpenFoodFactsProduct(p, { autoScale, language })).filter(Boolean);
         pagination = result.pagination;
         break;
       }
@@ -296,7 +296,7 @@ const detailHandler: RequestHandler<{
       case "openfoodfacts": {
         const data = await searchOpenFoodFactsByBarcodeFields(externalId, undefined, language);
         if (data.status === 1 && data.product) {
-          food = mapOpenFoodFactsProduct(data.product);
+          food = mapOpenFoodFactsProduct(data.product, { language });
         }
         break;
       }
