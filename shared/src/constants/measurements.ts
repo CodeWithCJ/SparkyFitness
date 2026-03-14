@@ -28,6 +28,5 @@ export const getPrecision = (
   type: MeasurementType,
   unit: string
 ): number => {
-  // @ts-ignore - Dynamic access with string unit
-  return MEASUREMENT_PRECISION[type]?.[unit] ?? 0;
+  return (MEASUREMENT_PRECISION[type] as Record<string, number>)?.[unit] ?? 0;
 };
