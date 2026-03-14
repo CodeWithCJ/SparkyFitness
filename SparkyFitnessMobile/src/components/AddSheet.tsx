@@ -64,27 +64,32 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       [isDarkMode]
     );
 
-    const handleAddFood = useCallback(() => {
+    const handleAction = useCallback((action?: () => void) => {
       bottomSheetRef.current?.dismiss();
-      onAddFood();
-    }, [onAddFood]);
-
-    const handleAddWorkout = useCallback(() => {
-      bottomSheetRef.current?.dismiss();
-      onAddWorkout();
-    }, [onAddWorkout]);
-
-    const handleAddActivity = useCallback(() => {
-      bottomSheetRef.current?.dismiss();
-      onAddActivity();
-    }, [onAddActivity]);
+      action?.();
+    }, []);
 
     const cards: ActionCard[] = [
-      { label: 'Add Food', icon: 'meal-snack', onPress: handleAddFood },
-      { label: 'Add Workout', icon: 'exercise-weights', onPress: handleAddWorkout },
-      { label: 'Add Activity', icon: 'exercise', onPress: handleAddActivity },
+      { label: 'Add Food', icon: 'meal-snack', onPress: onAddFood },
+      { label: 'Add Workout', icon: 'exercise-weights', onPress: onAddWorkout },
+      { label: 'Add Activity', icon: 'exercise', onPress: onAddActivity },
       { label: 'Add Measurement', icon: 'chart-bar' },
     ];
+
+    const renderCard = (card: ActionCard, isLeft: boolean) => (
+      <TouchableOpacity
+        key={card.label}
+        className={`flex-1 items-center rounded-xl py-5 ${isLeft ? 'mr-1.5' : 'ml-1.5'}`}
+        style={{ backgroundColor: raisedBg }}
+        activeOpacity={0.7}
+        onPress={() => handleAction(card.onPress)}
+      >
+        <Icon name={card.icon} size={32} color={accentPrimary} />
+        <Text className="text-text-primary text-sm font-medium mt-2">
+          {card.label}
+        </Text>
+      </TouchableOpacity>
+    );
 
     return (
       <BottomSheetModal
@@ -96,52 +101,12 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       >
         <BottomSheetView className="pb-5 px-4">
           <View className="flex-row mb-3">
-            <TouchableOpacity
-              className="flex-1 mr-1.5 items-center rounded-xl py-5"
-              style={{ backgroundColor: raisedBg }}
-              activeOpacity={0.7}
-              onPress={cards[0].onPress}
-            >
-              <Icon name={cards[0].icon} size={32} color={accentPrimary} />
-              <Text className="text-text-primary text-sm font-medium mt-2">
-                {cards[0].label}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="flex-1 ml-1.5 items-center rounded-xl py-5"
-              style={{ backgroundColor: raisedBg }}
-              activeOpacity={0.7}
-              onPress={cards[1].onPress}
-            >
-              <Icon name={cards[1].icon} size={32} color={accentPrimary} />
-              <Text className="text-text-primary text-sm font-medium mt-2">
-                {cards[1].label}
-              </Text>
-            </TouchableOpacity>
+            {renderCard(cards[0], true)}
+            {renderCard(cards[1], false)}
           </View>
           <View className="flex-row">
-            <TouchableOpacity
-              className="flex-1 mr-1.5 items-center rounded-xl py-5"
-              style={{ backgroundColor: raisedBg }}
-              activeOpacity={0.7}
-              onPress={cards[2].onPress}
-            >
-              <Icon name={cards[2].icon} size={32} color={accentPrimary} />
-              <Text className="text-text-primary text-sm font-medium mt-2">
-                {cards[2].label}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="flex-1 ml-1.5 items-center rounded-xl py-5"
-              style={{ backgroundColor: raisedBg }}
-              activeOpacity={0.7}
-              onPress={cards[3].onPress}
-            >
-              <Icon name={cards[3].icon} size={32} color={accentPrimary} />
-              <Text className="text-text-primary text-sm font-medium mt-2">
-                {cards[3].label}
-              </Text>
-            </TouchableOpacity>
+            {renderCard(cards[2], true)}
+            {renderCard(cards[3], false)}
           </View>
         </BottomSheetView>
       </BottomSheetModal>

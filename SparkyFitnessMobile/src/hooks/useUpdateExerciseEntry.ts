@@ -1,12 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { updateExerciseEntry, type CreateExerciseEntryPayload } from '../services/api/exerciseApi';
-import {
-  exerciseHistoryQueryKey,
-  exerciseHistoryResetQueryKey,
-  suggestedExercisesQueryKey,
-  dailySummaryQueryKey,
-} from './queryKeys';
+import { invalidateExerciseCache } from './invalidateExerciseCache';
 
 export function useUpdateExerciseEntry() {
   const queryClient = useQueryClient();
@@ -19,16 +14,9 @@ export function useUpdateExerciseEntry() {
     },
   });
 
-  const invalidateCache = (entryDate: string) => {
-    queryClient.removeQueries({ queryKey: [...exerciseHistoryQueryKey] });
-    queryClient.setQueryData(exerciseHistoryResetQueryKey, Date.now());
-    queryClient.invalidateQueries({ queryKey: [...suggestedExercisesQueryKey] });
-    queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(entryDate) });
-  };
-
   return {
     updateEntry: mutation.mutateAsync,
     isPending: mutation.isPending,
-    invalidateCache,
+    invalidateCache: (entryDate: string) => invalidateExerciseCache(queryClient, entryDate),
   };
 }

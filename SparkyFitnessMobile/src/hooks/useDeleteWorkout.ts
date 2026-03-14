@@ -1,29 +1,24 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
-import { deleteWorkoutSession } from '../services/api/exerciseApi';
-import {
-  exerciseHistoryQueryKey,
-  exerciseHistoryResetQueryKey,
-  dailySummaryQueryKey,
-  suggestedExercisesQueryKey,
-} from './queryKeys';
+import { deleteWorkout } from '../services/api/exerciseApi';
+import { invalidateExerciseCache } from './invalidateExerciseCache';
 
-interface UseDeleteWorkoutSessionOptions {
+interface UseDeleteWorkoutOptions {
   sessionId: string;
   entryDate: string;
   onSuccess?: () => void;
 }
 
-export function useDeleteWorkoutSession({
+export function useDeleteWorkout({
   sessionId,
   entryDate,
   onSuccess,
-}: UseDeleteWorkoutSessionOptions) {
+}: UseDeleteWorkoutOptions) {
   const queryClient = useQueryClient();
   const normalizedDate = entryDate.split('T')[0];
 
   const mutation = useMutation({
-    mutationFn: () => deleteWorkoutSession(sessionId),
+    mutationFn: () => deleteWorkout(sessionId),
     onSuccess: () => {
       onSuccess?.();
     },
@@ -47,20 +42,9 @@ export function useDeleteWorkoutSession({
     );
   };
 
-  const invalidateCache = () => {
-    queryClient.removeQueries({ queryKey: [...exerciseHistoryQueryKey] });
-    queryClient.setQueryData(exerciseHistoryResetQueryKey, Date.now());
-    queryClient.invalidateQueries({
-      queryKey: dailySummaryQueryKey(normalizedDate),
-    });
-    queryClient.invalidateQueries({
-      queryKey: [...suggestedExercisesQueryKey],
-    });
-  };
-
   return {
     confirmAndDelete,
     isPending: mutation.isPending,
-    invalidateCache,
+    invalidateCache: () => invalidateExerciseCache(queryClient, normalizedDate),
   };
 }

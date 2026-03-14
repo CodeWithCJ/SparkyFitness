@@ -115,15 +115,15 @@ export const searchExercises = async (searchTerm: string): Promise<Exercise[]> =
 };
 
 /**
- * Creates a workout session from preset entries.
+ * Creates a workout from preset entries.
  */
-export const createWorkoutSession = async (
+export const createWorkout = async (
   payload: CreatePresetSessionRequest,
 ): Promise<PresetSessionResponse> => {
   return apiFetch<PresetSessionResponse>({
     endpoint: '/api/exercise-preset-entries/',
     serviceName: 'Exercise API',
-    operation: 'create workout session',
+    operation: 'create workout',
     method: 'POST',
     body: payload,
   });
@@ -164,29 +164,29 @@ export const updateExerciseEntry = async (
 };
 
 /**
- * Updates a workout session.
+ * Updates a workout.
  */
-export const updateWorkoutSession = async (
+export const updateWorkout = async (
   id: string,
   payload: UpdatePresetSessionRequest,
 ): Promise<PresetSessionResponse> => {
   return apiFetch<PresetSessionResponse>({
     endpoint: `/api/exercise-preset-entries/${id}`,
     serviceName: 'Exercise API',
-    operation: 'update workout session',
+    operation: 'update workout',
     method: 'PUT',
     body: payload,
   });
 };
 
 /**
- * Deletes a workout session (returns 204 No Content).
+ * Deletes a workout (returns 204 No Content).
  */
-export const deleteWorkoutSession = async (id: string): Promise<void> => {
+export const deleteWorkout = async (id: string): Promise<void> => {
   return apiFetch<void>({
     endpoint: `/api/exercise-preset-entries/${id}`,
     serviceName: 'Exercise API',
-    operation: 'delete workout session',
+    operation: 'delete workout',
     method: 'DELETE',
   });
 };

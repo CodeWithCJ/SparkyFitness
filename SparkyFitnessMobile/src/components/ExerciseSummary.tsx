@@ -3,14 +3,14 @@ import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import Icon from './Icon';
-import { getSourceLabel, formatDuration } from './SessionCard';
+import { getSourceLabel, formatDuration, getWorkoutSummary } from './WorkoutCard';
 
 interface ExerciseSummaryProps {
   exerciseEntries: ExerciseSessionResponse[];
-  onPressSession?: (session: ExerciseSessionResponse) => void;
+  onPressWorkout?: (session: ExerciseSessionResponse) => void;
 }
 
-const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries, onPressSession }) => {
+const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries, onPressWorkout }) => {
   const [accentPrimary, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -36,27 +36,14 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries, onPr
       <Text className="text-base font-bold text-text-muted">Exercise</Text>
       </View>
       {filtered.map((session, index) => {
-        let name: string;
-        let duration: number;
-        let calories: number;
-
-        if (session.type === 'preset') {
-          name = session.name;
-          duration = session.total_duration_minutes;
-          calories = session.exercises.reduce((sum, e) => sum + e.calories_burned, 0);
-        } else {
-          name = session.exercise_snapshot?.name ?? 'Unknown exercise';
-          duration = session.duration_minutes;
-          calories = session.calories_burned;
-        }
-
+        const { name, duration, calories } = getWorkoutSummary(session);
         const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
 
         return (
           <Pressable
             key={session.id || index}
             className="py-2.5"
-            onPress={() => onPressSession?.(session)}
+            onPress={() => onPressWorkout?.(session)}
           >
             <View className="flex-row justify-between items-center">
               <View className="flex-1 mr-2">

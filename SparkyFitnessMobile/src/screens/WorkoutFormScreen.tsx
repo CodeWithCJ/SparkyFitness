@@ -17,10 +17,10 @@ import ExercisePicker, {
   type ExercisePickerRef,
 } from '../components/ExercisePicker';
 import { useWorkoutForm } from '../hooks/useWorkoutForm';
-import { useCreateWorkoutSession } from '../hooks/useCreateWorkoutSession';
-import { useUpdateWorkoutSession } from '../hooks/useUpdateWorkoutSession';
+import { useCreateWorkout } from '../hooks/useCreateWorkout';
+import { useUpdateWorkout } from '../hooks/useUpdateWorkout';
 import { usePreferences } from '../hooks/usePreferences';
-import { clearSessionDraft } from '../services/workoutDraftService';
+import { clearDraft } from '../services/workoutDraftService';
 import { weightToKg } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
 import type {
@@ -64,12 +64,12 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     createSession,
     isPending: isCreating,
     invalidateCache: invalidateCreateCache,
-  } = useCreateWorkoutSession();
+  } = useCreateWorkout();
   const {
     updateSession,
     isPending: isUpdating,
     invalidateCache: invalidateUpdateCache,
-  } = useUpdateWorkoutSession();
+  } = useUpdateWorkout();
   const isPending = isCreating || isUpdating;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
@@ -94,7 +94,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleCancel = useCallback(() => {
     if (!isEditMode && !hasDraftData) {
-      clearSessionDraft();
+      clearDraft();
     }
     navigation.goBack();
   }, [isEditMode, hasDraftData, navigation]);
@@ -158,7 +158,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 exercises: buildExercisesPayload(exercisesWithSets),
               };
               await createSession(payload);
-              await clearSessionDraft();
+              await clearDraft();
               invalidateCreateCache(state.entryDate);
               navigation.goBack();
             }
@@ -180,13 +180,6 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     invalidateUpdateCache,
     navigation,
   ]);
-
-  const handleAddExercise = useCallback(
-    (exercise: Parameters<typeof addExercise>[0]) => {
-      addExercise(exercise);
-    },
-    [addExercise],
-  );
 
   const handleRemoveExercise = useCallback(
     (exercise: WorkoutDraftExercise) => {
@@ -390,7 +383,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
           <ExercisePicker
             ref={exercisePickerRef}
-            onSelectExercise={handleAddExercise}
+            onSelectExercise={addExercise}
           />
         </>
       )}

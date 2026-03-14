@@ -24,7 +24,7 @@ export type RootStackParamList = {
   FoodScan: { date?: string } | undefined;
   WorkoutForm: { session?: PresetSessionResponse } | undefined;
   ActivityForm: { entry?: IndividualSessionResponse; date?: string; popCount?: number } | undefined;
-  SessionDetail: { session: ExerciseSessionResponse };
+  WorkoutDetail: { session: ExerciseSessionResponse };
   Logs: undefined;
   Sync: undefined;
 };

@@ -1,6 +1,6 @@
 import { useReducer, useEffect, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
-import { saveSessionDraft, loadSessionDraft, clearSessionDraft } from '../services/workoutDraftService';
+import { saveDraft, loadDraft, clearDraft } from '../services/workoutDraftService';
 import { getTodayDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
 import type { Exercise } from '../types/exercise';
@@ -165,7 +165,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
       isDraftLoadedRef.current = true;
       return;
     }
-    loadSessionDraft().then(draft => {
+    loadDraft().then(draft => {
       if (draft && draft.type === 'workout') {
         skipNextSaveRef.current = true;
         dispatch({ type: 'RESTORE_DRAFT', draft });
@@ -187,7 +187,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
       clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = setTimeout(() => {
-      saveSessionDraft(state);
+      saveDraft(state);
     }, 300);
 
     return () => {
@@ -206,7 +206,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
           clearTimeout(saveTimeoutRef.current);
           saveTimeoutRef.current = null;
         }
-        saveSessionDraft(stateRef.current);
+        saveDraft(stateRef.current);
       }
     });
     return () => subscription.remove();
@@ -247,7 +247,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
   const reset = useCallback(() => {
     dispatch({ type: 'RESET' });
     if (!isEditMode) {
-      clearSessionDraft();
+      clearDraft();
     }
   }, [isEditMode]);
 

@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Alert } from 'react-native';
-import { loadSessionDraft, clearSessionDraft } from '../services/workoutDraftService';
+import { loadDraft, clearDraft } from '../services/workoutDraftService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import SessionCard from '../components/SessionCard';
+import WorkoutCard from '../components/WorkoutCard';
 import { useServerConnection, useExerciseHistory } from '../hooks';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
@@ -41,79 +41,87 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
     setRefreshing(false);
   }, [refetch]);
 
-  const handleStartWorkout = useCallback(async () => {
-    const draft = await loadSessionDraft();
-    if (draft && draft.type === 'activity' && draft.exerciseId) {
-      Alert.alert('Activity in Progress', 'You have an unsaved activity draft.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Discard & Start Workout',
-          style: 'destructive',
-          onPress: async () => {
-            await clearSessionDraft();
-            navigation.navigate('WorkoutForm');
-          },
-        },
-      ]);
-      return;
-    }
-    if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
-      Alert.alert('Resume Workout?', 'You have a workout in progress.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start Fresh',
-          style: 'destructive',
-          onPress: async () => {
-            await clearSessionDraft();
-            navigation.navigate('WorkoutForm');
-          },
-        },
-        {
-          text: 'Resume',
-          onPress: () => navigation.navigate('WorkoutForm'),
-        },
-      ]);
-    } else {
-      navigation.navigate('WorkoutForm');
-    }
-  }, [navigation]);
+  const navigateWithDraftCheck = useCallback(
+    async (
+      targetScreen: 'WorkoutForm' | 'ActivityForm',
+      targetType: 'workout' | 'activity',
+    ) => {
+      const draft = await loadDraft();
+      const conflictType = targetType === 'workout' ? 'activity' : 'workout';
+      const targetLabel = targetType === 'workout' ? 'Workout' : 'Activity';
+      const conflictLabel = conflictType === 'workout' ? 'Workout' : 'Activity';
 
-  const handleLogActivity = useCallback(async () => {
-    const draft = await loadSessionDraft();
-    if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
-      Alert.alert('Workout in Progress', 'You have an unsaved workout draft.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Discard & Log Activity',
-          style: 'destructive',
-          onPress: async () => {
-            await clearSessionDraft();
-            navigation.navigate('ActivityForm');
-          },
-        },
-      ]);
-      return;
-    }
-    if (draft && draft.type === 'activity' && draft.exerciseId) {
-      Alert.alert('Resume Activity?', 'You have an activity in progress.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Start Fresh',
-          style: 'destructive',
-          onPress: async () => {
-            await clearSessionDraft();
-            navigation.navigate('ActivityForm');
-          },
-        },
-        {
-          text: 'Resume',
-          onPress: () => navigation.navigate('ActivityForm'),
-        },
-      ]);
-    } else {
-      navigation.navigate('ActivityForm');
-    }
-  }, [navigation]);
+      // Check for a conflicting draft type
+      const hasConflict =
+        draft &&
+        draft.type === conflictType &&
+        (draft.type === 'workout'
+          ? draft.exercises.length > 0
+          : draft.exerciseId != null);
+
+      if (hasConflict) {
+        Alert.alert(
+          `${conflictLabel} in Progress`,
+          `You have an unsaved ${conflictLabel.toLowerCase()} draft.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: `Discard & ${targetType === 'workout' ? 'Start Workout' : 'Log Activity'}`,
+              style: 'destructive',
+              onPress: async () => {
+                await clearDraft();
+                navigation.navigate(targetScreen);
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      // Check for a matching draft type (resume)
+      const hasMatchingDraft =
+        draft &&
+        draft.type === targetType &&
+        (draft.type === 'workout'
+          ? draft.exercises.length > 0
+          : draft.exerciseId != null);
+
+      if (hasMatchingDraft) {
+        Alert.alert(
+          `Resume ${targetLabel}?`,
+          `You have a ${targetLabel.toLowerCase()} in progress.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Start Fresh',
+              style: 'destructive',
+              onPress: async () => {
+                await clearDraft();
+                navigation.navigate(targetScreen);
+              },
+            },
+            {
+              text: 'Resume',
+              onPress: () => navigation.navigate(targetScreen),
+            },
+          ],
+        );
+      } else {
+        navigation.navigate(targetScreen);
+      }
+    },
+    [navigation],
+  );
+
+  const handleStartWorkout = useCallback(
+    () => navigateWithDraftCheck('WorkoutForm', 'workout'),
+    [navigateWithDraftCheck],
+  );
+
+  const handleLogActivity = useCallback(
+    () => navigateWithDraftCheck('ActivityForm', 'activity'),
+    [navigateWithDraftCheck],
+  );
 
   const renderActionButtons = () => (
     <View className="flex-row gap-3 px-4 mb-4">
@@ -221,10 +229,10 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
           {sessions.map(session => (
             <TouchableOpacity
               key={session.id}
-              onPress={() => navigation.navigate('SessionDetail', { session })}
+              onPress={() => navigation.navigate('WorkoutDetail', { session })}
               activeOpacity={0.7}
             >
-              <SessionCard session={session} />
+              <WorkoutCard session={session} />
             </TouchableOpacity>
           ))}
           {hasMore && (

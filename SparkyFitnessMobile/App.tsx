@@ -28,12 +28,12 @@ import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import WorkoutFormScreen from './src/screens/WorkoutFormScreen';
 import ActivityFormScreen from './src/screens/ActivityFormScreen';
-import SessionDetailScreen from './src/screens/SessionDetailScreen';
+import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import LoginModal from './src/components/LoginModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
 import { saveServerConfig, getActiveServerConfig, loadBackgroundSyncEnabled } from './src/services/storage';
-import { loadSessionDraft, clearSessionDraft } from './src/services/workoutDraftService';
+import { loadDraft, clearDraft } from './src/services/workoutDraftService';
 import { notifyNoConfigs } from './src/services/api/authService';
 import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
 import { startObservers, stopObservers } from './src/services/healthConnectService';
@@ -139,7 +139,7 @@ function AppContent() {
       return;
     }
 
-    const draft = await loadSessionDraft();
+    const draft = await loadDraft();
     if (draft && draft.type === 'activity' && draft.exerciseId) {
       Alert.alert('Activity in Progress', 'You have an unsaved activity draft.', [
         { text: 'Cancel', style: 'cancel' },
@@ -147,7 +147,7 @@ function AppContent() {
           text: 'Discard & Start Workout',
           style: 'destructive',
           onPress: async () => {
-            await clearSessionDraft();
+            await clearDraft();
             navigation.getParent()?.navigate('WorkoutForm');
           },
         },
@@ -161,7 +161,7 @@ function AppContent() {
           text: 'Start Fresh',
           style: 'destructive',
           onPress: async () => {
-            await clearSessionDraft();
+            await clearDraft();
             navigation.getParent()?.navigate('WorkoutForm');
           },
         },
@@ -196,7 +196,7 @@ function AppContent() {
       return;
     }
 
-    const draft = await loadSessionDraft();
+    const draft = await loadDraft();
     if (draft && draft.type === 'workout' && draft.exercises.length > 0) {
       Alert.alert('Workout in Progress', 'You have an unsaved workout draft.', [
         { text: 'Cancel', style: 'cancel' },
@@ -204,7 +204,7 @@ function AppContent() {
           text: 'Discard & Log Activity',
           style: 'destructive',
           onPress: async () => {
-            await clearSessionDraft();
+            await clearDraft();
             navigation.getParent()?.navigate('ActivityForm', { date });
           },
         },
@@ -218,7 +218,7 @@ function AppContent() {
           text: 'Start Fresh',
           style: 'destructive',
           onPress: async () => {
-            await clearSessionDraft();
+            await clearDraft();
             navigation.getParent()?.navigate('ActivityForm', { date });
           },
         },
@@ -424,8 +424,8 @@ function AppContent() {
             }}
           />
           <Stack.Screen
-            name="SessionDetail"
-            component={SessionDetailScreen}
+            name="WorkoutDetail"
+            component={WorkoutDetailScreen}
             options={{
               headerShown: false,
               gestureEnabled: true,

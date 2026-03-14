@@ -1,15 +1,13 @@
 import { useReducer, useEffect, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
-import { saveSessionDraft, loadSessionDraft, clearSessionDraft } from '../services/workoutDraftService';
+import { saveDraft, loadDraft, clearDraft } from '../services/workoutDraftService';
 import { getTodayDate } from '../utils/dateUtils';
+import { kmToMiles } from '../utils/unitConversions';
 import type { Exercise } from '../types/exercise';
 import type { ActivityDraft } from '../types/drafts';
 import type { IndividualSessionResponse } from '@workspace/shared';
 
 export type { ActivityDraft } from '../types/drafts';
-
-const KM_TO_MILES = 0.621371;
-const MILES_TO_KM = 1.60934;
 
 function createEmptyDraft(): ActivityDraft {
   return {
@@ -94,7 +92,7 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
       const { entry, distanceUnit } = action;
       let distance = '';
       if (entry.distance != null && entry.distance > 0) {
-        const displayDistance = distanceUnit === 'miles' ? entry.distance * KM_TO_MILES : entry.distance;
+        const displayDistance = distanceUnit === 'miles' ? kmToMiles(entry.distance) : entry.distance;
         distance = String(parseFloat(displayDistance.toFixed(2)));
       }
       return {
@@ -136,7 +134,7 @@ export function useActivityForm({ isEditMode = false, initialDate }: UseActivity
       isDraftLoadedRef.current = true;
       return;
     }
-    loadSessionDraft().then(draft => {
+    loadDraft().then(draft => {
       if (draft && draft.type === 'activity') {
         skipNextSaveRef.current = true;
         dispatch({ type: 'RESTORE_DRAFT', draft });
@@ -160,7 +158,7 @@ export function useActivityForm({ isEditMode = false, initialDate }: UseActivity
       clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = setTimeout(() => {
-      saveSessionDraft(state);
+      saveDraft(state);
     }, 300);
 
     return () => {
@@ -179,7 +177,7 @@ export function useActivityForm({ isEditMode = false, initialDate }: UseActivity
           clearTimeout(saveTimeoutRef.current);
           saveTimeoutRef.current = null;
         }
-        saveSessionDraft(stateRef.current);
+        saveDraft(stateRef.current);
       }
     });
     return () => subscription.remove();
@@ -211,7 +209,7 @@ export function useActivityForm({ isEditMode = false, initialDate }: UseActivity
 
   const reset = useCallback(() => {
     dispatch({ type: 'RESET' });
-    clearSessionDraft();
+    clearDraft();
   }, []);
 
   const populate = useCallback((entry: IndividualSessionResponse, distanceUnit: 'km' | 'miles') => {
@@ -232,7 +230,6 @@ export function useActivityForm({ isEditMode = false, initialDate }: UseActivity
   };
 }
 
-export { MILES_TO_KM };
 export const DISTANCE_EXERCISE_NAMES = [
   'Running', 'Cycling', 'Swimming', 'Walking', 'Hiking',
 ] as const;

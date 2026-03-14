@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  loadSessionDraft,
-  saveSessionDraft,
-  clearSessionDraft,
+  loadDraft,
+  saveDraft,
+  clearDraft,
 } from '../../src/services/workoutDraftService';
 import type { WorkoutDraft } from '../../src/hooks/useWorkoutForm';
 
@@ -32,35 +32,35 @@ describe('workoutDraftService', () => {
 
   describe('save and load round-trip', () => {
     it('saves and loads a draft correctly', async () => {
-      await saveSessionDraft(testDraft);
-      const loaded = await loadSessionDraft();
+      await saveDraft(testDraft);
+      const loaded = await loadDraft();
       expect(loaded).toEqual(testDraft);
     });
   });
 
-  describe('loadSessionDraft', () => {
+  describe('loadDraft', () => {
     it('returns null when no draft exists', async () => {
-      const result = await loadSessionDraft();
+      const result = await loadDraft();
       expect(result).toBeNull();
     });
 
     it('returns null for malformed JSON', async () => {
       await AsyncStorage.setItem('@SessionDraft', 'not valid json{{{');
-      const result = await loadSessionDraft();
+      const result = await loadDraft();
       expect(result).toBeNull();
     });
   });
 
-  describe('clearSessionDraft', () => {
+  describe('clearDraft', () => {
     it('removes the draft from storage', async () => {
-      await saveSessionDraft(testDraft);
-      await clearSessionDraft();
-      const result = await loadSessionDraft();
+      await saveDraft(testDraft);
+      await clearDraft();
+      const result = await loadDraft();
       expect(result).toBeNull();
     });
 
     it('does not throw when clearing with no draft', async () => {
-      await expect(clearSessionDraft()).resolves.not.toThrow();
+      await expect(clearDraft()).resolves.not.toThrow();
     });
   });
 });

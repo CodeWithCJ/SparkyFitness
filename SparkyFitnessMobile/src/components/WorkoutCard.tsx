@@ -5,7 +5,7 @@ import type { ExerciseSessionResponse } from '@workspace/shared';
 import Icon, { type IconName } from './Icon';
 import { formatDate } from '../utils/dateUtils';
 
-interface SessionCardProps {
+interface WorkoutCardProps {
   session: ExerciseSessionResponse;
 }
 
@@ -29,7 +29,7 @@ export const CATEGORY_ICON_MAP: Record<string, IconName> = {
   'Stair Stepper': 'exercise-stair',
 };
 
-export function getSessionIcon(session: ExerciseSessionResponse): IconName {
+export function getWorkoutIcon(session: ExerciseSessionResponse): IconName {
   if (session.type === 'preset') return 'exercise-weights';
   const category = session.exercise_snapshot?.category;
   if (category && category in CATEGORY_ICON_MAP) {
@@ -62,30 +62,35 @@ export function formatDuration(minutes: number): string {
   return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
 }
 
-const SessionCard: React.FC<SessionCardProps> = ({ session }) => {
+export function getWorkoutSummary(session: ExerciseSessionResponse): {
+  name: string;
+  duration: number;
+  calories: number;
+} {
+  if (session.type === 'preset') {
+    return {
+      name: session.name,
+      duration: session.total_duration_minutes,
+      calories: session.exercises.reduce((sum, e) => sum + e.calories_burned, 0),
+    };
+  }
+  return {
+    name: session.exercise_snapshot?.name ?? 'Unknown exercise',
+    duration: session.duration_minutes,
+    calories: session.calories_burned,
+  };
+}
+
+const WorkoutCard = React.memo<WorkoutCardProps>(({ session }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
   const textMuted = useCSSVariable('--color-text-muted') as string;
 
-  const iconName = getSessionIcon(session);
-
-  let name: string;
-  let duration: number;
-  let calories: number;
-  let source: string | null;
-  let subtitle: string | undefined;
-
-  if (session.type === 'preset') {
-    name = session.name;
-    duration = session.total_duration_minutes;
-    calories = session.exercises.reduce((sum, e) => sum + e.calories_burned, 0);
-    source = session.source;
-    subtitle = `${session.exercises.length} exercise${session.exercises.length !== 1 ? 's' : ''}`;
-  } else {
-    name = session.exercise_snapshot?.name ?? 'Unknown exercise';
-    duration = session.duration_minutes;
-    calories = session.calories_burned;
-    source = session.source;
-  }
+  const iconName = getWorkoutIcon(session);
+  const { name, duration, calories } = getWorkoutSummary(session);
+  const source = session.source;
+  const subtitle = session.type === 'preset'
+    ? `${session.exercises.length} exercise${session.exercises.length !== 1 ? 's' : ''}`
+    : undefined;
 
   const { label: sourceLabel, isSparky } = getSourceLabel(source);
   const dateStr = session.entry_date ? formatDate(session.entry_date) : '';
@@ -124,6 +129,8 @@ const SessionCard: React.FC<SessionCardProps> = ({ session }) => {
       </View>
     </View>
   );
-};
+});
 
-export default SessionCard;
+WorkoutCard.displayName = 'WorkoutCard';
+
+export default WorkoutCard;

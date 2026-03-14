@@ -2,24 +2,24 @@ import React, { useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import FormInput from '../components/FormInput';
 import ExercisePicker, { type ExercisePickerRef } from '../components/ExercisePicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { useActivityForm, isDistanceExercise, MILES_TO_KM } from '../hooks/useActivityForm';
+import { useActivityForm, isDistanceExercise } from '../hooks/useActivityForm';
+import { distanceToKm } from '../utils/unitConversions';
 import { useCreateExerciseEntry } from '../hooks/useCreateExerciseEntry';
 import { useUpdateExerciseEntry } from '../hooks/useUpdateExerciseEntry';
 import { usePreferences } from '../hooks/usePreferences';
-import { clearSessionDraft } from '../services/workoutDraftService';
+import { clearDraft } from '../services/workoutDraftService';
 import { formatDateLabel } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -50,7 +50,6 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
     setCalories,
     setDate,
     setNotes,
-    reset,
     populate,
     hasDraftData,
   } = useActivityForm({ isEditMode, initialDate });
@@ -76,23 +75,11 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const canSave = state.exerciseId && state.duration && parseFloat(state.duration) > 0;
 
   const handleCancel = useCallback(() => {
-    if (hasDraftData && !isEditMode) {
-      Alert.alert('Discard Activity?', 'Your activity data will be lost.', [
-        { text: 'Keep Editing', style: 'cancel' },
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: () => {
-            reset();
-            navigation.goBack();
-          },
-        },
-      ]);
-    } else {
-      if (!isEditMode) clearSessionDraft();
-      navigation.goBack();
+    if (!isEditMode && !hasDraftData) {
+      clearDraft();
     }
-  }, [hasDraftData, isEditMode, reset, navigation]);
+    navigation.goBack();
+  }, [isEditMode, hasDraftData, navigation]);
 
   const handleSave = useCallback(async () => {
     const durationMinutes = parseFloat(state.duration);
@@ -104,7 +91,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
     if (state.distance) {
       const distanceVal = parseFloat(state.distance);
       if (!isNaN(distanceVal) && distanceVal > 0) {
-        distanceKm = distanceUnit === 'miles' ? distanceVal * MILES_TO_KM : distanceVal;
+        distanceKm = distanceToKm(distanceVal, distanceUnit);
       }
     }
 
@@ -124,7 +111,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
         navigation.pop(popCount);
       } else {
         await createEntry(payload);
-        await clearSessionDraft();
+        await clearDraft();
         invalidateCreateCache(state.entryDate);
         navigation.goBack();
       }
@@ -203,17 +190,10 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* Duration */}
           <View className="mb-4">
             <Text className="text-sm font-medium text-text-secondary mb-1.5">Duration (min)</Text>
-            <TextInput
-              className="text-base text-text-primary py-3 px-3 rounded-lg"
-              style={{
-                backgroundColor: raisedBg,
-                borderWidth: 1,
-                borderColor: borderSubtle,
-              }}
+            <FormInput
               value={state.duration}
               onChangeText={setDuration}
               placeholder="0"
-              placeholderTextColor={textMuted}
               keyboardType="number-pad"
               returnKeyType="done"
             />
@@ -225,17 +205,10 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text className="text-sm font-medium text-text-secondary mb-1.5">
                 Distance ({distanceUnit === 'miles' ? 'mi' : 'km'})
               </Text>
-              <TextInput
-                className="text-base text-text-primary py-3 px-3 rounded-lg"
-                style={{
-                  backgroundColor: raisedBg,
-                  borderWidth: 1,
-                  borderColor: borderSubtle,
-                }}
+              <FormInput
                 value={state.distance}
                 onChangeText={setDistance}
                 placeholder="0"
-                placeholderTextColor={textMuted}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
               />
@@ -245,17 +218,10 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* Calories */}
           <View className="mb-4">
             <Text className="text-sm font-medium text-text-secondary mb-1.5">Calories</Text>
-            <TextInput
-              className="text-base text-text-primary py-3 px-3 rounded-lg"
-              style={{
-                backgroundColor: raisedBg,
-                borderWidth: 1,
-                borderColor: borderSubtle,
-              }}
+            <FormInput
               value={state.calories}
               onChangeText={setCalories}
               placeholder="Enter calories"
-              placeholderTextColor={textMuted}
               keyboardType="number-pad"
               returnKeyType="done"
             />
@@ -285,21 +251,14 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* Notes */}
           <View className="mb-6">
             <Text className="text-sm font-medium text-text-secondary mb-1.5">Notes</Text>
-            <TextInput
-              className="text-base text-text-primary py-3 px-3 rounded-lg"
-              style={{
-                backgroundColor: raisedBg,
-                borderWidth: 1,
-                borderColor: borderSubtle,
-                minHeight: 80,
-              }}
+            <FormInput
               value={state.notes}
               onChangeText={setNotes}
               placeholder="Optional notes..."
-              placeholderTextColor={textMuted}
               multiline
               textAlignVertical="top"
               returnKeyType="default"
+              style={{ minHeight: 80 }}
             />
           </View>
         </ScrollView>

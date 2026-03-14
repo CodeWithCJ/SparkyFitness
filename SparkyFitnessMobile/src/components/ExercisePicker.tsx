@@ -28,7 +28,7 @@ const ExercisePicker = React.forwardRef<ExercisePickerRef, ExercisePickerProps>(
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
 
-    const [surfaceBg, textMuted, accentPrimary, textSecondary, raisedBg, borderSubtle] =
+    const [surfaceBg, textMuted, accentPrimary, textSecondary, raisedBg, borderSubtle, textPrimary] =
       useCSSVariable([
         '--color-surface',
         '--color-text-muted',
@@ -36,7 +36,8 @@ const ExercisePicker = React.forwardRef<ExercisePickerRef, ExercisePickerProps>(
         '--color-text-secondary',
         '--color-raised',
         '--color-border-subtle',
-      ]) as [string, string, string, string, string, string];
+        '--color-text-primary',
+      ]) as [string, string, string, string, string, string, string];
 
     const snapPoints = useMemo(() => ['70%', '90%'], []);
 
@@ -216,7 +217,7 @@ const ExercisePicker = React.forwardRef<ExercisePickerRef, ExercisePickerProps>(
               backgroundColor: raisedBg,
               borderWidth: 1,
               borderColor: borderSubtle,
-              color: isDarkMode ? '#FFFFFF' : '#000000',
+              color: textPrimary,
               fontSize: 16,
               lineHeight: 20,
             }}

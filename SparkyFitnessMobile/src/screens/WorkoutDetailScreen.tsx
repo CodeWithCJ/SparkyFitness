@@ -3,19 +3,19 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import { getSourceLabel, getSessionIcon, formatDuration } from '../components/SessionCard';
+import { getSourceLabel, getWorkoutIcon, formatDuration, getWorkoutSummary } from '../components/WorkoutCard';
 import { useDeleteExerciseEntry } from '../hooks/useDeleteExerciseEntry';
-import { useDeleteWorkoutSession } from '../hooks/useDeleteWorkoutSession';
+import { useDeleteWorkout } from '../hooks/useDeleteWorkout';
 import { usePreferences } from '../hooks/usePreferences';
 import { formatDate } from '../utils/dateUtils';
 import { extractActivitySummary } from '../utils/activityDetails';
-import { weightFromKg } from '../utils/unitConversions';
+import { weightFromKg, distanceFromKm } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { ExerciseEntryResponse } from '@workspace/shared';
 
-type Props = RootStackScreenProps<'SessionDetail'>;
+type Props = RootStackScreenProps<'WorkoutDetail'>;
 
-const SessionDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { session } = route.params;
   const insets = useSafeAreaInsets();
   const { preferences } = usePreferences();
@@ -29,17 +29,13 @@ const SessionDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   ]) as [string, string, string];
 
   const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
-  const iconName = getSessionIcon(session);
+  const iconName = getWorkoutIcon(session);
   const entryDate = session.entry_date ?? '';
   const normalizedDate = entryDate.split('T')[0];
 
   // Session data
   const isPreset = session.type === 'preset';
-  const name = isPreset ? session.name : (session.exercise_snapshot?.name ?? 'Unknown exercise');
-  const duration = isPreset ? session.total_duration_minutes : session.duration_minutes;
-  const calories = isPreset
-    ? session.exercises.reduce((sum, e) => sum + e.calories_burned, 0)
-    : session.calories_burned;
+  const { name, duration, calories } = getWorkoutSummary(session);
 
   // Delete hooks (only one will be used based on session type)
   const deleteActivity = useDeleteExerciseEntry({
@@ -51,7 +47,7 @@ const SessionDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     },
   });
 
-  const deleteWorkout = useDeleteWorkoutSession({
+  const deleteWorkout = useDeleteWorkout({
     sessionId: session.id,
     entryDate: normalizedDate,
     onSuccess: () => {
@@ -79,11 +75,9 @@ const SessionDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const isDeleting = deleteActivity.isPending || deleteWorkout.isPending;
 
   const formatDistance = (distanceKm: number): string => {
-    if (distanceUnit === 'miles') {
-      const miles = distanceKm / 1.60934;
-      return `${miles.toFixed(2)} mi`;
-    }
-    return `${distanceKm.toFixed(2)} km`;
+    const value = distanceFromKm(distanceKm, distanceUnit);
+    const label = distanceUnit === 'miles' ? 'mi' : 'km';
+    return `${value.toFixed(2)} ${label}`;
   };
 
   const renderSetTable = (exercise: ExerciseEntryResponse) => {
@@ -295,7 +289,7 @@ const SessionDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             activeOpacity={0.6}
           >
             <Text className="text-bg-danger text-base font-medium">
-              {isDeleting ? 'Deleting...' : 'Delete Session'}
+              {isDeleting ? 'Deleting...' : 'Delete Workout'}
             </Text>
           </TouchableOpacity>
         )}
@@ -304,4 +298,4 @@ const SessionDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
-export default SessionDetailScreen;
+export default WorkoutDetailScreen;

@@ -1,12 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { deleteExerciseEntry } from '../services/api/exerciseApi';
-import {
-  exerciseHistoryQueryKey,
-  exerciseHistoryResetQueryKey,
-  dailySummaryQueryKey,
-  suggestedExercisesQueryKey,
-} from './queryKeys';
+import { invalidateExerciseCache } from './invalidateExerciseCache';
 
 interface UseDeleteExerciseEntryOptions {
   entryId: string;
@@ -47,20 +42,9 @@ export function useDeleteExerciseEntry({
     );
   };
 
-  const invalidateCache = () => {
-    queryClient.removeQueries({ queryKey: [...exerciseHistoryQueryKey] });
-    queryClient.setQueryData(exerciseHistoryResetQueryKey, Date.now());
-    queryClient.invalidateQueries({
-      queryKey: dailySummaryQueryKey(normalizedDate),
-    });
-    queryClient.invalidateQueries({
-      queryKey: [...suggestedExercisesQueryKey],
-    });
-  };
-
   return {
     confirmAndDelete,
     isPending: mutation.isPending,
-    invalidateCache,
+    invalidateCache: () => invalidateExerciseCache(queryClient, normalizedDate),
   };
 }

@@ -33,4 +33,4 @@ export interface ActivityDraft {
   notes: string;
 }
 
-export type SessionDraft = WorkoutDraft | ActivityDraft;
+export type FormDraft = WorkoutDraft | ActivityDraft;

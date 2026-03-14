@@ -41,11 +41,11 @@ export type { StepsDataPoint, StepsRange, WeightDataPoint } from './useMeasureme
 export { useExerciseHistory } from './useExerciseHistory';
 export { useSuggestedExercises } from './useSuggestedExercises';
 export { useExerciseSearch } from './useExerciseSearch';
-export { useCreateWorkoutSession } from './useCreateWorkoutSession';
+export { useCreateWorkout } from './useCreateWorkout';
 export { useCreateExerciseEntry } from './useCreateExerciseEntry';
 export { useUpdateExerciseEntry } from './useUpdateExerciseEntry';
-export { useActivityForm, isDistanceExercise, MILES_TO_KM } from './useActivityForm';
+export { useActivityForm, isDistanceExercise } from './useActivityForm';
 export { useDeleteExerciseEntry } from './useDeleteExerciseEntry';
-export { useDeleteWorkoutSession } from './useDeleteWorkoutSession';
-export { useUpdateWorkoutSession } from './useUpdateWorkoutSession';
+export { useDeleteWorkout } from './useDeleteWorkout';
+export { useUpdateWorkout } from './useUpdateWorkout';
 export { suggestedExercisesQueryKey, exerciseSearchQueryKey } from './queryKeys';
