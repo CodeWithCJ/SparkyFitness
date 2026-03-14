@@ -136,6 +136,7 @@ export interface CreateExerciseEntryPayload {
   calories_burned: number;
   entry_date: string;
   distance?: number | null;
+  avg_heart_rate?: number | null;
   notes?: string | null;
 }
 

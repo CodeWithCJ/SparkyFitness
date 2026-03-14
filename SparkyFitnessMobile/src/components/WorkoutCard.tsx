@@ -87,7 +87,7 @@ export function getWorkoutSummary(session: ExerciseSessionResponse): {
     };
   }
   return {
-    name: session.exercise_snapshot?.name ?? 'Unknown exercise',
+    name: session.name ?? session.exercise_snapshot?.name ?? 'Unknown exercise',
     duration: session.duration_minutes,
     calories: session.calories_burned,
   };

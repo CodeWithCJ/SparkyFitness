@@ -279,6 +279,10 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     dispatch({ type: 'SET_NAME', name });
   }, []);
 
+  const setDate = useCallback((date: string) => {
+    dispatch({ type: 'SET_DATE', date });
+  }, []);
+
   const reset = useCallback(() => {
     dispatch({ type: 'RESET' });
     if (!isEditMode) {
@@ -304,6 +308,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     removeSet,
     updateSetField,
     setName,
+    setDate,
     reset,
     populate,
     populateFromPreset,

@@ -14,7 +14,9 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useWorkoutForm } from '../hooks/useWorkoutForm';
+import { formatDateLabel } from '../utils/dateUtils';
 import { useCreateWorkout } from '../hooks/useCreateWorkout';
 import { useUpdateWorkout } from '../hooks/useUpdateWorkout';
 import { usePreferences } from '../hooks/usePreferences';
@@ -40,12 +42,14 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const isEditMode = !!session;
 
   const insets = useSafeAreaInsets();
+  const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textMuted, borderSubtle] = useCSSVariable([
+  const [accentPrimary, textMuted, borderSubtle, raisedBg] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-border-subtle',
-  ]) as [string, string, string];
+    '--color-raised',
+  ]) as [string, string, string, string];
 
   const {
     state,
@@ -55,6 +59,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     removeSet,
     updateSetField,
     setName,
+    setDate,
     populate,
     populateFromPreset,
     hasDraftData,
@@ -346,23 +351,24 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
             >
               <Icon name="close" size={24} color={accentPrimary} />
             </Button>
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={handleFinish}
               disabled={isPending || !hasDraftData}
-              className="py-1.5 px-4 rounded-lg"
-              style={{
-                backgroundColor:
-                  hasDraftData && !isPending ? accentPrimary : borderSubtle,
-              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              className="py-0 px-0"
             >
               {isPending ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={accentPrimary} />
               ) : (
-                <Text className="text-white font-semibold text-base">
-                  {isEditMode ? 'Save Changes' : 'Finish'}
+                <Text
+                  className="text-base font-semibold"
+                  style={{ color: hasDraftData ? accentPrimary : textMuted }}
+                >
+                  {isEditMode ? 'Save' : 'Finish'}
                 </Text>
               )}
-            </TouchableOpacity>
+            </Button>
           </View>
 
           <KeyboardAvoidingView
@@ -383,23 +389,36 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 returnKeyType="done"
               />
 
+              {/* Date row */}
+              <View className="mb-4">
+                <Text className="text-sm font-medium text-text-secondary mb-1.5">Date</Text>
+                <TouchableOpacity
+                  className="flex-row items-center justify-between py-3 px-3 rounded-lg"
+                  style={{
+                    backgroundColor: raisedBg,
+                    borderWidth: 1,
+                    borderColor: borderSubtle,
+                  }}
+                  onPress={() => calendarSheetRef.current?.present()}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-base text-text-primary">{formatDateLabel(state.entryDate)}</Text>
+                  <Icon name="chevron-forward" size={16} color={textMuted} />
+                </TouchableOpacity>
+              </View>
+
               {/* Exercise cards */}
               {state.exercises.map(renderExerciseCard)}
 
               {/* Add Exercise button */}
               <TouchableOpacity
-                className="rounded-xl py-4 mb-6 items-center"
-                style={{
-                  borderWidth: 1.5,
-                  borderStyle: 'dashed',
-                  borderColor: borderSubtle,
-                }}
+                className="rounded-xl py-4 mb-6 flex-row items-center justify-center"
                 onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
                 activeOpacity={0.7}
               >
-                <Icon name="add-circle" size={24} color={accentPrimary} />
+                <Icon name="add-circle" size={20} color={accentPrimary} />
                 <Text
-                  className="text-base font-medium mt-1"
+                  className="text-base font-medium ml-2"
                   style={{ color: accentPrimary }}
                 >
                   Add Exercise
@@ -410,6 +429,12 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
         </>
       )}
+
+      <CalendarSheet
+        ref={calendarSheetRef}
+        selectedDate={state.entryDate}
+        onSelectDate={setDate}
+      />
     </View>
   );
 };

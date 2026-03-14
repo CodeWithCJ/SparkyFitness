@@ -146,22 +146,24 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
         <Button variant="ghost" onPress={handleCancel} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} className="py-0 px-0">
           <Icon name="close" size={24} color={accentPrimary} />
         </Button>
-        <TouchableOpacity
+        <Button
+          variant="ghost"
           onPress={handleSave}
           disabled={isPending || !canSave}
-          className="py-1.5 px-4 rounded-lg"
-          style={{
-            backgroundColor: canSave && !isPending ? accentPrimary : borderSubtle,
-          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          className="py-0 px-0"
         >
           {isPending ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <ActivityIndicator size="small" color={accentPrimary} />
           ) : (
-            <Text className="text-white font-semibold text-base">
-              {isEditMode ? 'Save Changes' : 'Save'}
+            <Text
+              className="text-base font-semibold"
+              style={{ color: canSave ? accentPrimary : textMuted }}
+            >
+              {isEditMode ? 'Save' : 'Save'}
             </Text>
           )}
-        </TouchableOpacity>
+        </Button>
       </View>
 
       <KeyboardAvoidingView

@@ -7,8 +7,9 @@ import {
 } from './queryKeys';
 
 export function invalidateExerciseCache(queryClient: QueryClient, entryDate: string) {
-  queryClient.removeQueries({ queryKey: [...exerciseHistoryQueryKey] });
+  void queryClient.invalidateQueries({ queryKey: [...exerciseHistoryQueryKey] });
+  queryClient.removeQueries({ queryKey: [...exerciseHistoryQueryKey], type: 'inactive' });
   queryClient.setQueryData(exerciseHistoryResetQueryKey, Date.now());
-  queryClient.invalidateQueries({ queryKey: [...suggestedExercisesQueryKey] });
-  queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(entryDate) });
+  void queryClient.invalidateQueries({ queryKey: [...suggestedExercisesQueryKey] });
+  void queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(entryDate) });
 }

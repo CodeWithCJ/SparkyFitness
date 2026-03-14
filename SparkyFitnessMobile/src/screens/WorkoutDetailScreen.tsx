@@ -1,18 +1,24 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Image } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import CollapsibleSection from '../components/CollapsibleSection';
 import { getSourceLabel, getWorkoutIcon, formatDuration, getWorkoutSummary } from '../components/WorkoutCard';
 import { useDeleteExerciseEntry } from '../hooks/useDeleteExerciseEntry';
 import { useDeleteWorkout } from '../hooks/useDeleteWorkout';
+import { useUpdateExerciseEntry } from '../hooks/useUpdateExerciseEntry';
+import { useUpdateWorkout } from '../hooks/useUpdateWorkout';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { formatDate } from '../utils/dateUtils';
+import { syncExerciseSessionInCache } from '../hooks/syncExerciseSessionInCache';
+import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import { formatDate, formatDateLabel } from '../utils/dateUtils';
 import { extractActivitySummary } from '../utils/activityDetails';
-import { weightFromKg, distanceFromKm } from '../utils/unitConversions';
+import { weightFromKg, distanceFromKm, distanceToKm } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { ExerciseEntryResponse, ExerciseSnapshotResponse } from '@workspace/shared';
 
@@ -80,11 +86,14 @@ const ExerciseThumbnail: React.FC<{
 };
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { session } = route.params;
+  const [session, setSession] = useState(route.params.session);
+  const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const { preferences } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
   const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+
+  const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
   const [accentPrimary, textMuted, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -127,14 +136,6 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     },
   });
 
-  const handleEdit = () => {
-    if (isPreset) {
-      navigation.navigate('WorkoutForm', { session });
-    } else {
-      navigation.navigate('ActivityForm', { entry: session, popCount: 2 });
-    }
-  };
-
   const handleDelete = () => {
     if (isPreset) {
       deleteWorkout.confirmAndDelete();
@@ -144,6 +145,97 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const isDeleting = deleteActivity.isPending || deleteWorkout.isPending;
+
+  // Inline editing
+  const { updateEntry, isPending: isUpdatingEntry, invalidateCache: invalidateEntryCache } = useUpdateExerciseEntry();
+  const { updateSession, isPending: isUpdatingSession, invalidateCache: invalidateSessionCache } = useUpdateWorkout();
+  const isSaving = isUpdatingEntry || isUpdatingSession;
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  const updateEditValue = (key: string, value: string) => {
+    setEditValues(prev => ({ ...prev, [key]: value }));
+  };
+
+  const startEditing = () => {
+    if (session.type === 'individual') {
+      const displayDistance = session.distance != null && session.distance > 0
+        ? distanceFromKm(session.distance, distanceUnit).toFixed(2)
+        : '';
+      setEditValues({
+        entry_date: normalizedDate,
+        name: session.name ?? session.exercise_snapshot?.name ?? '',
+        notes: session.notes ?? '',
+        calories_burned: session.calories_burned > 0 ? String(Math.round(session.calories_burned)) : '',
+        duration_minutes: session.duration_minutes > 0 ? String(session.duration_minutes) : '',
+        distance: displayDistance,
+        avg_heart_rate: session.avg_heart_rate != null ? String(session.avg_heart_rate) : '',
+      });
+    } else {
+      setEditValues({
+        entry_date: normalizedDate,
+        name: session.name ?? '',
+        notes: session.notes ?? '',
+      });
+    }
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditValues({});
+  };
+
+  const handleSave = async () => {
+    const editedDate = editValues.entry_date || normalizedDate;
+    const dateChanged = editedDate !== normalizedDate;
+
+    try {
+      if (session.type === 'individual') {
+        const distanceValue = editValues.distance ? parseFloat(editValues.distance) : null;
+        const payload = {
+          exercise_id: session.exercise_id,
+          exercise_name: editValues.name || null,
+          duration_minutes: parseFloat(editValues.duration_minutes) || 0,
+          calories_burned: parseFloat(editValues.calories_burned) || 0,
+          entry_date: editedDate,
+          distance: distanceValue != null ? distanceToKm(distanceValue, distanceUnit) : null,
+          avg_heart_rate: editValues.avg_heart_rate ? parseInt(editValues.avg_heart_rate, 10) : null,
+          notes: editValues.notes || null,
+        };
+        const updatedEntry = await updateEntry({ id: session.id, payload });
+        invalidateEntryCache(editedDate);
+        if (dateChanged) invalidateEntryCache(normalizedDate);
+        const updatedSession = {
+          ...session,
+          ...updatedEntry,
+          entry_date: editedDate,
+          name: payload.exercise_name ?? null,
+          notes: payload.notes,
+          calories_burned: payload.calories_burned,
+          duration_minutes: payload.duration_minutes,
+          distance: distanceValue != null ? distanceToKm(distanceValue, distanceUnit) : null,
+          avg_heart_rate: payload.avg_heart_rate,
+        };
+        syncExerciseSessionInCache(queryClient, updatedSession);
+        setSession(updatedSession);
+      } else {
+        const payload = {
+          name: editValues.name.trim() || session.name,
+          entry_date: editedDate,
+          notes: editValues.notes || null,
+        };
+        const updatedSession = await updateSession({ id: session.id, payload });
+        invalidateSessionCache(editedDate);
+        if (dateChanged) invalidateSessionCache(normalizedDate);
+        setSession(updatedSession);
+      }
+      setIsEditing(false);
+      setEditValues({});
+    } catch {
+      // Error alert shown by mutation hook's onError
+    }
+  };
 
   const formatDistance = (distanceKm: number): string => {
     const value = distanceFromKm(distanceKm, distanceUnit);
@@ -399,27 +491,120 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
+  const renderIndividualEditForm = () => (
+    <View className="bg-surface rounded-xl p-4">
+      <View className="mb-3">
+        <Text className="text-sm font-medium text-text-secondary mb-1">Duration (min)</Text>
+        <FormInput
+          value={editValues.duration_minutes ?? ''}
+          onChangeText={(v) => updateEditValue('duration_minutes', v)}
+          keyboardType="numeric"
+          placeholder="0"
+        />
+      </View>
+      <View className="mb-3">
+        <Text className="text-sm font-medium text-text-secondary mb-1">Calories</Text>
+        <FormInput
+          value={editValues.calories_burned ?? ''}
+          onChangeText={(v) => updateEditValue('calories_burned', v)}
+          keyboardType="numeric"
+          placeholder="0"
+        />
+      </View>
+      <View className="mb-3">
+        <Text className="text-sm font-medium text-text-secondary mb-1">
+          Distance ({distanceUnit === 'miles' ? 'mi' : 'km'})
+        </Text>
+        <FormInput
+          value={editValues.distance ?? ''}
+          onChangeText={(v) => updateEditValue('distance', v)}
+          keyboardType="decimal-pad"
+          placeholder="0.00"
+        />
+      </View>
+      <View className="mb-3">
+        <Text className="text-sm font-medium text-text-secondary mb-1">Avg Heart Rate (bpm)</Text>
+        <FormInput
+          value={editValues.avg_heart_rate ?? ''}
+          onChangeText={(v) => updateEditValue('avg_heart_rate', v)}
+          keyboardType="numeric"
+          placeholder=""
+        />
+      </View>
+      <View>
+        <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
+        <FormInput
+          value={editValues.notes ?? ''}
+          onChangeText={(v) => updateEditValue('notes', v)}
+          placeholder="Add notes..."
+          multiline
+          style={{ minHeight: 60 }}
+        />
+      </View>
+    </View>
+  );
+
+  const renderPresetEditNotes = () => (
+    <View className="bg-surface rounded-xl p-4 mt-4">
+      <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
+      <FormInput
+        value={editValues.notes ?? ''}
+        onChangeText={(v) => updateEditValue('notes', v)}
+        placeholder="Add notes..."
+        multiline
+        style={{ minHeight: 60 }}
+      />
+    </View>
+  );
+
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
-        <Button
-          variant="ghost"
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="py-0 px-0"
-        >
-          <Icon name="chevron-back" size={22} color={accentPrimary} />
-        </Button>
-        {isSparky && (
-          <Button
-            variant="ghost"
-            onPress={handleEdit}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="py-0 px-0 ml-auto"
-          >
-            <Text className="text-accent-primary text-base font-medium">Edit</Text>
-          </Button>
+        {isEditing ? (
+          <>
+            <Button
+              variant="ghost"
+              onPress={cancelEditing}
+              disabled={isSaving}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="py-0 px-0"
+            >
+              <Text className="text-accent-primary text-base font-medium">Cancel</Text>
+            </Button>
+            <Button
+              variant="ghost"
+              onPress={handleSave}
+              disabled={isSaving}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="py-0 px-0 ml-auto"
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color={accentPrimary} />
+              ) : (
+                <Text className="text-accent-primary text-base font-semibold">Save</Text>
+              )}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="py-0 px-0"
+            >
+              <Icon name="chevron-back" size={22} color={accentPrimary} />
+            </Button>
+            <Button
+              variant="ghost"
+              onPress={startEditing}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="py-0 px-0 ml-auto"
+            >
+              <Text className="text-accent-primary text-base font-medium">Edit</Text>
+            </Button>
+          </>
         )}
       </View>
 
@@ -428,9 +613,19 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View className="mb-4">
           <View className="flex-row items-center mb-2">
             <Icon name={iconName} size={28} color={accentPrimary} />
-            <Text className="text-2xl font-bold text-text-primary ml-3 flex-1" numberOfLines={2}>
-              {name}
-            </Text>
+            {isEditing ? (
+              <FormInput
+                value={editValues.name ?? ''}
+                onChangeText={(v) => updateEditValue('name', v)}
+                placeholder="Workout Name"
+                className="text-xl font-bold text-text-primary ml-3 flex-1"
+                style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 0, paddingBottom: 0 }}
+              />
+            ) : (
+              <Text className="text-2xl font-bold text-text-primary ml-3 flex-1" numberOfLines={2}>
+                {name}
+              </Text>
+            )}
           </View>
           <View className="flex-row items-center">
             <View
@@ -444,51 +639,64 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 {sourceLabel}
               </Text>
             </View>
-            {entryDate ? (
+            {isEditing ? (
+              <TouchableOpacity
+                className="flex-row items-center"
+                onPress={() => calendarSheetRef.current?.present()}
+                activeOpacity={0.7}
+              >
+                <Text className="text-sm" style={{ color: accentPrimary }}>
+                  {formatDateLabel(editValues.entry_date || normalizedDate)}
+                </Text>
+                <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
+              </TouchableOpacity>
+            ) : entryDate ? (
               <Text className="text-sm text-text-muted">{formatDate(entryDate)}</Text>
             ) : null}
           </View>
         </View>
 
-        {/* Summary card */}
-        <View className="bg-surface rounded-xl p-4">
-          <View className="flex-row items-center justify-around">
-            {duration > 0 && (
-              <View className="items-center">
-                <Text className="text-lg font-semibold text-text-primary">
-                  {formatDuration(duration)}
-                </Text>
-                <Text className="text-xs text-text-muted mt-0.5">Duration</Text>
-              </View>
-            )}
-            {duration > 0 && calories > 0 && (
-              <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
-            )}
-            {calories > 0 && (
-              <View className="items-center">
-                <Text className="text-lg font-semibold text-text-primary">
-                  {Math.round(calories)}
-                </Text>
-                <Text className="text-xs text-text-muted mt-0.5">Calories</Text>
-              </View>
-            )}
-            {isPreset && (
-              <>
-                {(duration > 0 || calories > 0) && (
-                  <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
-                )}
+        {/* Summary card / Edit form */}
+        {isEditing && !isPreset ? (
+          renderIndividualEditForm()
+        ) : (isPreset || duration > 0 || calories > 0) ? (
+          <View className="bg-surface rounded-xl p-4">
+            <View className="flex-row items-center justify-around">
+              {duration > 0 && (
                 <View className="items-center">
                   <Text className="text-lg font-semibold text-text-primary">
-                    {session.exercises.length}
+                    {formatDuration(duration)}
                   </Text>
-                  <Text className="text-xs text-text-muted mt-0.5">
-                    {session.exercises.length === 1 ? 'Exercise' : 'Exercises'}
-                  </Text>
+                  <Text className="text-xs text-text-muted mt-0.5">Duration</Text>
                 </View>
-              </>
-            )}
+              )}
+              {duration > 0 && calories > 0 && (
+                <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
+              )}
+              {calories > 0 && (
+                <View className="items-center">
+                  <Text className="text-lg font-semibold text-text-primary">
+                    {Math.round(calories)}
+                  </Text>
+                  <Text className="text-xs text-text-muted mt-0.5">Calories</Text>
+                </View>
+              )}
+              {isPreset && (
+                <>
+                  <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
+                  <View className="items-center">
+                    <Text className="text-lg font-semibold text-text-primary">
+                      {session.exercises.length}
+                    </Text>
+                    <Text className="text-xs text-text-muted mt-0.5">
+                      {session.exercises.length === 1 ? 'Exercise' : 'Exercises'}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {/* Exercise images (individual sessions only) */}
         {session.type === 'individual' && renderExerciseImages(session.exercise_snapshot?.images)}
@@ -498,27 +706,34 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Variant-specific content */}
         {renderPresetContent()}
-        {renderIndividualContent()}
+        {!isEditing && renderIndividualContent()}
+
+        {/* Preset notes editing */}
+        {isEditing && isPreset && renderPresetEditNotes()}
 
         {/* Exercise details (individual sessions only) */}
         {session.type === 'individual' && renderExerciseDetails(session.exercise_snapshot, 'individual')}
 
         {renderActivityDetails()}
 
-        {/* Delete button — only for Sparky sessions */}
-        {isSparky && (
-          <Button
-            variant="ghost"
-            onPress={handleDelete}
-            disabled={isDeleting}
-            className="mt-6"
-          >
-            <Text className="text-bg-danger text-base font-medium">
-              {isDeleting ? 'Deleting...' : 'Delete Workout'}
-            </Text>
-          </Button>
-        )}
+        {/* Delete button */}
+        <Button
+          variant="ghost"
+          onPress={handleDelete}
+          disabled={isDeleting || isEditing}
+          className="mt-6"
+        >
+          <Text className="text-bg-danger text-base font-medium">
+            {isDeleting ? 'Deleting...' : 'Delete Workout'}
+          </Text>
+        </Button>
       </ScrollView>
+
+      <CalendarSheet
+        ref={calendarSheetRef}
+        selectedDate={editValues.entry_date || normalizedDate}
+        onSelectDate={(date) => updateEditValue('entry_date', date)}
+      />
     </View>
   );
 };

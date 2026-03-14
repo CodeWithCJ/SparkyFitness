@@ -25,7 +25,6 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
-  const accentText = useCSSVariable('--color-accent-text') as string;
   const scrollBottomPadding = Math.max(tabBarHeight, insets.bottom) + 16;
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -66,6 +65,21 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
   }, [refetch]);
 
   const handleAddExercise = useCallback(async () => {
+    if (!isConnected) {
+      Alert.alert(
+        'No Server Connected',
+        'Configure your server connection in Settings to add an exercise.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Go to Settings',
+            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
+          },
+        ],
+      );
+      return;
+    }
+
     const draft = await loadActiveDraft();
     if (draft) {
       Alert.alert(
@@ -96,20 +110,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
       return;
     }
     navigation.navigate('ExerciseSearch', { mode: 'entry' });
-  }, [navigation]);
-
-  const renderActionButtons = () => (
-    <View className="px-4 mb-4">
-      <Button
-        variant="primary"
-        onPress={handleAddExercise}
-        className="flex-row gap-2 py-4"
-      >
-        <Icon name="exercise" size={20} color={accentText} />
-        <Text className="text-base font-semibold text-accent-text">Add Workout</Text>
-      </Button>
-    </View>
-  );
+  }, [isConnected, navigation]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -171,8 +172,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentPrimary} />
           }
         >
-          {renderActionButtons()}
-          <View className="flex-1 items-center justify-center p-8">
+                    <View className="flex-1 items-center justify-center p-8">
             <Icon name="exercise-default" size={64} color="#9CA3AF" />
             <Text className="text-text-muted text-lg text-center mt-4">
               No workout history yet
@@ -192,7 +192,6 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentPrimary} />
         }
       >
-        {renderActionButtons()}
         <View className="px-4">
           {groupedSessions.map(group => (
             <View key={group.date}>
@@ -233,8 +232,18 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="px-4 py-3">
+      <View className="flex-row items-center justify-between px-4 py-3">
         <Text className="text-2xl font-bold text-text-primary">Workouts</Text>
+        {isConnected && (
+          <Button
+            variant="ghost"
+            onPress={handleAddExercise}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="py-0 px-0"
+          >
+            <Text className="text-base font-medium" style={{ color: accentPrimary }}>Add</Text>
+          </Button>
+        )}
       </View>
       {renderContent()}
     </View>

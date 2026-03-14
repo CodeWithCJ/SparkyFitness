@@ -42,6 +42,9 @@ const ICON_MAP = {
   'info-circle': { sf: 'info.circle', ion: 'information-circle-outline' },
   'globe': { sf: 'globe', ion: 'globe-outline' },
 
+  // Food
+  'food': { sf: 'fork.knife', ion: 'restaurant-outline' },
+
   // Meals
   'meal-breakfast': { sf: 'sunrise.fill', ion: 'sunny' },
   'meal-lunch': { sf: 'sun.max.fill', ion: 'partly-sunny' },

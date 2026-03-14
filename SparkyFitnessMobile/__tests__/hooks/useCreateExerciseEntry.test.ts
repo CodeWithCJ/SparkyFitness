@@ -81,8 +81,9 @@ describe('useCreateExerciseEntry', () => {
     });
   });
 
-  test('invalidateCache removes exercise history queries', () => {
+  test('invalidateCache invalidates active exercise history and removes inactive pages', () => {
     const removeSpy = jest.spyOn(queryClient, 'removeQueries');
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
     const { result } = renderHook(
       () => useCreateExerciseEntry(),
@@ -93,10 +94,15 @@ describe('useCreateExerciseEntry', () => {
       result.current.invalidateCache('2026-03-12');
     });
 
-    expect(removeSpy).toHaveBeenCalledWith({
+    expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: [...exerciseHistoryQueryKey],
     });
+    expect(removeSpy).toHaveBeenCalledWith({
+      queryKey: [...exerciseHistoryQueryKey],
+      type: 'inactive',
+    });
 
+    invalidateSpy.mockRestore();
     removeSpy.mockRestore();
   });
 

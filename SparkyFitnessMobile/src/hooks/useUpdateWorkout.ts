@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { updateWorkout } from '../services/api/exerciseApi';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
+import { syncExerciseSessionInCache } from './syncExerciseSessionInCache';
 import type { UpdatePresetSessionRequest } from '@workspace/shared';
 
 export function useUpdateWorkout() {
@@ -10,6 +11,9 @@ export function useUpdateWorkout() {
   const mutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdatePresetSessionRequest }) =>
       updateWorkout(id, payload),
+    onSuccess: (updatedSession) => {
+      syncExerciseSessionInCache(queryClient, updatedSession);
+    },
     onError: () => {
       Alert.alert('Failed to update workout', 'Please try again.');
     },

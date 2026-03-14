@@ -33,8 +33,12 @@ import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import LoginModal from './src/components/LoginModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
-import { saveServerConfig, getActiveServerConfig, loadBackgroundSyncEnabled } from './src/services/storage';
+import { saveServerConfig, getActiveServerConfig, loadBackgroundSyncEnabled, loadTimeRange } from './src/services/storage';
+import type { TimeRange } from './src/services/storage';
 import { notifyNoConfigs } from './src/services/api/authService';
+import { initHealthConnect, loadHealthPreference } from './src/services/healthConnectService';
+import { HEALTH_METRICS } from './src/HealthMetrics';
+import { useSyncHealthData } from './src/hooks';
 import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
 import { startObservers, stopObservers } from './src/services/healthConnectService';
 import { initializeTheme } from './src/services/themeService';
@@ -173,6 +177,29 @@ function AppContent() {
 
     navigation.getParent()?.navigate('ExerciseSearch', { mode: 'entry', date });
   }, [getActiveDiaryDate]);
+
+  const syncMutation = useSyncHealthData();
+
+  const handleSyncHealthData = useCallback(async () => {
+    if (syncMutation.isPending) return;
+
+    const initialized = await initHealthConnect();
+    if (!initialized) {
+      Alert.alert('Health Data Unavailable', 'Could not initialize health data access. Check your permissions in Settings.');
+      return;
+    }
+
+    const loadedTimeRange = await loadTimeRange();
+    const timeRange: TimeRange = loadedTimeRange ?? '3d';
+
+    const healthMetricStates: Record<string, boolean> = {};
+    for (const metric of HEALTH_METRICS) {
+      const enabled = await loadHealthPreference<boolean>(metric.preferenceKey);
+      healthMetricStates[metric.stateKey] = enabled === true;
+    }
+
+    syncMutation.mutate({ timeRange, healthMetricStates });
+  }, [syncMutation]);
 
   useEffect(() => {
     if (Platform.OS !== 'ios') {
@@ -403,7 +430,7 @@ function AppContent() {
             }}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddExercise={handleAddExercise} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddExercise={handleAddExercise} onSyncHealthData={handleSyncHealthData} />
         <LoginModal
           visible={showLoginModal}
           defaultConfigId={expiredConfigId}
