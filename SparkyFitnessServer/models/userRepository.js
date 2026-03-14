@@ -8,8 +8,8 @@ async function createUser(userId, email, hashedPassword, full_name) {
 
     // Insert into "user"
     await client.query(
-      'INSERT INTO "user" (id, email, name, created_at, updated_at) VALUES ($1, $2, $3, now(), now())',
-      [userId, email, full_name]
+      'INSERT INTO "user" (id, email, name, image, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now())',
+      [userId, email, full_name, null]
     );
 
     // Insert into "account" for email/password
@@ -216,9 +216,9 @@ async function createOidcUser(userId, email, fullName, providerId, oidcSub) {
 
     // Insert into "user"
     const userResult = await client.query(
-      `INSERT INTO "user" (id, email, created_at, updated_at)
-             VALUES ($1, $2, now(), now()) RETURNING id`,
-      [userId, email]
+      `INSERT INTO "user" (id, email, image, created_at, updated_at)
+             VALUES ($1, $2, $3, now(), now()) RETURNING id`,
+      [userId, email, null]
     );
     const newUserId = userResult.rows[0].id;
 
@@ -480,16 +480,15 @@ async function isOidcUser(userId) {
   }
 }
 
-async function ensureUserInitialization(userId, fullName, existingClient = null) {
+async function ensureUserInitialization(userId, fullName, avatarUrl = null, existingClient = null) {
   const client = existingClient || await getSystemClient();
   try {
     if (!existingClient) await client.query('BEGIN');
 
-    // Ensure profile exists
     await client.query(
-      'INSERT INTO profiles (id, full_name, created_at, updated_at) ' +
-      'SELECT $1, $2, now(), now() WHERE NOT EXISTS (SELECT 1 FROM profiles WHERE id = $1)',
-      [userId, fullName]
+      'INSERT INTO profiles (id, full_name, avatar_url, created_at, updated_at) ' +
+      'SELECT $1, $2, $3, now(), now() WHERE NOT EXISTS (SELECT 1 FROM profiles WHERE id = $1)',
+      [userId, fullName, avatarUrl]
     );
 
     // Ensure user_goals exists (the base goal with NULL date)
