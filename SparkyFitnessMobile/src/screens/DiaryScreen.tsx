@@ -148,7 +148,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         ) : (
           <>
             <FoodSummary foodEntries={summary.foodEntries} onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })} onAdjustServing={(entry) => servingSheetRef.current?.present(entry)} />
-            <ExerciseSummary exerciseEntries={summary.exerciseEntries} />
+            <ExerciseSummary exerciseEntries={summary.exerciseEntries} onPressSession={(session) => navigation.navigate('SessionDetail', { session })} />
           </>
         )}
       </ScrollView>

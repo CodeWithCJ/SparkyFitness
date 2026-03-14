@@ -2,7 +2,6 @@ import React, { useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
@@ -13,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import FormInput from '../components/FormInput';
 import ExercisePicker, {
   type ExercisePickerRef,
 } from '../components/ExercisePicker';
@@ -41,12 +41,11 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const exercisePickerRef = useRef<ExercisePickerRef>(null);
 
-  const [accentPrimary, textMuted, borderSubtle, raisedBg] = useCSSVariable([
+  const [accentPrimary, textMuted, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-border-subtle',
-    '--color-raised',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string];
 
   const {
     state,
@@ -56,7 +55,6 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     removeSet,
     updateSetField,
     setName,
-    reset,
     populate,
     hasDraftData,
     exercisesModifiedRef,
@@ -95,23 +93,11 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const isInitializingEditForm = isEditMode && !hasPopulatedRef.current;
 
   const handleCancel = useCallback(() => {
-    if (hasDraftData && !isEditMode) {
-      Alert.alert('Discard Workout?', 'Your workout data will be lost.', [
-        { text: 'Keep Editing', style: 'cancel' },
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: () => {
-            reset();
-            navigation.goBack();
-          },
-        },
-      ]);
-    } else {
-      if (!isEditMode) clearSessionDraft();
-      navigation.goBack();
+    if (!isEditMode && !hasDraftData) {
+      clearSessionDraft();
     }
-  }, [hasDraftData, isEditMode, reset, navigation]);
+    navigation.goBack();
+  }, [isEditMode, hasDraftData, navigation]);
 
   const buildExercisesPayload = useCallback(
     (exercisesWithSets: WorkoutDraftExercise[]) => {
@@ -234,38 +220,24 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
       <Text className="text-sm text-text-muted w-8 text-center">
         {index + 1}
       </Text>
-      <TextInput
-        className="text-base text-text-primary py-1.5 px-2 rounded-lg text-center"
-        style={{
-          backgroundColor: raisedBg,
-          borderWidth: 1,
-          borderColor: borderSubtle,
-          width: 80,
-        }}
+      <FormInput
+        style={{ width: 80, textAlign: 'center', paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}
         value={set.weight}
-        onChangeText={v =>
+        onChangeText={(v: string) =>
           updateSetField(exercise.clientId, set.clientId, 'weight', v)
         }
         placeholder={weightUnit}
-        placeholderTextColor={textMuted}
         keyboardType="decimal-pad"
         returnKeyType="next"
       />
       <Text className="text-sm text-text-muted">×</Text>
-      <TextInput
-        className="text-base text-text-primary py-1.5 px-2 rounded-lg text-center"
-        style={{
-          backgroundColor: raisedBg,
-          borderWidth: 1,
-          borderColor: borderSubtle,
-          width: 60,
-        }}
+      <FormInput
+        style={{ width: 60, textAlign: 'center', paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}
         value={set.reps}
-        onChangeText={v =>
+        onChangeText={(v: string) =>
           updateSetField(exercise.clientId, set.clientId, 'reps', v)
         }
         placeholder="reps"
-        placeholderTextColor={textMuted}
         keyboardType="number-pad"
         returnKeyType="done"
       />
@@ -382,12 +354,12 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
               keyboardShouldPersistTaps="handled"
             >
               {/* Workout name */}
-              <TextInput
-                className="text-xl font-bold text-text-primary py-2 mb-4"
+              <FormInput
+                className="text-xl font-bold text-text-primary mb-4"
+                style={{ backgroundColor: 'transparent', borderWidth: 0, paddingLeft: 0 }}
                 value={state.name}
                 onChangeText={setName}
                 placeholder="Workout"
-                placeholderTextColor={textMuted}
                 returnKeyType="done"
               />
 

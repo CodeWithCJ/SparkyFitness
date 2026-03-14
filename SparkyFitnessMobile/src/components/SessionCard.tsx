@@ -38,11 +38,21 @@ export function getSessionIcon(session: ExerciseSessionResponse): IconName {
   return 'exercise-default';
 }
 
+const SOURCE_DISPLAY_NAMES: Record<string, string> = {
+  HealthKit: 'Apple Health',
+  'Health Connect': 'Health Connect',
+  Garmin: 'Garmin',
+  garmin: 'Garmin',
+  Strava: 'Strava',
+  Fitbit: 'Fitbit',
+  Withings: 'Withings',
+};
+
 export function getSourceLabel(source: string | null): { label: string; isSparky: boolean } {
   if (source == null || source === 'manual' || source === 'sparky') {
     return { label: 'Sparky', isSparky: true };
   }
-  return { label: 'Synced', isSparky: false };
+  return { label: SOURCE_DISPLAY_NAMES[source] ?? source, isSparky: false };
 }
 
 export function formatDuration(minutes: number): string {

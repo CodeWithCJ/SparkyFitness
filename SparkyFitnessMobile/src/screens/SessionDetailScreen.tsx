@@ -8,6 +8,7 @@ import { useDeleteExerciseEntry } from '../hooks/useDeleteExerciseEntry';
 import { useDeleteWorkoutSession } from '../hooks/useDeleteWorkoutSession';
 import { usePreferences } from '../hooks/usePreferences';
 import { formatDate } from '../utils/dateUtils';
+import { extractActivitySummary } from '../utils/activityDetails';
 import { weightFromKg } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { ExerciseEntryResponse } from '@workspace/shared';
@@ -143,6 +144,29 @@ const SessionDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
+  const renderActivityDetails = () => {
+    const details = session.activity_details;
+    if (!details || details.length === 0) return null;
+
+    const items = extractActivitySummary(details);
+    if (items.length === 0) return null;
+
+    return (
+      <View className="bg-surface rounded-xl p-4 mt-4">
+        <Text className="text-base font-semibold text-text-primary mb-2">Details</Text>
+        {items.map((item, i) => (
+          <View
+            key={`${item.label}-${i}`}
+            className={`flex-row justify-between py-2 ${i < items.length - 1 ? 'border-b border-border-subtle' : ''}`}
+          >
+            <Text className="text-sm text-text-secondary">{item.label}</Text>
+            <Text className="text-sm text-text-primary">{item.value}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   const renderIndividualContent = () => {
     if (session.type !== 'individual') return null;
 
@@ -260,6 +284,7 @@ const SessionDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Variant-specific content */}
         {renderPresetContent()}
         {renderIndividualContent()}
+        {renderActivityDetails()}
 
         {/* Delete button — only for Sparky sessions */}
         {isSparky && (

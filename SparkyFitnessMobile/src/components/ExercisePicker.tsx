@@ -217,6 +217,8 @@ const ExercisePicker = React.forwardRef<ExercisePickerRef, ExercisePickerProps>(
               borderWidth: 1,
               borderColor: borderSubtle,
               color: isDarkMode ? '#FFFFFF' : '#000000',
+              fontSize: 16,
+              lineHeight: 20,
             }}
             placeholderTextColor={textMuted}
           />

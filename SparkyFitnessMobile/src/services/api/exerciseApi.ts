@@ -1,7 +1,8 @@
 import { apiFetch } from './apiClient';
-import type { ExerciseEntry, Exercise, SuggestedExercisesResponse } from '../../types/exercise';
+import type { Exercise, SuggestedExercisesResponse } from '../../types/exercise';
 import type {
   ExerciseHistoryResponse,
+  ExerciseSessionResponse,
   CreatePresetSessionRequest,
   UpdatePresetSessionRequest,
   PresetSessionResponse,
@@ -11,8 +12,8 @@ import type {
 /**
  * Fetches exercise entries for a given date.
  */
-export const fetchExerciseEntries = async (date: string): Promise<ExerciseEntry[]> => {
-  return apiFetch<ExerciseEntry[]>({
+export const fetchExerciseEntries = async (date: string): Promise<ExerciseSessionResponse[]> => {
+  return apiFetch<ExerciseSessionResponse[]>({
     endpoint: `/api/exercise-entries/by-date?selectedDate=${date}`,
     serviceName: 'Exercise API',
     operation: 'fetch exercise entries',
@@ -22,35 +23,57 @@ export const fetchExerciseEntries = async (date: string): Promise<ExerciseEntry[
 /**
  * Calculates total calories burned from exercise entries.
  */
-export const calculateCaloriesBurned = (entries: ExerciseEntry[]): number => {
-  return entries.reduce((total, entry) => total + (entry.calories_burned || 0), 0);
+export const calculateCaloriesBurned = (entries: ExerciseSessionResponse[]): number => {
+  return entries.reduce((total, session) => {
+    if (session.type === 'preset') {
+      return total + session.exercises.reduce((sum, e) => sum + e.calories_burned, 0);
+    }
+    return total + (session.calories_burned || 0);
+  }, 0);
 };
 
 /**
  * Calculates calories from "Active Calories" exercises (e.g., from watch/fitness tracker).
+ * Active Calories entries are always individual synced entries, never part of preset workouts.
  */
-export const calculateActiveCalories = (entries: ExerciseEntry[]): number => {
-  return entries
-    .filter(entry => entry.exercise_snapshot?.name === 'Active Calories')
-    .reduce((total, entry) => total + (entry.calories_burned || 0), 0);
+export const calculateActiveCalories = (entries: ExerciseSessionResponse[]): number => {
+  return entries.reduce((total, session) => {
+    if (session.type === 'preset') return total;
+    if (session.exercise_snapshot?.name === 'Active Calories') {
+      return total + (session.calories_burned || 0);
+    }
+    return total;
+  }, 0);
 };
 
 /**
  * Calculates calories from non-"Active Calories" exercises.
  */
-export const calculateOtherExerciseCalories = (entries: ExerciseEntry[]): number => {
-  return entries
-    .filter(entry => entry.exercise_snapshot?.name !== 'Active Calories')
-    .reduce((total, entry) => total + (entry.calories_burned || 0), 0);
+export const calculateOtherExerciseCalories = (entries: ExerciseSessionResponse[]): number => {
+  return entries.reduce((total, session) => {
+    if (session.type === 'preset') {
+      return total + session.exercises.reduce((sum, e) => sum + e.calories_burned, 0);
+    }
+    if (session.exercise_snapshot?.name !== 'Active Calories') {
+      return total + (session.calories_burned || 0);
+    }
+    return total;
+  }, 0);
 };
 
 /**
  * Calculates total exercise duration in minutes, excluding "Active Calories" entries.
  */
-export const calculateExerciseDuration = (entries: ExerciseEntry[]): number => {
-  return entries
-    .filter(entry => entry.exercise_snapshot?.name !== 'Active Calories')
-    .reduce((total, entry) => total + (entry.duration_minutes ?? 0), 0);
+export const calculateExerciseDuration = (entries: ExerciseSessionResponse[]): number => {
+  return entries.reduce((total, session) => {
+    if (session.type === 'preset') {
+      return total + session.total_duration_minutes;
+    }
+    if (session.exercise_snapshot?.name !== 'Active Calories') {
+      return total + (session.duration_minutes ?? 0);
+    }
+    return total;
+  }, 0);
 };
 
 /**

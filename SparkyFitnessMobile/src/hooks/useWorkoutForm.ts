@@ -131,7 +131,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           sets: exercise.sets.map(set => ({
             clientId: generateClientId(),
             weight: set.weight != null
-              ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(2)))
+              ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
               : '',
             reps: set.reps != null ? String(set.reps) : '',
           })),
