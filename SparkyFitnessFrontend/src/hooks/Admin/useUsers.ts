@@ -32,8 +32,8 @@ export const useUpdateUserFullName = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
     meta: {
       errorMessage: t('error', 'Error'),
-      successMessage: (_data: any, variables: any) => {
-        const newFullName = variables.fullName;
+      successMessage: (_data: unknown, variables: unknown) => {
+        const { fullName: newFullName } = variables as { fullName: string };
         // Construct a clear message using the new name.
         // If newFullName is empty or null, provide a generic fallback.
         const descriptiveMessage = newFullName
