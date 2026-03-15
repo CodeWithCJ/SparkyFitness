@@ -22,7 +22,9 @@ export async function apiCall(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const userLoggingLevel = getUserLoggingLevel();
-  let url = options?.externalApi ? endpoint : `${API_BASE_URL}${endpoint}`;
+  const isAbsoluteUrl = /^https?:\/\//.test(endpoint);
+  const isExternal = options?.externalApi || isAbsoluteUrl;
+  let url = isExternal ? endpoint : `${API_BASE_URL}${endpoint}`;
 
   if (options?.params) {
     // Filter out undefined values to prevent them from becoming the string "undefined" in URLSearchParams
@@ -57,7 +59,7 @@ export async function apiCall(
     headers,
   };
 
-  if (!options?.externalApi) {
+  if (!isExternal) {
     config.credentials = 'include'; // Send cookies only with internal API requests
   }
 

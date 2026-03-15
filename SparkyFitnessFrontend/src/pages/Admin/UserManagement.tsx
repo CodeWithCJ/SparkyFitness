@@ -117,10 +117,10 @@ const UserManagement: React.FC = () => {
   const handleResetPassword = (userId: string, userName: string) => {
     if (
       !window.confirm(
-        t(
-          'admin.userManagement.resetPasswordConfirm',
-          `Reset password for ${userName}?`
-        )
+        t('admin.userManagement.resetPasswordConfirm', {
+          userName,
+          defaultValue: `Are you sure you want to reset the password for ${userName}?`,
+        })
       )
     )
       return;
@@ -136,10 +136,11 @@ const UserManagement: React.FC = () => {
     const action = newCheckedState ? 'activate' : 'deactivate';
     if (
       !window.confirm(
-        t(
-          'admin.userManagement.toggleUserStatusConfirm',
-          `${action} user ${userName}?`
-        )
+        t('admin.userManagement.toggleUserStatusConfirm', {
+          action,
+          userName,
+          defaultValue: `Are you sure you want to ${action} user ${userName}?`,
+        })
       )
     )
       return;
@@ -147,14 +148,19 @@ const UserManagement: React.FC = () => {
     updateStatus({ userId, isActive: newCheckedState });
   };
 
-  const handleToggleUserRole = (userId: string, currentRole: string) => {
+  const handleToggleUserRole = (
+    userId: string,
+    userName: string,
+    currentRole: string
+  ) => {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
     if (
       !window.confirm(
-        t(
-          'admin.userManagement.toggleUserRoleConfirm',
-          `Change role to ${newRole}?`
-        )
+        t('admin.userManagement.toggleUserRoleConfirm', {
+          userName,
+          newRole,
+          defaultValue: `Are you sure you want to change user ${userName}'s role to ${newRole}?`,
+        })
       )
     )
       return;
@@ -367,7 +373,11 @@ const UserManagement: React.FC = () => {
                             <Switch
                               checked={user.role === 'admin'}
                               onCheckedChange={() =>
-                                handleToggleUserRole(user.id, user.role)
+                                handleToggleUserRole(
+                                  user.id,
+                                  user.full_name,
+                                  user.role
+                                )
                               }
                             />
                           </TableCell>

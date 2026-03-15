@@ -9,15 +9,6 @@ export interface UpdateProfilePayload {
   gender: string | null;
 }
 
-export const fetchAvatarBlob = async (url: string): Promise<Blob> => {
-  const response = await apiCall(url, {
-    method: 'GET',
-    responseType: 'blob',
-  });
-  const blob = response as Blob;
-  return new Blob([blob], { type: blob.type });
-};
-
 export const updateProfileData = async (
   payload: Partial<UpdateProfilePayload>
 ) => {
