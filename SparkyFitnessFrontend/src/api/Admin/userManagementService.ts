@@ -29,7 +29,7 @@ export const userManagementService = {
     newFullName: string
   ): Promise<void> => {
     await api.put(`/admin/users/${userId}/full-name`, {
-      body: { full_name: newFullName },
+      body: { fullName: newFullName },
     });
   },
 

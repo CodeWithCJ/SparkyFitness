@@ -32,10 +32,21 @@ export const useUpdateUserFullName = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userKeys.all }),
     meta: {
       errorMessage: t('error', 'Error'),
-      successMessage: t(
-        'admin.userManagement.fullNameUpdated',
-        'Name updated.'
-      ),
+      successMessage: (data: any, variables: any) => {
+        const newFullName = variables.fullName;
+        // Construct a clear message using the new name.
+        // If newFullName is empty or null, provide a generic fallback.
+        const descriptiveMessage = newFullName
+          ? `User name updated to ${newFullName} successfully.`
+          : 'User name updated successfully.';
+
+        // Use the translation key, but ensure our dynamic message is used as defaultValue if needed.
+        // We pass 'name' for interpolation, assuming '{{name}}' is the placeholder in the translation/defaultValue.
+        return t('admin.userManagement.fullNameUpdated', {
+          name: newFullName, // Pass the new name for interpolation
+          defaultValue: descriptiveMessage, // Use the constructed dynamic message
+        });
+      },
     },
   });
 };

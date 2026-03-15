@@ -69,28 +69,35 @@ const UserManagement: React.FC = () => {
 
   const handleSaveFullName = (
     userId: string,
-    newFullName: string,
+    newFullNameInput: string, // Raw input from the field
     currentFullName: string
   ) => {
-    if (!newFullName || newFullName === currentFullName) {
+    const trimmedNewFullName = newFullNameInput.trim(); // Trim whitespace from the input
+
+    // Check if the trimmed name is empty or unchanged
+    if (!trimmedNewFullName || trimmedNewFullName === currentFullName) {
       setEditingUserId(null);
       return;
     }
 
+    // Use the trimmed name for the confirmation prompt
     if (
       !window.confirm(
-        t(
-          'admin.userManagement.confirmChangeFullName',
-          `Change name to ${newFullName}?`
-        )
+        t('admin.userManagement.confirmChangeFullName', {
+          currentFullName: currentFullName, // Use camelCase key
+          newFullName: trimmedNewFullName, // Use camelCase key with trimmed name
+          defaultValue:
+            "Are you sure you want to change {{currentFullName}}'s full name to {{newFullName}}?", // Use camelCase placeholders
+        })
       )
     ) {
       setEditingUserId(null);
       return;
     }
 
+    // Call the mutation with the trimmed name
     updateFullName(
-      { userId, fullName: newFullName },
+      { userId, fullName: trimmedNewFullName },
       {
         onSuccess: () => {
           setEditingUserId(null);
