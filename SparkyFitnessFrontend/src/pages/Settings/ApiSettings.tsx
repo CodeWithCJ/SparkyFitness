@@ -274,96 +274,84 @@ export const ApiSettings = () => {
               )}
             </p>
           ) : (
-            apiKeys.map(
-              (key: {
-                id: string;
-                name?: string;
-                enabled: boolean;
-                createdAt?: string;
-                expiresAt?: string;
-                updatedAt?: string;
-              }) => (
-                <div
-                  key={key.id}
-                  className={`flex items-center space-x-4 p-3 border rounded-md ${!key.enabled ? 'bg-muted/50 opacity-80' : ''}`}
-                >
-                  <div className="flex-grow space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">
-                        {key.name ||
-                          t(
-                            'settings.apiKeyManagement.noDescription',
-                            'No Description'
-                          )}
-                      </p>
-                      {!key.enabled && (
-                        <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border uppercase font-bold">
-                          {t('settings.apiKeyManagement.disabled', 'Disabled')}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span className="font-mono text-xs">{key.id}</span>
-                      <TooltipWarning
-                        warningMsg={t(
-                          'settings.apiKeyManagement.idOnlyInfo',
-                          'Only the Key ID is shown for security.'
-                        )}
-                        color="blue"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <p>
-                        {t('settings.apiKeyManagement.created', 'Created:')}{' '}
-                        {key.createdAt
-                          ? new Date(key.createdAt).toLocaleDateString()
-                          : 'N/A'}
-                      </p>
-                      {key.expiresAt && (
-                        <p
-                          className={
-                            new Date(key.expiresAt) < new Date()
-                              ? 'text-destructive font-semibold'
-                              : ''
-                          }
-                        >
-                          {t('settings.apiKeyManagement.expires', 'Expires:')}{' '}
-                          {new Date(key.expiresAt).toLocaleDateString()}
-                        </p>
-                      )}
-                      {key.updatedAt && (
-                        <p>
-                          {t(
-                            'settings.apiKeyManagement.lastUsed',
-                            'Last Used:'
-                          )}{' '}
-                          {new Date(key.updatedAt).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
+            apiKeys.map((key) => (
+              <div
+                key={key.id}
+                className={`flex items-center space-x-4 p-3 border rounded-md ${!key.enabled ? 'bg-muted/50 opacity-80' : ''}`}
+              >
+                <div className="flex-grow space-y-1">
                   <div className="flex items-center gap-2">
-                    <Switch
-                      checked={key.enabled}
-                      onCheckedChange={(checked) =>
-                        handleToggleApiKey(key.id, checked)
-                      }
-                      disabled={isFormLoading}
+                    <p className="font-medium">
+                      {key.name ||
+                        t(
+                          'settings.apiKeyManagement.noDescription',
+                          'No Description'
+                        )}
+                    </p>
+                    {!key.enabled && (
+                      <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded border uppercase font-bold">
+                        {t('settings.apiKeyManagement.disabled', 'Disabled')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span className="font-mono text-xs">{key.id}</span>
+                    <TooltipWarning
+                      warningMsg={t(
+                        'settings.apiKeyManagement.idOnlyInfo',
+                        'Only the Key ID is shown for security.'
+                      )}
+                      color="blue"
                     />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteApiKey(key.id)}
-                      disabled={isFormLoading}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <p>
+                      {t('settings.apiKeyManagement.created', 'Created:')}{' '}
+                      {key.createdAt
+                        ? new Date(key.createdAt).toLocaleDateString()
+                        : 'N/A'}
+                    </p>
+                    {key.expiresAt && (
+                      <p
+                        className={
+                          new Date(key.expiresAt) < new Date()
+                            ? 'text-destructive font-semibold'
+                            : ''
+                        }
+                      >
+                        {t('settings.apiKeyManagement.expires', 'Expires:')}{' '}
+                        {new Date(key.expiresAt).toLocaleDateString()}
+                      </p>
+                    )}
+                    {key.updatedAt && (
+                      <p>
+                        {t('settings.apiKeyManagement.lastUsed', 'Last Used:')}{' '}
+                        {new Date(key.updatedAt).toLocaleDateString()}
+                      </p>
+                    )}
                   </div>
                 </div>
-              )
-            )
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={key.enabled}
+                    onCheckedChange={(checked) =>
+                      handleToggleApiKey(key.id, checked)
+                    }
+                    disabled={isFormLoading}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteApiKey(key.id)}
+                    disabled={isFormLoading}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
           )}
         </div>
       </AccordionContent>
