@@ -15,9 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
 import type { WorkoutPresetSet } from '@/types/workout';
-import ExerciseActivityDetailsEditor, {
-  type ActivityDetailKeyValuePair,
-} from '@/components/ExerciseActivityDetailsEditor';
+import ExerciseActivityDetailsEditor from '@/components/ExerciseActivityDetailsEditor';
 import {
   DndContext,
   closestCenter,
@@ -40,7 +38,7 @@ import {
 } from '@/hooks/Exercises/useExerciseEntries';
 import { useQueryClient } from '@tanstack/react-query';
 import { SortableSetItem } from './ExerciseSortableItems';
-import { ExerciseEntry } from '@/types/exercises';
+import { ActivityDetailKeyValuePair, ExerciseEntry } from '@/types/exercises';
 
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;

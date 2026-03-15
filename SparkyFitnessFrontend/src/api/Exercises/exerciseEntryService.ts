@@ -1,12 +1,14 @@
 import { apiCall } from '@/api/api';
-import { parseJsonArray } from './exerciseService';
+import type { ExerciseEntry } from '@/types/diary';
+import type {
+  ActivityDetailsResponse,
+  GroupedExerciseEntry,
+} from '@/types/exercises';
+import type { ExerciseProgressData } from '@/types/reports';
 import type { WorkoutPresetSet } from '@/types/workout';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
-import type { ExerciseEntry } from '@/types/diary';
-import type { GroupedExerciseEntry, LapDTO } from '@/types/exercises';
-import type { ExerciseProgressData } from '@/types/reports';
-import { ActivityDetailMetric } from '@/pages/Reports/ActivityReportVisualizer';
+import { parseJsonArray } from './exerciseService';
 
 export const getExerciseEntriesForDate = async (
   date: string
@@ -296,45 +298,6 @@ export const fetchExerciseDetails = async (
     method: 'GET',
   });
 };
-
-export interface ActivityDetailsResponse {
-  id?: string;
-  activity?: {
-    details?: {
-      metricDescriptors?: unknown[];
-      activityDetailMetrics?: ActivityDetailMetric[];
-      geoPolylineDTO?: {
-        polyline: { lat: number; lon: number }[];
-      };
-      [key: string]: unknown;
-    };
-    hr_in_timezones?: unknown[];
-    splits?: {
-      lapDTOs: LapDTO[];
-      [key: string]: unknown;
-    };
-    activity?: {
-      duration?: number;
-      calories?: number;
-      totalAscent?: number;
-      averageHR?: number;
-      averageRunCadence?: number;
-      distance?: number;
-      averagePace?: number;
-      activityName?: string;
-      eventType?: unknown;
-      course?: unknown;
-      gear?: unknown;
-      [key: string]: unknown;
-    };
-    [key: string]: unknown;
-  };
-  workout?: {
-    workoutName: string;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-}
 
 export const getActivityDetails = async (
   exerciseEntryId: string,

@@ -14,12 +14,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { error } from '@/utils/logging';
-import ExerciseHistoryDisplay from '../../components/ExerciseHistoryDisplay';
+import ExerciseHistoryDisplay from '@/components/ExerciseHistoryDisplay';
 import type { ExerciseToLog, WorkoutPresetSet } from '@/types/workout';
 import { Plus } from 'lucide-react';
-import ExerciseActivityDetailsEditor, {
-  type ActivityDetailKeyValuePair,
-} from '../../components/ExerciseActivityDetailsEditor';
+import ExerciseActivityDetailsEditor from '@/components/ExerciseActivityDetailsEditor';
 import {
   DndContext,
   closestCenter,
@@ -36,6 +34,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useCreateExerciseEntryMutation } from '@/hooks/Exercises/useExerciseEntries';
 import { SortableSetItem } from './ExerciseSortableItems';
+import { ActivityDetailKeyValuePair } from '@/types/exercises';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
