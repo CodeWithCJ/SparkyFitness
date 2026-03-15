@@ -185,6 +185,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
     try {
       await setActiveServerConfig(configId);
+      queryClient.clear();
       await loadConfig();
       refetchConnection();
       Alert.alert('Success', 'Active server configuration changed.');
