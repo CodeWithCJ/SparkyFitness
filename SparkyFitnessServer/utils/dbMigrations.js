@@ -67,7 +67,7 @@ async function applyMigrations() {
         );
         log("info", `Successfully applied migration: ${file}`);
       } else {
-        log("info", `Migration already applied: ${file}`);
+        //log("info", `Migration already applied: ${file}`);
       }
     }
     // After all migrations are applied, grant necessary permissions to the app user

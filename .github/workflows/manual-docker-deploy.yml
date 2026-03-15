@@ -59,6 +59,8 @@ jobs:
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Generate artifact attestation Frontend
         uses: actions/attest-build-provenance@v2
@@ -87,6 +89,8 @@ jobs:
           tags: ${{ steps.meta-server.outputs.tags }}
           labels: ${{ steps.meta-server.outputs.labels }}
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Generate artifact attestation server
         uses: actions/attest-build-provenance@v2
@@ -115,6 +119,8 @@ jobs:
           tags: ${{ steps.meta-garmin.outputs.tags }}
           labels: ${{ steps.meta-garmin.outputs.labels }}
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Generate artifact attestation Garmin Microservice
         uses: actions/attest-build-provenance@v2

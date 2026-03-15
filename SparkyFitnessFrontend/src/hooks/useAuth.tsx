@@ -8,6 +8,7 @@ import React, {
   useMemo,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '../lib/auth-client';
 import { fetchIdentityUser, switchUserContext } from '@/api/Auth/auth';
 
@@ -53,6 +54,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const { data: session, isPending: sessionLoading } = authClient.useSession();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [isSyncing, setIsSyncing] = useState(true); // Track initial hydration
   const navigate = useNavigate();
@@ -134,10 +136,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       if (user !== null && !isSticky) {
         console.log('[Auth Hook] No session found, clearing user state.');
         setUser(null);
+        queryClient.clear();
       }
       setIsSyncing(false);
     }
-  }, [session, sessionLoading, user, lastManualSignIn]);
+  }, [session, sessionLoading, user, lastManualSignIn, queryClient]);
 
   const refreshUser = useCallback(async () => {
     setIsSyncing(true); // Re-trigger syncing state during manual refresh
@@ -161,8 +164,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       console.error('[Auth Hook] SignOut unexpected error:', err);
     }
     setUser(null);
+    queryClient.clear();
     window.location.href = '/';
-  }, []);
+  }, [queryClient]);
 
   const signIn = useCallback(
     (
@@ -204,13 +208,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           };
         });
 
+        queryClient.clear();
         await refreshUser();
       } catch (error) {
         console.error(error);
         throw error;
       }
     },
-    [refreshUser]
+    [refreshUser, queryClient]
   );
 
   const value = useMemo(

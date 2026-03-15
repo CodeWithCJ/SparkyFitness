@@ -11,11 +11,9 @@ import {
 } from '@/components/ui/accordion';
 import { useTranslation } from 'react-i18next';
 import { getInitials } from '@/utils/settings';
-import { useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import {
-  useAvatarQuery,
   useProfileQuery,
   useUploadAvatarMutation,
 } from '@/hooks/Settings/useProfile';
@@ -29,22 +27,8 @@ export const ProfileInformation = () => {
     user?.id
   );
 
-  const { data: avatarBlob } = useAvatarQuery(profile?.avatar_url);
-
-  const avatarObjectURL = useMemo(() => {
-    if (!avatarBlob) return null;
-    return URL.createObjectURL(avatarBlob);
-  }, [avatarBlob]);
   const { mutateAsync: uploadAvatar, isPending: uploadingImage } =
     useUploadAvatarMutation(user!.activeUserId);
-
-  useEffect(() => {
-    return () => {
-      if (avatarObjectURL) {
-        URL.revokeObjectURL(avatarObjectURL);
-      }
-    };
-  }, [avatarObjectURL]);
 
   const handleImageUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -100,9 +84,9 @@ export const ProfileInformation = () => {
         {/* Profile Picture */}
         <div className="flex items-center gap-4">
           <Avatar className="h-20 w-20">
-            {avatarObjectURL ? ( // Use avatarObjectURL for display
+            {profile?.avatar_url ? ( // Use avatar_url directly
               <AvatarImage
-                src={avatarObjectURL}
+                src={profile.avatar_url}
                 alt={profile?.full_name || 'User'}
               />
             ) : (

@@ -14,7 +14,6 @@ export const userKeys = {
   list: (filters: { searchTerm: string; sortBy: string; sortOrder: string }) =>
     [...userKeys.all, filters] as const,
   profile: (userId: string) => [...userKeys.all, 'profile', userId] as const,
-  avatar: (url: string) => [...userKeys.all, 'profile', 'avatar', url] as const,
 };
 
 export const aiServiceKeys = {
