@@ -445,7 +445,7 @@ const auth = betterAuth({
                   
                   if (provider && provider.admin_group) {
                     console.log(`[AUTH] Syncing groups for user ${session.userId} using provider ${providerId} (Admin Group: ${provider.admin_group})`);
-                    await syncUserGroups({ pool: authPool, userRepository }, session.userId, provider.admin_group);
+                    await syncUserGroups({ pool: authPool, userRepository, oidcProviderRepository }, session.userId, provider.admin_group);
                   }
                 }
               } finally {

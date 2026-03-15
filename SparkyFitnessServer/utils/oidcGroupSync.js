@@ -1,3 +1,6 @@
+const jose = require('jose');
+const { log } = require('../config/logging');
+
 /**
  * Syncs user roles based on OIDC groups found in the id_token or UserInfo endpoint.
  * @param {Object} deps Dependencies: { pool, userRepository, oidcProviderRepository }
@@ -30,8 +33,16 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
         if (oidcAccount.id_token) {
             try {
                 decodedPayload = jose.decodeJwt(oidcAccount.id_token);
+                
+                // Check expiration
+                const now = Math.floor(Date.now() / 1000);
+                if (decodedPayload.exp && decodedPayload.exp < now) {
+                    log('info', `[AUTH] OIDC Sync: Token expired for user ${userId}. Skipping group sync.`);
+                    return;
+                }
+
                 const groupsClaim = decodedPayload.groups || [];
-                groups = Array.isArray(groupsClaim) ? groupsClaim : [groupsClaim];
+                groups = Array.isArray(groupsClaim) ? (groupsClaim.filter(Boolean)) : (groupsClaim ? [groupsClaim] : []);
             } catch (e) {
                 log('error', `[AUTH] OIDC Sync: Failed to decode id_token for user ${userId}:`, e);
             }
@@ -52,7 +63,7 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
                     if (response.ok) {
                         const userInfo = await response.json();
                         const groupsClaim = userInfo.groups || [];
-                        groups = Array.isArray(groupsClaim) ? groupsClaim : [groupsClaim];
+                        groups = Array.isArray(groupsClaim) ? (groupsClaim.filter(Boolean)) : (groupsClaim ? [groupsClaim] : []);
                         log('info', `[AUTH] OIDC Sync: Fetched ${groups.length} groups from UserInfo.`);
                     }
                 }
@@ -61,18 +72,19 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
             }
         }
 
-        if (groups.length > 0) {
-            const currentRole = await userRepository.getUserRole(userId);
-            if (groups.includes(adminGroup)) {
-                if (currentRole !== 'admin') {
-                    log('info', `[AUTH] OIDC Sync: Promoting user ${userId} to admin (Group: ${adminGroup})`);
-                    await userRepository.updateUserRole(userId, 'admin');
-                }
-            } else {
-                if (currentRole === 'admin') {
-                    log('info', `[AUTH] OIDC Sync: Revoking admin from user ${userId} (Not in group: ${adminGroup})`);
-                    await userRepository.updateUserRole(userId, 'user');
-                }
+        // 3. Process the groups (even if empty, we might need to revoke admin)
+        const currentRole = await userRepository.getUserRole(userId);
+        if (groups.includes(adminGroup)) {
+            if (currentRole !== 'admin') {
+                log('info', `[AUTH] OIDC Sync: Promoting user ${userId} to admin (Group: ${adminGroup})`);
+                await userRepository.updateUserRole(userId, 'admin');
+            }
+        } else {
+            // If we have any valid login signal (id_token decoded or UserInfo fetched) 
+            // but no admin group, ensure they are just a 'user'.
+            if (currentRole === 'admin') {
+                log('info', `[AUTH] OIDC Sync: Revoking admin from user ${userId} (Not in group: ${adminGroup})`);
+                await userRepository.updateUserRole(userId, 'user');
             }
         }
     } catch (err) {

@@ -182,7 +182,8 @@ async function createOidcProvider(providerData) {
             tokenEndpoint: endpoints.tokenEndpoint,
             authorizationEndpoint: endpoints.authorizationEndpoint,
             userInfoEndpoint: endpoints.userInfoEndpoint,
-            clientSecretAuthMethod: providerData.token_endpoint_auth_method || 'client_secret_post'
+            tokenEndpointAuthentication: providerData.token_endpoint_auth_method || 'client_secret_post',
+            overrideUserInfo: true
         };
 
         const result = await client.query(
@@ -264,7 +265,8 @@ async function updateOidcProvider(id, providerData) {
             tokenEndpoint: endpoints.tokenEndpoint,
             authorizationEndpoint: endpoints.authorizationEndpoint,
             userInfoEndpoint: endpoints.userInfoEndpoint,
-            clientSecretAuthMethod: providerData.token_endpoint_auth_method || 'client_secret_post'
+            tokenEndpointAuthentication: providerData.token_endpoint_auth_method || 'client_secret_post',
+            overrideUserInfo: true
         };
 
         const query = `
