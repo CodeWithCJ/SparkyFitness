@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Platform, ScrollView, TextInput } from 'react-native';
+import Button from '../components/ui/Button';
 import { StackActions, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -541,11 +542,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
 
 
         {/* Action buttons */}
-        <TouchableOpacity
-          className="bg-accent-primary rounded-[10px] py-3.5 items-center mt-2"
-          activeOpacity={0.8}
+        <Button
+          variant="primary"
+          className="mt-2"
           disabled={isAddPending || !effectiveMealId || quantity <= 0}
-          style={(!effectiveMealId || quantity <= 0) ? { opacity: 0.5 } : undefined}
           onPress={() => {
             if (!effectiveMealId) return;
             const saveFoodPayload = item.source === 'external' ? buildSaveFoodPayload() : undefined;
@@ -560,7 +560,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
           ) : (
             <Text className="text-white text-base font-semibold">Add Food</Text>
           )}
-        </TouchableOpacity>
+        </Button>
       </ScrollView>
       <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
     </View>

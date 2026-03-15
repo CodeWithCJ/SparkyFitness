@@ -1,14 +1,16 @@
-export interface ExerciseSnapshot {
+export interface Exercise {
   id: string;
   name: string;
-  category: string;
+  category: string | null;
+  equipment: string[];
+  primary_muscles: string[];
+  secondary_muscles: string[];
   calories_per_hour: number;
   source: string;
+  images: string[];
 }
 
-export interface ExerciseEntry {
-  id: string;
-  calories_burned: number;
-  exercise_snapshot?: ExerciseSnapshot;
-  duration_minutes?: number;
+export interface SuggestedExercisesResponse {
+  recentExercises: Exercise[];
+  topExercises: Exercise[];
 }

@@ -101,33 +101,31 @@ const PasskeySettings = () => {
               </p>
             ) : (
               <div className="divide-y border rounded-md">
-                {passkeys.map(
-                  (pk: { id: string; name?: string; createdAt: string }) => (
-                    <div
-                      key={pk.id}
-                      className="flex items-center justify-between p-3"
-                    >
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">
-                          {pk.name ||
-                            t('settings.passkey.unnamed', 'Unnamed Passkey')}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {t('settings.passkey.addedOn', 'Added on')}{' '}
-                          {format(new Date(pk.createdAt), 'PPp')}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDeletePasskey(pk.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                {passkeys.map((pk) => (
+                  <div
+                    key={pk.id}
+                    className="flex items-center justify-between p-3"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">
+                        {pk.name ||
+                          t('settings.passkey.unnamed', 'Unnamed Passkey')}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t('settings.passkey.addedOn', 'Added on')}{' '}
+                        {format(new Date(pk.createdAt), 'PPp')}
+                      </p>
                     </div>
-                  )
-                )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => handleDeletePasskey(pk.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

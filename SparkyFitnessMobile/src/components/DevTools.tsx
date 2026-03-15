@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
+import { View, Text, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
+import Button from './ui/Button';
 import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
 import { openHealthConnectSettings, openHealthConnectDataManagement, getGrantedPermissions } from 'react-native-health-connect';
@@ -90,9 +91,9 @@ const DevTools: React.FC = () => {
       </Text>
 
       <View className="flex-row gap-2 flex-wrap justify-between">
-        <TouchableOpacity
-          className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
-          style={{ opacity: isSeeding ? 0.6 : 1 }}
+        <Button
+          variant="primary"
+          className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
           onPress={() => handleSeedData(7)}
           disabled={isSeeding}
         >
@@ -101,34 +102,34 @@ const DevTools: React.FC = () => {
           ) : (
             <Text className="text-white text-base font-bold">7 Days</Text>
           )}
-        </TouchableOpacity>
+        </Button>
 
-        <TouchableOpacity
-          className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
-          style={{ opacity: isSeeding ? 0.6 : 1 }}
+        <Button
+          variant="primary"
+          className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
           onPress={() => handleSeedData(14)}
           disabled={isSeeding}
         >
           <Text className="text-white text-base font-bold">14 Days</Text>
-        </TouchableOpacity>
+        </Button>
 
-        <TouchableOpacity
-          className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
-          style={{ opacity: isSeeding ? 0.6 : 1 }}
+        <Button
+          variant="primary"
+          className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
           onPress={() => handleSeedData(30)}
           disabled={isSeeding}
         >
           <Text className="text-white text-base font-bold">30 Days</Text>
-        </TouchableOpacity>
+        </Button>
 
-        <TouchableOpacity
-          className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
-          style={{ opacity: isSeeding ? 0.6 : 1 }}
+        <Button
+          variant="primary"
+          className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
           onPress={handleSeedHistoricalSteps}
           disabled={isSeeding}
         >
           <Text className="text-white text-base font-bold text-center">1 Year{'\n'}(Steps)</Text>
-        </TouchableOpacity>
+        </Button>
       </View>
       {Platform.OS === 'android' && (
         <View className="flex-row gap-2 flex-wrap justify-between mt-4">
@@ -152,9 +153,9 @@ const DevTools: React.FC = () => {
           Manually trigger the background sync process.
         </Text>
         <View className="flex-row gap-2 flex-wrap justify-between">
-          <TouchableOpacity
-            className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-30"
-            style={{ opacity: isSyncing ? 0.6 : 1 }}
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
             onPress={handleTriggerSync}
             disabled={isSyncing}
           >
@@ -163,14 +164,15 @@ const DevTools: React.FC = () => {
             ) : (
               <Text className="text-white text-base font-bold">Trigger Sync</Text>
             )}
-          </TouchableOpacity>
+          </Button>
           {Platform.OS === 'android' && (
-            <TouchableOpacity
-              className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-30"
+            <Button
+              variant="primary"
+              className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
               onPress={handleCheckBackgroundPermissions}
             >
               <Text className="text-white text-base font-bold">Check BG Permission</Text>
-            </TouchableOpacity>
+            </Button>
           )}
         </View>
       </View>

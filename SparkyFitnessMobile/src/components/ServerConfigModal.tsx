@@ -9,6 +9,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
+import Button from './ui/Button';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -83,14 +84,14 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   keyboardType="url"
                 />
 
-                <TouchableOpacity
-                  className="p-2"
+                <Button
+                  variant="ghost"
                   onPress={async () => setUrl(await Clipboard.getString())}
                   accessibilityLabel="Paste URL from clipboard"
-                  accessibilityRole="button"
+                  className="p-2 py-2 px-2 rounded-lg"
                 >
                   <Icon name="paste" size={20} color={textSecondary} />
-                </TouchableOpacity>
+                </Button>
               </View>
             </View>
 
@@ -106,14 +107,14 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   secureTextEntry
                 />
 
-                <TouchableOpacity
-                  className="p-2"
+                <Button
+                  variant="ghost"
                   onPress={async () => setApiKey(await Clipboard.getString())}
                   accessibilityLabel="Paste API key from clipboard"
-                  accessibilityRole="button"
+                  className="p-2 py-2 px-2 rounded-lg"
                 >
                   <Icon name="paste" size={20} color={textSecondary} />
-                </TouchableOpacity>
+                </Button>
               </View>
             </View>
 
@@ -129,21 +130,23 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
             </TouchableOpacity>
 
             <View className="flex-row gap-3">
-              <TouchableOpacity
-                className="flex-1 items-center py-2.5 rounded-[10px]"
+              <Button
+                variant="ghost"
                 onPress={onClose}
-                activeOpacity={0.7}
+                className="flex-1 py-2.5"
+                textClassName="text-text-secondary"
               >
-                <Text className="text-base text-text-secondary">Cancel</Text>
-              </TouchableOpacity>
+                Cancel
+              </Button>
 
-              <TouchableOpacity
-                className="flex-1 items-center justify-center py-3.5 rounded-[10px] bg-accent-primary"
+              <Button
+                variant="primary"
                 onPress={onSave}
-                activeOpacity={0.8}
+                className="flex-1"
+                textClassName="text-[17px]"
               >
-                <Text className="text-white text-[17px] font-semibold">Save</Text>
-              </TouchableOpacity>
+                Save
+              </Button>
             </View>
           </View>
         </ScrollView>

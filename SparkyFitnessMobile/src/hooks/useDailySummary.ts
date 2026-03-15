@@ -19,7 +19,7 @@ import { fetchWaterIntake } from '../services/api/measurementsApi';
 import type { DailySummary } from '../types/dailySummary';
 import type { DailyGoals } from '../types/goals';
 import type { FoodEntry } from '../types/foodEntries';
-import type { ExerciseEntry } from '../types/exercise';
+import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { WaterIntake } from '../types/measurements';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { dailySummaryQueryKey } from './queryKeys';
@@ -27,7 +27,7 @@ import { dailySummaryQueryKey } from './queryKeys';
 export interface DailySummaryRawData {
   goals: DailyGoals;
   foodEntries: FoodEntry[];
-  exerciseEntries: ExerciseEntry[];
+  exerciseEntries: ExerciseSessionResponse[];
   waterIntake: WaterIntake;
 }
 

@@ -2,6 +2,8 @@ export * from "./schemas/api/AiServiceSettings.api.zod";
 export * from "./schemas/api/CustomCategories.api.zod";
 export * from "./schemas/api/CustomMeasurements.api.zod";
 export * from "./schemas/api/CheckInMeasurements.api.zod";
+export * from "./schemas/api/ExerciseEntries.api.zod";
+export * from "./schemas/api/Pagination.api.zod";
 export * from "./schemas/api/SleepScience.api.zod";
 export * from "./schemas/database/Account.zod";
 export * from "./schemas/database/AdminActivityLogs.zod";

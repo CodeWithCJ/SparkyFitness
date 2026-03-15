@@ -20,6 +20,7 @@ const { authenticate } = require("./middleware/authMiddleware");
 const onBehalfOfMiddleware = require("./middleware/onBehalfOfMiddleware"); // Import the new middleware
 const foodRoutes = require("./routes/foodRoutes");
 const v2FoodRoutes = require("./routes/v2/foodRoutes");
+const v2ExerciseEntryRoutes = require("./routes/v2/exerciseEntryRoutes");
 const mealRoutes = require("./routes/mealRoutes");
 const foodEntryRoutes = require("./routes/foodEntryRoutes"); // Add this line
 const foodEntryMealRoutes = require("./routes/foodEntryMealRoutes"); // New: FoodEntryMeal routes
@@ -315,6 +316,7 @@ app.get("/api/ping", (req, res) =>
 app.use("/api/chat", chatRoutes);
 app.use("/api/foods", foodRoutes);
 app.use("/api/v2/foods", v2FoodRoutes);
+app.use("/api/v2/exercise-entries", v2ExerciseEntryRoutes);
 app.use("/api/food-entries", foodEntryRoutes);
 app.use("/api/food-entry-meals", foodEntryMealRoutes);
 app.use("/api/meals", mealRoutes);

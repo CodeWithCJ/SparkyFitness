@@ -115,6 +115,94 @@ async function upsertExerciseEntryData(
   return result;
 }
 
+async function _getExerciseEntryByIdWithClient(client, id) {
+  const result = await client.query(
+    `SELECT ee.*,
+             COALESCE(
+               (SELECT json_agg(set_data ORDER BY set_data.set_number)
+                FROM (
+                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
+                  FROM exercise_entry_sets ees
+                  WHERE ees.exercise_entry_id = ee.id
+                ) AS set_data
+               ), '[]'::json
+             ) AS sets,
+             ee.distance,
+             ee.avg_heart_rate
+      FROM exercise_entries ee
+      WHERE ee.id = $1`,
+    [id],
+  );
+
+  const exerciseEntry = result.rows[0];
+  if (exerciseEntry && exerciseEntry.equipment) {
+    try {
+      exerciseEntry.equipment = JSON.parse(exerciseEntry.equipment);
+    } catch (e) {
+      log(
+        "error",
+        `Error parsing equipment for exercise entry ${exerciseEntry.id}:`,
+        e,
+      );
+      exerciseEntry.equipment = [];
+    }
+  }
+  if (exerciseEntry && exerciseEntry.primary_muscles) {
+    try {
+      exerciseEntry.primary_muscles = JSON.parse(
+        exerciseEntry.primary_muscles,
+      );
+    } catch (e) {
+      log(
+        "error",
+        `Error parsing primary_muscles for exercise entry ${exerciseEntry.id}:`,
+        e,
+      );
+      exerciseEntry.primary_muscles = [];
+    }
+  }
+  if (exerciseEntry && exerciseEntry.secondary_muscles) {
+    try {
+      exerciseEntry.secondary_muscles = JSON.parse(
+        exerciseEntry.secondary_muscles,
+      );
+    } catch (e) {
+      log(
+        "error",
+        `Error parsing secondary_muscles for exercise entry ${exerciseEntry.id}:`,
+        e,
+      );
+      exerciseEntry.secondary_muscles = [];
+    }
+  }
+  if (exerciseEntry && exerciseEntry.instructions) {
+    try {
+      exerciseEntry.instructions = JSON.parse(exerciseEntry.instructions);
+    } catch (e) {
+      log(
+        "error",
+        `Error parsing instructions for exercise entry ${exerciseEntry.id}:`,
+        e,
+      );
+      exerciseEntry.instructions = [];
+    }
+  }
+  if (exerciseEntry && exerciseEntry.images) {
+    try {
+      exerciseEntry.images = JSON.parse(exerciseEntry.images);
+    } catch (e) {
+      log(
+        "error",
+        `Error parsing images for exercise entry ${exerciseEntry.id}:`,
+        e,
+      );
+      exerciseEntry.images = [];
+    }
+  }
+
+  return exerciseEntry;
+}
+
 async function _updateExerciseEntryWithClient(
   client,
   id,
@@ -308,23 +396,21 @@ async function _updateExerciseEntryWithClient(
         `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L`,
         setsValues,
       );
-      await client.query(setsQuery);
+        await client.query(setsQuery);
     }
   }
-  return getExerciseEntryById(id, userId); // Refetch to get full data
+  return _getExerciseEntryByIdWithClient(client, id);
 }
 
-async function createExerciseEntry(
+async function _createExerciseEntryWithClient(
+  client,
   userId,
   entryData,
   createdByUserId,
   entrySource = "Manual",
   exercisePresetEntryId = null,
 ) {
-  const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
-
     // Check for existing entry
     // treat entries without a preset ID as unique if their exercise_id, entry_date, and source match.
     // For entries within a preset, we always allow duplicates (no uniqueness check).
@@ -418,7 +504,7 @@ async function createExerciseEntry(
           entryData.workout_plan_assignment_id || null,
           entryData.image_url || null,
           createdByUserId,
-          snapshot.name, // exercise_name
+          entryData.exercise_name || snapshot.name, // exercise_name
           snapshot.calories_per_hour,
           snapshot.category,
           entrySource,
@@ -459,8 +545,37 @@ async function createExerciseEntry(
       }
     }
 
+    return _getExerciseEntryByIdWithClient(client, newEntryId);
+  } catch (error) {
+    log(
+      "error",
+      `Error creating/updating exercise entry with snapshot:`,
+      error,
+    );
+    throw error;
+  }
+}
+
+async function createExerciseEntry(
+  userId,
+  entryData,
+  createdByUserId,
+  entrySource = "Manual",
+  exercisePresetEntryId = null,
+) {
+  const client = await getClient(userId);
+  try {
+    await client.query("BEGIN");
+    const entry = await _createExerciseEntryWithClient(
+      client,
+      userId,
+      entryData,
+      createdByUserId,
+      entrySource,
+      exercisePresetEntryId,
+    );
     await client.query("COMMIT");
-    return getExerciseEntryById(newEntryId, userId); // Refetch to get full data
+    return entry;
   } catch (error) {
     await client.query("ROLLBACK");
     log(
@@ -477,90 +592,7 @@ async function createExerciseEntry(
 async function getExerciseEntryById(id, userId) {
   const client = await getClient(userId);
   try {
-    const result = await client.query(
-      `SELECT ee.*,
-               COALESCE(
-                 (SELECT json_agg(set_data ORDER BY set_data.set_number)
-                  FROM (
-                    SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
-                    FROM exercise_entry_sets ees
-                    WHERE ees.exercise_entry_id = ee.id
-                  ) AS set_data
-                 ), '[]'::json
-               ) AS sets,
-               ee.distance,
-               ee.avg_heart_rate
-        FROM exercise_entries ee
-        WHERE ee.id = $1`,
-      [id],
-    );
-    const exerciseEntry = result.rows[0];
-    if (exerciseEntry && exerciseEntry.equipment) {
-      try {
-        exerciseEntry.equipment = JSON.parse(exerciseEntry.equipment);
-      } catch (e) {
-        log(
-          "error",
-          `Error parsing equipment for exercise entry ${exerciseEntry.id}:`,
-          e,
-        );
-        exerciseEntry.equipment = []; // Default to empty array on parse error
-      }
-    }
-    if (exerciseEntry && exerciseEntry.primary_muscles) {
-      try {
-        exerciseEntry.primary_muscles = JSON.parse(
-          exerciseEntry.primary_muscles,
-        );
-      } catch (e) {
-        log(
-          "error",
-          `Error parsing primary_muscles for exercise entry ${exerciseEntry.id}:`,
-          e,
-        );
-        exerciseEntry.primary_muscles = [];
-      }
-    }
-    if (exerciseEntry && exerciseEntry.secondary_muscles) {
-      try {
-        exerciseEntry.secondary_muscles = JSON.parse(
-          exerciseEntry.secondary_muscles,
-        );
-      } catch (e) {
-        log(
-          "error",
-          `Error parsing secondary_muscles for exercise entry ${exerciseEntry.id}:`,
-          e,
-        );
-        exerciseEntry.secondary_muscles = [];
-      }
-    }
-    if (exerciseEntry && exerciseEntry.instructions) {
-      try {
-        exerciseEntry.instructions = JSON.parse(exerciseEntry.instructions);
-      } catch (e) {
-        log(
-          "error",
-          `Error parsing instructions for exercise entry ${exerciseEntry.id}:`,
-          e,
-        );
-        exerciseEntry.instructions = [];
-      }
-    }
-    if (exerciseEntry && exerciseEntry.images) {
-      try {
-        exerciseEntry.images = JSON.parse(exerciseEntry.images);
-      } catch (e) {
-        log(
-          "error",
-          `Error parsing images for exercise entry ${exerciseEntry.id}:`,
-          e,
-        );
-        exerciseEntry.images = [];
-      }
-    }
-    return exerciseEntry;
-    return result.rows[0];
+    return _getExerciseEntryByIdWithClient(client, id);
   } finally {
     client.release();
   }
@@ -596,9 +628,10 @@ async function updateExerciseEntry(id, userId, actingUserId, updateData) {
         distance = COALESCE($8, distance),
         avg_heart_rate = COALESCE($9, avg_heart_rate),
         sort_order = COALESCE($10, sort_order),
-        updated_by_user_id = $11,
+        exercise_name = COALESCE($11, exercise_name),
+        updated_by_user_id = $12,
         updated_at = now()
-      WHERE id = $12 AND user_id = $13
+      WHERE id = $13 AND user_id = $14
       RETURNING id`,
       [
         updateData.exercise_id,
@@ -611,6 +644,7 @@ async function updateExerciseEntry(id, userId, actingUserId, updateData) {
         updateData.distance || null,
         updateData.avg_heart_rate || null,
         updateData.sort_order !== undefined ? updateData.sort_order : null,
+        updateData.exercise_name || null,
         actingUserId,
         id,
         userId,
@@ -651,6 +685,35 @@ async function updateExerciseEntry(id, userId, actingUserId, updateData) {
   } finally {
     client.release();
   }
+}
+
+async function updateExerciseEntriesDateByPresetEntryIdWithClient(
+  client,
+  userId,
+  presetEntryId,
+  entryDate,
+  updatedByUserId,
+) {
+  await client.query(
+    `UPDATE exercise_entries
+     SET entry_date = $1,
+         updated_by_user_id = $2,
+         updated_at = now()
+     WHERE user_id = $3 AND exercise_preset_entry_id = $4`,
+    [entryDate, updatedByUserId, userId, presetEntryId],
+  );
+}
+
+async function deleteExerciseEntriesByPresetEntryIdWithClient(
+  client,
+  userId,
+  presetEntryId,
+) {
+  await client.query(
+    `DELETE FROM exercise_entries
+     WHERE user_id = $1 AND exercise_preset_entry_id = $2`,
+    [userId, presetEntryId],
+  );
 }
 
 async function deleteExerciseEntry(id, userId) {
@@ -752,6 +815,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
 
         return {
           ...entryData,
+          name: exercise_name,
           exercise_snapshot: {
             // Renamed from 'exercises' to 'exercise_snapshot' to avoid confusion with the grouping
             id: entryData.exercise_id, // Add the exercise_id here
@@ -978,10 +1042,13 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
 
 module.exports = {
   upsertExerciseEntryData,
+  _createExerciseEntryWithClient,
   createExerciseEntry,
   getExerciseEntryById,
   getExerciseEntryOwnerId,
   updateExerciseEntry,
+  updateExerciseEntriesDateByPresetEntryIdWithClient,
+  deleteExerciseEntriesByPresetEntryIdWithClient,
   deleteExerciseEntry,
   getExerciseEntriesByDate,
   getExerciseProgressData,

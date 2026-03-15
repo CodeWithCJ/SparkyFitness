@@ -1,20 +1,25 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
-import type { ExerciseEntry } from '../types/exercise';
+import type { ExerciseSessionResponse } from '@workspace/shared';
 import Icon from './Icon';
-
+import { getSourceLabel, formatDuration, getWorkoutSummary } from './WorkoutCard';
 
 interface ExerciseSummaryProps {
-  exerciseEntries: ExerciseEntry[];
+  exerciseEntries: ExerciseSessionResponse[];
+  onPressWorkout?: (session: ExerciseSessionResponse) => void;
 }
 
-const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries }) => {
-  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries, onPressWorkout }) => {
+  const [accentPrimary, textMuted] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-muted',
+  ]) as [string, string];
 
-  const filtered = exerciseEntries.filter(
-    (entry) => entry.exercise_snapshot?.name !== 'Active Calories'
-  );
+  const filtered = exerciseEntries.filter((session) => {
+    if (session.type === 'preset') return true;
+    return session.exercise_snapshot?.name !== 'Active Calories';
+  });
 
   if (filtered.length === 0) {
     return (
@@ -30,32 +35,49 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({ exerciseEntries }) =>
         <Icon name="exercise" size={18} color={accentPrimary} />
       <Text className="text-base font-bold text-text-muted">Exercise</Text>
       </View>
-      {filtered.map((entry, index) => {
-        const name = entry.exercise_snapshot?.name || 'Unknown exercise';
-        const calories = Math.round(entry.calories_burned);
-        const duration = entry.duration_minutes;
+      {filtered.map((session, index) => {
+        const { name, duration, calories } = getWorkoutSummary(session);
+        const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
 
         return (
-          <View key={entry.id || index} className="py-2.5">
+          <Pressable
+            key={session.id || index}
+            className="py-2.5"
+            onPress={() => onPressWorkout?.(session)}
+          >
             <View className="flex-row justify-between items-center">
-              <View className="flex-row items-center flex-1 mr-2">
-                <Text className="text-base text-text-primary flex-1" numberOfLines={1}>
+              <View className="flex-1 mr-2">
+                <Text className="text-base text-text-primary" numberOfLines={1}>
                   {name}
-                  {duration != null && duration > 0 && (
+                  {duration > 0 && (
                     <Text className="text-sm text-text-secondary">
-                      {' · '}{Math.round(duration)} min
+                      {' · '}{formatDuration(duration)}
                     </Text>
                   )}
                 </Text>
               </View>
-              <Text className="text-sm text-text-secondary">
-                {calories} Cal
-              </Text>
+              <View className="flex-row items-center gap-2">
+                <Text className="text-sm text-text-secondary">
+                  {Math.round(calories)} Cal
+                </Text>
+                <View
+                  className="rounded-full px-1.5 py-0.5"
+                  style={{ backgroundColor: isSparky ? `${accentPrimary}20` : `${textMuted}20` }}
+                >
+                  <Text
+                    className="text-[10px] font-medium"
+                    style={{ color: isSparky ? accentPrimary : textMuted }}
+                  >
+                    {sourceLabel}
+                  </Text>
+                </View>
+                <Icon name="chevron-forward" size={14} color={textMuted} />
+              </View>
             </View>
-          </View>
+          </Pressable>
         );
       })}
-      </View>
+    </View>
   );
 };
 

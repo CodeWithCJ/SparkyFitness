@@ -1,4 +1,4 @@
-import { ExerciseEntry } from './exercise';
+import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { FoodEntry } from './foodEntries';
 
 export interface MacroSummary {
@@ -25,5 +25,5 @@ export interface DailySummary {
   waterConsumed: number;
   waterGoal: number;
   foodEntries: FoodEntry[];
-  exerciseEntries: ExerciseEntry[];
+  exerciseEntries: ExerciseSessionResponse[];
 }

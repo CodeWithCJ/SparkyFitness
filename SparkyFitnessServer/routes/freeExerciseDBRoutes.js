@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware'); // Import authenticate
-const FreeExerciseDBService = require('../integrations/freeexercisedb/FreeExerciseDBService');
-const exerciseService = require('../services/exerciseService'); // Import exerciseService
+const { authenticate } = require('../middleware/authMiddleware');
+const exerciseService = require('../services/exerciseService');
 
 /**
  * @swagger
@@ -10,70 +9,6 @@ const exerciseService = require('../services/exerciseService'); // Import exerci
  *   name: Fitness & Workouts
  *   description: Exercise database, workout presets, and activity logging.
  */
-
-/**
- * @swagger
- * /freeexercisedb/search:
- *   get:
- *     summary: Search for exercises from the free-exercise-db
- *     tags: [Fitness & Workouts]
- *     description: Searches for exercises from an external free exercise database based on a query.
- *     parameters:
- *       - in: query
- *         name: query
- *         schema:
- *           type: string
- *         description: The search query (optional).
- *     responses:
- *       200:
- *         description: A list of matching exercises.
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                     description: The ID of the exercise in the free database.
- *                   name:
- *                     type: string
- *                     description: The name of the exercise.
- *                   category:
- *                     type: string
- *                     description: The category of the exercise.
- *                   equipment:
- *                     type: array
- *                     items:
- *                       type: string
- *                     description: Equipment needed for the exercise.
- *                   muscle_groups:
- *                     type: array
- *                     items:
- *                       type: string
- *                     description: Muscle groups targeted.
- *       500:
- *         description: Error searching free-exercise-db.
- */
-router.get('/search', async (req, res) => {
-    try {
-        const query = req.query.query ? req.query.query.toLowerCase() : '';
-        const exerciseList = await FreeExerciseDBService.getExerciseList();
-
-        let filteredExercises = exerciseList;
-        if (query) {
-            filteredExercises = exerciseList.filter(exercise =>
-                exercise.name.toLowerCase().includes(query)
-            );
-        }
-
-        res.json(filteredExercises);
-    } catch (error) {
-        console.error('[freeExerciseDBRoutes] Error searching free-exercise-db:', error);
-        res.status(500).json({ message: 'Error searching free-exercise-db', error: error.message });
-    }
-});
 
 /**
  * @swagger
