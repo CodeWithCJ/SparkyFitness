@@ -400,7 +400,7 @@ router.post('/users/:userId/reset-password', async (req, res, next) => {
     }
 
     const { auth } = require('../auth');
-    await auth.api.forgetPassword({
+    await auth.api.forgotPassword({
       email: user.email,
       redirectTo: (process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080') + '/reset-password'
     });
