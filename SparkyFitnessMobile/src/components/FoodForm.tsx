@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from './BottomSheetPicker';
+import Button from './ui/Button';
 import Icon from './Icon';
 
 export interface FoodFormData {
@@ -214,15 +215,17 @@ const FoodForm: React.FC<FoodFormProps> = ({
             {renderNumericField('Carbs', 'carbs', 'g', false, 'fiber')}
             {renderNumericField('Fiber', 'fiber', 'g', false, showMoreNutrients ? 'saturatedFat' : undefined)}
           </View>
-          <TouchableOpacity
+          <Button
+            variant="ghost"
             onPress={() => setShowMoreNutrients((prev) => !prev)}
-            activeOpacity={0.7}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            className="self-start py-0 px-0"
+            textClassName="text-sm"
           >
             <Text style={{ color: accentColor }} className="text-sm font-medium">
               {showMoreNutrients ? 'Hide extra nutrients ▴' : 'Show more nutrients ▾'}
             </Text>
-          </TouchableOpacity>
+          </Button>
 
           {showMoreNutrients && (
             <>
@@ -240,9 +243,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
         {children}
 
         {/* Submit */}
-        <TouchableOpacity
-          className="bg-accent-primary rounded-[10px] py-3.5 items-center mt-2"
-          activeOpacity={0.8}
+        <Button
+          variant="primary"
+          className="mt-2"
           disabled={isSubmitting}
           onPress={() => onSubmit(form)}
         >
@@ -251,7 +254,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
           ) : (
             <Text className="text-white text-base font-semibold">{submitLabel}</Text>
           )}
-        </TouchableOpacity>
+        </Button>
       </ScrollView>
     </KeyboardAvoidingView>
   );

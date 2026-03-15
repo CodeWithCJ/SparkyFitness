@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Platform, Button, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
+import UIButton from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
@@ -211,13 +212,14 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           <Text className="text-white text-base font-semibold">No match for barcode</Text>
           <Text className="text-white/70 text-sm text-center">You can scan the nutrition label or enter it manually.</Text>
           <View className="flex-row gap-3 mt-2">
-            <TouchableOpacity
+            <UIButton
+              variant="primary"
               onPress={handleScanLabel}
-              className="flex-1 py-3 rounded-lg items-center"
-              style={{ backgroundColor: accentPrimary }}
+              className="flex-1 py-3 rounded-lg"
+              textClassName="text-sm"
             >
-              <Text className="text-white font-semibold text-sm">Scan Nutrition Label</Text>
-            </TouchableOpacity>
+              Scan Nutrition Label
+            </UIButton>
             <TouchableOpacity
               onPress={() => navigation.replace('FoodForm', { mode: 'create-food',
                 date: route.params?.date,
@@ -242,13 +244,13 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             >
               <Text className="text-white font-semibold text-base">Retake</Text>
             </TouchableOpacity>
-            <TouchableOpacity
+            <UIButton
+              variant="primary"
               onPress={handleUsePhoto}
-              className="flex-1 py-4 rounded-lg items-center"
-              style={{ backgroundColor: accentPrimary }}
+              className="flex-1 py-4 rounded-lg"
             >
-              <Text className="text-white font-semibold text-base">Use Photo</Text>
-            </TouchableOpacity>
+              Use Photo
+            </UIButton>
           </View>
         </View>
       )}

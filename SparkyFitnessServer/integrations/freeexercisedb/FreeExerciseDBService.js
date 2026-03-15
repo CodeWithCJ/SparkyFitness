@@ -42,12 +42,12 @@ class FreeExerciseDBService {
         }
     }
 
-    async searchExercises(query, equipmentFilter = [], muscleGroupFilter = [], limit = 50) {
-        const cacheKey = `search_exercises_${query}_${equipmentFilter.join(',')}_${muscleGroupFilter.join(',')}_${limit}`;
+    async searchExercises(query, equipmentFilter = [], muscleGroupFilter = [], limit = 50, offset = 0) {
+        const cacheKey = `search_exercises_${query}_${equipmentFilter.join(',')}_${muscleGroupFilter.join(',')}_${limit}_${offset}`;
         let cachedResults = githubCache.get(cacheKey);
 
         if (cachedResults) {
-            console.log(`[FreeExerciseDBService] Cache hit for search query: ${query}, equipment: ${equipmentFilter}, muscles: ${muscleGroupFilter}, limit: ${limit}`);
+            console.log(`[FreeExerciseDBService] Cache hit for search query: ${query}, equipment: ${equipmentFilter}, muscles: ${muscleGroupFilter}, limit: ${limit}, offset: ${offset}`);
             return cachedResults;
         }
 
@@ -57,7 +57,7 @@ class FreeExerciseDBService {
             const response = await axios.get(exercisesJsonUrl, { headers: { Accept: 'application/vnd.github.raw+json' }});
             const allExercises = response.data;
 
-            let filteredExercises = allExercises.filter(exercise => {
+            const filteredExercises = allExercises.filter(exercise => {
                 const matchesQuery = !query || exercise.name.toLowerCase().includes(query.toLowerCase());
                 const matchesEquipment = equipmentFilter.length === 0 || (exercise.equipment && equipmentFilter.some(filter => exercise.equipment.includes(filter)));
                 const matchesMuscleGroup = muscleGroupFilter.length === 0 || (
@@ -67,14 +67,15 @@ class FreeExerciseDBService {
                 return matchesQuery && matchesEquipment && matchesMuscleGroup;
             });
 
-            // Apply limit after filtering
-            filteredExercises = filteredExercises.slice(0, limit);
+            const totalCount = filteredExercises.length;
+            const paginatedExercises = filteredExercises.slice(offset, offset + limit);
 
-            githubCache.set(cacheKey, filteredExercises);
-            return filteredExercises;
+            const result = { exercises: paginatedExercises, totalCount };
+            githubCache.set(cacheKey, result);
+            return result;
         } catch (error) {
             console.error(`[FreeExerciseDBService] Error searching exercises for query "${query}" with limit ${limit}:`, error.message);
-            return [];
+            return { exercises: [], totalCount: 0 };
         }
     }
 

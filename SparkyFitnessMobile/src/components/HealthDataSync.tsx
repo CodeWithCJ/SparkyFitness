@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Switch, Image, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, Switch, Image, Platform } from 'react-native';
 import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER } from '../HealthMetrics';
 import { useCSSVariable } from 'uniwind';
+import Button from './ui/Button';
 import CollapsibleSection from './CollapsibleSection';
 import { saveCollapsedCategories, loadCollapsedCategories } from '../services/storage';
 
@@ -116,11 +117,14 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
             </Text>
           </>
         )}
-        <TouchableOpacity onPress={handleLearnMoreToggle} activeOpacity={0.7}>
-          <Text className="text-sm font-medium mt-1 text-accent-primary">
-            {learnMoreExpanded ? 'Show less' : 'Learn more'}
-          </Text>
-        </TouchableOpacity>
+        <Button
+          variant="ghost"
+          onPress={handleLearnMoreToggle}
+          className="self-start py-0 px-0 mt-1"
+          textClassName="text-sm"
+        >
+          {learnMoreExpanded ? 'Show less' : 'Learn more'}
+        </Button>
       </View>
       <View className="flex-row justify-between items-center mb-2">
         <View className="flex-row items-center flex-1 mr-2">

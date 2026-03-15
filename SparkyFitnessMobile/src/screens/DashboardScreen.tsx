@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Pressable, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable, Platform } from 'react-native';
+import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -12,6 +13,7 @@ import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { calculateEffectiveBurned, calculateCalorieBalance } from '../services/calculations';
 import { addDays, getTodayDate } from '../utils/dateUtils';
+import { weightFromKg } from '../utils/unitConversions';
 import HydrationGauge from '../components/HydrationGauge';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import HealthTrendsPager from '../components/HealthTrendsPager';
@@ -84,8 +86,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
   const weightData = useMemo(() => {
     if (weightUnit === 'kg') return rawWeightData;
-    const KG_TO_LBS = 2.20462;
-    return rawWeightData.map(p => ({ ...p, weight: p.weight * KG_TO_LBS }));
+    return rawWeightData.map(p => ({ ...p, weight: weightFromKg(p.weight, weightUnit) }));
   }, [rawWeightData, weightUnit]);
 
   // Get macro colors from CSS variables (theme-aware)
@@ -121,12 +122,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <Text className="text-text-muted text-sm text-center mt-2">
             Configure your server connection in Settings to view your daily summary.
           </Text>
-          <TouchableOpacity
-            className="bg-accent-primary rounded-xl py-3 px-6 mt-6"
+          <Button
+            variant="primary"
+            className="px-6 mt-6"
             onPress={() => navigation.navigate('Settings')}
           >
-            <Text className="text-white font-semibold">Go to Settings</Text>
-          </TouchableOpacity>
+            Go to Settings
+          </Button>
         </View>
       );
     }
@@ -175,12 +177,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             <Text className="text-text-muted text-sm text-center mt-2">
               Please check your connection and try again.
             </Text>
-            <TouchableOpacity
-              className="bg-accent-primary rounded-xl py-3 px-6 mt-6"
+            <Button
+              variant="primary"
+              className="px-6 mt-6"
               onPress={() => refetch()}
             >
-              <Text className="text-white font-semibold">Retry</Text>
-            </TouchableOpacity>
+              Retry
+            </Button>
           </View>
         </View>
       );

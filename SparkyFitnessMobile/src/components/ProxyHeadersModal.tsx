@@ -4,12 +4,12 @@ import {
   Text,
   TextInput,
   Modal,
-  TouchableOpacity,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
   Alert,
 } from 'react-native';
+import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import type { ProxyHeader } from '../services/storage';
@@ -95,9 +95,14 @@ const ProxyHeadersModal: React.FC<ProxyHeadersModalProps> = ({
           <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm">
             <View className="flex-row justify-between items-center mb-5">
               <Text className="text-[22px] font-bold text-text-primary">Proxy Headers</Text>
-              <TouchableOpacity onPress={handleAdd} accessibilityLabel="Add header">
+              <Button
+                variant="ghost"
+                onPress={handleAdd}
+                accessibilityLabel="Add header"
+                className="py-0 px-0"
+              >
                 <Icon name="add-circle" size={28} color={accentPrimary} />
-              </TouchableOpacity>
+              </Button>
             </View>
 
             {draft.length === 0 && (
@@ -110,12 +115,14 @@ const ProxyHeadersModal: React.FC<ProxyHeadersModalProps> = ({
               <View key={index} className="mb-3 border border-border-subtle rounded-lg p-3 bg-raised">
                 <View className="flex-row items-center justify-between mb-2">
                   <Text className="text-xs text-text-secondary font-medium">Header {index + 1}</Text>
-                  <TouchableOpacity
+                  <Button
+                    variant="ghost"
                     onPress={() => handleRemove(index)}
                     accessibilityLabel={`Remove header ${index + 1}`}
+                    className="py-0 px-0"
                   >
                     <Icon name="remove-circle" size={18} color="#ef4444" />
-                  </TouchableOpacity>
+                  </Button>
                 </View>
                 <TextInput
                   className="border border-border-subtle rounded-md p-2 mb-2 text-base text-text-primary bg-surface"
@@ -140,21 +147,23 @@ const ProxyHeadersModal: React.FC<ProxyHeadersModalProps> = ({
             ))}
 
             <View className="flex-row gap-3 mt-2">
-              <TouchableOpacity
-                className="flex-1 items-center py-2.5 rounded-[10px]"
+              <Button
+                variant="ghost"
                 onPress={onClose}
-                activeOpacity={0.7}
+                className="flex-1 py-2.5"
+                textClassName="text-text-secondary"
               >
-                <Text className="text-base text-text-secondary">Cancel</Text>
-              </TouchableOpacity>
+                Cancel
+              </Button>
 
-              <TouchableOpacity
-                className="flex-1 items-center justify-center py-3.5 rounded-[10px] bg-accent-primary"
+              <Button
+                variant="primary"
                 onPress={handleSave}
-                activeOpacity={0.8}
+                className="flex-1"
+                textClassName="text-[17px]"
               >
-                <Text className="text-white text-[17px] font-semibold">Save</Text>
-              </TouchableOpacity>
+                Save
+              </Button>
             </View>
           </View>
         </ScrollView>

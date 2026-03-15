@@ -1,9 +1,10 @@
 import './global.css'
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, Alert, type ImageSourcePropType } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   NavigationContainer,
+  type NavigationProp,
   type Theme,
 } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -14,8 +15,9 @@ import { useUniwind, useCSSVariable } from 'uniwind';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryClient, serverConnectionQueryKey } from './src/hooks';
 
-import { createStackNavigator, type StackNavigationProp } from '@react-navigation/stack';
+import { createStackNavigator } from '@react-navigation/stack';
 import SyncScreen from './src/screens/SyncScreen';
+import WorkoutsScreen from './src/screens/WorkoutsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import DiaryScreen from './src/screens/DiaryScreen';
@@ -25,24 +27,34 @@ import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
+import WorkoutFormScreen from './src/screens/WorkoutFormScreen';
+import ActivityFormScreen from './src/screens/ActivityFormScreen';
+import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
+import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import LoginModal from './src/components/LoginModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
-import { saveServerConfig, getActiveServerConfig, loadBackgroundSyncEnabled } from './src/services/storage';
+import { saveServerConfig, getActiveServerConfig, loadBackgroundSyncEnabled, loadTimeRange } from './src/services/storage';
+import type { TimeRange } from './src/services/storage';
 import { notifyNoConfigs } from './src/services/api/authService';
+import { initHealthConnect, loadHealthPreference } from './src/services/healthConnectService';
+import { HEALTH_METRICS } from './src/HealthMetrics';
+import { useSyncHealthData } from './src/hooks';
 import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
 import { startObservers, stopObservers } from './src/services/healthConnectService';
 import { initializeTheme } from './src/services/themeService';
+import { useStartExercise } from './src/hooks/useStartExercise';
 import { initLogService } from './src/services/LogService';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
+import AddSheet, { type AddSheetRef } from './src/components/AddSheet';
 
 const Tab = createNativeBottomTabNavigator<TabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 
 type TabIcons = {
-  sync: ImageSourcePropType;
+  workouts: ImageSourcePropType;
   dashboard: ImageSourcePropType;
   book: ImageSourcePropType;
   settings: ImageSourcePropType;
@@ -56,6 +68,9 @@ function AppContent() {
   const [apiKeyUrl, setApiKeyUrl] = useState('');
   const [apiKeyValue, setApiKeyValue] = useState('');
   const [apiKeyProxyHeaders, setApiKeyProxyHeaders] = useState<import('./src/services/storage').ProxyHeader[]>([]);
+
+  const addSheetRef = useRef<AddSheetRef>(null);
+  const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
 
   const [primary, chrome, chromeBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
     '--color-accent-primary',
@@ -89,17 +104,72 @@ function AppContent() {
     },
   }), [isDarkMode, primary, bgPrimary, chrome, textPrimary, chromeBorder]);
 
+  const getActiveDiaryDate = useCallback(() => {
+    const navigation = navigationRef.current;
+    if (!navigation) return undefined;
+
+    const state = navigation.getState();
+    const activeRoute = state.routes[state.index];
+    const diaryParams =
+      activeRoute.name === 'Diary'
+        ? (activeRoute.params as { selectedDate?: string } | undefined)
+        : undefined;
+
+    return diaryParams?.selectedDate;
+  }, []);
+
+  const handleAddFood = useCallback(() => {
+    const navigation = navigationRef.current;
+    if (!navigation) return;
+    const date = getActiveDiaryDate();
+    navigation.getParent()?.navigate('FoodSearch', { date });
+  }, [getActiveDiaryDate]);
+
+  const addSheetNavigation = useMemo(() => ({
+    navigate: (screen: string, params?: Record<string, unknown>) => {
+      navigationRef.current?.getParent()?.navigate(screen, params);
+    },
+  }), []);
+
+  const handleAddExercise = useStartExercise({
+    navigation: addSheetNavigation,
+    getDate: getActiveDiaryDate,
+  });
+
+  const syncMutation = useSyncHealthData();
+
+  const handleSyncHealthData = useCallback(async () => {
+    if (syncMutation.isPending) return;
+
+    const initialized = await initHealthConnect();
+    if (!initialized) {
+      Alert.alert('Health Data Unavailable', 'Could not initialize health data access. Check your permissions in Settings.');
+      return;
+    }
+
+    const loadedTimeRange = await loadTimeRange();
+    const timeRange: TimeRange = loadedTimeRange ?? '3d';
+
+    const healthMetricStates: Record<string, boolean> = {};
+    for (const metric of HEALTH_METRICS) {
+      const enabled = await loadHealthPreference<boolean>(metric.preferenceKey);
+      healthMetricStates[metric.stateKey] = enabled === true;
+    }
+
+    syncMutation.mutate({ timeRange, healthMetricStates });
+  }, [syncMutation]);
+
   useEffect(() => {
     if (Platform.OS !== 'ios') {
       Promise.all([
-        Ionicons.getImageSource('sync', 24, '#999999'),
+        Ionicons.getImageSource('barbell-outline', 24, '#999999'),
         Ionicons.getImageSource('grid', 24, '#999999'),
         Ionicons.getImageSource('book', 24, '#999999'),
         Ionicons.getImageSource('settings', 24, '#999999'),
         Ionicons.getImageSource('add-circle', 24, '#999999'),
-      ]).then(([sync, dashboard, book, settings, add]) => {
-        if (sync && dashboard && book && settings && add) {
-          setIcons({ sync, dashboard, book, settings, add });
+      ]).then(([workouts, dashboard, book, settings, add]) => {
+        if (workouts && dashboard && book && settings && add) {
+          setIcons({ workouts, dashboard, book, settings, add });
         }
       }).catch(error => {
         console.error('Failed to load tab icons:', error);
@@ -194,24 +264,17 @@ function AppContent() {
                   }}
                   listeners={({ navigation }) => ({
                     tabPress: () => {
-                      // preventsDefault skips the tab switch, so state.index still points to the previously active tab
-                      const state = navigation.getState();
-                      const activeRoute = state.routes[state.index];
-                      const diaryParams =
-                        activeRoute.name === 'Diary'
-                          ? (activeRoute.params as { selectedDate?: string } | undefined)
-                          : undefined;
-                      const date = diaryParams?.selectedDate;
-                      navigation.getParent<StackNavigationProp<RootStackParamList>>()?.navigate('FoodSearch', { date });
+                      navigationRef.current = navigation;
+                      addSheetRef.current?.present();
                     },
                   })}
                 />
                 <Tab.Screen
-                  name="Sync"
-                  component={SyncScreen}
+                  name="Workouts"
+                  component={WorkoutsScreen}
                   options={{
                     tabBarIcon: () =>
-                      Platform.OS === 'ios' ? { sfSymbol: 'arrow.triangle.2.circlepath' } : icons!.sync,
+                      Platform.OS === 'ios' ? { sfSymbol: 'dumbbell.fill' } : icons!.workouts,
                   }}
                 />
                 <Tab.Screen
@@ -272,6 +335,43 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="ExerciseSearch"
+            component={ExerciseSearchScreen}
+            options={{
+              presentation: 'modal',
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          />
+          <Stack.Screen
+            name="WorkoutForm"
+            component={WorkoutFormScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          />
+          <Stack.Screen
+            name="ActivityForm"
+            component={ActivityFormScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          />
+          <Stack.Screen
+            name="WorkoutDetail"
+            component={WorkoutDetailScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          />
+          <Stack.Screen
             name="Logs"
             component={LogScreen}
             options={{
@@ -280,7 +380,15 @@ function AppContent() {
               headerBackTitle: 'Back',
             }}
           />
+          <Stack.Screen
+            name="Sync"
+            component={SyncScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
         </Stack.Navigator>
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddExercise={handleAddExercise} onSyncHealthData={handleSyncHealthData} />
         <LoginModal
           visible={showLoginModal}
           defaultConfigId={expiredConfigId}

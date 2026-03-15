@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
+import Button from '../components/ui/Button';
 import Clipboard from '@react-native-clipboard/clipboard';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import {
@@ -205,12 +206,14 @@ const LogScreen: React.FC<LogScreenProps> = () => {
               containerStyle={{ flex: 1, maxWidth: '50%' }}
             />
             {/* Clear Logs Button */}
-            <TouchableOpacity
-              className="bg-bg-danger rounded-lg py-3 px-6 self-center"
+            <Button
+              variant="primary"
+              className="bg-bg-danger px-6 self-center"
+              textClassName="font-bold"
               onPress={handleClearLogs}
             >
-              <Text className="text-white text-base font-bold">Clear All Logs</Text>
-            </TouchableOpacity>
+              Clear All Logs
+            </Button>
           </View>
         </View>
       </View>
@@ -261,12 +264,14 @@ const LogScreen: React.FC<LogScreenProps> = () => {
         ListFooterComponent={() => (
           <>
             {hasMore && (
-              <TouchableOpacity
-                className="bg-accent-primary rounded-lg p-3 items-center mt-4"
+              <Button
+                variant="primary"
+                className="mt-4"
+                textClassName="font-bold"
                 onPress={handleLoadMore}
               >
-                <Text className="text-white text-base font-bold">Load more logs</Text>
-              </TouchableOpacity>
+                Load more logs
+              </Button>
             )}
           </>
         )}

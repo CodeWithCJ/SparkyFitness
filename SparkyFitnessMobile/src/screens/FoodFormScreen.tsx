@@ -10,7 +10,7 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import { useMealTypes } from '../hooks';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { getMealTypeLabel } from '../constants/meals';
-import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
+import { getTodayDate, normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 
 const parseOptional = (s: string): number | undefined =>
@@ -83,7 +83,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
 
   const { addEntry, isPending: isSubmitting, invalidateCache } = useAddFoodEntry({
     onSuccess: (entry) => {
-      invalidateCache(entry.entry_date.split('T')[0]);
+      invalidateCache(normalizeDate(entry.entry_date));
       navigation.dispatch(StackActions.popToTop());
     },
   });
