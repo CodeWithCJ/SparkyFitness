@@ -4,6 +4,7 @@ import { StatusBar, Platform, Alert, type ImageSourcePropType } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import {
   NavigationContainer,
+  type NavigationProp,
   type Theme,
 } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -69,7 +70,7 @@ function AppContent() {
   const [apiKeyProxyHeaders, setApiKeyProxyHeaders] = useState<import('./src/services/storage').ProxyHeader[]>([]);
 
   const addSheetRef = useRef<AddSheetRef>(null);
-  const navigationRef = useRef<any>(null);
+  const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
 
   const [primary, chrome, chromeBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
     '--color-accent-primary',
