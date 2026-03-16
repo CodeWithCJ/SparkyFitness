@@ -181,7 +181,7 @@ const SleepRespirationCard = ({ data }: SleepRespirationCardProps) => {
                     | ReadonlyArray<string | number>
                     | undefined
                 ) => [
-                  `${Number(Array.isArray(value) ? value[0] : value)} brpm`,
+                  `${Number((Array.isArray(value) ? value[0] : value) ?? 0)} brpm`,
                 ]}
               />
               {/* Normal range reference area */}

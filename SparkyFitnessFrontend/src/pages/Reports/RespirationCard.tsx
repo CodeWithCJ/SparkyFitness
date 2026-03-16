@@ -341,7 +341,7 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
                         average: t('reports.average', 'Average'),
                       };
                       const numValue = Number(
-                        Array.isArray(value) ? value[0] : value
+                        (Array.isArray(value) ? value[0] : value) ?? 0
                       );
                       return [
                         `${numValue.toFixed(1)} brpm`,

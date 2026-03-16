@@ -176,7 +176,9 @@ const SleepHeartRateCard = ({ data }: SleepHeartRateCardProps) => {
                     | number
                     | ReadonlyArray<string | number>
                     | undefined
-                ) => [`${Number(Array.isArray(value) ? value[0] : value)} bpm`]}
+                ) => [
+                  `${Number((Array.isArray(value) ? value[0] : value) ?? 0)} bpm`,
+                ]}
               />
               <Line
                 type="monotone"

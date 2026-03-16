@@ -243,7 +243,9 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                           formatter={(value: TooltipValueType | undefined) => {
                             if (value === null || value === undefined)
                               return '';
-                            const num = Number(value);
+                            const num = Number(
+                              Array.isArray(value) ? value[0] : value
+                            );
                             return Number.isNaN(num)
                               ? String(value)
                               : num.toFixed(2);

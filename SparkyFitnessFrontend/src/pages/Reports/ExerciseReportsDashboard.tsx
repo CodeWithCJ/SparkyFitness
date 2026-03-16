@@ -626,7 +626,12 @@ const ExerciseReportsDashboard = ({
                     />
                     <Tooltip
                       formatter={(value: TooltipValueType | undefined) =>
-                        value ? formatWeight(Number(value), weightUnit) : 0
+                        value
+                          ? formatWeight(
+                              Number(Array.isArray(value) ? value[0] : value),
+                              weightUnit
+                            )
+                          : 0
                       }
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
@@ -775,7 +780,12 @@ const ExerciseReportsDashboard = ({
                     />
                     <Tooltip
                       formatter={(value: TooltipValueType | undefined) =>
-                        value ? formatWeight(Number(value), weightUnit) : 0
+                        value
+                          ? formatWeight(
+                              Number(Array.isArray(value) ? value[0] : value),
+                              weightUnit
+                            )
+                          : 0
                       }
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
@@ -928,7 +938,12 @@ const ExerciseReportsDashboard = ({
                     />
                     <Tooltip
                       formatter={(value: TooltipValueType | undefined) =>
-                        value ? formatWeight(Number(value), weightUnit) : 0
+                        value
+                          ? formatWeight(
+                              Number(Array.isArray(value) ? value[0] : value),
+                              weightUnit
+                            )
+                          : 0
                       }
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',

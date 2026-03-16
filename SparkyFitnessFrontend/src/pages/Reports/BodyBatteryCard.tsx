@@ -214,7 +214,9 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
                         lowest: t('reports.lowest', 'Lowest'),
                       };
                       return [
-                        Math.round(Number(value ?? 0)),
+                        Math.round(
+                          Number((Array.isArray(value) ? value[0] : value) ?? 0)
+                        ),
                         labels[String(name ?? '')] || String(name),
                       ];
                     }}

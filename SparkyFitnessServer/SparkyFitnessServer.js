@@ -341,8 +341,12 @@ app.use("/api/freeexercisedb", freeExerciseDBRoutes);
 app.use("/api/health-data", healthDataRoutes);
 app.use("/api/sleep", sleepRoutes);
 app.use("/api/sleep-science", sleepScienceRoutes);
-app.use("/api/auth", (req, res, next) => require("./routes/authRoutes")(req, res, next));
-app.use("/api/identity", (req, res, next) => require("./routes/identityRoutes")(req, res, next));
+app.use("/api/auth", (req, res, next) =>
+  require("./routes/authRoutes")(req, res, next),
+);
+app.use("/api/identity", (req, res, next) =>
+  require("./routes/identityRoutes")(req, res, next),
+);
 app.use("/api/health", healthRoutes);
 app.use("/api/external-providers", externalProviderRoutes);
 app.use("/api/integrations/garmin", garminRoutes);
@@ -353,7 +357,6 @@ app.use("/api/admin/global-settings", globalSettingsRoutes);
 app.use("/api/global-settings", globalSettingsRoutes); // Public route for allow-user-ai-config
 app.use("/api/admin/oidc-settings", require("./routes/oidcSettingsRoutes"));
 app.use("/api/admin/backup", backupRoutes);
-app.use("/api/admin/auth", (req, res, next) => require("./routes/adminAuthRoutes")(req, res, next));
 app.use("/api/integrations/withings/data", withingsDataRoutes);
 app.use("/api/integrations/fitbit", fitbitRoutes);
 app.use("/api/integrations/polar", polarRoutes);
@@ -362,7 +365,9 @@ app.use("/api/integrations/hevy", hevyRoutes);
 app.use("/api/mood", moodRoutes);
 app.use("/api/fasting", fastingRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/admin/auth", (req, res, next) => require("./routes/adminAuthRoutes")(req, res, next));
+app.use("/api/admin/auth", (req, res, next) =>
+  require("./routes/adminAuthRoutes")(req, res, next),
+);
 app.use("/api/water-containers", waterContainerRoutes);
 app.use("/api/workout-presets", require("./routes/workoutPresetRoutes"));
 app.use(
@@ -533,7 +538,7 @@ applyMigrations()
       log("error", "OIDC env provider upsert failed:", err);
     }
     await mountBetterAuth(app);
-    
+
     // Sync trusted SSO providers after database is ready (so Better Auth sees env-upserted and DB providers)
     if (syncTrustedProviders) {
       await syncTrustedProviders().catch((err) =>
