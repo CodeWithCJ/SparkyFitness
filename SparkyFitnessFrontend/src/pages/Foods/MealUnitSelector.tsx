@@ -80,7 +80,7 @@ const MealUnitSelector = ({
     const mealServingSize = meal.serving_size || 1.0;
 
     // Calculate multiplier based on quantity and unit
-    let multiplier = 1.0;
+    let multiplier: number;
     //Check if unit is the same as meal serving unit, if so use quantity directly, otherwise calculate based on meal serving size
     if (unit === 'serving' && meal.serving_unit === 'serving') {
       multiplier = quantity;
