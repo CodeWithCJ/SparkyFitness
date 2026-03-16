@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @plugin "tailwindcss-animate";
+@custom-variant dark (&:is(.dark *));
 
 @theme {
   --color-border: hsl(var(--border));
@@ -168,8 +169,7 @@
   }
 
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
+    @apply bg-background text-foreground;
   }
 }
 

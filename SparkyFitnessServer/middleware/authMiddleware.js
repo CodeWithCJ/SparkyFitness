@@ -5,11 +5,6 @@ const { canAccessUserData } = require("../utils/permissionUtils");
 const { serializeSignedCookie } = require("better-call");
 
 const authenticate = async (req, res, next) => {
-  // Allow public access to the /api/auth/settings endpoint
-  if (req.path === "/settings") {
-    return next();
-  }
-
   //log("debug", `authenticate middleware: req.path = ${req.path}, req.headers.cookie = ${req.headers.cookie}`);
 
   // 1. Better Auth Session & API Key Check (Unified Identity)

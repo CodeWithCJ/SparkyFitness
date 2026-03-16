@@ -285,8 +285,7 @@ app.get(
 // Apply authentication middleware to all protected routes
 app.use((req, res, next) => {
   const publicRoutes = [
-    "/api/auth/settings",
-    "/api/auth/mfa-factors",
+    "/api/auth",
     "/api/health",
     "/api/version",
     "/api/uploads",
