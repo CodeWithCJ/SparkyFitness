@@ -129,6 +129,7 @@ app.use(cookieParser());
 
 // --- Better Auth Mounting Logic (Moved to after migrations) ---
 let syncTrustedProviders;
+let betterAuthHandlerInstance = null;
 const mountBetterAuth = (app) => {
   try {
     console.log("[AUTH] Starting Better Auth mounting phase...");
@@ -136,41 +137,41 @@ const mountBetterAuth = (app) => {
     const { auth } = authModule;
     syncTrustedProviders = authModule.syncTrustedProviders;
     const { toNodeHandler } = require("better-auth/node");
-    const betterAuthHandler = toNodeHandler(auth);
-
-    // Catch ALL requests starting with /api/auth early.
-    app.use(async (req, res, next) => {
-      if (req.originalUrl.startsWith("/api/auth")) {
-        // 1. Skip interceptor for discovery routes - let them fall through to authRoutes.js
-        const isDiscovery =
-          req.path === "/api/auth/settings" ||
-          req.path === "/api/auth/mfa-factors";
-        if (isDiscovery) {
-          return next();
-        }
-
-        // 2. Manual Sign-Out Cleanup: Clear sparky_active_user_id cookie
-        if (req.method === "POST" && req.path === "/sign-out") {
-          console.log(
-            "[AUTH HANDLER] Manual Cleanup: Clearing sparky_active_user_id on logout",
-          );
-          res.clearCookie("sparky_active_user_id", { path: "/" });
-        }
-
-        console.log(
-          `[AUTH HANDLER] Intercepted request: ${req.method} ${req.originalUrl}`,
-        );
-
-        return betterAuthHandler(req, res);
-      }
-      next();
-    });
+    betterAuthHandlerInstance = toNodeHandler(auth);
     console.log("[AUTH] Better Auth handler successfully mounted.");
   } catch (error) {
     console.error("[AUTH FATAL] Initialization failed:", error);
     throw error; // Propagate to block startup if auth fails
   }
 };
+
+// Catch ALL requests starting with /api/auth early.
+app.use(async (req, res, next) => {
+  if (req.originalUrl.startsWith("/api/auth") && betterAuthHandlerInstance) {
+    // 1. Skip interceptor for discovery routes - let them fall through to authRoutes.js
+    const isDiscovery =
+      req.path === "/api/auth/settings" ||
+      req.path === "/api/auth/mfa-factors";
+    if (isDiscovery) {
+      return next();
+    }
+
+    // 2. Manual Sign-Out Cleanup: Clear sparky_active_user_id cookie
+    if (req.method === "POST" && req.path === "/sign-out") {
+      console.log(
+        "[AUTH HANDLER] Manual Cleanup: Clearing sparky_active_user_id on logout",
+      );
+      res.clearCookie("sparky_active_user_id", { path: "/" });
+    }
+
+    console.log(
+      `[AUTH HANDLER] Intercepted request: ${req.method} ${req.originalUrl}`,
+    );
+
+    return betterAuthHandlerInstance(req, res);
+  }
+  next();
+});
 
 // Log all incoming requests - AFTER auth to see what falls through
 app.use((req, res, next) => {
@@ -285,7 +286,8 @@ app.get(
 // Apply authentication middleware to all protected routes
 app.use((req, res, next) => {
   const publicRoutes = [
-    "/api/auth",
+    "/api/auth/settings",
+    "/api/auth/mfa-factors",
     "/api/health",
     "/api/version",
     "/api/uploads",
