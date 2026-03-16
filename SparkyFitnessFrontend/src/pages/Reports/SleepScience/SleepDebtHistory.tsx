@@ -117,17 +117,19 @@ const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
                 fontSize: '12px',
               }}
               formatter={(
-                value: number | undefined,
-                name: string | undefined
+                value:
+                  | string
+                  | number
+                  | ReadonlyArray<string | number>
+                  | undefined,
+                name: string | number | undefined
               ) => {
                 const label =
-                  name === 'deviation'
+                  String(name) === 'deviation'
                     ? t('sleepScience.debt', 'Debt')
                     : t('sleepScience.surplus', 'Surplus');
-                return [
-                  formatSecondsToHHMM(Math.abs(value || 0) * 3600),
-                  label,
-                ];
+                const val = Number(Array.isArray(value) ? value[0] : value);
+                return [formatSecondsToHHMM(Math.abs(val || 0) * 3600), label];
               }}
             />
             <ReferenceLine y={0} stroke={isDark ? '#555' : '#ccc'} />

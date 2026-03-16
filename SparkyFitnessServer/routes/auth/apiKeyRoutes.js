@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../../middleware/authMiddleware');
-const { auth } = require('../../auth');
+
+// auth is required lazily within handlers to avoid early initialization issues during migrations
+// const { auth } = require('../../auth');
 
 /**
  * @swagger
@@ -38,6 +40,7 @@ router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
   }
 
   try {
+    const { auth } = require('../../auth');
     const result = await auth.api.createApiKey({
       userId: req.userId,
       name,
@@ -81,6 +84,7 @@ router.delete('/user/api-key/:apiKeyId', authenticate, async (req, res, next) =>
   const { apiKeyId } = req.params;
 
   try {
+    const { auth } = require('../../auth');
     await auth.api.deleteApiKey({
       apiKeyId,
       userId: req.userId,
@@ -108,6 +112,7 @@ router.delete('/user/api-key/:apiKeyId', authenticate, async (req, res, next) =>
  */
 router.get('/user-api-keys', authenticate, async (req, res, next) => {
   try {
+    const { auth } = require('../../auth');
     const apiKeys = await auth.api.listApiKeys({
       userId: req.userId,
     });

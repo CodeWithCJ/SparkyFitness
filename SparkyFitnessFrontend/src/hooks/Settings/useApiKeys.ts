@@ -20,7 +20,7 @@ export const useApiKeysQuery = (userId?: string) => {
     queryFn: async (): Promise<ApiKeyRecord[]> => {
       const { data, error } = await authClient.apiKey.list();
       if (error) throw error;
-      return (data || []) as ApiKeyRecord[];
+      return (data?.apiKeys || []) as ApiKeyRecord[];
     },
     enabled: !!userId,
     meta: {

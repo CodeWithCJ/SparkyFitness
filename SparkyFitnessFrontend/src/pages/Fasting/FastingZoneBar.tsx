@@ -66,11 +66,10 @@ const FastingZoneBar: React.FC<FastingZoneBarProps> = ({ hoursFasted }) => {
           const isPassed = index < activeIndex;
           const isActive = index === activeIndex;
 
-          let width = '0%';
           // Simplified visual width distribution for demo
           // In reality, 0-4 is small compared to 24-72, but we want equal visual steps or proportional?
           // Let's use equal width for readability of stages.
-          width = `${100 / ZONES.length}%`;
+          const width = `${100 / ZONES.length}%`;
 
           // Calculate opacity: Passed = 100%, Active = Pulse?, Future = 30%
           let opacity = isPassed

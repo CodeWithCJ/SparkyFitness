@@ -192,17 +192,20 @@ const NutritionChartsGrid = ({
                           labelFormatter={(value) =>
                             formatDateForChart(value as string)
                           } // Apply formatter
-                          formatter={(value: number | string | undefined) => {
+                          formatter={(
+                            value:
+                              | string
+                              | number
+                              | ReadonlyArray<string | number>
+                              | undefined
+                          ) => {
                             if (value === null || value === undefined) {
                               return 'N/A';
                             }
 
-                            let numValue: number;
-                            if (typeof value === 'string') {
-                              numValue = parseFloat(value);
-                            } else {
-                              numValue = value;
-                            }
+                            const numValue = Number(
+                              Array.isArray(value) ? value[0] : value
+                            );
 
                             if (chart.key === 'calories') {
                               return `${Math.round(convertEnergy(numValue, 'kcal', energyUnit))} ${chart.unit}`;

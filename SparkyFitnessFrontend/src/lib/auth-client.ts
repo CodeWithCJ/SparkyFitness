@@ -2,9 +2,9 @@ import { createAuthClient } from 'better-auth/react';
 import {
   magicLinkClient,
   twoFactorClient,
-  apiKeyClient,
   adminClient,
 } from 'better-auth/client/plugins';
+import { apiKeyClient } from '@better-auth/api-key/client';
 import { ssoClient } from '@better-auth/sso/client';
 import { passkeyClient } from '@better-auth/passkey/client';
 import { BetterAuthClientPlugin } from 'better-auth';

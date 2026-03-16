@@ -1,11 +1,11 @@
 {
-  "packageManager": "pnpm@10.30.3",
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "prepare": "husky"
   },
   "devDependencies": {
     "husky": "^9.0.0",
-    "lint-staged": "^15.0.0",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.8.1"
   },
   "lint-staged": {
@@ -24,7 +24,10 @@
       "sharp",
       "esbuild",
       "unrs-resolver"
-    ]
+    ],
+    "patchedDependencies": {
+      "samlify": "patches/samlify.patch"
+    }
   },
   "dependencies": {
     "js-yaml": "^4.1.0"

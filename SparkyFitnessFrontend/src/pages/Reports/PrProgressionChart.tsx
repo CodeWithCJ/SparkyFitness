@@ -65,10 +65,20 @@ export const PrProgressionChart = ({
               />
               <Tooltip
                 labelFormatter={(label) => formatDate(label)}
-                formatter={(value: number | undefined, name?: string) => {
+                formatter={(
+                  value:
+                    | string
+                    | number
+                    | ReadonlyArray<string | number>
+                    | undefined,
+                  name: string | number | undefined
+                ) => {
+                  const numValue = Number(
+                    Array.isArray(value) ? value[0] : value
+                  );
                   return [
-                    formatWeight(value ?? 0, weightUnit),
-                    name === 'oneRM' ? 'Est. 1RM' : 'Max Weight',
+                    formatWeight(numValue, weightUnit),
+                    String(name) === 'oneRM' ? 'Est. 1RM' : 'Max Weight',
                   ];
                 }}
               />

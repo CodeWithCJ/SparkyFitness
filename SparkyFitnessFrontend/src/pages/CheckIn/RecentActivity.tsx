@@ -68,7 +68,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
               </div>
             ) : (
               recentMeasurements.map((measurement) => {
-                let displayString = '';
+                let displayString: string;
                 let measurementName = measurement.display_name;
 
                 if (

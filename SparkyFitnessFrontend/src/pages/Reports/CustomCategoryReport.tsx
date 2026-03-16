@@ -126,7 +126,7 @@ export const CustomCategoryReport = ({
                           <Tooltip
                             content={({ active, payload, label }) => {
                               if (active && payload && payload.length) {
-                                const data = payload[0].payload;
+                                const data = payload[0]?.payload;
                                 const unit =
                                   category.measurement_type.toLowerCase() ===
                                     'length' ||

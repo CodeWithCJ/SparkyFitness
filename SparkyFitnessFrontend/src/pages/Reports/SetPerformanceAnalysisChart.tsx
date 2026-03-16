@@ -136,19 +136,24 @@ const SetPerformanceAnalysisChart = ({
                   <Tooltip
                     contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
                     formatter={(
-                      value: number | string | undefined,
-                      name: string | undefined
+                      value:
+                        | string
+                        | number
+                        | ReadonlyArray<string | number>
+                        | undefined,
+                      name: string | number | undefined
                     ) => {
-                      if (name === 'avgWeight') {
+                      const val = Array.isArray(value) ? value[0] : value;
+                      if (String(name) === 'avgWeight') {
                         return [
-                          formatWeight(Number(value ?? 0), weightUnit),
+                          formatWeight(Number(val ?? 0), weightUnit),
                           t(
                             'reports.setPerformanceAnalysis.avgWeight',
                             'Avg. Weight'
                           ),
                         ];
                       }
-                      return [value ?? '', name ?? ''];
+                      return [String(val ?? ''), String(name ?? '')];
                     }}
                   />
                   <Legend />

@@ -185,7 +185,7 @@ export async function apiCall(
       description: errorMessage || 'Could not connect to the server.',
       variant: 'destructive',
     });
-    throw new Error(errorMessage);
+    throw new Error(errorMessage, { cause: err });
   }
 }
 

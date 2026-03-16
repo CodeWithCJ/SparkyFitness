@@ -328,17 +328,24 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
                       color: 'hsl(var(--foreground))',
                     }}
                     formatter={(
-                      value: number | undefined,
-                      name: string | undefined
+                      value:
+                        | string
+                        | number
+                        | ReadonlyArray<string | number>
+                        | undefined,
+                      name: string | number | undefined
                     ) => {
                       const labels: Record<string, string> = {
                         sleepAvg: t('reports.sleepAvg', 'Sleep Avg'),
                         awakeAvg: t('reports.awakeAvg', 'Awake Avg'),
                         average: t('reports.average', 'Average'),
                       };
+                      const numValue = Number(
+                        (Array.isArray(value) ? value[0] : value) ?? 0
+                      );
                       return [
-                        `${value?.toFixed(1)} brpm`,
-                        labels[name ?? ''] || name,
+                        `${numValue.toFixed(1)} brpm`,
+                        labels[String(name ?? '')] || String(name ?? ''),
                       ];
                     }}
                     labelFormatter={(label) => label}
