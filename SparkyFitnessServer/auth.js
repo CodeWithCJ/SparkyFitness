@@ -1,4 +1,5 @@
 const { betterAuth } = require("better-auth");
+
 const { APIError } = require("better-auth/api");
 const { Pool } = require("pg");
 const { log } = require("./config/logging");
@@ -58,7 +59,7 @@ async function syncTrustedProviders() {
 // Initial sync on startup - deferred to SparkyFitnessServer.js after migrations
 // syncTrustedProviders().catch(err => console.error('[AUTH] Startup sync failed:', err));
 
-const apiKeyPlugin = require("better-auth/plugins").apiKey({
+const apiKeyPlugin = require("@better-auth/api-key").apiKey({
   enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
   rateLimit: {
     enabled: true,
@@ -72,7 +73,8 @@ const apiKeyPlugin = require("better-auth/plugins").apiKey({
         id: "id",
         name: "name",
         key: "key",
-        userId: "user_id",
+        referenceId: "reference_id",
+        configId: "config_id",
         token: "key", // Better Auth sometimes looks for 'token'
         metadata: "metadata",
         createdAt: "created_at",
@@ -96,19 +98,6 @@ const apiKeyPlugin = require("better-auth/plugins").apiKey({
   },
 });
 
-// FIX: Better Auth v1.4.17 is missing paths for these endpoints in the library definition.
-// We patch the plugin instance BEFORE passing it to betterAuth so the internal router picks it up.
-if (apiKeyPlugin.endpoints) {
-  if (apiKeyPlugin.endpoints.deleteAllExpiredApiKeys) {
-    apiKeyPlugin.endpoints.deleteAllExpiredApiKeys.path =
-      "/api-key/delete-all-expired-api-keys";
-    apiKeyPlugin.endpoints.deleteAllExpiredApiKeys.method = "POST";
-  }
-  if (apiKeyPlugin.endpoints.verifyApiKey) {
-    apiKeyPlugin.endpoints.verifyApiKey.path = "/api-key/verify";
-    apiKeyPlugin.endpoints.verifyApiKey.method = "POST";
-  }
-}
 
 const auth = betterAuth({
   database: authPool,

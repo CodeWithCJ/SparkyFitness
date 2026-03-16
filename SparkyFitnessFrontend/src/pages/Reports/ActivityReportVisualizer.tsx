@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  type TooltipValueType,
 } from 'recharts';
 import ZoomableChart from '@/components/ZoomableChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1042,9 +1043,9 @@ const ActivityReportVisualizer = ({
                                   }
                                   return String(value);
                                 }}
-                                formatter={(value: number | undefined) =>
-                                  Number(value).toFixed(2)
-                                }
+                                formatter={(
+                                  value: TooltipValueType | undefined
+                                ) => Number(value).toFixed(2)}
                               />
                               <Legend />
                               <Line
@@ -1108,9 +1109,11 @@ const ActivityReportVisualizer = ({
                                   backgroundColor: 'hsl(var(--background))',
                                   borderColor: 'hsl(var(--border))',
                                 }}
-                                formatter={(value: number | undefined) =>
-                                  value &&
-                                  `${value.toFixed(2)} ${t('reports.activityReport.timeInZoneS')}`
+                                formatter={(
+                                  value: TooltipValueType | undefined
+                                ) =>
+                                  value != null &&
+                                  `${Number(value).toFixed(2)} ${t('reports.activityReport.timeInZoneS')}`
                                 }
                               />
                               <Legend />

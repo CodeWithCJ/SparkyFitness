@@ -459,10 +459,19 @@ const SleepAnalyticsCharts = ({
                             formatDateInUserTimezone(label, dateFormat)
                           }
                           formatter={(
-                            value: number | undefined,
-                            name: string | undefined
+                            value:
+                              | string
+                              | number
+                              | ReadonlyArray<string | number>
+                              | undefined,
+                            name: string | number | undefined
                           ) =>
-                            value ? [`${formatBedWakeTime(value)}`, name] : ''
+                            value
+                              ? [
+                                  `${formatBedWakeTime(Number(Array.isArray(value) ? value[0] : value))}`,
+                                  String(name ?? ''),
+                                ]
+                              : ''
                           }
                           contentStyle={{
                             backgroundColor: tooltipBackgroundColor,
@@ -563,9 +572,20 @@ const SleepAnalyticsCharts = ({
                             formatDateInUserTimezone(label, dateFormat)
                           }
                           formatter={(
-                            value: number | undefined,
-                            name: string | undefined
-                          ) => [formatSecondsToHHMM((value || 0) * 3600), name]}
+                            value:
+                              | string
+                              | number
+                              | ReadonlyArray<string | number>
+                              | undefined,
+                            name: string | number | undefined
+                          ) => [
+                            formatSecondsToHHMM(
+                              (Number(
+                                Array.isArray(value) ? value[0] : value
+                              ) || 0) * 3600
+                            ),
+                            String(name ?? ''),
+                          ]}
                           contentStyle={{
                             backgroundColor: tooltipBackgroundColor,
                             borderColor: tooltipBorderColor,
@@ -651,8 +671,14 @@ const SleepAnalyticsCharts = ({
                           labelFormatter={(label) =>
                             formatDateInUserTimezone(label, dateFormat)
                           }
-                          formatter={(value: number | undefined) => [
-                            `${(value || 0).toFixed(1)}%`,
+                          formatter={(
+                            value:
+                              | string
+                              | number
+                              | ReadonlyArray<string | number>
+                              | undefined
+                          ) => [
+                            `${(Number(Array.isArray(value) ? value[0] : value) || 0).toFixed(1)}%`,
                             t(
                               'sleepAnalyticsCharts.sleepEfficiency',
                               'Sleep Efficiency'

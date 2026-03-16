@@ -1,0 +1,12 @@
+diff --git a/build/index.js b/build/index.js
+index 44a55b98d1a969bafb67d01d2f3901d7f02bea4d..1ce9eaeb9c10cf29c1f944602ebb486a0b62d251 100644
+--- a/build/index.js
++++ b/build/index.js
+@@ -26,6 +26,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
+     return (mod && mod.__esModule) ? mod : { "default": mod };
+ };
+ Object.defineProperty(exports, "__esModule", { value: true });
++exports.default = exports;
+ exports.setDOMParserOptions = exports.setSchemaValidator = exports.ServiceProviderInstance = exports.ServiceProvider = exports.IdentityProviderInstance = exports.IdentityProvider = exports.Extractor = exports.Constants = exports.SamlLib = exports.Utility = exports.SPMetadata = exports.IdPMetadata = void 0;
+ // version <= 1.25
+ var entity_idp_1 = __importStar(require("./src/entity-idp"));

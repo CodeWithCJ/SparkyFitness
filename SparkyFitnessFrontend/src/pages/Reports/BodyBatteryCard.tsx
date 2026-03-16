@@ -201,8 +201,12 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
                       borderRadius: '6px',
                     }}
                     formatter={(
-                      value: number | undefined,
-                      name: string | undefined
+                      value:
+                        | string
+                        | number
+                        | ReadonlyArray<string | number>
+                        | undefined,
+                      name: string | number | undefined
                     ) => {
                       const labels: Record<string, string> = {
                         highest: t('reports.highest', 'Highest'),
@@ -210,8 +214,8 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
                         lowest: t('reports.lowest', 'Lowest'),
                       };
                       return [
-                        Math.round(value ?? 0),
-                        labels[name ?? ''] || name,
+                        Math.round(Number(value ?? 0)),
+                        labels[String(name ?? '')] || String(name),
                       ];
                     }}
                   />

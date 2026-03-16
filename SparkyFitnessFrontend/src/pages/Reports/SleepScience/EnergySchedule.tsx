@@ -145,16 +145,21 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
                 fontSize: '12px',
               }}
               formatter={(
-                value: number | undefined,
-                _name: string | undefined,
+                value:
+                  | string
+                  | number
+                  | ReadonlyArray<string | number>
+                  | undefined,
+                _name: string | number | undefined,
                 props: { payload?: { zone?: string } }
               ) => {
                 const pt = props?.payload;
                 const zoneName = pt?.zone
                   ? t(`sleepScience.zone_${pt.zone}`, pt.zone)
                   : '';
+                const val = Array.isArray(value) ? value[0] : value;
                 return [
-                  `${value}%`,
+                  `${val}%`,
                   `${t('sleepScience.energy', 'Energy')}${zoneName ? ` (${zoneName})` : ''}`,
                 ];
               }}

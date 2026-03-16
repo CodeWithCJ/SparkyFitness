@@ -1,5 +1,5 @@
 {
-  "packageManager": "pnpm@10.30.3",
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "prepare": "husky"
   },
@@ -24,7 +24,10 @@
       "sharp",
       "esbuild",
       "unrs-resolver"
-    ]
+    ],
+    "patchedDependencies": {
+      "samlify": "patches/samlify.patch"
+    }
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
