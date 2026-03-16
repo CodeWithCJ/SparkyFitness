@@ -130,7 +130,7 @@ app.use(cookieParser());
 // --- Better Auth Mounting Logic (Moved to after migrations) ---
 let syncTrustedProviders;
 let betterAuthHandlerInstance = null;
-const mountBetterAuth = (app) => {
+const mountBetterAuth = () => {
   try {
     console.log("[AUTH] Starting Better Auth mounting phase...");
     const authModule = require("./auth");
@@ -538,7 +538,7 @@ applyMigrations()
     } catch (err) {
       log("error", "OIDC env provider upsert failed:", err);
     }
-    await mountBetterAuth(app);
+    mountBetterAuth();
 
     // Sync trusted SSO providers after database is ready (so Better Auth sees env-upserted and DB providers)
     if (syncTrustedProviders) {
