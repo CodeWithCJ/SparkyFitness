@@ -47,8 +47,8 @@ export interface ExternalDataProvider {
   sync_frequency?: 'hourly' | 'daily' | 'manual';
   has_token?: boolean;
   garmin_connect_status?: 'linked' | 'connected' | 'disconnected';
-  garmin_last_status_check?: string;
-  garmin_token_expires?: string;
+  garmin_last_status_check?: string | null;
+  garmin_token_expires?: string | null;
   withings_last_sync_at?: string | null;
   withings_token_expires?: string | null;
   fitbit_last_sync_at?: string | null;
