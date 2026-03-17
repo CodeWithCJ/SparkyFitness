@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  TooltipValueType,
 } from 'recharts';
 import ZoomableChart from '@/components/ZoomableChart';
 import { formatWeight } from '@/utils/numberFormatting';
@@ -73,8 +74,8 @@ export const VolumeTrendChart = ({
                 }}
               />
               <Tooltip
-                formatter={(value: number | undefined) =>
-                  value ? formatWeight(value, weightUnit) : 0
+                formatter={(value: TooltipValueType | undefined) =>
+                  value ? formatWeight(Number(value), weightUnit) : 0
                 }
                 contentStyle={{ backgroundColor: 'hsl(var(--background))' }}
               />

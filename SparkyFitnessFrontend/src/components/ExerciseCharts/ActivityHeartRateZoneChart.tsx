@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  TooltipValueType,
 } from 'recharts';
 import ZoomableChart from '@/components/ZoomableChart';
 
@@ -54,9 +55,9 @@ export const ActivityHeartRateZonesChart = ({
                     backgroundColor: 'hsl(var(--background))',
                     borderColor: 'hsl(var(--border))',
                   }}
-                  formatter={(value: number | undefined) =>
-                    value &&
-                    `${value.toFixed(2)} ${t('reports.activityReport.timeInZoneS')}`
+                  formatter={(value: TooltipValueType | undefined) =>
+                    value != null &&
+                    `${Number(value).toFixed(2)} ${t('reports.activityReport.timeInZoneS')}`
                   }
                 />
                 <Legend />

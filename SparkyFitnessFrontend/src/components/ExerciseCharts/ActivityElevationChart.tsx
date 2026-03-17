@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  TooltipValueType,
 } from 'recharts';
 import ZoomableChart from '@/components/ZoomableChart';
 import { ChartDataPoint } from '@/types/reports';
@@ -84,7 +85,7 @@ export const ActivityElevationChart = ({
                       return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
                     return String(value);
                   }}
-                  formatter={(value: number | undefined) =>
+                  formatter={(value: TooltipValueType | undefined) =>
                     Number(value).toFixed(2)
                   }
                 />
