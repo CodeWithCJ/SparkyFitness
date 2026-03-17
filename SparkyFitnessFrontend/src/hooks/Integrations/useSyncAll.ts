@@ -26,7 +26,9 @@ export const useSyncAllMutation = () => {
           (MANUAL_SYNC_PROVIDERS as readonly string[]).includes(
             p.provider_type
           ) &&
-          (p.provider_type === 'hevy' || p.has_token)
+          (p.provider_type === 'hevy' ||
+            p.provider_type === 'garmin' ||
+            p.has_token)
       );
 
       if (activeSyncProviders.length === 0) {
