@@ -15,7 +15,8 @@
   },
   "pnpm": {
     "overrides": {
-      "side-channel": "1.0.6"
+      "side-channel": "1.0.6",
+      "tailwindcss": "4.2.1"
     },
     "onlyBuiltDependencies": [
       "@scarf/scarf",
