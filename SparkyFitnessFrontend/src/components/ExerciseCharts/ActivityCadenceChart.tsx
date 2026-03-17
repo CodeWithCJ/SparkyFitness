@@ -40,7 +40,7 @@ export const ActivityCadenceChart = ({
             </CardTitle>
           </CardHeader>
           <CardContent
-            className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+            className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
           >
             <ResponsiveContainer
               width={`${100 * zoomLevel}%`}
@@ -97,12 +97,7 @@ export const ActivityCadenceChart = ({
                 />
               </LineChart>
             </ResponsiveContainer>
-            ) : (
-            <div className="h-[300px] w-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
-              <span className="text-xs text-muted-foreground">
-                {t('common.loading', 'Loading chart...')}
-              </span>
-            </div>
+            )
           </CardContent>
         </Card>
       )}

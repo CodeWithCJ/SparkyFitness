@@ -120,6 +120,7 @@ const Reports = () => {
 
   const handleDrilldown = (date: string) => {
     setDrilldownDate(date);
+    console.log('TESAT');
     // You might want to switch to the table tab here
   };
 

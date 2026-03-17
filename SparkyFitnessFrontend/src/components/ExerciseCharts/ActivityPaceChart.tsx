@@ -40,7 +40,7 @@ export const ActivityPaceChart = ({
             </CardTitle>
           </CardHeader>
           <CardContent
-            className={`flex-grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
+            className={`grow ${isMaximized ? 'min-h-0 h-full' : ''}`}
           >
             <ResponsiveContainer
               width={`${100 * zoomLevel}%`}
