@@ -15,9 +15,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install Dependencies
+        working-directory: ./SparkyFitnessFrontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Frontend
+        working-directory: ./SparkyFitnessFrontend
+        run: pnpm run build
+
+      - name: Compress Frontend Dist
+        working-directory: ./SparkyFitnessFrontend
+        run: tar -czvf sparkyfitness-frontend-dist.tar.gz dist/
+
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
           files: |
             docker/docker-compose.prod.yml
             docker/.env.example
+            SparkyFitnessFrontend/sparkyfitness-frontend-dist.tar.gz

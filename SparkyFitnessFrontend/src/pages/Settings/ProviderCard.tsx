@@ -423,10 +423,20 @@ export const ProviderCard = ({
                   SPARKY_FITNESS_SAVE_MOCK_DATA=true
                 </p>
                 <p className="mt-2 text-xs">
-                  Add this variable to the <strong>SparkyFitnessServer</strong>{' '}
+                  Add this variable to the{' '}
+                  <strong>
+                    {provider.provider_type === 'garmin'
+                      ? 'SparkyFitnessGarmin'
+                      : 'SparkyFitnessServer'}
+                  </strong>{' '}
                   container & restart the container. Syncing after setup will
                   generate JSON files in{' '}
-                  <code>/app/SparkyFitnessServer/mock_data</code>.
+                  <code>
+                    {provider.provider_type === 'garmin'
+                      ? '/app/mock_data'
+                      : '/app/SparkyFitnessServer/mock_data'}
+                  </code>
+                  .
                 </p>
                 <p className="mt-2 text-xs">
                   Share files with <strong>CodewithCJ</strong> on Discord.
