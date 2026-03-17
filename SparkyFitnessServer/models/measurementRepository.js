@@ -52,7 +52,7 @@ async function upsertWaterData(userId, actingUserId, waterMl, date, source = 'ma
         const matchingManualRecord = await client.query(
           `SELECT id, water_ml FROM water_intake 
            WHERE user_id = $1 AND entry_date = $2 AND source = 'manual' 
-           AND water_ml BETWEEN $3 - $4 AND $3 + $4
+           AND water_ml BETWEEN $3::numeric - $4::numeric AND $3::numeric + $4::numeric
            LIMIT 1`,
           [userId, date, waterMl, WATER_ADOPTION_TOLERANCE_ML]
         );
