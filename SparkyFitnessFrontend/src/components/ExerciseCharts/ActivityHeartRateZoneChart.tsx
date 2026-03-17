@@ -68,7 +68,6 @@ export const ActivityHeartRateZonesChart = ({
                 />
               </BarChart>
             </ResponsiveContainer>
-            )
           </CardContent>
         </Card>
       )}

@@ -101,7 +101,6 @@ export const ActivityElevationChart = ({
                 />
               </LineChart>
             </ResponsiveContainer>
-            )
           </CardContent>
         </Card>
       )}

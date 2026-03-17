@@ -97,7 +97,6 @@ export const ActivityHeartRateChart = ({
                 />
               </LineChart>
             </ResponsiveContainer>
-            )
           </CardContent>
         </Card>
       )}

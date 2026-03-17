@@ -17,14 +17,12 @@ import { formatWeight } from '@/utils/numberFormatting';
 interface VolumeTrendChartProps {
   data: { date: string; volume: number; comparisonVolume: number }[];
   weightUnit: string;
-  onDrilldown: (date: string) => void;
   comparisonPeriod: string | null;
 }
 
 export const VolumeTrendChart = ({
   data,
   weightUnit,
-  onDrilldown,
   comparisonPeriod,
 }: VolumeTrendChartProps) => {
   const { t } = useTranslation();
@@ -47,17 +45,7 @@ export const VolumeTrendChart = ({
             minHeight={0}
             debounce={100}
           >
-            <BarChart
-              onClick={(e) => {
-                const event = e as unknown as {
-                  activePayload?: { payload: { entry_date: string } }[];
-                };
-                if (event?.activePayload && event.activePayload.length > 0) {
-                  onDrilldown(event.activePayload[0]?.payload.entry_date ?? '');
-                }
-              }}
-              data={data}
-            >
+            <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis

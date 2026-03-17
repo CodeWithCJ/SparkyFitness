@@ -40,7 +40,6 @@ interface ExerciseReportsDashboardProps {
   exerciseDashboardData: ExerciseDashboardData | undefined;
   startDate: string | null;
   endDate: string | null;
-  onDrilldown: (date: string) => void;
 }
 
 // Default layout for widgets
@@ -65,7 +64,6 @@ const ExerciseReportsDashboard = ({
   exerciseDashboardData,
   startDate,
   endDate,
-  onDrilldown,
 }: ExerciseReportsDashboardProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, weightUnit, convertWeight } =
@@ -289,7 +287,6 @@ const ExerciseReportsDashboard = ({
             key="volumeTrend"
             data={volumeTrendData}
             weightUnit={weightUnit}
-            onDrilldown={onDrilldown}
             comparisonPeriod={comparisonPeriod}
           />
         ) : null;
@@ -310,7 +307,6 @@ const ExerciseReportsDashboard = ({
             key="maxWeightTrend"
             data={maxWeightTrendData}
             weightUnit={weightUnit}
-            onDrilldown={onDrilldown}
             comparisonPeriod={comparisonPeriod}
           />
         ) : null;
@@ -331,7 +327,6 @@ const ExerciseReportsDashboard = ({
             key="estimated1RMTrend"
             data={estimated1RMTrendData}
             weightUnit={weightUnit}
-            onDrilldown={onDrilldown}
             comparisonPeriod={comparisonPeriod}
           />
         ) : null;

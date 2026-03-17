@@ -17,14 +17,12 @@ import { formatWeight } from '@/utils/numberFormatting';
 interface MaxWeightTrendChartProps {
   data: { date: string; maxWeight: number; comparisonMaxWeight: number }[];
   weightUnit: string;
-  onDrilldown: (date: string) => void;
   comparisonPeriod: string | null;
 }
 
 export const MaxWeightTrendChart = ({
   data,
   weightUnit,
-  onDrilldown,
   comparisonPeriod,
 }: MaxWeightTrendChartProps) => {
   const { t } = useTranslation();
@@ -50,17 +48,7 @@ export const MaxWeightTrendChart = ({
             minHeight={0}
             debounce={100}
           >
-            <BarChart
-              onClick={(e) => {
-                const event = e as unknown as {
-                  activePayload?: { payload: { entry_date: string } }[];
-                };
-                if (event?.activePayload && event.activePayload.length > 0) {
-                  onDrilldown(event.activePayload[0]?.payload.entry_date ?? '');
-                }
-              }}
-              data={data}
-            >
+            <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis

@@ -97,7 +97,6 @@ export const ActivityCadenceChart = ({
                 />
               </LineChart>
             </ResponsiveContainer>
-            )
           </CardContent>
         </Card>
       )}
