@@ -1,4 +1,4 @@
-name: Attach Docker Assets to Release
+name: Attach Assets to Release
 
 on:
   release:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   attach_assets:
-    name: Attach Docker Compose and Env
+    name: Attach Docker Compose, Env and Tarball
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required to upload release assets
@@ -18,24 +18,37 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.32.1
 
-      - name: Install Dependencies
-        working-directory: ./SparkyFitnessFrontend
+      
+      - name: Install workspace deps
         run: pnpm install --frozen-lockfile
 
-      - name: Build Frontend
-        working-directory: ./SparkyFitnessFrontend
-        run: pnpm run build
+      # ---------- FRONTEND ----------
+      - name: Build frontend
+        run: pnpm --filter sparkyfitnessfrontend run build
 
-      - name: Compress Frontend Dist
-        working-directory: ./SparkyFitnessFrontend
-        run: tar -czvf sparkyfitness-frontend-dist.tar.gz dist/
+      # ---------- BACKEND ----------
+      - name: Build backend
+        run: pnpm --filter sparkyfitnessserver deploy --prod --legacy ./deploy
+
+      # ---------- PACKAGE ----------
+      - name: Prepare release folder
+        run: |
+          mkdir -p release/frontend
+          mkdir -p release/backend
+          
+          cp -r SparkyFitnessFrontend/dist/* release/frontend/
+          cp -r deploy/* release/backend/
+
+      # ---------- COMPRESS ----------
+      - name: Compress release
+        run: tar -czvf SparkyFitness.tar.gz release/
 
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
@@ -43,4 +56,6 @@ jobs:
           files: |
             docker/docker-compose.prod.yml
             docker/.env.example
-            SparkyFitnessFrontend/sparkyfitness-frontend-dist.tar.gz
+            SparkyFitness.tar.gz
+
+        
