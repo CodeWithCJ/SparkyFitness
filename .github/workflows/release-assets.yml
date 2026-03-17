@@ -3,6 +3,7 @@ name: Attach Assets to Release
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   attach_assets:
