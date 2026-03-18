@@ -80,11 +80,11 @@ export function getConversionFactor(
 
   if (fromCategory === 'weight') {
     // 1 targetUnit = (WEIGHT_TO_GRAMS[to] / WEIGHT_TO_GRAMS[from]) fromUnits
-    return WEIGHT_TO_GRAMS[to] / WEIGHT_TO_GRAMS[from];
+    return WEIGHT_TO_GRAMS[to]! / WEIGHT_TO_GRAMS[from]!;
   }
 
   // volume
-  return VOLUME_TO_ML[to] / VOLUME_TO_ML[from];
+  return VOLUME_TO_ML[to]! / VOLUME_TO_ML[from]!;
 }
 
 /** Returns true if two units can be automatically converted */
