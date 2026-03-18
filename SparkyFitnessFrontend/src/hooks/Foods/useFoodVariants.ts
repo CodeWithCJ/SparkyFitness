@@ -1,5 +1,6 @@
 import { foodKeys, foodVariantKeys } from '@/api/keys/meals';
 import {
+  createFoodVariant,
   loadFoodVariants,
   saveFood,
 } from '@/api/Foods/enhancedCustomFoodFormService';
@@ -19,6 +20,29 @@ export const useFoodVariants = (foodId: string, isEnabled: boolean = true) => {
   return useQuery({
     ...foodVariantsOptions(foodId),
     enabled: !!foodId && isEnabled,
+  });
+};
+
+export const useCreateFoodVariantMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      foodId,
+      variant,
+    }: {
+      foodId: string;
+      variant: Omit<import('@/types/food').FoodVariant, 'id'>;
+    }) => createFoodVariant(foodId, variant),
+
+    onSuccess: (_data, { foodId }) => {
+      queryClient.invalidateQueries({
+        queryKey: foodVariantKeys.byFood(foodId),
+      });
+    },
+    meta: {
+      errorMessage: 'Failed to create food variant.',
+    },
   });
 };
 
