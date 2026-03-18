@@ -11,6 +11,39 @@ export const loadFoodVariants = async (
   });
 };
 
+export const createFoodVariant = async (
+  foodId: string,
+  variant: Omit<FoodVariant, 'id'>
+): Promise<FoodVariant> => {
+  return apiCall('/foods/food-variants', {
+    method: 'POST',
+    body: {
+      food_id: foodId,
+      serving_size: variant.serving_size,
+      serving_unit: variant.serving_unit,
+      calories: variant.calories,
+      protein: variant.protein,
+      carbs: variant.carbs,
+      fat: variant.fat,
+      saturated_fat: variant.saturated_fat,
+      polyunsaturated_fat: variant.polyunsaturated_fat,
+      monounsaturated_fat: variant.monounsaturated_fat,
+      trans_fat: variant.trans_fat,
+      cholesterol: variant.cholesterol,
+      sodium: variant.sodium,
+      potassium: variant.potassium,
+      dietary_fiber: variant.dietary_fiber,
+      sugars: variant.sugars,
+      vitamin_a: variant.vitamin_a,
+      vitamin_c: variant.vitamin_c,
+      calcium: variant.calcium,
+      iron: variant.iron,
+      is_default: false,
+      custom_nutrients: variant.custom_nutrients || {},
+    },
+  });
+};
+
 export const saveFood = async (
   foodData: Food,
   variants: FoodVariant[],
