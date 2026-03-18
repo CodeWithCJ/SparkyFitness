@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Platform } from 'react-native';
+import Button from '../components/ui/Button';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import DateNavigator from '../components/DateNavigator';
@@ -23,6 +25,7 @@ type DiaryScreenProps = CompositeScreenProps<
 >;
 
 const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(getTodayDate);
   const lastKnownToday = useRef(getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
@@ -63,6 +66,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
   const [refreshing, setRefreshing] = useState(false);
+  const topSafeAreaStyle = Platform.OS === 'ios' ? { paddingTop: insets.top } : undefined;
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
@@ -80,12 +84,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           <Text className="text-text-muted text-sm text-center mt-2">
             Configure your server connection in Settings to view your diary.
           </Text>
-          <TouchableOpacity
-            className="bg-accent-primary rounded-xl py-3 px-6 mt-6"
+          <Button
+            variant="primary"
+            className="px-6 mt-6"
             onPress={() => navigation.navigate('Settings')}
           >
-            <Text className="text-white font-semibold">Go to Settings</Text>
-          </TouchableOpacity>
+            Go to Settings
+          </Button>
         </View>
       );
     }
@@ -109,12 +114,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           <Text className="text-text-muted text-sm text-center mt-2">
             Please check your connection and try again.
           </Text>
-          <TouchableOpacity
-            className="bg-accent-primary rounded-xl py-3 px-6 mt-6"
+          <Button
+            variant="primary"
+            className="px-6 mt-6"
             onPress={() => refetch()}
           >
-            <Text className="text-white font-semibold">Retry</Text>
-          </TouchableOpacity>
+            Retry
+          </Button>
         </View>
       );
     }
@@ -127,6 +133,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="never"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
@@ -134,17 +141,18 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 ? (
           <>
             <EmptyDayIllustration />
-            <TouchableOpacity
-              className="bg-accent-primary rounded-xl py-3 px-6 mt-4 self-center"
+            <Button
+              variant="primary"
+              className="px-6 mt-4 self-center"
               onPress={() => navigation.navigate('FoodSearch', { date: selectedDate })}
             >
-              <Text className="text-white font-semibold">Add Food</Text>
-            </TouchableOpacity>
+              Add Food
+            </Button>
           </>
         ) : (
           <>
             <FoodSummary foodEntries={summary.foodEntries} onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })} onAdjustServing={(entry) => servingSheetRef.current?.present(entry)} />
-            <ExerciseSummary exerciseEntries={summary.exerciseEntries} />
+            <ExerciseSummary exerciseEntries={summary.exerciseEntries} onPressWorkout={(session) => navigation.navigate('WorkoutDetail', { session })} />
           </>
         )}
       </ScrollView>
@@ -153,7 +161,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   return (
     <GestureDetector gesture={swipeGesture}>
-      <View className="flex-1 bg-background">
+      <View className="flex-1 bg-background" style={topSafeAreaStyle}>
         {!isConnectionLoading && isConnected && (
           <DateNavigator
             title="Diary"
@@ -164,6 +172,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             onDatePress={openCalendar}
             hideChevrons
             showDateAlways
+            skipSafeAreaTop
           />
         )}
         {renderContent()}

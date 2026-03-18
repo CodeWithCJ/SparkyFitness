@@ -1,12 +1,13 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Pressable, ScrollView, TextInput } from 'react-native';
+import Button from '../components/ui/Button';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { formatDateLabel } from '../utils/dateUtils';
+import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { getMealTypeLabel } from '../constants/meals';
 import { useMealTypes } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
@@ -43,7 +44,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     adjustedValues: FoodFormData | null;
   }
 
-  const initialDate = entry.entry_date.split('T')[0];
+  const initialDate = normalizeDate(entry.entry_date);
   const [editState, setEditState] = useState<EditState>({
     isEditing: false,
     selectedDate: initialDate,
@@ -218,7 +219,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       setEntry(mergedEntry);
       setEditState({
         isEditing: false,
-        selectedDate: mergedEntry.entry_date.split('T')[0],
+        selectedDate: normalizeDate(mergedEntry.entry_date),
         selectedMealId: mergedEntry.meal_type_id,
         selectedVariantId: mergedEntry.variant_id,
         quantityText: String(mergedEntry.quantity),
@@ -330,31 +331,33 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         </TouchableOpacity>
         {canEdit && !isEditing && (
           <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={{ marginLeft: 'auto', zIndex: 10 }}>
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={() => updateEdit({ isEditing: true })}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              textClassName="font-medium"
             >
-              <Text className="text-accent-primary text-base font-medium">Edit</Text>
-            </TouchableOpacity>
+              Edit
+            </Button>
           </Animated.View>
         )}
         {isEditing && (
           <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={{ marginLeft: 'auto', zIndex: 10 }}>
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={handleSave}
               disabled={isUpdatePending || quantity <= 0}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={quantity <= 0 ? { opacity: 0.5 } : undefined}
             >
-              <Text className="text-accent-primary text-base font-semibold">Done</Text>
-            </TouchableOpacity>
+              Done
+            </Button>
           </Animated.View>
         )}
       </View>
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
         {/* Food name & brand */}
-        <Animated.View layout={LinearTransition.duration(300)} className="pb-4">
+        <Animated.View layout={LinearTransition.duration(300)}>
           <Text className="text-text-primary text-3xl font-bold">
             {(isEditing && adjustedValues?.name) || entry.food_name || 'Unknown food'}
           </Text>
@@ -485,7 +488,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           </Animated.View>
           {isEditing && (
             <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
-              <Text className="text-text-muted text-xs text-center mt-4">Tap to edit nutrition</Text>
+              <Text className="text-text-secondary text-xs text-center mt-4">Tap to edit nutrition</Text>
             </Animated.View>
           )}
         </Pressable>
@@ -526,7 +529,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
               </TouchableOpacity>
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {formatDateLabel(entry.entry_date.split('T')[0])}
+                {formatDateLabel(normalizeDate(entry.entry_date))}
               </Text>
             )}
           </View>
@@ -563,16 +566,15 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
 
         {/* Delete button */}
         <Animated.View layout={LinearTransition.duration(300)}>
-          <TouchableOpacity
+          <Button
+            variant="ghost"
             onPress={confirmAndDelete}
             disabled={isDeletePending}
-            className="items-center py-3 mt-2"
-            activeOpacity={0.6}
+            className="mt-2"
+            textClassName="text-bg-danger font-medium"
           >
-            <Text className="text-bg-danger text-base font-medium">
-              {isDeletePending ? 'Deleting...' : 'Delete Entry'}
-            </Text>
-          </TouchableOpacity>
+            {isDeletePending ? 'Deleting...' : 'Delete Entry'}
+          </Button>
         </Animated.View>
       </ScrollView>
 

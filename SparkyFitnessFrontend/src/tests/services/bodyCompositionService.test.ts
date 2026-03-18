@@ -3,12 +3,12 @@ import { calculateBodyFatNavy } from '@/services/bodyCompositionService';
 describe('calculateBodyFatNavy', () => {
   test('calculates body fat for male correctly', () => {
     const result = calculateBodyFatNavy('male', 180, 90, 40);
-    expect(result).toBe(18.46);
+    expect(result).toBe(18.5);
   });
 
   test('calculates body fat for female correctly', () => {
     const result = calculateBodyFatNavy('female', 170, 75, 35, 100);
-    expect(result).toBe(27.47);
+    expect(result).toBe(27.5);
   });
 
   test('returns 0 if log value is zero or negative for male', () => {

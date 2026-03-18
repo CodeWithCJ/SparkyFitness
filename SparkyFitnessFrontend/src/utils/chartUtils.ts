@@ -79,10 +79,10 @@ export function calculateSmartYAxisDomain(
  * @param currentDate Current date string (YYYY-MM-DD)
  * @returns Filtered data array excluding current day
  */
-export function excludeIncompleteDay(
-  data: ChartDataPoint[],
+export function excludeIncompleteDay<T extends ChartDataPoint>(
+  data: T[],
   currentDate: string
-): ChartDataPoint[] {
+): T[] {
   if (!data || data.length === 0) {
     return data;
   }

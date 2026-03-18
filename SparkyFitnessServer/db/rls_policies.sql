@@ -329,7 +329,7 @@ SELECT create_owner_policy('meal_plans');
 SELECT create_owner_policy('mood_entries');
 SELECT create_owner_policy('profiles', 'id');
 SELECT create_owner_policy('sparky_chat_history');
-SELECT create_owner_policy('api_key');
+SELECT create_owner_policy('api_key', 'reference_id');
 SELECT create_owner_policy('user_goals');
 SELECT create_owner_policy('user_nutrient_display_preferences');
 SELECT create_owner_policy('user_oidc_links');

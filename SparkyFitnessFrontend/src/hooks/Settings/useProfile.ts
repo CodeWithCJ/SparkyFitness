@@ -1,6 +1,5 @@
 import { userKeys } from '@/api/keys/admin';
 import {
-  fetchAvatarBlob,
   UpdateProfilePayload,
   updateProfileData,
   uploadAvatarImage,
@@ -9,14 +8,6 @@ import {
   toggleEmailMfa,
 } from '@/api/Settings/profileService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
-export const useAvatarQuery = (url?: string | null) => {
-  return useQuery({
-    queryKey: userKeys.avatar(url!),
-    queryFn: () => fetchAvatarBlob(url!),
-    enabled: !!url,
-  });
-};
 
 export const useProfileQuery = (userId?: string) => {
   return useQuery({

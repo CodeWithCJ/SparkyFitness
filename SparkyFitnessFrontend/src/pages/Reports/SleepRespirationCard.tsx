@@ -174,7 +174,15 @@ const SleepRespirationCard = ({ data }: SleepRespirationCardProps) => {
                   borderRadius: '6px',
                   color: 'hsl(var(--foreground))',
                 }}
-                formatter={(value: number | undefined) => [`${value} brpm`]}
+                formatter={(
+                  value:
+                    | string
+                    | number
+                    | ReadonlyArray<string | number>
+                    | undefined
+                ) => [
+                  `${Number((Array.isArray(value) ? value[0] : value) ?? 0)} brpm`,
+                ]}
               />
               {/* Normal range reference area */}
               <ReferenceArea

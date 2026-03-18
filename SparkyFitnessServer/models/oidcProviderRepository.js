@@ -157,7 +157,8 @@ async function createOidcProvider(providerData) {
             signing_algorithm: providerData.signing_algorithm || 'RS256',
             profile_signing_algorithm: providerData.profile_signing_algorithm || 'none',
             timeout: providerData.timeout || 30000,
-            is_env_configured: providerData.is_env_configured || false
+            is_env_configured: providerData.is_env_configured || false,
+            admin_group: providerData.admin_group || null
         });
 
         const providerId = providerData.provider_id || `oidc-${Date.now()}`;
@@ -181,6 +182,8 @@ async function createOidcProvider(providerData) {
             tokenEndpoint: endpoints.tokenEndpoint,
             authorizationEndpoint: endpoints.authorizationEndpoint,
             userInfoEndpoint: endpoints.userInfoEndpoint,
+            tokenEndpointAuthentication: providerData.token_endpoint_auth_method || 'client_secret_post',
+            overrideUserInfo: true
         };
 
         const result = await client.query(
@@ -262,6 +265,8 @@ async function updateOidcProvider(id, providerData) {
             tokenEndpoint: endpoints.tokenEndpoint,
             authorizationEndpoint: endpoints.authorizationEndpoint,
             userInfoEndpoint: endpoints.userInfoEndpoint,
+            tokenEndpointAuthentication: providerData.token_endpoint_auth_method || 'client_secret_post',
+            overrideUserInfo: true
         };
 
         const query = `

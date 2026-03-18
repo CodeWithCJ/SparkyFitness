@@ -58,6 +58,7 @@ import {
 } from '@/components/ui/select';
 import { Exercise } from '@/types/exercises';
 import { TFunction } from 'i18next';
+import { UnitInput } from '@/components/ui/UnitInput';
 
 interface WorkoutPresetFormProps {
   isOpen: boolean;
@@ -197,17 +198,13 @@ const SortableSetItem = React.memo(
                 />{' '}
                 {t('workoutPresetForm.weightLabel', 'Weight')} ({weightUnit})
               </Label>
-              <Input
+              <UnitInput
                 id={`weight-${exerciseIndex}-${set.id}`}
-                type="number"
-                value={set.weight ?? ''}
-                onChange={(e) =>
-                  onSetChange(
-                    exerciseIndex,
-                    setIndex,
-                    'weight',
-                    Number(e.target.value)
-                  )
+                type="weight"
+                unit={weightUnit}
+                value={set.weight ?? 0}
+                onChange={(metricValue) =>
+                  onSetChange(exerciseIndex, setIndex, 'weight', metricValue)
                 }
               />
             </div>
@@ -395,7 +392,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
   initialPreset,
 }) => {
   const { t } = useTranslation();
-  const { loggingLevel, weightUnit, convertWeight } = usePreferences();
+  const { loggingLevel, weightUnit } = usePreferences();
   const { toast } = useToast();
   const [name, setName] = useState(initialPreset?.name || '');
   const [description, setDescription] = useState(
@@ -410,9 +407,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         sets: ex.sets.map((set) => ({
           ...set,
           id: set.id ? String(set.id) : crypto.randomUUID(),
-          weight: parseFloat(
-            convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(1)
-          ),
+          weight: Number(set.weight) || 0, // Keep metric (kg)
         })),
       })) || []
     );
@@ -644,7 +639,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         sort_order: index,
         sets: ex.sets.map((set) => ({
           ...set,
-          weight: set.weight ? convertWeight(set.weight, weightUnit, 'kg') : 0,
+          weight: set.weight ?? 0, // already metric (kg) from UnitInput
         })),
       })),
     });

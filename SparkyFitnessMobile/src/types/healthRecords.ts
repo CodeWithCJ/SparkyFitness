@@ -5,6 +5,9 @@ import { SleepStageEvent } from './mobileHealthData';
 // RAW INPUT TYPES (for aggregation functions)
 // ==========================================
 
+export const HEALTH_CONNECT_SOURCE = 'Health Connect' as const;
+export const HEALTHKIT_SOURCE = 'HealthKit' as const;
+
 /** Heart rate record from Health Connect */
 export interface HCHeartRateRecord {
   startTime: string;
@@ -85,7 +88,7 @@ export interface AggregatedHealthRecord {
 /** Sleep session output (complex structure) */
 export interface AggregatedSleepSession {
   type: 'SleepSession';
-  source: 'HealthKit' | 'Health Connect';
+  source: typeof HEALTHKIT_SOURCE | typeof HEALTH_CONNECT_SOURCE;
   timestamp: string;
   entry_date: string;
   bedtime: string;
@@ -115,7 +118,7 @@ export interface ExerciseSet {
 /** Exercise session output (complex structure) */
 export interface TransformedExerciseSession {
   type: 'ExerciseSession';
-  source: 'HealthKit' | 'Health Connect';
+  source: typeof HEALTHKIT_SOURCE | typeof HEALTH_CONNECT_SOURCE;
   date: string;
   entry_date: string;
   timestamp: string;
@@ -147,6 +150,7 @@ export interface TransformedRecord {
   type: string;
   date: string;
   unit: string;
+  source: string;
 }
 
 /** Union type for all possible transform outputs */

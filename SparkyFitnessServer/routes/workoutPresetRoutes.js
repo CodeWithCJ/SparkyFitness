@@ -97,6 +97,52 @@ router.get('/', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
+ * /workout-presets/search:
+ *   get:
+ *     summary: Search for workout presets
+ *     tags: [Fitness & Workouts]
+ *     description: Searches for workout presets based on a name search term.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: searchTerm
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The name or part of the name to search for.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Maximum number of results to return.
+ *     responses:
+ *       200:
+ *         description: A list of workout presets matching the search term.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/WorkoutPreset'
+ *       401:
+ *         description: Unauthorized.
+ *       500:
+ *         description: Internal server error.
+ */
+router.get('/search', authenticate, async (req, res, next) => {
+  try {
+    const { searchTerm } = req.query;
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
+    const presets = await workoutPresetService.searchWorkoutPresets(searchTerm, req.userId, limit);
+    res.status(200).json(presets);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
  * /workout-presets/{id}:
  *   get:
  *     summary: Get a specific workout preset by ID
@@ -237,52 +283,6 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     if (error.message === 'Workout preset not found or could not be deleted.') {
       return res.status(404).json({ error: error.message });
     }
-    next(error);
-  }
-});
-
-/**
- * @swagger
- * /workout-presets/search:
- *   get:
- *     summary: Search for workout presets
- *     tags: [Fitness & Workouts]
- *     description: Searches for workout presets based on a name search term.
- *     security:
- *       - cookieAuth: []
- *     parameters:
- *       - in: query
- *         name: searchTerm
- *         required: true
- *         schema:
- *           type: string
- *         description: The name or part of the name to search for.
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         description: Maximum number of results to return.
- *     responses:
- *       200:
- *         description: A list of workout presets matching the search term.
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/WorkoutPreset'
- *       401:
- *         description: Unauthorized.
- *       500:
- *         description: Internal server error.
- */
-router.get('/search', authenticate, async (req, res, next) => {
-  try {
-    const { searchTerm } = req.query;
-    const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
-    const presets = await workoutPresetService.searchWorkoutPresets(searchTerm, req.userId, limit);
-    res.status(200).json(presets);
-  } catch (error) {
     next(error);
   }
 });

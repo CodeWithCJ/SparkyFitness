@@ -193,8 +193,14 @@ const HRVCard = ({ data }: HRVCardProps) => {
                   borderRadius: '6px',
                   color: 'hsl(var(--foreground))',
                 }}
-                formatter={(value: number | undefined) => [
-                  `${value?.toFixed(0)} ms`,
+                formatter={(
+                  value:
+                    | string
+                    | number
+                    | ReadonlyArray<string | number>
+                    | undefined
+                ) => [
+                  `${Number(Array.isArray(value) ? value[0] : value).toFixed(0)} ms`,
                 ]}
               />
               <ReferenceArea

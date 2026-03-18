@@ -3,15 +3,24 @@ import { useTranslation } from 'react-i18next';
 import { authClient } from '@/lib/auth-client';
 import { apiKeyKeys } from '@/api/keys/settings';
 
+interface ApiKeyRecord {
+  id: string;
+  name: string | null;
+  enabled: boolean;
+  createdAt: string | Date | null;
+  updatedAt: string | Date | null;
+  expiresAt: string | Date | null;
+}
+
 export const useApiKeysQuery = (userId?: string) => {
   const { t } = useTranslation();
 
-  return useQuery({
+  return useQuery<ApiKeyRecord[]>({
     queryKey: apiKeyKeys.lists(),
-    queryFn: async () => {
+    queryFn: async (): Promise<ApiKeyRecord[]> => {
       const { data, error } = await authClient.apiKey.list();
       if (error) throw error;
-      return data || [];
+      return (data?.apiKeys || []) as ApiKeyRecord[];
     },
     enabled: !!userId,
     meta: {

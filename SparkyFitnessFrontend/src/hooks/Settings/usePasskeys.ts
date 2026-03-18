@@ -1,9 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { passkeyKeys } from '@/api/keys/settings';
-import { addPasskey, deletePasskey, getPasskeys } from '@/api/Settings/passkey';
+import {
+  addPasskey,
+  deletePasskey,
+  getPasskeys,
+  type PasskeyRecord,
+} from '@/api/Settings/passkey';
 
 export const usePasskeys = () => {
-  return useQuery({
+  return useQuery<PasskeyRecord[]>({
     queryKey: passkeyKeys.lists(),
     queryFn: getPasskeys,
     meta: {

@@ -67,13 +67,8 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
-  const {
-    loggingLevel,
-    weightUnit,
-    distanceUnit,
-    convertWeight,
-    convertDistance,
-  } = usePreferences();
+  const { loggingLevel, weightUnit, distanceUnit, convertDistance } =
+    usePreferences();
 
   const [notes, setNotes] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -91,9 +86,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     if (initialSets && initialSets.length > 0) {
       return initialSets.map((set) => ({
         ...set,
-        weight: parseFloat(
-          convertWeight(set.weight || 0, 'kg', weightUnit).toFixed(1)
-        ),
+        weight: Number(set.weight) || 0, // Keep metric (kg)
       }));
     }
     return [{ set_number: 1, set_type: 'Working Set', reps: 10, weight: 0 }];
@@ -230,7 +223,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         exercise_id: exercise.id,
         sets: sets.map((set) => ({
           ...set,
-          weight: convertWeight(set.weight ?? 0, weightUnit, 'kg'),
+          weight: set.weight ?? 0, // already metric (kg) from UnitInput
         })),
         notes: notes,
         entry_date: selectedDate,

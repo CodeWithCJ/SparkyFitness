@@ -5,6 +5,19 @@ const checkPermissionMiddleware = require('../middleware/checkPermissionMiddlewa
 const measurementService = require('../services/measurementService');
 const waterContainerRepository = require('../models/waterContainerRepository'); // Import waterContainerRepository
 const { log } = require('../config/logging');
+const {
+  UpsertWaterIntakeBodySchema,
+  UpdateWaterIntakeBodySchema,
+  UpsertCheckInBodySchema,
+  UpdateCheckInBodySchema,
+  CreateCustomCategoryBodySchema,
+  UpdateCustomCategoryBodySchema,
+  UpsertCustomEntryBodySchema,
+  DateParamSchema,
+  UuidParamSchema,
+  DateRangeParamSchema,
+  CustomMeasurementsRangeParamSchema,
+} = require('../schemas/measurementSchemas');
 
 
 /**
@@ -93,22 +106,37 @@ router.post('/health-data', express.text({ type: '*/*' }), async (req, res, next
  *         schema:
  *           type: string
  *           format: date
+ *         description: Date in YYYY-MM-DD format.
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID to fetch water intake for (requires diary permission).
  *     responses:
  *       200:
- *         description: Water intake data.
+ *         description: Aggregated water intake for the date.
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/WaterIntake'
+ *               type: object
+ *               properties:
+ *                 water_ml:
+ *                   type: number
+ *                   description: Total water consumed in milliliters.
+ *       400:
+ *         description: Invalid date format.
+ *       403:
+ *         description: Forbidden.
  */
 router.get('/water-intake/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { date } = req.params;
+  const paramResult = DateParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
+  }
+  const { date } = paramResult.data;
   const { userId } = req.query;
   const targetUserId = userId || req.userId;
-
-  if (!date) {
-    return res.status(400).json({ error: 'Date is required.' });
-  }
 
   // Permission check if explicit userId is provided
   if (userId && userId !== req.userId) {
@@ -145,21 +173,33 @@ router.get('/water-intake/:date', authenticate, checkPermissionMiddleware('check
  *               entry_date:
  *                 type: string
  *                 format: date
+ *                 description: Date in YYYY-MM-DD format.
  *               change_drinks:
  *                 type: number
+ *                 description: Number of drinks to add (positive) or remove (negative).
  *               container_id:
+ *                 type: number
+ *                 nullable: true
+ *                 description: The water container ID used for volume calculation.
+ *               user_id:
  *                 type: string
  *                 format: uuid
+ *                 description: Optional target user ID (requires checkin permission).
  *             required: [entry_date, change_drinks, container_id]
  *     responses:
  *       200:
  *         description: Water intake upserted successfully.
+ *       400:
+ *         description: Validation error.
+ *       403:
+ *         description: Forbidden.
  */
 router.post('/water-intake', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { entry_date, change_drinks, container_id, user_id } = req.body;
-  if (!entry_date || change_drinks === undefined || container_id === undefined) {
-    return res.status(400).json({ error: 'Entry date, change_drinks, and container_id are required.' });
+  const bodyResult = UpsertWaterIntakeBodySchema.safeParse(req.body);
+  if (!bodyResult.success) {
+    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { entry_date, change_drinks, container_id, user_id } = bodyResult.data;
 
   const targetUserId = user_id || req.userId;
 
@@ -200,10 +240,11 @@ router.post('/water-intake', authenticate, checkPermissionMiddleware('checkin'),
  *         description: The water intake entry.
  */
 router.get('/water-intake/entry/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { id } = req.params;
-  if (!id) {
-    return res.status(400).json({ error: 'Water Intake Entry ID is required.' });
+  const paramResult = UuidParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { id } = paramResult.data;
   try {
     const entry = await measurementService.getWaterIntakeEntryById(req.userId, id);
     res.status(200).json(entry);
@@ -237,17 +278,39 @@ router.get('/water-intake/entry/:id', authenticate, checkPermissionMiddleware('c
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/WaterIntake'
+ *             type: object
+ *             properties:
+ *               water_ml:
+ *                 type: number
+ *                 description: Water amount in milliliters.
+ *               entry_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Date in YYYY-MM-DD format.
+ *               source:
+ *                 type: string
+ *                 description: Source of the water intake entry (e.g. manual, healthkit).
  *     responses:
  *       200:
  *         description: Water intake entry updated successfully.
+ *       400:
+ *         description: Validation error.
+ *       403:
+ *         description: Forbidden.
+ *       404:
+ *         description: Water intake entry not found.
  */
 router.put('/water-intake/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { id } = req.params;
-  const updateData = req.body;
-  if (!id) {
-    return res.status(400).json({ error: 'Water Intake Entry ID is required.' });
+  const paramResult = UuidParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { id } = paramResult.data;
+  const bodyResult = UpdateWaterIntakeBodySchema.safeParse(req.body);
+  if (!bodyResult.success) {
+    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
+  }
+  const updateData = bodyResult.data;
   try {
     const updatedEntry = await measurementService.updateWaterIntake(req.userId, id, updateData);
     res.status(200).json(updatedEntry);
@@ -282,10 +345,11 @@ router.put('/water-intake/:id', authenticate, checkPermissionMiddleware('checkin
  *         description: Water intake entry deleted successfully.
  */
 router.delete('/water-intake/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { id } = req.params;
-  if (!id) {
-    return res.status(400).json({ error: 'Water Intake Entry ID is required.' });
+  const paramResult = UuidParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { id } = paramResult.data;
   try {
     const result = await measurementService.deleteWaterIntake(req.userId, id);
     res.status(200).json(result);
@@ -319,23 +383,41 @@ router.delete('/water-intake/:id', authenticate, checkPermissionMiddleware('chec
  *               entry_date:
  *                 type: string
  *                 format: date
+ *                 description: Date in YYYY-MM-DD format.
  *               weight:
  *                 type: number
+ *                 nullable: true
+ *               neck:
+ *                 type: number
+ *                 nullable: true
+ *               waist:
+ *                 type: number
+ *                 nullable: true
+ *               hips:
+ *                 type: number
+ *                 nullable: true
+ *               steps:
+ *                 type: number
+ *                 nullable: true
+ *               height:
+ *                 type: number
+ *                 nullable: true
  *               body_fat_percentage:
  *                 type: number
- *               waist_circumference:
- *                 type: number
- *               # ... other measurement fields ...
+ *                 nullable: true
  *             required: [entry_date]
  *     responses:
  *       200:
  *         description: Check-in measurements upserted successfully.
+ *       400:
+ *         description: Validation error.
  */
 router.post('/check-in', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { entry_date, ...measurements } = req.body;
-  if (!entry_date) {
-    return res.status(400).json({ error: 'Entry date is required.' });
+  const bodyResult = UpsertCheckInBodySchema.safeParse(req.body);
+  if (!bodyResult.success) {
+    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { entry_date, ...measurements } = bodyResult.data;
   try {
     const result = await measurementService.upsertCheckInMeasurements(req.userId, req.originalUserId || req.userId, entry_date, measurements);
     res.status(200).json(result);
@@ -367,10 +449,11 @@ router.post('/check-in', authenticate, checkPermissionMiddleware('checkin'), asy
  *         description: The latest check-in measurements.
  */
 router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { date } = req.query;
-  if (!date) {
-    return res.status(400).json({ error: 'Date is required.' });
+  const queryResult = DateParamSchema.safeParse(req.query);
+  if (!queryResult.success) {
+    return res.status(400).json({ error: queryResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { date } = queryResult.data;
   try {
     const measurement = await measurementService.getLatestCheckInMeasurementsOnOrBeforeDate(req.originalUserId || req.userId, req.userId, date);
     res.status(200).json(measurement);
@@ -387,7 +470,7 @@ router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMi
  * /measurements/check-in/{date}:
  *   get:
  *     summary: Get check-in measurements for a specific date
- *     tags: [Nutrition & Meals]
+ *     tags: [Wellness & Metrics]
  *     security:
  *       - cookieAuth: []
  *     parameters:
@@ -397,24 +480,28 @@ router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMi
  *         schema:
  *           type: string
  *           format: date
+ *         description: Date in YYYY-MM-DD format.
  *       - in: query
  *         name: userId
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: Optional user ID to fetch measurements for (requires checkin permission).
  *     responses:
  *       200:
  *         description: Check-in measurements for the date.
- *       500:
- *         description: Internal server error.
+ *       400:
+ *         description: Invalid date format.
+ *       403:
+ *         description: Forbidden.
  */
 router.get('/check-in/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { date } = req.params;
-  const { userId } = req.query; // Check query param
-
-  if (!date) {
-    return res.status(400).json({ error: 'Date is required.' });
+  const paramResult = DateParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { date } = paramResult.data;
+  const { userId } = req.query; // Check query param
 
   const targetUserId = userId || req.userId;
 
@@ -460,15 +547,41 @@ router.get('/check-in/:date', authenticate, checkPermissionMiddleware('checkin')
  *               entry_date:
  *                 type: string
  *                 format: date
- *               # ... other measurement fields ...
+ *                 description: Date in YYYY-MM-DD format.
+ *               weight:
+ *                 type: number
+ *               neck:
+ *                 type: number
+ *               waist:
+ *                 type: number
+ *               hips:
+ *                 type: number
+ *               steps:
+ *                 type: number
+ *               height:
+ *                 type: number
+ *               body_fat_percentage:
+ *                 type: number
  *             required: [entry_date]
  *     responses:
  *       200:
  *         description: Measurement updated successfully.
+ *       400:
+ *         description: Validation error or missing entry_date.
+ *       404:
+ *         description: Check-in measurement not found.
  */
 router.put('/check-in/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { id } = req.params;
-  const { entry_date, ...updateData } = req.body;
+  const paramResult = UuidParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
+  }
+  const { id } = paramResult.data;
+  const bodyResult = UpdateCheckInBodySchema.safeParse(req.body);
+  if (!bodyResult.success) {
+    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
+  }
+  const { entry_date, ...updateData } = bodyResult.data;
   if (!entry_date) {
     return res.status(400).json({ error: 'Entry date is required.' });
   }
@@ -513,10 +626,11 @@ router.put('/check-in/:id', authenticate, checkPermissionMiddleware('checkin'), 
  *         description: Measurement deleted successfully.
  */
 router.delete('/check-in/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { id } = req.params;
-  if (!id) {
-    return res.status(400).json({ error: 'Check-in Measurement ID is required.' });
+  const paramResult = UuidParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { id } = paramResult.data;
   try {
     const result = await measurementService.deleteCheckInMeasurements(req.userId, id);
     res.status(200).json(result);
@@ -574,14 +688,36 @@ router.get('/custom-categories', authenticate, checkPermissionMiddleware('checki
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CustomMeasurementCategory'
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               display_name:
+ *                 type: string
+ *                 nullable: true
+ *               frequency:
+ *                 type: string
+ *                 description: Tracking frequency (e.g. daily, hourly).
+ *               measurement_type:
+ *                 type: string
+ *               data_type:
+ *                 type: string
+ *                 nullable: true
+ *                 description: Data type (e.g. numeric, boolean, text).
+ *             required: [name, frequency, measurement_type]
  *     responses:
  *       201:
  *         description: Custom category created successfully.
+ *       400:
+ *         description: Validation error.
  */
 router.post('/custom-categories', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
+  const bodyResult = CreateCustomCategoryBodySchema.safeParse(req.body);
+  if (!bodyResult.success) {
+    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
+  }
   try {
-    const newCategory = await measurementService.createCustomCategory(req.userId, req.originalUserId || req.userId, { ...req.body, user_id: req.userId });
+    const newCategory = await measurementService.createCustomCategory(req.userId, req.originalUserId || req.userId, { ...bodyResult.data, user_id: req.userId });
     res.status(201).json(newCategory);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -604,15 +740,47 @@ router.post('/custom-categories', authenticate, checkPermissionMiddleware('check
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CustomMeasurementEntry'
+ *             type: object
+ *             properties:
+ *               category_id:
+ *                 type: string
+ *                 format: uuid
+ *               value:
+ *                 oneOf:
+ *                   - type: number
+ *                   - type: string
+ *                 description: Measurement value (type depends on category data_type).
+ *               entry_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Date in YYYY-MM-DD format.
+ *               entry_hour:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: Hour of day (0-23) for hourly measurements.
+ *               entry_timestamp:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Full timestamp for the entry.
+ *               notes:
+ *                 type: string
+ *               source:
+ *                 type: string
+ *                 description: Source of the entry (e.g. manual, healthkit).
+ *             required: [category_id, value, entry_date]
  *     responses:
  *       201:
  *         description: Custom entry upserted successfully.
+ *       400:
+ *         description: Validation error.
  */
 router.post('/custom-entries', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
+  const bodyResult = UpsertCustomEntryBodySchema.safeParse(req.body);
+  if (!bodyResult.success) {
+    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
+  }
   try {
-    const { source, ...restOfBody } = req.body; // Extract source from body
-    const newEntry = await measurementService.upsertCustomMeasurementEntry(req.userId, req.originalUserId || req.userId, { ...restOfBody, source });
+    const newEntry = await measurementService.upsertCustomMeasurementEntry(req.userId, req.originalUserId || req.userId, bodyResult.data);
     res.status(201).json(newEntry);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -642,10 +810,11 @@ router.post('/custom-entries', authenticate, checkPermissionMiddleware('checkin'
  *         description: Entry deleted successfully.
  */
 router.delete('/custom-entries/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { id } = req.params;
-  if (!id) {
-    return res.status(400).json({ error: 'Custom Measurement Entry ID is required.' });
+  const paramResult = UuidParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { id } = paramResult.data;
   try {
     const result = await measurementService.deleteCustomMeasurementEntry(req.userId, id);
     res.status(200).json(result);
@@ -679,17 +848,39 @@ router.delete('/custom-entries/:id', authenticate, checkPermissionMiddleware('ch
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CustomMeasurementCategory'
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               display_name:
+ *                 type: string
+ *                 nullable: true
+ *               frequency:
+ *                 type: string
+ *               measurement_type:
+ *                 type: string
+ *               data_type:
+ *                 type: string
+ *                 nullable: true
  *     responses:
  *       200:
  *         description: Category updated successfully.
+ *       400:
+ *         description: Validation error.
+ *       404:
+ *         description: Custom category not found.
  */
 router.put('/custom-categories/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { id } = req.params;
-  const updateData = req.body;
-  if (!id) {
-    return res.status(400).json({ error: 'Category ID is required.' });
+  const paramResult = UuidParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { id } = paramResult.data;
+  const bodyResult = UpdateCustomCategoryBodySchema.safeParse(req.body);
+  if (!bodyResult.success) {
+    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
+  }
+  const updateData = bodyResult.data;
   try {
     const updatedCategory = await measurementService.updateCustomCategory(req.userId, id, updateData);
     res.status(200).json(updatedCategory);
@@ -724,10 +915,11 @@ router.put('/custom-categories/:id', authenticate, checkPermissionMiddleware('ch
  *         description: Category deleted successfully.
  */
 router.delete('/custom-categories/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { id } = req.params;
-  if (!id) {
-    return res.status(400).json({ error: 'Category ID is required.' });
+  const paramResult = UuidParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { id } = paramResult.data;
   try {
     const result = await measurementService.deleteCustomCategory(req.userId, id);
     res.status(200).json(result);
@@ -742,12 +934,34 @@ router.delete('/custom-categories/:id', authenticate, checkPermissionMiddleware(
   }
 });
 
-// Endpoint to fetch custom measurement entries for a specific user and date
+/**
+ * @swagger
+ * /measurements/custom-entries/{date}:
+ *   get:
+ *     summary: Get custom measurement entries for a specific date
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Date in YYYY-MM-DD format.
+ *     responses:
+ *       200:
+ *         description: List of custom measurement entries for the date.
+ *       400:
+ *         description: Invalid date format.
+ */
 router.get('/custom-entries/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { date } = req.params;
-  if (!date) {
-    return res.status(400).json({ error: 'Date is required.' });
+  const paramResult = DateParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { date } = paramResult.data;
   try {
     const entries = await measurementService.getCustomMeasurementEntriesByDate(req.userId, req.userId, date);
     res.status(200).json(entries);
@@ -824,10 +1038,11 @@ router.get('/custom-entries', authenticate, checkPermissionMiddleware('checkin')
  *         description: List of check-in measurements.
  */
 router.get('/check-in-measurements-range/:startDate/:endDate', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { startDate, endDate } = req.params;
-  if (!startDate || !endDate) {
-    return res.status(400).json({ error: 'Start date and end date are required.' });
+  const paramResult = DateRangeParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { startDate, endDate } = paramResult.data;
   try {
     const measurements = await measurementService.getCheckInMeasurementsByDateRange(req.userId, req.userId, startDate, endDate);
     res.status(200).json(measurements);
@@ -871,10 +1086,11 @@ router.get('/check-in-measurements-range/:startDate/:endDate', authenticate, che
  *         description: List of custom measurements.
  */
 router.get('/custom-measurements-range/:categoryId/:startDate/:endDate', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { categoryId, startDate, endDate } = req.params;
-  if (!categoryId || !startDate || !endDate) {
-    return res.status(400).json({ error: 'Category ID, start date, and end date are required.' });
+  const paramResult = CustomMeasurementsRangeParamSchema.safeParse(req.params);
+  if (!paramResult.success) {
+    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
   }
+  const { categoryId, startDate, endDate } = paramResult.data;
   try {
     const measurements = await measurementService.getCustomMeasurementsByDateRange(req.userId, req.userId, categoryId, startDate, endDate);
     res.status(200).json(measurements);

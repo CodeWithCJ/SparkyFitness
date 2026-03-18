@@ -26,7 +26,7 @@ export const useToggleProviderPublicSharingMutation = () => {
     }) => toggleProviderPublicSharing(id, sharedWithPublic),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.lists(),
+        queryKey: externalProviderKeys.all,
       });
     },
     meta: {
@@ -50,7 +50,7 @@ export const useCreateExternalProviderMutation = () => {
     mutationFn: createExternalProvider,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.lists(),
+        queryKey: externalProviderKeys.all,
       });
     },
     meta: {
@@ -68,7 +68,7 @@ export const useCreateExternalProviderMutation = () => {
 
 export const useExternalProviders = (userId?: string) => {
   return useQuery({
-    queryKey: externalProviderKeys.lists(),
+    queryKey: [...externalProviderKeys.lists(), 'enriched'],
     queryFn: getEnrichedProviders,
     enabled: !!userId,
   });
@@ -94,7 +94,7 @@ export const useUpdateExternalProviderMutation = () => {
     }) => updateExternalProvider(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.lists(),
+        queryKey: externalProviderKeys.all,
       });
     },
     meta: {
@@ -119,7 +119,7 @@ export const useToggleProviderStatusMutation = () => {
       toggleProviderActiveStatus(id, isActive),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.lists(),
+        queryKey: externalProviderKeys.all,
       });
     },
     meta: {
@@ -143,7 +143,7 @@ export const useDeleteExternalProviderMutation = () => {
     mutationFn: deleteExternalProvider,
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.lists(),
+        queryKey: externalProviderKeys.all,
       });
     },
     meta: {

@@ -846,13 +846,14 @@ const options = {
             id: { type: 'string', format: 'uuid' },
             user_id: { type: 'string', format: 'uuid' },
             entry_date: { type: 'string', format: 'date' },
-            total_volume: { type: 'number' },
-            servings_count: { type: 'number' },
-            container_id: { type: 'string', format: 'uuid', nullable: true },
+            water_ml: { type: 'number', description: 'Water amount in milliliters' },
+            source: { type: 'string', description: 'Source of the entry (e.g. manual, healthkit, healthconnect)' },
+            created_by_user_id: { type: 'string', format: 'uuid' },
+            updated_by_user_id: { type: 'string', format: 'uuid' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' }
           },
-          required: ['entry_date', 'total_volume']
+          required: ['entry_date', 'water_ml']
         },
         WaterContainer: {
           type: 'object',
@@ -876,13 +877,12 @@ const options = {
             user_id: { type: 'string', format: 'uuid' },
             entry_date: { type: 'string', format: 'date' },
             weight: { type: 'number', nullable: true },
+            neck: { type: 'number', nullable: true },
+            waist: { type: 'number', nullable: true },
+            hips: { type: 'number', nullable: true },
+            steps: { type: 'number', nullable: true },
+            height: { type: 'number', nullable: true },
             body_fat_percentage: { type: 'number', nullable: true },
-            waist_circumference: { type: 'number', nullable: true },
-            hip_circumference: { type: 'number', nullable: true },
-            chest_circumference: { type: 'number', nullable: true },
-            thigh_circumference: { type: 'number', nullable: true },
-            bicep_circumference: { type: 'number', nullable: true },
-            neck_circumference: { type: 'number', nullable: true },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' }
           },
@@ -893,14 +893,15 @@ const options = {
           properties: {
             id: { type: 'string', format: 'uuid' },
             user_id: { type: 'string', format: 'uuid', nullable: true },
-            category_name: { type: 'string' },
-            unit: { type: 'string', nullable: true },
-            data_type: { type: 'string', enum: ['numeric', 'boolean', 'text'] },
+            name: { type: 'string' },
+            display_name: { type: 'string', nullable: true },
+            frequency: { type: 'string' },
             measurement_type: { type: 'string', nullable: true },
+            data_type: { type: 'string', enum: ['numeric', 'boolean', 'text'], nullable: true },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' }
           },
-          required: ['category_name', 'data_type']
+          required: ['name', 'frequency']
         },
         CustomMeasurementEntry: {
           type: 'object',

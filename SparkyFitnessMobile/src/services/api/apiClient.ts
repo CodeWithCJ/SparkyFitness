@@ -50,6 +50,10 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
       throw new Error(`Server error: ${response.status} - ${errorText}`);
     }
 
+    if (response.status === 204 || response.headers?.get('content-length') === '0') {
+      return undefined as T;
+    }
+
     return await response.json();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

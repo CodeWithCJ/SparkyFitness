@@ -28,8 +28,19 @@ jobs:
           else
             TAG="0.0.0-dev"
           fi
+
           # Strip leading 'v' if present (e.g. v1.2.3 -> 1.2.3)
-          CHART_VERSION="${TAG#v}"
+          RAW_VERSION="${TAG#v}"
+
+          # Convert 4+ segment versions (e.g. 1.2.3.4) to SemVer-compatible
+          # chart version while preserving extra segments as build metadata.
+          # Example: 1.2.3.4 -> 1.2.3+4, 1.2.3.4.5 -> 1.2.3+4.5
+          if [[ "$RAW_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.(.+)$ ]]; then
+            CHART_VERSION="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
+          else
+            CHART_VERSION="$RAW_VERSION"
+          fi
+
           echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
           echo "app_version=$TAG" >> "$GITHUB_OUTPUT"
 
@@ -43,4 +54,6 @@ jobs:
             --app-version "${{ steps.release_tag.outputs.app_version }}"
 
       - name: Push Helm chart to GHCR
-        run: helm push sparkyfitness-${{ steps.release_tag.outputs.chart_version }}.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          helm push sparkyfitness-${{ steps.release_tag.outputs.chart_version }}.tgz oci://ghcr.io/${OWNER_LC}/charts

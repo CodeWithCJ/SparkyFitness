@@ -10,6 +10,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
+import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -166,7 +167,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderSectionHeader = ({ section }: { section: FoodSection }) => (
     <View className="px-4 py-2 bg-surface">
-      <Text className="text-text-secondary text-sm font-semibold uppercase tracking-wider">
+      <Text className="text-text-muted text-xs font-semibold uppercase">
         {section.title}
       </Text>
     </View>
@@ -174,7 +175,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderSearchBar = () => (
     <View className="px-4 py-2">
-      <View className="flex-row items-center bg-raised rounded-lg border border-border-subtle px-3 py-2.5">
+      <View className="flex-row items-center bg-raised rounded-lg px-3 py-2.5">
         <Icon name="search" size={18} color={textMuted} />
         <TextInput
           className="flex-1 text-text-primary ml-2"
@@ -189,17 +190,18 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           returnKeyType="search"
         />
         {searchText.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchText('')} hitSlop={8}>
+          <Button variant="ghost" onPress={() => setSearchText('')} hitSlop={8} className="p-0">
             <Icon name="close" size={16} color={textMuted} />
-          </TouchableOpacity>
+          </Button>
         )}
-        <TouchableOpacity
+        <Button
+          variant="ghost"
           onPress={() => navigation.navigate('FoodScan', { date })}
           hitSlop={8}
-          className="ml-2"
+          className="ml-2 p-0"
         >
           <Icon name="scan" size={20} color={accentColor} />
-        </TouchableOpacity>
+        </Button>
       </View>
     </View>
   );
@@ -275,12 +277,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <Text className="text-text-secondary text-base mt-4 text-center">
             Failed to load foods
           </Text>
-          <TouchableOpacity
+          <Button
+            variant="secondary"
             onPress={() => refetch()}
-            className="mt-4 px-6 py-2 rounded-lg bg-raised"
+            className="mt-4 px-6"
           >
-            <Text className="text-accent-primary text-base font-medium">Retry</Text>
-          </TouchableOpacity>
+            Retry
+          </Button>
         </View>
       );
     }
@@ -408,12 +411,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <Text className="text-text-secondary text-base mt-4 text-center">
             Failed to load meals
           </Text>
-          <TouchableOpacity
+          <Button
+            variant="secondary"
             onPress={() => refetchMeals()}
-            className="mt-4 px-6 py-2 rounded-lg bg-raised"
+            className="mt-4 px-6"
           >
-            <Text className="text-accent-primary text-base font-medium">Retry</Text>
-          </TouchableOpacity>
+            Retry
+          </Button>
         </View>
       );
     }
@@ -508,25 +512,27 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         keyboardShouldPersistTaps="handled"
         ListFooterComponent={
           isFetchNextPageError ? (
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={() => fetchNextPage()}
-              className="py-3 items-center"
+              className="py-3"
+              textClassName="text-sm"
             >
-              <Text className="text-accent-primary text-sm font-medium">
-                Failed to load more. Tap to retry
-              </Text>
-            </TouchableOpacity>
+              Failed to load more. Tap to retry
+            </Button>
           ) : isFetchingNextPage ? (
             <View className="py-3 items-center">
               <ActivityIndicator size="small" color={accentColor} />
             </View>
           ) : hasNextPage ? (
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={() => fetchNextPage()}
-              className="py-4 mb-4 items-center"
+              className="py-4 mb-4"
+              textClassName="text-sm"
             >
-              <Text className="text-accent-primary text-sm font-medium">Load More</Text>
-            </TouchableOpacity>
+              Load More
+            </Button>
           ) : null
         }
       />
@@ -565,12 +571,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <Text className="text-text-secondary text-base mt-4 text-center">
             Failed to load providers
           </Text>
-          <TouchableOpacity
+          <Button
+            variant="secondary"
             onPress={() => refetchProviders()}
-            className="mt-4 px-6 py-2 rounded-lg bg-raised"
+            className="mt-4 px-6"
           >
-            <Text className="text-accent-primary text-base font-medium">Retry</Text>
-          </TouchableOpacity>
+            Retry
+          </Button>
         </View>
       );
     }
@@ -657,23 +664,25 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
-        <TouchableOpacity
+        <Button
+          variant="ghost"
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10"
+          className="z-10 p-0"
         >
           <Icon name="close" size={22} color={accentColor} />
-        </TouchableOpacity>
+        </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Add
         </Text>
-        <TouchableOpacity
+        <Button
+          variant="ghost"
           onPress={() => navigation.navigate('FoodForm', { mode: 'create-food', date })}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="z-10"
+          className="z-10 p-0"
         >
           <Icon name="add" size={26} color={accentColor} />
-        </TouchableOpacity>
+        </Button>
       </View>
 
       {/* Segmented control */}

@@ -39,7 +39,7 @@ describe('oidcGroupSync', () => {
         const idToken = createIdToken({ groups: ['Admins', 'Users'] });
 
         mockPool.query.mockResolvedValue({
-            rows: [{ provider_id: 'authentik', id_token: idToken }]
+            rows: [{ provider_id: 'oidc-authentik', id_token: idToken }]
         });
         mockUserRepository.getUserRole.mockResolvedValue('user');
 
@@ -54,7 +54,7 @@ describe('oidcGroupSync', () => {
         const idToken = createIdToken({ groups: ['Users'] });
 
         mockPool.query.mockResolvedValue({
-            rows: [{ provider_id: 'authentik', id_token: idToken }]
+            rows: [{ provider_id: 'oidc-authentik', id_token: idToken }]
         });
         mockUserRepository.getUserRole.mockResolvedValue('admin');
 
@@ -69,7 +69,7 @@ describe('oidcGroupSync', () => {
         const idToken = createIdToken({ groups: ['Admins'] });
 
         mockPool.query.mockResolvedValue({
-            rows: [{ provider_id: 'authentik', id_token: idToken }]
+            rows: [{ provider_id: 'oidc-authentik', id_token: idToken }]
         });
         mockUserRepository.getUserRole.mockResolvedValue('admin');
 
@@ -84,7 +84,7 @@ describe('oidcGroupSync', () => {
         const idToken = createIdToken({ email: 'test@test.com' }); // No groups
 
         mockPool.query.mockResolvedValue({
-            rows: [{ provider_id: 'authentik', id_token: idToken }]
+            rows: [{ provider_id: 'oidc-authentik', id_token: idToken }]
         });
         mockUserRepository.getUserRole.mockResolvedValue('admin');
 
@@ -102,8 +102,8 @@ describe('oidcGroupSync', () => {
         // Mocks return from pool.query (ordered by updated_at DESC in the real query)
         mockPool.query.mockResolvedValue({
             rows: [
-                { provider_id: 'provider-new', id_token: newerIdToken },
-                { provider_id: 'provider-old', id_token: olderIdToken }
+                { provider_id: 'oidc-provider-new', id_token: newerIdToken },
+                { provider_id: 'oidc-provider-old', id_token: olderIdToken }
             ]
         });
         mockUserRepository.getUserRole.mockResolvedValue('user');
@@ -124,7 +124,7 @@ describe('oidcGroupSync', () => {
         const idToken = createIdToken({ groups: 'superadmin' });
 
         mockPool.query.mockResolvedValue({
-            rows: [{ provider_id: 'authentik', id_token: idToken }]
+            rows: [{ provider_id: 'oidc-authentik', id_token: idToken }]
         });
         mockUserRepository.getUserRole.mockResolvedValue('user');
 
@@ -144,12 +144,47 @@ describe('oidcGroupSync', () => {
         });
 
         mockPool.query.mockResolvedValue({
-            rows: [{ provider_id: 'authentik', id_token: idToken }]
+            rows: [{ provider_id: 'oidc-authentik', id_token: idToken }]
         });
         mockUserRepository.getUserRole.mockResolvedValue('user');
 
         await syncUserGroups({ pool: mockPool, userRepository: mockUserRepository }, userId, adminGroup);
 
         expect(mockUserRepository.updateUserRole).not.toHaveBeenCalled();
+    });
+
+    it('should fetch groups from UserInfo if id_token has no groups', async () => {
+        const userId = 'user-1';
+        const adminGroup = 'Admins';
+        const idToken = createIdToken({ email: 'test@test.com' }); // No groups
+        const accessToken = 'valid-access-token';
+        
+        const mockOidcProviderRepository = {
+            getOidcProviderById: jest.fn().mockResolvedValue({
+                userInfoEndpoint: 'https://issuer.com/userinfo'
+            })
+        };
+
+        mockPool.query.mockResolvedValue({
+            rows: [{ provider_id: 'oidc-authelia', id_token: idToken, access_token: accessToken }]
+        });
+        mockUserRepository.getUserRole.mockResolvedValue('user');
+        
+        // Mock global fetch for Node 20+
+        global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: jest.fn().mockResolvedValue({ groups: ['Admins'] })
+        });
+
+        await syncUserGroups({ 
+            pool: mockPool, 
+            userRepository: mockUserRepository, 
+            oidcProviderRepository: mockOidcProviderRepository 
+        }, userId, adminGroup);
+
+        expect(mockUserRepository.updateUserRole).toHaveBeenCalledWith(userId, 'admin');
+        expect(global.fetch).toHaveBeenCalledWith('https://issuer.com/userinfo', expect.any(Object));
+        
+        delete global.fetch;
     });
 });

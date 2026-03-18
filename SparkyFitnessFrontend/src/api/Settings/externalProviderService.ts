@@ -386,6 +386,7 @@ export const getEnrichedProviders = async (): Promise<
               : 'disconnected';
             enriched.garmin_last_status_check = status.lastUpdated;
             enriched.garmin_token_expires = status.tokenExpiresAt;
+            enriched.has_token = status.isLinked;
             break;
           }
           case 'withings': {
@@ -430,9 +431,16 @@ export const getEnrichedProviders = async (): Promise<
           }
         }
       } catch (error) {
-        console.error(error);
+        console.error(
+          '[getEnrichedProviders] Error enriching provider:',
+          provider.provider_name,
+          error
+        );
         if (provider.provider_type === 'garmin') {
           enriched.garmin_connect_status = 'disconnected';
+          enriched.garmin_last_status_check = null;
+          enriched.garmin_token_expires = null;
+          enriched.has_token = false;
         }
         if (provider.provider_type === 'hevy') {
           enriched.hevy_connect_status = 'disconnected';

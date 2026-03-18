@@ -1,4 +1,5 @@
 const { betterAuth } = require("better-auth");
+
 const { APIError } = require("better-auth/api");
 const { Pool } = require("pg");
 const { log } = require("./config/logging");
@@ -58,7 +59,7 @@ async function syncTrustedProviders() {
 // Initial sync on startup - deferred to SparkyFitnessServer.js after migrations
 // syncTrustedProviders().catch(err => console.error('[AUTH] Startup sync failed:', err));
 
-const apiKeyPlugin = require("better-auth/plugins").apiKey({
+const apiKeyPlugin = require("@better-auth/api-key").apiKey({
   enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
   rateLimit: {
     enabled: true,
@@ -72,7 +73,8 @@ const apiKeyPlugin = require("better-auth/plugins").apiKey({
         id: "id",
         name: "name",
         key: "key",
-        userId: "user_id",
+        referenceId: "reference_id",
+        configId: "config_id",
         token: "key", // Better Auth sometimes looks for 'token'
         metadata: "metadata",
         createdAt: "created_at",
@@ -96,19 +98,6 @@ const apiKeyPlugin = require("better-auth/plugins").apiKey({
   },
 });
 
-// FIX: Better Auth v1.4.17 is missing paths for these endpoints in the library definition.
-// We patch the plugin instance BEFORE passing it to betterAuth so the internal router picks it up.
-if (apiKeyPlugin.endpoints) {
-  if (apiKeyPlugin.endpoints.deleteAllExpiredApiKeys) {
-    apiKeyPlugin.endpoints.deleteAllExpiredApiKeys.path =
-      "/api-key/delete-all-expired-api-keys";
-    apiKeyPlugin.endpoints.deleteAllExpiredApiKeys.method = "POST";
-  }
-  if (apiKeyPlugin.endpoints.verifyApiKey) {
-    apiKeyPlugin.endpoints.verifyApiKey.path = "/api-key/verify";
-    apiKeyPlugin.endpoints.verifyApiKey.method = "POST";
-  }
-}
 
 const auth = betterAuth({
   database: authPool,
@@ -142,7 +131,7 @@ const auth = betterAuth({
 
   // Email/Password authentication
   emailAndPassword: {
-    enabled: true,
+    enabled: process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN !== "true",
     requireEmailVerification: false,
     sendResetPassword: async ({ user, url }, request) => {
       const { sendPasswordResetEmail } = require("./services/emailService");
@@ -372,6 +361,7 @@ const auth = betterAuth({
             await ensureUserInitialization(
               user.id,
               user.name || user.email.split("@")[0],
+              user.image,
             );
 
             // Also initialize default nutrient preferences
@@ -418,10 +408,45 @@ const auth = betterAuth({
               userId: account.userId,
             }),
           );
+          }
         },
       },
+      session: {
+        create: {
+          after: async (session) => {
+            console.log(`[AUTH] Hook: Session created for user ${session.userId}. Checking group sync.`);
+            try {
+              const { syncUserGroups } = require("./utils/oidcGroupSync");
+              const oidcProviderRepository = require("./models/oidcProviderRepository");
+              const userRepository = require("./models/userRepository");
+              
+              // Get all accounts for this user to find the OIDC provider used
+              const client = await authPool.connect();
+              try {
+                const { rows: accounts } = await client.query(
+                  'SELECT provider_id FROM "account" WHERE user_id = $1 AND provider_id LIKE \'oidc-%\'',
+                  [session.userId]
+                );
+                
+                for (const acc of accounts) {
+                  const providerId = acc.provider_id.replace('oidc-', '');
+                  const provider = await oidcProviderRepository.getOidcProviderById(providerId);
+                  
+                  if (provider && provider.admin_group) {
+                    console.log(`[AUTH] Syncing groups for user ${session.userId} using provider ${providerId} (Admin Group: ${provider.admin_group})`);
+                    await syncUserGroups({ pool: authPool, userRepository, oidcProviderRepository }, session.userId, provider.admin_group);
+                  }
+                }
+              } finally {
+                client.release();
+              }
+            } catch (error) {
+              console.error(`[AUTH] Hook Error: Group sync failed for session ${session.id}:`, error);
+            }
+          }
+        }
+      }
     },
-  },
 
   plugins: [
     require("better-auth/plugins").magicLink({

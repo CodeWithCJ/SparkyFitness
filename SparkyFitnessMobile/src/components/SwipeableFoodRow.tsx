@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import Button from './ui/Button';
 import { useNavigation } from '@react-navigation/native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, {
@@ -86,7 +87,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
         overshootRight={false}
         rightThreshold={40}
       >
-        <View className="py-2 flex-row items-center bg-surface">
+        <View className="py-1.5 flex-row items-center bg-surface">
           <TouchableOpacity
             className="flex-1 mr-2"
             activeOpacity={0.7}
@@ -100,15 +101,15 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
             </Text>
           </TouchableOpacity>
           {canQuickAdjust ? (
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={() => onAdjustServing!(entry)}
-              activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              className="py-0 px-0"
+              textClassName="text-sm text-text-secondary font-medium"
             >
-              <Text className="text-sm text-text-secondary font-medium">
-                {nutrition.calories} Cal {'\u25BE'}
-              </Text>
-            </TouchableOpacity>
+              {`${nutrition.calories} Cal \u25BE`}
+            </Button>
           ) : (
             <Text className="text-sm text-text-secondary font-medium mr-2">
               {nutrition.calories} Cal

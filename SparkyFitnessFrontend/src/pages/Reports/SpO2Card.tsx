@@ -159,8 +159,16 @@ const SpO2Card = ({ data }: SpO2CardProps) => {
                   borderRadius: '6px',
                   color: 'hsl(var(--foreground))',
                 }}
-                formatter={(value: number | undefined) =>
-                  value ? [`${value}%`] : ''
+                formatter={(
+                  value:
+                    | string
+                    | number
+                    | ReadonlyArray<string | number>
+                    | undefined
+                ) =>
+                  value
+                    ? [`${Number(Array.isArray(value) ? value[0] : value)}%`]
+                    : ''
                 }
               />
               <Bar

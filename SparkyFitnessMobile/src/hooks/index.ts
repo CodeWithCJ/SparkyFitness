@@ -14,6 +14,12 @@ export {
   mealTypesQueryKey,
   foodVariantsQueryKey,
   measurementsRangeQueryKey,
+  exerciseHistoryQueryKey,
+  suggestedExercisesQueryKey,
+  exerciseSearchQueryKey,
+  externalExerciseSearchQueryKey,
+  workoutPresetsQueryKey,
+  workoutPresetSearchQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useSyncHealthData } from './useSyncHealthData';
@@ -37,3 +43,14 @@ export { useSaveFood } from './useSaveFood';
 export { useAddFoodEntry } from './useAddFoodEntry';
 export { useMeasurementsRange } from './useMeasurementsRange';
 export type { StepsDataPoint, StepsRange, WeightDataPoint } from './useMeasurementsRange';
+export { useExerciseHistory } from './useExerciseHistory';
+export { useSuggestedExercises } from './useSuggestedExercises';
+export { useExerciseSearch } from './useExerciseSearch';
+export { useExternalExerciseSearch } from './useExternalExerciseSearch';
+export { useCreateWorkout, useCreateExerciseEntry, useUpdateExerciseEntry } from './useExerciseMutations';
+export { useActivityForm } from './useActivityForm';
+export { isDistanceExercise } from '../constants/exercise';
+export { useDeleteExerciseEntry, useDeleteWorkout, useUpdateWorkout } from './useExerciseMutations';
+export { useWorkoutPresets } from './useWorkoutPresets';
+export { useWorkoutPresetSearch } from './useWorkoutPresetSearch';
+export { useStartExercise } from './useStartExercise';

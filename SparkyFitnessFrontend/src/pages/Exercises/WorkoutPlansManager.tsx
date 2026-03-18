@@ -243,7 +243,7 @@ const WorkoutPlansManager = () => {
       )}
 
       <AddWorkoutPlanDialog
-        key={selectedPlan?.id ?? (isEditDialogOpen ? 'open' : 'closed')}
+        key={`add-${isAddPlanDialogOpen ? 'open' : 'closed'}`}
         isOpen={isAddPlanDialogOpen}
         onClose={() => setIsAddPlanDialogOpen(false)}
         onSave={handleCreatePlan}
@@ -251,7 +251,7 @@ const WorkoutPlansManager = () => {
       />
 
       <AddWorkoutPlanDialog
-        key={selectedPlan?.id ?? (isEditDialogOpen ? 'open' : 'closed')}
+        key={`edit-${selectedPlan?.id ?? (isEditDialogOpen ? 'open' : 'closed')}`}
         isOpen={isEditDialogOpen}
         onClose={() => {
           setIsEditDialogOpen(false);

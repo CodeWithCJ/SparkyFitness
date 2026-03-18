@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { deleteFoodEntry } from '../services/api/foodEntriesApi';
+import { normalizeDate } from '../utils/dateUtils';
 import { dailySummaryQueryKey } from './queryKeys';
 
 interface UseDeleteFoodEntryOptions {
@@ -11,7 +12,7 @@ interface UseDeleteFoodEntryOptions {
 
 export function useDeleteFoodEntry({ entryId, entryDate, onSuccess }: UseDeleteFoodEntryOptions) {
   const queryClient = useQueryClient();
-  const normalizedDate = entryDate.split('T')[0];
+  const normalizedDate = normalizeDate(entryDate);
 
   const mutation = useMutation({
     mutationFn: () => deleteFoodEntry(entryId),

@@ -830,19 +830,32 @@ async function lookupBarcode(barcode, userId, providerId) {
 
     // Fall back to OpenFoodFacts
     let offData;
+    let language = "en";
     try {
-      offData = await searchOpenFoodFactsByBarcodeFields(barcode);
+      const userPreferences = await preferenceService.getUserPreferences(
+        userId,
+        userId,
+      );
+      language = userPreferences?.language || "en";
+      offData = await searchOpenFoodFactsByBarcodeFields(
+        barcode,
+        undefined,
+        language,
+      );
     } catch (error) {
       log("warn", `OpenFoodFacts lookup failed for barcode ${barcode}:`, error);
       return { source: "not_found", food: null };
     }
 
-    if (offData?.status === 1 && offData.product?.product_name) {
-      return {
-        source: "openfoodfacts",
-        food: mapOpenFoodFactsProduct(offData.product),
-        barcode_raw: offData.product,
-      };
+    if (offData?.status === 1 && offData.product) {
+      const food = mapOpenFoodFactsProduct(offData.product, { language });
+      if (food.name) {
+        return {
+          source: "openfoodfacts",
+          food,
+          barcode_raw: offData.product,
+        };
+      }
     }
 
     return { source: "not_found", food: null };

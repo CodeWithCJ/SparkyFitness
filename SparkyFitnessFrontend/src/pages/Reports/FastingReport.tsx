@@ -14,6 +14,7 @@ import {
   LineChart,
   Line,
   CartesianGrid,
+  type TooltipValueType,
 } from 'recharts';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
@@ -239,16 +240,12 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                           }}
                         />
                         <Tooltip
-                          formatter={(
-                            value:
-                              | string
-                              | number
-                              | undefined
-                              | (string | number)[]
-                          ) => {
+                          formatter={(value: TooltipValueType | undefined) => {
                             if (value === null || value === undefined)
                               return '';
-                            const num = Number(value);
+                            const num = Number(
+                              Array.isArray(value) ? value[0] : value
+                            );
                             return Number.isNaN(num)
                               ? String(value)
                               : num.toFixed(2);
@@ -385,13 +382,7 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                           }}
                         />
                         <Tooltip
-                          formatter={(
-                            value:
-                              | string
-                              | number
-                              | undefined
-                              | (string | number)[]
-                          ) => {
+                          formatter={(value: TooltipValueType | undefined) => {
                             if (value === null || value === undefined)
                               return '';
                             const num = Number(value);

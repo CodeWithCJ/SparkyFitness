@@ -1,4 +1,5 @@
 const path = require("path");
+
 const fs = require("fs");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") }); // Load .env from root directory
 
@@ -20,6 +21,7 @@ const { authenticate } = require("./middleware/authMiddleware");
 const onBehalfOfMiddleware = require("./middleware/onBehalfOfMiddleware"); // Import the new middleware
 const foodRoutes = require("./routes/foodRoutes");
 const v2FoodRoutes = require("./routes/v2/foodRoutes");
+const v2ExerciseEntryRoutes = require("./routes/v2/exerciseEntryRoutes");
 const mealRoutes = require("./routes/mealRoutes");
 const foodEntryRoutes = require("./routes/foodEntryRoutes"); // Add this line
 const foodEntryMealRoutes = require("./routes/foodEntryMealRoutes"); // New: FoodEntryMeal routes
@@ -39,7 +41,8 @@ const freeExerciseDBRoutes = require("./routes/freeExerciseDBRoutes"); // Import
 const healthDataRoutes = require("./integrations/healthData/healthDataRoutes");
 const sleepRoutes = require("./routes/sleepRoutes");
 const sleepScienceRoutes = require("./routes/sleepScienceRoutes");
-const authRoutes = require("./routes/authRoutes");
+// Auth routes are lazy-loaded to ensure database migrations run first
+// const authRoutes = require("./routes/authRoutes");
 const healthRoutes = require("./routes/healthRoutes");
 const externalProviderRoutes = require("./routes/externalProviderRoutes"); // Renamed import
 const garminRoutes = require("./routes/garminRoutes"); // Import Garmin routes
@@ -53,7 +56,7 @@ const moodRoutes = require("./routes/moodRoutes"); // Import Mood routes
 const fastingRoutes = require("./routes/fastingRoutes"); // Import Fasting routes
 const adaptiveTdeeRoutes = require("./routes/adaptiveTdeeRoutes"); // Import Adaptive TDEE routes
 const adminRoutes = require("./routes/adminRoutes"); // Import admin routes
-const adminAuthRoutes = require("./routes/adminAuthRoutes"); // Import new admin auth routes
+// const adminAuthRoutes = require("./routes/adminAuthRoutes"); // Import new admin auth routes
 const globalSettingsRoutes = require("./routes/globalSettingsRoutes");
 const versionRoutes = require("./routes/versionRoutes");
 const onboardingRoutes = require("./routes/onboardingRoutes"); // Import onboarding routes
@@ -124,48 +127,51 @@ app.use(
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
 
-// --- Better Auth Mounting ---
+// --- Better Auth Mounting Logic (Moved to after migrations) ---
 let syncTrustedProviders;
-try {
-  console.log("[AUTH] Starting Better Auth mounting phase...");
-  const authModule = require("./auth");
-  const { auth } = authModule;
-  syncTrustedProviders = authModule.syncTrustedProviders;
-  const { toNodeHandler } = require("better-auth/node");
-  const betterAuthHandler = toNodeHandler(auth);
+let betterAuthHandlerInstance = null;
+const mountBetterAuth = () => {
+  try {
+    console.log("[AUTH] Starting Better Auth mounting phase...");
+    const authModule = require("./auth");
+    const { auth } = authModule;
+    syncTrustedProviders = authModule.syncTrustedProviders;
+    const { toNodeHandler } = require("better-auth/node");
+    betterAuthHandlerInstance = toNodeHandler(auth);
+    console.log("[AUTH] Better Auth handler successfully mounted.");
+  } catch (error) {
+    console.error("[AUTH FATAL] Initialization failed:", error);
+    throw error; // Propagate to block startup if auth fails
+  }
+};
 
-  // Catch ALL requests starting with /api/auth early.
-  // We use a manual check to avoid Express 5 routing complexities.
-  app.use(async (req, res, next) => {
-    if (req.originalUrl.startsWith("/api/auth")) {
-      // 1. Skip interceptor for discovery routes - let them fall through to authRoutes.js
-      const isDiscovery =
-        req.path === "/api/auth/settings" ||
-        req.path === "/api/auth/mfa-factors";
-      if (isDiscovery) {
-        return next();
-      }
-
-      // 2. Manual Sign-Out Cleanup: Clear sparky_active_user_id cookie
-      if (req.method === "POST" && req.path === "/sign-out") {
-        console.log(
-          "[AUTH HANDLER] Manual Cleanup: Clearing sparky_active_user_id on logout",
-        );
-        res.clearCookie("sparky_active_user_id", { path: "/" });
-      }
-
-      console.log(
-        `[AUTH HANDLER] Intercepted request: ${req.method} ${req.originalUrl}`,
-      );
-
-      return betterAuthHandler(req, res);
+// Catch ALL requests starting with /api/auth early.
+app.use(async (req, res, next) => {
+  if (req.originalUrl.startsWith("/api/auth") && betterAuthHandlerInstance) {
+    // 1. Skip interceptor for discovery routes - let them fall through to authRoutes.js
+    const isDiscovery =
+      req.path === "/api/auth/settings" ||
+      req.path === "/api/auth/mfa-factors";
+    if (isDiscovery) {
+      return next();
     }
-    next();
-  });
-  console.log("[AUTH] Better Auth handler successfully mounted.");
-} catch (error) {
-  console.error("[AUTH FATAL] Initialization failed:", error);
-}
+
+    // 2. Manual Sign-Out Cleanup: Clear sparky_active_user_id cookie
+    if (req.method === "POST" && req.path === "/sign-out") {
+      console.log(
+        "[AUTH HANDLER] Manual Cleanup: Clearing sparky_active_user_id on logout",
+      );
+      res.clearCookie("sparky_active_user_id", { path: "/" });
+    }
+
+    console.log(
+      `[AUTH HANDLER] Intercepted request: ${req.method} ${req.originalUrl}`,
+    );
+
+    return betterAuthHandlerInstance(req, res);
+  }
+  next();
+});
 
 // Log all incoming requests - AFTER auth to see what falls through
 app.use((req, res, next) => {
@@ -315,6 +321,7 @@ app.get("/api/ping", (req, res) =>
 app.use("/api/chat", chatRoutes);
 app.use("/api/foods", foodRoutes);
 app.use("/api/v2/foods", v2FoodRoutes);
+app.use("/api/v2/exercise-entries", v2ExerciseEntryRoutes);
 app.use("/api/food-entries", foodEntryRoutes);
 app.use("/api/food-entry-meals", foodEntryMealRoutes);
 app.use("/api/meals", mealRoutes);
@@ -335,8 +342,12 @@ app.use("/api/freeexercisedb", freeExerciseDBRoutes);
 app.use("/api/health-data", healthDataRoutes);
 app.use("/api/sleep", sleepRoutes);
 app.use("/api/sleep-science", sleepScienceRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/identity", require("./routes/identityRoutes"));
+app.use("/api/auth", (req, res, next) =>
+  require("./routes/authRoutes")(req, res, next),
+);
+app.use("/api/identity", (req, res, next) =>
+  require("./routes/identityRoutes")(req, res, next),
+);
 app.use("/api/health", healthRoutes);
 app.use("/api/external-providers", externalProviderRoutes);
 app.use("/api/integrations/garmin", garminRoutes);
@@ -347,7 +358,6 @@ app.use("/api/admin/global-settings", globalSettingsRoutes);
 app.use("/api/global-settings", globalSettingsRoutes); // Public route for allow-user-ai-config
 app.use("/api/admin/oidc-settings", require("./routes/oidcSettingsRoutes"));
 app.use("/api/admin/backup", backupRoutes);
-app.use("/api/admin/auth", adminAuthRoutes);
 app.use("/api/integrations/withings/data", withingsDataRoutes);
 app.use("/api/integrations/fitbit", fitbitRoutes);
 app.use("/api/integrations/polar", polarRoutes);
@@ -356,7 +366,9 @@ app.use("/api/integrations/hevy", hevyRoutes);
 app.use("/api/mood", moodRoutes);
 app.use("/api/fasting", fastingRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/api/admin/auth", adminAuthRoutes);
+app.use("/api/admin/auth", (req, res, next) =>
+  require("./routes/adminAuthRoutes")(req, res, next),
+);
 app.use("/api/water-containers", waterContainerRoutes);
 app.use("/api/workout-presets", require("./routes/workoutPresetRoutes"));
 app.use(
@@ -526,8 +538,9 @@ applyMigrations()
     } catch (err) {
       log("error", "OIDC env provider upsert failed:", err);
     }
+    mountBetterAuth();
+
     // Sync trusted SSO providers after database is ready (so Better Auth sees env-upserted and DB providers)
-    const { syncTrustedProviders } = require("./auth");
     if (syncTrustedProviders) {
       await syncTrustedProviders().catch((err) =>
         console.error("[AUTH] Post-init SSO sync failed:", err),

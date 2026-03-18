@@ -26,9 +26,15 @@ module.exports = {
   // Timeout for async tests
   testTimeout: 10000,
 
+  // Module name mapping for workspace packages
+  moduleNameMapper: {
+    '^@workspace/shared$': '<rootDir>/../shared/src/index.ts',
+    '^@workspace/shared/(.*)$': '<rootDir>/../shared/src/$1'
+  },
+
   // Transform ES modules from node_modules
   transformIgnorePatterns: [
-    'node_modules/(?!(uuid)/)'
+    'node_modules/(?!(uuid|@workspace/shared)/)'
   ],
 
   // Setup file

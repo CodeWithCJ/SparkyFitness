@@ -32,7 +32,7 @@ export const calculateBodyFatNavy = (
     // Imperial formula constants are used, so input must be in inches
     const bfp =
       86.01 * Math.log10(logValue) - 70.041 * Math.log10(heightIn) + 36.76;
-    return parseFloat(bfp.toFixed(2));
+    return parseFloat(bfp.toFixed(1));
   } else if (gender === 'female') {
     if (!height || !waist || !neck || !hips)
       throw new Error(
@@ -49,7 +49,7 @@ export const calculateBodyFatNavy = (
     // Imperial formula constants are used, so input must be in inches
     const bfp =
       163.205 * Math.log10(logValue) - 97.684 * Math.log10(heightIn) - 78.387;
-    return parseFloat(bfp.toFixed(2));
+    return parseFloat(bfp.toFixed(1));
   } else {
     throw new Error("Invalid gender provided. Must be 'male' or 'female'.");
   }
@@ -80,5 +80,5 @@ export const calculateBodyFatBmi = (
     bfp = 1.2 * bmi + 0.23 * age - 5.4;
   }
 
-  return parseFloat(bfp.toFixed(2));
+  return parseFloat(bfp.toFixed(1));
 };

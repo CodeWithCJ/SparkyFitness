@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, Platform } from 'react-native';
+import { View, Text, Image, ScrollView, Platform } from 'react-native';
+import Button from '../components/ui/Button';
+import Icon from '../components/Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import ConnectionStatus from '../components/ConnectionStatus';
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,10 +24,9 @@ import { addLog } from '../services/LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { HealthMetricStates, HealthDataDisplayState } from '../types/healthRecords';
 import { useServerConnection, useSyncHealthData } from '../hooks';
-import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
-import type { TabParamList } from '../types/navigation';
+import type { RootStackScreenProps } from '../types/navigation';
 
-type SyncScreenProps = NativeBottomTabScreenProps<TabParamList, 'Sync'>;
+type SyncScreenProps = RootStackScreenProps<'Sync'>;
 
 interface TimeRangeOption {
   label: string;
@@ -42,8 +44,9 @@ const timeRangeOptions: TimeRangeOption[] = [
   { label: "Last Year", value: "365d" },
 ];
 
-const SyncScreen: React.FC<SyncScreenProps> = () => {
+const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [healthData, setHealthData] = useState<HealthDataDisplayState>({});
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
@@ -507,11 +510,24 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 80 }}>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 80 }}
+        contentInsetAdjustmentBehavior="never"
+      >
         {/* Header */}
         <View className="flex-row justify-between items-center mb-4">
-          <Text className="text-2xl font-bold text-text-primary">Sync</Text>
+          <View className="flex-row items-center">
+            <Button
+              variant="ghost"
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="py-0 px-0 mr-2"
+            >
+              <Icon name="chevron-back" size={22} color={accentPrimary} />
+            </Button>
+            <Text className="text-2xl font-bold text-text-primary">Sync</Text>
+          </View>
           <ConnectionStatus isConnected={isConnected} variant="header" />
         </View>
 
@@ -536,8 +552,9 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
           )}
         </View>
         {/* Sync Now Button */}
-        <TouchableOpacity
-          className="bg-accent-primary rounded-xl py-3.5 px-4 flex-row items-center mb-2"
+        <Button
+          variant="primary"
+          className="flex-row items-center mb-2"
           onPress={handleSync}
           disabled={syncMutation.isPending || !isHealthConnectInitialized}
         >
@@ -550,7 +567,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
             <Text className="text-white text-lg font-semibold">{syncMutation.isPending ? "Syncing..." : "Sync Now"}</Text>
             <Text className="text-white/80 text-sm mt-0.5">Send your health data to your server</Text>
           </View>
-        </TouchableOpacity>
+        </Button>
 
 
         {!isHealthConnectInitialized && (
@@ -596,12 +613,12 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
             {HEALTH_METRICS.map(metric => healthMetricStates[metric.stateKey] && (
               <View
                 key={metric.id}
-                className="w-[48%] bg-raised rounded-lg p-2 mb-2 items-start flex-row border border-border"
+                className="w-[48%] bg-raised rounded-lg p-2 mb-2 items-center flex-row border border-border"
               >
                 <Image source={metric.icon} className="w-6 h-6 mr-2" />
                 <View>
                   <Text className="text-lg font-bold text-text-primary">{healthData[metric.id] || '0'}</Text>
-                  <Text className="text-sm text-text-secondary">{metric.label}</Text>
+                  <Text className="text-xs text-text-secondary">{metric.label}</Text>
                 </View>
               </View>
             ))}

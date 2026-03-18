@@ -14,10 +14,14 @@ COPY SparkyFitnessFrontend/package.json ./SparkyFitnessFrontend/
 COPY SparkyFitnessMobile/package.json ./SparkyFitnessMobile/
 COPY shared/package.json ./shared/
 
+# Copy patches needed by pnpm install
+COPY patches/ ./patches/
+
 RUN pnpm install --frozen-lockfile
 
-# Copy the rest of the application source code
-COPY . .
+# Copy the frontend and shared source code
+COPY SparkyFitnessFrontend/ ./SparkyFitnessFrontend/
+COPY shared/ ./shared/
 
 # Build the application
 RUN pnpm --filter sparkyfitnessfrontend run build

@@ -544,6 +544,15 @@ const CalculationSettings = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                {calorieGoalAdjustmentMode === 'adaptive' && (
+                  <p className="text-[10px] text-muted-foreground italic mt-[-4px]">
+                    💡{' '}
+                    {t(
+                      'settings.calorieGoalAdjustment.adaptiveActivityHint',
+                      'In Adaptive mode, this setting acts as a fallback until you have enough tracking data.'
+                    )}
+                  </p>
+                )}
                 {calorieGoalAdjustmentMode === 'tdee' && (
                   <div className="flex items-center space-x-2">
                     <Checkbox

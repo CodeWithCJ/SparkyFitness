@@ -1,5 +1,6 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import Button from './ui/Button';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -186,17 +187,13 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
             )} */}
 
             {/* Done button */}
-            <TouchableOpacity
+            <Button
+              variant="primary"
               onPress={handleDone}
               disabled={isPending || quantity <= 0}
-              className="bg-accent-primary rounded-xl py-3.5 items-center"
-              style={isPending || quantity <= 0 ? { opacity: 0.5 } : undefined}
-              activeOpacity={0.8}
             >
-              <Text className="text-white text-base font-semibold">
-                {isPending ? 'Saving...' : 'Done'}
-              </Text>
-            </TouchableOpacity>
+              {isPending ? 'Saving...' : 'Done'}
+            </Button>
           </>
         )}
       </BottomSheetView>

@@ -9,3 +9,8 @@ export interface ExternalProvider {
 export const FOOD_PROVIDER_TYPES = new Set([
   'openfoodfacts', 'fatsecret', 'usda', 'mealie',
 ]);
+
+// Allowlist of provider_type values relevant to exercise search
+export const EXERCISE_PROVIDER_TYPES = new Set([
+  'wger', 'free-exercise-db',
+]);

@@ -5,6 +5,9 @@ const { log } = require('../config/logging');
 // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
 const ALLOWED_CHECK_IN_COLUMNS = ['weight', 'neck', 'waist', 'hips', 'steps', 'height', 'body_fat_percentage'];
 
+// Tolerance in milliliters for matching historical manual records with incoming sync data
+const WATER_ADOPTION_TOLERANCE_ML = 5;
+
 async function upsertStepData(userId, actingUserId, value, date) {
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
@@ -33,41 +36,78 @@ async function upsertStepData(userId, actingUserId, value, date) {
   }
 }
 
-async function upsertWaterData(userId, actingUserId, waterMl, date) {
-  const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
+async function upsertWaterData(userId, actingUserId, waterMl, date, source = 'manual') {
+  const client = await getClient(actingUserId);
   try {
-    const existingRecord = await client.query(
-      'SELECT id, water_ml FROM water_intake WHERE user_id = $1 AND entry_date = $2',
-      [userId, date]
-    );
+    // 1. SMART ADOPTION: If this is a sync (non-manual), check for a matching 'manual' record to "adopt"
+    // This handles historical sync data that was moved to 'manual' during migration.
+    if (source !== 'manual') {
+      const existingSourceRecord = await client.query(
+        'SELECT id FROM water_intake WHERE user_id = $1 AND entry_date = $2 AND source = $3',
+        [userId, date, source]
+      );
 
-    let result;
-    if (existingRecord.rows.length > 0) {
-      const updateResult = await client.query(
-        'UPDATE water_intake SET water_ml = $1, updated_at = now(), updated_by_user_id = $2 WHERE id = $3 RETURNING *',
-        [waterMl, actingUserId, existingRecord.rows[0].id]
-      );
-      result = updateResult.rows[0];
-    } else {
-      const insertResult = await client.query(
-        'INSERT INTO water_intake (user_id, entry_date, water_ml, created_by_user_id, updated_by_user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $4, now(), now()) RETURNING *',
-        [userId, date, waterMl, actingUserId]
-      );
-      result = insertResult.rows[0];
+      if (existingSourceRecord.rows.length === 0) {
+        // SMART ADOPTION: Look for a manual record within a tolerance (handles rounding differences)
+        const matchingManualRecord = await client.query(
+          `SELECT id, water_ml FROM water_intake 
+           WHERE user_id = $1 AND entry_date = $2 AND source = 'manual' 
+           AND water_ml BETWEEN $3::numeric - $4::numeric AND $3::numeric + $4::numeric
+           LIMIT 1`,
+          [userId, date, waterMl, WATER_ADOPTION_TOLERANCE_ML]
+        );
+
+        if (matchingManualRecord.rows.length > 0) {
+          log('info', `Adopting manual water record ${matchingManualRecord.rows[0].id} for source '${source}'. (Existing: ${matchingManualRecord.rows[0].water_ml}ml, Sync: ${waterMl}ml)`);
+          const convertResult = await client.query(
+            `UPDATE water_intake SET 
+              source = $1, 
+              water_ml = $2, -- Update to the sync provider's precise value
+              updated_at = now(), 
+              updated_by_user_id = $3 
+            WHERE id = $4 
+            RETURNING *`,
+            [source, waterMl, actingUserId, matchingManualRecord.rows[0].id]
+          );
+          return convertResult.rows[0];
+        }
+      }
     }
-    return result;
+
+    // 2. Standard atomic upsert by source
+    const query = `
+      INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $5, now(), now())
+      ON CONFLICT (user_id, entry_date, source)
+      DO UPDATE SET 
+        water_ml = $3,
+        updated_at = now(),
+        updated_by_user_id = $5
+      RETURNING *`;
+    const values = [userId, date, waterMl, source, actingUserId];
+    const result = await client.query(query, values);
+    return result.rows[0];
   } finally {
     client.release();
   }
 }
 
-async function getWaterIntakeByDate(userId, date) {
-  const client = await getClient(userId); // User-specific operation
+async function getWaterIntakeByDate(userId, date, source = null) {
+  const client = await getClient(userId);
   try {
-    const result = await client.query(
-      'SELECT water_ml FROM water_intake WHERE user_id = $1 AND entry_date = $2',
-      [userId, date]
-    );
+    let query;
+    let values;
+
+    if (source) {
+      query = 'SELECT * FROM water_intake WHERE user_id = $1 AND entry_date = $2 AND source = $3';
+      values = [userId, date, source];
+    } else {
+      // Sum all sources for the day
+      query = 'SELECT SUM(water_ml) as water_ml FROM water_intake WHERE user_id = $1 AND entry_date = $2';
+      values = [userId, date];
+    }
+
+    const result = await client.query(query, values);
     return result.rows[0];
   } finally {
     client.release();
@@ -75,7 +115,7 @@ async function getWaterIntakeByDate(userId, date) {
 }
 
 async function getWaterIntakeEntryById(id, userId) {
-  const client = await getClient(userId); // User-specific operation
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       'SELECT * FROM water_intake WHERE id = $1 AND user_id = $2',
@@ -88,7 +128,7 @@ async function getWaterIntakeEntryById(id, userId) {
 }
 
 async function getWaterIntakeEntryOwnerId(id, userId) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+  const client = await getClient(userId);
   try {
     const entryResult = await client.query(
       'SELECT user_id FROM water_intake WHERE id = $1 AND user_id = $2',
@@ -101,17 +141,18 @@ async function getWaterIntakeEntryOwnerId(id, userId) {
 }
 
 async function updateWaterIntake(id, userId, actingUserId, updateData) {
-  const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
+  const client = await getClient(actingUserId);
   try {
     const result = await client.query(
       `UPDATE water_intake SET
         water_ml = COALESCE($1, water_ml),
         entry_date = COALESCE($2, entry_date),
+        source = COALESCE($3, source),
         updated_at = now(),
-        updated_by_user_id = $3
-      WHERE id = $4 AND user_id = $5
+        updated_by_user_id = $4
+      WHERE id = $5 AND user_id = $6
       RETURNING *`,
-      [updateData.water_ml, updateData.entry_date, actingUserId, id, userId]
+      [updateData.water_ml, updateData.entry_date, updateData.source, actingUserId, id, userId]
     );
     return result.rows[0];
   } finally {

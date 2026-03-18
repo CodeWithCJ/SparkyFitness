@@ -3,8 +3,8 @@ import { fetchExternalProviders } from '../services/api/externalProvidersApi';
 import { FOOD_PROVIDER_TYPES } from '../types/externalProviders';
 import { externalProvidersQueryKey } from './queryKeys';
 
-export function useExternalProviders(options?: { enabled?: boolean }) {
-  const { enabled = true } = options ?? {};
+export function useExternalProviders(options?: { enabled?: boolean; filterSet?: Set<string> }) {
+  const { enabled = true, filterSet = FOOD_PROVIDER_TYPES } = options ?? {};
 
   const query = useQuery({
     queryKey: externalProvidersQueryKey,
@@ -13,7 +13,7 @@ export function useExternalProviders(options?: { enabled?: boolean }) {
     enabled,
     select: (data) =>
       data.filter(
-        (p) => p.is_active && FOOD_PROVIDER_TYPES.has(p.provider_type),
+        (p) => p.is_active && filterSet.has(p.provider_type),
       ),
   });
 

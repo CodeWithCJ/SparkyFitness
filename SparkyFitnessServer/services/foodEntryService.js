@@ -47,8 +47,12 @@ async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
       ...entryData,
       user_id: entryData.user_id || authenticatedUserId,
       created_by_user_id: actingUserId,
-      custom_nutrients: sanitizeCustomNutrients(entryData.custom_nutrients),
     };
+
+    if (entryData.custom_nutrients !== undefined) {
+      entryWithUser.custom_nutrients = sanitizeCustomNutrients(entryData.custom_nutrients);
+    }
+
     log(
       "info",
       `createFoodEntry in foodService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, entryData: ${JSON.stringify(

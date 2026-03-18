@@ -56,13 +56,8 @@ const EditExerciseEntryDialog = ({
   onSave,
 }: EditExerciseEntryDialogProps) => {
   const { t } = useTranslation();
-  const {
-    loggingLevel,
-    weightUnit,
-    distanceUnit,
-    convertWeight,
-    convertDistance,
-  } = usePreferences();
+  const { loggingLevel, weightUnit, distanceUnit, convertDistance } =
+    usePreferences();
   debug(
     loggingLevel,
     'EditExerciseEntry_v2: Component rendered for entry:',
@@ -72,9 +67,7 @@ const EditExerciseEntryDialog = ({
   const [sets, setSets] = useState<WorkoutPresetSet[]>(() => {
     return ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
       ...set,
-      weight: parseFloat(
-        convertWeight(Number(set.weight), 'kg', weightUnit).toFixed(1)
-      ),
+      weight: Number(set.weight) || 0, // Keep metric (kg)
     }));
   });
   const [notes, setNotes] = useState(entry.notes || '');
@@ -267,7 +260,7 @@ const EditExerciseEntryDialog = ({
           notes: notes,
           sets: sets.map((set) => ({
             ...set,
-            weight: convertWeight(set.weight ?? 0, weightUnit, 'kg'),
+            weight: set.weight ?? 0, // already metric (kg) from UnitInput
           })),
           imageFile: imageFile,
           image_url: imageUrl,

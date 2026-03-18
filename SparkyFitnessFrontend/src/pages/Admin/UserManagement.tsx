@@ -69,28 +69,35 @@ const UserManagement: React.FC = () => {
 
   const handleSaveFullName = (
     userId: string,
-    newFullName: string,
+    newFullNameInput: string, // Raw input from the field
     currentFullName: string
   ) => {
-    if (!newFullName || newFullName === currentFullName) {
+    const trimmedNewFullName = newFullNameInput.trim(); // Trim whitespace from the input
+
+    // Check if the trimmed name is empty or unchanged
+    if (!trimmedNewFullName || trimmedNewFullName === currentFullName) {
       setEditingUserId(null);
       return;
     }
 
+    // Use the trimmed name for the confirmation prompt
     if (
       !window.confirm(
-        t(
-          'admin.userManagement.confirmChangeFullName',
-          `Change name to ${newFullName}?`
-        )
+        t('admin.userManagement.confirmChangeFullName', {
+          currentFullName: currentFullName, // Use camelCase key
+          newFullName: trimmedNewFullName, // Use camelCase key with trimmed name
+          defaultValue:
+            "Are you sure you want to change {{currentFullName}}'s full name to {{newFullName}}?", // Use camelCase placeholders
+        })
       )
     ) {
       setEditingUserId(null);
       return;
     }
 
+    // Call the mutation with the trimmed name
     updateFullName(
-      { userId, fullName: newFullName },
+      { userId, fullName: trimmedNewFullName },
       {
         onSuccess: () => {
           setEditingUserId(null);
@@ -117,10 +124,10 @@ const UserManagement: React.FC = () => {
   const handleResetPassword = (userId: string, userName: string) => {
     if (
       !window.confirm(
-        t(
-          'admin.userManagement.resetPasswordConfirm',
-          `Reset password for ${userName}?`
-        )
+        t('admin.userManagement.resetPasswordConfirm', {
+          userName,
+          defaultValue: `Are you sure you want to reset the password for ${userName}?`,
+        })
       )
     )
       return;
@@ -136,10 +143,11 @@ const UserManagement: React.FC = () => {
     const action = newCheckedState ? 'activate' : 'deactivate';
     if (
       !window.confirm(
-        t(
-          'admin.userManagement.toggleUserStatusConfirm',
-          `${action} user ${userName}?`
-        )
+        t('admin.userManagement.toggleUserStatusConfirm', {
+          action,
+          userName,
+          defaultValue: `Are you sure you want to ${action} user ${userName}?`,
+        })
       )
     )
       return;
@@ -147,14 +155,19 @@ const UserManagement: React.FC = () => {
     updateStatus({ userId, isActive: newCheckedState });
   };
 
-  const handleToggleUserRole = (userId: string, currentRole: string) => {
+  const handleToggleUserRole = (
+    userId: string,
+    userName: string,
+    currentRole: string
+  ) => {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
     if (
       !window.confirm(
-        t(
-          'admin.userManagement.toggleUserRoleConfirm',
-          `Change role to ${newRole}?`
-        )
+        t('admin.userManagement.toggleUserRoleConfirm', {
+          userName,
+          newRole,
+          defaultValue: `Are you sure you want to change user ${userName}'s role to ${newRole}?`,
+        })
       )
     )
       return;
@@ -367,7 +380,11 @@ const UserManagement: React.FC = () => {
                             <Switch
                               checked={user.role === 'admin'}
                               onCheckedChange={() =>
-                                handleToggleUserRole(user.id, user.role)
+                                handleToggleUserRole(
+                                  user.id,
+                                  user.full_name,
+                                  user.role
+                                )
                               }
                             />
                           </TableCell>

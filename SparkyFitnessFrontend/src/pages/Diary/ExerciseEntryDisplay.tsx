@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Dumbbell, Edit, Trash2, Settings, Play } from 'lucide-react';
+import { formatWeight } from '@/utils/numberFormatting';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
 import { ExerciseEntry, Exercise } from '@/types/exercises';
@@ -48,7 +49,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
   convertEnergy,
   getEnergyUnitString,
 }) => {
-  const { weightUnit, convertWeight } = usePreferences(); // Destructure loggingLevel from usePreferences
+  const { weightUnit } = usePreferences(); // Destructure weightUnit from usePreferences
 
   return (
     <div
@@ -97,7 +98,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
                         ` • Reps: ${String(set.reps)}`}
                       {set.weight &&
                         Number.isFinite(set.weight) &&
-                        ` • Weight: ${convertWeight(set.weight, 'kg', weightUnit).toFixed(1)} ${weightUnit}`}
+                        ` • Weight: ${formatWeight(set.weight, weightUnit)}`}
                       {Number.isFinite(set.rpe) && ` • RPE: ${set.rpe}`}
                     </span>
                   ))}

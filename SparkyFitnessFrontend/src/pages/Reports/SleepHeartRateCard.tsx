@@ -170,7 +170,15 @@ const SleepHeartRateCard = ({ data }: SleepHeartRateCardProps) => {
                   borderRadius: '6px',
                   color: 'hsl(var(--foreground))',
                 }}
-                formatter={(value: number | undefined) => [`${value} bpm`]}
+                formatter={(
+                  value:
+                    | string
+                    | number
+                    | ReadonlyArray<string | number>
+                    | undefined
+                ) => [
+                  `${Number((Array.isArray(value) ? value[0] : value) ?? 0)} bpm`,
+                ]}
               />
               <Line
                 type="monotone"

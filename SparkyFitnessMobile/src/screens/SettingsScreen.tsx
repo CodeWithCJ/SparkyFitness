@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Alert, Text, ScrollView, Platform, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
 import type { ServerConfig, ProxyHeader } from '../services/storage';
@@ -184,6 +185,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
     try {
       await setActiveServerConfig(configId);
+      queryClient.clear();
       await loadConfig();
       refetchConnection();
       Alert.alert('Success', 'Active server configuration changed.');
@@ -386,8 +388,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 130 }}>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 130 }} contentInsetAdjustmentBehavior="never">
         <View className="flex-1 p-4 pb-20">
           <ServerConfigComponent
             url={url}
@@ -411,6 +413,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             onCloseModal={() => setShowConfigModal(false)}
             isEditing={!!currentConfigId}
           />
+
+          <TouchableOpacity
+            className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+            onPress={() => navigation.navigate('Sync')}
+            activeOpacity={0.7}
+          >
+            <Text className="text-base font-semibold text-text-primary">View Sync Data</Text>
+            <Icon name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
 
           <SyncFrequency
             isEnabled={isBackgroundSyncEnabled}
@@ -498,9 +509,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
 
           <View className="items-center z-100">
-            <TouchableOpacity onPress={() => setShowPrivacyModal(true)} activeOpacity={0.7}>
-              <Text className="text-accent-primary mb-2">Privacy Policy</Text>
-            </TouchableOpacity>
+            <Button variant="ghost" onPress={() => setShowPrivacyModal(true)} className="p-0 mb-2">
+              Privacy Policy
+            </Button>
             <Text className="text-text-muted">Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
           </View>
         </View>

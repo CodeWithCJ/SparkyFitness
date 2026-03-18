@@ -1,12 +1,18 @@
-name: Attach Docker Assets to Release
+name: Attach Assets to Release
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'The tag name of the release to attach assets to (e.g., v1.0.0)'
+        required: false
+        type: string
 
 jobs:
   attach_assets:
-    name: Attach Docker Compose and Env
+    name: Attach Docker Compose, Env and Tarball
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required to upload release assets
@@ -15,9 +21,48 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      
+      - name: Install workspace deps
+        run: pnpm install --frozen-lockfile
+
+      # ---------- FRONTEND ----------
+      - name: Build frontend
+        run: pnpm --filter sparkyfitnessfrontend run build
+
+      # ---------- BACKEND ----------
+      - name: Build backend
+        run: pnpm --filter sparkyfitnessserver deploy --prod --legacy ./deploy
+
+      # ---------- PACKAGE ----------
+      - name: Prepare release folder
+        run: |
+          mkdir -p release/frontend
+          mkdir -p release/backend
+          
+          cp -r SparkyFitnessFrontend/dist/* release/frontend/
+          cp -r deploy/* release/backend/
+
+      # ---------- COMPRESS ----------
+      - name: Compress release
+        run: tar -czvf SparkyFitness.tar.gz release/
+
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
           files: |
             docker/docker-compose.prod.yml
             docker/.env.example
+            SparkyFitness.tar.gz
+
+        

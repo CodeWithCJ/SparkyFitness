@@ -3,9 +3,9 @@ import {
   View,
   Text,
   Modal,
-  TouchableOpacity,
   Linking,
 } from 'react-native';
+import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 
@@ -60,21 +60,24 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
               All HealthKit data stays on your device and is transmitted only to your own server.
             </Text>
 
-            <TouchableOpacity onPress={handleOpenPrivacyPolicy} activeOpacity={0.7}>
-              <Text className="text-base leading-6 text-center underline text-accent-primary">
-                Learn more in our Privacy Policy.
-              </Text>
-            </TouchableOpacity>
+            <Button
+              variant="ghost"
+              onPress={handleOpenPrivacyPolicy}
+              className="py-0 px-0"
+              textClassName="text-base leading-6 text-center underline"
+            >
+              Learn more in our Privacy Policy.
+            </Button>
           </View>
 
           {/* Close Button */}
-          <TouchableOpacity
-            className="items-center justify-center py-3.5 rounded-[10px] bg-accent-primary"
+          <Button
+            variant="primary"
             onPress={onClose}
-            activeOpacity={0.8}
+            textClassName="text-[17px]"
           >
-            <Text className="text-white text-[17px] font-semibold">Close</Text>
-          </TouchableOpacity>
+            Close
+          </Button>
         </View>
       </View>
     </Modal>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
+import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
 import { ServerConfig as ServerConfigType } from '../services/storage';
 import ConnectionStatus from './ConnectionStatus';
@@ -51,11 +52,11 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
   onCloseModal,
   isEditing,
 }) => {
-  const [success, successBackground, accentPrimary, textSecondary] = useCSSVariable([
+  const [success, successBackground, textSecondary, textLink] = useCSSVariable([
     '--color-text-success',
     '--color-bg-success',
-    '--color-accent-primary',
-    '--color-text-secondary'
+    '--color-text-secondary',
+    '--color-text-link'
   ]) as [string, string, string, string];
 
   const showAndroidConfigDetailsMenu = (item: ServerConfigType) => {
@@ -144,31 +145,31 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
           </TouchableOpacity>
         ))}
         <View className="flex-row align-items-baseline justify-start gap-4">
-          <TouchableOpacity
+          <Button
+            variant="ghost"
             onPress={handleAddNewConfig}
             accessibilityLabel="Add new configuration"
-            accessibilityRole="button"
-            className="flex-row items-center mt-2 py-1"
+            className="flex-row mt-2 py-1 px-0"
           >
-            <Icon name="add" size={24} color={accentPrimary} />
-            <Text className="ml-2 text-base font-medium" style={{ color: accentPrimary }}>Add Server</Text>
-          </TouchableOpacity>
-          
+            <Icon name="add" size={24} color={textLink} />
+            <Text className="ml-2 text-base font-medium" style={{ color: textLink }}>Add Server</Text>
+          </Button>
+
           {activeConfigId && (
-            <TouchableOpacity
+            <Button
+              variant="ghost"
               onPress={onOpenWebDashboard}
               accessibilityLabel="Open web dashboard"
-              accessibilityRole="button"
-              className="flex-row items-center mt-2 py-1"
+              className="flex-row mt-2 py-1 px-0"
             >
-              <Icon name="globe" size={20} color={accentPrimary} />
+              <Icon name="globe" size={20} color={textLink} />
               <Text
                 className="ml-2 text-base font-medium"
-                style={{ color: accentPrimary }}
+                style={{ color: textLink }}
               >
                 Open Web
               </Text>
-            </TouchableOpacity>
+            </Button>
           )}
         </View>
       </View>

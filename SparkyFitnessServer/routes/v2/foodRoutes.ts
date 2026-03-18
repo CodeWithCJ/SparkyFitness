@@ -9,6 +9,7 @@ const { log } = require("../../config/logging");
 const checkPermissionMiddleware = require("../../middleware/checkPermissionMiddleware");
 const foodCoreService = require("../../services/foodCoreService");
 const externalProviderService = require("../../services/externalProviderService");
+const preferenceService = require("../../services/preferenceService");
 const {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
@@ -176,6 +177,8 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (req, res,
 
   try {
     const credentials = await resolveProviderCredentials(req.userId, providerId, providerType);
+    const userPrefs = await preferenceService.getUserPreferences(req.userId, req.userId);
+    const language = userPrefs?.language || "en";
 
     let foods: unknown[] = [];
     let pagination = EMPTY_PAGINATION(page, pageSize);
@@ -183,11 +186,14 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (req, res,
     switch (providerType) {
       case "openfoodfacts": {
         const autoScale = (req.query.autoScale as string ?? 'true') !== 'false';
-        const result = await searchOpenFoodFacts(query, page);
+        const result = await searchOpenFoodFacts(query, page, language);
         const products = (result.products || []).filter(
-          (p: Record<string, unknown>) => p.product_name,
+          (p: Record<string, any>) => 
+            p.product_name || 
+            p[`product_name_${language}`] || 
+            p.product_name_en,
         );
-        foods = products.map((p: Record<string, unknown>) => mapOpenFoodFactsProduct(p, { autoScale })).filter(Boolean);
+        foods = products.map((p: Record<string, unknown>) => mapOpenFoodFactsProduct(p, { autoScale, language })).filter(Boolean);
         pagination = result.pagination;
         break;
       }
@@ -284,14 +290,16 @@ const detailHandler: RequestHandler<{
 
   try {
     const credentials = await resolveProviderCredentials(req.userId, providerId, providerType);
+    const userPrefs = await preferenceService.getUserPreferences(req.userId, req.userId);
+    const language = userPrefs?.language || "en";
 
     let food: unknown = null;
 
     switch (providerType) {
       case "openfoodfacts": {
-        const data = await searchOpenFoodFactsByBarcodeFields(externalId);
+        const data = await searchOpenFoodFactsByBarcodeFields(externalId, undefined, language);
         if (data.status === 1 && data.product) {
-          food = mapOpenFoodFactsProduct(data.product);
+          food = mapOpenFoodFactsProduct(data.product, { language });
         }
         break;
       }

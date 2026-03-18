@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict t9CuSs2YnePO9KyLZUL4yxaa8ne4crxjv0739eZzBTIfhVpDBH5oyhlh0uNFcjC
+\restrict hmnn8vTKiwqbmCWCTgcN8xKnPFVCnYvDAyIZZpP9YBoOEbxYqNaVfbMLbgrqgcG
 
 -- Dumped from database version 15.15
 -- Dumped by pg_dump version 18.0
@@ -2271,6 +2271,7 @@ CREATE TABLE public.user_preferences (
     exercise_calorie_percentage integer DEFAULT 100,
     activity_level character varying(20) DEFAULT 'not_much'::character varying,
     tdee_allow_negative_adjustment boolean DEFAULT false,
+    default_barcode_provider_id uuid,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
 );
@@ -2446,7 +2447,8 @@ CREATE TABLE public.water_intake (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     water_ml numeric(10,3),
     created_by_user_id uuid,
-    updated_by_user_id uuid
+    updated_by_user_id uuid,
+    source character varying(50) DEFAULT 'manual'::character varying NOT NULL
 );
 
 
@@ -2938,6 +2940,14 @@ ALTER TABLE ONLY public.exercises
 
 
 --
+-- Name: external_data_providers external_data_providers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_data_providers
+    ADD CONSTRAINT external_data_providers_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: external_provider_types external_provider_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3303,6 +3313,14 @@ ALTER TABLE ONLY public.user_water_containers
 
 ALTER TABLE ONLY public.verification
     ADD CONSTRAINT verification_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: water_intake water_intake_user_date_source_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.water_intake
+    ADD CONSTRAINT water_intake_user_date_source_unique UNIQUE (user_id, entry_date, source);
 
 
 --
@@ -4099,6 +4117,14 @@ ALTER TABLE ONLY public.fasting_logs
 
 
 --
+-- Name: user_preferences fk_default_barcode_provider; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_preferences
+    ADD CONSTRAINT fk_default_barcode_provider FOREIGN KEY (default_barcode_provider_id) REFERENCES public.external_data_providers(id) ON DELETE SET NULL;
+
+
+--
 -- Name: exercise_entries fk_exercise_entries_exercise_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4567,7 +4593,7 @@ ALTER TABLE ONLY public.water_intake
 --
 
 ALTER TABLE ONLY public.water_intake
-    ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -7190,5 +7216,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict t9CuSs2YnePO9KyLZUL4yxaa8ne4crxjv0739eZzBTIfhVpDBH5oyhlh0uNFcjC
+\unrestrict hmnn8vTKiwqbmCWCTgcN8xKnPFVCnYvDAyIZZpP9YBoOEbxYqNaVfbMLbgrqgcG
 

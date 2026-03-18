@@ -1,3 +1,8 @@
+// Mock radon-ide (ESM module that Jest can't transform)
+jest.mock('radon-ide', () => ({
+  preview: jest.fn(),
+}));
+
 // Mock expo-asset
 jest.mock('expo-asset', () => ({
   Asset: {

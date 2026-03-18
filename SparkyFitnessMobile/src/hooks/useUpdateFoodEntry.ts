@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { updateFoodEntry, type UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
+import { normalizeDate } from '../utils/dateUtils';
 import { dailySummaryQueryKey } from './queryKeys';
 import type { FoodEntry } from '../types/foodEntries';
 
@@ -12,7 +13,7 @@ interface UseUpdateFoodEntryOptions {
 
 export function useUpdateFoodEntry({ entryId, entryDate, onSuccess }: UseUpdateFoodEntryOptions) {
   const queryClient = useQueryClient();
-  const normalizedDate = entryDate.split('T')[0];
+  const normalizedDate = normalizeDate(entryDate);
 
   const mutation = useMutation({
     mutationFn: (payload: UpdateFoodEntryPayload) => updateFoodEntry(entryId, payload),
