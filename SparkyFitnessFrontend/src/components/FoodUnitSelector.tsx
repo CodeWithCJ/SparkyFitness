@@ -23,9 +23,10 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn, error } from '@/utils/logging';
 import type { Food, FoodVariant } from '@/types/food';
 import { useQueryClient } from '@tanstack/react-query';
-import { foodVariantsOptions } from '@/hooks/Foods/useFoodVariants';
-import { createFoodVariant } from '@/api/Foods/enhancedCustomFoodFormService';
-import { foodVariantKeys } from '@/api/keys/meals';
+import {
+  foodVariantsOptions,
+  useCreateFoodVariantMutation,
+} from '@/hooks/Foods/useFoodVariants';
 import {
   STANDARD_UNIT_GROUPS,
   getConversionFactor,
@@ -84,10 +85,10 @@ const FoodUnitSelector = ({
   >(null);
   const [conversionBaseVariant, setConversionBaseVariant] =
     useState<FoodVariant | null>(null);
-  const [isCreatingVariant, setIsCreatingVariant] = useState(false);
   const [conversionError, setConversionError] = useState('');
 
   const queryClient = useQueryClient();
+  const createFoodVariantMutation = useCreateFoodVariantMutation();
 
   const loadVariantsData = useCallback(async () => {
     debug(loggingLevel, 'Loading food variants for food ID:', food?.id);
@@ -289,14 +290,12 @@ const FoodUnitSelector = ({
         return;
       }
       setConversionError('');
-      setIsCreatingVariant(true);
       try {
-        const savedVariant = await createFoodVariant(food.id, convertedVariant);
-        info(loggingLevel, 'Created converted variant:', savedVariant);
-        // Invalidate the variants cache so it refreshes next time
-        queryClient.invalidateQueries({
-          queryKey: foodVariantKeys.byFood(food.id),
+        const savedVariant = await createFoodVariantMutation.mutateAsync({
+          foodId: food.id,
+          variant: convertedVariant,
         });
+        info(loggingLevel, 'Created converted variant:', savedVariant);
         const variantWithId: FoodVariant = {
           ...convertedVariant,
           ...savedVariant,
@@ -307,8 +306,6 @@ const FoodUnitSelector = ({
       } catch (err) {
         error(loggingLevel, 'Error creating converted variant:', err);
         setConversionError('Failed to save the new unit. Please try again.');
-      } finally {
-        setIsCreatingVariant(false);
       }
       return;
     }
@@ -689,7 +686,7 @@ const FoodUnitSelector = ({
                 <Button
                   type="submit"
                   disabled={
-                    isCreatingVariant ||
+                    createFoodVariantMutation.isPending ||
                     (!conversionMode && !selectedVariant) ||
                     (conversionMode &&
                       (!targetUnit.trim() ||
@@ -697,7 +694,7 @@ const FoodUnitSelector = ({
                           (!conversionFactor || conversionFactor <= 0))))
                   }
                 >
-                  {isCreatingVariant
+                  {createFoodVariantMutation.isPending
                     ? 'Saving...'
                     : initialQuantity
                       ? 'Update Food'
