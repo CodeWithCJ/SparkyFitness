@@ -1,7 +1,13 @@
-import { PersonalRecordsMap } from '@/pages/Reports/ReportsTables';
 import { Exercise } from './exercises';
 import { Food, FoodVariant } from './food';
 
+interface PersonalRecord {
+  date: string;
+  oneRM: number;
+  weight: number;
+  reps: number;
+}
+export type PersonalRecordsMap = Record<string, PersonalRecord>;
 export interface NutritionData {
   date: string;
   calories: number;
@@ -162,4 +168,29 @@ export interface ExerciseDashboardData {
       };
     };
   };
+}
+interface WorkoutStep {
+  [key: string]: unknown;
+}
+
+export interface WorkoutData {
+  workoutName: string;
+  description?: string;
+  sportType?: { sportTypeKey: string };
+  estimatedDurationInSecs?: number;
+  workoutSegments?: {
+    segmentOrder: number;
+    workoutSteps: WorkoutStep[];
+  }[];
+}
+
+export interface ChartDataPoint {
+  timestamp: number;
+  activityDuration: number;
+  distance: number;
+  speed: number;
+  pace: number;
+  heartRate: number | null;
+  runCadence: number;
+  elevation: number | null;
 }
