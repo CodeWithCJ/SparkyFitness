@@ -63,7 +63,6 @@ export interface ExerciseEntry {
   exercise_snapshot: Exercise; // Renamed from 'exercises' to 'exercise_snapshot'
   activity_details?: ActivityDetailKeyValuePair[]; // New field
   exercise_preset_entry_id?: string; // New field
-  created_at: string; // Add created_at for sorting
 }
 
 export interface Exercise {

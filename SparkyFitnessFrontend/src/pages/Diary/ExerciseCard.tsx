@@ -40,6 +40,7 @@ import {
   ExerciseEntry,
   GroupedExerciseEntry,
 } from '@/types/exercises';
+import { ExerciseSessionResponse } from '@workspace/shared';
 
 // New interface for exercises coming from presets, where sets, reps, and weight are guaranteed
 interface PresetExerciseToLog extends Exercise {
@@ -330,7 +331,7 @@ const ExerciseCard = ({
       const isPreset = groupedEntry.type === 'preset' && groupedEntry.exercises;
       const items = isPreset ? groupedEntry.exercises! : [groupedEntry];
 
-      items.forEach((entry: ExerciseEntry | GroupedExerciseEntry) => {
+      items.forEach((entry: ExerciseEntry | ExerciseSessionResponse) => {
         // Calories
         const cal = entry.calories_burned;
         if (cal) {

@@ -8,7 +8,6 @@ import {
   calculateFoodEntryNutrition,
   convertStepsToCalories,
 } from '@/utils/nutritionCalculations';
-import { getExerciseEntriesForDate } from '@/api/Exercises/exerciseEntryService';
 import { userManagementService } from '@/api/Admin/userManagementService';
 import {
   getMostRecentMeasurement,
@@ -16,10 +15,10 @@ import {
 } from '@/api/CheckIn/checkInService';
 import { adaptiveTdeeService } from '@/api/Settings/adaptiveTdeeService';
 import { calculateBmr, BmrAlgorithm } from '@/services/bmrService';
-import { GroupedExerciseEntry } from '@/types/exercises';
 import { userKeys } from '@/api/keys/admin';
 import { exerciseEntryKeys } from '@/api/keys/exercises';
 import { loadFoodEntries } from '@/api/Diary/foodEntryService';
+import { fetchExerciseEntries } from '@/api/Exercises/exerciseEntryService';
 
 export const useAdaptiveTdee = (date: string) => {
   return useQuery({
@@ -73,9 +72,9 @@ export const useDailyExerciseStats = (date: string) => {
   const { t } = useTranslation();
   return useQuery({
     queryKey: exerciseEntryKeys.dailyStats(date),
-    queryFn: () => getExerciseEntriesForDate(date),
+    queryFn: () => fetchExerciseEntries(date),
     enabled: !!date,
-    select: (data: GroupedExerciseEntry[]) => {
+    select: (data) => {
       let activeCalories = 0;
       let otherCalories = 0;
 
