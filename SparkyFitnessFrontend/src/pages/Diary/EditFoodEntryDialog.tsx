@@ -203,7 +203,7 @@ const EditFoodEntryDialog = ({
       setConversionError('');
       try {
         const savedVariant = await createFoodVariantMutation.mutateAsync({
-          foodId: entry.food_id,
+          foodId: entry.food_id ?? '',
           variant: convertedVariant,
         });
         const variantWithId: FoodVariant = {
