@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   fetchExerciseEntries,
@@ -9,6 +14,8 @@ import {
   deleteExercisePresetEntry,
   fetchExerciseDetails,
   UpdateExerciseEntryPayload,
+  fetchExerciseEntryHistoryV2,
+  getExerciseHistory,
 } from '@/api/Exercises/exerciseEntryService';
 import { exerciseEntryKeys, exerciseKeys } from '@/api/keys/exercises';
 import i18n from '@/i18n';
@@ -16,13 +23,35 @@ import { dailyProgressKeys } from '@/api/keys/diary';
 
 // --- Queries ---
 
-export const useExerciseEntries = (date: string) => {
+export const useExerciseEntries = (date: string, userId?: string) => {
   return useQuery({
-    queryKey: exerciseEntryKeys.byDate(date),
-    queryFn: () => fetchExerciseEntries(date),
+    queryKey: exerciseEntryKeys.byDate(date, userId),
+    queryFn: () => fetchExerciseEntries(date, userId),
     enabled: !!date,
     staleTime: 0, // Always consider data stale so it refetches when needed
     refetchOnWindowFocus: true, // Refetch when user returns to the tab after a sync
+  });
+};
+
+export const useExerciseHistory = (exerciseId: string, limit: number = 5) => {
+  return useQuery({
+    queryKey: exerciseEntryKeys.history(exerciseId, limit),
+    queryFn: () => getExerciseHistory(exerciseId, limit),
+    enabled: !!exerciseId,
+  });
+};
+
+export const useInfiniteExerciseHistoryV2 = (
+  userId?: string,
+  pageSize: number = 20
+) => {
+  return useInfiniteQuery({
+    queryKey: exerciseEntryKeys.historyV2(userId, pageSize),
+    queryFn: ({ pageParam = 1 }) =>
+      fetchExerciseEntryHistoryV2(pageParam as number, pageSize, userId),
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasMore ? lastPage.pagination.page + 1 : undefined,
+    initialPageParam: 1,
   });
 };
 

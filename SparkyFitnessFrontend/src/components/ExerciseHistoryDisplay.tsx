@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useExerciseHistory } from '@/hooks/Exercises/useExercises';
+import { useExerciseHistory } from '@/hooks/Exercises/useExerciseEntries';
 
 interface ExerciseHistoryDisplayProps {
   exerciseId: string;

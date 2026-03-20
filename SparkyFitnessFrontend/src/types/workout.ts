@@ -11,24 +11,15 @@ export interface PresetExercise {
 }
 
 export interface WorkoutPresetSet {
-  id?: string;
+  id?: string | number | null;
   set_number: number;
-  set_type:
-    | 'Working Set'
-    | 'Warm-up'
-    | 'Drop Set'
-    | 'Failure'
-    | 'AMRAP'
-    | 'Back-off'
-    | 'Rest-Pause'
-    | 'Cluster'
-    | 'Technique';
-  reps?: number;
-  weight?: number;
-  duration?: number; // in minutes
-  rest_time?: number; // in seconds
-  notes?: string;
-  rpe?: number;
+  set_type: string | null;
+  reps?: number | null;
+  weight?: number | null;
+  duration?: number | null; // in minutes
+  rest_time?: number | null; // in seconds
+  notes?: string | null;
+  rpe?: number | null;
 }
 
 export interface WorkoutPresetExercise {

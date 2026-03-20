@@ -30,7 +30,6 @@ import {
 import i18n from '@/i18n';
 import {
   getActivityDetails,
-  getExerciseHistory,
   getExerciseProgressData,
 } from '@/api/Exercises/exerciseEntryService';
 import { ExerciseOwnershipFilter } from '@/types/exercises';
@@ -294,22 +293,6 @@ export const useSuggestedExercises = (limit: number) => {
       errorMessage: t(
         'exercise.failedToFetchSuggested',
         'Could not load suggested exercises.'
-      ),
-    },
-  });
-};
-
-export const useExerciseHistory = (exerciseId: string, limit: number = 5) => {
-  const { t } = useTranslation();
-
-  return useQuery({
-    queryKey: exerciseEntryKeys.history(exerciseId, limit),
-    queryFn: () => getExerciseHistory(exerciseId, limit),
-    enabled: !!exerciseId,
-    meta: {
-      errorMessage: t(
-        'exercise.history.loadError',
-        'Failed to load exercise history.'
       ),
     },
   });

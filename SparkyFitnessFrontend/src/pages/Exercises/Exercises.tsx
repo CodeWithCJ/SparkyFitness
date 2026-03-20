@@ -604,7 +604,9 @@ const ExerciseDatabaseManager = () => {
                           onClick={() => {
                             setSelectedExercise(exercise);
                             setEditExerciseName(exercise.name);
-                            setEditExerciseCategory(exercise.category);
+                            setEditExerciseCategory(
+                              exercise.category || 'general'
+                            );
                             setEditExerciseCalories(
                               Math.round(
                                 convertEnergy(

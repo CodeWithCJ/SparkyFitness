@@ -145,7 +145,7 @@ const SortableSetItem = React.memo(
             <div className="md:col-span-2">
               <Label>Type</Label>
               <Select
-                value={set.set_type}
+                value={set.set_type || undefined}
                 onValueChange={(value) =>
                   handleSetChangeInPlan(
                     assignmentIndex,

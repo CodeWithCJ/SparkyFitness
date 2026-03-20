@@ -82,7 +82,13 @@ export const freeExerciseDBKeys = {
 
 export const exerciseEntryKeys = {
   all: ['exerciseEntries'] as const,
-  byDate: (date: string) => [...exerciseEntryKeys.all, 'date', date] as const,
+  byDate: (date: string, userId?: string) =>
+    [
+      ...exerciseEntryKeys.all,
+      'date',
+      date,
+      ...(userId ? [{ userId }] : []),
+    ] as const,
   history: (exerciseId: string, limit?: number) =>
     [
       ...exerciseEntryKeys.all,
@@ -90,6 +96,8 @@ export const exerciseEntryKeys = {
       exerciseId,
       ...(limit ? [{ limit }] : []),
     ] as const,
+  historyV2: (userId?: string, pageSize: number = 20) =>
+    [...exerciseEntryKeys.all, 'historyV2', { userId, pageSize }] as const,
   progress: (
     exerciseId: string,
     startDate: string,

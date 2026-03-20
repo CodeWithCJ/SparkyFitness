@@ -9,8 +9,10 @@ import {
 
 // Helper function to safely parse JSON strings that might be arrays
 export const parseJsonArray = (
-  value: string | string[] | undefined
+  value: string | string[] | undefined | null
 ): string[] | undefined => {
+  if (!value) return undefined;
+
   if (Array.isArray(value)) {
     return value;
   }

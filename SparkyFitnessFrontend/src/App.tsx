@@ -47,6 +47,9 @@ const Reports = lazy(() => import('./pages/Reports/Reports'));
 const ExerciseDatabaseManager = lazy(
   () => import('./pages/Exercises/Exercises')
 );
+const ExerciseHistoryPage = lazy(
+  () => import('./pages/Exercises/ExerciseHistoryPage')
+);
 const GoalsSettings = lazy(() => import('./pages/Goals/Goals'));
 const Settings = lazy(() => import('./pages/Settings/SettingsPage'));
 const AdminPage = lazy(() => import('./pages/Admin/Admin'));
@@ -287,6 +290,11 @@ const router = createBrowserRouter([
           {
             path: 'exercises',
             Component: ExerciseDatabaseManager,
+            ErrorBoundary: RouteErrorBoundary,
+          },
+          {
+            path: 'exercise-history',
+            Component: ExerciseHistoryPage,
             ErrorBoundary: RouteErrorBoundary,
           },
           {
