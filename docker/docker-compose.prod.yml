@@ -1,6 +1,6 @@
 services:
   sparkyfitness-db:
-    image: postgres:18.3
+    image: postgres:18.3-alpine
     container_name: sparkyfitness-db
     restart: always
     # Uncomment below to expose PostgreSQL to the host (e.g., for pgAdmin, DBeaver).
