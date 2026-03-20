@@ -74,14 +74,19 @@ const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
         <CardContent>
           <div className="space-y-2">
             {history
-              .filter((entry) => new Date(entry.entry_date) <= new Date())
+              .filter(
+                (entry) =>
+                  entry.entry_date && new Date(entry.entry_date) <= new Date()
+              )
               .map((entry, index) => (
                 <div
                   key={entry.id || index}
                   className="border-b pb-2 last:border-b-0"
                 >
                   <p className="text-sm font-medium">
-                    {new Date(entry.entry_date).toLocaleDateString()}
+                    {entry.entry_date
+                      ? new Date(entry.entry_date).toLocaleDateString()
+                      : ''}
                   </p>
                   <div className="text-xs text-muted-foreground">
                     {entry.sets && (

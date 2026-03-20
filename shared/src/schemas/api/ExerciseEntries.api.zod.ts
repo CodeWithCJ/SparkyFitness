@@ -32,6 +32,17 @@ export const exerciseSnapshotResponseSchema = z.object({
   force: z.string().nullable(),
   level: z.string().nullable(),
   mechanic: z.string().nullable(),
+  source: z.string().nullable().optional(),
+  source_id: z.string().nullable().optional(),
+  is_custom: z.boolean().nullable().optional(),
+  user_id: z.string().nullable().optional(),
+  calories_per_hour: z.number().nullable().optional(),
+  description: z.string().nullable().optional(),
+  shared_with_public: z.boolean().nullable().optional(),
+  created_at: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  duration_min: z.number().nullable().optional(),
 }).strict();
 
 /** A single set within an exercise entry */
@@ -139,6 +150,28 @@ export const updatePresetSessionRequestSchema = z
     }
   });
 
+export const createExerciseEntryRequestSchema = z
+  .object({
+    exercise_id: z.string().uuid(),
+    duration_minutes: z.coerce.number().min(0).default(0),
+    calories_burned: z.coerce.number().min(0).default(0),
+    entry_date: dateStringSchema,
+    notes: z.string().nullable().optional(),
+    sets: z.array(exerciseEntrySetRequestSchema).optional(),
+    reps: z.coerce.number().nullable().optional(),
+    weight: z.coerce.number().nullable().optional(),
+    workout_plan_assignment_id: z.string().uuid().nullable().optional(),
+    image_url: z.string().nullable().optional(),
+    distance: z.coerce.number().nullable().optional(),
+    avg_heart_rate: z.coerce.number().nullable().optional(),
+    activity_details: z.array(z.any()).optional(), // Keep flexible for now
+  })
+  .strict();
+
+export const updateExerciseEntryRequestSchema = createExerciseEntryRequestSchema
+  .partial()
+  .strict();
+
 // --- Exercise entry (shared shape used in both individual and preset contexts) ---
 
 export const exerciseEntryResponseSchema = z.object({
@@ -151,6 +184,9 @@ export const exerciseEntryResponseSchema = z.object({
   distance: z.number().nullable(),
   avg_heart_rate: z.number().nullable(),
   source: z.string().nullable(),
+  image_url: z.string().nullable().optional(),
+  exercise_preset_entry_id: z.string().nullable().optional(),
+  created_at: z.string().nullable().optional(),
   sets: z.array(exerciseEntrySetResponseSchema),
   exercise_snapshot: exerciseSnapshotResponseSchema.nullable(),
   activity_details: z.array(activityDetailResponseSchema),
@@ -176,8 +212,10 @@ export const presetSessionResponseSchema = z.object({
   description: z.string().nullable(),
   notes: z.string().nullable(),
   source: z.string(),
+  created_at: z.string().nullable().optional(),
   total_duration_minutes: z.number(),
   exercises: z.array(exerciseEntryResponseSchema),
+  exercise_snapshot: exerciseSnapshotResponseSchema.nullable().optional(),
   activity_details: z.array(activityDetailResponseSchema),
 }).strict();
 
@@ -211,6 +249,12 @@ export type CreatePresetSessionRequest = z.infer<
 >;
 export type UpdatePresetSessionRequest = z.infer<
   typeof updatePresetSessionRequestSchema
+>;
+export type CreateExerciseEntryRequest = z.infer<
+  typeof createExerciseEntryRequestSchema
+>;
+export type UpdateExerciseEntryRequest = z.infer<
+  typeof updateExerciseEntryRequestSchema
 >;
 export type ExerciseEntrySetResponse = z.infer<
   typeof exerciseEntrySetResponseSchema

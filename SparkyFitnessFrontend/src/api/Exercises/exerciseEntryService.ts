@@ -2,9 +2,8 @@ import { apiCall } from '@/api/api';
 import type { WorkoutPresetSet } from '@/types/workout';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
-import type { LapDTO } from '@/types/exercises';
+import type { ActivityDetailMetric, LapDTO } from '@/types/exercises';
 import type { ExerciseProgressData } from '@/types/reports';
-import { ActivityDetailMetric } from '@/pages/Reports/ActivityReportVisualizer';
 import {
   ExerciseHistoryResponse,
   exerciseHistoryResponseSchema,
