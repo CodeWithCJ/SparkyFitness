@@ -1,6 +1,7 @@
 services:
   sparkyfitness-db:
-    image: postgres:15-alpine
+    image: postgres:18.3
+    container_name: sparkyfitness-db
     restart: always
     # Uncomment below to expose PostgreSQL to the host (e.g., for pgAdmin, DBeaver).
     # ports:
@@ -9,6 +10,8 @@ services:
       POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME:?Variable is required and must be set}
       POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:?Variable is required and must be set}
       POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:?Variable is required and must be set}
+      PUID: 1000
+      GUID: 1000
     volumes:
       - ${DB_PATH:-./postgresql}:/var/lib/postgresql/data
     networks:
@@ -44,6 +47,8 @@ services:
       SPARKY_FITNESS_EMAIL_PASS: ${SPARKY_FITNESS_EMAIL_PASS}
       SPARKY_FITNESS_EMAIL_FROM: ${SPARKY_FITNESS_EMAIL_FROM}
       GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:8000 # Add Garmin microservice URL
+      PUID: 1000
+      GUID: 1000
     networks:
       - sparkyfitness-network # Use the new named network
     restart: always
@@ -61,6 +66,8 @@ services:
       SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL}
       SPARKY_FITNESS_SERVER_HOST: sparkyfitness-server # Internal Docker service name for the backend
       SPARKY_FITNESS_SERVER_PORT: 3010 # Port the backend server listens on
+      PUID: 1000
+      GUID: 1000
     networks:
       - sparkyfitness-network # Use the new named network
     restart: always
@@ -76,6 +83,8 @@ services:
   #     GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:${GARMIN_SERVICE_PORT}
   #     GARMIN_SERVICE_PORT: ${GARMIN_SERVICE_PORT}
   #     GARMIN_SERVICE_IS_CN: ${GARMIN_SERVICE_IS_CN}  # set to true for China region. Everything else should be false. Optional - defaults to false
+  #     PUID: 1000
+  #     GUID: 1000
   #   networks:
   #     - sparkyfitness-network
   #   restart: unless-stopped
