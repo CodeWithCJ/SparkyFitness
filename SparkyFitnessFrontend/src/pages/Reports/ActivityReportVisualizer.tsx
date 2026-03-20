@@ -131,7 +131,7 @@ const ActivityReportVisualizer = ({
     activityData.activity.activity.distance > 0
   ) {
     totalActivityDistanceForDisplay = convertDistance(
-      activityData.activity.activity.distance / 1000,
+      activityData.activity.activity.distance,
       'km',
       distanceUnit
     );

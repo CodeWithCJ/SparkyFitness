@@ -451,7 +451,7 @@ async function processGarminSimpleActivity(userId, activityData) {
     entry_date: entryDate,
     notes: `Garmin Activity: ${activity.activityName} (${activity.activityType?.typeKey})`,
     distance: activity.distance,
-    avg_heart_rate: activity.averageHeartRateInBeatsPerMinute || null,
+    avg_heart_rate: activity.averageHR || activity.averageHeartRateInBeatsPerMinute || null,
   };
 
   const newEntry = await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, userId, 'garmin');
