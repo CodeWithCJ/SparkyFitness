@@ -16,7 +16,7 @@ const {
 } = require("../integrations/usda/usdaService");
 const {
   searchFatSecretByBarcode,
-  mapFatSecretBarcodeProduct,
+  mapFatSecretFood,
 } = require("../integrations/fatsecret/fatsecretService");
 
 async function searchFoods(
@@ -780,7 +780,7 @@ async function lookupBarcode(barcode, userId, providerId) {
           fatSecretData.food.barcode = barcode;
           return {
             source: "fatsecret",
-            food: mapFatSecretBarcodeProduct(fatSecretData),
+            food: mapFatSecretFood(fatSecretData),
             barcode_raw: fatSecretData,
           };
         }
@@ -885,6 +885,6 @@ module.exports = {
   lookupBarcode,
   // Re-exported from integration services for backward compatibility
   mapOpenFoodFactsProduct,
-  mapFatSecretBarcodeProduct,
+  mapFatSecretFood,
   mapUsdaBarcodeProduct,
 };
