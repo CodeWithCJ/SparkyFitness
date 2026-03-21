@@ -41,6 +41,7 @@ import { NutrientGrid } from './NutrientsGrid';
 import {
   getConversionFactor,
   STANDARD_UNIT_GROUPS,
+  SERVING_UNIT_GROUP,
 } from '@/utils/servingSizeConversions';
 
 interface EditFoodEntryDialogProps {
@@ -145,15 +146,17 @@ const EditFoodEntryDialog = ({
     return variants[0];
   }, [variants, selectedVariantId]);
 
-  // Standard unit groups filtered to exclude units already covered by existing variants
+  // All unit groups filtered to exclude units already covered by existing variants
   const convertibleUnitGroups = useMemo(() => {
     const existingUnits = new Set(
       variants.map((v) => v.serving_unit.toLowerCase())
     );
-    return STANDARD_UNIT_GROUPS.map((group) => ({
-      ...group,
-      units: group.units.filter((u) => !existingUnits.has(u.toLowerCase())),
-    })).filter((group) => group.units.length > 0);
+    return [...STANDARD_UNIT_GROUPS, SERVING_UNIT_GROUP]
+      .map((group) => ({
+        ...group,
+        units: group.units.filter((u) => !existingUnits.has(u.toLowerCase())),
+      }))
+      .filter((group) => group.units.length > 0);
   }, [variants]);
 
   /**
