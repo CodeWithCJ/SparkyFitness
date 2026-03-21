@@ -47,7 +47,7 @@ export const STANDARD_UNIT_GROUPS: StandardUnitGroup[] = [
 
 /** Common serving size units that require manual conversion factors */
 export const SERVING_UNIT_GROUP: StandardUnitGroup = {
-  label: 'Common',
+  label: 'Quantity',
   units: [
     'piece',
     'slice',
