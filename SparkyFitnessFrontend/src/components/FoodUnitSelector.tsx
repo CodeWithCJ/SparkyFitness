@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -470,11 +471,23 @@ const FoodUnitSelector = ({
                       {convertibleUnits.length > 0 && (
                         <>
                           <SelectSeparator />
-                          {convertibleUnits.map((u) => (
-                            <SelectItem key={u} value={u}>
-                              {u}
-                            </SelectItem>
-                          ))}
+                          {convertibleUnits.map((u) => {
+                            const compatible =
+                              getConversionFactor(
+                                selectedVariant?.serving_unit || '',
+                                u
+                              ) !== null;
+                            return (
+                              <SelectItem key={u} value={u}>
+                                <span className="flex items-center gap-1.5">
+                                  {u}
+                                  {compatible && (
+                                    <Check className="h-3 w-3 text-green-500" />
+                                  )}
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
                         </>
                       )}
                       <SelectSeparator />
