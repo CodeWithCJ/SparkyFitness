@@ -155,6 +155,7 @@ const COMMON_UNITS = [
   'piece',
   'slice',
   'serving',
+  'portion',
   'can',
   'bottle',
   'packet',
