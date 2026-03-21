@@ -17,7 +17,10 @@
  *   Fix: make sumDistance optional; proceed without distance data.
  */
 
-import { processChartData } from '@/utils/activityReportUtil';
+import {
+  processChartData,
+  extractElevationGain,
+} from '@/utils/activityReportUtil';
 import { ActivityDetailsResponse } from '@/types/exercises';
 import { ChartDataPoint } from '@/types/reports';
 
@@ -375,5 +378,42 @@ describe('processChartData – timestamp ordering', () => {
         result[i - 1]!.timestamp
       );
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 6. extractElevationGain – provider field name compatibility
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('extractElevationGain – provider field name compatibility', () => {
+  it('returns 0 for null/undefined', () => {
+    expect(extractElevationGain(null)).toBe(0);
+    expect(extractElevationGain(undefined)).toBe(0);
+  });
+
+  it('returns 0 when no elevation field is present', () => {
+    expect(extractElevationGain({ distance: 5000, duration: 1800 })).toBe(0);
+  });
+
+  it('reads elevationGain (Garmin Connect API activity list)', () => {
+    expect(extractElevationGain({ elevationGain: 150 })).toBe(150);
+  });
+
+  it('reads totalAscent (Garmin workout sessions)', () => {
+    expect(extractElevationGain({ totalAscent: 200 })).toBe(200);
+  });
+
+  it('reads totalElevationGainInMeters (Garmin mobile SDK)', () => {
+    expect(extractElevationGain({ totalElevationGainInMeters: 75 })).toBe(75);
+  });
+
+  it('reads total_elevation_gain (Strava)', () => {
+    expect(extractElevationGain({ total_elevation_gain: 320 })).toBe(320);
+  });
+
+  it('prefers elevationGain over totalAscent when both present', () => {
+    expect(extractElevationGain({ elevationGain: 150, totalAscent: 999 })).toBe(
+      150
+    );
   });
 });

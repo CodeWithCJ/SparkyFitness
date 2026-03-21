@@ -12,6 +12,27 @@ interface MetricDescriptor {
   metricsIndex?: number;
 }
 
+/**
+ * Extracts elevation gain from a Garmin/Strava/Withings activity object.
+ * Different providers use different field names:
+ *   - Garmin Connect API (activity list): elevationGain
+ *   - Garmin workout sessions:           totalAscent
+ *   - Garmin mobile SDK:                 totalElevationGainInMeters
+ *   - Strava:                            total_elevation_gain
+ */
+export const extractElevationGain = (
+  activity: Record<string, unknown> | undefined | null
+): number => {
+  if (!activity) return 0;
+  return (
+    (activity['elevationGain'] as number) ||
+    (activity['totalAscent'] as number) ||
+    (activity['totalElevationGainInMeters'] as number) ||
+    (activity['total_elevation_gain'] as number) ||
+    0
+  );
+};
+
 export const processChartData = (
   metrics: ActivityDetailMetric[],
   activityData: ActivityDetailsResponse,

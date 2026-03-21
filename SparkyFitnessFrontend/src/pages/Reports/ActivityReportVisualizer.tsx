@@ -7,7 +7,10 @@ import { ActivityStatsGrid } from '@/components/ExerciseCharts/ActivityStatsGrid
 import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActivityDetailsQuery } from '@/hooks/Exercises/useExercises';
-import { processChartData } from '@/utils/activityReportUtil';
+import {
+  processChartData,
+  extractElevationGain,
+} from '@/utils/activityReportUtil';
 import { info } from '@/utils/logging';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { useState } from 'react';
@@ -115,7 +118,9 @@ const ActivityReportVisualizer = ({
   const totalActivityDurationSeconds =
     activityData.activity?.activity?.duration || 0;
   const totalActivityCalories = activityData.activity?.activity?.calories || 0;
-  const totalActivityAscent = activityData.activity?.activity?.elevationGain || activityData.activity?.activity?.totalAscent || 0;
+  const totalActivityAscent = extractElevationGain(
+    activityData.activity?.activity as Record<string, unknown>
+  );
   const averageHR = activityData.activity?.activity?.averageHR || 0;
   const averageRunCadence =
     activityData.activity?.activity?.averageRunCadence || 0;
