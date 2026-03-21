@@ -40,11 +40,8 @@ import { calculateNutrition } from '@/utils/nutritionCalculations';
 import { NutrientGrid } from './NutrientsGrid';
 import {
   getConversionFactor,
-  areUnitsCompatible,
   STANDARD_UNIT_GROUPS,
 } from '@/utils/servingSizeConversions';
-
-const CONVERT_SENTINEL = '__convert__';
 
 interface EditFoodEntryDialogProps {
   entry: FoodEntry | null;
@@ -64,10 +61,9 @@ const EditFoodEntryDialog = ({
     entry?.variant_id || null
   );
 
-  // Conversion mode state
-  const [conversionMode, setConversionMode] = useState(false);
-  const [targetUnit, setTargetUnit] = useState('');
-  const [targetUnitIsCustom, setTargetUnitIsCustom] = useState(false);
+  // Pending unit state: set when user picks a non-variant unit from the dropdown
+  const [pendingUnit, setPendingUnit] = useState(''); // unit string or typed custom name
+  const [pendingUnitIsCustom, setPendingUnitIsCustom] = useState(false); // true when "Custom unit..." picked
   const [conversionFactor, setConversionFactor] = useState<number | ''>(1);
   const [autoConversionFactor, setAutoConversionFactor] = useState<
     number | null
@@ -88,12 +84,12 @@ const EditFoodEntryDialog = ({
 
   const loading = isLoadingFood || isLoadingVariants;
   const isEditingAllowed = open && !!entry && !entry.meal_id;
+  const isConverting = !!(pendingUnit || pendingUnitIsCustom);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open && !loading && inputRef.current) {
-      // Kleiner Timeout hilft oft bei Dialog-Animationen von Radix UI
       setTimeout(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
@@ -149,6 +145,21 @@ const EditFoodEntryDialog = ({
     return variants[0];
   }, [variants, selectedVariantId]);
 
+  // Standard unit groups filtered to exclude units already covered by existing variants
+  const convertibleUnitGroups = useMemo(() => {
+    const existingUnits = new Set(
+      variants.map((v) => v.serving_unit.toLowerCase())
+    );
+    return STANDARD_UNIT_GROUPS.map((group) => ({
+      ...group,
+      units: group.units.filter((u) => !existingUnits.has(u.toLowerCase())),
+    })).filter((group) => group.units.length > 0);
+  }, [variants]);
+
+  /**
+   * Builds a converted variant where serving_size=1 (1 of the target unit).
+   * Nutrition is scaled so calculateNutrition(variant, quantity) works correctly.
+   */
   const buildConvertedVariant = useCallback((): FoodVariant | null => {
     const base = conversionBaseVariant;
     const effectiveFactor =
@@ -157,11 +168,12 @@ const EditFoodEntryDialog = ({
         : typeof conversionFactor === 'number'
           ? conversionFactor
           : 0;
-    if (!base || effectiveFactor <= 0 || !targetUnit.trim()) return null;
+    if (!base || effectiveFactor <= 0 || !pendingUnit.trim()) return null;
+    // ratio: how much of the base variant's nutrition is in 1 target unit
     const ratio = effectiveFactor / base.serving_size;
     return {
-      serving_size: effectiveFactor,
-      serving_unit: targetUnit.trim(),
+      serving_size: 1,
+      serving_unit: pendingUnit.trim(),
       calories: (base.calories || 0) * ratio,
       protein: (base.protein || 0) * ratio,
       carbs: (base.carbs || 0) * ratio,
@@ -179,20 +191,66 @@ const EditFoodEntryDialog = ({
       vitamin_c: (base.vitamin_c || 0) * ratio,
       calcium: (base.calcium || 0) * ratio,
       iron: (base.iron || 0) * ratio,
+      custom_nutrients: Object.fromEntries(
+        Object.entries(base.custom_nutrients || {}).map(([k, v]) => [
+          k,
+          (Number(v) || 0) * ratio,
+        ])
+      ),
     };
   }, [
     conversionBaseVariant,
     conversionFactor,
     autoConversionFactor,
-    targetUnit,
+    pendingUnit,
   ]);
 
   if (!entry) return null;
 
+  const handleUnitChange = (value: string) => {
+    if (value === '__custom__') {
+      setConversionBaseVariant(selectedVariant || variants[0] || null);
+      setPendingUnitIsCustom(true);
+      setPendingUnit('');
+      setAutoConversionFactor(null);
+      setConversionFactor(1);
+      setConversionError('');
+      return;
+    }
+
+    // Check if it's an existing variant
+    const variant = variants.find((v) => v.id === value);
+    if (variant) {
+      setSelectedVariantId(value);
+      setPendingUnit('');
+      setPendingUnitIsCustom(false);
+      setAutoConversionFactor(null);
+      setConversionBaseVariant(null);
+      return;
+    }
+
+    // It's a standard unit for conversion
+    const base = selectedVariant || variants[0] || null;
+    setConversionBaseVariant(base);
+    setPendingUnit(value);
+    setPendingUnitIsCustom(false);
+    const auto = base ? getConversionFactor(base.serving_unit, value) : null;
+    setAutoConversionFactor(auto);
+    if (auto === null) setConversionFactor(1);
+    setConversionError('');
+  };
+
+  const cancelConversion = () => {
+    setPendingUnit('');
+    setPendingUnitIsCustom(false);
+    setAutoConversionFactor(null);
+    setConversionError('');
+  };
+
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (conversionMode) {
+    if (isConverting) {
       const convertedVariant = buildConvertedVariant();
       if (!convertedVariant) {
         setConversionError(
@@ -253,9 +311,17 @@ const EditFoodEntryDialog = ({
     }
   };
 
-  const nutrition = selectedVariant
-    ? calculateNutrition(selectedVariant, quantity)
+  // Use the converted variant for nutrition when converting, otherwise the selected variant
+  const activeVariant = isConverting
+    ? buildConvertedVariant()
+    : selectedVariant;
+  const nutrition = activeVariant
+    ? calculateNutrition(activeVariant, quantity)
     : null;
+
+  const dropdownValue = pendingUnitIsCustom
+    ? '__custom__'
+    : pendingUnit || selectedVariant?.id || '';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -304,27 +370,8 @@ const EditFoodEntryDialog = ({
                 <div>
                   <Label htmlFor="unit">Unit</Label>
                   <Select
-                    value={
-                      conversionMode
-                        ? CONVERT_SENTINEL
-                        : selectedVariant?.id || ''
-                    }
-                    onValueChange={(value) => {
-                      if (value === CONVERT_SENTINEL) {
-                        setConversionBaseVariant(
-                          selectedVariant || variants[0] || null
-                        );
-                        setConversionMode(true);
-                        setTargetUnit('');
-                        setTargetUnitIsCustom(false);
-                        setConversionFactor(1);
-                        setAutoConversionFactor(null);
-                        setConversionError('');
-                        return;
-                      }
-                      setConversionMode(false);
-                      setSelectedVariantId(value);
-                    }}
+                    value={dropdownValue}
+                    onValueChange={handleUnitChange}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -338,149 +385,65 @@ const EditFoodEntryDialog = ({
                             </SelectItem>
                           )
                       )}
-                      <SelectItem value={CONVERT_SENTINEL}>
-                        Convert to different unit...
-                      </SelectItem>
+                      {convertibleUnitGroups.length > 0 && (
+                        <>
+                          <SelectSeparator />
+                          {convertibleUnitGroups.map((group) => (
+                            <SelectGroup key={group.label}>
+                              <SelectLabel>{group.label}</SelectLabel>
+                              {group.units.map((u) => (
+                                <SelectItem key={u} value={u}>
+                                  {u}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          ))}
+                        </>
+                      )}
+                      <SelectSeparator />
+                      <SelectItem value="__custom__">Custom unit...</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              {conversionMode && conversionBaseVariant && (
+              {/* Custom unit name input */}
+              {pendingUnitIsCustom && (
                 <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
-                  <p className="text-sm text-muted-foreground">
-                    Converting from{' '}
-                    <strong>
-                      {conversionBaseVariant.serving_size}{' '}
-                      {conversionBaseVariant.serving_unit}
-                    </strong>
-                    . Select a target unit below.
-                  </p>
-
                   <div>
-                    <Label htmlFor="targetUnitSelect">Convert to</Label>
-                    <Select
-                      value={
-                        targetUnitIsCustom
-                          ? '__custom__'
-                          : targetUnit || undefined
-                      }
-                      onValueChange={(value) => {
+                    <Label htmlFor="customUnitName">Unit name</Label>
+                    <Input
+                      id="customUnitName"
+                      type="text"
+                      placeholder="e.g. slice, bar, scoop"
+                      value={pendingUnit}
+                      onChange={(e) => {
+                        setPendingUnit(e.target.value);
                         setConversionError('');
-                        if (value === '__custom__') {
-                          setTargetUnitIsCustom(true);
-                          setTargetUnit('');
-                          setAutoConversionFactor(null);
-                          setConversionFactor(1);
-                          return;
-                        }
-                        setTargetUnitIsCustom(false);
-                        setTargetUnit(value);
-                        const auto = getConversionFactor(
-                          conversionBaseVariant.serving_unit,
-                          value
-                        );
-                        setAutoConversionFactor(auto);
-                        if (auto === null) setConversionFactor(1);
                       }}
-                    >
-                      <SelectTrigger id="targetUnitSelect">
-                        <SelectValue placeholder="Select unit..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STANDARD_UNIT_GROUPS.map((group) => (
-                          <SelectGroup key={group.label}>
-                            <SelectLabel>{group.label}</SelectLabel>
-                            {group.units.map((u) => (
-                              <SelectItem key={u} value={u}>
-                                {u}
-                                {areUnitsCompatible(
-                                  conversionBaseVariant.serving_unit,
-                                  u
-                                ) && (
-                                  <span className="ml-2 text-xs text-green-600 dark:text-green-400">
-                                    ✓ auto
-                                  </span>
-                                )}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        ))}
-                        <SelectSeparator />
-                        <SelectItem value="__custom__">
-                          Custom unit...
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
-
-                  {targetUnitIsCustom && (
+                  {pendingUnit.trim() && (
                     <div>
-                      <Label htmlFor="targetUnitCustom">Custom unit name</Label>
+                      <Label htmlFor="conversionFactor">
+                        1 {pendingUnit.trim()} ={' '}
+                        {conversionBaseVariant?.serving_unit}
+                      </Label>
                       <Input
-                        id="targetUnitCustom"
-                        type="text"
-                        placeholder="e.g. slice, bar, scoop"
-                        value={targetUnit}
+                        id="conversionFactor"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="e.g. 14.2"
+                        value={conversionFactor}
                         onChange={(e) => {
-                          setTargetUnit(e.target.value);
+                          const val = e.target.value;
+                          setConversionFactor(val === '' ? '' : Number(val));
                           setConversionError('');
                         }}
                       />
                     </div>
                   )}
-
-                  {targetUnit.trim() && (
-                    <div>
-                      <Label htmlFor="conversionFactor">
-                        1 {targetUnit.trim()} ={' '}
-                        {conversionBaseVariant.serving_unit}
-                      </Label>
-                      {autoConversionFactor !== null ? (
-                        <div className="flex items-center gap-2 mt-1">
-                          <Input
-                            id="conversionFactor"
-                            type="number"
-                            value={autoConversionFactor
-                              .toFixed(6)
-                              .replace(/\.?0+$/, '')}
-                            readOnly
-                            className="bg-muted cursor-default"
-                          />
-                          <span className="text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
-                            Auto-calculated
-                          </span>
-                        </div>
-                      ) : (
-                        <>
-                          <Input
-                            id="conversionFactor"
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            placeholder="e.g. 14.2"
-                            value={conversionFactor}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setConversionFactor(
-                                val === '' ? '' : Number(val)
-                              );
-                              setConversionError('');
-                            }}
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            These units can&apos;t be converted automatically —
-                            enter how many{' '}
-                            <strong>
-                              {conversionBaseVariant.serving_unit}
-                            </strong>{' '}
-                            are in 1 <strong>{targetUnit.trim()}</strong>.
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  )}
-
                   {conversionError && (
                     <p className="text-sm text-destructive">
                       {conversionError}
@@ -490,20 +453,63 @@ const EditFoodEntryDialog = ({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      setConversionMode(false);
-                      setConversionError('');
-                    }}
+                    onClick={cancelConversion}
                   >
-                    Cancel conversion
+                    Cancel
                   </Button>
                 </div>
               )}
 
+              {/* Manual factor needed for incompatible standard units */}
+              {pendingUnit &&
+                !pendingUnitIsCustom &&
+                autoConversionFactor === null && (
+                  <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
+                    <p className="text-sm text-muted-foreground">
+                      These units can&apos;t be converted automatically — enter
+                      how many{' '}
+                      <strong>{conversionBaseVariant?.serving_unit}</strong> are
+                      in 1 <strong>{pendingUnit}</strong>.
+                    </p>
+                    <div>
+                      <Label htmlFor="conversionFactor">
+                        1 {pendingUnit} = ?{' '}
+                        {conversionBaseVariant?.serving_unit}
+                      </Label>
+                      <Input
+                        id="conversionFactor"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="e.g. 14.2"
+                        value={conversionFactor}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setConversionFactor(val === '' ? '' : Number(val));
+                          setConversionError('');
+                        }}
+                      />
+                    </div>
+                    {conversionError && (
+                      <p className="text-sm text-destructive">
+                        {conversionError}
+                      </p>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelConversion}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+
               {nutrition && customNutrients && (
                 <div className="space-y-4">
                   <NutrientGrid
-                    baseVariant={selectedVariant}
+                    baseVariant={activeVariant}
                     nutrition={nutrition}
                     customNutrients={customNutrients}
                     energyUnit={energyUnit}
@@ -524,8 +530,8 @@ const EditFoodEntryDialog = ({
                   type="submit"
                   disabled={
                     createFoodVariantMutation.isPending ||
-                    (conversionMode &&
-                      (!targetUnit.trim() ||
+                    (isConverting &&
+                      (!pendingUnit.trim() ||
                         (autoConversionFactor === null &&
                           (!conversionFactor || conversionFactor <= 0))))
                   }
