@@ -83,8 +83,15 @@ async function handleGarminTokens(userId, tokensB64) {
             garth_dump_iv: encryptedGarthDump.iv,
             garth_dump_tag: encryptedGarthDump.tag,
 
-            // These fields are now derived from the garth dump if needed, or can be removed from the schema
-            token_expires_at: tokens.refresh_token_expires_at ? new Date(tokens.refresh_token_expires_at * 1000) : null, // Convert Unix timestamp to Date object, handle null/undefined
+            // garth serialises the access token expiry as `expires_at` (Unix seconds).
+            // We prefer this over `refresh_token_expires_at` because the UI shows this
+            // date as "token expires at" — the access token (hours/days) is far more
+            // meaningful to surface than the refresh token expiry (typically months away).
+            // Fallback to refresh_token_expires_at only if expires_at is absent, which
+            // should not happen in normal garth dumps but guards against older token shapes.
+            token_expires_at: tokens.expires_at
+                ? new Date(tokens.expires_at * 1000)
+                : (tokens.refresh_token_expires_at ? new Date(tokens.refresh_token_expires_at * 1000) : null),
             external_user_id: tokens.external_user_id || externalUserId // Use external_user_id from tokens if available
         };
         log('debug', `handleGarminTokens: Update data for provider (masked):`, {
