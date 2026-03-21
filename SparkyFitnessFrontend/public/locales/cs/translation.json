@@ -198,5 +198,10 @@
       "editExerciseTooltip": "Upravit cvik",
       "deleteExerciseTooltip": "Smazat cvik"
     }
+  },
+  "reports": {
+    "activityReport": {
+      "cadence": "Kadence"
+    }
   }
 }

@@ -17,25 +17,24 @@ import { LapDTO } from '@/types/exercises';
 
 interface LapTableProps {
   lapDTOs: LapDTO[];
-  isMaximized?: boolean; // Added for ZoomableChart integration
-  zoomLevel?: number; // Added for ZoomableChart integration
+  isMaximized?: boolean;
+  zoomLevel?: number;
 }
 
-interface ProcessedLap extends LapDTO {
-  lapIndex?: number;
-  averageSpeed?: number;
-  averageHR?: number;
-  maxHR?: number;
-  averageRunCadence?: number;
-  maxRunCadence?: number;
-  calories?: number;
+interface ProcessedLap {
+  lapIndex: number;
   lapDistance: number;
   lapDurationSeconds: number;
-  lapDurationMinutes: number;
   cumulativeDistance: number;
   cumulativeDuration: number;
-  movingDurationMinutes: number;
+  averageSpeed: number;
   averageMovingSpeed: number;
+  movingDurationSeconds: number;
+  averageHR: number;
+  maxHR: number;
+  averageRunCadence: number;
+  maxRunCadence: number;
+  calories: number;
 }
 
 const ActivityReportLapTable: React.FC<LapTableProps> = ({
@@ -44,30 +43,24 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
   zoomLevel = 1,
 }) => {
   const { t } = useTranslation();
-  const [sortColumn, setSortColumn] = useState<string>('lapIndex'); // Default sort column
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc'); // Default sort direction
+  const [sortColumn, setSortColumn] = useState<string>('lapIndex');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const { distanceUnit, convertDistance } = usePreferences();
 
-  const formatTime = (seconds: number) => {
-    if (seconds === 0) return t('common.notApplicable', 'N/A');
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = (seconds % 60).toFixed(0).padStart(2, '0');
-    return `${minutes}:${remainingSeconds}`;
+  const formatTime = (seconds: number): string => {
+    if (!seconds || seconds <= 0) return t('common.notApplicable', 'N/A');
+    const m = Math.floor(seconds / 60);
+    const s = Math.round(seconds % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
   };
 
-  const formatPace = (speed: number) => {
-    if (speed > 0) {
-      let paceMinPerKm = 1000 / (speed * 60); // min/km
-      if (distanceUnit === 'miles') {
-        paceMinPerKm = paceMinPerKm * 1.60934; // Convert min/km to min/mi
-      }
-      const minutes = Math.floor(paceMinPerKm);
-      const seconds = ((paceMinPerKm - minutes) * 60)
-        .toFixed(0)
-        .padStart(2, '0');
-      return `${minutes}:${seconds}`;
-    }
-    return t('common.notApplicable', 'N/A');
+  const formatPace = (speedMs: number): string => {
+    if (!speedMs || speedMs <= 0) return t('common.notApplicable', 'N/A');
+    let paceMinPerKm = 1000 / (speedMs * 60);
+    if (distanceUnit === 'miles') paceMinPerKm *= 1.60934;
+    const m = Math.floor(paceMinPerKm);
+    const s = Math.round((paceMinPerKm - m) * 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
   };
 
   const handleSort = (column: string) => {
@@ -79,92 +72,96 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
     }
   };
 
-  const getSortIndicator = (column: string) => {
-    if (sortColumn === column) {
-      return sortDirection === 'asc' ? ' ⬆' : ' ⬇';
-    }
-    return '';
-  };
+  const getSortIndicator = (column: string) =>
+    sortColumn === column ? (sortDirection === 'asc' ? ' ⬆' : ' ⬇') : '';
 
-  const processedLaps = useMemo(() => {
-    return lapDTOs.reduce((acc, lap) => {
-      const lapDistance = lap.distance
+  const processedLaps = useMemo<ProcessedLap[]>(() => {
+    return lapDTOs.reduce<ProcessedLap[]>((acc, lap, i) => {
+      const prev = acc[acc.length - 1];
+      const dist = lap.distance
         ? convertDistance(lap.distance / 1000, 'km', distanceUnit)
         : 0;
-      const lapDurationSeconds = lap.duration || 0;
-      const lapDurationMinutes = lapDurationSeconds / 60;
-
-      const previousDistance =
-        acc.length > 0 ? (acc[acc.length - 1]?.cumulativeDistance ?? 0) : 0;
-      const previousDuration =
-        acc.length > 0 ? (acc[acc.length - 1]?.cumulativeDuration ?? 0) : 0;
-
+      const durSec = lap.duration ?? 0;
       acc.push({
-        ...lap,
-        lapDistance: lapDistance,
-        lapDurationSeconds: lapDurationSeconds,
-        lapDurationMinutes: lapDurationMinutes,
-        cumulativeDistance: previousDistance + lapDistance,
-        cumulativeDuration: previousDuration + lapDurationMinutes,
-        movingDurationMinutes: lap.movingDuration ? lap.movingDuration / 60 : 0,
-        averageMovingSpeed: lap.averageMovingSpeed || 0,
+        lapIndex: (lap.lapIndex ?? i) + 1,
+        lapDistance: dist,
+        lapDurationSeconds: durSec,
+        cumulativeDistance: (prev?.cumulativeDistance ?? 0) + dist,
+        cumulativeDuration: (prev?.cumulativeDuration ?? 0) + durSec,
+        averageSpeed: lap.averageSpeed ?? 0,
+        averageMovingSpeed: lap.averageMovingSpeed ?? 0,
+        movingDurationSeconds: lap.movingDuration ?? 0,
+        averageHR: lap.averageHR ?? 0,
+        maxHR: lap.maxHR ?? 0,
+        averageRunCadence: lap.averageRunCadence ?? 0,
+        maxRunCadence: lap.maxRunCadence ?? 0,
+        calories: lap.calories ?? 0,
       });
-
       return acc;
-    }, [] as ProcessedLap[]);
+    }, []);
   }, [lapDTOs, distanceUnit, convertDistance]);
 
+  // Column visibility — only show a column when at least one lap has real data
+  const showDistanceCols = processedLaps.some((l) => l.lapDistance > 0);
+  const showPaceCols = showDistanceCols;
+  const showHRCols = processedLaps.some((l) => l.averageHR > 0);
+  const showCadenceCols = processedLaps.some((l) => l.averageRunCadence > 0);
+  const showMovingTime = processedLaps.some((l) => l.movingDurationSeconds > 0);
+  const showCalories = processedLaps.some((l) => l.calories > 0);
+
   const sortedLaps = [...processedLaps].sort((a, b) => {
-    let aValue: number | string | undefined = a[
-      sortColumn as keyof ProcessedLap
-    ] as number | string | undefined;
-    let bValue: number | string | undefined = b[
-      sortColumn as keyof ProcessedLap
-    ] as number | string | undefined;
-
-    // Special handling for pace columns which are formatted strings
-    if (sortColumn === 'averageSpeed' || sortColumn === 'averageMovingSpeed') {
-      // Convert pace strings "min:sec" to seconds for numerical comparison
-      const parsePaceToSeconds = (paceStr: string) => {
-        if (paceStr === t('common.notApplicable', 'N/A')) return Infinity; // Treat N/A as largest for sorting
-        const [minutes, seconds] = paceStr.split(':').map(Number);
-        if (minutes && seconds) {
-          return minutes * 60 + seconds;
-        }
-        return 0;
-      };
-      aValue = formatPace(a.averageSpeed ?? 0); // Assuming formatPace is accessible here
-      bValue = formatPace(b.averageSpeed ?? 0); // Assuming formatPace is accessible here
-      aValue = parsePaceToSeconds(aValue);
-      bValue = parsePaceToSeconds(bValue);
-    } else if (
-      sortColumn === 'duration' ||
-      sortColumn === 'cumulativeDuration'
-    ) {
-      // For duration, use the raw seconds value for sorting
-      aValue = a.lapDurationSeconds;
-      bValue = b.lapDurationSeconds;
-    } else if (
-      sortColumn === 'lapDistance' ||
-      sortColumn === 'cumulativeDistance'
-    ) {
-      // For distance, use the raw numerical value
-      aValue = a.lapDistance;
-      bValue = b.lapDistance;
-    } else if (sortColumn === 'movingDuration') {
-      aValue = a.movingDurationMinutes;
-      bValue = b.movingDurationMinutes;
-    }
-
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-    }
-    const aStr = String(aValue);
-    const bStr = String(bValue);
-    return sortDirection === 'asc'
-      ? aStr.localeCompare(bStr)
-      : bStr.localeCompare(aStr);
+    let aVal = a[sortColumn as keyof ProcessedLap] as number;
+    let bVal = b[sortColumn as keyof ProcessedLap] as number;
+    if (typeof aVal !== 'number') aVal = 0;
+    if (typeof bVal !== 'number') bVal = 0;
+    return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
   });
+
+  if (processedLaps.length === 0) {
+    return null;
+  }
+
+  // Totals
+  const totalDurSec = processedLaps.reduce(
+    (s, l) => s + l.lapDurationSeconds,
+    0
+  );
+  const totalDist = processedLaps.reduce((s, l) => s + l.lapDistance, 0);
+  const totalMovingSec = processedLaps.reduce(
+    (s, l) => s + l.movingDurationSeconds,
+    0
+  );
+  const totalCalories = processedLaps.reduce((s, l) => s + l.calories, 0);
+  const hrLaps = processedLaps.filter((l) => l.averageHR > 0);
+  const avgHR =
+    hrLaps.length > 0
+      ? hrLaps.reduce((s, l) => s + l.averageHR, 0) / hrLaps.length
+      : 0;
+  const maxHRVal =
+    processedLaps.length > 0
+      ? Math.max(...processedLaps.map((l) => l.maxHR))
+      : 0;
+  const cadLaps = processedLaps.filter((l) => l.averageRunCadence > 0);
+  const avgCadence =
+    cadLaps.length > 0
+      ? cadLaps.reduce((s, l) => s + l.averageRunCadence, 0) / cadLaps.length
+      : 0;
+  const maxCadVal =
+    processedLaps.length > 0
+      ? Math.max(...processedLaps.map((l) => l.maxRunCadence))
+      : 0;
+  const avgSpeed =
+    processedLaps.length > 0
+      ? processedLaps.reduce((s, l) => s + l.averageSpeed, 0) /
+        processedLaps.length
+      : 0;
+  const avgMovingSpeed =
+    processedLaps.length > 0
+      ? processedLaps.reduce((s, l) => s + l.averageMovingSpeed, 0) /
+        processedLaps.length
+      : 0;
+
+  const NA = t('common.notApplicable', 'N/A');
 
   return (
     <div className="mb-8 font-inter">
@@ -184,6 +181,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
         >
           <thead>
             <tr className="bg-muted border-b border-border">
+              {/* Always visible columns */}
               <th
                 className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
                 onClick={() => handleSort('lapIndex')}
@@ -194,11 +192,11 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
               </th>
               <th
                 className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('duration')}
+                onClick={() => handleSort('lapDurationSeconds')}
               >
                 {t('reports.activityReportLapTable.time', 'Time')}
                 <FaClock className="block text-green-500 mx-auto" />
-                {getSortIndicator('duration')}
+                {getSortIndicator('lapDurationSeconds')}
               </th>
               <th
                 className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
@@ -211,158 +209,212 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                 <FaHourglassHalf className="block text-green-500 mx-auto" />
                 {getSortIndicator('cumulativeDuration')}
               </th>
-              <th
-                className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('lapDistance')}
-              >
-                {t('reports.activityReportLapTable.distance', 'Distance')} (
-                {distanceUnit})
-                <FaRoute className="block text-blue-500 mx-auto" />
-                {getSortIndicator('lapDistance')}
-              </th>
-              <th
-                className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('cumulativeDistance')}
-              >
-                {t(
-                  'reports.activityReportLapTable.cumulativeDistance',
-                  'Cumulative Distance'
-                )}{' '}
-                ({distanceUnit})
-                <FaRoad className="block text-blue-500 mx-auto" />
-                {getSortIndicator('cumulativeDistance')}
-              </th>
-              <th
-                className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('averageSpeed')}
-              >
-                {t('reports.activityReportLapTable.avgPace', 'Avg Pace')} (
-                {distanceUnit === 'km'
-                  ? t('reports.activityReportLapTable.minPerKm', 'min/km')
-                  : t('reports.activityReportLapTable.minPerMi', 'min/mi')}
-                )<FaWalking className="block text-purple-500 mx-auto" />
-                {getSortIndicator('averageSpeed')}
-              </th>
-              <th
-                className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('averageMovingSpeed')}
-              >
-                {t(
-                  'reports.activityReportLapTable.avgMovingPace',
-                  'Avg Moving Pace'
-                )}{' '}
-                (
-                {distanceUnit === 'km'
-                  ? t('reports.activityReportLapTable.minPerKm', 'min/km')
-                  : t('reports.activityReportLapTable.minPerMi', 'min/mi')}
-                )<FaWalking className="block text-purple-500 mx-auto" />
-                {getSortIndicator('averageMovingSpeed')}
-              </th>
-              <th
-                className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('averageHR')}
-              >
-                {t('reports.activityReportLapTable.avgHR', 'Avg HR')} (
-                {t('reports.activityReportLapTable.bpm', 'bpm')})
-                <FaHeartbeat className="block text-pink-500 mx-auto" />
-                {getSortIndicator('averageHR')}
-              </th>
-              <th
-                className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('maxHR')}
-              >
-                {t('reports.activityReportLapTable.maxHR', 'Max HR')} (
-                {t('reports.activityReportLapTable.bpm', 'bpm')})
-                <FaHeartbeat className="block text-pink-500 mx-auto" />
-                {getSortIndicator('maxHR')}
-              </th>
-              <th
-                className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('averageRunCadence')}
-              >
-                {t(
-                  'reports.activityReportLapTable.avgRunCadence',
-                  'Avg Run Cadence'
-                )}{' '}
-                ({t('reports.activityReportLapTable.spm', 'spm')})
-                <FaRunning className="block text-orange-500 mx-auto" />
-                {getSortIndicator('averageRunCadence')}
-              </th>
-              <th
-                className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('maxRunCadence')}
-              >
-                {t(
-                  'reports.activityReportLapTable.maxRunCadence',
-                  'Max Run Cadence'
-                )}{' '}
-                ({t('reports.activityReportLapTable.spm', 'spm')})
-                <FaRunning className="block text-orange-500 mx-auto" />
-                {getSortIndicator('maxRunCadence')}
-              </th>
-              <th
-                className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('movingDuration')}
-              >
-                {t('reports.activityReportLapTable.movingTime', 'Moving Time')}{' '}
-                ({t('reports.activityReportLapTable.min', 'min')})
-                <FaClock className="block text-green-500 mx-auto" />
-                {getSortIndicator('movingDuration')}
-              </th>
-              <th
-                className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
-                onClick={() => handleSort('calories')}
-              >
-                {t('reports.activityReportLapTable.calories', 'Calories')}
-                <FaFire className="block text-red-500 mx-auto" />
-                {getSortIndicator('calories')}
-              </th>
+
+              {/* Distance-dependent columns */}
+              {showDistanceCols && (
+                <>
+                  <th
+                    className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
+                    onClick={() => handleSort('lapDistance')}
+                  >
+                    {t('reports.activityReportLapTable.distance', 'Distance')} (
+                    {distanceUnit})
+                    <FaRoute className="block text-blue-500 mx-auto" />
+                    {getSortIndicator('lapDistance')}
+                  </th>
+                  <th
+                    className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
+                    onClick={() => handleSort('cumulativeDistance')}
+                  >
+                    {t(
+                      'reports.activityReportLapTable.cumulativeDistance',
+                      'Cumulative Distance'
+                    )}{' '}
+                    ({distanceUnit})
+                    <FaRoad className="block text-blue-500 mx-auto" />
+                    {getSortIndicator('cumulativeDistance')}
+                  </th>
+                </>
+              )}
+
+              {/* Pace columns (only meaningful with distance) */}
+              {showPaceCols && (
+                <>
+                  <th
+                    className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
+                    onClick={() => handleSort('averageSpeed')}
+                  >
+                    {t('reports.activityReportLapTable.avgPace', 'Avg Pace')} (
+                    {distanceUnit === 'km'
+                      ? t('reports.activityReportLapTable.minPerKm', 'min/km')
+                      : t('reports.activityReportLapTable.minPerMi', 'min/mi')}
+                    )
+                    <FaWalking className="block text-purple-500 mx-auto" />
+                    {getSortIndicator('averageSpeed')}
+                  </th>
+                  <th
+                    className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
+                    onClick={() => handleSort('averageMovingSpeed')}
+                  >
+                    {t(
+                      'reports.activityReportLapTable.avgMovingPace',
+                      'Avg Moving Pace'
+                    )}{' '}
+                    (
+                    {distanceUnit === 'km'
+                      ? t('reports.activityReportLapTable.minPerKm', 'min/km')
+                      : t('reports.activityReportLapTable.minPerMi', 'min/mi')}
+                    )
+                    <FaWalking className="block text-purple-500 mx-auto" />
+                    {getSortIndicator('averageMovingSpeed')}
+                  </th>
+                </>
+              )}
+
+              {/* HR columns */}
+              {showHRCols && (
+                <>
+                  <th
+                    className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
+                    onClick={() => handleSort('averageHR')}
+                  >
+                    {t('reports.activityReportLapTable.avgHR', 'Avg HR')} (
+                    {t('reports.activityReportLapTable.bpm', 'bpm')})
+                    <FaHeartbeat className="block text-pink-500 mx-auto" />
+                    {getSortIndicator('averageHR')}
+                  </th>
+                  <th
+                    className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
+                    onClick={() => handleSort('maxHR')}
+                  >
+                    {t('reports.activityReportLapTable.maxHR', 'Max HR')} (
+                    {t('reports.activityReportLapTable.bpm', 'bpm')})
+                    <FaHeartbeat className="block text-pink-500 mx-auto" />
+                    {getSortIndicator('maxHR')}
+                  </th>
+                </>
+              )}
+
+              {/* Cadence columns */}
+              {showCadenceCols && (
+                <>
+                  <th
+                    className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
+                    onClick={() => handleSort('averageRunCadence')}
+                  >
+                    {t(
+                      'reports.activityReportLapTable.avgRunCadence',
+                      'Avg Cadence'
+                    )}{' '}
+                    ({t('reports.activityReportLapTable.spm', 'spm')})
+                    <FaRunning className="block text-orange-500 mx-auto" />
+                    {getSortIndicator('averageRunCadence')}
+                  </th>
+                  <th
+                    className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
+                    onClick={() => handleSort('maxRunCadence')}
+                  >
+                    {t(
+                      'reports.activityReportLapTable.maxRunCadence',
+                      'Max Cadence'
+                    )}{' '}
+                    ({t('reports.activityReportLapTable.spm', 'spm')})
+                    <FaRunning className="block text-orange-500 mx-auto" />
+                    {getSortIndicator('maxRunCadence')}
+                  </th>
+                </>
+              )}
+
+              {/* Moving time column */}
+              {showMovingTime && (
+                <th
+                  className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
+                  onClick={() => handleSort('movingDurationSeconds')}
+                >
+                  {t(
+                    'reports.activityReportLapTable.movingTime',
+                    'Moving Time'
+                  )}
+                  <FaClock className="block text-green-500 mx-auto" />
+                  {getSortIndicator('movingDurationSeconds')}
+                </th>
+              )}
+
+              {/* Calories column */}
+              {showCalories && (
+                <th
+                  className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
+                  onClick={() => handleSort('calories')}
+                >
+                  {t('reports.activityReportLapTable.calories', 'Calories')}
+                  <FaFire className="block text-red-500 mx-auto" />
+                  {getSortIndicator('calories')}
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
-            {sortedLaps.map((lap: ProcessedLap, index: number) => (
+            {sortedLaps.map((lap, index) => (
               <tr key={index} className="hover:bg-muted">
                 <td className="py-2 px-4 border-b border-border text-left">
                   {lap.lapIndex}
                 </td>
                 <td className="py-2 px-4 border-b border-border text-right">
-                  {formatTime(lap.duration)}
+                  {formatTime(lap.lapDurationSeconds)}
                 </td>
                 <td className="py-2 px-4 border-b border-border text-right">
-                  {formatTime(lap.cumulativeDuration * 60)}
+                  {formatTime(lap.cumulativeDuration)}
                 </td>
-                <td className="py-2 px-4 border-b border-border text-right">
-                  {lap.lapDistance.toFixed(2)}
-                </td>
-                <td className="py-2 px-4 border-b border-border text-right">
-                  {lap.cumulativeDistance.toFixed(2)}
-                </td>
-                <td className="py-2 px-4 border-b border-border text-right">
-                  {formatPace(lap.averageSpeed ?? 0)}
-                </td>
-                <td className="py-2 px-4 border-b border-border text-right">
-                  {formatPace(lap.averageMovingSpeed)}
-                </td>
-                <td className="py-2 px-4 border-b border-border text-right">
-                  {lap.averageHR || t('common.notApplicable', 'N/A')}
-                </td>
-                <td className="py-2 px-4 border-b border-border text-right">
-                  {lap.maxHR || t('common.notApplicable', 'N/A')}
-                </td>
-                <td className="py-2 px-4 border-b border-border text-right">
-                  {lap.averageRunCadence || t('common.notApplicable', 'N/A')}
-                </td>
-                <td className="py-2 px-4 border-b border-border text-right">
-                  {lap.maxRunCadence || t('common.notApplicable', 'N/A')}
-                </td>
-                <td className="py-2 px-4 border-b border-border text-right">
-                  {lap.movingDurationMinutes > 0
-                    ? lap.movingDurationMinutes.toFixed(2)
-                    : t('common.notApplicable', 'N/A')}
-                </td>
-                <td className="py-2 px-4 border-b border-border text-right">
-                  {lap.calories || t('common.notApplicable', 'N/A')}
-                </td>
+                {showDistanceCols && (
+                  <>
+                    <td className="py-2 px-4 border-b border-border text-right">
+                      {lap.lapDistance.toFixed(2)}
+                    </td>
+                    <td className="py-2 px-4 border-b border-border text-right">
+                      {lap.cumulativeDistance.toFixed(2)}
+                    </td>
+                  </>
+                )}
+                {showPaceCols && (
+                  <>
+                    <td className="py-2 px-4 border-b border-border text-right">
+                      {formatPace(lap.averageSpeed)}
+                    </td>
+                    <td className="py-2 px-4 border-b border-border text-right">
+                      {formatPace(lap.averageMovingSpeed)}
+                    </td>
+                  </>
+                )}
+                {showHRCols && (
+                  <>
+                    <td className="py-2 px-4 border-b border-border text-right">
+                      {lap.averageHR > 0 ? lap.averageHR : NA}
+                    </td>
+                    <td className="py-2 px-4 border-b border-border text-right">
+                      {lap.maxHR > 0 ? lap.maxHR : NA}
+                    </td>
+                  </>
+                )}
+                {showCadenceCols && (
+                  <>
+                    <td className="py-2 px-4 border-b border-border text-right">
+                      {lap.averageRunCadence > 0 ? lap.averageRunCadence : NA}
+                    </td>
+                    <td className="py-2 px-4 border-b border-border text-right">
+                      {lap.maxRunCadence > 0 ? lap.maxRunCadence : NA}
+                    </td>
+                  </>
+                )}
+                {showMovingTime && (
+                  <td className="py-2 px-4 border-b border-border text-right">
+                    {formatTime(lap.movingDurationSeconds)}
+                  </td>
+                )}
+                {showCalories && (
+                  <td className="py-2 px-4 border-b border-border text-right">
+                    {lap.calories > 0 ? lap.calories : NA}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -372,102 +424,59 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                 {t('reports.activityReportLapTable.totals', 'Totals')}
               </td>
               <td className="py-2 px-4 text-right">
-                {formatTime(
-                  processedLaps.reduce(
-                    (sum, lap) => sum + lap.lapDurationSeconds,
-                    0
-                  )
-                )}
+                {formatTime(totalDurSec)}
               </td>
               <td className="py-2 px-4 text-right">
-                {(() => {
-                  const lastLap = processedLaps[processedLaps.length - 1];
-                  return lastLap
-                    ? formatTime(lastLap.cumulativeDuration * 60)
-                    : t('common.notApplicable', 'N/A');
-                })()}
+                {formatTime(totalDurSec)}
               </td>
-              <td className="py-2 px-4 text-right">
-                {processedLaps
-                  .reduce((sum, lap) => sum + lap.lapDistance, 0)
-                  .toFixed(2)}
-              </td>
-              <td className="py-2 px-4 text-right">
-                {processedLaps.length > 0
-                  ? processedLaps[
-                      processedLaps.length - 1
-                    ]?.cumulativeDistance.toFixed(2)
-                  : t('common.notApplicable', 'N/A')}
-              </td>
-              <td className="py-2 px-4 text-right">
-                {processedLaps.length > 0
-                  ? formatPace(
-                      processedLaps.reduce(
-                        (sum, lap) => sum + (lap.averageSpeed ?? 0),
-                        0
-                      ) / processedLaps.length
-                    )
-                  : t('common.notApplicable', 'N/A')}
-              </td>
-              <td className="py-2 px-4 text-right">
-                {processedLaps.length > 0
-                  ? formatPace(
-                      processedLaps.reduce(
-                        (sum, lap) => sum + lap.averageMovingSpeed,
-                        0
-                      ) / processedLaps.length
-                    )
-                  : t('common.notApplicable', 'N/A')}
-              </td>
-              <td className="py-2 px-4 text-right">
-                {processedLaps.length > 0 &&
-                processedLaps.some((lap) => lap.averageHR)
-                  ? (
-                      processedLaps.reduce(
-                        (sum, lap) => sum + (lap.averageHR || 0),
-                        0
-                      ) / processedLaps.filter((lap) => lap.averageHR).length
-                    ).toFixed(0)
-                  : t('common.notApplicable', 'N/A')}
-              </td>
-              <td className="py-2 px-4 text-right">
-                {processedLaps.length > 0 &&
-                processedLaps.some((lap) => lap.maxHR)
-                  ? Math.max(...processedLaps.map((lap) => lap.maxHR || 0))
-                  : t('common.notApplicable', 'N/A')}
-              </td>
-              <td className="py-2 px-4 text-right">
-                {processedLaps.length > 0 &&
-                processedLaps.some((lap) => lap.averageRunCadence)
-                  ? (
-                      processedLaps.reduce(
-                        (sum, lap) => sum + (lap.averageRunCadence || 0),
-                        0
-                      ) /
-                      processedLaps.filter((lap) => lap.averageRunCadence)
-                        .length
-                    ).toFixed(0)
-                  : t('common.notApplicable', 'N/A')}
-              </td>
-              <td className="py-2 px-4 text-right">
-                {processedLaps.length > 0 &&
-                processedLaps.some((lap) => lap.maxRunCadence)
-                  ? Math.max(
-                      ...processedLaps.map((lap) => lap.maxRunCadence || 0)
-                    )
-                  : t('common.notApplicable', 'N/A')}
-              </td>
-              <td className="py-2 px-4 text-right">
-                {processedLaps
-                  .reduce((sum, lap) => sum + lap.movingDurationMinutes, 0)
-                  .toFixed(2)}
-              </td>
-              <td className="py-2 px-4 text-right">
-                {processedLaps.reduce(
-                  (sum, lap) => sum + (lap.calories || 0),
-                  0
-                )}
-              </td>
+              {showDistanceCols && (
+                <>
+                  <td className="py-2 px-4 text-right">
+                    {totalDist.toFixed(2)}
+                  </td>
+                  <td className="py-2 px-4 text-right">
+                    {totalDist.toFixed(2)}
+                  </td>
+                </>
+              )}
+              {showPaceCols && (
+                <>
+                  <td className="py-2 px-4 text-right">
+                    {formatPace(avgSpeed)}
+                  </td>
+                  <td className="py-2 px-4 text-right">
+                    {formatPace(avgMovingSpeed)}
+                  </td>
+                </>
+              )}
+              {showHRCols && (
+                <>
+                  <td className="py-2 px-4 text-right">
+                    {avgHR > 0 ? avgHR.toFixed(0) : NA}
+                  </td>
+                  <td className="py-2 px-4 text-right">
+                    {maxHRVal > 0 ? maxHRVal : NA}
+                  </td>
+                </>
+              )}
+              {showCadenceCols && (
+                <>
+                  <td className="py-2 px-4 text-right">
+                    {avgCadence > 0 ? avgCadence.toFixed(0) : NA}
+                  </td>
+                  <td className="py-2 px-4 text-right">
+                    {maxCadVal > 0 ? maxCadVal : NA}
+                  </td>
+                </>
+              )}
+              {showMovingTime && (
+                <td className="py-2 px-4 text-right">
+                  {formatTime(totalMovingSec)}
+                </td>
+              )}
+              {showCalories && (
+                <td className="py-2 px-4 text-right">{totalCalories}</td>
+              )}
             </tr>
           </tfoot>
         </table>

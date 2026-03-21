@@ -1352,7 +1352,8 @@
       "lapTableMaxHRBpmHeader": "FC max (bpm)",
       "lapTableCaloriesHeader": "Calories",
       "heartRateTimeInZonesTitle": "Temps dans les zones de FC",
-      "timeInZoneSLabel": "Temps dans la zone (s)"
+      "timeInZoneSLabel": "Temps dans la zone (s)",
+      "cadence": "Cadence"
     },
     "bodyBattery": "Batterie corporelle",
     "charged": "Chargée",

@@ -1380,7 +1380,8 @@
       "lapTableMaxHRBpmHeader": "அதிகபட்ச இதய துடிப்பு (bpm)",
       "lapTableCaloriesHeader": "கலோரிகள்",
       "heartRateTimeInZonesTitle": "இதய துடிப்பு மண்டலங்களில் நேரம்",
-      "timeInZoneSLabel": "மண்டலத்தில் நேரம் (வி)"
+      "timeInZoneSLabel": "மண்டலத்தில் நேரம் (வி)",
+      "cadence": "Cadence"
     },
     "exerciseReportsDashboard": {
       "loadingExerciseData": "உடற்பயிற்சி தரவை ஏற்றுகிறது...",

@@ -53,5 +53,10 @@
       "descriptionLabel": "Опис",
       "addError": "Не вдалось додати вправу"
     }
+  },
+  "reports": {
+    "activityReport": {
+      "cadence": "Каденс"
+    }
   }
 }

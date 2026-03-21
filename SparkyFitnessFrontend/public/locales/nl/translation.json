@@ -632,7 +632,8 @@
       "lapTableMaxHRBpmHeader": "Max HR (bpm)",
       "lapTableCaloriesHeader": "Calorieën",
       "heartRateTimeInZonesTitle": "Hartslag Tijd in Zones",
-      "timeInZoneSLabel": "Tijd in Zone (s)"
+      "timeInZoneSLabel": "Tijd in Zone (s)",
+      "cadence": "Cadans"
     }
   },
   "exerciseCard": {

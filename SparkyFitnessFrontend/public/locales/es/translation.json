@@ -1349,7 +1349,8 @@
       "lapTableMaxHRBpmHeader": "FC máxima (lpm)",
       "lapTableCaloriesHeader": "Calorías",
       "heartRateTimeInZonesTitle": "Tiempo en zonas de frecuencia cardiaca",
-      "timeInZoneSLabel": "Tiempo en zona (s)"
+      "timeInZoneSLabel": "Tiempo en zona (s)",
+      "cadence": "Cadencia"
     }
   },
   "exerciseReportsDashboard": {

@@ -58,5 +58,10 @@
       "mechanicIsolation": "Isolering",
       "workoutPresetTab": "Træningsskabelon"
     }
+  },
+  "reports": {
+    "activityReport": {
+      "cadence": "Kadence"
+    }
   }
 }

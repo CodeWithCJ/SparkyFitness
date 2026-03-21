@@ -116,5 +116,10 @@
       "categoryLabel": "Kategori",
       "selectCategoryPlaceholder": "Välj en kategori"
     }
+  },
+  "reports": {
+    "activityReport": {
+      "cadence": "Kadans"
+    }
   }
 }

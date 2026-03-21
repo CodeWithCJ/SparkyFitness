@@ -1349,7 +1349,8 @@
       "lapTableMaxHRBpmHeader": "Maks. SU (utr/min)",
       "lapTableCaloriesHeader": "Kalorije",
       "heartRateTimeInZonesTitle": "Čas srčnega utripa v conah",
-      "timeInZoneSLabel": "Čas v coni (s)"
+      "timeInZoneSLabel": "Čas v coni (s)",
+      "cadence": "Kadenca"
     }
   },
   "exerciseReportsDashboard": {

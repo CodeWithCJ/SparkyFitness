@@ -8,5 +8,10 @@
   },
   "aboutDialog": {
     "title": "O SparkyFitness"
+  },
+  "reports": {
+    "activityReport": {
+      "cadence": "Kadencja"
+    }
   }
 }

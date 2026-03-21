@@ -568,7 +568,8 @@
       "garminActivityReportTitle": "Relatório de Atividades do Garmin:",
       "timeOfDay": "Hora do Dia",
       "timeOfDayLocal": "Hora do Dia (Local)",
-      "runningDynamics": "Dinâmica de corrida"
+      "runningDynamics": "Dinâmica de corrida",
+      "cadence": "Cadencia"
     },
     "foodDiaryExportHeaders": {
       "calories": "Calorias",
