@@ -45,10 +45,62 @@ export const STANDARD_UNIT_GROUPS: StandardUnitGroup[] = [
   },
 ];
 
+/** Common serving size units that require manual conversion factors */
+export const SERVING_UNIT_GROUP: StandardUnitGroup = {
+  label: 'Common',
+  units: [
+    'piece',
+    'slice',
+    'serving',
+    'can',
+    'bottle',
+    'packet',
+    'bag',
+    'bowl',
+    'plate',
+    'handful',
+    'scoop',
+    'bar',
+    'stick',
+  ],
+};
+
 /** All standard units as a flat array */
-export const ALL_STANDARD_UNITS: string[] = STANDARD_UNIT_GROUPS.flatMap(
-  (g) => g.units
-);
+export const ALL_STANDARD_UNITS: string[] = [
+  ...STANDARD_UNIT_GROUPS.flatMap((g) => g.units),
+  ...SERVING_UNIT_GROUP.units,
+];
+
+/**
+ * All conversion units in display order (no grouping).
+ * Matches the order used in the custom food form.
+ */
+export const ALL_CONVERSION_UNITS: string[] = [
+  'g',
+  'kg',
+  'mg',
+  'oz',
+  'lb',
+  'ml',
+  'l',
+  'cup',
+  'tbsp',
+  'tsp',
+  'piece',
+  'slice',
+  'serving',
+  'portion',
+  'can',
+  'bottle',
+  'packet',
+  'bag',
+  'bowl',
+  'plate',
+  'handful',
+  'scoop',
+  'bar',
+  'stick',
+];
 
 /** Returns the measurement category for a unit, or null if not a standard unit */
 export function getUnitCategory(unit: string): UnitCategory | null {
