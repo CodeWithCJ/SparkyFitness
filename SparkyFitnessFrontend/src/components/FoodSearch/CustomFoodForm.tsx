@@ -18,6 +18,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
+import { getConversionFactor } from '@/utils/servingSizeConversions';
 import { useUpdateFoodEntriesSnapshotMutation } from '@/hooks/Foods/useFoods';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { useQueryClient } from '@tanstack/react-query';
@@ -559,6 +560,20 @@ const EnhancedCustomFoodForm = ({
     // Convert calories input from display unit (energyUnit) to internal kcal
     if (field === 'calories' && value !== '' && typeof value === 'number') {
       newVariant.calories = convertEnergy(value, energyUnit, 'kcal');
+    }
+
+    // When the unit type changes to a compatible unit, auto-convert serving_size
+    // so the same physical amount is preserved (e.g. 30g → 30,000mg).
+    if (field === 'serving_unit') {
+      const oldUnit = currentVariant.serving_unit;
+      const newUnit = String(value);
+      const factor = getConversionFactor(oldUnit, newUnit);
+      if (factor !== null && factor !== 1) {
+        const oldSize = Number(currentVariant.serving_size);
+        if (!isNaN(oldSize) && oldSize > 0) {
+          newVariant.serving_size = Number((oldSize / factor).toFixed(4));
+        }
+      }
     }
 
     // If this variant is set to be the default, ensure all others are not
