@@ -20,6 +20,8 @@
 import {
   processChartData,
   extractElevationGain,
+  getActivityIcon,
+  getEventTypeLabel,
 } from '@/utils/activityReportUtil';
 import { ActivityDetailsResponse } from '@/types/exercises';
 import { ChartDataPoint } from '@/types/reports';
@@ -415,5 +417,98 @@ describe('extractElevationGain – provider field name compatibility', () => {
     expect(extractElevationGain({ elevationGain: 150, totalAscent: 999 })).toBe(
       150
     );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 7. getActivityIcon – activity type to emoji mapping
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('getActivityIcon – activity type emoji mapping', () => {
+  it('returns 🏃 for undefined/null/unknown', () => {
+    expect(getActivityIcon(undefined)).toBe('🏃');
+    expect(getActivityIcon(null)).toBe('🏃');
+    expect(getActivityIcon('unknown_activity_xyz')).toBe('🏃');
+  });
+
+  // Garmin typeKey values
+  it('returns 🚴 for cycling (Garmin)', () => {
+    expect(getActivityIcon('cycling')).toBe('🚴');
+    expect(getActivityIcon('indoor_cycling')).toBe('🚴');
+    expect(getActivityIcon('mountain_biking')).toBe('🚴');
+  });
+
+  it('returns 🏃 for running (Garmin)', () => {
+    expect(getActivityIcon('running')).toBe('🏃');
+    expect(getActivityIcon('treadmill_running')).toBe('🏃');
+    expect(getActivityIcon('trail_running')).toBe('🏃');
+  });
+
+  it('returns ⚽ for soccer (Garmin)', () => {
+    expect(getActivityIcon('soccer')).toBe('⚽');
+  });
+
+  it('returns 💪 for indoor_cardio (Garmin)', () => {
+    expect(getActivityIcon('indoor_cardio')).toBe('💪');
+    expect(getActivityIcon('cardio_training')).toBe('💪');
+  });
+
+  it('returns 🚶 for walking/hiking (Garmin)', () => {
+    expect(getActivityIcon('walking')).toBe('🚶');
+    expect(getActivityIcon('hiking')).toBe('🚶');
+  });
+
+  // Strava sport_type values (PascalCase)
+  it('returns 🚴 for Strava Ride types', () => {
+    expect(getActivityIcon('Ride')).toBe('🚴');
+    expect(getActivityIcon('VirtualRide')).toBe('🚴');
+  });
+
+  it('returns 🏃 for Strava Run types', () => {
+    expect(getActivityIcon('Run')).toBe('🏃');
+    expect(getActivityIcon('VirtualRun')).toBe('🏃');
+  });
+
+  it('returns 🏊 for swimming (Garmin + Strava)', () => {
+    expect(getActivityIcon('lap_swimming')).toBe('🏊');
+    expect(getActivityIcon('Swim')).toBe('🏊');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 8. getEventTypeLabel – filter out uncategorized event types
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('getEventTypeLabel – hide uncategorized events', () => {
+  it('returns null for null/undefined', () => {
+    expect(getEventTypeLabel(null)).toBeNull();
+    expect(getEventTypeLabel(undefined)).toBeNull();
+  });
+
+  it('returns null for "uncategorized" string', () => {
+    expect(getEventTypeLabel('uncategorized')).toBeNull();
+    expect(getEventTypeLabel('Uncategorized')).toBeNull();
+    expect(getEventTypeLabel('UNCATEGORIZED')).toBeNull();
+  });
+
+  it('returns null for empty string', () => {
+    expect(getEventTypeLabel('')).toBeNull();
+  });
+
+  it('returns null for object with typeKey "uncategorized"', () => {
+    expect(getEventTypeLabel({ typeKey: 'uncategorized' })).toBeNull();
+  });
+
+  it('returns null for object with missing typeKey', () => {
+    expect(getEventTypeLabel({ typeKey: '' })).toBeNull();
+  });
+
+  it('returns the label for a valid string event type', () => {
+    expect(getEventTypeLabel('race')).toBe('race');
+    expect(getEventTypeLabel('training')).toBe('training');
+  });
+
+  it('returns typeKey for a valid object event type', () => {
+    expect(getEventTypeLabel({ typeKey: 'race' })).toBe('race');
   });
 });

@@ -33,6 +33,86 @@ export const extractElevationGain = (
   );
 };
 
+/**
+ * Maps an activity type key to an emoji icon.
+ * Handles provider-specific type keys (Garmin, Strava, Fitbit, Polar, Withings).
+ * Falls back to 🏃 for unknown types.
+ */
+export const getActivityIcon = (typeKey: string | undefined | null): string => {
+  if (!typeKey) return '🏃';
+  const key = typeKey.toLowerCase();
+
+  if (
+    key.includes('cycling') ||
+    key.includes('biking') ||
+    key === 'ride' ||
+    key === 'virtualride' ||
+    key === 'ebikeride' ||
+    key === 'handcycle'
+  )
+    return '🚴';
+  if (
+    key.includes('running') ||
+    key === 'run' ||
+    key === 'virtualrun' ||
+    key === 'trail_run' ||
+    key === 'trailrun'
+  )
+    return '🏃';
+  if (key.includes('swimming') || key === 'swim') return '🏊';
+  if (key.includes('soccer') || key === 'football') return '⚽';
+  if (key.includes('basketball')) return '🏀';
+  if (key.includes('tennis')) return '🎾';
+  if (key.includes('golf')) return '⛳';
+  if (
+    key.includes('hiking') ||
+    key.includes('walking') ||
+    key === 'walk' ||
+    key === 'hike'
+  )
+    return '🚶';
+  if (
+    key.includes('strength') ||
+    key.includes('weight') ||
+    key === 'weighttraining'
+  )
+    return '🏋️';
+  if (key.includes('yoga')) return '🧘';
+  if (key.includes('rowing') || key === 'rowing') return '🚣';
+  if (key.includes('skiing') || key === 'alpineski' || key === 'nordicski')
+    return '⛷️';
+  if (key.includes('snowboard')) return '🏂';
+  if (key.includes('volleyball')) return '🏐';
+  if (key.includes('hockey')) return '🏒';
+  if (key.includes('rugby') || key.includes('americanfootball')) return '🏈';
+  if (key.includes('boxing') || key.includes('martialarts')) return '🥊';
+  if (key.includes('cardio') || key.includes('aerobic')) return '💪';
+  if (key.includes('elliptical')) return '🔄';
+  if (key.includes('stair') || key.includes('step')) return '🪜';
+  if (key.includes('surf')) return '🏄';
+  if (key.includes('climb')) return '🧗';
+
+  return '🏃';
+};
+
+/**
+ * Returns a meaningful event type label, or null if the value should be hidden.
+ * Hides "uncategorized", empty, or missing event types.
+ */
+export const getEventTypeLabel = (eventType: unknown): string | null => {
+  if (!eventType) return null;
+
+  let label: string;
+  if (typeof eventType === 'object' && eventType !== null) {
+    label = (eventType as { typeKey?: string }).typeKey ?? '';
+  } else {
+    label = String(eventType);
+  }
+
+  if (!label || label.toLowerCase() === 'uncategorized') return null;
+  return label;
+};
+
 export const processChartData = (
   metrics: ActivityDetailMetric[],
   activityData: ActivityDetailsResponse,
