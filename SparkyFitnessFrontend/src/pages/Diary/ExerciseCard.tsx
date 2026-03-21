@@ -345,12 +345,14 @@ const ExerciseCard = ({
         }
 
         // Duration & Sets
-        if (entry.sets) {
+        if (entry.sets && entry.sets.length > 0) {
           setsCount += entry.sets.length;
           duration += entry.sets.reduce<number>(
             (sum, set) => sum + (set.duration || 0),
             0
           );
+        } else if (entry.duration_minutes) {
+          duration += entry.duration_minutes;
         }
 
         // Heart Rate

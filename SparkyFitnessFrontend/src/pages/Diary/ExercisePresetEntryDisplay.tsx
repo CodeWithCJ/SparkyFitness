@@ -99,12 +99,12 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                       presetEntry.exercises.reduce(
                         (sum, ex) =>
                           sum +
-                          (ex.sets
+                          (ex.sets && ex.sets.length > 0
                             ? ex.sets.reduce(
                                 (setSum, set) => setSum + (set.duration || 0),
                                 0
                               )
-                            : 0),
+                            : ex.duration_minutes || 0),
                         0
                       )
                     )}
