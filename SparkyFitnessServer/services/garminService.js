@@ -537,6 +537,7 @@ async function syncGarminData(
     activities: null
   };
 
+  // Phase 1: Health and Wellness — runs independently so a failure here does not skip activities
   try {
     // 1. Sync Health and Wellness
     log('info', `[garminService] Fetching Health and Wellness data...`);
@@ -600,7 +601,13 @@ async function syncGarminData(
       measurementServiceResult,
       processedSleepData
     };
+  } catch (healthError) {
+    log('error', `[garminService] Error during health sync for user ${userId}:`, healthError);
+    results.health = { error: healthError instanceof Error ? healthError.message : String(healthError) };
+  }
 
+  // Phase 2: Activities and Workouts — always runs even if Phase 1 failed
+  try {
     // 5. Sync Activities and Workouts
     log('info', `[garminService] Fetching Activities and Workouts data...`);
     const activitiesData = await garminConnectService.fetchGarminActivitiesAndWorkouts(userId, startDate, endDate);
@@ -609,13 +616,12 @@ async function syncGarminData(
     const processedActivities = await processActivitiesAndWorkouts(userId, activitiesData, startDate, endDate);
 
     results.activities = processedActivities;
-    log('info', `[garminService] Full Garmin sync completed for user ${userId}.`);
-
-  } catch (error) {
-    log('error', `[garminService] Error during full Garmin sync for user ${userId}:`, error);
-    throw error; // Re-throw to be handled by caller
+  } catch (activitiesError) {
+    log('error', `[garminService] Error during activities sync for user ${userId}:`, activitiesError);
+    results.activities = { error: activitiesError instanceof Error ? activitiesError.message : String(activitiesError) };
   }
 
+  log('info', `[garminService] Full Garmin sync completed for user ${userId}.`);
   return results;
 }
 
