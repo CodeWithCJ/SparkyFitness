@@ -13,8 +13,6 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectGroup,
-  SelectLabel,
   SelectSeparator,
   SelectTrigger,
   SelectValue,
@@ -28,8 +26,7 @@ import {
   useCreateFoodVariantMutation,
 } from '@/hooks/Foods/useFoodVariants';
 import {
-  STANDARD_UNIT_GROUPS,
-  SERVING_UNIT_GROUP,
+  ALL_CONVERSION_UNITS,
   getConversionFactor,
 } from '@/utils/servingSizeConversions';
 
@@ -229,17 +226,14 @@ const FoodUnitSelector = ({
     loggingLevel,
   ]);
 
-  // All unit groups filtered to exclude units already covered by existing variants
-  const convertibleUnitGroups = useMemo(() => {
+  // Flat list of convertible units, excluding those already in existing variants
+  const convertibleUnits = useMemo(() => {
     const existingUnits = new Set(
       variants.map((v) => v.serving_unit.toLowerCase())
     );
-    return [...STANDARD_UNIT_GROUPS, SERVING_UNIT_GROUP]
-      .map((group) => ({
-        ...group,
-        units: group.units.filter((u) => !existingUnits.has(u.toLowerCase())),
-      }))
-      .filter((group) => group.units.length > 0);
+    return ALL_CONVERSION_UNITS.filter(
+      (u) => !existingUnits.has(u.toLowerCase())
+    );
   }, [variants]);
 
   /**
@@ -473,18 +467,13 @@ const FoodUnitSelector = ({
                             </SelectItem>
                           )
                       )}
-                      {convertibleUnitGroups.length > 0 && (
+                      {convertibleUnits.length > 0 && (
                         <>
                           <SelectSeparator />
-                          {convertibleUnitGroups.map((group) => (
-                            <SelectGroup key={group.label}>
-                              <SelectLabel>{group.label}</SelectLabel>
-                              {group.units.map((u) => (
-                                <SelectItem key={u} value={u}>
-                                  {u}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
+                          {convertibleUnits.map((u) => (
+                            <SelectItem key={u} value={u}>
+                              {u}
+                            </SelectItem>
                           ))}
                         </>
                       )}
