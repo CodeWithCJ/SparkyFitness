@@ -448,7 +448,7 @@ const scheduleGarminSyncs = async () => {
     const providers =
       await externalProviderRepository.getProvidersByType("garmin");
     for (const provider of providers) {
-      if (provider.is_active && provider.sync_frequency === "hourly") {
+      if (provider.is_active && provider.sync_frequency !== "manual") {
         try {
           await garminService.syncGarminData(provider.user_id, "scheduled");
           await externalProviderRepository.updateProviderLastSync(
