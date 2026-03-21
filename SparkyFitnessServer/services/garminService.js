@@ -616,7 +616,7 @@ async function syncGarminData(
     results.activities = processedActivities;
   } catch (activitiesError) {
     log('error', `[garminService] Error during activities sync for user ${userId}:`, activitiesError);
-    results.activities = { error: activitiesError.message };
+    results.activities = { error: activitiesError instanceof Error ? activitiesError.message : String(activitiesError) };
   }
 
   log('info', `[garminService] Full Garmin sync completed for user ${userId}.`);
