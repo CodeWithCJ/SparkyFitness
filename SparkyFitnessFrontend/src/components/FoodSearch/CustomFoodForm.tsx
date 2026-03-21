@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Copy } from 'lucide-react';
+import { Plus, Trash2, Copy, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -957,11 +957,24 @@ const EnhancedCustomFoodForm = ({
                               {UNIT_GROUPS.map((group) => (
                                 <SelectGroup key={group.label}>
                                   <SelectLabel>{group.label}</SelectLabel>
-                                  {group.units.map((unit) => (
-                                    <SelectItem key={unit} value={unit}>
-                                      {unit}
-                                    </SelectItem>
-                                  ))}
+                                  {group.units.map((unit) => {
+                                    const compatible =
+                                      unit !== variant.serving_unit &&
+                                      getConversionFactor(
+                                        variant.serving_unit,
+                                        unit
+                                      ) !== null;
+                                    return (
+                                      <SelectItem key={unit} value={unit}>
+                                        <span className="flex items-center gap-1.5">
+                                          {unit}
+                                          {compatible && (
+                                            <Check className="h-3 w-3 text-green-500" />
+                                          )}
+                                        </span>
+                                      </SelectItem>
+                                    );
+                                  })}
                                 </SelectGroup>
                               ))}
                             </SelectContent>
