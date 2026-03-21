@@ -346,6 +346,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
         sets: sets,
         exercise_preset_entry_id: newExercisePresetEntry.id, // Link to preset entry
         avg_heart_rate: perExerciseAvgHeartRate ? Math.round(perExerciseAvgHeartRate) : null, // Round to nearest whole number or keep null
+        source_id: activity.activityId?.toString() || null,
       };
       await exerciseEntryRepository.createExerciseEntry(userId, { ...exerciseEntryData, sort_order: exerciseSortOrder }, userId, 'garmin', newExercisePresetEntry.id);
 
@@ -452,6 +453,7 @@ async function processGarminSimpleActivity(userId, activityData) {
     notes: `Garmin Activity: ${activity.activityName} (${activity.activityType?.typeKey})`,
     distance: activity.distance,
     avg_heart_rate: activity.averageHR || activity.averageHeartRateInBeatsPerMinute || null,
+    source_id: activity.activityId?.toString() || null,
   };
 
   const newEntry = await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, userId, 'garmin');
