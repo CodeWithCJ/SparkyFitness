@@ -9,6 +9,7 @@ import { ChartDataPoint } from '@/types/reports';
 
 interface MetricDescriptor {
   key: string;
+  metricsIndex?: number;
 }
 
 export const processChartData = (
@@ -38,11 +39,8 @@ export const processChartData = (
   const timestampDescriptor = metricDescriptors.find(
     (d: MetricDescriptor) => d.key === 'directTimestamp'
   );
-  const distanceDescriptor = metricDescriptors.find(
-    (d: MetricDescriptor) => d.key === 'sumDistance'
-  );
 
-  if (!timestampDescriptor || !distanceDescriptor) {
+  if (!timestampDescriptor) {
     logError(
       loggingLevel,
       t('reports.activityReport.metricDescriptorsMissingKeys')
@@ -54,42 +52,23 @@ export const processChartData = (
     (d: MetricDescriptor) => d.key === 'directHeartRate'
   );
 
+  // Fix: use metricsIndex from the descriptor object directly so that unknown
+  // descriptor keys (e.g. directCadence, directPower) never shift the index of
+  // subsequent known keys. Falls back to position-based counting for descriptors
+  // that don't carry a metricsIndex field.
   const metricKeyToDataIndexMap: { [key: string]: number } = {};
-  let currentDataIndex = 0;
-
-  metricDescriptors.forEach((descriptor: MetricDescriptor) => {
-    if (descriptor.key === 'directHeartRate') {
-      metricKeyToDataIndexMap['directHeartRate'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'sumElapsedDuration') {
-      metricKeyToDataIndexMap['sumElapsedDuration'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'directAirTemperature') {
-      metricKeyToDataIndexMap['directAirTemperature'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'directTimestamp') {
-      metricKeyToDataIndexMap['directTimestamp'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'sumDistance') {
-      metricKeyToDataIndexMap['sumDistance'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'directSpeed') {
-      metricKeyToDataIndexMap['directSpeed'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'directRunCadence') {
-      metricKeyToDataIndexMap['directRunCadence'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'directElevation') {
-      metricKeyToDataIndexMap['directElevation'] = currentDataIndex;
-      currentDataIndex++;
-    }
+  metricDescriptors.forEach((descriptor: MetricDescriptor, position: number) => {
+    const index = descriptor.metricsIndex ?? position;
+    metricKeyToDataIndexMap[descriptor.key] = index;
   });
 
   const timestampIndex = metricKeyToDataIndexMap['directTimestamp'];
-  const distanceIndex = metricKeyToDataIndexMap['sumDistance'];
+  const distanceIndex = metricKeyToDataIndexMap['sumDistance']; // may be undefined
   const speedIndex = metricKeyToDataIndexMap['directSpeed'];
   const heartRateIndex = metricKeyToDataIndexMap['directHeartRate'];
-  const runCadenceIndex = metricKeyToDataIndexMap['directRunCadence'];
+  const runCadenceIndex =
+    metricKeyToDataIndexMap['directRunCadence'] ??
+    metricKeyToDataIndexMap['directCadence'];
   const elevationIndex = metricKeyToDataIndexMap['directElevation'];
 
   if (!heartRateDescriptor) {
@@ -101,7 +80,7 @@ export const processChartData = (
     );
   }
 
-  if (timestampIndex === undefined || distanceIndex === undefined) {
+  if (timestampIndex === undefined) {
     logError(
       loggingLevel,
       t('reports.activityReport.missingTimestampOrDistanceDescriptor')
@@ -137,18 +116,20 @@ export const processChartData = (
     return [];
   }
 
-  const firstDataPoint = metrics.find(
-    (metric) =>
-      parseFloat(metric.metrics[timestampIndex] ?? '0') === activityStartTime
-  );
-  if (firstDataPoint) {
-    const dist = parseFloat(firstDataPoint.metrics[distanceIndex] ?? '0');
-    initialDistance = !isNaN(dist) ? dist : 0;
-  } else if (metrics.length > 0) {
-    const firstMetricDistance = parseFloat(
-      metrics[0]?.metrics[distanceIndex] ?? '0'
+  if (distanceIndex !== undefined) {
+    const firstDataPoint = metrics.find(
+      (metric) =>
+        parseFloat(metric.metrics[timestampIndex] ?? '0') === activityStartTime
     );
-    initialDistance = !isNaN(firstMetricDistance) ? firstMetricDistance : 0;
+    if (firstDataPoint) {
+      const dist = parseFloat(firstDataPoint.metrics[distanceIndex] ?? '0');
+      initialDistance = !isNaN(dist) ? dist : 0;
+    } else if (metrics.length > 0) {
+      const firstMetricDistance = parseFloat(
+        metrics[0]?.metrics[distanceIndex] ?? '0'
+      );
+      initialDistance = !isNaN(firstMetricDistance) ? firstMetricDistance : 0;
+    }
   }
 
   const processedMetrics = metrics
@@ -156,11 +137,15 @@ export const processChartData = (
       const currentTimestamp = parseFloat(
         metric.metrics[timestampIndex] ?? '0'
       );
-      const currentDistance = parseFloat(metric.metrics[distanceIndex] ?? '0');
 
-      if (isNaN(currentTimestamp) || isNaN(currentDistance)) {
+      if (isNaN(currentTimestamp)) {
         return null;
       }
+
+      const currentDistance =
+        distanceIndex !== undefined
+          ? parseFloat(metric.metrics[distanceIndex] ?? '0')
+          : 0;
 
       const speed =
         speedIndex !== undefined && metric.metrics[speedIndex] !== undefined
