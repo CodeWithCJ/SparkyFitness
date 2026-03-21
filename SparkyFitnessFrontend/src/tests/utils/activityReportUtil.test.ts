@@ -29,7 +29,7 @@ jest.mock('i18next', () => ({
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 /** Identity distance converter (km → km). */
-const identityConvert = (value: number) => value;
+const identityConvert = (value: number, _from: string, _to: string): number => value;
 
 /** Build an ActivityDetailsResponse with the given descriptor keys and sample rows. */
 function makeActivityData(

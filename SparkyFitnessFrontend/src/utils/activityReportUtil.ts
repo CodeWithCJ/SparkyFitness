@@ -147,6 +147,10 @@ export const processChartData = (
           ? parseFloat(metric.metrics[distanceIndex] ?? '0')
           : 0;
 
+      if (distanceIndex !== undefined && isNaN(currentDistance)) {
+        return null;
+      }
+
       const speed =
         speedIndex !== undefined && metric.metrics[speedIndex] !== undefined
           ? Number(metric.metrics[speedIndex])
