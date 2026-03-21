@@ -1381,7 +1381,7 @@
       "lapTableCaloriesHeader": "கலோரிகள்",
       "heartRateTimeInZonesTitle": "இதய துடிப்பு மண்டலங்களில் நேரம்",
       "timeInZoneSLabel": "மண்டலத்தில் நேரம் (வி)",
-      "cadence": "Cadence"
+      "cadence": "தாளம்"
     },
     "exerciseReportsDashboard": {
       "loadingExerciseData": "உடற்பயிற்சி தரவை ஏற்றுகிறது...",

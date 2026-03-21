@@ -168,10 +168,11 @@ const ActivityReportVisualizer = ({
     stats.duration != null && stats.duration > 0 ? stats.duration * 60 : null;
 
   // Formatted stat strings — null means "hide the card"
-  // Use >= 0.005 so values that round to "0.00" are treated as zero and hidden.
+  // Minimum display threshold: hides values that would round to "0.00" (e.g. GPS drift).
+  const MIN_DISTANCE_FOR_DISPLAY = 0.005;
   const distanceFormatted =
     totalActivityDistanceForDisplay != null &&
-    totalActivityDistanceForDisplay >= 0.005
+    totalActivityDistanceForDisplay >= MIN_DISTANCE_FOR_DISPLAY
       ? `${totalActivityDistanceForDisplay.toFixed(2)} ${distanceUnit}`
       : null;
 

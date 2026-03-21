@@ -368,33 +368,39 @@ export function readActivityStats(
     return Number.isFinite(n) && n > 0 ? n : null;
   };
 
-  // distance – Garmin stores km; Strava stores metres
-  const garminDist = pos(a['distance']);
-  const stravaDist =
-    pos(a['distance']) !== null && (a['distance'] as number) > 1000
-      ? (a['distance'] as number) / 1000
-      : null;
-  // If the stored value looks like metres (> 200 is a heuristic: no activity
-  // shorter than 200 km), treat it as metres and convert.
+  // distance – Garmin stores km (converted server-side); Strava stores metres.
+  // Detect provider by presence of Strava-specific fields so we don't rely on a
+  // fragile magnitude heuristic that breaks for long activities (e.g. > 200 km).
+  const isStrava =
+    a['sport_type'] != null ||
+    a['moving_time'] != null ||
+    a['elapsed_time'] != null;
   const rawDist = a['distance'] as number | undefined;
   const distance =
-    rawDist != null && rawDist > 200
-      ? rawDist / 1000
-      : (garminDist ?? stravaDist);
+    rawDist != null && rawDist > 0
+      ? isStrava
+        ? rawDist / 1000 // Strava: metres → km
+        : rawDist // Garmin: already km after server conversion
+      : null;
 
-  // duration – Garmin: minutes; Strava: seconds; Fitbit: milliseconds
+  // duration – Garmin: minutes (converted server-side); Strava: seconds; Fitbit: ms.
+  // Use provider-specific fields to detect units rather than magnitude thresholds.
   const rawDur = a['duration'] as number | undefined;
   const rawMoving = a['moving_time'] as number | undefined;
   const rawElapsed = a['elapsed_time'] as number | undefined;
+  const rawFitbitDur = a['activeDuration'] as number | undefined; // Fitbit: ms
   let duration: number | null = null;
-  if (rawDur != null && rawDur > 0) {
-    // Garmin already in minutes after server conversion;
-    // Fitbit stores ms (typically > 60000 for a real workout)
-    duration = rawDur > 1440 ? rawDur / 60000 : rawDur;
+  if (rawFitbitDur != null && rawFitbitDur > 0) {
+    duration = rawFitbitDur / 60000;
   } else if (rawMoving != null && rawMoving > 0) {
+    // Strava: moving_time in seconds
     duration = rawMoving / 60;
   } else if (rawElapsed != null && rawElapsed > 0) {
+    // Strava fallback: elapsed_time in seconds
     duration = rawElapsed / 60;
+  } else if (rawDur != null && rawDur > 0) {
+    // Garmin: already in minutes after server conversion
+    duration = rawDur;
   }
 
   const calories = pos(a['calories']) ?? pos(a['active_calories']);
@@ -457,4 +463,3 @@ export function formatDuration(totalSeconds: number): string {
   }
   return `${m}:${ss}`;
 }
-
