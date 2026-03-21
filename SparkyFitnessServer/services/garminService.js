@@ -601,7 +601,7 @@ async function syncGarminData(
     };
   } catch (healthError) {
     log('error', `[garminService] Error during health sync for user ${userId}:`, healthError);
-    results.health = { error: healthError.message };
+    results.health = { error: healthError instanceof Error ? healthError.message : String(healthError) };
   }
 
   // Phase 2: Activities and Workouts — always runs even if Phase 1 failed
