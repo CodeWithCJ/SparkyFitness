@@ -20,7 +20,6 @@ import {
   updateExerciseShareStatus,
   getExerciseDeletionImpact,
   updateExerciseEntriesSnapshot,
-  ExercisePayload,
   importExercisesFromJson,
   importExerciseHistory,
   getExerciseById,
@@ -30,7 +29,6 @@ import {
 import i18n from '@/i18n';
 import {
   getActivityDetails,
-  getExerciseHistory,
   getExerciseProgressData,
 } from '@/api/Exercises/exerciseEntryService';
 import { ExerciseOwnershipFilter } from '@/types/exercises';
@@ -93,8 +91,7 @@ export const useCreateExerciseMutation = () => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: (payload: ExercisePayload | FormData) =>
-      createExercise(payload),
+    mutationFn: (payload: FormData) => createExercise(payload),
     onSuccess: () => {
       return queryClient.invalidateQueries({
         queryKey: exerciseKeys.lists(),
@@ -112,13 +109,8 @@ export const useUpdateExerciseMutation = () => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: Partial<ExercisePayload> | FormData;
-    }) => updateExercise(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: FormData }) =>
+      updateExercise(id, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: exerciseKeys.lists() });
       queryClient.invalidateQueries({
@@ -294,22 +286,6 @@ export const useSuggestedExercises = (limit: number) => {
       errorMessage: t(
         'exercise.failedToFetchSuggested',
         'Could not load suggested exercises.'
-      ),
-    },
-  });
-};
-
-export const useExerciseHistory = (exerciseId: string, limit: number = 5) => {
-  const { t } = useTranslation();
-
-  return useQuery({
-    queryKey: exerciseEntryKeys.history(exerciseId, limit),
-    queryFn: () => getExerciseHistory(exerciseId, limit),
-    enabled: !!exerciseId,
-    meta: {
-      errorMessage: t(
-        'exercise.history.loadError',
-        'Failed to load exercise history.'
       ),
     },
   });

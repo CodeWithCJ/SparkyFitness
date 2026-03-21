@@ -44,7 +44,14 @@ async function handleGarminTokens(userId, tokensB64) {
         // The Python microservice returns the full garth.dumps() output directly.
         const garthDump = tokensB64;
         const parsedGarthDump = JSON.parse(Buffer.from(garthDump, 'base64').toString('utf8'));
-        // The actual tokens are typically in the second element of the array returned by garth.dumps()
+        // garth.dumps() always returns a 2-element JSON array: [OAuth1Token, OAuth2Token].
+        // OAuth2Token (index 1) contains access_token, refresh_token, expires_at, etc.
+        if (!Array.isArray(parsedGarthDump) || parsedGarthDump.length < 2 || !parsedGarthDump[1]) {
+            throw new Error(
+                `Unexpected garth dump structure: expected a 2-element array [OAuth1Token, OAuth2Token], ` +
+                `received ${Array.isArray(parsedGarthDump) ? `array of length ${parsedGarthDump.length}` : typeof parsedGarthDump}`
+            );
+        }
         const tokens = parsedGarthDump[1];
         log('debug', `handleGarminTokens: Parsed Garth Dump:`, parsedGarthDump);
         log('debug', `handleGarminTokens: Extracted Tokens:`, tokens);
@@ -83,8 +90,16 @@ async function handleGarminTokens(userId, tokensB64) {
             garth_dump_iv: encryptedGarthDump.iv,
             garth_dump_tag: encryptedGarthDump.tag,
 
-            // These fields are now derived from the garth dump if needed, or can be removed from the schema
-            token_expires_at: tokens.refresh_token_expires_at ? new Date(tokens.refresh_token_expires_at * 1000) : null, // Convert Unix timestamp to Date object, handle null/undefined
+            // garth serialises the access token expiry as `expires_at` (Unix seconds).
+            // We prefer this over `refresh_token_expires_at` because the UI shows this
+            // date as "token expires at" — the access token (hours/days) is far more
+            // meaningful to surface than the refresh token expiry (typically months away).
+            // Fallback to refresh_token_expires_at only if expires_at is absent, which
+            // should not happen in normal garth dumps but guards against older token shapes.
+            token_expires_at: (() => {
+                const expiryTimestamp = tokens.expires_at || tokens.refresh_token_expires_at;
+                return expiryTimestamp ? new Date(expiryTimestamp * 1000) : null;
+            })(),
             external_user_id: tokens.external_user_id || externalUserId // Use external_user_id from tokens if available
         };
         log('debug', `handleGarminTokens: Update data for provider (masked):`, {
@@ -145,14 +160,6 @@ async function syncGarminHealthAndWellness(userId, startDate, endDate, metricTyp
     }
 }
 
-module.exports = {
-    garminLogin,
-    garminResumeLogin,
-    handleGarminTokens,
-    syncGarminHealthAndWellness,
-    fetchGarminActivitiesAndWorkouts
-};
-
 async function fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, activityType) {
     try {
         const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
@@ -161,7 +168,7 @@ async function fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, acti
         }
         const decryptedGarthDump = provider.garth_dump;
         log('debug', `fetchGarminActivitiesAndWorkouts: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
-        
+
         const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`, {
             user_id: userId,
             tokens: decryptedGarthDump,
@@ -180,3 +187,11 @@ async function fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, acti
         throw new Error(`Failed to fetch Garmin activities and workouts: ${error.response ? error.response.data.detail : error.message}`);
     }
 }
+
+module.exports = {
+    garminLogin,
+    garminResumeLogin,
+    handleGarminTokens,
+    syncGarminHealthAndWellness,
+    fetchGarminActivitiesAndWorkouts
+};

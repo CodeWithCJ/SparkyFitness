@@ -12,14 +12,10 @@ import {
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import ExerciseEntryDisplay from './ExerciseEntryDisplay';
 import { formatMinutesToHHMM } from '@/utils/timeFormatters';
-import {
-  Exercise,
-  ExerciseEntry,
-  GroupedExerciseEntry,
-} from '@/types/exercises';
+import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
 
 interface ExercisePresetEntryDisplayProps {
-  presetEntry: GroupedExerciseEntry;
+  presetEntry: PresetSessionEntry;
   currentUserId: string | undefined;
   handleDelete: (presetEntryId: string) => void; // This is for deleting the preset itself
   handleDeleteExerciseEntry: (entryId: string) => void; // New prop for deleting individual exercise entries
@@ -103,12 +99,12 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                       presetEntry.exercises.reduce(
                         (sum, ex) =>
                           sum +
-                          (ex.sets
+                          (ex.sets && ex.sets.length > 0
                             ? ex.sets.reduce(
                                 (setSum, set) => setSum + (set.duration || 0),
                                 0
                               )
-                            : 0),
+                            : ex.duration_minutes || 0),
                         0
                       )
                     )}

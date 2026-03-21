@@ -1,7 +1,13 @@
-import { PersonalRecordsMap } from '@/pages/Reports/ReportsTables';
 import { Exercise } from './exercises';
 import { Food, FoodVariant } from './food';
 
+interface PersonalRecord {
+  date: string;
+  oneRM: number;
+  weight: number;
+  reps: number;
+}
+export type PersonalRecordsMap = Record<string, PersonalRecord>;
 export interface NutritionData {
   date: string;
   calories: number;
@@ -87,25 +93,6 @@ export interface DailyExerciseEntry {
   [key: string]: string | number | boolean | object | undefined;
 }
 
-export interface ExerciseProgressData {
-  entry_date: string;
-  calories_burned: number;
-  duration_minutes: number;
-  exercise_entry_id: string; // New field
-  provider_name?: string; // New field
-  exercise_name?: string; // Added field for exercise name
-  sets: {
-    id: string;
-    set_number: number;
-    set_type: string;
-    reps: number;
-    weight: number;
-    duration?: number;
-    rest_time?: number;
-    notes?: string;
-  }[];
-}
-
 export interface ExerciseDashboardData {
   keyStats: {
     totalWorkouts: number;
@@ -162,4 +149,29 @@ export interface ExerciseDashboardData {
       };
     };
   };
+}
+interface WorkoutStep {
+  [key: string]: unknown;
+}
+
+export interface WorkoutData {
+  workoutName: string;
+  description?: string;
+  sportType?: { sportTypeKey: string };
+  estimatedDurationInSecs?: number;
+  workoutSegments?: {
+    segmentOrder: number;
+    workoutSteps: WorkoutStep[];
+  }[];
+}
+
+export interface ChartDataPoint {
+  timestamp: number;
+  activityDuration: number;
+  distance: number;
+  speed: number;
+  pace: number;
+  heartRate: number | null;
+  runCadence: number;
+  elevation: number | null;
 }

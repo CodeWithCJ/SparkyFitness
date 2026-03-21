@@ -432,11 +432,14 @@ async function _createExerciseEntryWithClient(
       );
     }
 
-    // 2. If no source_id match and NOT a sync source, fall back to "Manual" deduplication (name/date)
+    // 2. If no source_id match and NOT a sync source, fall back to "Manual" deduplication (name/date).
+    // Skip this fallback when source_id was provided: a source_id miss means it's a genuinely new
+    // activity (different activityId), so we must INSERT rather than match on exercise_id + date.
     if (
       !existingEntryResult?.rows?.length &&
       !exercisePresetEntryId &&
-      !skipManualDuplicateCheck
+      !skipManualDuplicateCheck &&
+      !syncDuplicateCheck
     ) {
       if (entryData.workout_plan_assignment_id) {
         // If it's linked to a workout plan assignment, it's unique by that assignment ID and date.

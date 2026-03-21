@@ -21,7 +21,7 @@ const {
   mapUsdaBarcodeProduct,
 } = require("../../integrations/usda/usdaService");
 const {
-  mapFatSecretBarcodeProduct,
+  mapFatSecretFood,
   mapFatSecretSearchItem,
 } = require("../../integrations/fatsecret/fatsecretService");
 const {
@@ -319,7 +319,7 @@ const detailHandler: RequestHandler<{
           credentials.app_key,
         );
         if (data) {
-          food = mapFatSecretBarcodeProduct(data);
+          food = mapFatSecretFood(data);
         }
         break;
       }

@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { WorkoutData } from './ActivityReportVisualizer';
 import SetPerformanceAnalysisChart from './SetPerformanceAnalysisChart';
 import { usePreferences, type WeightUnit } from '@/contexts/PreferencesContext';
 import { formatNumber, formatWeight } from '@/utils/numberFormatting';
@@ -13,6 +12,7 @@ import {
   FaWeight,
   FaChartLine,
 } from 'react-icons/fa';
+import { WorkoutData } from '@/types/reports';
 
 interface WorkoutEndCondition {
   conditionTypeKey?: string;

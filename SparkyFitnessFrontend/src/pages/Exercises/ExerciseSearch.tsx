@@ -474,7 +474,7 @@ const ExerciseSearch = ({
                             {exercise.category} •{' '}
                             {Math.round(
                               convertEnergy(
-                                exercise.calories_per_hour,
+                                exercise.calories_per_hour || 0,
                                 'kcal',
                                 energyUnit
                               )
@@ -514,7 +514,7 @@ const ExerciseSearch = ({
                             {exercise.category} •{' '}
                             {Math.round(
                               convertEnergy(
-                                exercise.calories_per_hour,
+                                exercise.calories_per_hour || 0,
                                 'kcal',
                                 energyUnit
                               )
@@ -578,7 +578,7 @@ const ExerciseSearch = ({
                       {exercise.category} •{' '}
                       {Math.round(
                         convertEnergy(
-                          exercise.calories_per_hour,
+                          exercise.calories_per_hour || 0,
                           'kcal',
                           energyUnit
                         )

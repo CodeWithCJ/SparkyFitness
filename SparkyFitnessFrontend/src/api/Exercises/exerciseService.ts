@@ -6,11 +6,15 @@ import {
   ExerciseOwnershipFilter,
   HistoryImportEntry,
 } from '@/types/exercises';
+import { exerciseSnapshotResponseSchema } from '@workspace/shared';
+import z from 'zod';
 
 // Helper function to safely parse JSON strings that might be arrays
 export const parseJsonArray = (
-  value: string | string[] | undefined
-): string[] | undefined => {
+  value: string | string[] | undefined | null
+): string[] | null => {
+  if (!value) return null;
+
   if (Array.isArray(value)) {
     return value;
   }
@@ -55,7 +59,7 @@ export const parseJsonArray = (
       return [currentString];
     }
   }
-  return undefined;
+  return null;
 };
 
 export interface ExercisePayload {
@@ -105,8 +109,12 @@ export const loadExercises = async (
     images: parseJsonArray(exercise.images),
   }));
 
+  const validatedExercises = z
+    .array(exerciseSnapshotResponseSchema)
+    .parse(parsedExercises);
+
   return {
-    exercises: parsedExercises,
+    exercises: validatedExercises,
     totalCount: response.totalCount,
   };
 };
@@ -190,6 +198,7 @@ export const getExerciseDeletionImpact = async (
     otherUserReferences: otherUserRefs || 0,
   } as ExerciseDeletionImpact;
 };
+
 export const getSuggestedExercises = async (
   limit: number
 ): Promise<{ recentExercises: Exercise[]; topExercises: Exercise[] }> => {
