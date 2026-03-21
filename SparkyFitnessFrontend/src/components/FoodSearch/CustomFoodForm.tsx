@@ -573,6 +573,11 @@ const EnhancedCustomFoodForm = ({
         if (!isNaN(oldSize) && oldSize > 0) {
           newVariant.serving_size = Number((oldSize / factor).toFixed(4));
         }
+      } else if (factor === null) {
+        toast({
+          title: 'Manual conversion required',
+          description: `"${oldUnit}" and "${newUnit}" are incompatible unit types. Please update the serving size and nutrition values manually.`,
+        });
       }
     }
 
