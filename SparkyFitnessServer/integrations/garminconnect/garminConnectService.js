@@ -89,9 +89,10 @@ async function handleGarminTokens(userId, tokensB64) {
             // meaningful to surface than the refresh token expiry (typically months away).
             // Fallback to refresh_token_expires_at only if expires_at is absent, which
             // should not happen in normal garth dumps but guards against older token shapes.
-            token_expires_at: tokens.expires_at
-                ? new Date(tokens.expires_at * 1000)
-                : (tokens.refresh_token_expires_at ? new Date(tokens.refresh_token_expires_at * 1000) : null),
+            token_expires_at: (() => {
+                const expiryTimestamp = tokens.expires_at || tokens.refresh_token_expires_at;
+                return expiryTimestamp ? new Date(expiryTimestamp * 1000) : null;
+            })(),
             external_user_id: tokens.external_user_id || externalUserId // Use external_user_id from tokens if available
         };
         log('debug', `handleGarminTokens: Update data for provider (masked):`, {
