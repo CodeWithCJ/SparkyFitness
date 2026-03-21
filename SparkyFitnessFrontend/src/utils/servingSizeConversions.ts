@@ -89,6 +89,7 @@ export const ALL_CONVERSION_UNITS: string[] = [
   'piece',
   'slice',
   'serving',
+  'portion',
   'can',
   'bottle',
   'packet',
