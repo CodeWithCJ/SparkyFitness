@@ -29,7 +29,8 @@ jest.mock('i18next', () => ({
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 /** Identity distance converter (km → km). */
-const identityConvert = (value: number, _from: string, _to: string): number => value;
+const identityConvert = (value: number, _from: string, _to: string): number =>
+  value;
 
 /** Build an ActivityDetailsResponse with the given descriptor keys and sample rows. */
 function makeActivityData(
@@ -53,8 +54,8 @@ function makeActivityData(
 // ── Timestamp constants ───────────────────────────────────────────────────────
 // Use absolute Unix timestamps (> 1_000_000_000_000 ms threshold in the code)
 const T0 = 1741534000000; // start
-const T1 = T0 + 10000;   // +10 s
-const T2 = T0 + 20000;   // +20 s
+const T1 = T0 + 10000; // +10 s
+const T2 = T0 + 20000; // +20 s
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 1. Guard clauses – should always return []
@@ -66,7 +67,13 @@ describe('processChartData – guard clauses', () => {
       ['directTimestamp', 'sumDistance', 'directHeartRate'],
       []
     );
-    const result = processChartData([], activityData, 'SILENT', identityConvert, 'km');
+    const result = processChartData(
+      [],
+      activityData,
+      'SILENT',
+      identityConvert,
+      'km'
+    );
     expect(result).toEqual([]);
   });
 
@@ -112,10 +119,15 @@ describe('processChartData – guard clauses', () => {
 describe('processChartData – happy path with sumDistance', () => {
   // Descriptors: directTimestamp(0), sumDistance(1), directHeartRate(2), directSpeed(3)
   // Cumulative distances: 0 m, 500 m, 1000 m
-  const descriptors = ['directTimestamp', 'sumDistance', 'directHeartRate', 'directSpeed'];
+  const descriptors = [
+    'directTimestamp',
+    'sumDistance',
+    'directHeartRate',
+    'directSpeed',
+  ];
   const rows: string[][] = [
-    [String(T0), '0',    '120', '3.0'],
-    [String(T1), '500',  '130', '3.2'],
+    [String(T0), '0', '120', '3.0'],
+    [String(T1), '500', '130', '3.2'],
     [String(T2), '1000', '140', '3.5'],
   ];
 
@@ -209,11 +221,16 @@ describe('processChartData – Bug 1: unknown descriptor keys', () => {
     // Descriptors: directTimestamp(0), UNKNOWN(1), directHeartRate(2), directSpeed(3)
     // With the counting bug, directHeartRate gets index 1 (wrong → reads unknown data).
     // With the metricsIndex fix, directHeartRate gets index 2 (correct → reads 135).
-    const descriptors = ['directTimestamp', 'directUnknownField', 'directHeartRate', 'directSpeed'];
+    const descriptors = [
+      'directTimestamp',
+      'directUnknownField',
+      'directHeartRate',
+      'directSpeed',
+    ];
     const rows: string[][] = [
-      [String(T0), '999',  '135', '2.8'],
-      [String(T1), '999',  '140', '2.9'],
-      [String(T2), '999',  '138', '3.0'],
+      [String(T0), '999', '135', '2.8'],
+      [String(T1), '999', '140', '2.9'],
+      [String(T2), '999', '138', '3.0'],
     ];
 
     // We need sumDistance somewhere for the function to not short-circuit.
@@ -241,7 +258,12 @@ describe('processChartData – Bug 1: unknown descriptor keys', () => {
 
   it('reads correct heart rate when directCadence appears before directHeartRate', () => {
     // Real soccer/running pattern: directTimestamp, directCadence, directHeartRate
-    const descriptors = ['directTimestamp', 'directCadence', 'directHeartRate', 'sumDistance'];
+    const descriptors = [
+      'directTimestamp',
+      'directCadence',
+      'directHeartRate',
+      'sumDistance',
+    ];
     const rows: string[][] = [
       [String(T0), '85', '137', '0'],
       [String(T1), '87', '140', '500'],
@@ -335,8 +357,8 @@ describe('processChartData – timestamp ordering', () => {
     // Deliberately out of order: T2, T0, T1
     const rows: string[][] = [
       [String(T2), '1000', '140'],
-      [String(T0), '0',    '120'],
-      [String(T1), '500',  '130'],
+      [String(T0), '0', '120'],
+      [String(T1), '500', '130'],
     ];
 
     const activityData = makeActivityData(descriptors, rows);
@@ -349,7 +371,9 @@ describe('processChartData – timestamp ordering', () => {
     );
 
     for (let i = 1; i < result.length; i++) {
-      expect(result[i]!.timestamp).toBeGreaterThanOrEqual(result[i - 1]!.timestamp);
+      expect(result[i]!.timestamp).toBeGreaterThanOrEqual(
+        result[i - 1]!.timestamp
+      );
     }
   });
 });

@@ -57,10 +57,12 @@ export const processChartData = (
   // subsequent known keys. Falls back to position-based counting for descriptors
   // that don't carry a metricsIndex field.
   const metricKeyToDataIndexMap: { [key: string]: number } = {};
-  metricDescriptors.forEach((descriptor: MetricDescriptor, position: number) => {
-    const index = descriptor.metricsIndex ?? position;
-    metricKeyToDataIndexMap[descriptor.key] = index;
-  });
+  metricDescriptors.forEach(
+    (descriptor: MetricDescriptor, position: number) => {
+      const index = descriptor.metricsIndex ?? position;
+      metricKeyToDataIndexMap[descriptor.key] = index;
+    }
+  );
 
   const timestampIndex = metricKeyToDataIndexMap['directTimestamp'];
   const distanceIndex = metricKeyToDataIndexMap['sumDistance']; // may be undefined
