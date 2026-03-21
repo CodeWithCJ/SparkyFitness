@@ -334,7 +334,11 @@ const EnhancedCustomFoodForm = ({
         const mappedVariants = food.variants.map((v) =>
           foodVariantToFormVariant({
             ...v,
-            is_locked: false,
+            // Preserve is_locked from the provider (e.g. OpenFoodFacts respects
+            // the autoScaleOpenFoodFactsImports preference). For other online
+            // database foods where is_locked is not explicitly set, default to
+            // true so that changing the serving size auto-scales the nutrition.
+            is_locked: v.is_locked ?? true,
             glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
           })
         );
