@@ -98,7 +98,10 @@ def clean_garmin_data(data):
                 cleaned_value = clean_garmin_data(v)
                 if cleaned_value is not None:
                     cleaned_dict[k] = cleaned_value
-        return cleaned_dict if cleaned_dict else None
+        if not cleaned_dict:
+            logger.warning("clean_garmin_data: sub-object dropped because all values were None or excluded (keys were: %s)", list(data.keys()))
+            return None
+        return cleaned_dict
     elif isinstance(data, list):
         cleaned_list = [clean_garmin_data(item) for item in data]
         return [item for item in cleaned_list if item is not None]
@@ -1022,7 +1025,7 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
 
         logger.info(f"Fetching workouts for user {user_id}")
         workouts = garmin.get_workouts()
-        print(f"Raw workouts retrieved: {workouts}")
+        logger.debug("Raw workouts retrieved: %s", workouts)
         detailed_workouts = []
         for workout in workouts:
             workout_id = workout["workoutId"]
