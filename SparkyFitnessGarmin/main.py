@@ -1025,7 +1025,7 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
 
         logger.info(f"Fetching workouts for user {user_id}")
         workouts = garmin.get_workouts()
-        logger.debug(f"Raw workouts retrieved: {workouts}")
+        logger.debug("Raw workouts retrieved: %s", workouts)
         detailed_workouts = []
         for workout in workouts:
             workout_id = workout["workoutId"]
