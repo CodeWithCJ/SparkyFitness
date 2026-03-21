@@ -44,7 +44,14 @@ async function handleGarminTokens(userId, tokensB64) {
         // The Python microservice returns the full garth.dumps() output directly.
         const garthDump = tokensB64;
         const parsedGarthDump = JSON.parse(Buffer.from(garthDump, 'base64').toString('utf8'));
-        // The actual tokens are typically in the second element of the array returned by garth.dumps()
+        // garth.dumps() always returns a 2-element JSON array: [OAuth1Token, OAuth2Token].
+        // OAuth2Token (index 1) contains access_token, refresh_token, expires_at, etc.
+        if (!Array.isArray(parsedGarthDump) || parsedGarthDump.length < 2 || !parsedGarthDump[1]) {
+            throw new Error(
+                `Unexpected garth dump structure: expected a 2-element array [OAuth1Token, OAuth2Token], ` +
+                `received ${Array.isArray(parsedGarthDump) ? `array of length ${parsedGarthDump.length}` : typeof parsedGarthDump}`
+            );
+        }
         const tokens = parsedGarthDump[1];
         log('debug', `handleGarminTokens: Parsed Garth Dump:`, parsedGarthDump);
         log('debug', `handleGarminTokens: Extracted Tokens:`, tokens);
