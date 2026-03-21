@@ -115,7 +115,7 @@ const ActivityReportVisualizer = ({
   const totalActivityDurationSeconds =
     activityData.activity?.activity?.duration || 0;
   const totalActivityCalories = activityData.activity?.activity?.calories || 0;
-  const totalActivityAscent = activityData.activity?.activity?.totalAscent || 0;
+  const totalActivityAscent = activityData.activity?.activity?.elevationGain || activityData.activity?.activity?.totalAscent || 0;
   const averageHR = activityData.activity?.activity?.averageHR || 0;
   const averageRunCadence =
     activityData.activity?.activity?.averageRunCadence || 0;
