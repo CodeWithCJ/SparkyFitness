@@ -572,23 +572,31 @@ const EnhancedCustomFoodForm = ({
     if (field === 'serving_unit') {
       const oldUnit = currentVariant.serving_unit;
       const newUnit = String(value);
-      const factor = getConversionFactor(oldUnit, newUnit);
-      const oldCategory = getUnitCategory(oldUnit);
-      const newCategory = getUnitCategory(newUnit);
-      // Both units are non-measurable serving units (piece, slice, etc.) — no conversion needed, no alert.
-      const bothServing = oldCategory === null && newCategory === null;
-      if (factor !== null && factor !== 1) {
+      const originalVariant = updatedOriginalVariants[index];
+      // If switching back to the original unit, restore all original nutrition values.
+      if (originalVariant && newUnit === originalVariant.serving_unit) {
         for (const nutrient of nutrientFields) {
-          const oldVal = Number(currentVariant[nutrient]);
-          if (!isNaN(oldVal)) {
-            newVariant[nutrient] = Number((oldVal * factor).toFixed(4));
-          }
+          newVariant[nutrient] = originalVariant[nutrient];
         }
-      } else if (factor === null && !bothServing) {
-        toast({
-          title: 'Manual conversion required',
-          description: `"${oldUnit}" and "${newUnit}" are incompatible unit types. Please update the serving size and nutrition values manually.`,
-        });
+      } else {
+        const factor = getConversionFactor(oldUnit, newUnit);
+        const oldCategory = getUnitCategory(oldUnit);
+        const newCategory = getUnitCategory(newUnit);
+        // Both units are non-measurable serving units (piece, slice, etc.) — no conversion needed, no alert.
+        const bothServing = oldCategory === null && newCategory === null;
+        if (factor !== null && factor !== 1) {
+          for (const nutrient of nutrientFields) {
+            const oldVal = Number(currentVariant[nutrient]);
+            if (!isNaN(oldVal)) {
+              newVariant[nutrient] = Number((oldVal * factor).toFixed(4));
+            }
+          }
+        } else if (factor === null && !bothServing) {
+          toast({
+            title: 'Manual conversion required',
+            description: `"${oldUnit}" and "${newUnit}" are incompatible unit types. Please update the serving size and nutrition values manually.`,
+          });
+        }
       }
     }
 
@@ -958,12 +966,13 @@ const EnhancedCustomFoodForm = ({
                                 <SelectGroup key={group.label}>
                                   <SelectLabel>{group.label}</SelectLabel>
                                   {group.units.map((unit) => {
+                                    const baseUnit =
+                                      originalVariants[index]?.serving_unit ??
+                                      variant.serving_unit;
                                     const compatible =
-                                      unit !== variant.serving_unit &&
-                                      getConversionFactor(
-                                        variant.serving_unit,
-                                        unit
-                                      ) !== null;
+                                      unit !== baseUnit &&
+                                      getConversionFactor(baseUnit, unit) !==
+                                        null;
                                     return (
                                       <SelectItem key={unit} value={unit}>
                                         <span className="flex items-center gap-1.5">
