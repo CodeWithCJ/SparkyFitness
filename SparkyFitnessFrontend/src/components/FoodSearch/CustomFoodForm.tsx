@@ -562,16 +562,19 @@ const EnhancedCustomFoodForm = ({
       newVariant.calories = convertEnergy(value, energyUnit, 'kcal');
     }
 
-    // When the unit type changes to a compatible unit, auto-convert serving_size
-    // so the same physical amount is preserved (e.g. 30g → 30,000mg).
+    // When the unit type changes, scale nutrition values to reflect the new unit
+    // while keeping the serving size number the same.
+    // e.g. 100g → 100mg: nutrition is scaled by factor (0.001) since 100mg is much less physical mass.
     if (field === 'serving_unit') {
       const oldUnit = currentVariant.serving_unit;
       const newUnit = String(value);
       const factor = getConversionFactor(oldUnit, newUnit);
       if (factor !== null && factor !== 1) {
-        const oldSize = Number(currentVariant.serving_size);
-        if (!isNaN(oldSize) && oldSize > 0) {
-          newVariant.serving_size = Number((oldSize / factor).toFixed(4));
+        for (const nutrient of nutrientFields) {
+          const oldVal = Number(currentVariant[nutrient]);
+          if (!isNaN(oldVal)) {
+            newVariant[nutrient] = Number((oldVal * factor).toFixed(4));
+          }
         }
       } else if (factor === null) {
         toast({
