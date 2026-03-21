@@ -93,25 +93,6 @@ export interface DailyExerciseEntry {
   [key: string]: string | number | boolean | object | undefined;
 }
 
-export interface ExerciseProgressData {
-  entry_date: string;
-  calories_burned: number;
-  duration_minutes: number;
-  exercise_entry_id: string; // New field
-  provider_name?: string; // New field
-  exercise_name?: string; // Added field for exercise name
-  sets: {
-    id: string;
-    set_number: number;
-    set_type: string;
-    reps: number;
-    weight: number;
-    duration?: number;
-    rest_time?: number;
-    notes?: string;
-  }[];
-}
-
 export interface ExerciseDashboardData {
   keyStats: {
     totalWorkouts: number;

@@ -1,8 +1,8 @@
-import { ExerciseProgressData } from '@/types/reports';
+import { ExerciseProgressResponse } from '@workspace/shared';
 
 export const calculateVolumeTrendData = (
-  exerciseProgressData: Record<string, ExerciseProgressData[]>,
-  comparisonExerciseProgressData: Record<string, ExerciseProgressData[]>,
+  exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
+  comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
   parseISO: (dateString: string) => Date
 ) => {
@@ -22,7 +22,7 @@ export const calculateVolumeTrendData = (
         }
 
         const currentVolume = entry.sets.reduce(
-          (sum, set) => sum + set.reps * set.weight,
+          (sum, set) => sum + (set.reps ?? 0) * (set.weight ?? 0),
           0
         );
         existingEntry.volume += currentVolume;
@@ -33,7 +33,7 @@ export const calculateVolumeTrendData = (
 
         if (comparisonEntry) {
           const compVolume = comparisonEntry.sets.reduce(
-            (sum, set) => sum + set.reps * set.weight,
+            (sum, set) => sum + (set.reps ?? 0) * (set.weight ?? 0),
             0
           );
           existingEntry.comparisonVolume += compVolume;
@@ -46,8 +46,8 @@ export const calculateVolumeTrendData = (
 };
 
 export const calculateMaxWeightTrendData = (
-  exerciseProgressData: Record<string, ExerciseProgressData[]>,
-  comparisonExerciseProgressData: Record<string, ExerciseProgressData[]>,
+  exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
+  comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
   parseISO: (dateString: string) => Date
 ) => {
@@ -67,7 +67,7 @@ export const calculateMaxWeightTrendData = (
         }
 
         const currentMaxWeight = Math.max(
-          ...entry.sets.map((set) => set.weight)
+          ...entry.sets.map((set) => set.weight ?? 0)
         );
         existingEntry.maxWeight = Math.max(
           existingEntry.maxWeight,
@@ -80,7 +80,7 @@ export const calculateMaxWeightTrendData = (
 
         if (comparisonEntry) {
           const compMaxWeight = Math.max(
-            ...comparisonEntry.sets.map((set) => set.weight)
+            ...comparisonEntry.sets.map((set) => set.weight ?? 0)
           );
           existingEntry.comparisonMaxWeight = Math.max(
             existingEntry.comparisonMaxWeight,
@@ -95,8 +95,8 @@ export const calculateMaxWeightTrendData = (
 };
 
 export const calculateEstimated1RMTrendData = (
-  exerciseProgressData: Record<string, ExerciseProgressData[]>,
-  comparisonExerciseProgressData: Record<string, ExerciseProgressData[]>,
+  exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
+  comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
   parseISO: (dateString: string) => Date
 ) => {
@@ -116,7 +116,10 @@ export const calculateEstimated1RMTrendData = (
         }
 
         const currentMax1RM = Math.max(
-          ...entry.sets.map((set) => set.weight * (1 + set.reps / 30))
+          ...entry.sets.map(
+            (set) => (set.weight ?? 0) * (1 + (set.reps ?? 0) / 30)
+          ),
+          0
         );
         existingEntry.estimated1RM = Math.max(
           existingEntry.estimated1RM,
@@ -130,8 +133,9 @@ export const calculateEstimated1RMTrendData = (
         if (comparisonEntry) {
           const compMax1RM = Math.max(
             ...comparisonEntry.sets.map(
-              (set) => set.weight * (1 + set.reps / 30)
-            )
+              (set) => (set.weight ?? 0) * (1 + (set.reps ?? 0) / 30)
+            ),
+            0
           );
           existingEntry.comparisonEstimated1RM = Math.max(
             existingEntry.comparisonEstimated1RM,
@@ -150,7 +154,7 @@ export const calculateEstimated1RMTrendData = (
 };
 
 export const calculateRepsVsWeightScatterData = (
-  exerciseData: ExerciseProgressData[]
+  exerciseData: ExerciseProgressResponse[]
 ) => {
   const repWeightMap = new Map<
     number,
@@ -162,12 +166,15 @@ export const calculateRepsVsWeightScatterData = (
       entry.sets.map((set) => ({ reps: set.reps, weight: set.weight }))
     )
     .forEach((item) => {
-      if (repWeightMap.has(item.reps)) {
-        const existing = repWeightMap.get(item.reps)!;
-        existing.totalWeight += item.weight;
+      if (repWeightMap.has(item.reps ?? 0)) {
+        const existing = repWeightMap.get(item.reps ?? 0)!;
+        existing.totalWeight += item.weight ?? 0;
         existing.count += 1;
       } else {
-        repWeightMap.set(item.reps, { totalWeight: item.weight, count: 1 });
+        repWeightMap.set(item.reps ?? 0, {
+          totalWeight: item.weight ?? 0,
+          count: 1,
+        });
       }
     });
 
@@ -180,7 +187,7 @@ export const calculateRepsVsWeightScatterData = (
 };
 
 export const calculateTimeUnderTensionData = (
-  exerciseData: ExerciseProgressData[],
+  exerciseData: ExerciseProgressResponse[],
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
   parseISO: (dateString: string) => Date
 ) => {
@@ -192,11 +199,11 @@ export const calculateTimeUnderTensionData = (
 };
 
 export const extractGarminActivityEntries = (
-  exerciseProgressData: Record<string, ExerciseProgressData[]>,
+  exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   selectedExercise: string,
   parseISO: (dateString: string) => Date
 ) => {
-  const allGarminActivityEntries: ExerciseProgressData[] = [];
+  const allGarminActivityEntries: ExerciseProgressResponse[] = [];
 
   if (selectedExercise === 'All') {
     Object.values(exerciseProgressData).forEach((dataArray) => {

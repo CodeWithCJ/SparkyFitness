@@ -1,9 +1,7 @@
 import { apiCall } from '@/api/api';
-import type { WorkoutPresetSet } from '@/types/workout';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
 import type { ActivityDetailMetric, LapDTO } from '@/types/exercises';
-import type { ExerciseProgressData } from '@/types/reports';
 import {
   ExerciseHistoryResponse,
   exerciseHistoryResponseSchema,
@@ -11,6 +9,12 @@ import {
   exerciseSessionResponseSchema,
   ExerciseEntryResponse,
   exerciseEntryResponseSchema,
+  CreateExerciseEntryRequest,
+  UpdateExerciseEntryRequest,
+  exerciseProgressResponseSchema,
+  ExerciseProgressResponse,
+  exerciseSnapshotResponseSchema,
+  ExerciseSnapshotResponse,
 } from '@workspace/shared';
 import z from 'zod';
 
@@ -53,22 +57,9 @@ export const fetchExerciseEntryHistoryV2 = async (
   return exerciseHistoryResponseSchema.parse(response);
 };
 
-export const createExerciseEntry = async (payload: {
-  exercise_id: string;
-  entry_date: string;
-  notes?: string;
-  sets: WorkoutPresetSet[];
-  image_url?: string;
-  calories_burned?: number;
-  distance?: number | null;
-  avg_heart_rate?: number | null;
-  imageFile?: File | null;
-  activity_details?: {
-    provider_name?: string;
-    detail_type: string;
-    detail_data: string;
-  }[]; // New field
-}): Promise<void> => {
+export const createExerciseEntry = async (
+  payload: CreateExerciseEntryRequest & { imageFile: File | null }
+): Promise<void> => {
   const { imageFile, ...entryData } = payload;
 
   if (imageFile) {
@@ -132,26 +123,9 @@ export const deleteExercisePresetEntry = async (
   });
 };
 
-export interface UpdateExerciseEntryPayload {
-  duration_minutes?: number;
-  calories_burned?: number;
-  notes?: string;
-  sets?: WorkoutPresetSet[];
-  image_url?: string | null;
-  distance?: number | null;
-  avg_heart_rate?: number | null;
-  imageFile?: File | null;
-  activity_details?: {
-    id?: string;
-    provider_name?: string;
-    detail_type: string;
-    detail_data: string;
-  }[];
-}
-
 export const updateExerciseEntry = async (
   entryId: string,
-  payload: UpdateExerciseEntryPayload // New field
+  payload: UpdateExerciseEntryRequest & { imageFile: File | null }
 ): Promise<void> => {
   const { imageFile, ...entryData } = payload;
   const loggingLevel = getUserLoggingLevel();
@@ -198,7 +172,7 @@ export const getExerciseProgressData = async (
   startDate: string,
   endDate: string,
   aggregationLevel: string = 'daily'
-): Promise<ExerciseProgressData[]> => {
+): Promise<ExerciseProgressResponse[]> => {
   const params = new URLSearchParams({
     startDate,
     endDate,
@@ -210,12 +184,7 @@ export const getExerciseProgressData = async (
       method: 'GET',
     }
   );
-  // Ensure that exercise_entry_id and provider_name are included in the returned data
-  return response.map((entry: ExerciseProgressData) => ({
-    ...entry,
-    exercise_entry_id: entry.exercise_entry_id || '', // Provide a default or ensure it's always present
-    provider_name: entry.provider_name || '', // Provide a default or ensure it's always present
-  }));
+  return z.array(exerciseProgressResponseSchema).parse(response);
 };
 
 export const getExerciseHistory = async (
@@ -236,10 +205,11 @@ export const getExerciseHistory = async (
 
 export const fetchExerciseDetails = async (
   exerciseId: string
-): Promise<{ calories_per_hour: number }> => {
-  return apiCall(`/exercises/${exerciseId}`, {
+): Promise<ExerciseSnapshotResponse> => {
+  const response = await apiCall(`/exercises/${exerciseId}`, {
     method: 'GET',
   });
+  return exerciseSnapshotResponseSchema.parse(response);
 };
 
 export interface ActivityDetailsResponse {

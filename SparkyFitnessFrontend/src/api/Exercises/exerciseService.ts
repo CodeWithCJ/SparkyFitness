@@ -100,11 +100,7 @@ export const loadExercises = async (
     method: 'GET',
   });
 
-  const validatedExercises = z
-    .array(exerciseSnapshotResponseSchema)
-    .parse(response.exercises);
-
-  const parsedExercises = validatedExercises.map((exercise) => ({
+  const parsedExercises = response.exercises.map((exercise: Exercise) => ({
     ...exercise,
     equipment: parseJsonArray(exercise.equipment),
     primary_muscles: parseJsonArray(exercise.primary_muscles),
@@ -113,8 +109,12 @@ export const loadExercises = async (
     images: parseJsonArray(exercise.images),
   }));
 
+  const validatedExercises = z
+    .array(exerciseSnapshotResponseSchema)
+    .parse(parsedExercises);
+
   return {
-    exercises: parsedExercises,
+    exercises: validatedExercises,
     totalCount: response.totalCount,
   };
 };
@@ -122,40 +122,36 @@ export const loadExercises = async (
 export const createExercise = async (
   payload: ExercisePayload | FormData
 ): Promise<Exercise> => {
-  let response;
   if (payload instanceof FormData) {
-    response = await apiCall('/exercises', {
+    return apiCall('/exercises', {
       method: 'POST',
       body: payload,
       isFormData: true, // Custom flag to indicate FormData
     });
   } else {
-    response = await apiCall('/exercises', {
+    return apiCall('/exercises', {
       method: 'POST',
       body: payload,
     });
   }
-  return exerciseSnapshotResponseSchema.parse(response);
 };
 
 export const updateExercise = async (
   id: string,
   payload: Partial<ExercisePayload> | FormData
 ): Promise<Exercise> => {
-  let response;
   if (payload instanceof FormData) {
-    response = await apiCall(`/exercises/${id}`, {
+    return apiCall(`/exercises/${id}`, {
       method: 'PUT',
       body: payload,
       isFormData: true,
     });
   } else {
-    response = await apiCall(`/exercises/${id}`, {
+    return apiCall(`/exercises/${id}`, {
       method: 'PUT',
       body: payload,
     });
   }
-  return exerciseSnapshotResponseSchema.parse(response);
 };
 
 export const deleteExercise = async (
@@ -180,12 +176,11 @@ export const updateExerciseShareStatus = async (
     'exerciseData',
     JSON.stringify({ shared_with_public: sharedWithPublic })
   );
-  const response = await apiCall(`/exercises/${id}`, {
+  return apiCall(`/exercises/${id}`, {
     method: 'PUT',
     body: payload,
     isFormData: true,
   });
-  return exerciseSnapshotResponseSchema.parse(response);
 };
 
 export const getExerciseDeletionImpact = async (
@@ -203,20 +198,13 @@ export const getExerciseDeletionImpact = async (
     otherUserReferences: otherUserRefs || 0,
   } as ExerciseDeletionImpact;
 };
+
 export const getSuggestedExercises = async (
   limit: number
 ): Promise<{ recentExercises: Exercise[]; topExercises: Exercise[] }> => {
-  const response = await apiCall(`/exercises/suggested?limit=${limit}`, {
+  return apiCall(`/exercises/suggested?limit=${limit}`, {
     method: 'GET',
   });
-  return {
-    recentExercises: z
-      .array(exerciseSnapshotResponseSchema)
-      .parse(response.recentExercises),
-    topExercises: z
-      .array(exerciseSnapshotResponseSchema)
-      .parse(response.topExercises),
-  };
 };
 
 export const updateExerciseEntriesSnapshot = async (
@@ -232,15 +220,14 @@ export const getExerciseById = async (id: string): Promise<Exercise> => {
   const response = await apiCall(`/exercises/${id}`, {
     method: 'GET',
   });
-  const validated = exerciseSnapshotResponseSchema.parse(response);
   // Ensure arrays are parsed correctly
   return {
-    ...validated,
-    equipment: parseJsonArray(validated.equipment),
-    primary_muscles: parseJsonArray(validated.primary_muscles),
-    secondary_muscles: parseJsonArray(validated.secondary_muscles),
-    instructions: parseJsonArray(validated.instructions),
-    images: parseJsonArray(validated.images),
+    ...response,
+    equipment: parseJsonArray(response.equipment),
+    primary_muscles: parseJsonArray(response.primary_muscles),
+    secondary_muscles: parseJsonArray(response.secondary_muscles),
+    instructions: parseJsonArray(response.instructions),
+    images: parseJsonArray(response.images),
   };
 };
 

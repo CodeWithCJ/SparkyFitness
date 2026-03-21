@@ -15,7 +15,7 @@ import {
   useAvailableMuscleGroups,
 } from '@/hooks/Exercises/useExerciseSearch';
 import { calculateTotalTonnage } from '@/utils/reportUtil';
-import { ExerciseDashboardData, ExerciseProgressData } from '@/types/reports';
+import { ExerciseDashboardData } from '@/types/reports';
 import {
   calculateEstimated1RMTrendData,
   calculateMaxWeightTrendData,
@@ -35,6 +35,7 @@ import { BestSetRepRangeChart } from '@/components/ExerciseCharts/BestSetRepRang
 import { TrainingVolumeByMuscleGroupChart } from '@/components/ExerciseCharts/TrainingVolumeByMuscleGroupChart';
 import { PrVisualizationWidget } from '@/components/ExerciseCharts/PrVisualizationWidget';
 import { GarminActivityList } from '@/components/ExerciseCharts/GarminActivityList';
+import { ExerciseProgressResponse } from '@workspace/shared';
 
 interface ExerciseReportsDashboardProps {
   exerciseDashboardData: ExerciseDashboardData | undefined;
@@ -120,7 +121,7 @@ const ExerciseReportsDashboard = ({
       }
       return acc;
     },
-    {} as Record<string, ExerciseProgressData[]>
+    {} as Record<string, ExerciseProgressResponse[]>
   );
 
   const comparisonExerciseProgressData = selectedExercisesForChart.reduce(
@@ -140,7 +141,7 @@ const ExerciseReportsDashboard = ({
       }
       return acc;
     },
-    {} as Record<string, ExerciseProgressData[]>
+    {} as Record<string, ExerciseProgressResponse[]>
   );
 
   const isFetchingCharts =

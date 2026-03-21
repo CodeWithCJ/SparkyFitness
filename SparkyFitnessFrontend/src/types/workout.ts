@@ -1,5 +1,7 @@
+import { ExerciseEntrySetRequest } from '@workspace/shared';
 import { Exercise } from './exercises';
 
+export type WorkoutPresetSet = ExerciseEntrySetRequest;
 export interface PresetExercise {
   id: string;
   exercise_id: string;
@@ -8,18 +10,6 @@ export interface PresetExercise {
   weight: number;
   image_url?: string;
   exercise_name: string;
-}
-
-export interface WorkoutPresetSet {
-  id?: string | number | null;
-  set_number: number;
-  set_type: string | null;
-  reps?: number | null;
-  weight?: number | null;
-  duration?: number | null; // in minutes
-  rest_time?: number | null; // in seconds
-  notes?: string | null;
-  rpe?: number | null;
 }
 
 export interface WorkoutPresetExercise {

@@ -13,13 +13,13 @@ import {
   logWorkoutPreset,
   deleteExercisePresetEntry,
   fetchExerciseDetails,
-  UpdateExerciseEntryPayload,
   fetchExerciseEntryHistoryV2,
   getExerciseHistory,
 } from '@/api/Exercises/exerciseEntryService';
 import { exerciseEntryKeys, exerciseKeys } from '@/api/keys/exercises';
 import i18n from '@/i18n';
 import { dailyProgressKeys } from '@/api/keys/diary';
+import { UpdateExerciseEntryRequest } from '@workspace/shared';
 
 // --- Queries ---
 
@@ -92,7 +92,7 @@ export const useUpdateExerciseEntryMutation = () => {
       data,
     }: {
       id: string;
-      data: UpdateExerciseEntryPayload;
+      data: UpdateExerciseEntryRequest & { imageFile: File | null };
     }) => updateExerciseEntry(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({
