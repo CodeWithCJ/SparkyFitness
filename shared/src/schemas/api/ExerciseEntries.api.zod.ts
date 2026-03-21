@@ -78,7 +78,7 @@ export const activityDetailResponseSchema = z
 
 export const exerciseEntrySetRequestSchema = z
   .object({
-    id: z.any().nullable().optional(),
+    id: z.union([z.string(), z.number()]).nullable().optional(),
     set_number: z.number().int().positive(),
     set_type: z.string().nullable().optional(),
     reps: z.number().nullable().optional(),

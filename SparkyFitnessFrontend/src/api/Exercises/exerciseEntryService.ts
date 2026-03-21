@@ -1,7 +1,7 @@
 import { apiCall } from '@/api/api';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
-import type { ActivityDetailMetric, LapDTO } from '@/types/exercises';
+import type { ActivityDetailsResponse } from '@/types/exercises';
 import {
   ExerciseHistoryResponse,
   exerciseHistoryResponseSchema,
@@ -211,45 +211,6 @@ export const fetchExerciseDetails = async (
   });
   return exerciseSnapshotResponseSchema.parse(response);
 };
-
-export interface ActivityDetailsResponse {
-  id?: string;
-  activity?: {
-    details?: {
-      metricDescriptors?: unknown[];
-      activityDetailMetrics?: ActivityDetailMetric[];
-      geoPolylineDTO?: {
-        polyline: { lat: number; lon: number }[];
-      };
-      [key: string]: unknown;
-    };
-    hr_in_timezones?: unknown[];
-    splits?: {
-      lapDTOs: LapDTO[];
-      [key: string]: unknown;
-    };
-    activity?: {
-      duration?: number;
-      calories?: number;
-      totalAscent?: number;
-      averageHR?: number;
-      averageRunCadence?: number;
-      distance?: number;
-      averagePace?: number;
-      activityName?: string;
-      eventType?: unknown;
-      course?: unknown;
-      gear?: unknown;
-      [key: string]: unknown;
-    };
-    [key: string]: unknown;
-  };
-  workout?: {
-    workoutName: string;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-}
 
 export const getActivityDetails = async (
   exerciseEntryId: string,

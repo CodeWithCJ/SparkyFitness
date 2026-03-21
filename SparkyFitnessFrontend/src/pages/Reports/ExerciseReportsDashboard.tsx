@@ -121,7 +121,10 @@ const ExerciseReportsDashboard = ({
       }
       return acc;
     },
-    {} as Record<string, ExerciseProgressResponse[]>
+    {} as Record<
+      string,
+      (ExerciseProgressResponse & { exercise_name: string })[]
+    >
   );
 
   const comparisonExerciseProgressData = selectedExercisesForChart.reduce(
@@ -141,7 +144,10 @@ const ExerciseReportsDashboard = ({
       }
       return acc;
     },
-    {} as Record<string, ExerciseProgressResponse[]>
+    {} as Record<
+      string,
+      (ExerciseProgressResponse & { exercise_name: string })[]
+    >
   );
 
   const isFetchingCharts =
