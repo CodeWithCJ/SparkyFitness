@@ -160,14 +160,6 @@ async function syncGarminHealthAndWellness(userId, startDate, endDate, metricTyp
     }
 }
 
-module.exports = {
-    garminLogin,
-    garminResumeLogin,
-    handleGarminTokens,
-    syncGarminHealthAndWellness,
-    fetchGarminActivitiesAndWorkouts
-};
-
 async function fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, activityType) {
     try {
         const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
@@ -176,7 +168,7 @@ async function fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, acti
         }
         const decryptedGarthDump = provider.garth_dump;
         log('debug', `fetchGarminActivitiesAndWorkouts: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`);
-        
+
         const response = await axios.post(`${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`, {
             user_id: userId,
             tokens: decryptedGarthDump,
@@ -195,3 +187,11 @@ async function fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, acti
         throw new Error(`Failed to fetch Garmin activities and workouts: ${error.response ? error.response.data.detail : error.message}`);
     }
 }
+
+module.exports = {
+    garminLogin,
+    garminResumeLogin,
+    handleGarminTokens,
+    syncGarminHealthAndWellness,
+    fetchGarminActivitiesAndWorkouts
+};
