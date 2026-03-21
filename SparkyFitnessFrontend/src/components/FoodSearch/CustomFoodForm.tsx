@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -18,7 +20,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
-import { getConversionFactor } from '@/utils/servingSizeConversions';
+import {
+  getConversionFactor,
+  getUnitCategory,
+} from '@/utils/servingSizeConversions';
 import { useUpdateFoodEntriesSnapshotMutation } from '@/hooks/Foods/useFoods';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { useQueryClient } from '@tanstack/react-query';
@@ -142,31 +147,30 @@ interface EnhancedCustomFoodFormProps {
   visibleNutrients?: string[];
 }
 
-const COMMON_UNITS = [
-  'g',
-  'kg',
-  'mg',
-  'oz',
-  'lb',
-  'ml',
-  'l',
-  'cup',
-  'tbsp',
-  'tsp',
-  'piece',
-  'slice',
-  'serving',
-  'portion',
-  'can',
-  'bottle',
-  'packet',
-  'bag',
-  'bowl',
-  'plate',
-  'handful',
-  'scoop',
-  'bar',
-  'stick',
+// Unit groups mirror the lookup tables in servingSizeConversions.ts so that
+// compatible-unit detection is consistent in both directions.
+const UNIT_GROUPS = [
+  { label: 'Weight', units: ['g', 'kg', 'mg', 'oz', 'lb'] },
+  { label: 'Volume', units: ['ml', 'l', 'cup', 'tbsp', 'tsp'] },
+  {
+    label: 'Serving',
+    units: [
+      'piece',
+      'slice',
+      'serving',
+      'portion',
+      'can',
+      'bottle',
+      'packet',
+      'bag',
+      'bowl',
+      'plate',
+      'handful',
+      'scoop',
+      'bar',
+      'stick',
+    ],
+  },
 ];
 
 const EnhancedCustomFoodForm = ({
@@ -569,6 +573,10 @@ const EnhancedCustomFoodForm = ({
       const oldUnit = currentVariant.serving_unit;
       const newUnit = String(value);
       const factor = getConversionFactor(oldUnit, newUnit);
+      const oldCategory = getUnitCategory(oldUnit);
+      const newCategory = getUnitCategory(newUnit);
+      // Both units are non-measurable serving units (piece, slice, etc.) — no conversion needed, no alert.
+      const bothServing = oldCategory === null && newCategory === null;
       if (factor !== null && factor !== 1) {
         for (const nutrient of nutrientFields) {
           const oldVal = Number(currentVariant[nutrient]);
@@ -576,7 +584,7 @@ const EnhancedCustomFoodForm = ({
             newVariant[nutrient] = Number((oldVal * factor).toFixed(4));
           }
         }
-      } else if (factor === null) {
+      } else if (factor === null && !bothServing) {
         toast({
           title: 'Manual conversion required',
           description: `"${oldUnit}" and "${newUnit}" are incompatible unit types. Please update the serving size and nutrition values manually.`,
@@ -946,10 +954,15 @@ const EnhancedCustomFoodForm = ({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {COMMON_UNITS.map((unit) => (
-                                <SelectItem key={unit} value={unit}>
-                                  {unit}
-                                </SelectItem>
+                              {UNIT_GROUPS.map((group) => (
+                                <SelectGroup key={group.label}>
+                                  <SelectLabel>{group.label}</SelectLabel>
+                                  {group.units.map((unit) => (
+                                    <SelectItem key={unit} value={unit}>
+                                      {unit}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
                               ))}
                             </SelectContent>
                           </Select>
