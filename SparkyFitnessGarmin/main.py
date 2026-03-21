@@ -99,7 +99,7 @@ def clean_garmin_data(data):
                 if cleaned_value is not None:
                     cleaned_dict[k] = cleaned_value
         if not cleaned_dict:
-            logger.warning(f"clean_garmin_data: sub-object dropped because all values were None or excluded (keys were: {list(data.keys())})")
+            logger.warning("clean_garmin_data: sub-object dropped because all values were None or excluded (keys were: %s)", list(data.keys()))
             return None
         return cleaned_dict
     elif isinstance(data, list):
