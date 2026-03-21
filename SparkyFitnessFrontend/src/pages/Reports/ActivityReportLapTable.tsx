@@ -359,59 +359,59 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                 <td className="py-2 px-4 border-b border-border text-left">
                   {lap.lapIndex}
                 </td>
-                <td className="py-2 px-4 border-b border-border text-right">
+                <td className="py-2 px-4 border-b border-border text-center">
                   {formatTime(lap.lapDurationSeconds)}
                 </td>
-                <td className="py-2 px-4 border-b border-border text-right">
+                <td className="py-2 px-4 border-b border-border text-center">
                   {formatTime(lap.cumulativeDuration)}
                 </td>
                 {showDistanceCols && (
                   <>
-                    <td className="py-2 px-4 border-b border-border text-right">
+                    <td className="py-2 px-4 border-b border-border text-center">
                       {lap.lapDistance.toFixed(2)}
                     </td>
-                    <td className="py-2 px-4 border-b border-border text-right">
+                    <td className="py-2 px-4 border-b border-border text-center">
                       {lap.cumulativeDistance.toFixed(2)}
                     </td>
                   </>
                 )}
                 {showPaceCols && (
                   <>
-                    <td className="py-2 px-4 border-b border-border text-right">
+                    <td className="py-2 px-4 border-b border-border text-center">
                       {formatPace(lap.averageSpeed)}
                     </td>
-                    <td className="py-2 px-4 border-b border-border text-right">
+                    <td className="py-2 px-4 border-b border-border text-center">
                       {formatPace(lap.averageMovingSpeed)}
                     </td>
                   </>
                 )}
                 {showHRCols && (
                   <>
-                    <td className="py-2 px-4 border-b border-border text-right">
+                    <td className="py-2 px-4 border-b border-border text-center">
                       {lap.averageHR > 0 ? lap.averageHR : NA}
                     </td>
-                    <td className="py-2 px-4 border-b border-border text-right">
+                    <td className="py-2 px-4 border-b border-border text-center">
                       {lap.maxHR > 0 ? lap.maxHR : NA}
                     </td>
                   </>
                 )}
                 {showCadenceCols && (
                   <>
-                    <td className="py-2 px-4 border-b border-border text-right">
+                    <td className="py-2 px-4 border-b border-border text-center">
                       {lap.averageRunCadence > 0 ? lap.averageRunCadence : NA}
                     </td>
-                    <td className="py-2 px-4 border-b border-border text-right">
+                    <td className="py-2 px-4 border-b border-border text-center">
                       {lap.maxRunCadence > 0 ? lap.maxRunCadence : NA}
                     </td>
                   </>
                 )}
                 {showMovingTime && (
-                  <td className="py-2 px-4 border-b border-border text-right">
+                  <td className="py-2 px-4 border-b border-border text-center">
                     {formatTime(lap.movingDurationSeconds)}
                   </td>
                 )}
                 {showCalories && (
-                  <td className="py-2 px-4 border-b border-border text-right">
+                  <td className="py-2 px-4 border-b border-border text-center">
                     {lap.calories > 0 ? lap.calories : NA}
                   </td>
                 )}
@@ -423,59 +423,59 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
               <td className="py-2 px-4 text-left">
                 {t('reports.activityReportLapTable.totals', 'Totals')}
               </td>
-              <td className="py-2 px-4 text-right">
+              <td className="py-2 px-4 text-center">
                 {formatTime(totalDurSec)}
               </td>
-              <td className="py-2 px-4 text-right">
+              <td className="py-2 px-4 text-center">
                 {formatTime(totalDurSec)}
               </td>
               {showDistanceCols && (
                 <>
-                  <td className="py-2 px-4 text-right">
+                  <td className="py-2 px-4 text-center">
                     {totalDist.toFixed(2)}
                   </td>
-                  <td className="py-2 px-4 text-right">
+                  <td className="py-2 px-4 text-center">
                     {totalDist.toFixed(2)}
                   </td>
                 </>
               )}
               {showPaceCols && (
                 <>
-                  <td className="py-2 px-4 text-right">
+                  <td className="py-2 px-4 text-center">
                     {formatPace(avgSpeed)}
                   </td>
-                  <td className="py-2 px-4 text-right">
+                  <td className="py-2 px-4 text-center">
                     {formatPace(avgMovingSpeed)}
                   </td>
                 </>
               )}
               {showHRCols && (
                 <>
-                  <td className="py-2 px-4 text-right">
+                  <td className="py-2 px-4 text-center">
                     {avgHR > 0 ? avgHR.toFixed(0) : NA}
                   </td>
-                  <td className="py-2 px-4 text-right">
+                  <td className="py-2 px-4 text-center">
                     {maxHRVal > 0 ? maxHRVal : NA}
                   </td>
                 </>
               )}
               {showCadenceCols && (
                 <>
-                  <td className="py-2 px-4 text-right">
+                  <td className="py-2 px-4 text-center">
                     {avgCadence > 0 ? avgCadence.toFixed(0) : NA}
                   </td>
-                  <td className="py-2 px-4 text-right">
+                  <td className="py-2 px-4 text-center">
                     {maxCadVal > 0 ? maxCadVal : NA}
                   </td>
                 </>
               )}
               {showMovingTime && (
-                <td className="py-2 px-4 text-right">
+                <td className="py-2 px-4 text-center">
                   {formatTime(totalMovingSec)}
                 </td>
               )}
               {showCalories && (
-                <td className="py-2 px-4 text-right">{totalCalories}</td>
+                <td className="py-2 px-4 text-center">{totalCalories}</td>
               )}
             </tr>
           </tfoot>

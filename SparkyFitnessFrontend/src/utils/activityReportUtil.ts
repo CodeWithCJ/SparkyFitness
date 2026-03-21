@@ -153,10 +153,10 @@ export const processChartData = (
     (d: MetricDescriptor) => d.key === 'directHeartRate'
   );
 
-  // Fix: use metricsIndex from the descriptor object directly so that unknown
-  // descriptor keys (e.g. directCadence, directPower) never shift the index of
-  // subsequent known keys. Falls back to position-based counting for descriptors
-  // that don't carry a metricsIndex field.
+  // Build index map using metricsIndex from each descriptor (not a sequential counter).
+  // Each descriptor's metricsIndex tells us exactly which slot in the metrics[] array
+  // it occupies — unrecognised descriptors still consume slots and must not be skipped.
+  // Falls back to position-based counting for descriptors that don't carry metricsIndex.
   const metricKeyToDataIndexMap: { [key: string]: number } = {};
   metricDescriptors.forEach(
     (descriptor: MetricDescriptor, position: number) => {
@@ -169,6 +169,8 @@ export const processChartData = (
   const distanceIndex = metricKeyToDataIndexMap['sumDistance']; // may be undefined
   const speedIndex = metricKeyToDataIndexMap['directSpeed'];
   const heartRateIndex = metricKeyToDataIndexMap['directHeartRate'];
+  // Garmin uses directRunCadence (strides/min) on newer firmware; fall back to
+  // directDoubleCadence (steps/min) which some activity types report instead.
   const runCadenceIndex =
     metricKeyToDataIndexMap['directRunCadence'] ??
     metricKeyToDataIndexMap['directDoubleCadence'] ??
