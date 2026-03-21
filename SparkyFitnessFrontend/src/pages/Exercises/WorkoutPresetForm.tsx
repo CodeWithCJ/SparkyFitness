@@ -121,7 +121,7 @@ const SortableSetItem = React.memo(
             <div className="md:col-span-2">
               <Label>{t('workoutPresetForm.typeLabel', 'Type')}</Label>
               <Select
-                value={set.set_type}
+                value={set.set_type || undefined}
                 onValueChange={(value) =>
                   onSetChange(exerciseIndex, setIndex, 'set_type', value)
                 }

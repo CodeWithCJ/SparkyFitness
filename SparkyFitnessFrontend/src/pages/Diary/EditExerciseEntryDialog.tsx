@@ -77,7 +77,7 @@ const EditExerciseEntryDialog = ({
     entry.calories_burned || ''
   );
   const [distanceInput, setDistanceInput] = useState<number | ''>(
-    entry.distance !== undefined
+    entry.distance !== undefined && entry.distance !== null
       ? Number(convertDistance(entry.distance, 'km', distanceUnit).toFixed(1))
       : ''
   );
@@ -88,7 +88,18 @@ const EditExerciseEntryDialog = ({
   );
   const [activityDetails, setActivityDetails] = useState<
     ActivityDetailKeyValuePair[]
-  >(entry.activity_details || []);
+  >(
+    (entry.activity_details || []).map((detail) => ({
+      id: detail.id,
+      key: detail.detail_type,
+      value:
+        typeof detail.detail_data === 'string'
+          ? detail.detail_data
+          : JSON.stringify(detail.detail_data),
+      provider_name: detail.provider_name,
+      detail_type: detail.detail_type,
+    }))
+  );
 
   const [showCaloriesWarning, setShowCaloriesWarning] = useState(false);
   const { mutateAsync: updateExerciseEntry, isPending: loading } =

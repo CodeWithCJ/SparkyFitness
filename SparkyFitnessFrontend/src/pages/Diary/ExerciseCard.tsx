@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -96,8 +97,10 @@ const ExerciseCard = ({
     useDeleteExercisePresetEntryMutation();
   const { mutateAsync: logWorkoutPreset } = useLogWorkoutPresetMutation();
 
-  const { data: exerciseEntries, isLoading: loading } =
-    useExerciseEntries(selectedDate);
+  const { data: exerciseEntries, isLoading: loading } = useExerciseEntries(
+    selectedDate,
+    currentUserId
+  );
 
   // Effect to handle initialExercisesToLog prop
   useEffect(() => {
@@ -326,11 +329,15 @@ const ExerciseCard = ({
       };
     }
 
-    exerciseEntries.forEach((groupedEntry) => {
-      const isPreset = groupedEntry.type === 'preset' && groupedEntry.exercises;
-      const items = isPreset ? groupedEntry.exercises! : [groupedEntry];
+    exerciseEntries.forEach((groupedEntry: GroupedExerciseEntry) => {
+      // If it's a preset, we want to iterate over its exercises for the stats
+      // If it's an individual entry, we just use it directly
+      const items: ExerciseEntry[] =
+        groupedEntry.type === 'preset'
+          ? groupedEntry.exercises
+          : [groupedEntry];
 
-      items.forEach((entry: ExerciseEntry | GroupedExerciseEntry) => {
+      items.forEach((entry: ExerciseEntry) => {
         // Calories
         const cal = entry.calories_burned;
         if (cal) {
@@ -340,8 +347,8 @@ const ExerciseCard = ({
         // Duration & Sets
         if (entry.sets) {
           setsCount += entry.sets.length;
-          duration += entry.sets.reduce(
-            (sum: number, set: WorkoutPresetSet) => sum + (set.duration || 0),
+          duration += entry.sets.reduce<number>(
+            (sum, set) => sum + (set.duration || 0),
             0
           );
         }
@@ -370,9 +377,21 @@ const ExerciseCard = ({
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="dark:text-slate-300">
-            {t('exerciseCard.title', 'Exercise')}
-          </CardTitle>
+          <div className="flex flex-col">
+            <CardTitle className="dark:text-slate-300">
+              {t('exerciseCard.title', 'Exercise')}
+            </CardTitle>
+            <Link
+              to={
+                activeUserId
+                  ? `/exercise-history?userId=${activeUserId}`
+                  : '/exercise-history'
+              }
+              className="text-xs text-primary hover:underline mt-1"
+            >
+              {t('exerciseCard.seeAllHistory', 'See All History')}
+            </Link>
+          </div>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -402,7 +421,7 @@ const ExerciseCard = ({
           </p>
         ) : (
           <div className="space-y-4">
-            {exerciseEntries?.map((entry) => {
+            {exerciseEntries?.map((entry: GroupedExerciseEntry) => {
               if (entry.type === 'preset') {
                 return (
                   <ExercisePresetEntryDisplay
@@ -425,7 +444,7 @@ const ExerciseCard = ({
                 return (
                   <ExerciseEntryDisplay
                     key={entry.id}
-                    exerciseEntry={entry as ExerciseEntry} // Cast to ExerciseEntry
+                    exerciseEntry={entry} // Removed cast
                     currentUserId={currentUserId}
                     handleEdit={handleEdit}
                     handleDelete={handleDeleteExerciseEntry} // Pass the handler for individual entries

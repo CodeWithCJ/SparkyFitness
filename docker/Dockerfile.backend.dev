@@ -13,10 +13,13 @@ COPY SparkyFitnessServer/package.json SparkyFitnessServer/
 COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/
 COPY SparkyFitnessMobile/package.json SparkyFitnessMobile/
 COPY shared/package.json shared/
+COPY patches/ patches/
 
 # Install workspace dependencies
 RUN pnpm install
 
+COPY shared/ shared/
+COPY SparkyFitnessServer/ SparkyFitnessServer/
 # Set working directory to server for runtime
 WORKDIR /app/SparkyFitnessServer
 

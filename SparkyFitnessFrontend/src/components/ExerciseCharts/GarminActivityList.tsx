@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import ActivityReportVisualizer from '@/pages/Reports/ActivityReportVisualizer'; // Adjust path if needed
-import { ExerciseProgressData } from '@/types/reports';
+import { ExerciseProgressResponse } from '@workspace/shared';
 
 interface GarminActivityListProps {
-  entries: ExerciseProgressData[];
+  entries: ExerciseProgressResponse[];
   formatDate: (date: Date, formatStr: string) => string;
   parseISO: (dateString: string) => Date;
 }
@@ -28,7 +28,6 @@ export const GarminActivityList = ({
           className="border p-4 rounded-lg shadow-sm"
         >
           <h3 className="text-xl font-semibold mb-2">
-            {entry.exercise_name} -{' '}
             {formatDate(parseISO(entry.entry_date), 'MMM dd, yyyy')}
           </h3>
           <ActivityReportVisualizer
