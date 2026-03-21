@@ -7,7 +7,12 @@ import { ActivityStatsGrid } from '@/components/ExerciseCharts/ActivityStatsGrid
 import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActivityDetailsQuery } from '@/hooks/Exercises/useExercises';
-import { processChartData } from '@/utils/activityReportUtil';
+import {
+  processChartData,
+  extractElevationGain,
+  getActivityIcon,
+  getEventTypeLabel,
+} from '@/utils/activityReportUtil';
 import { info } from '@/utils/logging';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { useState } from 'react';
@@ -112,10 +117,21 @@ const ActivityReportVisualizer = ({
     [t('reports.activityReport.timeInZoneS')]: zone.secsInZone,
   }));
 
+  const activityObj = activityData.activity?.activity as
+    | Record<string, unknown>
+    | undefined;
+  const activityTypeKey =
+    (activityObj?.['activityType'] as { typeKey?: string } | undefined)
+      ?.typeKey ||
+    (activityObj?.['sport_type'] as string | undefined) ||
+    (activityObj?.['type'] as string | undefined);
+
   const totalActivityDurationSeconds =
     activityData.activity?.activity?.duration || 0;
   const totalActivityCalories = activityData.activity?.activity?.calories || 0;
-  const totalActivityAscent = activityData.activity?.activity?.totalAscent || 0;
+  const totalActivityAscent = extractElevationGain(
+    activityData.activity?.activity as Record<string, unknown>
+  );
   const averageHR = activityData.activity?.activity?.averageHR || 0;
   const averageRunCadence =
     activityData.activity?.activity?.averageRunCadence || 0;
@@ -180,7 +196,7 @@ const ActivityReportVisualizer = ({
   const averageHRFormatted =
     averageHR > 0 ? `${averageHR.toFixed(0)} bpm` : 'N/A';
   const averageRunCadenceFormatted =
-    averageRunCadence > 0 ? `${averageRunCadence.toFixed(0)} spm` : 'N/A';
+    averageRunCadence > 0 ? `${averageRunCadence.toFixed(0)} spm` : null;
 
   const getXAxisDataKey = () => {
     switch (xAxisMode) {
@@ -213,7 +229,9 @@ const ActivityReportVisualizer = ({
     <div className="activity-report-visualizer p-4">
       <div className="flex items-center mb-4">
         <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-          <span className="text-xl">{activityData.activity ? '🏃' : '🏋️'}</span>
+          <span className="text-xl">
+            {activityData.activity ? getActivityIcon(activityTypeKey) : '🏋️'}
+          </span>
         </div>
         <h2 className="text-2xl font-bold">
           {activityData?.activity?.activity?.activityName ||
@@ -227,20 +245,16 @@ const ActivityReportVisualizer = ({
         activityData.activity.activity && (
           <>
             <div className="flex flex-wrap gap-4 mb-6 text-sm text-muted-foreground">
-              {!!activityData.activity.activity.eventType && (
-                <span>
-                  {t('reports.activityReport.event')}{' '}
-                  {typeof activityData.activity.activity.eventType ===
-                    'object' &&
-                  activityData.activity.activity.eventType !== null
-                    ? (
-                        activityData.activity.activity.eventType as {
-                          typeKey: string;
-                        }
-                      ).typeKey || t('common.notApplicable')
-                    : String(activityData.activity.activity.eventType)}
-                </span>
-              )}
+              {(() => {
+                const eventLabel = getEventTypeLabel(
+                  activityData.activity.activity.eventType
+                );
+                return eventLabel ? (
+                  <span>
+                    {t('reports.activityReport.event')} {eventLabel}
+                  </span>
+                ) : null;
+              })()}
               {!!activityData.activity?.activity.course && (
                 <span className="mr-4">
                   {t('reports.activityReport.course')}{' '}

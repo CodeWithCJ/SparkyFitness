@@ -9,7 +9,109 @@ import { ChartDataPoint } from '@/types/reports';
 
 interface MetricDescriptor {
   key: string;
+  metricsIndex?: number;
 }
+
+/**
+ * Extracts elevation gain from a Garmin/Strava/Withings activity object.
+ * Different providers use different field names:
+ *   - Garmin Connect API (activity list): elevationGain
+ *   - Garmin workout sessions:           totalAscent
+ *   - Garmin mobile SDK:                 totalElevationGainInMeters
+ *   - Strava:                            total_elevation_gain
+ */
+export const extractElevationGain = (
+  activity: Record<string, unknown> | undefined | null
+): number => {
+  if (!activity) return 0;
+  return (
+    (activity['elevationGain'] as number) ||
+    (activity['totalAscent'] as number) ||
+    (activity['totalElevationGainInMeters'] as number) ||
+    (activity['total_elevation_gain'] as number) ||
+    0
+  );
+};
+
+/**
+ * Maps an activity type key to an emoji icon.
+ * Handles provider-specific type keys (Garmin, Strava, Fitbit, Polar, Withings).
+ * Falls back to 🏃 for unknown types.
+ */
+export const getActivityIcon = (typeKey: string | undefined | null): string => {
+  if (!typeKey) return '🏃';
+  const key = typeKey.toLowerCase();
+
+  if (
+    key.includes('cycling') ||
+    key.includes('biking') ||
+    key === 'ride' ||
+    key === 'virtualride' ||
+    key === 'ebikeride' ||
+    key === 'handcycle'
+  )
+    return '🚴';
+  if (
+    key.includes('running') ||
+    key === 'run' ||
+    key === 'virtualrun' ||
+    key === 'trail_run' ||
+    key === 'trailrun'
+  )
+    return '🏃';
+  if (key.includes('swimming') || key === 'swim') return '🏊';
+  if (key.includes('soccer') || key === 'football') return '⚽';
+  if (key.includes('basketball')) return '🏀';
+  if (key.includes('tennis')) return '🎾';
+  if (key.includes('golf')) return '⛳';
+  if (
+    key.includes('hiking') ||
+    key.includes('walking') ||
+    key === 'walk' ||
+    key === 'hike'
+  )
+    return '🚶';
+  if (
+    key.includes('strength') ||
+    key.includes('weight') ||
+    key === 'weighttraining'
+  )
+    return '🏋️';
+  if (key.includes('yoga')) return '🧘';
+  if (key.includes('rowing') || key === 'rowing') return '🚣';
+  if (key.includes('skiing') || key === 'alpineski' || key === 'nordicski')
+    return '⛷️';
+  if (key.includes('snowboard')) return '🏂';
+  if (key.includes('volleyball')) return '🏐';
+  if (key.includes('hockey')) return '🏒';
+  if (key.includes('rugby') || key.includes('americanfootball')) return '🏈';
+  if (key.includes('boxing') || key.includes('martialarts')) return '🥊';
+  if (key.includes('cardio') || key.includes('aerobic')) return '💪';
+  if (key.includes('elliptical')) return '🔄';
+  if (key.includes('stair') || key.includes('step')) return '🪜';
+  if (key.includes('surf')) return '🏄';
+  if (key.includes('climb')) return '🧗';
+
+  return '🏃';
+};
+
+/**
+ * Returns a meaningful event type label, or null if the value should be hidden.
+ * Hides "uncategorized", empty, or missing event types.
+ */
+export const getEventTypeLabel = (eventType: unknown): string | null => {
+  if (!eventType) return null;
+
+  let label: string;
+  if (typeof eventType === 'object' && eventType !== null) {
+    label = (eventType as { typeKey?: string }).typeKey ?? '';
+  } else {
+    label = String(eventType);
+  }
+
+  if (!label || label.toLowerCase() === 'uncategorized') return null;
+  return label;
+};
 
 export const processChartData = (
   metrics: ActivityDetailMetric[],
@@ -38,11 +140,8 @@ export const processChartData = (
   const timestampDescriptor = metricDescriptors.find(
     (d: MetricDescriptor) => d.key === 'directTimestamp'
   );
-  const distanceDescriptor = metricDescriptors.find(
-    (d: MetricDescriptor) => d.key === 'sumDistance'
-  );
 
-  if (!timestampDescriptor || !distanceDescriptor) {
+  if (!timestampDescriptor) {
     logError(
       loggingLevel,
       t('reports.activityReport.metricDescriptorsMissingKeys')
@@ -54,42 +153,25 @@ export const processChartData = (
     (d: MetricDescriptor) => d.key === 'directHeartRate'
   );
 
+  // Fix: use metricsIndex from the descriptor object directly so that unknown
+  // descriptor keys (e.g. directCadence, directPower) never shift the index of
+  // subsequent known keys. Falls back to position-based counting for descriptors
+  // that don't carry a metricsIndex field.
   const metricKeyToDataIndexMap: { [key: string]: number } = {};
-  let currentDataIndex = 0;
-
-  metricDescriptors.forEach((descriptor: MetricDescriptor) => {
-    if (descriptor.key === 'directHeartRate') {
-      metricKeyToDataIndexMap['directHeartRate'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'sumElapsedDuration') {
-      metricKeyToDataIndexMap['sumElapsedDuration'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'directAirTemperature') {
-      metricKeyToDataIndexMap['directAirTemperature'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'directTimestamp') {
-      metricKeyToDataIndexMap['directTimestamp'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'sumDistance') {
-      metricKeyToDataIndexMap['sumDistance'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'directSpeed') {
-      metricKeyToDataIndexMap['directSpeed'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'directRunCadence') {
-      metricKeyToDataIndexMap['directRunCadence'] = currentDataIndex;
-      currentDataIndex++;
-    } else if (descriptor.key === 'directElevation') {
-      metricKeyToDataIndexMap['directElevation'] = currentDataIndex;
-      currentDataIndex++;
+  metricDescriptors.forEach(
+    (descriptor: MetricDescriptor, position: number) => {
+      const index = descriptor.metricsIndex ?? position;
+      metricKeyToDataIndexMap[descriptor.key] = index;
     }
-  });
+  );
 
   const timestampIndex = metricKeyToDataIndexMap['directTimestamp'];
-  const distanceIndex = metricKeyToDataIndexMap['sumDistance'];
+  const distanceIndex = metricKeyToDataIndexMap['sumDistance']; // may be undefined
   const speedIndex = metricKeyToDataIndexMap['directSpeed'];
   const heartRateIndex = metricKeyToDataIndexMap['directHeartRate'];
-  const runCadenceIndex = metricKeyToDataIndexMap['directRunCadence'];
+  const runCadenceIndex =
+    metricKeyToDataIndexMap['directRunCadence'] ??
+    metricKeyToDataIndexMap['directCadence'];
   const elevationIndex = metricKeyToDataIndexMap['directElevation'];
 
   if (!heartRateDescriptor) {
@@ -101,7 +183,7 @@ export const processChartData = (
     );
   }
 
-  if (timestampIndex === undefined || distanceIndex === undefined) {
+  if (timestampIndex === undefined) {
     logError(
       loggingLevel,
       t('reports.activityReport.missingTimestampOrDistanceDescriptor')
@@ -137,18 +219,20 @@ export const processChartData = (
     return [];
   }
 
-  const firstDataPoint = metrics.find(
-    (metric) =>
-      parseFloat(metric.metrics[timestampIndex] ?? '0') === activityStartTime
-  );
-  if (firstDataPoint) {
-    const dist = parseFloat(firstDataPoint.metrics[distanceIndex] ?? '0');
-    initialDistance = !isNaN(dist) ? dist : 0;
-  } else if (metrics.length > 0) {
-    const firstMetricDistance = parseFloat(
-      metrics[0]?.metrics[distanceIndex] ?? '0'
+  if (distanceIndex !== undefined) {
+    const firstDataPoint = metrics.find(
+      (metric) =>
+        parseFloat(metric.metrics[timestampIndex] ?? '0') === activityStartTime
     );
-    initialDistance = !isNaN(firstMetricDistance) ? firstMetricDistance : 0;
+    if (firstDataPoint) {
+      const dist = parseFloat(firstDataPoint.metrics[distanceIndex] ?? '0');
+      initialDistance = !isNaN(dist) ? dist : 0;
+    } else if (metrics.length > 0) {
+      const firstMetricDistance = parseFloat(
+        metrics[0]?.metrics[distanceIndex] ?? '0'
+      );
+      initialDistance = !isNaN(firstMetricDistance) ? firstMetricDistance : 0;
+    }
   }
 
   const processedMetrics = metrics
@@ -156,9 +240,17 @@ export const processChartData = (
       const currentTimestamp = parseFloat(
         metric.metrics[timestampIndex] ?? '0'
       );
-      const currentDistance = parseFloat(metric.metrics[distanceIndex] ?? '0');
 
-      if (isNaN(currentTimestamp) || isNaN(currentDistance)) {
+      if (isNaN(currentTimestamp)) {
+        return null;
+      }
+
+      const currentDistance =
+        distanceIndex !== undefined
+          ? parseFloat(metric.metrics[distanceIndex] ?? '0')
+          : 0;
+
+      if (distanceIndex !== undefined && isNaN(currentDistance)) {
         return null;
       }
 

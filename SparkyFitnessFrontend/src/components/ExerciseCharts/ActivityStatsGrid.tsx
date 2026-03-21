@@ -17,7 +17,7 @@ interface ActivityStatsGridProps {
   ascent: string;
   calories: string;
   heartRate: string;
-  cadence: string;
+  cadence: string | null;
 }
 
 export const ActivityStatsGrid = ({
@@ -99,17 +99,19 @@ export const ActivityStatsGrid = ({
           <div className="text-2xl font-bold">{heartRate}</div>
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-          <CardTitle className="text-sm font-medium">
-            {t('reports.activityReport.runningDynamics')}
-          </CardTitle>
-          <FaRunning className="h-5 w-5 text-orange-500" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{cadence}</div>
-        </CardContent>
-      </Card>
+      {cadence !== null && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-sm font-medium">
+              {t('reports.activityReport.runningDynamics')}
+            </CardTitle>
+            <FaRunning className="h-5 w-5 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{cadence}</div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
