@@ -180,6 +180,7 @@ const EnhancedCustomFoodForm = ({
     energyUnit,
     convertEnergy,
     loggingLevel,
+    autoScaleOnlineImports,
   } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
@@ -336,9 +337,9 @@ const EnhancedCustomFoodForm = ({
             ...v,
             // Preserve is_locked from the provider (e.g. OpenFoodFacts respects
             // the autoScaleOpenFoodFactsImports preference). For other online
-            // database foods where is_locked is not explicitly set, default to
-            // true so that changing the serving size auto-scales the nutrition.
-            is_locked: v.is_locked ?? true,
+            // database foods where is_locked is not explicitly set, fall back to
+            // the user's autoScaleOnlineImports preference.
+            is_locked: v.is_locked ?? autoScaleOnlineImports,
             glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
           })
         );
@@ -404,7 +405,13 @@ const EnhancedCustomFoodForm = ({
       setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
       setVariantErrors(['']); // Initialize error for the single default variant
     }
-  }, [food, initialVariants, customNutrients, loadExistingVariants]);
+  }, [
+    food,
+    initialVariants,
+    customNutrients,
+    loadExistingVariants,
+    autoScaleOnlineImports,
+  ]);
 
   const addVariant = () => {
     const newVariant: FormFoodVariant = {
