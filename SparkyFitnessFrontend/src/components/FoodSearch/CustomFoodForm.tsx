@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -198,6 +198,9 @@ const EnhancedCustomFoodForm = ({
   const [originalVariants, setOriginalVariants] = useState<FormFoodVariant[]>(
     []
   ); // State to hold original, immutable variants
+  // Truly immutable snapshot of variants as loaded — never updated on user edits.
+  // Used for stable green-check indicators and restoring values on unit revert.
+  const loadedVariantsRef = useRef<FormFoodVariant[]>([]);
   const [variantErrors, setVariantErrors] = useState<string[]>([]); // State to hold errors for each variant
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
@@ -296,6 +299,7 @@ const EnhancedCustomFoodForm = ({
       }
       setVariants(loadedVariants);
       setOriginalVariants(JSON.parse(JSON.stringify(loadedVariants))); // Deep copy for original values
+      loadedVariantsRef.current = JSON.parse(JSON.stringify(loadedVariants));
     } catch (error) {
       console.error('Error loading variants:', error);
       // Fallback to a single default variant on error
@@ -326,6 +330,7 @@ const EnhancedCustomFoodForm = ({
       };
       setVariants([defaultVariant]);
       setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy for original values
+      loadedVariantsRef.current = [JSON.parse(JSON.stringify(defaultVariant))];
     }
   }, [food?.default_variant, food?.id, queryClient]);
 
@@ -350,6 +355,7 @@ const EnhancedCustomFoodForm = ({
         );
         setVariants(mappedVariants);
         setOriginalVariants(JSON.parse(JSON.stringify(mappedVariants))); // Deep copy for original values
+        loadedVariantsRef.current = JSON.parse(JSON.stringify(mappedVariants));
         setVariantErrors(new Array(food.variants.length).fill(null)); // Initialize errors for existing variants
       } else {
         loadExistingVariants();
@@ -365,6 +371,9 @@ const EnhancedCustomFoodForm = ({
       );
       setVariants(mappedInitialVariants);
       setOriginalVariants(JSON.parse(JSON.stringify(mappedInitialVariants))); // Deep copy for original values
+      loadedVariantsRef.current = JSON.parse(
+        JSON.stringify(mappedInitialVariants)
+      );
       setVariantErrors(new Array(initialVariants.length).fill(null)); // Initialize errors for initial variants
     } else {
       setFormData({
@@ -408,6 +417,7 @@ const EnhancedCustomFoodForm = ({
 
       setVariants([defaultVariant]);
       setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
+      loadedVariantsRef.current = [JSON.parse(JSON.stringify(defaultVariant))];
       setVariantErrors(['']); // Initialize error for the single default variant
     }
   }, [
@@ -458,6 +468,10 @@ const EnhancedCustomFoodForm = ({
       ...prevOriginal,
       JSON.parse(JSON.stringify(newVariant)),
     ]); // Add deep copy to original variants
+    loadedVariantsRef.current = [
+      ...loadedVariantsRef.current,
+      JSON.parse(JSON.stringify(newVariant)),
+    ];
     setVariantErrors((prevErrors) => [...prevErrors, '']); // Add a null error for the new variant
   };
 
@@ -483,6 +497,10 @@ const EnhancedCustomFoodForm = ({
       ...prevOriginal,
       JSON.parse(JSON.stringify(newVariant)),
     ]); // Add deep copy to original variants
+    loadedVariantsRef.current = [
+      ...loadedVariantsRef.current,
+      JSON.parse(JSON.stringify(newVariant)),
+    ];
     setVariantErrors((prevErrors) => [...prevErrors, '']); // Add a null error for the duplicated variant
   };
 
@@ -572,11 +590,11 @@ const EnhancedCustomFoodForm = ({
     if (field === 'serving_unit') {
       const oldUnit = currentVariant.serving_unit;
       const newUnit = String(value);
-      const originalVariant = updatedOriginalVariants[index];
-      // If switching back to the original unit, restore all original nutrition values.
-      if (originalVariant && newUnit === originalVariant.serving_unit) {
+      const loadedVariant = loadedVariantsRef.current[index];
+      // If switching back to the original loaded unit, restore all original nutrition values.
+      if (loadedVariant && newUnit === loadedVariant.serving_unit) {
         for (const nutrient of nutrientFields) {
-          newVariant[nutrient] = originalVariant[nutrient];
+          newVariant[nutrient] = loadedVariant[nutrient];
         }
       } else {
         const factor = getConversionFactor(oldUnit, newUnit);
@@ -788,6 +806,9 @@ const EnhancedCustomFoodForm = ({
           };
           setVariants([defaultVariant]);
           setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
+          loadedVariantsRef.current = [
+            JSON.parse(JSON.stringify(defaultVariant)),
+          ];
           setVariantErrors(['']);
         }
         onSave(savedFood);
@@ -826,6 +847,9 @@ const EnhancedCustomFoodForm = ({
         };
         setVariants([defaultVariant]);
         setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
+        loadedVariantsRef.current = [
+          JSON.parse(JSON.stringify(defaultVariant)),
+        ];
         setVariantErrors(['']);
       }
 
@@ -967,8 +991,8 @@ const EnhancedCustomFoodForm = ({
                                   <SelectLabel>{group.label}</SelectLabel>
                                   {group.units.map((unit) => {
                                     const baseUnit =
-                                      originalVariants[index]?.serving_unit ??
-                                      variant.serving_unit;
+                                      loadedVariantsRef.current[index]
+                                        ?.serving_unit ?? variant.serving_unit;
                                     const compatible =
                                       unit !== baseUnit &&
                                       getConversionFactor(baseUnit, unit) !==
