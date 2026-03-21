@@ -298,15 +298,7 @@ const EnhancedFoodSearch = ({
       setExternalResults(
         data.foods.map((food: Food) => ({
           provider_type: 'openfoodfacts' as const,
-          food: {
-            ...food,
-            default_variant: food.default_variant
-              ? {
-                  ...food.default_variant,
-                  is_locked: autoScaleOpenFoodFactsImports,
-                }
-              : food.default_variant,
-          },
+          food,
         }))
       );
     },
