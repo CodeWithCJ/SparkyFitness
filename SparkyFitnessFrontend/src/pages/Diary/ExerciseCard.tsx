@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -379,21 +378,9 @@ const ExerciseCard = ({
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <div className="flex flex-col">
-            <CardTitle className="dark:text-slate-300">
-              {t('exerciseCard.title', 'Exercise')}
-            </CardTitle>
-            <Link
-              to={
-                activeUserId
-                  ? `/exercise-history?userId=${activeUserId}`
-                  : '/exercise-history'
-              }
-              className="text-xs text-primary hover:underline mt-1"
-            >
-              {t('exerciseCard.seeAllHistory', 'See All History')}
-            </Link>
-          </div>
+          <CardTitle className="dark:text-slate-300">
+            {t('exerciseCard.title', 'Exercise')}
+          </CardTitle>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
