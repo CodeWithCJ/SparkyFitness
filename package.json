@@ -31,7 +31,6 @@
     }
   },
   "dependencies": {
-    "js-yaml": "^4.1.0",
-    "vite": "^7.3.1"
+    "js-yaml": "^4.1.0"
   }
 }
