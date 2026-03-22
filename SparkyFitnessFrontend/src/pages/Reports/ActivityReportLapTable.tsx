@@ -399,10 +399,14 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                 {showCadenceCols && (
                   <>
                     <td className="py-2 px-4 border-b border-border text-center">
-                      {lap.averageRunCadence > 0 ? lap.averageRunCadence : NA}
+                      {lap.averageRunCadence > 0
+                        ? Math.round(lap.averageRunCadence)
+                        : NA}
                     </td>
                     <td className="py-2 px-4 border-b border-border text-center">
-                      {lap.maxRunCadence > 0 ? lap.maxRunCadence : NA}
+                      {lap.maxRunCadence > 0
+                        ? Math.round(lap.maxRunCadence)
+                        : NA}
                     </td>
                   </>
                 )}
@@ -462,7 +466,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     {avgCadence > 0 ? avgCadence.toFixed(0) : NA}
                   </td>
                   <td className="py-2 px-4 text-center">
-                    {maxCadVal > 0 ? maxCadVal : NA}
+                    {maxCadVal > 0 ? Math.round(maxCadVal) : NA}
                   </td>
                 </>
               )}
