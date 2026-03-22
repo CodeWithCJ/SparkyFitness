@@ -30,7 +30,7 @@ export interface DayTotals {
   carbs: number;
   fat: number;
   dietary_fiber: number;
-  [key: string]: number; // Allow custom nutrients
+  custom_nutrients?: Record<string, number>;
 }
 
 interface DiaryTopControlsProps {
@@ -141,8 +141,15 @@ const DiaryTopControls = ({
             >
               {visibleNutrients.map((nutrient) => {
                 const metadata = getNutrientMetadata(nutrient, customNutrients);
-                const total = dayTotals[nutrient as keyof DayTotals] || 0;
-                const goal = goals[nutrient as keyof Goals] || 0;
+                const total =
+                  (dayTotals[nutrient as keyof DayTotals] as number) ??
+                  dayTotals.custom_nutrients?.[nutrient] ??
+                  0;
+                const rawGoal = goals[nutrient as keyof Goals];
+                const goal =
+                  typeof rawGoal === 'number'
+                    ? rawGoal
+                    : (goals.custom_nutrients?.[nutrient] ?? 0);
 
                 const displayTotal =
                   nutrient === 'calories'
@@ -177,9 +184,15 @@ const DiaryTopControls = ({
                       {displayTotal}
                       {unit}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 leading-tight">
                       {t('diary.of', 'of')} {displayGoal}
-                      {unit} {label}
+                      {unit}
+                    </div>
+                    <div
+                      className="text-xs text-gray-500 truncate w-full"
+                      title={label}
+                    >
+                      {label}
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                       <div
