@@ -10,7 +10,7 @@ import {
 export const preferencesOptions = {
   user: () =>
     queryOptions({
-      queryKey: ['preferences', 'user'],
+      queryKey: preferencesKeys.user(),
       queryFn: async () => {
         try {
           return await apiCall('/user-preferences', {
@@ -26,7 +26,7 @@ export const preferencesOptions = {
     }),
   nutrients: () =>
     queryOptions({
-      queryKey: ['preferences', 'nutrients'],
+      queryKey: preferencesKeys.nutrients(),
       queryFn: () => apiCall('/preferences/nutrient-display'),
     }),
 };

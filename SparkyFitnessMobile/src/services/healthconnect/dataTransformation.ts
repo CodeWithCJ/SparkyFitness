@@ -697,9 +697,9 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
     try {
       const rec = record as Record<string, unknown>;
 
-      // Handle pre-aggregated records (from aggregation functions like aggregateStepsByDate)
-      // These have value and date at top level
-      if (recordType === 'Steps' && rec.value !== undefined && rec.date) {
+      // Handle pre-aggregated records (from deduplicating aggregation functions)
+      // These have value and date at top level — raw Health Connect records never do
+      if (rec.value !== undefined && rec.date) {
         const value = rec.value as number;
         const recordDate = rec.date as string;
         const outputType = (rec.type as string) || type;

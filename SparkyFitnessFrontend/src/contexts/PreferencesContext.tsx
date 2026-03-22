@@ -38,6 +38,7 @@ import {
   stonesLbsToKg,
   feetInchesToCm,
 } from '@/utils/unitConversions';
+import { DayOfWeek } from '@/types/settings';
 
 // Function to fetch user preferences from the backend
 
@@ -95,6 +96,7 @@ interface PreferencesContextType {
   activityLevel: ActivityLevel;
   tdeeAllowNegativeAdjustment: boolean;
   selectedDiet: string;
+  firstDayOfWeek: DayOfWeek;
   setWeightUnit: (unit: WeightUnit) => void;
   setMeasurementUnit: (unit: MeasurementUnit) => void;
   setDistanceUnit: (unit: DistanceUnit) => void;
@@ -127,6 +129,7 @@ interface PreferencesContextType {
   ) => void;
   setSugarCalculationAlgorithm: (algorithm: SugarCalculationAlgorithm) => void;
   setSelectedDiet: (diet: string) => void;
+  setFirstDayOfWeek: (day: DayOfWeek) => void;
   convertWeight: (value: number, from: WeightUnit, to: WeightUnit) => number;
   convertMeasurement: (
     value: number,
@@ -185,6 +188,7 @@ export interface DefaultPreferences {
   mineral_calculation_algorithm: MineralCalculationAlgorithm;
   vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
   sugar_calculation_algorithm: SugarCalculationAlgorithm;
+  first_day_of_week: number;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -274,6 +278,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       SugarCalculationAlgorithm.WHO_GUIDELINES
     );
   const [selectedDiet, setSelectedDietState] = useState<string>('balanced');
+  const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(0);
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -473,6 +478,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         auto_scale_open_food_facts_imports: false,
         auto_scale_online_imports: true,
         selected_diet: 'balanced',
+        first_day_of_week: 0,
       };
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
@@ -575,6 +581,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
             SugarCalculationAlgorithm.WHO_GUIDELINES
         );
         setSelectedDietState(data.selected_diet || 'balanced');
+        setFirstDayOfWeekState(data.first_day_of_week ?? 0);
       } else {
         await createDefaultPreferences();
         await createDefaultWaterContainer();
@@ -721,6 +728,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         sugar_calculation_algorithm:
           newPrefs?.sugarCalculationAlgorithm ?? sugarCalculationAlgorithm,
         selected_diet: newPrefs?.selectedDiet ?? selectedDiet,
+        first_day_of_week: newPrefs?.firstDayOfWeek ?? firstDayOfWeek,
       };
 
       try {
@@ -768,6 +776,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       vitaminCalculationAlgorithm,
       sugarCalculationAlgorithm,
       selectedDiet,
+      firstDayOfWeek,
       updatePreferences,
       loadPreferences,
     ]
@@ -962,6 +971,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       vitaminCalculationAlgorithm,
       sugarCalculationAlgorithm,
       selectedDiet,
+      firstDayOfWeek,
       setWeightUnit,
       setMeasurementUnit,
       setDistanceUnit,
@@ -990,6 +1000,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setVitaminCalculationAlgorithm: setVitaminCalculationAlgorithmState,
       setSugarCalculationAlgorithm: setSugarCalculationAlgorithmState,
       setSelectedDiet: setSelectedDietState,
+      setFirstDayOfWeek: setFirstDayOfWeekState,
       convertWeight,
       convertMeasurement,
       convertDistance,
@@ -1031,6 +1042,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       vitaminCalculationAlgorithm,
       sugarCalculationAlgorithm,
       selectedDiet,
+      firstDayOfWeek,
       setWeightUnit,
       setMeasurementUnit,
       setDistanceUnit,

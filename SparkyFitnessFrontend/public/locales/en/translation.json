@@ -1533,7 +1533,8 @@
       "lapTableMaxHRBpmHeader": "Max HR (bpm)",
       "lapTableCaloriesHeader": "Calories",
       "heartRateTimeInZonesTitle": "Heart Rate Time in Zones",
-      "timeInZoneSLabel": "Time in Zone (s)"
+      "timeInZoneSLabel": "Time in Zone (s)",
+      "cadence": "Cadence"
     },
     "bodyBattery": "Body Battery",
     "charged": "Charged",

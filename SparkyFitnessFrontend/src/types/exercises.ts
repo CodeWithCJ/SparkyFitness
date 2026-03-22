@@ -71,10 +71,22 @@ export type ExerciseOwnershipFilter =
   | 'needs-review';
 
 export interface LapDTO {
-  distance: number;
-  duration: number;
-  movingDuration: number;
-  averageMovingSpeed: number;
+  lapIndex?: number;
+  distance?: number;
+  duration?: number;
+  movingDuration?: number;
+  elapsedDuration?: number;
+  averageSpeed?: number;
+  averageMovingSpeed?: number;
+  maxSpeed?: number;
+  averageHR?: number;
+  maxHR?: number;
+  averageRunCadence?: number;
+  maxRunCadence?: number;
+  calories?: number;
+  elevationGain?: number;
+  elevationLoss?: number;
+  [key: string]: unknown;
 }
 
 export interface ActivityDetailsResponse {
@@ -93,18 +105,37 @@ export interface ActivityDetailsResponse {
       lapDTOs: LapDTO[];
       [key: string]: unknown;
     };
+    // All provider field names are covered via [key: string]: unknown,
+    // but common ones are listed for type-safety in shared code.
     activity?: {
+      // Garmin
       duration?: number;
       calories?: number;
+      active_calories?: number;
       totalAscent?: number;
+      elevationGain?: number;
       averageHR?: number;
       averageRunCadence?: number;
+      averageRunCadenceInStepsPerMinute?: number;
       distance?: number;
       averagePace?: number;
+      averageSpeed?: number;
       activityName?: string;
+      activityType?: { typeKey?: string; [key: string]: unknown };
       eventType?: unknown;
       course?: unknown;
       gear?: unknown;
+      // Strava
+      name?: string;
+      moving_time?: number;
+      elapsed_time?: number;
+      average_heartrate?: number;
+      average_cadence?: number;
+      average_speed?: number;
+      total_elevation_gain?: number;
+      sport_type?: string;
+      // Fitbit
+      averageHeartRate?: number;
       [key: string]: unknown;
     };
     [key: string]: unknown;

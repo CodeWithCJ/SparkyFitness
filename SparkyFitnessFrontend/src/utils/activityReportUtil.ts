@@ -153,10 +153,10 @@ export const processChartData = (
     (d: MetricDescriptor) => d.key === 'directHeartRate'
   );
 
-  // Fix: use metricsIndex from the descriptor object directly so that unknown
-  // descriptor keys (e.g. directCadence, directPower) never shift the index of
-  // subsequent known keys. Falls back to position-based counting for descriptors
-  // that don't carry a metricsIndex field.
+  // Build index map using metricsIndex from each descriptor (not a sequential counter).
+  // Each descriptor's metricsIndex tells us exactly which slot in the metrics[] array
+  // it occupies — unrecognised descriptors still consume slots and must not be skipped.
+  // Falls back to position-based counting for descriptors that don't carry metricsIndex.
   const metricKeyToDataIndexMap: { [key: string]: number } = {};
   metricDescriptors.forEach(
     (descriptor: MetricDescriptor, position: number) => {
@@ -169,8 +169,11 @@ export const processChartData = (
   const distanceIndex = metricKeyToDataIndexMap['sumDistance']; // may be undefined
   const speedIndex = metricKeyToDataIndexMap['directSpeed'];
   const heartRateIndex = metricKeyToDataIndexMap['directHeartRate'];
+  // Garmin uses directRunCadence (strides/min) on newer firmware; fall back to
+  // directDoubleCadence (steps/min) which some activity types report instead.
   const runCadenceIndex =
     metricKeyToDataIndexMap['directRunCadence'] ??
+    metricKeyToDataIndexMap['directDoubleCadence'] ??
     metricKeyToDataIndexMap['directCadence'];
   const elevationIndex = metricKeyToDataIndexMap['directElevation'];
 
@@ -316,3 +319,156 @@ export const processChartData = (
     distance: convertDistance(dataPoint.distance / 1000, 'km', distanceUnit),
   }));
 };
+
+export interface ActivityStats {
+  /** km */
+  distance: number | null;
+  /** minutes */
+  duration: number | null;
+  calories: number | null;
+  /** bpm */
+  heartRate: number | null;
+  /** steps/min or rpm */
+  cadence: number | null;
+  /** min/km */
+  pace: number | null;
+  /** metres */
+  ascent: number | null;
+  activityName: string | null;
+  activityTypeKey: string | null;
+}
+
+/**
+ * Read summary stats from an activity detail record in a provider-agnostic way.
+ *
+ * Field priority per stat (first non-nullish positive value wins):
+ *   distance   – Garmin: activity.distance (already km after server convert)
+ *                Strava:  activity.distance / 1000 (stored in metres)
+ *   duration   – Garmin: activity.duration (minutes after server convert)
+ *                Strava:  activity.moving_time / 60  |  activity.elapsed_time / 60
+ *                Fitbit:  activity.duration / 60000 (stored in ms)
+ *   calories   – activity.calories  |  activity.active_calories
+ *   heartRate  – Garmin: activity.averageHR
+ *                Strava:  activity.average_heartrate
+ *                Fitbit:  activity.averageHeartRate
+ *   cadence    – Garmin: averageRunCadenceInStepsPerMinute | averageRunCadence
+ *                Strava:  activity.average_cadence
+ *   pace       – Garmin: activity.averagePace (min/km)
+ *                derived: 1000 / (averageSpeed_m_s * 60)  (Strava / Garmin speed)
+ *   ascent     – Garmin: activity.totalAscent | activity.elevationGain
+ *                Strava:  activity.total_elevation_gain
+ */
+export function readActivityStats(
+  activityData: ActivityDetailsResponse
+): ActivityStats {
+  const a = activityData?.activity?.activity ?? {};
+
+  const pos = (v: unknown): number | null => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+
+  // distance – Garmin stores km (converted server-side); Strava stores metres.
+  // Detect provider by presence of Strava-specific fields so we don't rely on a
+  // fragile magnitude heuristic that breaks for long activities (e.g. > 200 km).
+  const isStrava =
+    a['sport_type'] != null ||
+    a['moving_time'] != null ||
+    a['elapsed_time'] != null;
+  const rawDist = a['distance'] as number | undefined;
+  const distance =
+    rawDist != null && rawDist > 0
+      ? isStrava
+        ? rawDist / 1000 // Strava: metres → km
+        : rawDist // Garmin: already km after server conversion
+      : null;
+
+  // duration – Garmin: minutes (converted server-side); Strava: seconds; Fitbit: ms.
+  // Use provider-specific fields to detect units rather than magnitude thresholds.
+  // Fitbit is identified by its unique camelCase field names absent from other providers.
+  const isFitbit =
+    a['activeDuration'] != null ||
+    a['averageHeartRate'] != null ||
+    a['logId'] != null;
+  const rawDur = a['duration'] as number | undefined;
+  const rawMoving = a['moving_time'] as number | undefined;
+  const rawElapsed = a['elapsed_time'] as number | undefined;
+  const rawFitbitDur = a['activeDuration'] as number | undefined; // Fitbit: ms
+  let duration: number | null = null;
+  if (rawFitbitDur != null && rawFitbitDur > 0) {
+    // Fitbit activeDuration: milliseconds
+    duration = rawFitbitDur / 60000;
+  } else if (isFitbit && rawDur != null && rawDur > 0) {
+    // Fitbit duration: also milliseconds (fallback when activeDuration absent)
+    duration = rawDur / 60000;
+  } else if (rawMoving != null && rawMoving > 0) {
+    // Strava: moving_time in seconds
+    duration = rawMoving / 60;
+  } else if (rawElapsed != null && rawElapsed > 0) {
+    // Strava fallback: elapsed_time in seconds
+    duration = rawElapsed / 60;
+  } else if (rawDur != null && rawDur > 0) {
+    // Garmin: already in minutes after server conversion
+    duration = rawDur;
+  }
+
+  const calories = pos(a['calories']) ?? pos(a['active_calories']);
+
+  const heartRate =
+    pos(a['averageHR']) ??
+    pos(a['average_heartrate']) ??
+    pos(a['averageHeartRate']);
+
+  const cadence =
+    pos(a['averageRunCadenceInStepsPerMinute']) ??
+    pos(a['averageRunCadence']) ??
+    pos(a['average_cadence']);
+
+  // pace – Garmin: min/km; derive from speed if missing
+  const rawPace = pos(a['averagePace']);
+  const avgSpeedMs = pos(a['averageSpeed']) ?? pos(a['average_speed']);
+  const derivedPace =
+    avgSpeedMs != null && avgSpeedMs > 0 ? 1000 / (avgSpeedMs * 60) : null;
+  const pace = rawPace ?? derivedPace;
+
+  const ascent =
+    pos(a['totalAscent']) ??
+    pos(a['elevationGain']) ??
+    pos(a['total_elevation_gain']);
+
+  // activity name / type
+  const activityName =
+    (a['activityName'] as string | undefined) ??
+    (a['name'] as string | undefined) ??
+    null;
+
+  const activityTypeKey =
+    (a['activityType'] as { typeKey?: string } | undefined)?.typeKey ??
+    (a['sport_type'] as string | undefined) ??
+    (a['type'] as string | undefined) ??
+    null;
+
+  return {
+    distance,
+    duration,
+    calories,
+    heartRate,
+    cadence,
+    pace,
+    ascent,
+    activityName,
+    activityTypeKey,
+  };
+}
+
+/** Format seconds as H:MM:SS (>= 1 h) or M:SS (< 1 h). */
+export function formatDuration(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.round(totalSeconds % 60);
+  const ss = String(s).padStart(2, '0');
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${ss}`;
+  }
+  return `${m}:${ss}`;
+}

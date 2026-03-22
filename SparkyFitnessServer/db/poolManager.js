@@ -14,6 +14,9 @@ function createOwnerPoolInstance() {
     database: process.env.SPARKY_FITNESS_DB_NAME,
     password: process.env.SPARKY_FITNESS_DB_PASSWORD,
     port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
   });
 
   newPool.on('error', (err, client) => {
@@ -31,6 +34,9 @@ function createAppPoolInstance() {
     database: process.env.SPARKY_FITNESS_DB_NAME,
     password: process.env.SPARKY_FITNESS_APP_DB_PASSWORD,
     port: process.env.SPARKY_FITNESS_DB_PORT,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
   });
 
   newPool.on('error', (err, client) => {

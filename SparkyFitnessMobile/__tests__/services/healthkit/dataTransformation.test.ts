@@ -1,6 +1,6 @@
 import { transformHealthRecords } from '../../../src/services/healthkit/dataTransformation';
 
-import type { MetricConfig, TransformOutput, TransformedExerciseSession, AggregatedSleepSession } from '../../../src/types/healthRecords';
+import type { TransformOutput, TransformedExerciseSession, AggregatedSleepSession } from '../../../src/types/healthRecords';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -159,6 +159,26 @@ describe('transformHealthRecords', () => {
 
       expect(result).toHaveLength(1);
       expect((result[0] as TransformOutput & { value: number }).value).toBe(98.5);
+    });
+
+    test('reads value from record.percentage.inPercent for BloodOxygenSaturation', () => {
+      const records = [
+        { time: '2024-01-15T08:00:00Z', percentage: { inPercent: 97.2 } },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'BloodOxygenSaturation', unit: '%', type: 'blood_oxygen_saturation' });
+
+      expect(result).toHaveLength(1);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(97.2);
+    });
+
+    test('converts decimal BloodOxygenSaturation values to percent', () => {
+      const records = [
+        { time: '2024-01-15T08:00:00Z', value: 0.972 },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'BloodOxygenSaturation', unit: '%', type: 'blood_oxygen_saturation' });
+
+      expect(result).toHaveLength(1);
+      expect((result[0] as TransformOutput & { value: number }).value).toBe(97.2);
     });
 
     test('skips when percentage data missing', () => {

@@ -26,9 +26,7 @@
       "esbuild",
       "unrs-resolver"
     ],
-    "patchedDependencies": {
-      "samlify": "patches/samlify.patch"
-    }
+    "patchedDependencies": {}
   },
   "dependencies": {
     "js-yaml": "^4.1.0",

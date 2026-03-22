@@ -31,11 +31,6 @@ export const getProfileData = async (): Promise<Profile> => {
     method: 'GET',
   });
 };
-export const syncTotpAfterDisable = async (): Promise<void> => {
-  return apiCall('/auth/totp/sync-after-disable', {
-    method: 'POST',
-  });
-};
 
 export const toggleEmailMfa = async (enabled: boolean): Promise<void> => {
   return apiCall('/identity/mfa/email-toggle', {

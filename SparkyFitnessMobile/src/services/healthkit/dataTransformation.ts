@@ -64,6 +64,9 @@ const extractPercentAsDecimal = (rec: Record<string, unknown>): number | null =>
   return typeof val === 'number' ? val * 100 : null;
 };
 
+const extractPercentValue = (rec: Record<string, unknown>): number | null =>
+  extractNestedValue(rec, 'percentage', 'inPercent') ?? extractPercentAsDecimal(rec);
+
 // ============================================================================
 // Value Transformers - extract value and date from raw records
 // ============================================================================
@@ -114,7 +117,13 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
   },
 
   OxygenSaturation: (rec) => {
-    const value = extractNestedValue(rec, 'percentage', 'inPercent');
+    const value = extractPercentValue(rec);
+    const date = getDateString(rec.time);
+    return value !== null && date ? { value, date } : null;
+  },
+
+  BloodOxygenSaturation: (rec) => {
+    const value = extractPercentValue(rec);
     const date = getDateString(rec.time);
     return value !== null && date ? { value, date } : null;
   },

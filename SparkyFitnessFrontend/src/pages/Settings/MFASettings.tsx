@@ -10,21 +10,25 @@ import { authClient } from '@/lib/auth-client';
 import { toast } from '@/hooks/use-toast';
 import { log } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import QRCode from 'react-qr-code';
-import {
-  useSyncTotpMutation,
-  useToggleEmailMfaMutation,
-} from '@/hooks/Settings/useProfile';
+import QRCodeComponent from 'react-qr-code';
+
+// Handle ESM/CJS interop where the default export might be an object
+const QRCode =
+  (QRCodeComponent as unknown as { default: typeof QRCodeComponent }).default ||
+  QRCodeComponent;
+import { useToggleEmailMfaMutation } from '@/hooks/Settings/useProfile';
 import { getErrorMessage } from '@/utils/api';
 import { BetterAuthUser } from '@/types/auth';
 
 const MFASettings = () => {
   const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
-  const [loading, setLoading] = useState(false);
+  const [totpLoading, setTotpLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const loading = totpLoading || emailLoading || backupLoading;
   const { data: session, refetch } = authClient.useSession();
 
-  const { mutateAsync: syncTotp } = useSyncTotpMutation();
   const { mutateAsync: toggleEmailMfa } = useToggleEmailMfaMutation();
 
   const [totpEnabled, setTotpEnabled] = useState(false);
@@ -61,7 +65,10 @@ const MFASettings = () => {
       return;
     }
 
-    setLoading(true);
+    if (pendingAction?.includes('Totp')) setTotpLoading(true);
+    else if (pendingAction?.includes('Email')) setEmailLoading(true);
+    else if (pendingAction === 'generateBackup') setBackupLoading(true);
+
     try {
       switch (pendingAction) {
         case 'enableTotp': {
@@ -80,8 +87,6 @@ const MFASettings = () => {
             password: confirmPassword,
           });
           if (disableRes.error) throw disableRes.error;
-
-          await syncTotp();
 
           toast({ title: 'Success', description: 'TOTP disabled.' });
           await refetch();
@@ -111,12 +116,14 @@ const MFASettings = () => {
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setTotpLoading(false);
+      setEmailLoading(false);
+      setBackupLoading(false);
     }
   };
 
   const handleVerifyTotp = async () => {
-    setLoading(true);
+    setTotpLoading(true);
     try {
       const { error } = await authClient.twoFactor.verifyTotp({
         code: totpCode,
@@ -136,12 +143,12 @@ const MFASettings = () => {
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setTotpLoading(false);
     }
   };
 
   const handleEnableEmailMfa = async () => {
-    setLoading(true);
+    setEmailLoading(true);
     try {
       await toggleEmailMfa(true);
       toast({ title: 'Success', description: 'Email MFA enabled!' });
@@ -154,12 +161,12 @@ const MFASettings = () => {
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setEmailLoading(false);
     }
   };
 
   const handleDisableEmailMfa = async () => {
-    setLoading(true);
+    setEmailLoading(true);
     try {
       await toggleEmailMfa(false);
       toast({ title: 'Success', description: 'Email MFA disabled.' });
@@ -172,7 +179,7 @@ const MFASettings = () => {
         variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setEmailLoading(false);
     }
   };
 
@@ -209,18 +216,33 @@ const MFASettings = () => {
                 'Please enter your account password to modify security settings.'
               )}
             </p>
-            <div className="flex gap-2">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handlePasswordAction();
+              }}
+              className="flex gap-2"
+            >
               <Input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder={t('settings.mfa.enterPassword', 'Enter password')}
-                onKeyDown={(e) => e.key === 'Enter' && handlePasswordAction()}
+                autoComplete="current-password"
+                data-lpignore="true"
+                data-bitwarden-ignore="true"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
               />
-              <Button onClick={handlePasswordAction} disabled={loading}>
+              <Button type="submit" disabled={loading}>
+                {confirmPassword && loading ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
                 {t('common.confirm', 'Confirm')}
               </Button>
               <Button
+                type="button"
                 variant="ghost"
                 onClick={() => {
                   setShowPasswordPrompt(false);
@@ -232,7 +254,7 @@ const MFASettings = () => {
               >
                 {t('common.cancel', 'Cancel')}
               </Button>
-            </div>
+            </form>
           </CardContent>
         </Card>
       )}
@@ -249,8 +271,11 @@ const MFASettings = () => {
                   setPendingAction('disableTotp');
                   setShowPasswordPrompt(true);
                 }}
-                disabled={loading || showPasswordPrompt}
+                disabled={totpLoading || showPasswordPrompt}
               >
+                {totpLoading && pendingAction === 'disableTotp' ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
                 {t('settings.mfa.disable', 'Disable')}
               </Button>
             ) : (
@@ -259,8 +284,13 @@ const MFASettings = () => {
                   setPendingAction('enableTotp');
                   setShowPasswordPrompt(true);
                 }}
-                disabled={loading || showPasswordPrompt || otpAuthUrl !== null}
+                disabled={
+                  totpLoading || showPasswordPrompt || otpAuthUrl !== null
+                }
               >
+                {totpLoading && pendingAction === 'enableTotp' ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
                 {t('settings.mfa.enable', 'Enable')}
               </Button>
             )}
@@ -293,11 +323,20 @@ const MFASettings = () => {
                       'Enter 6-digit code'
                     )}
                     maxLength={6}
+                    autoComplete="one-time-code"
+                    data-lpignore="true"
+                    data-bitwarden-ignore="true"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck="false"
                   />
                   <Button
                     onClick={handleVerifyTotp}
-                    disabled={loading || totpCode.length !== 6}
+                    disabled={totpLoading || totpCode.length !== 6}
                   >
+                    {totpLoading ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
                     {t('settings.mfa.verify', 'Verify & Enable')}
                   </Button>
                 </div>
@@ -331,12 +370,18 @@ const MFASettings = () => {
                 <Button
                   variant="destructive"
                   onClick={handleDisableEmailMfa}
-                  disabled={loading}
+                  disabled={emailLoading}
                 >
+                  {emailLoading ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : null}
                   {t('settings.mfa.disable', 'Disable')}
                 </Button>
               ) : (
-                <Button onClick={handleEnableEmailMfa} disabled={loading}>
+                <Button onClick={handleEnableEmailMfa} disabled={emailLoading}>
+                  {emailLoading ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : null}
                   {t('settings.mfa.enable', 'Enable')}
                 </Button>
               )}
@@ -379,9 +424,13 @@ const MFASettings = () => {
               setPendingAction('generateBackup');
               setShowPasswordPrompt(true);
             }}
-            disabled={loading || showPasswordPrompt}
+            disabled={backupLoading || showPasswordPrompt}
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            {backupLoading ? (
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
             {t('settings.mfa.generateNewCodes', 'Generate New Recovery Codes')}
           </Button>
           {recoveryCodes.length > 0 && (
@@ -395,6 +444,7 @@ const MFASettings = () => {
                   size="sm"
                   onClick={() => setShowRecoveryCodes(!showRecoveryCodes)}
                   className="h-auto p-1"
+                  type="button"
                 >
                   {showRecoveryCodes ? (
                     <EyeOff className="h-4 w-4" />
@@ -407,6 +457,7 @@ const MFASettings = () => {
                   size="sm"
                   onClick={copyRecoveryCodes}
                   className="h-auto p-1"
+                  type="button"
                 >
                   <Copy className="h-4 w-4" />
                 </Button>

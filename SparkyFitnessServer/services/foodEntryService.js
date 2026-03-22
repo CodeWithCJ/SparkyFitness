@@ -108,9 +108,7 @@ async function updateFoodEntry(
 
     let newSnapshotData;
 
-    const variantChanged = entryData.variant_id && entryData.variant_id !== existingEntry.variant_id;
-
-    if (foodIdToUse && variantChanged) {
+    if (foodIdToUse) {
       // Variant changed — rebuild snapshot from the new food/variant
       const food = await foodRepository.getFoodById(
         foodIdToUse,

@@ -48,6 +48,7 @@ function makeContext() {
 
 describe("Auth rate limit integration", () => {
   let onRequestRateLimit;
+  let onResponseRateLimit;
 
   beforeAll(async () => {
     const mod = await import(
@@ -57,6 +58,7 @@ describe("Auth rate limit integration", () => {
       )
     );
     onRequestRateLimit = mod.onRequestRateLimit;
+    onResponseRateLimit = mod.onResponseRateLimit;
   });
 
   /**
@@ -68,8 +70,12 @@ describe("Auth rate limit integration", () => {
     const ctx = makeContext();
     const results = [];
     for (let i = 0; i < count; i++) {
-      const result = await onRequestRateLimit(makeRequest(endpoint, ip), ctx);
+      const req = makeRequest(endpoint, ip);
+      const result = await onRequestRateLimit(req, ctx);
       results.push(result);
+      if (result === undefined) {
+        await onResponseRateLimit(req, ctx);
+      }
     }
     return results;
   }

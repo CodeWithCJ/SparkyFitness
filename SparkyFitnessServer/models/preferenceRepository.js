@@ -31,6 +31,7 @@ async function updateUserPreferences(userId, preferenceData) {
         activity_level = COALESCE($24, activity_level),
         tdee_allow_negative_adjustment = COALESCE($25, tdee_allow_negative_adjustment),
         auto_scale_online_imports = COALESCE($26, auto_scale_online_imports),
+        first_day_of_week = COALESCE($30, first_day_of_week),
         default_barcode_provider_id = CASE WHEN $28 THEN $27 ELSE default_barcode_provider_id END,
         updated_at = now()
       WHERE user_id = $29
@@ -49,7 +50,8 @@ async function updateUserPreferences(userId, preferenceData) {
         preferenceData.auto_scale_online_imports,
         preferenceData.default_barcode_provider_id,
         'default_barcode_provider_id' in preferenceData,
-        userId
+        userId,
+        preferenceData.first_day_of_week
       ]
     );
     return result.rows[0];
@@ -97,6 +99,7 @@ async function upsertUserPreferences(preferenceData) {
        fat_breakdown_algorithm, mineral_calculation_algorithm, vitamin_calculation_algorithm, sugar_calculation_algorithm,
        auto_scale_open_food_facts_imports, exercise_calorie_percentage, activity_level,
        tdee_allow_negative_adjustment, auto_scale_online_imports, default_barcode_provider_id,
+       first_day_of_week,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -109,6 +112,7 @@ async function upsertUserPreferences(preferenceData) {
        COALESCE($26, false),
        COALESCE($27, true),
        $28,
+       COALESCE($30, 0),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -138,6 +142,7 @@ async function upsertUserPreferences(preferenceData) {
        activity_level = COALESCE(EXCLUDED.activity_level, user_preferences.activity_level),
        tdee_allow_negative_adjustment = COALESCE(EXCLUDED.tdee_allow_negative_adjustment, user_preferences.tdee_allow_negative_adjustment),
        auto_scale_online_imports = COALESCE(EXCLUDED.auto_scale_online_imports, user_preferences.auto_scale_online_imports),
+       first_day_of_week = COALESCE(EXCLUDED.first_day_of_week, user_preferences.first_day_of_week),
        default_barcode_provider_id = CASE WHEN $29 THEN EXCLUDED.default_barcode_provider_id ELSE user_preferences.default_barcode_provider_id END,
        updated_at = now()
      RETURNING *`,
@@ -152,7 +157,8 @@ async function upsertUserPreferences(preferenceData) {
        preferenceData.activity_level, preferenceData.tdee_allow_negative_adjustment,
        preferenceData.auto_scale_online_imports,
        preferenceData.default_barcode_provider_id,
-       'default_barcode_provider_id' in preferenceData
+       'default_barcode_provider_id' in preferenceData,
+       preferenceData.first_day_of_week
      ]
     );
     return result.rows[0];

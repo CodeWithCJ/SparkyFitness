@@ -12,13 +12,15 @@ interface UseStartExerciseOptions {
   navigation: NavigateFn;
   /** Optional callback to get a date to pass to ExerciseSearch */
   getDate?: () => string | undefined;
+  /** Preferred target when the selected exercise is ambiguous (default: activity) */
+  entryTarget?: 'workout' | 'activity';
 }
 
 /**
  * Encapsulates the "add exercise" flow: connection check → draft check → navigate.
  * Used by WorkoutsScreen and the AddSheet entry point in App.tsx.
  */
-export function useStartExercise({ navigation, getDate }: UseStartExerciseOptions) {
+export function useStartExercise({ navigation, getDate, entryTarget }: UseStartExerciseOptions) {
   const startExercise = useCallback(async () => {
     const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
     if (!isConnected) {
@@ -60,7 +62,7 @@ export function useStartExercise({ navigation, getDate }: UseStartExerciseOption
             style: 'destructive',
             onPress: async () => {
               await clearDraft();
-              navigation.navigate('ExerciseSearch', { mode: 'entry', date });
+              navigation.navigate('ExerciseSearch', { mode: 'entry', date, entryTarget });
             },
           },
         ],
@@ -68,8 +70,8 @@ export function useStartExercise({ navigation, getDate }: UseStartExerciseOption
       return;
     }
 
-    navigation.navigate('ExerciseSearch', { mode: 'entry', date });
-  }, [navigation, getDate]);
+    navigation.navigate('ExerciseSearch', { mode: 'entry', date, entryTarget });
+  }, [navigation, getDate, entryTarget]);
 
   return startExercise;
 }
