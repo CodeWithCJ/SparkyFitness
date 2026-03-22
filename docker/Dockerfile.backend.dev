@@ -13,7 +13,6 @@ COPY SparkyFitnessServer/package.json SparkyFitnessServer/
 COPY SparkyFitnessFrontend/package.json SparkyFitnessFrontend/
 COPY SparkyFitnessMobile/package.json SparkyFitnessMobile/
 COPY shared/package.json shared/
-COPY patches/ patches/
 
 # Install workspace dependencies
 RUN pnpm install

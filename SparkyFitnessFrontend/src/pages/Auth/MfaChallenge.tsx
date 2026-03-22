@@ -251,100 +251,143 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
             </TabsTrigger>
           </TabsList>
           {mfaTotpEnabled && (
-            <TabsContent value="totp" className="space-y-4 pt-4">
-              <Label htmlFor="totp-code">
-                {t('mfaChallenge.totpCodeLabel', 'Authenticator App Code')}
-              </Label>
-              <Input
-                id="totp-code"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)}
-                placeholder={t(
-                  'mfaChallenge.enterAppCode',
-                  'Enter code from authenticator app'
-                )}
-                maxLength={6}
-              />
-              <Button
-                onClick={handleVerifyTotp}
-                disabled={loading || totpCode.length !== 6}
-                className="w-full"
+            <TabsContent value="totp" className="pt-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleVerifyTotp();
+                }}
+                className="space-y-4"
               >
-                {loading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                {t('mfaChallenge.verify', 'Verify')}
-              </Button>
-            </TabsContent>
-          )}
-          {mfaEmailEnabled && (
-            <TabsContent value="email" className="space-y-4 pt-4">
-              <Label htmlFor="email-code">
-                {t('mfaChallenge.emailCodeLabel', 'Email Verification Code')}
-              </Label>
-              <div className="flex gap-2">
+                <Label htmlFor="totp-code">
+                  {t('mfaChallenge.totpCodeLabel', 'Authenticator App Code')}
+                </Label>
                 <Input
-                  id="email-code"
+                  id="totp-code"
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={emailOtpCode}
-                  onChange={(e) => setEmailOtpCode(e.target.value)}
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value)}
                   placeholder={t(
-                    'mfaChallenge.enterEmailCode',
-                    'Enter code from email'
+                    'mfaChallenge.enterAppCode',
+                    'Enter code from authenticator app'
                   )}
+                  autoComplete="one-time-code"
+                  data-lpignore="true"
+                  data-bitwarden-ignore="true"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
                   maxLength={6}
                 />
                 <Button
-                  onClick={handleSendEmailCode}
-                  disabled={loading || emailCodeSent}
+                  type="submit"
+                  disabled={loading || totpCode.length !== 6}
+                  className="w-full"
                 >
                   {loading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
-                  {t('mfaChallenge.sendCode', 'Send Code')}
+                  {t('mfaChallenge.verify', 'Verify')}
                 </Button>
-              </div>
+              </form>
+            </TabsContent>
+          )}
+          {mfaEmailEnabled && (
+            <TabsContent value="email" className="pt-4">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleVerifyEmailCode();
+                }}
+                className="space-y-4"
+              >
+                <Label htmlFor="email-code">
+                  {t('mfaChallenge.emailCodeLabel', 'Email Verification Code')}
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="email-code"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={emailOtpCode}
+                    onChange={(e) => setEmailOtpCode(e.target.value)}
+                    placeholder={t(
+                      'mfaChallenge.enterEmailCode',
+                      'Enter code from email'
+                    )}
+                    autoComplete="one-time-code"
+                    data-lpignore="true"
+                    data-bitwarden-ignore="true"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck="false"
+                    maxLength={6}
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleSendEmailCode}
+                    disabled={loading || emailCodeSent}
+                  >
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    {t('mfaChallenge.sendCode', 'Send Code')}
+                  </Button>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={loading || emailOtpCode.length !== 6}
+                  className="w-full"
+                >
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  {t('mfaChallenge.verify', 'Verify')}
+                </Button>
+              </form>
+            </TabsContent>
+          )}
+          <TabsContent value="recovery" className="space-y-4 pt-4">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleVerifyRecoveryCode();
+              }}
+              className="space-y-4"
+            >
+              <Label htmlFor="recovery-code">
+                {t('mfaChallenge.recoveryCodeLabel', 'Recovery Code')}
+              </Label>
+              <Input
+                id="recovery-code"
+                type="text"
+                value={recoveryCode}
+                onChange={(e) => setRecoveryCode(e.target.value)}
+                placeholder={t(
+                  'mfaChallenge.enterRecoveryCode',
+                  'Enter recovery code'
+                )}
+                autoComplete="off"
+                data-lpignore="true"
+                data-bitwarden-ignore="true"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
+              />
               <Button
-                onClick={handleVerifyEmailCode}
-                disabled={loading || emailOtpCode.length !== 6}
+                type="submit"
+                disabled={loading || recoveryCode.length === 0}
                 className="w-full"
               >
                 {loading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                {t('mfaChallenge.verify', 'Verify')}
+                {t('mfaChallenge.verifyRecovery', 'Verify Recovery Code')}
               </Button>
-            </TabsContent>
-          )}
-          <TabsContent value="recovery" className="space-y-4 pt-4">
-            <Label htmlFor="recovery-code">
-              {t('mfaChallenge.recoveryCodeLabel', 'Recovery Code')}
-            </Label>
-            <Input
-              id="recovery-code"
-              type="text"
-              value={recoveryCode}
-              onChange={(e) => setRecoveryCode(e.target.value)}
-              placeholder={t(
-                'mfaChallenge.enterRecoveryCode',
-                'Enter recovery code'
-              )}
-            />
-            <Button
-              onClick={handleVerifyRecoveryCode}
-              disabled={loading || recoveryCode.length === 0}
-              className="w-full"
-            >
-              {loading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              {t('mfaChallenge.verifyRecovery', 'Verify Recovery Code')}
-            </Button>
+            </form>
           </TabsContent>
         </Tabs>
       </CardContent>

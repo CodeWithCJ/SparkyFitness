@@ -519,9 +519,7 @@ router.post('/mfa/email-toggle', authenticate, async (req, res, next) => {
       totpEnabled,    // mfa_totp_enabled (specifically TOTP)
       enabled,        // mfaEmailEnabled
       undefined,      // mfaRecoveryCodes
-      undefined,      // mfaEnforced
-      null,           // emailMfaCode
-      null            // emailMfaExpiresAt
+      undefined       // mfaEnforced
     );
 
     res.status(200).json({

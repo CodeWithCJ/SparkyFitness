@@ -3,13 +3,18 @@ const { betterAuth } = require("better-auth");
 const { APIError } = require("better-auth/api");
 const { Pool } = require("pg");
 const { log } = require("./config/logging");
-console.log("[AUTH] auth.js module is being loaded...");
 const bcrypt = require("bcrypt");
 const { v4: uuidv4 } = require("uuid");
-const { syncUserGroups } = require('./utils/oidcGroupSync');
-const userRepository = require('./models/userRepository');
-const { sendPasswordResetEmail, sendMagicLinkEmail, sendEmailMfaCode } = require("./services/emailService");
-const { createDefaultNutrientPreferencesForUser } = require("./services/nutrientDisplayPreferenceService");
+const { syncUserGroups } = require("./utils/oidcGroupSync");
+const userRepository = require("./models/userRepository");
+const {
+  sendPasswordResetEmail,
+  sendMagicLinkEmail,
+  sendEmailMfaCode,
+} = require("./services/emailService");
+const {
+  createDefaultNutrientPreferencesForUser,
+} = require("./services/nutrientDisplayPreferenceService");
 
 // Create a dedicated pool for Better Auth
 /*
@@ -63,8 +68,16 @@ const apiKeyPlugin = require("@better-auth/api-key").apiKey({
   enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
   rateLimit: {
     enabled: true,
-    timeWindow: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS, 10) || 60_000, // 1 minute
-    maxRequests: Number.parseInt(process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS, 10) || 100, // 100 req/min (Better Auth defaults to 10/day)
+    timeWindow:
+      Number.parseInt(
+        process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS,
+        10,
+      ) || 60_000, // 1 minute
+    maxRequests:
+      Number.parseInt(
+        process.env.SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS,
+        10,
+      ) || 100, // 100 req/min (Better Auth defaults to 10/day)
   },
   schema: {
     apikey: {
@@ -98,10 +111,15 @@ const apiKeyPlugin = require("@better-auth/api-key").apiKey({
   },
 });
 
-
 const auth = betterAuth({
   database: authPool,
   secret: Buffer.from(process.env.BETTER_AUTH_SECRET, "base64"),
+  secrets: [
+    {
+      version: 1,
+      value: Buffer.from(process.env.BETTER_AUTH_SECRET, "base64"),
+    },
+  ],
 
   // Base URL configuration - MUST use public frontend URL for OIDC to work
   baseURL:
@@ -194,6 +212,10 @@ const auth = betterAuth({
       createdAt: "created_at",
       updatedAt: "updated_at",
     },
+    changeEmail: {
+      enabled: true,
+      requireVerification: true,
+    },
     additionalFields: {
       mfaTotpEnabled: {
         type: "boolean",
@@ -205,13 +227,6 @@ const auth = betterAuth({
       mfaEmailEnabled: {
         type: "boolean",
         fieldName: "mfa_email_enabled",
-        required: false,
-        defaultValue: false,
-        returned: true,
-      },
-      twoFactorEnabled: {
-        type: "boolean",
-        fieldName: "two_factor_enabled",
         required: false,
         defaultValue: false,
         returned: true,
@@ -246,6 +261,7 @@ const auth = betterAuth({
       updatedAt: "updated_at",
     },
   },
+
   verification: {
     fields: {
       id: "id",
@@ -408,47 +424,65 @@ const auth = betterAuth({
               userId: account.userId,
             }),
           );
+        },
+      },
+    },
+    session: {
+      create: {
+        after: async (session) => {
+          console.log(
+            `[AUTH] Hook: Session created for user ${session.userId}. Checking group sync.`,
+          );
+          try {
+            const { syncUserGroups } = require("./utils/oidcGroupSync");
+            const oidcProviderRepository = require("./models/oidcProviderRepository");
+            const userRepository = require("./models/userRepository");
+
+            // Get all accounts for this user to find the OIDC provider used
+            const client = await authPool.connect();
+            try {
+              const { rows: accounts } = await client.query(
+                "SELECT provider_id FROM \"account\" WHERE user_id = $1 AND provider_id LIKE 'oidc-%'",
+                [session.userId],
+              );
+
+              for (const acc of accounts) {
+                const providerId = acc.provider_id.replace("oidc-", "");
+                const provider =
+                  await oidcProviderRepository.getOidcProviderById(providerId);
+
+                if (provider && provider.admin_group) {
+                  console.log(
+                    `[AUTH] Syncing groups for user ${session.userId} using provider ${providerId} (Admin Group: ${provider.admin_group})`,
+                  );
+                  await syncUserGroups(
+                    { pool: authPool, userRepository, oidcProviderRepository },
+                    session.userId,
+                    provider.admin_group,
+                  );
+                }
+              }
+            } finally {
+              client.release();
+            }
+          } catch (error) {
+            console.error(
+              `[AUTH] Hook Error: Group sync failed for session ${session.id}:`,
+              error,
+            );
           }
         },
       },
-      session: {
-        create: {
-          after: async (session) => {
-            console.log(`[AUTH] Hook: Session created for user ${session.userId}. Checking group sync.`);
-            try {
-              const { syncUserGroups } = require("./utils/oidcGroupSync");
-              const oidcProviderRepository = require("./models/oidcProviderRepository");
-              const userRepository = require("./models/userRepository");
-              
-              // Get all accounts for this user to find the OIDC provider used
-              const client = await authPool.connect();
-              try {
-                const { rows: accounts } = await client.query(
-                  'SELECT provider_id FROM "account" WHERE user_id = $1 AND provider_id LIKE \'oidc-%\'',
-                  [session.userId]
-                );
-                
-                for (const acc of accounts) {
-                  const providerId = acc.provider_id.replace('oidc-', '');
-                  const provider = await oidcProviderRepository.getOidcProviderById(providerId);
-                  
-                  if (provider && provider.admin_group) {
-                    console.log(`[AUTH] Syncing groups for user ${session.userId} using provider ${providerId} (Admin Group: ${provider.admin_group})`);
-                    await syncUserGroups({ pool: authPool, userRepository, oidcProviderRepository }, session.userId, provider.admin_group);
-                  }
-                }
-              } finally {
-                client.release();
-              }
-            } catch (error) {
-              console.error(`[AUTH] Hook Error: Group sync failed for session ${session.id}:`, error);
-            }
-          }
-        }
-      }
     },
+  },
 
   plugins: [
+    require("better-auth/plugins").emailOTP({
+      async sendVerificationOTP({ user, otp }, request) {
+        const { sendEmailMfaCode } = require("./services/emailService");
+        await sendEmailMfaCode(user.email, otp);
+      },
+    }),
     require("better-auth/plugins").magicLink({
       expiresIn: 900, // 15 minutes (matches email template)
       sendMagicLink: async ({ email, url, token }, request) => {
