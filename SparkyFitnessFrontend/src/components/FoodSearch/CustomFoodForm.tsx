@@ -31,7 +31,7 @@ import {
   foodVariantsOptions,
   useSaveFoodMutation,
 } from '@/hooks/Foods/useFoodVariants';
-import { isUUID } from '@/utils/foodSearch';
+import { isUUID, deepClone } from '@/utils/foodSearch';
 import { error } from '@/utils/logging';
 
 type NumericFoodVariantKeys = Exclude<
@@ -298,8 +298,8 @@ const EnhancedCustomFoodForm = ({
         ];
       }
       setVariants(loadedVariants);
-      setOriginalVariants(JSON.parse(JSON.stringify(loadedVariants))); // Deep copy for original values
-      loadedVariantsRef.current = JSON.parse(JSON.stringify(loadedVariants));
+      setOriginalVariants(deepClone(loadedVariants)); // Deep copy for original values
+      loadedVariantsRef.current = deepClone(loadedVariants);
     } catch (error) {
       console.error('Error loading variants:', error);
       // Fallback to a single default variant on error
@@ -329,8 +329,8 @@ const EnhancedCustomFoodForm = ({
         custom_nutrients: {},
       };
       setVariants([defaultVariant]);
-      setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy for original values
-      loadedVariantsRef.current = [JSON.parse(JSON.stringify(defaultVariant))];
+      setOriginalVariants([deepClone(defaultVariant)]); // Deep copy for original values
+      loadedVariantsRef.current = [deepClone(defaultVariant)];
     }
   }, [food?.default_variant, food?.id, queryClient]);
 
@@ -354,8 +354,8 @@ const EnhancedCustomFoodForm = ({
           })
         );
         setVariants(mappedVariants);
-        setOriginalVariants(JSON.parse(JSON.stringify(mappedVariants))); // Deep copy for original values
-        loadedVariantsRef.current = JSON.parse(JSON.stringify(mappedVariants));
+        setOriginalVariants(deepClone(mappedVariants)); // Deep copy for original values
+        loadedVariantsRef.current = deepClone(mappedVariants);
         setVariantErrors(new Array(food.variants.length).fill(null)); // Initialize errors for existing variants
       } else {
         loadExistingVariants();
@@ -370,10 +370,8 @@ const EnhancedCustomFoodForm = ({
         foodVariantToFormVariant
       );
       setVariants(mappedInitialVariants);
-      setOriginalVariants(JSON.parse(JSON.stringify(mappedInitialVariants))); // Deep copy for original values
-      loadedVariantsRef.current = JSON.parse(
-        JSON.stringify(mappedInitialVariants)
-      );
+      setOriginalVariants(deepClone(mappedInitialVariants)); // Deep copy for original values
+      loadedVariantsRef.current = deepClone(mappedInitialVariants);
       setVariantErrors(new Array(initialVariants.length).fill(null)); // Initialize errors for initial variants
     } else {
       setFormData({
@@ -466,11 +464,11 @@ const EnhancedCustomFoodForm = ({
     setVariants((prevVariants) => [...prevVariants, newVariant]);
     setOriginalVariants((prevOriginal) => [
       ...prevOriginal,
-      JSON.parse(JSON.stringify(newVariant)),
+      deepClone(newVariant),
     ]); // Add deep copy to original variants
     loadedVariantsRef.current = [
       ...loadedVariantsRef.current,
-      JSON.parse(JSON.stringify(newVariant)),
+      deepClone(newVariant),
     ];
     setVariantErrors((prevErrors) => [...prevErrors, '']); // Add a null error for the new variant
   };
@@ -681,7 +679,7 @@ const EnhancedCustomFoodForm = ({
       // For any manual change (not a scaling event), update the baseline
       // This includes changing serving_size when NOT locked, or changing any nutrient field
       // Special case: if is_locked is true and a nutrient is edited, update the baseline with the new nutrient AND current serving_size
-      const originalToUpdate = JSON.parse(JSON.stringify(newVariant));
+      const originalToUpdate = deepClone(newVariant);
       updatedOriginalVariants[index] = originalToUpdate;
       setOriginalVariants(updatedOriginalVariants);
     }
@@ -805,10 +803,8 @@ const EnhancedCustomFoodForm = ({
             custom_nutrients: {},
           };
           setVariants([defaultVariant]);
-          setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
-          loadedVariantsRef.current = [
-            JSON.parse(JSON.stringify(defaultVariant)),
-          ];
+          setOriginalVariants([deepClone(defaultVariant)]); // Deep copy
+          loadedVariantsRef.current = [deepClone(defaultVariant)];
           setVariantErrors(['']);
         }
         onSave(savedFood);
@@ -846,10 +842,8 @@ const EnhancedCustomFoodForm = ({
           custom_nutrients: {},
         };
         setVariants([defaultVariant]);
-        setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
-        loadedVariantsRef.current = [
-          JSON.parse(JSON.stringify(defaultVariant)),
-        ];
+        setOriginalVariants([deepClone(defaultVariant)]); // Deep copy
+        loadedVariantsRef.current = [deepClone(defaultVariant)];
         setVariantErrors(['']);
       }
 
