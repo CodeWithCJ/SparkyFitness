@@ -1,17 +1,21 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useExternalFoodSearch } from '../../src/hooks/useExternalFoodSearch';
 import { externalFoodSearchQueryKey } from '../../src/hooks/queryKeys';
-import { searchOpenFoodFacts, searchUsda } from '../../src/services/api/externalFoodSearchApi';
+import { searchOpenFoodFacts, searchUsda, searchFatSecret, searchMealie } from '../../src/services/api/externalFoodSearchApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 import type { PaginatedExternalFoodSearchResult } from '../../src/types/externalFoods';
 
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
   searchOpenFoodFacts: jest.fn(),
   searchUsda: jest.fn(),
+  searchFatSecret: jest.fn(),
+  searchMealie: jest.fn(),
 }));
 
 const mockSearchOpenFoodFacts = searchOpenFoodFacts as jest.MockedFunction<typeof searchOpenFoodFacts>;
 const mockSearchUsda = searchUsda as jest.MockedFunction<typeof searchUsda>;
+const mockSearchFatSecret = searchFatSecret as jest.MockedFunction<typeof searchFatSecret>;
+const mockSearchMealie = searchMealie as jest.MockedFunction<typeof searchMealie>;
 
 function makePaginatedResult(
   items: PaginatedExternalFoodSearchResult['items'],
@@ -252,6 +256,110 @@ describe('useExternalFoodSearch', () => {
       expect(result.current.searchResults[1].name).toBe('Food B');
       expect(result.current.hasNextPage).toBe(false);
     });
+  });
+
+  test('fetches for fatsecret provider type with providerId', async () => {
+    mockSearchFatSecret.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: 'fs-1',
+          name: 'Chicken',
+          brand: null,
+          calories: 165,
+          protein: 31,
+          carbs: 0,
+          fat: 4,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'fatsecret',
+        },
+      ]),
+    );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'fatsecret', { providerId: 'provider-fs' }),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(mockSearchFatSecret).toHaveBeenCalledWith('chicken', 'provider-fs', 1);
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('fatsecret');
+    });
+  });
+
+  test('fetches for mealie provider type with providerId', async () => {
+    mockSearchMealie.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: 'mealie-1',
+          name: 'Chicken Soup',
+          brand: null,
+          calories: 180,
+          protein: 15,
+          carbs: 12,
+          fat: 7,
+          serving_size: 250,
+          serving_unit: 'ml',
+          source: 'mealie',
+        },
+      ]),
+    );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'mealie', { providerId: 'provider-mealie' }),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(mockSearchMealie).toHaveBeenCalledWith('chicken', 'provider-mealie', 1);
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('mealie');
+    });
+  });
+
+  test('fatsecret returns empty when no providerId', async () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'fatsecret'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toEqual([]);
+    });
+
+    expect(mockSearchFatSecret).not.toHaveBeenCalled();
+  });
+
+  test('mealie returns empty when no providerId', async () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'mealie'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toEqual([]);
+    });
+
+    expect(mockSearchMealie).not.toHaveBeenCalled();
+  });
+
+  test('reports fatsecret as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'fatsecret'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('reports mealie as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'mealie'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
   });
 
   describe('query key', () => {

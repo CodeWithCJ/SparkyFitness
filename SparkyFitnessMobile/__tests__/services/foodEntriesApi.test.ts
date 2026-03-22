@@ -1,13 +1,15 @@
 import {
   fetchFoodEntries,
   createFoodEntry,
+  updateFoodEntry,
+  deleteFoodEntry,
   calculateCaloriesConsumed,
   calculateProtein,
   calculateCarbs,
   calculateFat,
   calculateFiber,
 } from '../../src/services/api/foodEntriesApi';
-import type { CreateFoodEntryPayload } from '../../src/services/api/foodEntriesApi';
+import type { CreateFoodEntryPayload, UpdateFoodEntryPayload } from '../../src/services/api/foodEntriesApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 import type { FoodEntry } from '../../src/types/foodEntries';
 
@@ -240,6 +242,14 @@ describe('foodEntriesApi', () => {
       ];
       expect(calculateProtein(entries)).toBe(50); // (25 * 2) / 1
     });
+
+    test('skips entries with serving_size of 0', () => {
+      const entries: FoodEntry[] = [
+        { id: '1', calories: 200, protein: 25, carbs: 20, fat: 5, dietary_fiber: 2, quantity: 1, serving_size: 0, meal_type: 'lunch', unit: 'g', entry_date: '2024-06-15' },
+        { id: '2', calories: 100, protein: 10, carbs: 10, fat: 2, dietary_fiber: 1, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: '2024-06-15' },
+      ];
+      expect(calculateProtein(entries)).toBe(10);
+    });
   });
 
   describe('calculateCarbs', () => {
@@ -278,6 +288,151 @@ describe('foodEntriesApi', () => {
         { id: '1', calories: 200, protein: 10, carbs: 20, fat: 5, dietary_fiber: 8, quantity: 2, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: '2024-06-15' },
       ];
       expect(calculateFiber(entries)).toBe(16); // (8 * 2) / 1
+    });
+
+    test('skips entry when dietary_fiber is undefined', () => {
+      const entries: FoodEntry[] = [
+        { id: '1', calories: 200, protein: 10, carbs: 20, fat: 5, dietary_fiber: undefined as any, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: '2024-06-15' },
+        { id: '2', calories: 100, protein: 5, carbs: 10, fat: 2, dietary_fiber: 4, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: '2024-06-15' },
+      ];
+      expect(calculateFiber(entries)).toBe(4);
+    });
+  });
+
+  describe('updateFoodEntry', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    const testPayload: UpdateFoodEntryPayload = {
+      quantity: 150,
+      unit: 'g',
+      meal_type_id: 'meal-2',
+    };
+
+    test('sends PUT to /api/food-entries/:id with JSON body', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'entry-1' }),
+      });
+
+      await updateFoodEntry('entry-1', testPayload);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/food-entries/entry-1',
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify(testPayload),
+        })
+      );
+    });
+
+    test('returns parsed JSON on success', async () => {
+      const responseData = {
+        id: 'entry-1',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+        dietary_fiber: 2,
+        quantity: 150,
+        serving_size: 100,
+        meal_type: 'dinner',
+        unit: 'g',
+        entry_date: '2024-06-15',
+      };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseData),
+      });
+
+      const result = await updateFoodEntry('entry-1', testPayload);
+
+      expect(result).toEqual(responseData);
+    });
+
+    test('throws on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: () => Promise.resolve('Not Found'),
+      });
+
+      await expect(updateFoodEntry('entry-1', testPayload)).rejects.toThrow(
+        'Server error: 404 - Not Found'
+      );
+    });
+
+    test('throws when no server config', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(null);
+
+      await expect(updateFoodEntry('entry-1', testPayload)).rejects.toThrow(
+        'Server configuration not found.'
+      );
+    });
+  });
+
+  describe('deleteFoodEntry', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    test('sends DELETE to /api/food-entries/:id', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 204,
+        headers: { get: () => null },
+      });
+
+      await deleteFoodEntry('entry-1');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/food-entries/entry-1',
+        expect.objectContaining({ method: 'DELETE' })
+      );
+    });
+
+    test('resolves on success (returns void)', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 204,
+        headers: { get: () => null },
+      });
+
+      await expect(deleteFoodEntry('entry-1')).resolves.toBeUndefined();
+    });
+
+    test('throws on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve('Forbidden'),
+      });
+
+      await expect(deleteFoodEntry('entry-1')).rejects.toThrow(
+        'Server error: 403 - Forbidden'
+      );
+    });
+
+    test('throws when no server config', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(null);
+
+      await expect(deleteFoodEntry('entry-1')).rejects.toThrow(
+        'Server configuration not found.'
+      );
     });
   });
 });
