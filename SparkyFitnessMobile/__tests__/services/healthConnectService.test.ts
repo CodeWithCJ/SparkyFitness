@@ -24,6 +24,8 @@ jest.mock('../../src/HealthMetrics', () => ({
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate', aggregationStrategy: 'min-max-avg' },
     { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories' },
     { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories' },
+    { recordType: 'Distance', stateKey: 'isDistanceSyncEnabled', unit: 'meters', type: 'distance' },
+    { recordType: 'FloorsClimbed', stateKey: 'isFloorsClimbedSyncEnabled', unit: 'count', type: 'floors_climbed' },
   ],
 }));
 
@@ -483,6 +485,46 @@ describe('healthConnectService.ts (Android)', () => {
 
       expect(result.success).toBe(true);
       expect(result.apiResponse).toEqual({ processed: 1, status: 'ok' });
+    });
+
+    test('Distance records are deduplicated and aggregated by date', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          { startTime: '2024-01-15T08:00:00Z', distance: { inMeters: 1000 }, metadata: { dataOrigin: 'com.phone' } },
+          { startTime: '2024-01-15T12:00:00Z', distance: { inMeters: 2000 }, metadata: { dataOrigin: 'com.phone' } },
+        ],
+      });
+
+      const healthMetricStates: HealthMetricStates = { isDistanceSyncEnabled: true };
+
+      await androidService.syncHealthData('24h', healthMetricStates);
+
+      const payload = mockApiSyncHealthData.mock.calls[0][0];
+      const distanceRecords = payload.filter((r: { type: string }) => r.type === 'distance');
+
+      expect(distanceRecords).toHaveLength(1);
+      expect(distanceRecords[0].value).toBe(3000);
+      expect(distanceRecords[0].date).toBe('2024-01-15');
+    });
+
+    test('FloorsClimbed records are deduplicated and aggregated by date', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          { startTime: '2024-01-15T08:00:00Z', floors: 5, metadata: { dataOrigin: 'com.phone' } },
+          { startTime: '2024-01-15T12:00:00Z', floors: 3, metadata: { dataOrigin: 'com.phone' } },
+        ],
+      });
+
+      const healthMetricStates: HealthMetricStates = { isFloorsClimbedSyncEnabled: true };
+
+      await androidService.syncHealthData('24h', healthMetricStates);
+
+      const payload = mockApiSyncHealthData.mock.calls[0][0];
+      const floorsRecords = payload.filter((r: { type: string }) => r.type === 'floors_climbed');
+
+      expect(floorsRecords).toHaveLength(1);
+      expect(floorsRecords[0].value).toBe(8);
+      expect(floorsRecords[0].date).toBe('2024-01-15');
     });
   });
 

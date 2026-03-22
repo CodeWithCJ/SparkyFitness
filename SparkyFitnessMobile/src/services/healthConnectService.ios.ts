@@ -12,6 +12,9 @@ import {
   type TransformedRecord,
 } from '../types/healthRecords';
 import { SyncDuration } from './healthkit/preferences';
+import { createConcurrencyLimiter } from '../utils/concurrency';
+
+const METRIC_FETCH_CONCURRENCY = 3;
 
 export const initHealthConnect = HealthKit.initHealthConnect;
 export const requestHealthPermissions = HealthKit.requestHealthPermissions;
@@ -78,6 +81,67 @@ export {
   stopObservers,
 } from './healthkit/backgroundDelivery';
 
+interface MetricResult {
+  data: HealthDataPayload;
+  error?: { type: string; error: string };
+}
+
+async function processMetric(
+  type: string,
+  startDate: Date,
+  endDate: Date,
+): Promise<MetricResult> {
+  const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
+  if (!metricConfig) {
+    addLog(`[HealthKitService] No metric configuration found for record type: ${type}`, 'WARNING');
+    return { data: [] };
+  }
+
+  let dataToTransform: unknown[] = [];
+
+  // For cumulative metrics, use aggregation API directly (handles deduplication)
+  if (type === 'Steps') {
+    dataToTransform = await HealthKit.getAggregatedStepsByDate(startDate, endDate);
+  } else if (type === 'ActiveCaloriesBurned') {
+    dataToTransform = await HealthKit.getAggregatedActiveCaloriesByDate(startDate, endDate);
+  } else if (type === 'Distance') {
+    dataToTransform = await HealthKit.getAggregatedDistanceByDate(startDate, endDate);
+  } else if (type === 'FloorsClimbed') {
+    dataToTransform = await HealthKit.getAggregatedFloorsClimbedByDate(startDate, endDate);
+  } else if (type === 'TotalCaloriesBurned') {
+    dataToTransform = await HealthKit.getAggregatedTotalCaloriesByDate(startDate, endDate);
+  } else {
+    // For other types, read raw records
+    const rawRecords = await HealthKit.readHealthRecords(type, startDate, endDate);
+
+    if (!rawRecords || rawRecords.length === 0) {
+      return { data: [] };
+    }
+
+    dataToTransform = rawRecords;
+
+    if (type === 'SleepSession') {
+      dataToTransform = HealthKitAggregation.aggregateSleepSessions(
+        rawRecords as Parameters<typeof HealthKitAggregation.aggregateSleepSessions>[0]
+      );
+    }
+  }
+
+  const transformed = HealthKitTransformation.transformHealthRecords(dataToTransform, metricConfig);
+
+  if (metricConfig.aggregationStrategy) {
+    const aggregated = HealthKitAggregation.aggregateByDay(
+      transformed as TransformedRecord[],
+      metricConfig.type,
+      metricConfig.unit,
+      metricConfig.aggregationStrategy,
+    );
+    return { data: aggregated as HealthDataPayload };
+  }
+
+  return { data: transformed as HealthDataPayload };
+}
+
 export const syncHealthData = async (
   syncDuration: SyncDuration,
   healthMetricStates: HealthMetricStates = {}
@@ -93,64 +157,26 @@ export const syncHealthData = async (
   const allTransformedData: HealthDataPayload = [];
   const syncErrors: { type: string; error: string }[] = [];
 
-  for (const type of healthDataTypesToSync) {
-    try {
-      const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
-      if (!metricConfig) {
-        addLog(`[HealthKitService] No metric configuration found for record type: ${type}`, 'WARNING');
-        continue;
+  const limit = createConcurrencyLimiter(METRIC_FETCH_CONCURRENCY);
+
+  const results = await Promise.allSettled(
+    healthDataTypesToSync.map(type =>
+      limit(() => processMetric(type, startDate, endDate))
+    )
+  );
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      if (result.value.data.length > 0) {
+        allTransformedData.push(...result.value.data);
       }
-
-      let dataToTransform: unknown[] = [];
-
-      // For cumulative metrics, use aggregation API directly (handles deduplication)
-      if (type === 'Steps') {
-        dataToTransform = await HealthKit.getAggregatedStepsByDate(startDate, endDate);
-      } else if (type === 'ActiveCaloriesBurned') {
-        dataToTransform = await HealthKit.getAggregatedActiveCaloriesByDate(startDate, endDate);
-      } else if (type === 'Distance') {
-        dataToTransform = await HealthKit.getAggregatedDistanceByDate(startDate, endDate);
-      } else if (type === 'FloorsClimbed') {
-        dataToTransform = await HealthKit.getAggregatedFloorsClimbedByDate(startDate, endDate);
-      } else {
-        // For other types, read raw records
-        const rawRecords = await HealthKit.readHealthRecords(type, startDate, endDate);
-
-        if (!rawRecords || rawRecords.length === 0) {
-          continue;
-        }
-
-        dataToTransform = rawRecords;
-
-        if (type === 'TotalCaloriesBurned') {
-          // Use deduplicated statistics query (matches Health app behavior)
-          dataToTransform = await HealthKit.getAggregatedTotalCaloriesByDate(startDate, endDate);
-        } else if (type === 'SleepSession') {
-          dataToTransform = HealthKitAggregation.aggregateSleepSessions(
-            rawRecords as Parameters<typeof HealthKitAggregation.aggregateSleepSessions>[0]
-          );
-        }
+      if (result.value.error) {
+        syncErrors.push(result.value.error);
       }
-
-      const transformed = HealthKitTransformation.transformHealthRecords(dataToTransform, metricConfig);
-
-      if (metricConfig.aggregationStrategy) {
-        const aggregated = HealthKitAggregation.aggregateByDay(
-          transformed as TransformedRecord[],
-          metricConfig.type,
-          metricConfig.unit,
-          metricConfig.aggregationStrategy,
-        );
-        if (aggregated.length > 0) {
-          allTransformedData.push(...(aggregated as HealthDataPayload));
-        }
-      } else if (transformed.length > 0) {
-        allTransformedData.push(...(transformed as HealthDataPayload));
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthKitService] Error reading or transforming ${type} records: ${message}`, 'ERROR');
-      syncErrors.push({ type, error: message });
+    } else {
+      const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
+      addLog(`[HealthKitService] Unexpected error processing metric: ${message}`, 'ERROR');
+      syncErrors.push({ type: 'unknown', error: message });
     }
   }
 
