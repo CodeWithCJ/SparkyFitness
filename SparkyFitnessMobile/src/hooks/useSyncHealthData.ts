@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { syncHealthData as healthConnectSyncData } from '../services/healthConnectService';
 import { saveLastSyncedTime } from '../services/storage';
 import { addLog } from '../services/LogService';
@@ -12,11 +12,11 @@ interface SyncHealthDataParams {
 }
 
 export function useSyncHealthData(options?: {
-  showAlerts?: boolean;
+  showToasts?: boolean;
   onSuccess?: (lastSyncedTime: string | null) => void;
   onError?: (error: Error) => void;
 }) {
-  const { showAlerts = true, onSuccess, onError } = options ?? {};
+  const { showToasts = true, onSuccess, onError } = options ?? {};
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -28,17 +28,36 @@ export function useSyncHealthData(options?: {
       }
       throw new Error(result.error || 'Unknown sync error');
     },
+    onMutate: () => {
+      if (showToasts) {
+        Toast.show({
+          type: 'info',
+          text1: 'Syncing health data…',
+          visibilityTime: 2000,
+        });
+      }
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
-      if (showAlerts) {
-        Alert.alert('Success', 'Health data synced successfully.');
+      if (showToasts) {
+        Toast.show({
+          type: 'success',
+          text1: 'Sync complete',
+          text2: 'Health data synced successfully.',
+          visibilityTime: 3000,
+        });
       }
       onSuccess?.(data.lastSyncedTime);
     },
     onError: (error: Error) => {
       addLog(`Sync Error: ${error.message}`, 'ERROR');
-      if (showAlerts) {
-        Alert.alert('Sync Error', error.message);
+      if (showToasts) {
+        Toast.show({
+          type: 'error',
+          text1: 'Sync Error',
+          text2: error.message,
+          visibilityTime: 4000,
+        });
       }
       onError?.(error);
     },

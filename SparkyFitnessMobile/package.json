@@ -54,6 +54,7 @@
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
+    "react-native-toast-message": "^2.3.3",
     "react-native-ui-datepicker": "^3.1.2",
     "react-native-worklets": "0.5.1",
     "tailwindcss": "^4.1.18",
