@@ -1,19 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Alert, Text, ScrollView, Platform, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Alert, Text, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
+import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig } from '../services/storage';
 import type { ServerConfig, ProxyHeader } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { notifyNoConfigs } from '../services/api/authService';
-import { initHealthConnect, requestHealthPermissions, saveHealthPreference, loadHealthPreference, enableBackgroundDeliveryForMetric, disableBackgroundDeliveryForMetric, setupBackgroundDeliveryForEnabledMetrics, disableAllBackgroundDelivery, cleanupAllSubscriptions, refreshSubscriptions, startObservers, stopObservers } from '../services/healthConnectService';
-import { configureBackgroundSync, stopBackgroundSync, performBackgroundSync } from '../services/backgroundSyncService';
-import { HEALTH_METRICS } from '../HealthMetrics';
 import { useServerConnection, usePreferences, queryClient } from '../hooks';
-import type { HealthMetric } from '../HealthMetrics';
 import ServerConfigComponent from '../components/ServerConfig';
-import HealthDataSync from '../components/HealthDataSync';
-import SyncFrequency from '../components/SyncFrequency';
 import AppearanceSettings from '../components/AppearanceSettings';
 import DevTools from '../components/DevTools';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
@@ -22,7 +16,6 @@ import * as Application from 'expo-application';
 import Icon from '../components/Icon';
 import { shareDiagnosticReport, sanitizeQueryKey } from '../services/diagnosticReportService';
 import type { DiagnosticQueryState } from '../types/diagnosticReport';
-import type { HealthMetricStates } from '../types/healthRecords';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -41,15 +34,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [apiKey, setApiKey] = useState<string>('');
   const [proxyHeaders, setProxyHeaders] = useState<ProxyHeader[]>([]);
 
-  const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>(
-    HEALTH_METRICS.reduce((acc, metric) => ({ ...acc, [metric.stateKey]: false }), {} as HealthMetricStates)
-  );
-  const isAllMetricsEnabled = useMemo(
-    () => HEALTH_METRICS.every(metric => healthMetricStates[metric.stateKey]),
-    [healthMetricStates]
-  );
-
-  const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(false);
   const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
   const [currentConfigId, setCurrentConfigId] = useState<string | null>(null);
@@ -62,8 +46,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { isConnected, refetch: refetchConnection } = useServerConnection();
   const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
   const [isSharing, setIsSharing] = useState<boolean>(false);
-
-  const healthSettingsName = Platform.OS === 'android' ? 'Health Connect settings' : 'Health app settings';
 
   const loadConfig = async (): Promise<void> => {
     const allConfigs = await getAllServerConfigs();
@@ -88,17 +70,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       setCurrentConfigId(null);
     }
 
-    const newHealthMetricStates: HealthMetricStates = {};
-    for (const metric of HEALTH_METRICS) {
-      const enabled = await loadHealthPreference<boolean>(metric.preferenceKey);
-      newHealthMetricStates[metric.stateKey] = enabled === true;
-    }
-    setHealthMetricStates(newHealthMetricStates);
-
-    const bgSyncEnabled = await loadBackgroundSyncEnabled();
-    setIsBackgroundSyncEnabled(bgSyncEnabled);
-
-    await initHealthConnect();
   };
 
   useEffect(() => {
@@ -248,114 +219,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     setShowLoginModal(true);
   };
 
-  const handleToggleHealthMetric = async (
-    metric: HealthMetric,
-    newValue: boolean
-  ): Promise<void> => {
-    setHealthMetricStates(prevStates => ({
-      ...prevStates,
-      [metric.stateKey]: newValue,
-    }));
-    await saveHealthPreference(metric.preferenceKey, newValue);
-    if (!newValue) {
-      disableBackgroundDeliveryForMetric(metric.recordType).catch(() => {});
-    }
-    if (newValue) {
-      try {
-        const granted = await requestHealthPermissions(metric.permissions);
-        if (!granted) {
-          Alert.alert('Permission Denied', `Please grant ${metric.label.toLowerCase()} permission in ${healthSettingsName}.`);
-          setHealthMetricStates(prevStates => ({
-            ...prevStates,
-            [metric.stateKey]: false,
-          }));
-          await saveHealthPreference(metric.preferenceKey, false);
-          addLog(`Permission Denied: ${metric.label} permission not granted.`, 'WARNING');
-        } else {
-          addLog(`${metric.label} sync enabled and permissions granted.`, 'SUCCESS');
-          enableBackgroundDeliveryForMetric(metric.recordType).catch(() => {});
-        }
-      } catch (permissionError) {
-        const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
-        Alert.alert('Permission Error', `Failed to request ${metric.label.toLowerCase()} permissions: ${errorMessage}`);
-        setHealthMetricStates(prevStates => ({
-          ...prevStates,
-          [metric.stateKey]: false,
-        }));
-        await saveHealthPreference(metric.preferenceKey, false);
-        addLog(`Permission Request Error for ${metric.label}: ${errorMessage}`, 'ERROR');
-      }
-    }
-    // Rebuild observer subscriptions to match updated metric preferences
-    refreshSubscriptions();
-  };
-
-  const handleToggleAllMetrics = async (): Promise<void> => {
-    const newValue = !isAllMetricsEnabled;
-
-    const newHealthMetricStates: HealthMetricStates = {};
-    HEALTH_METRICS.forEach(metric => {
-      newHealthMetricStates[metric.stateKey] = newValue;
-    });
-
-    if (newValue) {
-      const allPermissions = HEALTH_METRICS.flatMap(metric => metric.permissions);
-      addLog(`[SettingsScreen] Requesting permissions for all ${HEALTH_METRICS.length} metrics`, 'DEBUG');
-
-      try {
-        const granted = await requestHealthPermissions(allPermissions);
-
-        if (!granted) {
-          Alert.alert(
-            'Permissions Required',
-            `Some permissions were not granted. Please enable all required health permissions in the ${healthSettingsName} to sync all data.`
-          );
-          HEALTH_METRICS.forEach(metric => {
-            newHealthMetricStates[metric.stateKey] = false;
-          });
-          addLog('[SettingsScreen] Not all permissions were granted. Reverting "Enable All".', 'WARNING');
-        } else {
-          addLog(`[SettingsScreen] All ${HEALTH_METRICS.length} metric permissions granted`, 'SUCCESS');
-        }
-      } catch (permissionError) {
-        const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
-        Alert.alert('Permission Error', `An error occurred while requesting health permissions: ${errorMessage}`);
-        HEALTH_METRICS.forEach(metric => {
-          newHealthMetricStates[metric.stateKey] = false;
-        });
-        addLog(`[SettingsScreen] Error requesting all permissions: ${errorMessage}`, 'ERROR');
-      }
-    } else {
-      addLog(`[SettingsScreen] Disabling all ${HEALTH_METRICS.length} metrics`, 'DEBUG');
-      disableAllBackgroundDelivery().catch(() => {});
-      cleanupAllSubscriptions();
-    }
-
-    setHealthMetricStates(newHealthMetricStates);
-
-    // Save preferences one by one and track any failures
-    const saveErrors: string[] = [];
-    for (const metric of HEALTH_METRICS) {
-      try {
-        await saveHealthPreference(metric.preferenceKey, newHealthMetricStates[metric.stateKey]);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        saveErrors.push(`${metric.label}: ${errorMessage}`);
-      }
-    }
-
-    if (saveErrors.length > 0) {
-      addLog(`[SettingsScreen] Failed to save ${saveErrors.length}/${HEALTH_METRICS.length} metric preferences`, 'WARNING', saveErrors);
-    }
-
-    if (newValue) {
-      setupBackgroundDeliveryForEnabledMetrics().catch(() => {});
-    }
-
-    // Rebuild observer subscriptions to match updated metric preferences
-    refreshSubscriptions();
-  };
-
   const handleShareDiagnosticReport = async (): Promise<void> => {
     setIsSharing(true);
     try {
@@ -419,61 +282,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             onPress={() => navigation.navigate('Sync')}
             activeOpacity={0.7}
           >
-            <Text className="text-base font-semibold text-text-primary">View Sync Data</Text>
+            <Text className="text-base font-semibold text-text-primary">Sync</Text>
             <Icon name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
-          <SyncFrequency
-            isEnabled={isBackgroundSyncEnabled}
-            onToggle={async (newValue) => {
-              if (newValue && Platform.OS === 'android') {
-                try {
-                  const granted = await requestHealthPermissions([
-                    { accessType: 'read', recordType: 'BackgroundAccessPermission' },
-                  ]);
-                  if (!granted) {
-                    Alert.alert(
-                      'Permission Required',
-                      'Background access permission is required for background sync. Please grant the permission in Health Connect settings.'
-                    );
-                    return;
-                  }
-                } catch (error) {
-                  const errorMessage = error instanceof Error ? error.message : String(error);
-                  Alert.alert('Permission Error', `Failed to request background access permission: ${errorMessage}`);
-                  addLog(`[SettingsScreen] Background access permission error: ${errorMessage}`, 'ERROR');
-                  return;
-                }
-              }
-              setIsBackgroundSyncEnabled(newValue);
-              await saveBackgroundSyncEnabled(newValue);
-              if (newValue) {
-                await configureBackgroundSync();
-                if (Platform.OS === 'ios') {
-                  startObservers(() => {
-                    performBackgroundSync('healthkit-observer').catch(error => {
-                      console.error('[SettingsScreen] Observer-triggered sync failed:', error);
-                    });
-                  });
-                }
-              } else {
-                await stopBackgroundSync();
-                if (Platform.OS === 'ios') {
-                  stopObservers();
-                }
-              }
-            }}
-          />
-
-
-
-
-          <HealthDataSync
-            healthMetricStates={healthMetricStates}
-            handleToggleHealthMetric={handleToggleHealthMetric}
-            isAllMetricsEnabled={isAllMetricsEnabled}
-            handleToggleAllMetrics={handleToggleAllMetrics}
-          />
           <AppearanceSettings />
           <TouchableOpacity
             className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"

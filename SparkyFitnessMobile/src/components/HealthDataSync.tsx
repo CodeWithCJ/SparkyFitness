@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Switch, Image, Platform } from 'react-native';
+import { View, Text, Switch, Image, Platform, ActivityIndicator } from 'react-native';
 import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER } from '../HealthMetrics';
 import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import CollapsibleSection from './CollapsibleSection';
 import { saveCollapsedCategories, loadCollapsedCategories } from '../services/storage';
+import { NO_DATA_DISPLAY } from '../services/healthDataDisplay';
 
 // Re-export HealthMetric for backwards compatibility
 export type { HealthMetric };
@@ -16,6 +17,8 @@ interface HealthDataSyncProps {
   handleToggleHealthMetric: (metric: HealthMetric, newValue: boolean) => void;
   isAllMetricsEnabled: boolean;
   handleToggleAllMetrics: () => void;
+  healthData?: Record<string, string>;
+  isLoadingHealthData?: boolean;
 }
 
 const groupMetricsByCategory = (metrics: HealthMetric[]): Record<string, HealthMetric[]> => {
@@ -32,6 +35,8 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   handleToggleHealthMetric,
   isAllMetricsEnabled,
   handleToggleAllMetrics,
+  healthData,
+  isLoadingHealthData,
 }) => {
   const [formEnabled, formDisabled] = useCSSVariable([
     '--color-form-enabled',
@@ -82,26 +87,42 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
 
   const groupedMetrics = groupMetricsByCategory(HEALTH_METRICS);
 
-  const renderMetricItem = (metric: HealthMetric) => (
-    <View key={metric.id} className="flex-row justify-between items-center mb-2">
-      <View className="flex-row items-center flex-1 mr-2">
-        <Image source={metric.icon} className="w-6 h-6" />
-        <Text
-          className="ml-2 text-base text-text-primary flex-1"
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {metric.label}
-        </Text>
+  const renderMetricItem = (metric: HealthMetric) => {
+    const value = healthData?.[metric.id];
+    const showLoading = isLoadingHealthData && !value;
+
+    return (
+      <View key={metric.id} className="flex-row justify-between items-center mb-2">
+        <View className="flex-row items-center flex-1 mr-2">
+          <Image source={metric.icon} className="w-6 h-6" />
+          <Text
+            className="ml-2 text-base text-text-primary flex-shrink"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {metric.label}
+          </Text>
+        </View>
+        {showLoading && (
+          <ActivityIndicator size="small" className="mr-2" />
+        )}
+        {value && (
+          <Text
+            className={`text-sm mr-2 flex-shrink-0 ${value === NO_DATA_DISPLAY ? 'text-text-muted italic' : 'text-text-muted'}`}
+            numberOfLines={1}
+          >
+            {value}
+          </Text>
+        )}
+        <Switch
+          onValueChange={(newValue) => handleToggleHealthMetric(metric, newValue)}
+          value={healthMetricStates[metric.stateKey]}
+          trackColor={{ false: formDisabled, true: formEnabled }}
+          thumbColor="#FFFFFF"
+        />
       </View>
-      <Switch
-        onValueChange={(newValue) => handleToggleHealthMetric(metric, newValue)}
-        value={healthMetricStates[metric.stateKey]}
-        trackColor={{ false: formDisabled, true: formEnabled }}
-        thumbColor="#FFFFFF"
-      />
-    </View>
-  );
+    );
+  };
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
