@@ -14,8 +14,6 @@ COPY SparkyFitnessFrontend/package.json ./SparkyFitnessFrontend/
 COPY SparkyFitnessMobile/package.json ./SparkyFitnessMobile/
 COPY shared/package.json ./shared/
 
-# Copy patches needed by pnpm install
-COPY patches/ ./patches/
 
 RUN pnpm install --frozen-lockfile
 

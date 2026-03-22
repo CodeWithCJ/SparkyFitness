@@ -4,7 +4,6 @@ import {
   updateProfileData,
   uploadAvatarImage,
   getProfileData,
-  syncTotpAfterDisable,
   toggleEmailMfa,
 } from '@/api/Settings/profileService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -48,12 +47,6 @@ export const useUploadAvatarMutation = (userId: string) => {
       successMessage: 'Profile picture updated successfully',
       errorMessage: 'Failed to upload profile picture',
     },
-  });
-};
-
-export const useSyncTotpMutation = () => {
-  return useMutation({
-    mutationFn: syncTotpAfterDisable,
   });
 };
 
