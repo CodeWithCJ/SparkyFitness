@@ -16,11 +16,11 @@ import { useServerConnection, useDailySummary } from '../hooks';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
-import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 
 type DiaryScreenProps = CompositeScreenProps<
-  NativeBottomTabScreenProps<TabParamList, 'Diary'>,
+  BottomTabScreenProps<TabParamList, 'Diary'>,
   StackScreenProps<RootStackParamList>
 >;
 

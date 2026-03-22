@@ -11,7 +11,6 @@
 
 | Package | Dependency For |
 |---------|----------------|
-| `react-native-bottom-tabs` | `@bottom-tabs/react-navigation` |
 | `react-native-worklets` | `react-native-reanimated` |
 | `expo-font` | `@expo/vector-icons` |
 | `react-native-nitro-modules` | `@kingstinct/react-native-healthkit` |

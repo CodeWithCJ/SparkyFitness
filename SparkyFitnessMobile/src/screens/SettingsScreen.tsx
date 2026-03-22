@@ -20,11 +20,11 @@ import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
-import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 
 type SettingsScreenProps = CompositeScreenProps<
-  NativeBottomTabScreenProps<TabParamList, 'Settings'>,
+  BottomTabScreenProps<TabParamList, 'Settings'>,
   StackScreenProps<RootStackParamList>
 >;
 

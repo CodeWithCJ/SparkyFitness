@@ -1,7 +1,6 @@
 import './global.css'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StatusBar, Platform, Alert, type ImageSourcePropType } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { StatusBar, Platform, Alert } from 'react-native';
 import {
   NavigationContainer,
   type NavigationProp,
@@ -46,22 +45,16 @@ import { initializeTheme } from './src/services/themeService';
 import { useStartExercise } from './src/hooks/useStartExercise';
 import { initLogService } from './src/services/LogService';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Toast from 'react-native-toast-message';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
 import AddSheet, { type AddSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
+import CustomTabBar from './src/components/CustomTabBar';
 
-const Tab = createNativeBottomTabNavigator<TabParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
-
-type TabIcons = {
-  workouts: ImageSourcePropType;
-  dashboard: ImageSourcePropType;
-  book: ImageSourcePropType;
-  settings: ImageSourcePropType;
-  add: ImageSourcePropType;
-};
+const EmptyScreen = () => null;
 
 function AppContent() {
   const { theme } = useUniwind();
@@ -74,16 +67,13 @@ function AppContent() {
   const addSheetRef = useRef<AddSheetRef>(null);
   const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
 
-  const [primary, chrome, chromeBorder, bgPrimary, textPrimary, tabActive, tabInactive] = useCSSVariable([
+  const [primary, chrome, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-chrome',
     '--color-chrome-border',
     '--color-background',
     '--color-text-primary',
-    '--color-tab-active',
-    '--color-tab-inactive',
-  ]) as [string, string, string, string, string, string, string];
-  const [icons, setIcons] = useState<TabIcons | null>(null);
+  ]) as [string, string, string, string, string];
 
   // Determine if we're in dark mode based on current theme
   const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -162,24 +152,6 @@ function AppContent() {
   }, [syncMutation]);
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') {
-      Promise.all([
-        Ionicons.getImageSource('barbell-outline', 24, '#999999'),
-        Ionicons.getImageSource('grid', 24, '#999999'),
-        Ionicons.getImageSource('book', 24, '#999999'),
-        Ionicons.getImageSource('settings', 24, '#999999'),
-        Ionicons.getImageSource('add-circle', 24, '#999999'),
-      ]).then(([workouts, dashboard, book, settings, add]) => {
-        if (workouts && dashboard && book && settings && add) {
-          setIcons({ workouts, dashboard, book, settings, add });
-        }
-      }).catch(error => {
-        console.error('Failed to load tab icons:', error);
-      });
-    }
-  }, []);
-
-  useEffect(() => {
     // Initialize theme from storage on app start
     initializeTheme();
 
@@ -221,10 +193,6 @@ function AppContent() {
     }
   }, []);
 
-  if (Platform.OS !== 'ios' && !icons) {
-    return null;
-  }
-
   return (
     <NavigationContainer theme={navigationTheme}>
       <SafeAreaProvider>
@@ -234,59 +202,26 @@ function AppContent() {
             {() => (
               <Tab.Navigator
                 initialRouteName="Dashboard"
-                tabBarActiveTintColor={tabActive}
-                tabBarInactiveTintColor={tabInactive}
-                activeIndicatorColor={isDarkMode ? '#424242' : '#E7EAEC'}
-                tabBarStyle={Platform.OS !== 'ios' ? { backgroundColor: chrome } : undefined}
-                labeled={true}
+                screenOptions={{
+                  headerShown: false,
+                }}
+                tabBar={(props) => <CustomTabBar {...props} />}
               >
-                <Tab.Screen
-                  name="Dashboard"
-                  component={DashboardScreen}
-                  options={{
-                    tabBarIcon: () =>
-                      Platform.OS === 'ios' ? { sfSymbol: 'square.grid.2x2.fill' } : icons!.dashboard,
-                  }}
-                />
-                <Tab.Screen
-                  name="Diary"
-                  component={DiaryScreen}
-                  options={{
-                    tabBarIcon: () =>
-                      Platform.OS === 'ios' ? { sfSymbol: 'book.fill' } : icons!.book,
-                  }}
-                />
+                <Tab.Screen name="Dashboard" component={DashboardScreen} />
+                <Tab.Screen name="Diary" component={DiaryScreen} />
                 <Tab.Screen
                   name="Add"
-                  component={() => null}
-                  options={{
-                    preventsDefault: true,
-                    tabBarIcon: () =>
-                      Platform.OS === 'ios' ? { sfSymbol: 'plus.circle.fill' } : icons!.add,
-                  }}
+                  component={EmptyScreen}
                   listeners={({ navigation }) => ({
-                    tabPress: () => {
+                    tabPress: (e) => {
+                      e.preventDefault();
                       navigationRef.current = navigation;
                       addSheetRef.current?.present();
                     },
                   })}
                 />
-                <Tab.Screen
-                  name="Workouts"
-                  component={WorkoutsScreen}
-                  options={{
-                    tabBarIcon: () =>
-                      Platform.OS === 'ios' ? { sfSymbol: 'dumbbell.fill' } : icons!.workouts,
-                  }}
-                />
-                <Tab.Screen
-                  name="Settings"
-                  component={SettingsScreen}
-                  options={{
-                    tabBarIcon: () =>
-                      Platform.OS === 'ios' ? { sfSymbol: 'gearshape.fill' } : icons!.settings,
-                  }}
-                />
+                <Tab.Screen name="Workouts" component={WorkoutsScreen} />
+                <Tab.Screen name="Settings" component={SettingsScreen} />
               </Tab.Navigator>
             )}
           </Stack.Screen>

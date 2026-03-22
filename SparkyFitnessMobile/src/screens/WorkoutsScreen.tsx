@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from 'react-native-bottom-tabs';
 import { useCSSVariable } from 'uniwind';
+import { TAB_BAR_HEIGHT } from '../components/CustomTabBar';
 import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
 import WorkoutCard from '../components/WorkoutCard';
@@ -12,20 +12,19 @@ import { useStartExercise } from '../hooks/useStartExercise';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
-import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 
 type WorkoutsScreenProps = CompositeScreenProps<
-  NativeBottomTabScreenProps<TabParamList, 'Workouts'>,
+  BottomTabScreenProps<TabParamList, 'Workouts'>,
   StackScreenProps<RootStackParamList>
 >;
 
 const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
-  const scrollBottomPadding = Math.max(tabBarHeight, insets.bottom) + 16;
+  const scrollBottomPadding = TAB_BAR_HEIGHT + insets.bottom + 16;
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { getImageSource } = useExerciseImageSource();
@@ -163,7 +162,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center justify-between px-4 py-3">
+      <View className="flex-row items-center justify-between px-4 pt-4 pb-5">
         <Text className="text-2xl font-bold text-text-primary">Workouts</Text>
         {isConnected && (
           <Button
