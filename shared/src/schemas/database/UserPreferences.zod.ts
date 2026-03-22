@@ -34,6 +34,7 @@ export const userPreferencesSchema = z.object({
   activity_level: z.string().nullable(),
   tdee_allow_negative_adjustment: z.boolean().nullable(),
   default_barcode_provider_id: externalDataProvidersIdSchema.nullable(),
+  first_day_of_week: z.number().nullable().optional(),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -69,6 +70,7 @@ export const userPreferencesInitializerSchema = z.object({
   default_barcode_provider_id: externalDataProvidersIdSchema
     .optional()
     .nullable(),
+  first_day_of_week: z.number().optional().nullable(),
 });
 
 export const userPreferencesMutatorSchema = z.object({
@@ -104,6 +106,7 @@ export const userPreferencesMutatorSchema = z.object({
   default_barcode_provider_id: externalDataProvidersIdSchema
     .optional()
     .nullable(),
+  first_day_of_week: z.number().optional().nullable(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

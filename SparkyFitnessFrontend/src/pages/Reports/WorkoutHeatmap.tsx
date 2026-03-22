@@ -9,7 +9,11 @@ interface WorkoutHeatmapProps {
 
 const WorkoutHeatmap = ({ workoutDates }: WorkoutHeatmapProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, formatDateInUserTimezone } = usePreferences();
+  const {
+    loggingLevel,
+    formatDateInUserTimezone,
+    firstDayOfWeek: prefFirstDayOfWeek,
+  } = usePreferences();
   info(loggingLevel, 'WorkoutHeatmap: Rendering component.');
 
   const today = new Date();
@@ -18,11 +22,12 @@ const WorkoutHeatmap = ({ workoutDates }: WorkoutHeatmapProps) => {
     const firstDayOfMonth = new Date(year, month, 1);
     const lastDayOfMonth = new Date(year, month + 1, 0);
     const daysInMonth = lastDayOfMonth.getDate();
-    const firstDayOfWeek = firstDayOfMonth.getDay(); // 0 for Sunday, 6 for Saturday
+    const monthFirstDay = firstDayOfMonth.getDay(); // 0 for Sunday, 6 for Saturday
 
     const monthData = [];
+    const emptyCells = (monthFirstDay - prefFirstDayOfWeek + 7) % 7;
     // Add leading empty cells for days before the 1st of the month
-    for (let i = 0; i < firstDayOfWeek; i++) {
+    for (let i = 0; i < emptyCells; i++) {
       monthData.push(null);
     }
 
@@ -58,6 +63,20 @@ const WorkoutHeatmap = ({ workoutDates }: WorkoutHeatmapProps) => {
     });
   }
 
+  const baseDays = [
+    { key: 'sunday', label: 'S' },
+    { key: 'monday', label: 'M' },
+    { key: 'tuesday', label: 'T' },
+    { key: 'wednesday', label: 'W' },
+    { key: 'thursday', label: 'T' },
+    { key: 'friday', label: 'F' },
+    { key: 'saturday', label: 'S' },
+  ];
+  const shiftedDays = [
+    ...baseDays.slice(prefFirstDayOfWeek),
+    ...baseDays.slice(0, prefFirstDayOfWeek),
+  ];
+
   return (
     <Card>
       <CardHeader>
@@ -79,27 +98,14 @@ const WorkoutHeatmap = ({ workoutDates }: WorkoutHeatmapProps) => {
                 className="grid grid-cols-7 gap-1"
                 style={{ gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}
               >
-                <div className="text-xs text-center text-muted-foreground">
-                  {t('common.day_short.sunday', 'S')}
-                </div>
-                <div className="text-xs text-center text-muted-foreground">
-                  {t('common.day_short.monday', 'M')}
-                </div>
-                <div className="text-xs text-center text-muted-foreground">
-                  {t('common.day_short.tuesday', 'T')}
-                </div>
-                <div className="text-xs text-center text-muted-foreground">
-                  {t('common.day_short.wednesday', 'W')}
-                </div>
-                <div className="text-xs text-center text-muted-foreground">
-                  {t('common.day_short.thursday', 'T')}
-                </div>
-                <div className="text-xs text-center text-muted-foreground">
-                  {t('common.day_short.friday', 'F')}
-                </div>
-                <div className="text-xs text-center text-muted-foreground">
-                  {t('common.day_short.saturday', 'S')}
-                </div>
+                {shiftedDays.map((day) => (
+                  <div
+                    key={day.key}
+                    className="text-xs text-center text-muted-foreground"
+                  >
+                    {t(`common.day_short.${day.key}`, day.label)}
+                  </div>
+                ))}
                 {generateMonthData(monthInfo.year, monthInfo.month).map(
                   (date, dayIndex) => (
                     <div

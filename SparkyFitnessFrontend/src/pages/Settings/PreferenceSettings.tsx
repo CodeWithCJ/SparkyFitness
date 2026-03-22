@@ -49,6 +49,8 @@ export const PreferenceSettings = () => {
     setLanguage,
     language,
     loggingLevel,
+    firstDayOfWeek,
+    setFirstDayOfWeek,
     saveAllPreferences,
   } = usePreferences();
 
@@ -72,6 +74,7 @@ export const PreferenceSettings = () => {
         itemDisplayLimit,
         autoScaleOpenFoodFactsImports,
         language,
+        firstDayOfWeek,
         loggingLevel: localLoggingLevel,
       });
       toast({
@@ -219,6 +222,45 @@ export const PreferenceSettings = () => {
                 </SelectItem>
                 <SelectItem value="kJ">
                   {t('settings.preferences.joules', 'Joules (kJ)')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="first_day_of_week">
+              {t(
+                'settings.preferences.firstDayOfWeek',
+                'Start Day of the Week'
+              )}
+            </Label>
+            <Select
+              value={String(firstDayOfWeek)}
+              onValueChange={(value) => setFirstDayOfWeek(Number(value))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">
+                  {t('settings.preferences.sunday', 'Sunday')}
+                </SelectItem>
+                <SelectItem value="1">
+                  {t('settings.preferences.monday', 'Monday')}
+                </SelectItem>
+                <SelectItem value="2">
+                  {t('settings.preferences.tuesday', 'Tuesday')}
+                </SelectItem>
+                <SelectItem value="3">
+                  {t('settings.preferences.wednesday', 'Wednesday')}
+                </SelectItem>
+                <SelectItem value="4">
+                  {t('settings.preferences.thursday', 'Thursday')}
+                </SelectItem>
+                <SelectItem value="5">
+                  {t('settings.preferences.friday', 'Friday')}
+                </SelectItem>
+                <SelectItem value="6">
+                  {t('settings.preferences.saturday', 'Saturday')}
                 </SelectItem>
               </SelectContent>
             </Select>
