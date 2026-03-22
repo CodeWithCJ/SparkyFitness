@@ -12,9 +12,10 @@ import {
   type TransformedRecord,
 } from '../types/healthRecords';
 import { SyncDuration } from './healthkit/preferences';
-import { createConcurrencyLimiter } from '../utils/concurrency';
+import { runTasksInBatches, TimeoutError, withTimeout } from '../utils/concurrency';
 
 const METRIC_FETCH_CONCURRENCY = 3;
+const METRIC_TIMEOUT_MS = 60_000; // 60s per metric query
 
 export const initHealthConnect = HealthKit.initHealthConnect;
 export const requestHealthPermissions = HealthKit.requestHealthPermissions;
@@ -157,15 +158,30 @@ export const syncHealthData = async (
   const allTransformedData: HealthDataPayload = [];
   const syncErrors: { type: string; error: string }[] = [];
 
-  const limit = createConcurrencyLimiter(METRIC_FETCH_CONCURRENCY);
-
-  const results = await Promise.allSettled(
-    healthDataTypesToSync.map(type =>
-      limit(() => processMetric(type, startDate, endDate))
-    )
+  const results = await runTasksInBatches(
+    healthDataTypesToSync,
+    METRIC_FETCH_CONCURRENCY,
+    type => withTimeout(
+      processMetric(type, startDate, endDate),
+      METRIC_TIMEOUT_MS,
+      `HealthKit query for ${type}`,
+    ),
+    {
+      stopOnError: error => error instanceof TimeoutError,
+    },
   );
 
-  for (const result of results) {
+  for (let index = 0; index < results.length; index++) {
+    const result = results[index];
+    const type = healthDataTypesToSync[index];
+
+    if (result.status === 'skipped') {
+      const message = 'Skipped because an earlier metric query timed out.';
+      addLog(`[HealthKitService] Skipping ${type}: ${message}`, 'WARNING');
+      syncErrors.push({ type, error: message });
+      continue;
+    }
+
     if (result.status === 'fulfilled') {
       if (result.value.data.length > 0) {
         allTransformedData.push(...result.value.data);
@@ -175,8 +191,8 @@ export const syncHealthData = async (
       }
     } else {
       const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
-      addLog(`[HealthKitService] Unexpected error processing metric: ${message}`, 'ERROR');
-      syncErrors.push({ type: 'unknown', error: message });
+      addLog(`[HealthKitService] Error processing ${type}: ${message}`, 'ERROR');
+      syncErrors.push({ type, error: message });
     }
   }
 

@@ -1,4 +1,9 @@
-import { createConcurrencyLimiter } from '../../src/utils/concurrency';
+import {
+  createConcurrencyLimiter,
+  runTasksInBatches,
+  TimeoutError,
+  withTimeout,
+} from '../../src/utils/concurrency';
 
 describe('createConcurrencyLimiter', () => {
   test('runs tasks up to the concurrency limit simultaneously', async () => {
@@ -77,5 +82,59 @@ describe('createConcurrencyLimiter', () => {
     await Promise.all([makeTask(), makeTask(), makeTask()]);
 
     expect(maxRunning).toBe(1);
+  });
+
+  test('stops launching later batches after a timeout', async () => {
+    jest.useFakeTimers();
+
+    const started: number[] = [];
+    const runPromise = runTasksInBatches(
+      [1, 2, 3, 4],
+      2,
+      async value => {
+        started.push(value);
+        if (value === 2) {
+          return withTimeout(new Promise<never>(() => {}), 50, `Metric ${value}`);
+        }
+        return value;
+      },
+      {
+        stopOnError: error => error instanceof TimeoutError,
+      },
+    );
+
+    await jest.advanceTimersByTimeAsync(50);
+    const results = await runPromise;
+
+    expect(started).toEqual([1, 2]);
+    expect(results[0]).toEqual({ status: 'fulfilled', value: 1 });
+    expect(results[1].status).toBe('rejected');
+    expect(results[2]).toEqual({ status: 'skipped' });
+    expect(results[3]).toEqual({ status: 'skipped' });
+
+    jest.useRealTimers();
+  });
+
+  test('continues to later batches for non-timeout failures', async () => {
+    const started: number[] = [];
+
+    const results = await runTasksInBatches(
+      [1, 2, 3, 4],
+      2,
+      async value => {
+        started.push(value);
+        if (value === 2) {
+          throw new Error('non-timeout failure');
+        }
+        return value;
+      },
+      {
+        stopOnError: error => error instanceof TimeoutError,
+      },
+    );
+
+    expect(started).toEqual([1, 2, 3, 4]);
+    expect(results[2]).toEqual({ status: 'fulfilled', value: 3 });
+    expect(results[3]).toEqual({ status: 'fulfilled', value: 4 });
   });
 });
