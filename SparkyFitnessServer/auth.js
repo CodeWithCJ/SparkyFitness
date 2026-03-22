@@ -152,7 +152,6 @@ const auth = betterAuth({
     enabled: process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN !== "true",
     requireEmailVerification: false,
     sendResetPassword: async ({ user, url }, request) => {
-      const { sendPasswordResetEmail } = require("./services/emailService");
       await sendPasswordResetEmail(user.email, url);
     },
     password: {
@@ -370,20 +369,14 @@ const auth = betterAuth({
             `[AUTH] Hook: User created, initializing Sparky data for ${user.id}`,
           );
           try {
-            const {
-              ensureUserInitialization,
-            } = require("./models/userRepository");
             // We use the user.name or email if name is missing for the profile
-            await ensureUserInitialization(
+            await userRepository.ensureUserInitialization(
               user.id,
               user.name || user.email.split("@")[0],
               user.image,
             );
 
             // Also initialize default nutrient preferences
-            const {
-              createDefaultNutrientPreferencesForUser,
-            } = require("./services/nutrientDisplayPreferenceService");
             await createDefaultNutrientPreferencesForUser(user.id);
 
             console.log(`[AUTH] Hook: Initialization complete for ${user.id}`);
@@ -434,9 +427,7 @@ const auth = betterAuth({
             `[AUTH] Hook: Session created for user ${session.userId}. Checking group sync.`,
           );
           try {
-            const { syncUserGroups } = require("./utils/oidcGroupSync");
             const oidcProviderRepository = require("./models/oidcProviderRepository");
-            const userRepository = require("./models/userRepository");
 
             // Get all accounts for this user to find the OIDC provider used
             const client = await authPool.connect();
@@ -479,14 +470,12 @@ const auth = betterAuth({
   plugins: [
     require("better-auth/plugins").emailOTP({
       async sendVerificationOTP({ user, otp }, request) {
-        const { sendEmailMfaCode } = require("./services/emailService");
         await sendEmailMfaCode(user.email, otp);
       },
     }),
     require("better-auth/plugins").magicLink({
       expiresIn: 900, // 15 minutes (matches email template)
       sendMagicLink: async ({ email, url, token }, request) => {
-        const { sendMagicLinkEmail } = require("./services/emailService");
         await sendMagicLinkEmail(email, url);
       },
     }),
@@ -511,7 +500,6 @@ const auth = betterAuth({
       },
       otpOptions: {
         async sendOTP({ user, otp }, request) {
-          const { sendEmailMfaCode } = require("./services/emailService");
           await sendEmailMfaCode(user.email, otp);
         },
       },
