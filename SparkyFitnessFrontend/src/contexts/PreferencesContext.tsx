@@ -81,6 +81,7 @@ interface PreferencesContextType {
   calorieGoalAdjustmentMode: CalorieGoalAdjustmentMode;
   energyUnit: EnergyUnit;
   autoScaleOpenFoodFactsImports: boolean;
+  autoScaleOnlineImports: boolean;
   nutrientDisplayPreferences: NutrientPreference[];
   water_display_unit: WaterDisplayUnit;
   language: string;
@@ -112,6 +113,7 @@ interface PreferencesContextType {
   setTdeeAllowNegativeAdjustment: (allow: boolean) => void;
   setEnergyUnit: (unit: EnergyUnit) => void;
   setAutoScaleOpenFoodFactsImports: (enabled: boolean) => void;
+  setAutoScaleOnlineImports: (enabled: boolean) => void;
   loadNutrientDisplayPreferences: () => Promise<void>;
   setWaterDisplayUnit: (unit: WaterDisplayUnit) => void;
   setLanguage: (language: string) => void;
@@ -171,6 +173,7 @@ export interface DefaultPreferences {
   calorie_goal_adjustment_mode: calorieGoalAdjustmentMode;
   energy_unit: EnergyUnit;
   auto_scale_open_food_facts_imports: boolean;
+  auto_scale_online_imports: boolean;
   selected_diet: string;
   updated_at?: string;
   default_food_data_provider_id: string | null;
@@ -244,6 +247,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [energyUnit, setEnergyUnitState] = useState<EnergyUnit>('kcal');
   const [autoScaleOpenFoodFactsImports, setAutoScaleOpenFoodFactsImportsState] =
     useState<boolean>(false);
+  const [autoScaleOnlineImports, setAutoScaleOnlineImportsState] =
+    useState<boolean>(true);
   const [nutrientDisplayPreferences, setNutrientDisplayPreferences] = useState<
     NutrientPreference[]
   >([]);
@@ -471,6 +476,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         calorie_goal_adjustment_mode: 'dynamic' as const,
         energy_unit: 'kcal' as const,
         auto_scale_open_food_facts_imports: false,
+        auto_scale_online_imports: true,
         selected_diet: 'balanced',
         first_day_of_week: 0,
       };
@@ -549,6 +555,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setAutoScaleOpenFoodFactsImportsState(
           data.auto_scale_open_food_facts_imports ?? false
         );
+        setAutoScaleOnlineImportsState(data.auto_scale_online_imports ?? true);
         setBmrAlgorithmState(
           data.bmr_algorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
         );
@@ -640,6 +647,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
             String(updates.auto_scale_open_food_facts_imports)
           );
         }
+        if (updates.auto_scale_online_imports !== undefined) {
+          localStorage.setItem(
+            'autoScaleOnlineImports',
+            String(updates.auto_scale_online_imports)
+          );
+        }
         return;
       }
 
@@ -700,6 +713,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         auto_scale_open_food_facts_imports:
           newPrefs?.autoScaleOpenFoodFactsImports ??
           autoScaleOpenFoodFactsImports,
+        auto_scale_online_imports:
+          newPrefs?.autoScaleOnlineImports ?? autoScaleOnlineImports,
         bmr_algorithm: newPrefs?.bmrAlgorithm ?? bmrAlgorithm,
         body_fat_algorithm: newPrefs?.bodyFatAlgorithm ?? bodyFatAlgorithm,
         include_bmr_in_net_calories:
@@ -752,6 +767,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       tdeeAllowNegativeAdjustment,
       energyUnit,
       autoScaleOpenFoodFactsImports,
+      autoScaleOnlineImports,
       bmrAlgorithm,
       bodyFatAlgorithm,
       includeBmrInNetCalories,
@@ -855,6 +871,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [saveAllPreferences]
   );
 
+  const setAutoScaleOnlineImports = useCallback(
+    (enabled: boolean) => {
+      setAutoScaleOnlineImportsState(enabled);
+      saveAllPreferences({ autoScaleOnlineImports: enabled });
+    },
+    [saveAllPreferences]
+  );
+
   // --- Effects ---
 
   useEffect(() => {
@@ -903,6 +927,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           setAutoScaleOpenFoodFactsImportsState(
             savedAutoScaleOpenFoodFactsImports === 'true'
           );
+        const savedAutoScaleOnlineImports = localStorage.getItem(
+          'autoScaleOnlineImports'
+        );
+        if (savedAutoScaleOnlineImports !== null)
+          setAutoScaleOnlineImportsState(
+            savedAutoScaleOnlineImports === 'true'
+          );
       }
     }
   }, [user, loading, loadPreferences, loadNutrientDisplayPreferences]);
@@ -928,6 +959,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       tdeeAllowNegativeAdjustment,
       energyUnit,
       autoScaleOpenFoodFactsImports,
+      autoScaleOnlineImports,
       nutrientDisplayPreferences,
       water_display_unit: waterDisplayUnit,
       language,
@@ -956,6 +988,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setTdeeAllowNegativeAdjustment,
       setEnergyUnit,
       setAutoScaleOpenFoodFactsImports,
+      setAutoScaleOnlineImports,
       loadNutrientDisplayPreferences,
       setWaterDisplayUnit: setWaterDisplayUnitState,
       setLanguage: setLanguageState,
@@ -997,6 +1030,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       tdeeAllowNegativeAdjustment,
       energyUnit,
       autoScaleOpenFoodFactsImports,
+      autoScaleOnlineImports,
       nutrientDisplayPreferences,
       waterDisplayUnit,
       language,
@@ -1025,6 +1059,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setTdeeAllowNegativeAdjustment,
       setEnergyUnit,
       setAutoScaleOpenFoodFactsImports,
+      setAutoScaleOnlineImports,
       loadNutrientDisplayPreferences,
       convertWeight,
       convertMeasurement,
