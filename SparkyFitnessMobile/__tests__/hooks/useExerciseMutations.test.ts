@@ -1,5 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import {
   useCreateWorkout,
   useUpdateWorkout,
@@ -95,7 +96,11 @@ describe('useExerciseMutations', () => {
       });
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith('Failed to save workout', 'Please try again.');
+        expect(Toast.show).toHaveBeenCalledWith({
+          type: 'error',
+          text1: 'Failed to save workout',
+          text2: 'Please try again.',
+        });
       });
     });
 

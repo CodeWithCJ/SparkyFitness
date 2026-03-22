@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Alert, Text, ScrollView, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig } from '../services/storage';
@@ -103,7 +104,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       addLog(`Error opening web dashboard: ${errorMessage}`, 'ERROR');
-      Alert.alert('Error', `Could not open web dashboard: ${errorMessage}`);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Could not open web dashboard: ${errorMessage}` });
     }
   };
 
@@ -112,11 +113,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     const isSessionAuth = existingConfig?.authType === 'session';
 
     if (!url || (!apiKey && !isSessionAuth)) {
-      Alert.alert('Error', 'Please enter both a server URL and an API key.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Please enter both a server URL and an API key.' });
       return;
     }
     if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
-      Alert.alert('Error', 'HTTPS is required for server connections.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'HTTPS is required for server connections.' });
       return;
     }
     try {
@@ -136,12 +137,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       setShowConfigModal(false);
       await loadConfig();
       refetchConnection();
-      Alert.alert('Success', 'Settings saved successfully.');
+      Toast.show({ type: 'success', text1: 'Settings saved' });
       addLog('Settings saved successfully.', 'SUCCESS');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to save settings:', error);
-      Alert.alert('Error', `Failed to save settings: ${errorMessage}`);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to save settings: ${errorMessage}` });
       addLog(`Failed to save settings: ${errorMessage}`, 'ERROR');
     }
   };
@@ -150,7 +151,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     if (!__DEV__) {
       const config = serverConfigs.find((c) => c.id === configId);
       if (config?.url.toLowerCase().startsWith('http://')) {
-        Alert.alert('Error', 'HTTPS is required for server connections. Please edit this configuration to use HTTPS.');
+        Toast.show({ type: 'error', text1: 'Error', text2: 'HTTPS is required for server connections. Please edit this configuration to use HTTPS.' });
         return;
       }
     }
@@ -159,13 +160,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       queryClient.clear();
       await loadConfig();
       refetchConnection();
-      Alert.alert('Success', 'Active server configuration changed.');
+      Toast.show({ type: 'success', text1: 'Active server changed' });
       addLog('Active server configuration changed.', 'SUCCESS');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to set active server configuration:', error);
       addLog(`Failed to set active server configuration: ${errorMessage}`, 'ERROR');
-      Alert.alert('Error', `Failed to set active server configuration: ${errorMessage}`);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to set active server configuration: ${errorMessage}` });
     }
   };
 
@@ -187,12 +188,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           { text: 'OK', onPress: () => notifyNoConfigs() },
         ]);
       } else {
-        Alert.alert('Success', 'Server configuration deleted.');
+        Toast.show({ type: 'success', text1: 'Server configuration deleted' });
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Failed to delete server configuration:', error);
-      Alert.alert('Error', `Failed to delete server configuration: ${errorMessage}`);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to delete server configuration: ${errorMessage}` });
       addLog(`Failed to delete server configuration: ${errorMessage}`, 'ERROR');
     }
   };
@@ -244,7 +245,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      Alert.alert('Error', `Failed to share diagnostic report: ${errorMessage}`);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to share diagnostic report: ${errorMessage}` });
     } finally {
       setIsSharing(false);
     }

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { TAB_BAR_HEIGHT } from '../components/CustomTabBar';
 import Button from '../components/ui/Button';
+import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import WorkoutCard from '../components/WorkoutCard';
 import { useServerConnection, useExerciseHistory } from '../hooks';
@@ -162,14 +163,14 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center justify-between px-4 pt-4 pb-5">
+      <View className="flex-row items-baseline justify-between px-4 pt-4 pb-5">
         <Text className="text-2xl font-bold text-text-primary">Workouts</Text>
         {isConnected && (
           <Button
             variant="header"
             onPress={handleAddExercise}
           >
-            Add
+            <Icon name="add" size={26} color={accentPrimary} />
           </Button>
         )}
       </View>

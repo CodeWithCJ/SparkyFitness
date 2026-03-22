@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { fetchWaterContainers, changeWaterIntake } from '../services/api/measurementsApi';
 import type { DailySummaryRawData } from './useDailySummary';
 import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
@@ -58,7 +58,7 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
       });
     },
     onError: () => {
-      Alert.alert('Error', 'Failed to update water intake. Please try again.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update water intake. Please try again.' });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(date) });
@@ -67,12 +67,14 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
 
   const noContainerAlert = () => {
     const hasMultiple = containers && containers.length > 1;
-    Alert.alert(
-      hasMultiple ? 'No Primary Container' : 'No Water Containers',
-      hasMultiple
+    Toast.show({
+      type: 'info',
+      text1: hasMultiple ? 'No Primary Container' : 'No Water Containers',
+      text2: hasMultiple
         ? 'You have multiple water containers but none is marked as primary. Please set one as primary on the server.'
         : 'Please configure a water container on the server to track hydration.',
-    );
+      visibilityTime: 4000,
+    });
   };
 
   const increment = () => {

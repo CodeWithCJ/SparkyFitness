@@ -1,5 +1,5 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useUpdateFoodEntry } from '../../src/hooks/useUpdateFoodEntry';
 import { updateFoodEntry } from '../../src/services/api/foodEntriesApi';
 import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
@@ -12,8 +12,6 @@ jest.mock('../../src/services/api/foodEntriesApi', () => ({
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
-
-jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 const mockUpdateFoodEntry = updateFoodEntry as jest.MockedFunction<typeof updateFoodEntry>;
 
@@ -64,7 +62,7 @@ describe('useUpdateFoodEntry', () => {
     });
   });
 
-  test('shows Alert on generic error', async () => {
+  test('shows toast on generic error', async () => {
     mockUpdateFoodEntry.mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(
@@ -77,7 +75,11 @@ describe('useUpdateFoodEntry', () => {
     });
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Failed to save changes', 'Please try again.');
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'error',
+        text1: 'Failed to save changes',
+        text2: 'Please try again.',
+      });
     });
   });
 
@@ -94,10 +96,11 @@ describe('useUpdateFoodEntry', () => {
     });
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Failed to save changes',
-        "You don't have permission to edit this entry.",
-      );
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'error',
+        text1: 'Failed to save changes',
+        text2: "You don't have permission to edit this entry.",
+      });
     });
   });
 

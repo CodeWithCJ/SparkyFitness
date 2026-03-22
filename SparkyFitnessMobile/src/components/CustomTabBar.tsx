@@ -114,7 +114,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
             {iconName && (
               <Icon
                 name={iconName}
-                size={22}
+                size={24}
                 color={tintColor}
                 weight={isFocused ? 'bold' : 'regular'}
               />

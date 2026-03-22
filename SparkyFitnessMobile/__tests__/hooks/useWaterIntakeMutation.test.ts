@@ -1,5 +1,5 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useWaterIntakeMutation } from '../../src/hooks/useWaterIntakeMutation';
 import { fetchWaterContainers, changeWaterIntake } from '../../src/services/api/measurementsApi';
 import type { DailySummaryRawData } from '../../src/hooks/useDailySummary';
@@ -14,8 +14,6 @@ jest.mock('../../src/services/api/measurementsApi', () => ({
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
-
-jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 const mockFetchWaterContainers = fetchWaterContainers as jest.MockedFunction<typeof fetchWaterContainers>;
 const mockChangeWaterIntake = changeWaterIntake as jest.MockedFunction<typeof changeWaterIntake>;
@@ -145,7 +143,7 @@ describe('useWaterIntakeMutation', () => {
     expect(result.current.isReady).toBe(false);
   });
 
-  test('increment shows alert when no primary container', async () => {
+  test('increment shows toast when no primary container', async () => {
     mockFetchWaterContainers.mockResolvedValue([]);
 
     const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
@@ -160,14 +158,16 @@ describe('useWaterIntakeMutation', () => {
       result.current.increment();
     });
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'No Water Containers',
-      'Please configure a water container on the server to track hydration.'
-    );
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'info',
+      text1: 'No Water Containers',
+      text2: 'Please configure a water container on the server to track hydration.',
+      visibilityTime: 4000,
+    });
     expect(mockChangeWaterIntake).not.toHaveBeenCalled();
   });
 
-  test('decrement shows alert when no primary container', async () => {
+  test('decrement shows toast when no primary container', async () => {
     mockFetchWaterContainers.mockResolvedValue([]);
 
     const { result } = renderHook(() => useWaterIntakeMutation({ date: testDate }), {
@@ -182,10 +182,12 @@ describe('useWaterIntakeMutation', () => {
       result.current.decrement();
     });
 
-    expect(Alert.alert).toHaveBeenCalledWith(
-      'No Water Containers',
-      'Please configure a water container on the server to track hydration.'
-    );
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'info',
+      text1: 'No Water Containers',
+      text2: 'Please configure a water container on the server to track hydration.',
+      visibilityTime: 4000,
+    });
     expect(mockChangeWaterIntake).not.toHaveBeenCalled();
   });
 
@@ -332,10 +334,11 @@ describe('useWaterIntakeMutation', () => {
         });
       });
 
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Error',
-        'Failed to update water intake. Please try again.'
-      );
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update water intake. Please try again.',
+      });
 
       invalidateSpy.mockRestore();
     });

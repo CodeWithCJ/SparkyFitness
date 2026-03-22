@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { saveFood, type SaveFoodPayload } from '../services/api/foodsApi';
 import { createFoodEntry, type CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { dailySummaryQueryKey, foodsQueryKey } from './queryKeys';
@@ -36,7 +36,7 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
       options?.onSuccess?.(entry);
     },
     onError: () => {
-      Alert.alert('Failed to add food', 'Please try again.');
+      Toast.show({ type: 'error', text1: 'Failed to add food', text2: 'Please try again.' });
     },
   });
 

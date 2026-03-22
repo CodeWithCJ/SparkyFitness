@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { deleteFoodEntry } from '../services/api/foodEntriesApi';
 import { normalizeDate } from '../utils/dateUtils';
 import { dailySummaryQueryKey } from './queryKeys';
@@ -20,7 +21,7 @@ export function useDeleteFoodEntry({ entryId, entryDate, onSuccess }: UseDeleteF
       onSuccess?.();
     },
     onError: () => {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Toast.show({ type: 'error', text1: 'Failed to delete', text2: 'Please try again.' });
     },
   });
 

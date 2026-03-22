@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -143,10 +144,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleFinish = useCallback(() => {
     const exercisesWithSets = state.exercises.filter(e => e.sets.length > 0);
     if (exercisesWithSets.length === 0) {
-      Alert.alert(
-        'Add an Exercise',
-        'Add at least one exercise with a set before saving.',
-      );
+      Toast.show({ type: 'error', text1: 'Add an Exercise', text2: 'Add at least one exercise with a set before saving.' });
       return;
     }
 
@@ -374,13 +372,16 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
               keyboardShouldPersistTaps="handled"
             >
               {/* Workout name */}
-              <FormInput
-                className="text-xl font-bold text-text-primary mb-4"
-                value={state.name}
-                onChangeText={setName}
-                placeholder="Workout"
-                returnKeyType="done"
-              />
+              <View className="mb-4">
+                <Text className="text-sm font-medium text-text-secondary mb-1.5">Name</Text>
+                <FormInput
+                  className="text-xl font-bold text-text-primary"
+                  value={state.name}
+                  onChangeText={setName}
+                  placeholder="Workout"
+                  returnKeyType="done"
+                />
+              </View>
 
               {/* Date row */}
               <View className="mb-4">

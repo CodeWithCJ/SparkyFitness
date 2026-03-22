@@ -1,5 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useDeleteFoodEntry } from '../../src/hooks/useDeleteFoodEntry';
 import { deleteFoodEntry } from '../../src/services/api/foodEntriesApi';
 import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
@@ -107,7 +108,7 @@ describe('useDeleteFoodEntry', () => {
     invalidateSpy.mockRestore();
   });
 
-  test('shows error Alert on failure', async () => {
+  test('shows error toast on failure', async () => {
     mockDeleteFoodEntry.mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(
@@ -129,7 +130,11 @@ describe('useDeleteFoodEntry', () => {
     });
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Failed to delete', 'Please try again.');
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'error',
+        text1: 'Failed to delete',
+        text2: 'Please try again.',
+      });
     });
   });
 
