@@ -385,13 +385,22 @@ export function readActivityStats(
 
   // duration – Garmin: minutes (converted server-side); Strava: seconds; Fitbit: ms.
   // Use provider-specific fields to detect units rather than magnitude thresholds.
+  // Fitbit is identified by its unique camelCase field names absent from other providers.
+  const isFitbit =
+    a['activeDuration'] != null ||
+    a['averageHeartRate'] != null ||
+    a['logId'] != null;
   const rawDur = a['duration'] as number | undefined;
   const rawMoving = a['moving_time'] as number | undefined;
   const rawElapsed = a['elapsed_time'] as number | undefined;
   const rawFitbitDur = a['activeDuration'] as number | undefined; // Fitbit: ms
   let duration: number | null = null;
   if (rawFitbitDur != null && rawFitbitDur > 0) {
+    // Fitbit activeDuration: milliseconds
     duration = rawFitbitDur / 60000;
+  } else if (isFitbit && rawDur != null && rawDur > 0) {
+    // Fitbit duration: also milliseconds (fallback when activeDuration absent)
+    duration = rawDur / 60000;
   } else if (rawMoving != null && rawMoving > 0) {
     // Strava: moving_time in seconds
     duration = rawMoving / 60;

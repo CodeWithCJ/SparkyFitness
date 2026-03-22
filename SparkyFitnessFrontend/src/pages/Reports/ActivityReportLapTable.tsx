@@ -427,17 +427,13 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
               <td className="py-2 px-4 text-center">
                 {formatTime(totalDurSec)}
               </td>
-              <td className="py-2 px-4 text-center">
-                {formatTime(totalDurSec)}
-              </td>
+              <td className="py-2 px-4 text-center">{NA}</td>
               {showDistanceCols && (
                 <>
                   <td className="py-2 px-4 text-center">
                     {totalDist.toFixed(2)}
                   </td>
-                  <td className="py-2 px-4 text-center">
-                    {totalDist.toFixed(2)}
-                  </td>
+                  <td className="py-2 px-4 text-center">{NA}</td>
                 </>
               )}
               {showPaceCols && (
