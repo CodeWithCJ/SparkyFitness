@@ -576,6 +576,9 @@ applyMigrations()
       console.log("View API documentation at: /api/api-docs/swagger");
     });
 
+    // Fix for reverse proxies using HTTP keepalive (e.g. Traefik, Caddy)
+    server.keepAliveTimeout = 65000;  // Must be > proxy's idle timeout (nginx=75s, traefik=default 180s)
+    server.headersTimeout = 66000;    // Must be slightly > keepAliveTimeout
     // Graceful shutdown
     let shuttingDown = false;
     const shutdown = async (signal) => {
