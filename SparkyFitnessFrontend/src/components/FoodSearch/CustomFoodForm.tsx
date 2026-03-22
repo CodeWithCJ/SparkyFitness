@@ -153,7 +153,7 @@ const UNIT_GROUPS = [
   { label: 'Weight', units: ['g', 'kg', 'mg', 'oz', 'lb'] },
   { label: 'Volume', units: ['ml', 'l', 'cup', 'tbsp', 'tsp'] },
   {
-    label: 'Serving',
+    label: 'Quantity',
     units: [
       'piece',
       'slice',
