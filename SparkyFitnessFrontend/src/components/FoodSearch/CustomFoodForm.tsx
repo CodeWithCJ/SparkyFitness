@@ -147,31 +147,30 @@ interface EnhancedCustomFoodFormProps {
   visibleNutrients?: string[];
 }
 
-const COMMON_UNITS = [
-  'g',
-  'kg',
-  'mg',
-  'oz',
-  'lb',
-  'ml',
-  'l',
-  'cup',
-  'tbsp',
-  'tsp',
-  'piece',
-  'slice',
-  'serving',
-  'portion',
-  'can',
-  'bottle',
-  'packet',
-  'bag',
-  'bowl',
-  'plate',
-  'handful',
-  'scoop',
-  'bar',
-  'stick',
+// Unit groups mirror the lookup tables in servingSizeConversions.ts so that
+// compatible-unit detection is consistent in both directions.
+const UNIT_GROUPS = [
+  { label: 'Weight', units: ['g', 'kg', 'mg', 'oz', 'lb'] },
+  { label: 'Volume', units: ['ml', 'l', 'cup', 'tbsp', 'tsp'] },
+  {
+    label: 'Quantity',
+    units: [
+      'piece',
+      'slice',
+      'serving',
+      'portion',
+      'can',
+      'bottle',
+      'packet',
+      'bag',
+      'bowl',
+      'plate',
+      'handful',
+      'scoop',
+      'bar',
+      'stick',
+    ],
+  },
 ];
 
 const EnhancedCustomFoodForm = ({
