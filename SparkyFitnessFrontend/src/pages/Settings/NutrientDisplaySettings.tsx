@@ -68,6 +68,7 @@ const NutrientDisplaySettings: React.FC = () => {
     ...baseNutrients,
     ...customNutrients.map((n) => n.name),
   ];
+
   useEffect(() => {
     setPreferences(nutrientDisplayPreferences);
   }, [nutrientDisplayPreferences]);

@@ -56,9 +56,12 @@ export const roundNutritionValue = (value: number): number => {
 
 export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
   // Prefer snapshotted data if available, otherwise calculate from variant/food
-  const source = entry.calories
-    ? entry
-    : entry.food_variants || entry.foods?.default_variant;
+
+  const source =
+    entry.calories !== undefined ||
+    Object.keys(entry.custom_nutrients || {}).length > 0
+      ? entry
+      : entry.food_variants || entry.foods?.default_variant;
 
   if (!source) {
     // Return zero for all nutrients if no source is found
@@ -526,9 +529,7 @@ export const getMealData = (
 
   const combinedEntries: (FoodEntry | FoodEntryMeal)[] = [...entries, ...meals];
 
-  const percentageKey = `${mealType.toLowerCase()}_percentage`;
-
-  const percentage = goals ? goals[percentageKey] || 0 : 0;
+  const percentage = goals?.meal_percentages?.[mealType.toLowerCase()] ?? 0;
 
   let displayName = mealType;
   if (mealType.toLowerCase() === 'breakfast')
