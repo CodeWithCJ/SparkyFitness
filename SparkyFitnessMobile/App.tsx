@@ -45,10 +45,12 @@ import { startObservers, stopObservers } from './src/services/healthConnectServi
 import { initializeTheme } from './src/services/themeService';
 import { useStartExercise } from './src/hooks/useStartExercise';
 import { initLogService } from './src/services/LogService';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createNativeBottomTabNavigator } from '@bottom-tabs/react-navigation';
+import Toast from 'react-native-toast-message';
 import type { RootStackParamList, TabParamList } from './src/types/navigation';
 import AddSheet, { type AddSheetRef } from './src/components/AddSheet';
+import { toastConfig } from './src/components/ui/toastConfig';
 
 const Tab = createNativeBottomTabNavigator<TabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
@@ -443,9 +445,15 @@ function AppContent() {
             }
           }}
         />
+        <SafeAreaToast />
       </SafeAreaProvider>
     </NavigationContainer>
   );
+}
+
+function SafeAreaToast() {
+  const insets = useSafeAreaInsets();
+  return <Toast config={toastConfig} topOffset={insets.top + 8} />;
 }
 
 function App() {

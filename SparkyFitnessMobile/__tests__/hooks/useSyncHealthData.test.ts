@@ -1,5 +1,5 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useSyncHealthData } from '../../src/hooks/useSyncHealthData';
 import { syncHealthData as healthConnectSyncData } from '../../src/services/healthConnectService';
 import { saveLastSyncedTime } from '../../src/services/storage';
@@ -18,7 +18,7 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
 const mockHealthConnectSyncData = healthConnectSyncData as jest.MockedFunction<
   typeof healthConnectSyncData
@@ -83,7 +83,7 @@ describe('useSyncHealthData', () => {
       });
     });
 
-    test('shows success alert by default', async () => {
+    test('shows info toast on mutate and success toast on completion', async () => {
       mockHealthConnectSyncData.mockResolvedValue({ success: true, syncErrors: [] });
       mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
 
@@ -96,18 +96,22 @@ describe('useSyncHealthData', () => {
       });
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Success',
-          'Health data synced successfully.'
-        );
+        expect(result.current.isSuccess).toBe(true);
       });
+
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'info', text1: 'Syncing health data…' })
+      );
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'success', text1: 'Sync complete' })
+      );
     });
 
-    test('does not show alert when showAlerts is false', async () => {
+    test('does not show toast when showToasts is false', async () => {
       mockHealthConnectSyncData.mockResolvedValue({ success: true, syncErrors: [] });
       mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
 
-      const { result } = renderHook(() => useSyncHealthData({ showAlerts: false }), {
+      const { result } = renderHook(() => useSyncHealthData({ showToasts: false }), {
         wrapper: createQueryWrapper(queryClient),
       });
 
@@ -119,7 +123,7 @@ describe('useSyncHealthData', () => {
         expect(result.current.isSuccess).toBe(true);
       });
 
-      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(mockToastShow).not.toHaveBeenCalled();
     });
 
     test('calls onSuccess callback with last synced time', async () => {
@@ -162,7 +166,7 @@ describe('useSyncHealthData', () => {
       });
     });
 
-    test('shows error alert by default', async () => {
+    test('shows error toast by default', async () => {
       mockHealthConnectSyncData.mockResolvedValue({
         success: false,
         error: 'Server unavailable',
@@ -178,21 +182,24 @@ describe('useSyncHealthData', () => {
       });
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Sync Error',
-          'Server unavailable'
+        expect(mockToastShow).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: 'Sync Error',
+            text2: 'Server unavailable',
+          })
         );
       });
     });
 
-    test('does not show error alert when showAlerts is false', async () => {
+    test('does not show error toast when showToasts is false', async () => {
       mockHealthConnectSyncData.mockResolvedValue({
         success: false,
         error: 'Server unavailable',
         syncErrors: [],
       });
 
-      const { result } = renderHook(() => useSyncHealthData({ showAlerts: false }), {
+      const { result } = renderHook(() => useSyncHealthData({ showToasts: false }), {
         wrapper: createQueryWrapper(queryClient),
       });
 
@@ -204,7 +211,7 @@ describe('useSyncHealthData', () => {
         expect(result.current.isError).toBe(true);
       });
 
-      expect(Alert.alert).not.toHaveBeenCalled();
+      expect(mockToastShow).not.toHaveBeenCalled();
     });
 
     test('logs error on failure', async () => {
@@ -267,9 +274,12 @@ describe('useSyncHealthData', () => {
       });
 
       await waitFor(() => {
-        expect(Alert.alert).toHaveBeenCalledWith(
-          'Sync Error',
-          'Unknown sync error'
+        expect(mockToastShow).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: 'Sync Error',
+            text2: 'Unknown sync error',
+          })
         );
       });
     });

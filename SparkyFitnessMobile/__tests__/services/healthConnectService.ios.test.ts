@@ -25,6 +25,7 @@ jest.mock('../../src/HealthMetrics', () => ({
     { recordType: 'Steps', stateKey: 'isStepsSyncEnabled', unit: 'count', type: 'step' },
     { recordType: 'HeartRate', stateKey: 'isHeartRateSyncEnabled', unit: 'bpm', type: 'heart_rate', aggregationStrategy: 'min-max-avg' },
     { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories' },
+    { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories' },
     { recordType: 'RunningSpeed', stateKey: 'isRunningSpeedSyncEnabled', unit: 'm/s', type: 'running_speed', aggregationStrategy: 'min-max-avg' },
   ],
 }));
@@ -162,5 +163,28 @@ describe('syncHealthData (iOS)', () => {
     expect(minRecord.value).toBe(2.5);
     expect(maxRecord.value).toBe(4.0);
     expect(avgRecord.value).toBeCloseTo(3.17, 2);
+  });
+
+  test('TotalCaloriesBurned uses aggregation API, not raw records', async () => {
+    // queryStatisticsForQuantity is called twice: basal + active energy
+    mockQueryStatisticsForQuantity.mockResolvedValue({
+      sumQuantity: { quantity: 1000 },
+    });
+    api.syncHealthData.mockResolvedValue({ success: true });
+
+    const result = await syncHealthData('today' as SyncDuration, {
+      isTotalCaloriesSyncEnabled: true,
+    });
+
+    expect(result.success).toBe(true);
+
+    // Should NOT read raw samples — only the statistics API should be used
+    expect(mockQueryQuantitySamples).not.toHaveBeenCalled();
+
+    const sentData = api.syncHealthData.mock.calls[0][0];
+    const calorieRecords = sentData.filter((r: { type: string }) => r.type === 'total_calories');
+    expect(calorieRecords.length).toBeGreaterThan(0);
+    // 1000 basal + 1000 active = 2000
+    expect(calorieRecords[0].value).toBe(2000);
   });
 });

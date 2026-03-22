@@ -13,6 +13,10 @@ import {
   type TransformedRecord,
 } from '../types/healthRecords';
 import { SyncDuration } from './healthconnect/preferences';
+import { runTasksInBatches, TimeoutError, withTimeout } from '../utils/concurrency';
+
+const METRIC_FETCH_CONCURRENCY = 3;
+const METRIC_TIMEOUT_MS = 60_000; // 60s per metric query
 
 export const initHealthConnect = HealthConnect.initHealthConnect;
 export const requestHealthPermissions = HealthConnect.requestHealthPermissions;
@@ -64,6 +68,7 @@ export const getAggregatedTotalCaloriesByDate = async (
 ): Promise<AggregatedHealthRecord[]> => {
   const records = await HealthConnect.readHealthRecords('TotalCaloriesBurned', startDate, endDate) as {
     startTime?: string;
+    endTime?: string;
     time?: string;
     energy?: { inKilocalories?: number };
     metadata?: { dataOrigin?: string };
@@ -71,7 +76,8 @@ export const getAggregatedTotalCaloriesByDate = async (
   const byDate = HealthConnect.deduplicateByOrigin(
     records,
     (record) => {
-      const timestamp = record.startTime || record.time || '';
+      // Use endTime to assign overnight segments to the day they finished
+      const timestamp = record.endTime || record.startTime || record.time || '';
       return timestamp ? HealthConnectAggregation.toLocalDateString(timestamp) : '';
     },
     (record) => record.energy?.inKilocalories || 0,
@@ -85,6 +91,7 @@ export const getAggregatedDistanceByDate = async (
 ): Promise<AggregatedHealthRecord[]> => {
   const records = await HealthConnect.readHealthRecords('Distance', startDate, endDate) as {
     startTime?: string;
+    endTime?: string;
     time?: string;
     distance?: { inMeters?: number };
     metadata?: { dataOrigin?: string };
@@ -92,7 +99,8 @@ export const getAggregatedDistanceByDate = async (
   const byDate = HealthConnect.deduplicateByOrigin(
     records,
     (record) => {
-      const timestamp = record.startTime || record.time || '';
+      // Use endTime to assign segments to the day they finished
+      const timestamp = record.endTime || record.startTime || record.time || '';
       return timestamp ? HealthConnectAggregation.toLocalDateString(timestamp) : '';
     },
     (record) => record.distance?.inMeters || 0,
@@ -106,6 +114,7 @@ export const getAggregatedFloorsClimbedByDate = async (
 ): Promise<AggregatedHealthRecord[]> => {
   const records = await HealthConnect.readHealthRecords('FloorsClimbed', startDate, endDate) as {
     startTime?: string;
+    endTime?: string;
     time?: string;
     floors?: number;
     metadata?: { dataOrigin?: string };
@@ -113,7 +122,8 @@ export const getAggregatedFloorsClimbedByDate = async (
   const byDate = HealthConnect.deduplicateByOrigin(
     records,
     (record) => {
-      const timestamp = record.startTime || record.time || '';
+      // Use endTime to assign segments to the day they finished
+      const timestamp = record.endTime || record.startTime || record.time || '';
       return timestamp ? HealthConnectAggregation.toLocalDateString(timestamp) : '';
     },
     (record) => record.floors || 0,
@@ -148,6 +158,61 @@ export const disableAllBackgroundDelivery = async (): Promise<boolean> => true;
 export const startObservers = (_onDataAvailable: () => void): void => {};
 export const stopObservers = (): void => {};
 
+interface MetricResult {
+  data: HealthDataPayload;
+  error?: { type: string; error: string };
+}
+
+async function processMetric(
+  type: string,
+  startDate: Date,
+  endDate: Date,
+): Promise<MetricResult> {
+  const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
+  if (!metricConfig) {
+    addLog(`[HealthConnectService] No metric configuration found for record type: ${type}. Skipping.`, 'WARNING');
+    return { data: [] };
+  }
+
+  let dataToTransform: unknown[] = [];
+
+  // For cumulative metrics, use deduplicated aggregation functions
+  if (type === 'Steps') {
+    dataToTransform = await HealthConnect.getAggregatedStepsByDate(startDate, endDate);
+  } else if (type === 'ActiveCaloriesBurned') {
+    dataToTransform = await HealthConnect.getAggregatedActiveCaloriesByDate(startDate, endDate);
+  } else if (type === 'TotalCaloriesBurned') {
+    dataToTransform = await getAggregatedTotalCaloriesByDate(startDate, endDate);
+  } else if (type === 'Distance') {
+    dataToTransform = await getAggregatedDistanceByDate(startDate, endDate);
+  } else if (type === 'FloorsClimbed') {
+    dataToTransform = await getAggregatedFloorsClimbedByDate(startDate, endDate);
+  } else {
+    // For other types, read raw records
+    const rawRecords = await HealthConnect.readHealthRecords(type, startDate, endDate);
+
+    if (rawRecords.length === 0) {
+      return { data: [] };
+    }
+
+    dataToTransform = rawRecords;
+  }
+
+  const transformed = HealthConnectTransformation.transformHealthRecords(dataToTransform, metricConfig);
+
+  if (metricConfig.aggregationStrategy) {
+    const aggregated = HealthConnectAggregation.aggregateByDay(
+      transformed as TransformedRecord[],
+      metricConfig.type,
+      metricConfig.unit,
+      metricConfig.aggregationStrategy,
+    );
+    return { data: aggregated as HealthDataPayload };
+  }
+
+  return { data: transformed as HealthDataPayload };
+}
+
 export const syncHealthData = async (
   syncDuration: SyncDuration,
   healthMetricStates: HealthMetricStates = {}
@@ -163,56 +228,40 @@ export const syncHealthData = async (
   const allTransformedData: HealthDataPayload = [];
   const syncErrors: { type: string; error: string }[] = [];
 
-  for (const type of healthDataTypesToSync) {
-    try {
-      const metricConfig = HEALTH_METRICS.find(m => m.recordType === type);
-      if (!metricConfig) {
-        addLog(`[HealthConnectService] No metric configuration found for record type: ${type}. Skipping.`, 'WARNING');
-        continue;
+  const results = await runTasksInBatches(
+    healthDataTypesToSync,
+    METRIC_FETCH_CONCURRENCY,
+    type => withTimeout(
+      processMetric(type, startDate, endDate),
+      METRIC_TIMEOUT_MS,
+      `Health Connect query for ${type}`,
+    ),
+    {
+      stopOnError: error => error instanceof TimeoutError,
+    },
+  );
+
+  for (let index = 0; index < results.length; index++) {
+    const result = results[index];
+    const type = healthDataTypesToSync[index];
+
+    if (result.status === 'skipped') {
+      const message = 'Skipped because an earlier metric query timed out.';
+      addLog(`[HealthConnectService] Skipping ${type}: ${message}`, 'WARNING');
+      syncErrors.push({ type, error: message });
+      continue;
+    }
+
+    if (result.status === 'fulfilled') {
+      if (result.value.data.length > 0) {
+        allTransformedData.push(...result.value.data);
       }
-
-      let dataToTransform: unknown[] = [];
-
-      // For Steps and ActiveCaloriesBurned, use deduplicated aggregation functions
-      if (type === 'Steps') {
-        dataToTransform = await HealthConnect.getAggregatedStepsByDate(startDate, endDate);
-      } else if (type === 'ActiveCaloriesBurned') {
-        dataToTransform = await HealthConnect.getAggregatedActiveCaloriesByDate(startDate, endDate);
-      } else {
-        // For other types, read raw records
-        const rawRecords = await HealthConnect.readHealthRecords(type, startDate, endDate);
-
-        if (rawRecords.length === 0) {
-          continue;
-        }
-
-        dataToTransform = rawRecords;
-
-        if (type === 'TotalCaloriesBurned') {
-          dataToTransform = HealthConnectAggregation.aggregateTotalCaloriesByDate(
-            rawRecords as Parameters<typeof HealthConnectAggregation.aggregateTotalCaloriesByDate>[0]
-          );
-        }
+      if (result.value.error) {
+        syncErrors.push(result.value.error);
       }
-
-      const transformed = HealthConnectTransformation.transformHealthRecords(dataToTransform, metricConfig);
-
-      if (metricConfig.aggregationStrategy) {
-        const aggregated = HealthConnectAggregation.aggregateByDay(
-          transformed as TransformedRecord[],
-          metricConfig.type,
-          metricConfig.unit,
-          metricConfig.aggregationStrategy,
-        );
-        if (aggregated.length > 0) {
-          allTransformedData.push(...(aggregated as HealthDataPayload));
-        }
-      } else if (transformed.length > 0) {
-        allTransformedData.push(...(transformed as HealthDataPayload));
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[HealthConnectService] Error reading or transforming ${type} records: ${message}`, 'ERROR');
+    } else {
+      const message = result.reason instanceof Error ? result.reason.message : String(result.reason);
+      addLog(`[HealthConnectService] Error processing ${type}: ${message}`, 'ERROR');
       syncErrors.push({ type, error: message });
     }
   }

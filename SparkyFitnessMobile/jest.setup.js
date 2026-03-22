@@ -300,6 +300,16 @@ jest.mock('uniwind', () => ({
   },
 }));
 
+// Mock react-native-toast-message
+jest.mock('react-native-toast-message', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MockToast = (props) => React.createElement(View, { testID: 'toast', ...props });
+  MockToast.show = jest.fn();
+  MockToast.hide = jest.fn();
+  return { __esModule: true, default: MockToast };
+});
+
 // Mock @gorhom/bottom-sheet
 jest.mock('@gorhom/bottom-sheet', () => {
   const React = require('react');
