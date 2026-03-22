@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +13,6 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -22,12 +20,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn, error } from '@/utils/logging';
 import type { Food, FoodVariant } from '@/types/food';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  foodVariantsOptions,
-  useCreateFoodVariantMutation,
-} from '@/hooks/Foods/useFoodVariants';
-import { getConversionFactor } from '@/utils/servingSizeConversions';
-import { useUnitConversion } from '@/hooks/Foods/useUnitConversion';
+import { foodVariantsOptions } from '@/hooks/Foods/useFoodVariants';
 
 interface FoodUnitSelectorProps {
   food: Food;
@@ -39,7 +32,7 @@ interface FoodUnitSelectorProps {
     unit: string,
     selectedVariant: FoodVariant
   ) => void;
-  showUnitSelector?: boolean;
+  showUnitSelector?: boolean; // New prop to control visibility
   initialQuantity?: number;
   initialUnit?: string;
   initialVariantId?: string;
@@ -55,48 +48,20 @@ const FoodUnitSelector = ({
   initialUnit,
   initialVariantId,
 }: FoodUnitSelectorProps) => {
-  const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
+  const { loggingLevel, energyUnit, convertEnergy } = usePreferences(); // Get logging level, energyUnit, convertEnergy
   debug(loggingLevel, 'FoodUnitSelector component rendered.', { food, open });
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
+    // This component does not import useTranslation, so we'll hardcode or pass t() from parent if it were needed for translation
     return unit === 'kcal' ? 'kcal' : 'kJ';
   };
-
   const [variants, setVariants] = useState<FoodVariant[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<FoodVariant | null>(
     null
   );
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
-
   const queryClient = useQueryClient();
-  const createFoodVariantMutation = useCreateFoodVariantMutation();
-
-  const {
-    pendingUnit,
-    setPendingUnit,
-    pendingUnitIsCustom,
-    conversionFactor,
-    setConversionFactor,
-    autoConversionFactor,
-    conversionBaseVariant,
-    conversionError,
-    setConversionError,
-    isConverting,
-    convertibleUnits,
-    dropdownValue,
-    buildConvertedVariant,
-    handleUnitChange,
-    cancelConversion,
-    resetConversionState,
-  } = useUnitConversion({
-    variants,
-    selectedVariant,
-    onVariantSelect: (_variantId, variant) => {
-      setSelectedVariant(variant);
-      setQuantity(variant.serving_size);
-    },
-  });
 
   const loadVariantsData = useCallback(async () => {
     debug(loggingLevel, 'Loading food variants for food ID:', food?.id);
@@ -104,11 +69,12 @@ const FoodUnitSelector = ({
     try {
       const data = await queryClient.fetchQuery(foodVariantsOptions(food.id));
 
+      // The food object passed to this component already contains the default variant's data
       const primaryUnit: FoodVariant = {
-        id: food.default_variant?.id || food.id,
+        id: food.default_variant?.id || food.id, // Use default_variant.id if available, otherwise food.id
         serving_size: food.default_variant?.serving_size || 100,
         serving_unit: food.default_variant?.serving_unit || 'g',
-        calories: food.default_variant?.calories || 0,
+        calories: food.default_variant?.calories || 0, // kcal
         protein: food.default_variant?.protein || 0,
         carbs: food.default_variant?.carbs || 0,
         fat: food.default_variant?.fat || 0,
@@ -135,7 +101,7 @@ const FoodUnitSelector = ({
           id: variant.id,
           serving_size: variant.serving_size,
           serving_unit: variant.serving_unit,
-          calories: variant.calories || 0,
+          calories: variant.calories || 0, // kcal
           protein: variant.protein || 0,
           carbs: variant.carbs || 0,
           fat: variant.fat || 0,
@@ -154,6 +120,8 @@ const FoodUnitSelector = ({
           iron: variant.iron || 0,
         }));
 
+        // Ensure the primary unit is always included and is the first option.
+        // Then, add any other variants from the database that are not the primary unit (based on ID).
         const otherVariants = variantsFromDb.filter(
           (variant) => variant.id !== primaryUnit.id
         );
@@ -173,15 +141,16 @@ const FoodUnitSelector = ({
         );
         setSelectedVariant(variantToSelect || firstCombinedVariant);
       } else if (firstCombinedVariant) {
-        setSelectedVariant(firstCombinedVariant);
+        setSelectedVariant(firstCombinedVariant); // Select the primary unit by default
       }
     } catch (err) {
       error(loggingLevel, 'Error loading variants:', err);
+      // Fallback to primary food unit on error
       const primaryUnit: FoodVariant = {
-        id: food.default_variant?.id || food.id,
+        id: food.default_variant?.id || food.id, // Use default_variant.id if available, otherwise food.id
         serving_size: food.default_variant?.serving_size || 100,
         serving_unit: food.default_variant?.serving_unit || 'g',
-        calories: food.default_variant?.calories || 0,
+        calories: food.default_variant?.calories || 0, // kcal
         protein: food.default_variant?.protein || 0,
         carbs: food.default_variant?.carbs || 0,
         fat: food.default_variant?.fat || 0,
@@ -215,13 +184,13 @@ const FoodUnitSelector = ({
       initialVariantId,
     });
     if (open && food && food.id) {
+      // Ensure food.id exists before loading variants
       loadVariantsData();
       setQuantity(
         initialQuantity !== undefined
           ? initialQuantity
           : food.default_variant?.serving_size || 1
       );
-      resetConversionState();
     }
   }, [
     open,
@@ -230,43 +199,13 @@ const FoodUnitSelector = ({
     initialUnit,
     initialVariantId,
     loadVariantsData,
+    setQuantity,
     loggingLevel,
-    resetConversionState,
   ]);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     debug(loggingLevel, 'Handling submit.');
-
-    if (isConverting) {
-      const convertedVariant = buildConvertedVariant();
-      if (!convertedVariant) {
-        setConversionError(
-          'Please enter a valid unit name and conversion factor.'
-        );
-        return;
-      }
-      setConversionError('');
-      try {
-        const savedVariant = await createFoodVariantMutation.mutateAsync({
-          foodId: food.id,
-          variant: convertedVariant,
-        });
-        info(loggingLevel, 'Created converted variant:', savedVariant);
-        const variantWithId: FoodVariant = {
-          ...convertedVariant,
-          ...savedVariant,
-        };
-        onSelect(food, quantity, variantWithId.serving_unit, variantWithId);
-        onOpenChange(false);
-        setQuantity(1);
-      } catch (err) {
-        error(loggingLevel, 'Error creating converted variant:', err);
-        setConversionError('Failed to save the new unit. Please try again.');
-      }
-      return;
-    }
-
     if (selectedVariant) {
       info(loggingLevel, 'Submitting food selection:', {
         food,
@@ -274,6 +213,10 @@ const FoodUnitSelector = ({
         unit: selectedVariant.serving_unit,
         variantId: selectedVariant.id || undefined,
       });
+
+      // Pass the user-entered quantity directly, as it now represents the number of servings.
+      // If the selected variant is the primary food unit (identified by food.id), pass null for variantId
+      // Otherwise, pass the actual variant.id
       onSelect(food, quantity, selectedVariant.serving_unit, selectedVariant);
       onOpenChange(false);
       setQuantity(1);
@@ -282,32 +225,66 @@ const FoodUnitSelector = ({
     }
   };
 
-  // The active variant used for nutrition display
-  const activeVariant = isConverting
-    ? buildConvertedVariant()
-    : selectedVariant;
+  const calculateNutrition = () => {
+    debug(loggingLevel, 'Calculating nutrition.');
+    if (!selectedVariant) {
+      warn(loggingLevel, 'calculateNutrition called with no selected variant.');
+      return null;
+    }
 
-  const nutrition = (() => {
-    if (!activeVariant) return null;
-    const ratio = quantity / (activeVariant.serving_size || 1);
-    return {
-      calories: (activeVariant.calories || 0) * ratio,
-      protein: (activeVariant.protein || 0) * ratio,
-      carbs: (activeVariant.carbs || 0) * ratio,
-      fat: (activeVariant.fat || 0) * ratio,
+    info(loggingLevel, 'Calculating nutrition for:', {
+      selectedVariant,
+      quantity,
+    });
+
+    const nutrientValuesPerReferenceSize = {
+      calories: selectedVariant.calories || 0, // kcal
+      protein: selectedVariant.protein || 0,
+      carbs: selectedVariant.carbs || 0,
+      fat: selectedVariant.fat || 0,
+      saturated_fat: selectedVariant.saturated_fat || 0,
+      polyunsaturated_fat: selectedVariant.polyunsaturated_fat || 0,
+      monounsaturated_fat: selectedVariant.monounsaturated_fat || 0,
+      trans_fat: selectedVariant.trans_fat || 0,
+      cholesterol: selectedVariant.cholesterol || 0,
+      sodium: selectedVariant.sodium || 0,
+      potassium: selectedVariant.potassium || 0,
+      dietary_fiber: selectedVariant.dietary_fiber || 0,
+      sugars: selectedVariant.sugars || 0,
+      vitamin_a: selectedVariant.vitamin_a || 0,
+      vitamin_c: selectedVariant.vitamin_c || 0,
+      calcium: selectedVariant.calcium || 0,
+      iron: selectedVariant.iron || 0,
     };
-  })();
+    const effectiveReferenceSize = selectedVariant.serving_size || 100;
 
+    // Calculate total nutrition: (nutrient_value_per_reference_size / effective_reference_size) * quantity_consumed
+    const result = {
+      calories:
+        (nutrientValuesPerReferenceSize.calories / effectiveReferenceSize) *
+        quantity, // This result is in kcal
+      protein:
+        (nutrientValuesPerReferenceSize.protein / effectiveReferenceSize) *
+        quantity,
+      carbs:
+        (nutrientValuesPerReferenceSize.carbs / effectiveReferenceSize) *
+        quantity,
+      fat:
+        (nutrientValuesPerReferenceSize.fat / effectiveReferenceSize) *
+        quantity,
+    };
+    debug(loggingLevel, 'Calculated nutrition result:', result);
+
+    return result;
+  };
+
+  const nutrition = calculateNutrition();
   const focusAndSelect = useCallback((e: HTMLInputElement) => {
     if (e) {
       e.focus();
       e.select();
     }
   }, []);
-
-  const displayUnit = isConverting
-    ? pendingUnit.trim() || '?'
-    : selectedVariant?.serving_unit || '';
 
   return (
     <Dialog
@@ -353,8 +330,15 @@ const FoodUnitSelector = ({
                 <div>
                   <Label htmlFor="unit">Unit</Label>
                   <Select
-                    value={dropdownValue}
-                    onValueChange={handleUnitChange}
+                    value={selectedVariant?.id || ''} // Use empty string for default if no ID
+                    onValueChange={(value) => {
+                      debug(loggingLevel, 'Unit selected:', value);
+                      const variant = variants.find((v) => v.id === value); // Match by actual ID
+                      setSelectedVariant(variant || null);
+                      if (variant) {
+                        setQuantity(variant.serving_size); // Update quantity to the new variant's serving size
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -364,142 +348,21 @@ const FoodUnitSelector = ({
                         (variant) =>
                           variant.id && (
                             <SelectItem key={variant.id} value={variant.id}>
+                              {' '}
+                              {/* Use actual ID as key and value */}
                               {variant.serving_unit}
                             </SelectItem>
                           )
                       )}
-                      {convertibleUnits.length > 0 && (
-                        <>
-                          <SelectSeparator />
-                          {convertibleUnits.map((u) => {
-                            const compatible =
-                              getConversionFactor(
-                                selectedVariant?.serving_unit || '',
-                                u
-                              ) !== null;
-                            return (
-                              <SelectItem key={u} value={u}>
-                                <span className="flex items-center gap-1.5">
-                                  {u}
-                                  {compatible && (
-                                    <Check className="h-3 w-3 text-green-500" />
-                                  )}
-                                </span>
-                              </SelectItem>
-                            );
-                          })}
-                        </>
-                      )}
-                      <SelectSeparator />
-                      <SelectItem value="__custom__">Custom unit...</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              {/* Custom unit name input */}
-              {pendingUnitIsCustom && (
-                <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
-                  <div>
-                    <Label htmlFor="customUnitName">Unit name</Label>
-                    <Input
-                      id="customUnitName"
-                      type="text"
-                      placeholder="e.g. slice, bar, scoop"
-                      value={pendingUnit}
-                      onChange={(e) => {
-                        setPendingUnit(e.target.value);
-                        setConversionError('');
-                      }}
-                    />
-                  </div>
-                  {pendingUnit.trim() && (
-                    <div>
-                      <Label htmlFor="conversionFactor">
-                        1 {pendingUnit.trim()} ={' '}
-                        {conversionBaseVariant?.serving_unit}
-                      </Label>
-                      <Input
-                        id="conversionFactor"
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        placeholder="e.g. 14.2"
-                        value={conversionFactor}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setConversionFactor(val === '' ? '' : Number(val));
-                          setConversionError('');
-                        }}
-                      />
-                    </div>
-                  )}
-                  {conversionError && (
-                    <p className="text-sm text-destructive">
-                      {conversionError}
-                    </p>
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={cancelConversion}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              )}
-
-              {/* Manual factor needed for incompatible standard units */}
-              {pendingUnit &&
-                !pendingUnitIsCustom &&
-                autoConversionFactor === null && (
-                  <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
-                    <p className="text-sm text-muted-foreground">
-                      These units can&apos;t be converted automatically — enter
-                      how many{' '}
-                      <strong>{conversionBaseVariant?.serving_unit}</strong> are
-                      in 1 <strong>{pendingUnit}</strong>.
-                    </p>
-                    <div>
-                      <Label htmlFor="conversionFactor">
-                        1 {pendingUnit} = ?{' '}
-                        {conversionBaseVariant?.serving_unit}
-                      </Label>
-                      <Input
-                        id="conversionFactor"
-                        type="number"
-                        step="0.01"
-                        min="0.01"
-                        placeholder="e.g. 14.2"
-                        value={conversionFactor}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setConversionFactor(val === '' ? '' : Number(val));
-                          setConversionError('');
-                        }}
-                      />
-                    </div>
-                    {conversionError && (
-                      <p className="text-sm text-destructive">
-                        {conversionError}
-                      </p>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={cancelConversion}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-
-              {nutrition && (
+              {nutrition && selectedVariant && (
                 <div className="bg-muted p-3 rounded-lg">
                   <h4 className="font-medium mb-2">
-                    Nutrition for {quantity} {displayUnit}:
+                    Nutrition for {quantity} {selectedVariant.serving_unit}:
                   </h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
@@ -523,22 +386,8 @@ const FoodUnitSelector = ({
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={
-                    createFoodVariantMutation.isPending ||
-                    (!isConverting && !selectedVariant) ||
-                    (isConverting &&
-                      (!pendingUnit.trim() ||
-                        (autoConversionFactor === null &&
-                          (!conversionFactor || conversionFactor <= 0))))
-                  }
-                >
-                  {createFoodVariantMutation.isPending
-                    ? 'Saving...'
-                    : initialQuantity
-                      ? 'Update Food'
-                      : 'Add to Meal'}
+                <Button type="submit" disabled={!selectedVariant}>
+                  {initialQuantity ? 'Update Food' : 'Add to Meal'}
                 </Button>
               </div>
             </div>

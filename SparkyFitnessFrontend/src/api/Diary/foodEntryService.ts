@@ -7,7 +7,6 @@ import { DayData, Goals } from '@/types/diary';
 export interface FoodEntryUpdateData {
   quantity?: number;
   unit?: string;
-  variant_id?: string | null;
 }
 
 export interface FoodEntryCreateData {

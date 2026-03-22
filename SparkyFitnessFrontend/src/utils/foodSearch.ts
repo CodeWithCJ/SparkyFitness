@@ -1,9 +1,5 @@
 import type { Food, FoodVariant, NutritionixItem } from '@/types/food';
 
-export function deepClone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value));
-}
-
 export const convertNutritionixToFood = (
   item: NutritionixItem,
   nutrientData?: NutritionixItem
