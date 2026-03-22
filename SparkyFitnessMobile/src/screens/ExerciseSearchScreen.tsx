@@ -27,6 +27,7 @@ import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
+import { resolveExerciseEntryTarget } from '../constants/exercise';
 
 type ExerciseSearchScreenProps = RootStackScreenProps<'ExerciseSearch'>;
 
@@ -53,6 +54,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
   const isEntryMode = 'mode' in params && params.mode === 'entry';
   const returnKey = 'returnKey' in params ? params.returnKey : undefined;
   const entryDate = isEntryMode ? params.date : undefined;
+  const entryTarget = isEntryMode ? params.entryTarget : undefined;
 
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -135,12 +137,23 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
 
   const handleSelectExercise = useCallback((exercise: Exercise) => {
     if (isEntryMode) {
-      navigation.navigate('ActivityForm', {
-        date: entryDate,
-        selectedExercise: exercise,
-        selectionNonce: Date.now(),
-        popCount: 2,
-      });
+      const selectedTarget = resolveExerciseEntryTarget(exercise, entryTarget ?? 'activity');
+
+      if (selectedTarget === 'workout') {
+        navigation.navigate('WorkoutForm', {
+          date: entryDate,
+          selectedExercise: exercise,
+          selectionNonce: Date.now(),
+          popCount: 2,
+        });
+      } else {
+        navigation.navigate('ActivityForm', {
+          date: entryDate,
+          selectedExercise: exercise,
+          selectionNonce: Date.now(),
+          popCount: 2,
+        });
+      }
     } else {
       navigation.dispatch({
         ...CommonActions.setParams({ selectedExercise: exercise, selectionNonce: Date.now() }),
@@ -148,7 +161,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
       });
       navigation.goBack();
     }
-  }, [isEntryMode, returnKey, entryDate, navigation]);
+  }, [isEntryMode, entryTarget, returnKey, entryDate, navigation]);
 
   const handleImportExercise = useCallback(async (item: ExternalExerciseItem) => {
     setImportingExerciseId(item.id);
@@ -168,7 +181,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
   }, [entryDate, navigation]);
 
   const handleNewWorkout = useCallback(() => {
-    navigation.navigate('WorkoutForm', { date: entryDate, popCount: 2 });
+    navigation.navigate('WorkoutForm', { date: entryDate, popCount: 2, skipDraftLoad: true });
   }, [entryDate, navigation]);
 
   // --- Shared renderers ---

@@ -40,6 +40,10 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const initialDate = route.params?.date;
   const popCount = route.params?.popCount ?? 1;
   const isEditMode = !!session;
+  const skipDraftLoad =
+    !!preset ||
+    !!route.params?.skipDraftLoad ||
+    (!!route.params?.selectedExercise && !isEditMode);
 
   const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
@@ -64,7 +68,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     populateFromPreset,
     hasDraftData,
     exercisesModifiedRef,
-  } = useWorkoutForm({ isEditMode, skipDraftLoad: !!preset, initialDate });
+  } = useWorkoutForm({ isEditMode, skipDraftLoad, initialDate });
 
   const {
     createSession,
