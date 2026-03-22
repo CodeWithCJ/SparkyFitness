@@ -10,6 +10,7 @@ const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 const FATSECRET_OAUTH_TOKEN_URL = "https://oauth.fatsecret.com/connect/token";
 const FATSECRET_API_BASE_URL = "https://platform.fatsecret.com/rest";
+const MAX_REASONABLE_METRIC_SERVING_SIZE = 1000;
 
 // Placeholder for serving unit aliases. In a real application, this would be more comprehensive.
 const SERVING_UNIT_ALIASES = {
@@ -404,7 +405,7 @@ function mapFatSecretSearchItem(item) {
     // Specific household unit like "cup", "slice", "tbsp"
     servingSize = hSize;
     servingUnit = hUnitNorm;
-  } else if (parenMetricMatch && ((pSize > 0 && pSize <= 1000) || isTrueGeneric)) {
+  } else if (parenMetricMatch && ((pSize > 0 && pSize <= MAX_REASONABLE_METRIC_SERVING_SIZE) || isTrueGeneric)) {
     // Metric in parents is usually better for "serving" or "portion" unless it's a whole container/pot
     servingSize = pSize;
     servingUnit = normalizeServingUnit(pUnit);
@@ -435,7 +436,7 @@ function mapFatSecretSearchItem(item) {
   let scaledCarbs = carbs;
   let scaledFat = fat;
 
-  const keepParenMetric = usedParenMetric && servingSize <= 1000;
+  const keepParenMetric = usedParenMetric && servingSize <= MAX_REASONABLE_METRIC_SERVING_SIZE;
   if (!keepParenMetric && (servingUnit === "g" || servingUnit === "ml") && servingSize > 0 && servingSize !== 100 && servingSize > 1) {
     const factor = 100 / servingSize;
     scaledCalories = Math.round(calories * factor);
