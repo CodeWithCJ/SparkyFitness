@@ -59,7 +59,6 @@ import {
 } from '@/utils/nutrientUtils';
 import EnhancedCustomFoodForm from '@/components/FoodSearch/CustomFoodForm';
 import { MealFilter } from '@/types/meal';
-import type { Meal } from '@/types/meal';
 
 const FoodDatabaseManager: React.FC = () => {
   const { t } = useTranslation();
@@ -138,12 +137,8 @@ const FoodDatabaseManager: React.FC = () => {
     setEditingFood(null);
   };
 
-  const handleFoodSelected = (item: Food | Meal, type: 'food' | 'meal') => {
+  const handleFoodSelected = () => {
     setShowFoodSearchDialog(false);
-    if (type === 'food') {
-      setFoodToAddToMeal(item as Food);
-      setShowFoodUnitSelectorDialog(true);
-    }
   };
 
   const handleAddFoodToMeal = async (
@@ -693,6 +688,7 @@ const FoodDatabaseManager: React.FC = () => {
           open={showFoodUnitSelectorDialog}
           onOpenChange={setShowFoodUnitSelectorDialog}
           onSelect={handleAddFoodToMeal}
+          showUnitSelector={false}
         />
       )}
 
