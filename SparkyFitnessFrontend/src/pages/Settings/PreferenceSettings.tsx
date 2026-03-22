@@ -27,6 +27,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { DayOfWeek } from '@/types/settings';
 
 export const PreferenceSettings = () => {
   const { t } = useTranslation();
@@ -51,6 +52,8 @@ export const PreferenceSettings = () => {
     setLanguage,
     language,
     loggingLevel,
+    firstDayOfWeek,
+    setFirstDayOfWeek,
     saveAllPreferences,
   } = usePreferences();
 
@@ -75,6 +78,7 @@ export const PreferenceSettings = () => {
         autoScaleOpenFoodFactsImports,
         autoScaleOnlineImports,
         language,
+        firstDayOfWeek,
         loggingLevel: localLoggingLevel,
       });
       toast({
@@ -223,6 +227,67 @@ export const PreferenceSettings = () => {
                 <SelectItem value="kJ">
                   {t('settings.preferences.joules', 'Joules (kJ)')}
                 </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="first_day_of_week">
+              {t(
+                'settings.preferences.firstDayOfWeek',
+                'Start Day of the Week'
+              )}
+            </Label>
+            <Select
+              value={String(firstDayOfWeek)}
+              onValueChange={(value) =>
+                setFirstDayOfWeek(Number(value) as DayOfWeek)
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  {
+                    value: '0',
+                    label: 'Sunday',
+                    tKey: 'settings.preferences.sunday',
+                  },
+                  {
+                    value: '1',
+                    label: 'Monday',
+                    tKey: 'settings.preferences.monday',
+                  },
+                  {
+                    value: '2',
+                    label: 'Tuesday',
+                    tKey: 'settings.preferences.tuesday',
+                  },
+                  {
+                    value: '3',
+                    label: 'Wednesday',
+                    tKey: 'settings.preferences.wednesday',
+                  },
+                  {
+                    value: '4',
+                    label: 'Thursday',
+                    tKey: 'settings.preferences.thursday',
+                  },
+                  {
+                    value: '5',
+                    label: 'Friday',
+                    tKey: 'settings.preferences.friday',
+                  },
+                  {
+                    value: '6',
+                    label: 'Saturday',
+                    tKey: 'settings.preferences.saturday',
+                  },
+                ].map((day) => (
+                  <SelectItem key={day.value} value={day.value}>
+                    {t(day.tKey, day.label)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

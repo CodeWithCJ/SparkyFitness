@@ -562,6 +562,7 @@ const Auth = () => {
                             );
                             setFullName(e.target.value);
                           }}
+                          autoComplete="name"
                           required
                         />
                       </div>

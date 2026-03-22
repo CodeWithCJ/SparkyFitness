@@ -60,7 +60,7 @@ export const ActivityCadenceChart = ({
                   }}
                   tickFormatter={(value) => {
                     if (xAxisMode === 'activityDuration')
-                      return `${Number(value).toFixed(0)} ${t('common.min')}`;
+                      return `${Number(value).toFixed(0)} ${t('common.min', 'min')}`;
                     if (xAxisMode === 'distance')
                       return `${Number(value).toFixed(2)}`;
                     if (xAxisMode === 'timeOfDay')
@@ -79,7 +79,7 @@ export const ActivityCadenceChart = ({
                     if (xAxisMode === 'timeOfDay')
                       return new Date(value).toLocaleTimeString();
                     if (xAxisMode === 'activityDuration')
-                      return `${Number(value).toFixed(0)} ${t('common.min')}`;
+                      return `${Number(value).toFixed(0)} ${t('common.min', 'min')}`;
                     if (xAxisMode === 'distance')
                       return `${Number(value).toFixed(2)} ${distanceUnit === 'km' ? 'km' : 'mi'}`;
                     return String(value);

@@ -7,7 +7,8 @@ export interface Goals {
   fat: number;
   water_goal_ml: number;
   dietary_fiber?: number;
-  [key: string]: number | undefined; // Allow custom nutrients
+  custom_nutrients?: Record<string, number>;
+  meal_percentages?: Record<string, number>;
 }
 
 export interface ExerciseEntry {

@@ -60,8 +60,7 @@ async function findUserById(userId) {
               u.mfa_totp_enabled,
               u.mfa_email_enabled,
               tf.backup_codes as mfa_recovery_codes,
-              u.mfa_enforced,
-              u.email_mfa_code, u.email_mfa_expires_at
+              u.mfa_enforced
        FROM "user" u
        LEFT JOIN profiles p ON u.id = p.id
        LEFT JOIN two_factor tf ON u.id = tf.user_id
@@ -406,7 +405,7 @@ async function updateUserFullName(userId, fullName) {
   }
 }
 
-async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmailEnabled, mfaRecoveryCodes, mfaEnforced, emailMfaCode, emailMfaExpiresAt) {
+async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmailEnabled, mfaRecoveryCodes, mfaEnforced) {
   const client = await getSystemClient();
   try {
     const query = `
@@ -415,8 +414,6 @@ async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmail
           mfa_email_enabled = COALESCE($3, mfa_email_enabled),
           two_factor_enabled = (COALESCE($2, mfa_totp_enabled) OR COALESCE($3, mfa_email_enabled)),
           mfa_enforced = COALESCE($4, mfa_enforced),
-          email_mfa_code = COALESCE($5, email_mfa_code),
-          email_mfa_expires_at = COALESCE($6, email_mfa_expires_at),
           updated_at = now()
       WHERE id = $1
       RETURNING id
@@ -425,9 +422,7 @@ async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmail
       userId,
       mfaTotpEnabled,
       mfaEmailEnabled,
-      mfaEnforced,
-      emailMfaCode,
-      emailMfaExpiresAt
+      mfaEnforced
     ]);
 
     // Handle two_factor table updates

@@ -239,7 +239,7 @@ async function updateUserFullName(userId, fullName) {
   }
 }
 
-async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmailEnabled, mfaRecoveryCodes, mfaEnforced, emailMfaCode, emailMfaExpiresAt) {
+async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmailEnabled, mfaRecoveryCodes, mfaEnforced) {
   try {
     const success = await userRepository.updateUserMfaSettings(
       userId,
@@ -247,9 +247,7 @@ async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmail
       mfaTotpEnabled,
       mfaEmailEnabled,
       mfaRecoveryCodes,
-      mfaEnforced,
-      emailMfaCode,
-      emailMfaExpiresAt
+      mfaEnforced
     );
     return success;
   } catch (error) {
@@ -270,9 +268,7 @@ async function resetUserMfa(adminUserId, targetUserId) {
       false, // disable TOTP
       false, // disable email MFA
       [],    // clear recovery codes
-      false, // disable enforced
-      null,  // clear email code
-      null   // clear email expiry
+      false  // disable enforced
     );
     await logAdminAction(adminUserId, targetUserId, 'USER_MFA_RESET', { resetUserId: targetUserId });
     return true;

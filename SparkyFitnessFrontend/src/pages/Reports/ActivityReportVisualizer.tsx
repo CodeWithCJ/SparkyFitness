@@ -9,9 +9,10 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActivityDetailsQuery } from '@/hooks/Exercises/useExercises';
 import {
   processChartData,
-  extractElevationGain,
   getActivityIcon,
   getEventTypeLabel,
+  readActivityStats,
+  formatDuration,
 } from '@/utils/activityReportUtil';
 import { info } from '@/utils/logging';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
@@ -55,6 +56,24 @@ const ActivityReportVisualizer = ({
     convertEnergy,
   } = usePreferences();
 
+  const allChartData = activityData
+    ? processChartData(
+        activityData.activity?.details?.activityDetailMetrics || [],
+        activityData,
+        loggingLevel,
+        convertDistance,
+        distanceUnit
+      )
+    : [];
+
+  const hasDistanceData =
+    allChartData.length > 0 &&
+    allChartData.some((d: ChartDataPoint) => d.distance > 0);
+
+  // Derive the effective x-axis mode — fall back to timeOfDay when no distance data
+  const effectiveXAxisMode: XAxisMode =
+    !hasDistanceData && xAxisMode === 'distance' ? 'timeOfDay' : xAxisMode;
+
   if (loading) {
     return <div>{t('reports.activityReport.loadingActivityReport')}</div>;
   }
@@ -70,14 +89,6 @@ const ActivityReportVisualizer = ({
   if (!activityData) {
     return <div>{t('reports.activityReport.noActivityDataAvailable')}</div>;
   }
-
-  const allChartData = processChartData(
-    activityData.activity?.details?.activityDetailMetrics || [],
-    activityData,
-    loggingLevel,
-    convertDistance,
-    distanceUnit
-  );
 
   const paceData = allChartData.filter(
     (data: ChartDataPoint) => data.speed > 0
@@ -117,89 +128,84 @@ const ActivityReportVisualizer = ({
     [t('reports.activityReport.timeInZoneS')]: zone.secsInZone,
   }));
 
-  const activityObj = activityData.activity?.activity as
-    | Record<string, unknown>
-    | undefined;
-  const activityTypeKey =
-    (activityObj?.['activityType'] as { typeKey?: string } | undefined)
-      ?.typeKey ||
-    (activityObj?.['sport_type'] as string | undefined) ||
-    (activityObj?.['type'] as string | undefined);
+  // Provider-agnostic stats
+  const stats = readActivityStats(activityData);
 
-  const totalActivityDurationSeconds =
-    activityData.activity?.activity?.duration || 0;
-  const totalActivityCalories = activityData.activity?.activity?.calories || 0;
-  const totalActivityAscent = extractElevationGain(
-    activityData.activity?.activity as Record<string, unknown>
-  );
-  const averageHR = activityData.activity?.activity?.averageHR || 0;
-  const averageRunCadence =
-    activityData.activity?.activity?.averageRunCadence || 0;
-
-  let totalActivityDistanceForDisplay: number = 0;
-  let averagePaceForDisplay: number = 0;
-
-  if (allChartData.length > 0) {
+  // Distance: prefer chart data (most accurate after conversion), fall back to stats
+  let totalActivityDistanceForDisplay: number | null = null;
+  if (allChartData.length > 0 && hasDistanceData) {
     totalActivityDistanceForDisplay =
-      allChartData[allChartData.length - 1]?.distance ?? 0;
-  } else if (
-    activityData.activity?.activity?.distance &&
-    activityData.activity.activity.distance > 0
-  ) {
+      allChartData[allChartData.length - 1]?.distance ?? null;
+  } else if (stats.distance != null && stats.distance > 0) {
     totalActivityDistanceForDisplay = convertDistance(
-      activityData.activity.activity.distance,
+      stats.distance,
       'km',
       distanceUnit
     );
   }
 
-  if (
-    activityData.activity?.activity?.averagePace &&
-    activityData.activity.activity.averagePace > 0
-  ) {
-    averagePaceForDisplay = activityData.activity.activity.averagePace;
+  // Pace: prefer stored value, fall back to chart calculation
+  let averagePaceForDisplay: number | null = null;
+  if (stats.pace != null && stats.pace > 0) {
+    averagePaceForDisplay = stats.pace;
     if (distanceUnit === 'miles') {
       averagePaceForDisplay = averagePaceForDisplay * 1.60934;
     }
   } else if (paceData.length > 0) {
-    const totalPaceKm = paceData.reduce(
-      (sum: number, dataPoint: ChartDataPoint) => sum + dataPoint.pace,
+    const totalPace = paceData.reduce(
+      (sum: number, dp: ChartDataPoint) => sum + dp.pace,
       0
     );
-    if (paceData.length > 0) {
-      let calculatedPace = totalPaceKm / paceData.length;
-      if (distanceUnit === 'miles') {
-        calculatedPace = calculatedPace * 1.60934;
-      }
-      averagePaceForDisplay = calculatedPace;
+    let calculatedPace = totalPace / paceData.length;
+    if (distanceUnit === 'miles') {
+      calculatedPace = calculatedPace * 1.60934;
     }
+    averagePaceForDisplay = calculatedPace > 0 ? calculatedPace : null;
   }
 
-  const totalActivityDurationFormatted =
-    totalActivityDurationSeconds > 0
-      ? `${Math.floor(totalActivityDurationSeconds / 60)}:${(totalActivityDurationSeconds % 60).toFixed(0).padStart(2, '0')}`
-      : 'N/A';
-  const totalActivityDistanceFormatted =
-    totalActivityDistanceForDisplay > 0
+  // Duration in seconds for formatting
+  const durationSeconds =
+    stats.duration != null && stats.duration > 0 ? stats.duration * 60 : null;
+
+  // Formatted stat strings — null means "hide the card"
+  // Minimum display threshold: hides values that would round to "0.00" (e.g. GPS drift).
+  const MIN_DISTANCE_FOR_DISPLAY = 0.005;
+  const distanceFormatted =
+    totalActivityDistanceForDisplay != null &&
+    totalActivityDistanceForDisplay >= MIN_DISTANCE_FOR_DISPLAY
       ? `${totalActivityDistanceForDisplay.toFixed(2)} ${distanceUnit}`
-      : 'N/A';
-  const averagePaceFormatted =
-    averagePaceForDisplay > 0
+      : null;
+
+  const durationFormatted =
+    durationSeconds != null ? formatDuration(durationSeconds) : null;
+
+  const paceFormatted =
+    averagePaceForDisplay != null && averagePaceForDisplay > 0
       ? `${averagePaceForDisplay.toFixed(2)} /${distanceUnit === 'km' ? 'km' : 'mi'}`
-      : 'N/A';
-  const totalActivityAscentFormatted =
-    totalActivityAscent > 0 ? `${totalActivityAscent.toFixed(0)}` : '--';
-  const totalActivityCaloriesFormatted =
-    totalActivityCalories > 0
-      ? `${Math.round(convertEnergy(totalActivityCalories, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`
-      : 'N/A';
-  const averageHRFormatted =
-    averageHR > 0 ? `${averageHR.toFixed(0)} bpm` : 'N/A';
-  const averageRunCadenceFormatted =
-    averageRunCadence > 0 ? `${averageRunCadence.toFixed(0)} spm` : null;
+      : null;
+
+  const ascentFormatted =
+    stats.ascent != null && stats.ascent > 0
+      ? `${stats.ascent.toFixed(0)} m`
+      : null;
+
+  const caloriesFormatted =
+    stats.calories != null && stats.calories > 0
+      ? `${Math.round(convertEnergy(stats.calories, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`
+      : null;
+
+  const heartRateFormatted =
+    stats.heartRate != null && stats.heartRate > 0
+      ? `${stats.heartRate.toFixed(0)} bpm`
+      : null;
+
+  const cadenceFormatted =
+    stats.cadence != null && stats.cadence > 0
+      ? `${stats.cadence.toFixed(0)} spm`
+      : null;
 
   const getXAxisDataKey = () => {
-    switch (xAxisMode) {
+    switch (effectiveXAxisMode) {
       case 'activityDuration':
         return 'activityDuration';
       case 'distance':
@@ -211,7 +217,7 @@ const ActivityReportVisualizer = ({
   };
 
   const getXAxisLabel = () => {
-    switch (xAxisMode) {
+    switch (effectiveXAxisMode) {
       case 'activityDuration':
         return t('reports.activityReport.activityDurationMin');
       case 'distance':
@@ -225,6 +231,8 @@ const ActivityReportVisualizer = ({
     }
   };
 
+  const activityTypeKey = stats.activityTypeKey;
+
   return (
     <div className="activity-report-visualizer p-4">
       <div className="flex items-center mb-4">
@@ -234,8 +242,7 @@ const ActivityReportVisualizer = ({
           </span>
         </div>
         <h2 className="text-2xl font-bold">
-          {activityData?.activity?.activity?.activityName ||
-            activityData.workout?.workoutName}
+          {stats.activityName || activityData.workout?.workoutName}
         </h2>
         <span className="ml-2 text-gray-500 cursor-pointer">✏️</span>
       </div>
@@ -303,43 +310,49 @@ const ActivityReportVisualizer = ({
                 {t('reports.activityReport.stats')}
               </h3>
               <ActivityStatsGrid
-                distance={totalActivityDistanceFormatted}
-                duration={totalActivityDurationFormatted}
-                pace={averagePaceFormatted}
-                ascent={totalActivityAscentFormatted}
-                calories={totalActivityCaloriesFormatted}
-                heartRate={averageHRFormatted}
-                cadence={averageRunCadenceFormatted}
+                distance={distanceFormatted}
+                duration={durationFormatted}
+                pace={paceFormatted}
+                ascent={ascentFormatted}
+                calories={caloriesFormatted}
+                heartRate={heartRateFormatted}
+                cadence={cadenceFormatted}
               />
             </div>
 
-            <div className="mb-4">
-              <span className="mr-2">{t('reports.activityReport.xAxis')}</span>
-              <button
-                className={`px-3 py-1 rounded-md text-sm ${xAxisMode === 'timeOfDay' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
-                onClick={() => setXAxisMode('timeOfDay')}
-              >
-                {t('reports.activityReport.timeOfDay')}
-              </button>
-              <button
-                className={`ml-2 px-3 py-1 rounded-md text-sm ${xAxisMode === 'activityDuration' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
-                onClick={() => setXAxisMode('activityDuration')}
-              >
-                {t('reports.activityReport.duration')}
-              </button>
-              <button
-                className={`ml-2 px-3 py-1 rounded-md text-sm ${xAxisMode === 'distance' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
-                onClick={() => setXAxisMode('distance')}
-              >
-                {t('reports.activityReport.distance')}
-              </button>
-            </div>
+            {allChartData.length > 0 && (
+              <div className="mb-4">
+                <span className="mr-2">
+                  {t('reports.activityReport.xAxis')}
+                </span>
+                <button
+                  className={`px-3 py-1 rounded-md text-sm ${effectiveXAxisMode === 'timeOfDay' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
+                  onClick={() => setXAxisMode('timeOfDay')}
+                >
+                  {t('reports.activityReport.timeOfDay')}
+                </button>
+                <button
+                  className={`ml-2 px-3 py-1 rounded-md text-sm ${effectiveXAxisMode === 'activityDuration' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
+                  onClick={() => setXAxisMode('activityDuration')}
+                >
+                  {t('reports.activityReport.duration')}
+                </button>
+                {hasDistanceData && (
+                  <button
+                    className={`ml-2 px-3 py-1 rounded-md text-sm ${effectiveXAxisMode === 'distance' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-white'}`}
+                    onClick={() => setXAxisMode('distance')}
+                  >
+                    {t('reports.activityReport.distance')}
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {paceData && paceData.length > 0 && (
                 <ActivityPaceChart
                   data={paceData}
-                  xAxisMode={xAxisMode}
+                  xAxisMode={effectiveXAxisMode}
                   getXAxisDataKey={getXAxisDataKey}
                   getXAxisLabel={getXAxisLabel}
                   distanceUnit={distanceUnit}
@@ -348,7 +361,7 @@ const ActivityReportVisualizer = ({
               {heartRateData && heartRateData.length > 0 && (
                 <ActivityHeartRateChart
                   data={heartRateData}
-                  xAxisMode={xAxisMode}
+                  xAxisMode={effectiveXAxisMode}
                   getXAxisDataKey={getXAxisDataKey}
                   getXAxisLabel={getXAxisLabel}
                   distanceUnit={distanceUnit}
@@ -357,7 +370,7 @@ const ActivityReportVisualizer = ({
               {runCadenceData && runCadenceData.length > 0 && (
                 <ActivityCadenceChart
                   data={runCadenceData}
-                  xAxisMode={xAxisMode}
+                  xAxisMode={effectiveXAxisMode}
                   getXAxisDataKey={getXAxisDataKey}
                   getXAxisLabel={getXAxisLabel}
                   distanceUnit={distanceUnit}
@@ -367,7 +380,7 @@ const ActivityReportVisualizer = ({
               {elevationData && elevationData.length > 0 && (
                 <ActivityElevationChart
                   data={elevationData}
-                  xAxisMode={xAxisMode}
+                  xAxisMode={effectiveXAxisMode}
                   getXAxisDataKey={getXAxisDataKey}
                   getXAxisLabel={getXAxisLabel}
                   distanceUnit={distanceUnit}
