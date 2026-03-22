@@ -57,7 +57,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
     return groups;
   }, [sessions]);
 
-  const handleAddExercise = useStartExercise({ navigation });
+  const handleAddExercise = useStartExercise({ navigation, entryTarget: 'workout' });
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -167,12 +167,10 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
         <Text className="text-2xl font-bold text-text-primary">Workouts</Text>
         {isConnected && (
           <Button
-            variant="ghost"
+            variant="header"
             onPress={handleAddExercise}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            className="py-0 px-0"
           >
-            <Text className="text-base font-medium" style={{ color: accentPrimary }}>Add</Text>
+            Add
           </Button>
         )}
       </View>
