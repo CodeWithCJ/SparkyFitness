@@ -101,7 +101,7 @@ const apiKeyPlugin = require("@better-auth/api-key").apiKey({
 
 const auth = betterAuth({
   database: authPool,
-  secret: Buffer.from(process.env.BETTER_AUTH_SECRET, "base64"),
+  secret: Buffer.from(process.env.BETTER_AUTH_SECRET, "base64").toString(),
 
   // Base URL configuration - MUST use public frontend URL for OIDC to work
   baseURL:

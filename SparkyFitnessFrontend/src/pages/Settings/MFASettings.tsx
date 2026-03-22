@@ -10,7 +10,8 @@ import { authClient } from '@/lib/auth-client';
 import { toast } from '@/hooks/use-toast';
 import { log } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import QRCode from 'react-qr-code';
+// @ts-expect-error workaround for import error
+import { QRCode } from 'react-qr-code';
 import {
   useSyncTotpMutation,
   useToggleEmailMfaMutation,
