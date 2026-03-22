@@ -507,7 +507,7 @@ describe('readHealthRecords', () => {
     );
 
     expect(result).toHaveLength(1);
-    expect((result[0] as { samples: Array<{ beatsPerMinute: number }> }).samples).toEqual([{ beatsPerMinute: 72 }]);
+    expect((result[0] as { samples: { beatsPerMinute: number }[] }).samples).toEqual([{ beatsPerMinute: 72 }]);
   });
 
   test('transforms Weight records with weight object', async () => {
@@ -529,6 +529,30 @@ describe('readHealthRecords', () => {
 
     expect(result).toHaveLength(1);
     expect((result[0] as { weight: { inKilograms: number } }).weight).toEqual({ inKilograms: 75.5 });
+  });
+
+  test('transforms BloodOxygenSaturation records to percent objects', async () => {
+    await initHealthConnect();
+
+    mockQueryQuantitySamples.mockResolvedValue([
+      {
+        startDate: '2024-01-15T08:00:00Z',
+        endDate: '2024-01-15T08:00:00Z',
+        quantity: 0.972,
+      },
+    ]);
+
+    const result = await readHealthRecords(
+      'BloodOxygenSaturation',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      time: '2024-01-15T08:00:00Z',
+      percentage: { inPercent: 97.2 },
+    });
   });
 
   test('handles non-array response from queryQuantitySamples', async () => {
