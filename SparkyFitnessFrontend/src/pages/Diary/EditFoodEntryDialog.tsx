@@ -13,6 +13,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -21,10 +22,14 @@ import { info, warn, error } from '@/utils/logging';
 import type { FoodVariant, FoodEntry } from '@/types/food';
 import { useFoodView } from '@/hooks/Foods/useFoods';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
-import { useFoodVariants } from '@/hooks/Foods/useFoodVariants';
+import {
+  useFoodVariants,
+  useCreateFoodVariantMutation,
+} from '@/hooks/Foods/useFoodVariants';
 import { useUpdateFoodEntryMutation } from '@/hooks/Diary/useFoodEntries';
 import { calculateNutrition } from '@/utils/nutritionCalculations';
 import { NutrientGrid } from './NutrientsGrid';
+import { useUnitConversion } from '@/hooks/Foods/useUnitConversion';
 
 interface EditFoodEntryDialogProps {
   entry: FoodEntry | null;
@@ -52,6 +57,7 @@ const EditFoodEntryDialog = ({
     entry?.food_id || ''
   );
   const { mutateAsync: updateFoodEntry } = useUpdateFoodEntryMutation();
+  const createFoodVariantMutation = useCreateFoodVariantMutation();
 
   const loading = isLoadingFood || isLoadingVariants;
   const isEditingAllowed = open && !!entry && !entry.meal_id;
@@ -60,7 +66,6 @@ const EditFoodEntryDialog = ({
 
   useEffect(() => {
     if (open && !loading && inputRef.current) {
-      // Kleiner Timeout hilft oft bei Dialog-Animationen von Radix UI
       setTimeout(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
@@ -108,18 +113,84 @@ const EditFoodEntryDialog = ({
     return [primaryUnit, ...variantsFromDb];
   }, [foodData, variantsData, entry, isEditingAllowed]);
 
-  const selectedVariant = useMemo(() => {
+  const selectedVariant = useMemo((): FoodVariant | null => {
     if (!variants.length) return null;
     if (selectedVariantId) {
-      return variants.find((v) => v.id === selectedVariantId) || variants[0];
+      return (
+        variants.find((v) => v.id === selectedVariantId) || variants[0] || null
+      );
     }
-    return variants[0];
+    return variants[0] || null;
   }, [variants, selectedVariantId]);
+
+  const {
+    pendingUnit,
+    setPendingUnit,
+    pendingUnitIsCustom,
+    conversionFactor,
+    setConversionFactor,
+    autoConversionFactor,
+    conversionBaseVariant,
+    conversionError,
+    setConversionError,
+    isConverting,
+    convertibleUnits,
+    dropdownValue,
+    buildConvertedVariant,
+    handleUnitChange,
+    cancelConversion,
+  } = useUnitConversion({
+    variants,
+    selectedVariant,
+    onVariantSelect: (variantId) => {
+      setSelectedVariantId(variantId);
+    },
+  });
 
   if (!entry) return null;
 
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (isConverting) {
+      const convertedVariant = buildConvertedVariant();
+      if (!convertedVariant) {
+        setConversionError(
+          'Please enter a valid unit name and conversion factor.'
+        );
+        return;
+      }
+      setConversionError('');
+      try {
+        const savedVariant = await createFoodVariantMutation.mutateAsync({
+          foodId: entry.food_id ?? '',
+          variant: convertedVariant,
+        });
+        const variantWithId: FoodVariant = {
+          ...convertedVariant,
+          ...savedVariant,
+        };
+        await updateFoodEntry({
+          id: entry.id,
+          data: {
+            quantity,
+            unit: variantWithId.serving_unit,
+            variant_id: variantWithId.id || null,
+          },
+        });
+        info(
+          loggingLevel,
+          'Food entry updated with converted variant:',
+          entry.id
+        );
+        onOpenChange(false);
+      } catch (err) {
+        error(loggingLevel, 'Error saving converted variant:', err);
+        setConversionError('Failed to save the new unit. Please try again.');
+      }
+      return;
+    }
+
     if (!selectedVariant) {
       warn(loggingLevel, 'Save called with no selected variant.');
       return;
@@ -142,8 +213,12 @@ const EditFoodEntryDialog = ({
     }
   };
 
-  const nutrition = selectedVariant
-    ? calculateNutrition(selectedVariant, quantity)
+  // Use the converted variant for nutrition when converting, otherwise the selected variant
+  const activeVariant = isConverting
+    ? buildConvertedVariant()
+    : selectedVariant;
+  const nutrition = activeVariant
+    ? calculateNutrition(activeVariant, quantity)
     : null;
 
   return (
@@ -193,8 +268,8 @@ const EditFoodEntryDialog = ({
                 <div>
                   <Label htmlFor="unit">Unit</Label>
                   <Select
-                    value={selectedVariant?.id || ''}
-                    onValueChange={setSelectedVariantId}
+                    value={dropdownValue}
+                    onValueChange={handleUnitChange}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -208,15 +283,126 @@ const EditFoodEntryDialog = ({
                             </SelectItem>
                           )
                       )}
+                      {convertibleUnits.length > 0 && (
+                        <>
+                          <SelectSeparator />
+                          {convertibleUnits.map((u) => (
+                            <SelectItem key={u} value={u}>
+                              {u}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      <SelectSeparator />
+                      <SelectItem value="__custom__">Custom unit...</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
+              {/* Custom unit name input */}
+              {pendingUnitIsCustom && (
+                <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
+                  <div>
+                    <Label htmlFor="customUnitName">Unit name</Label>
+                    <Input
+                      id="customUnitName"
+                      type="text"
+                      placeholder="e.g. slice, bar, scoop"
+                      value={pendingUnit}
+                      onChange={(e) => {
+                        setPendingUnit(e.target.value);
+                        setConversionError('');
+                      }}
+                    />
+                  </div>
+                  {pendingUnit.trim() && (
+                    <div>
+                      <Label htmlFor="conversionFactor">
+                        1 {pendingUnit.trim()} ={' '}
+                        {conversionBaseVariant?.serving_unit}
+                      </Label>
+                      <Input
+                        id="conversionFactor"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="e.g. 14.2"
+                        value={conversionFactor}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setConversionFactor(val === '' ? '' : Number(val));
+                          setConversionError('');
+                        }}
+                      />
+                    </div>
+                  )}
+                  {conversionError && (
+                    <p className="text-sm text-destructive">
+                      {conversionError}
+                    </p>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={cancelConversion}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+
+              {/* Manual factor needed for incompatible standard units */}
+              {pendingUnit &&
+                !pendingUnitIsCustom &&
+                autoConversionFactor === null && (
+                  <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
+                    <p className="text-sm text-muted-foreground">
+                      These units can&apos;t be converted automatically — enter
+                      how many{' '}
+                      <strong>{conversionBaseVariant?.serving_unit}</strong> are
+                      in 1 <strong>{pendingUnit}</strong>.
+                    </p>
+                    <div>
+                      <Label htmlFor="conversionFactor">
+                        1 {pendingUnit} = ?{' '}
+                        {conversionBaseVariant?.serving_unit}
+                      </Label>
+                      <Input
+                        id="conversionFactor"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="e.g. 14.2"
+                        value={conversionFactor}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setConversionFactor(val === '' ? '' : Number(val));
+                          setConversionError('');
+                        }}
+                      />
+                    </div>
+                    {conversionError && (
+                      <p className="text-sm text-destructive">
+                        {conversionError}
+                      </p>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelConversion}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+
               {nutrition && customNutrients && (
                 <div className="space-y-4">
                   <NutrientGrid
-                    baseVariant={selectedVariant}
+                    baseVariant={activeVariant}
                     nutrition={nutrition}
                     customNutrients={customNutrients}
                     energyUnit={energyUnit}
@@ -233,7 +419,20 @@ const EditFoodEntryDialog = ({
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Save Changes</Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    createFoodVariantMutation.isPending ||
+                    (isConverting &&
+                      (!pendingUnit.trim() ||
+                        (autoConversionFactor === null &&
+                          (!conversionFactor || conversionFactor <= 0))))
+                  }
+                >
+                  {createFoodVariantMutation.isPending
+                    ? 'Saving...'
+                    : 'Save Changes'}
+                </Button>
               </div>
             </div>
           </form>

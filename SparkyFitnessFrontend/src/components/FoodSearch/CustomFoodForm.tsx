@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -7,17 +7,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Copy } from 'lucide-react';
+import { Plus, Trash2, Copy, Check } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import type { Food, FoodVariant, GlycemicIndex } from '@/types/food';
+import {
+  getConversionFactor,
+  getUnitCategory,
+} from '@/utils/servingSizeConversions';
 import { useUpdateFoodEntriesSnapshotMutation } from '@/hooks/Foods/useFoods';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { useQueryClient } from '@tanstack/react-query';
@@ -25,7 +31,7 @@ import {
   foodVariantsOptions,
   useSaveFoodMutation,
 } from '@/hooks/Foods/useFoodVariants';
-import { isUUID } from '@/utils/foodSearch';
+import { isUUID, deepClone } from '@/utils/foodSearch';
 import { error } from '@/utils/logging';
 
 type NumericFoodVariantKeys = Exclude<
@@ -141,31 +147,30 @@ interface EnhancedCustomFoodFormProps {
   visibleNutrients?: string[];
 }
 
-const COMMON_UNITS = [
-  'g',
-  'kg',
-  'mg',
-  'oz',
-  'lb',
-  'ml',
-  'l',
-  'cup',
-  'tbsp',
-  'tsp',
-  'piece',
-  'slice',
-  'serving',
-  'portion',
-  'can',
-  'bottle',
-  'packet',
-  'bag',
-  'bowl',
-  'plate',
-  'handful',
-  'scoop',
-  'bar',
-  'stick',
+// Unit groups mirror the lookup tables in servingSizeConversions.ts so that
+// compatible-unit detection is consistent in both directions.
+const UNIT_GROUPS = [
+  { label: 'Weight', units: ['g', 'kg', 'mg', 'oz', 'lb'] },
+  { label: 'Volume', units: ['ml', 'l', 'cup', 'tbsp', 'tsp'] },
+  {
+    label: 'Quantity',
+    units: [
+      'piece',
+      'slice',
+      'serving',
+      'portion',
+      'can',
+      'bottle',
+      'packet',
+      'bag',
+      'bowl',
+      'plate',
+      'handful',
+      'scoop',
+      'bar',
+      'stick',
+    ],
+  },
 ];
 
 const EnhancedCustomFoodForm = ({
@@ -180,6 +185,7 @@ const EnhancedCustomFoodForm = ({
     energyUnit,
     convertEnergy,
     loggingLevel,
+    autoScaleOnlineImports,
   } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
@@ -192,6 +198,9 @@ const EnhancedCustomFoodForm = ({
   const [originalVariants, setOriginalVariants] = useState<FormFoodVariant[]>(
     []
   ); // State to hold original, immutable variants
+  // Truly immutable snapshot of variants as loaded — never updated on user edits.
+  // Used for stable green-check indicators and restoring values on unit revert.
+  const loadedVariantsRef = useRef<FormFoodVariant[]>([]);
   const [variantErrors, setVariantErrors] = useState<string[]>([]); // State to hold errors for each variant
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
@@ -289,7 +298,8 @@ const EnhancedCustomFoodForm = ({
         ];
       }
       setVariants(loadedVariants);
-      setOriginalVariants(JSON.parse(JSON.stringify(loadedVariants))); // Deep copy for original values
+      setOriginalVariants(deepClone(loadedVariants)); // Deep copy for original values
+      loadedVariantsRef.current = deepClone(loadedVariants);
     } catch (error) {
       console.error('Error loading variants:', error);
       // Fallback to a single default variant on error
@@ -319,7 +329,8 @@ const EnhancedCustomFoodForm = ({
         custom_nutrients: {},
       };
       setVariants([defaultVariant]);
-      setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy for original values
+      setOriginalVariants([deepClone(defaultVariant)]); // Deep copy for original values
+      loadedVariantsRef.current = [deepClone(defaultVariant)];
     }
   }, [food?.default_variant, food?.id, queryClient]);
 
@@ -334,12 +345,17 @@ const EnhancedCustomFoodForm = ({
         const mappedVariants = food.variants.map((v) =>
           foodVariantToFormVariant({
             ...v,
-            is_locked: false,
+            // Preserve is_locked from the provider (e.g. OpenFoodFacts respects
+            // the autoScaleOpenFoodFactsImports preference). For other online
+            // database foods where is_locked is not explicitly set, fall back to
+            // the user's autoScaleOnlineImports preference.
+            is_locked: v.is_locked ?? autoScaleOnlineImports,
             glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
           })
         );
         setVariants(mappedVariants);
-        setOriginalVariants(JSON.parse(JSON.stringify(mappedVariants))); // Deep copy for original values
+        setOriginalVariants(deepClone(mappedVariants)); // Deep copy for original values
+        loadedVariantsRef.current = deepClone(mappedVariants);
         setVariantErrors(new Array(food.variants.length).fill(null)); // Initialize errors for existing variants
       } else {
         loadExistingVariants();
@@ -354,7 +370,8 @@ const EnhancedCustomFoodForm = ({
         foodVariantToFormVariant
       );
       setVariants(mappedInitialVariants);
-      setOriginalVariants(JSON.parse(JSON.stringify(mappedInitialVariants))); // Deep copy for original values
+      setOriginalVariants(deepClone(mappedInitialVariants)); // Deep copy for original values
+      loadedVariantsRef.current = deepClone(mappedInitialVariants);
       setVariantErrors(new Array(initialVariants.length).fill(null)); // Initialize errors for initial variants
     } else {
       setFormData({
@@ -398,9 +415,16 @@ const EnhancedCustomFoodForm = ({
 
       setVariants([defaultVariant]);
       setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
+      loadedVariantsRef.current = [JSON.parse(JSON.stringify(defaultVariant))];
       setVariantErrors(['']); // Initialize error for the single default variant
     }
-  }, [food, initialVariants, customNutrients, loadExistingVariants]);
+  }, [
+    food,
+    initialVariants,
+    customNutrients,
+    loadExistingVariants,
+    autoScaleOnlineImports,
+  ]);
 
   const addVariant = () => {
     const newVariant: FormFoodVariant = {
@@ -440,8 +464,12 @@ const EnhancedCustomFoodForm = ({
     setVariants((prevVariants) => [...prevVariants, newVariant]);
     setOriginalVariants((prevOriginal) => [
       ...prevOriginal,
-      JSON.parse(JSON.stringify(newVariant)),
+      deepClone(newVariant),
     ]); // Add deep copy to original variants
+    loadedVariantsRef.current = [
+      ...loadedVariantsRef.current,
+      deepClone(newVariant),
+    ];
     setVariantErrors((prevErrors) => [...prevErrors, '']); // Add a null error for the new variant
   };
 
@@ -467,6 +495,10 @@ const EnhancedCustomFoodForm = ({
       ...prevOriginal,
       JSON.parse(JSON.stringify(newVariant)),
     ]); // Add deep copy to original variants
+    loadedVariantsRef.current = [
+      ...loadedVariantsRef.current,
+      JSON.parse(JSON.stringify(newVariant)),
+    ];
     setVariantErrors((prevErrors) => [...prevErrors, '']); // Add a null error for the duplicated variant
   };
 
@@ -550,6 +582,40 @@ const EnhancedCustomFoodForm = ({
       newVariant.calories = convertEnergy(value, energyUnit, 'kcal');
     }
 
+    // When the unit type changes, scale nutrition values to reflect the new unit
+    // while keeping the serving size number the same.
+    // e.g. 100g → 100mg: nutrition is scaled by factor (0.001) since 100mg is much less physical mass.
+    if (field === 'serving_unit') {
+      const oldUnit = currentVariant.serving_unit;
+      const newUnit = String(value);
+      const loadedVariant = loadedVariantsRef.current[index];
+      // If switching back to the original loaded unit, restore all original nutrition values.
+      if (loadedVariant && newUnit === loadedVariant.serving_unit) {
+        for (const nutrient of nutrientFields) {
+          newVariant[nutrient] = loadedVariant[nutrient];
+        }
+      } else {
+        const factor = getConversionFactor(oldUnit, newUnit);
+        const oldCategory = getUnitCategory(oldUnit);
+        const newCategory = getUnitCategory(newUnit);
+        // Both units are non-measurable serving units (piece, slice, etc.) — no conversion needed, no alert.
+        const bothServing = oldCategory === null && newCategory === null;
+        if (factor !== null && factor !== 1) {
+          for (const nutrient of nutrientFields) {
+            const oldVal = Number(currentVariant[nutrient]);
+            if (!isNaN(oldVal)) {
+              newVariant[nutrient] = Number((oldVal * factor).toFixed(4));
+            }
+          }
+        } else if (factor === null && !bothServing) {
+          toast({
+            title: 'Manual conversion required',
+            description: `"${oldUnit}" and "${newUnit}" are incompatible unit types. Please update the serving size and nutrition values manually.`,
+          });
+        }
+      }
+    }
+
     // If this variant is set to be the default, ensure all others are not
     if (field === 'is_default' && value === true) {
       updatedVariants.forEach((v, i) => {
@@ -613,7 +679,7 @@ const EnhancedCustomFoodForm = ({
       // For any manual change (not a scaling event), update the baseline
       // This includes changing serving_size when NOT locked, or changing any nutrient field
       // Special case: if is_locked is true and a nutrient is edited, update the baseline with the new nutrient AND current serving_size
-      const originalToUpdate = JSON.parse(JSON.stringify(newVariant));
+      const originalToUpdate = deepClone(newVariant);
       updatedOriginalVariants[index] = originalToUpdate;
       setOriginalVariants(updatedOriginalVariants);
     }
@@ -737,7 +803,8 @@ const EnhancedCustomFoodForm = ({
             custom_nutrients: {},
           };
           setVariants([defaultVariant]);
-          setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
+          setOriginalVariants([deepClone(defaultVariant)]); // Deep copy
+          loadedVariantsRef.current = [deepClone(defaultVariant)];
           setVariantErrors(['']);
         }
         onSave(savedFood);
@@ -775,7 +842,8 @@ const EnhancedCustomFoodForm = ({
           custom_nutrients: {},
         };
         setVariants([defaultVariant]);
-        setOriginalVariants([JSON.parse(JSON.stringify(defaultVariant))]); // Deep copy
+        setOriginalVariants([deepClone(defaultVariant)]); // Deep copy
+        loadedVariantsRef.current = [deepClone(defaultVariant)];
         setVariantErrors(['']);
       }
 
@@ -912,10 +980,29 @@ const EnhancedCustomFoodForm = ({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {COMMON_UNITS.map((unit) => (
-                                <SelectItem key={unit} value={unit}>
-                                  {unit}
-                                </SelectItem>
+                              {UNIT_GROUPS.map((group) => (
+                                <SelectGroup key={group.label}>
+                                  <SelectLabel>{group.label}</SelectLabel>
+                                  {group.units.map((unit) => {
+                                    const baseUnit =
+                                      loadedVariantsRef.current[index]
+                                        ?.serving_unit ?? variant.serving_unit;
+                                    const compatible =
+                                      unit !== baseUnit &&
+                                      getConversionFactor(baseUnit, unit) !==
+                                        null;
+                                    return (
+                                      <SelectItem key={unit} value={unit}>
+                                        <span className="flex items-center gap-1.5">
+                                          {unit}
+                                          {compatible && (
+                                            <Check className="h-3 w-3 text-green-500" />
+                                          )}
+                                        </span>
+                                      </SelectItem>
+                                    );
+                                  })}
+                                </SelectGroup>
                               ))}
                             </SelectContent>
                           </Select>
