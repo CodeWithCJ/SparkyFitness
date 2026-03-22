@@ -38,6 +38,7 @@ import {
   stonesLbsToKg,
   feetInchesToCm,
 } from '@/utils/unitConversions';
+import { DayOfWeek } from '@/types/settings';
 
 // Function to fetch user preferences from the backend
 
@@ -94,7 +95,7 @@ interface PreferencesContextType {
   activityLevel: ActivityLevel;
   tdeeAllowNegativeAdjustment: boolean;
   selectedDiet: string;
-  firstDayOfWeek: number;
+  firstDayOfWeek: DayOfWeek;
   setWeightUnit: (unit: WeightUnit) => void;
   setMeasurementUnit: (unit: MeasurementUnit) => void;
   setDistanceUnit: (unit: DistanceUnit) => void;
@@ -126,7 +127,7 @@ interface PreferencesContextType {
   ) => void;
   setSugarCalculationAlgorithm: (algorithm: SugarCalculationAlgorithm) => void;
   setSelectedDiet: (diet: string) => void;
-  setFirstDayOfWeek: (day: number) => void;
+  setFirstDayOfWeek: (day: DayOfWeek) => void;
   convertWeight: (value: number, from: WeightUnit, to: WeightUnit) => number;
   convertMeasurement: (
     value: number,
@@ -272,7 +273,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       SugarCalculationAlgorithm.WHO_GUIDELINES
     );
   const [selectedDiet, setSelectedDietState] = useState<string>('balanced');
-  const [firstDayOfWeek, setFirstDayOfWeekState] = useState<number>(0);
+  const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(0);
 
   const fetchUserPreferences = useCallback(async () => {
     try {

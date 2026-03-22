@@ -20,7 +20,7 @@ function Calendar({
 
   return (
     <DayPicker
-      weekStartsOn={firstDayOfWeek as 0 | 1 | 2 | 3 | 4 | 5 | 6}
+      weekStartsOn={firstDayOfWeek}
       showOutsideDays={showOutsideDays}
       className={cn('p-3', className)}
       captionLayout="dropdown"

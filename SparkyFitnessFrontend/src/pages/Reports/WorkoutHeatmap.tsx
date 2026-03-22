@@ -66,9 +66,9 @@ const WorkoutHeatmap = ({ workoutDates }: WorkoutHeatmapProps) => {
   const baseDays = [
     { key: 'sunday', label: 'S' },
     { key: 'monday', label: 'M' },
-    { key: 'tuesday', label: 'T' },
+    { key: 'tuesday', label: 'Tu' },
     { key: 'wednesday', label: 'W' },
-    { key: 'thursday', label: 'T' },
+    { key: 'thursday', label: 'Th' },
     { key: 'friday', label: 'F' },
     { key: 'saturday', label: 'S' },
   ];
