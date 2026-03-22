@@ -346,6 +346,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
         sets: sets,
         exercise_preset_entry_id: newExercisePresetEntry.id, // Link to preset entry
         avg_heart_rate: perExerciseAvgHeartRate ? Math.round(perExerciseAvgHeartRate) : null, // Round to nearest whole number or keep null
+        source_id: activity.activityId?.toString() ?? null,
       };
       await exerciseEntryRepository.createExerciseEntry(userId, { ...exerciseEntryData, sort_order: exerciseSortOrder }, userId, 'garmin', newExercisePresetEntry.id);
 
@@ -451,7 +452,8 @@ async function processGarminSimpleActivity(userId, activityData) {
     entry_date: entryDate,
     notes: `Garmin Activity: ${activity.activityName} (${activity.activityType?.typeKey})`,
     distance: activity.distance,
-    avg_heart_rate: activity.averageHeartRateInBeatsPerMinute || null,
+    avg_heart_rate: activity.averageHR || activity.averageHeartRateInBeatsPerMinute || null,
+    source_id: activity.activityId?.toString() ?? null,
   };
 
   const newEntry = await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, userId, 'garmin');
@@ -535,6 +537,7 @@ async function syncGarminData(
     activities: null
   };
 
+  // Phase 1: Health and Wellness — runs independently so a failure here does not skip activities
   try {
     // 1. Sync Health and Wellness
     log('info', `[garminService] Fetching Health and Wellness data...`);
@@ -598,7 +601,13 @@ async function syncGarminData(
       measurementServiceResult,
       processedSleepData
     };
+  } catch (healthError) {
+    log('error', `[garminService] Error during health sync for user ${userId}:`, healthError);
+    results.health = { error: healthError instanceof Error ? healthError.message : String(healthError) };
+  }
 
+  // Phase 2: Activities and Workouts — always runs even if Phase 1 failed
+  try {
     // 5. Sync Activities and Workouts
     log('info', `[garminService] Fetching Activities and Workouts data...`);
     const activitiesData = await garminConnectService.fetchGarminActivitiesAndWorkouts(userId, startDate, endDate);
@@ -607,13 +616,12 @@ async function syncGarminData(
     const processedActivities = await processActivitiesAndWorkouts(userId, activitiesData, startDate, endDate);
 
     results.activities = processedActivities;
-    log('info', `[garminService] Full Garmin sync completed for user ${userId}.`);
-
-  } catch (error) {
-    log('error', `[garminService] Error during full Garmin sync for user ${userId}:`, error);
-    throw error; // Re-throw to be handled by caller
+  } catch (activitiesError) {
+    log('error', `[garminService] Error during activities sync for user ${userId}:`, activitiesError);
+    results.activities = { error: activitiesError instanceof Error ? activitiesError.message : String(activitiesError) };
   }
 
+  log('info', `[garminService] Full Garmin sync completed for user ${userId}.`);
   return results;
 }
 

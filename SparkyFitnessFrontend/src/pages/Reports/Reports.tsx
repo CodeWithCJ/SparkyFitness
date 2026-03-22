@@ -85,7 +85,6 @@ const Reports = () => {
   const [endDate, setEndDate] = useState<string>(() => {
     return formatDateInUserTimezone(new Date(), 'yyyy-MM-dd');
   });
-  const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('charts');
 
   const { data: customNutrients = [], isLoading: customNutrientsLoading } =
@@ -117,11 +116,6 @@ const Reports = () => {
     dashboardLoading ||
     fastingLoading ||
     reportsLoading;
-
-  const handleDrilldown = (date: string) => {
-    setDrilldownDate(date);
-    // You might want to switch to the table tab here
-  };
 
   const {
     nutritionData = [],
@@ -269,7 +263,6 @@ const Reports = () => {
                 exerciseDashboardData={exerciseDashboardData}
                 startDate={startDate}
                 endDate={endDate}
-                onDrilldown={handleDrilldown}
               />
             </ChartErrorBoundary>
           </TabsContent>
@@ -313,13 +306,7 @@ const Reports = () => {
             <ChartErrorBoundary>
               <ReportsTables
                 tabularData={tabularData}
-                exerciseEntries={
-                  drilldownDate
-                    ? exerciseEntries.filter(
-                        (e) => e.entry_date === drilldownDate
-                      )
-                    : exerciseEntries
-                } // Pass exerciseEntries
+                exerciseEntries={exerciseEntries} // Pass exerciseEntries
                 measurementData={measurementData}
                 customCategories={customCategories}
                 customMeasurementsData={customMeasurementsData}

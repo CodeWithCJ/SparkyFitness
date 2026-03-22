@@ -80,7 +80,7 @@ export const SortableSetItem = React.memo(
                 {t('exercise.editExerciseEntryDialog.typeLabel', 'Type')}
               </Label>
               <Select
-                value={set.set_type}
+                value={set.set_type || undefined}
                 onValueChange={(value) =>
                   handleSetChange(setIndex, 'set_type', value)
                 }

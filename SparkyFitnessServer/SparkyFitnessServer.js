@@ -448,12 +448,19 @@ const scheduleGarminSyncs = async () => {
     const providers =
       await externalProviderRepository.getProvidersByType("garmin");
     for (const provider of providers) {
-      if (provider.is_active && provider.sync_frequency === "hourly") {
-        await garminService.syncGarminData(provider.user_id, "scheduled");
-        await externalProviderRepository.updateProviderLastSync(
-          provider.id,
-          new Date(),
-        );
+      if (provider.is_active && provider.sync_frequency !== "manual") {
+        try {
+          await garminService.syncGarminData(provider.user_id, "scheduled");
+          await externalProviderRepository.updateProviderLastSync(
+            provider.id,
+            new Date(),
+          );
+        } catch (error) {
+          console.error(
+            `[CRON] Garmin sync failed for user ${provider.user_id}:`,
+            error,
+          );
+        }
       }
     }
   });
