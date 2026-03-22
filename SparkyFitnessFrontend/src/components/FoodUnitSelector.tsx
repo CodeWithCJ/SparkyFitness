@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Check } from 'lucide-react';
 import {
   Dialog,
@@ -26,10 +26,8 @@ import {
   foodVariantsOptions,
   useCreateFoodVariantMutation,
 } from '@/hooks/Foods/useFoodVariants';
-import {
-  ALL_CONVERSION_UNITS,
-  getConversionFactor,
-} from '@/utils/servingSizeConversions';
+import { getConversionFactor } from '@/utils/servingSizeConversions';
+import { useUnitConversion } from '@/hooks/Foods/useUnitConversion';
 
 interface FoodUnitSelectorProps {
   food: Food;
@@ -71,21 +69,34 @@ const FoodUnitSelector = ({
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  // Pending unit state: set when user picks a non-variant unit from the dropdown
-  const [pendingUnit, setPendingUnit] = useState(''); // the unit string (or typed custom name)
-  const [pendingUnitIsCustom, setPendingUnitIsCustom] = useState(false); // true when user picked "Custom unit..."
-  const [conversionFactor, setConversionFactor] = useState<number | ''>(1);
-  const [autoConversionFactor, setAutoConversionFactor] = useState<
-    number | null
-  >(null);
-  const [conversionBaseVariant, setConversionBaseVariant] =
-    useState<FoodVariant | null>(null);
-  const [conversionError, setConversionError] = useState('');
-
   const queryClient = useQueryClient();
   const createFoodVariantMutation = useCreateFoodVariantMutation();
 
-  const isConverting = !!(pendingUnit || pendingUnitIsCustom);
+  const {
+    pendingUnit,
+    setPendingUnit,
+    pendingUnitIsCustom,
+    conversionFactor,
+    setConversionFactor,
+    autoConversionFactor,
+    conversionBaseVariant,
+    conversionError,
+    setConversionError,
+    isConverting,
+    convertibleUnits,
+    dropdownValue,
+    buildConvertedVariant,
+    handleUnitChange,
+    cancelConversion,
+    resetConversionState,
+  } = useUnitConversion({
+    variants,
+    selectedVariant,
+    onVariantSelect: (_variantId, variant) => {
+      setSelectedVariant(variant);
+      setQuantity(variant.serving_size);
+    },
+  });
 
   const loadVariantsData = useCallback(async () => {
     debug(loggingLevel, 'Loading food variants for food ID:', food?.id);
@@ -210,12 +221,7 @@ const FoodUnitSelector = ({
           ? initialQuantity
           : food.default_variant?.serving_size || 1
       );
-      setPendingUnit('');
-      setPendingUnitIsCustom(false);
-      setConversionFactor(1);
-      setAutoConversionFactor(null);
-      setConversionBaseVariant(null);
-      setConversionError('');
+      resetConversionState();
     }
   }, [
     open,
@@ -225,66 +231,7 @@ const FoodUnitSelector = ({
     initialVariantId,
     loadVariantsData,
     loggingLevel,
-  ]);
-
-  // Flat list of convertible units, excluding those already in existing variants
-  const convertibleUnits = useMemo(() => {
-    const existingUnits = new Set(
-      variants.map((v) => v.serving_unit.toLowerCase())
-    );
-    return ALL_CONVERSION_UNITS.filter(
-      (u) => !existingUnits.has(u.toLowerCase())
-    );
-  }, [variants]);
-
-  /**
-   * Builds a converted variant where serving_size=1 (1 of the target unit).
-   * The factor represents how many base units are in 1 target unit.
-   * Nutrition is scaled accordingly so calculateNutrition(variant, quantity) works correctly.
-   */
-  const buildConvertedVariant = useCallback((): FoodVariant | null => {
-    const base = conversionBaseVariant;
-    const effectiveFactor =
-      autoConversionFactor !== null
-        ? autoConversionFactor
-        : typeof conversionFactor === 'number'
-          ? conversionFactor
-          : 0;
-    if (!base || effectiveFactor <= 0 || !pendingUnit.trim()) return null;
-    // ratio: how much of the base variant's nutrition is in 1 target unit
-    const ratio = effectiveFactor / base.serving_size;
-    return {
-      serving_size: 1,
-      serving_unit: pendingUnit.trim(),
-      calories: (base.calories || 0) * ratio,
-      protein: (base.protein || 0) * ratio,
-      carbs: (base.carbs || 0) * ratio,
-      fat: (base.fat || 0) * ratio,
-      saturated_fat: (base.saturated_fat || 0) * ratio,
-      polyunsaturated_fat: (base.polyunsaturated_fat || 0) * ratio,
-      monounsaturated_fat: (base.monounsaturated_fat || 0) * ratio,
-      trans_fat: (base.trans_fat || 0) * ratio,
-      cholesterol: (base.cholesterol || 0) * ratio,
-      sodium: (base.sodium || 0) * ratio,
-      potassium: (base.potassium || 0) * ratio,
-      dietary_fiber: (base.dietary_fiber || 0) * ratio,
-      sugars: (base.sugars || 0) * ratio,
-      vitamin_a: (base.vitamin_a || 0) * ratio,
-      vitamin_c: (base.vitamin_c || 0) * ratio,
-      calcium: (base.calcium || 0) * ratio,
-      iron: (base.iron || 0) * ratio,
-      custom_nutrients: Object.fromEntries(
-        Object.entries(base.custom_nutrients || {}).map(([k, v]) => [
-          k,
-          (Number(v) || 0) * ratio,
-        ])
-      ),
-    };
-  }, [
-    conversionBaseVariant,
-    conversionFactor,
-    autoConversionFactor,
-    pendingUnit,
+    resetConversionState,
   ]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -361,53 +308,6 @@ const FoodUnitSelector = ({
   const displayUnit = isConverting
     ? pendingUnit.trim() || '?'
     : selectedVariant?.serving_unit || '';
-
-  const dropdownValue = pendingUnitIsCustom
-    ? '__custom__'
-    : pendingUnit || selectedVariant?.id || '';
-
-  const handleUnitChange = (value: string) => {
-    debug(loggingLevel, 'Unit selected:', value);
-
-    if (value === '__custom__') {
-      setConversionBaseVariant(selectedVariant || variants[0] || null);
-      setPendingUnitIsCustom(true);
-      setPendingUnit('');
-      setAutoConversionFactor(null);
-      setConversionFactor(1);
-      setConversionError('');
-      return;
-    }
-
-    // Check if it's an existing variant
-    const variant = variants.find((v) => v.id === value);
-    if (variant) {
-      setSelectedVariant(variant);
-      setPendingUnit('');
-      setPendingUnitIsCustom(false);
-      setAutoConversionFactor(null);
-      setConversionBaseVariant(null);
-      setQuantity(variant.serving_size);
-      return;
-    }
-
-    // It's a standard unit for conversion
-    const base = selectedVariant || variants[0] || null;
-    setConversionBaseVariant(base);
-    setPendingUnit(value);
-    setPendingUnitIsCustom(false);
-    const auto = base ? getConversionFactor(base.serving_unit, value) : null;
-    setAutoConversionFactor(auto);
-    if (auto === null) setConversionFactor(1);
-    setConversionError('');
-  };
-
-  const cancelConversion = () => {
-    setPendingUnit('');
-    setPendingUnitIsCustom(false);
-    setAutoConversionFactor(null);
-    setConversionError('');
-  };
 
   return (
     <Dialog
