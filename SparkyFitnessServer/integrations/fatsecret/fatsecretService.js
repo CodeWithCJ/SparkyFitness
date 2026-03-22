@@ -81,7 +81,6 @@ function normalizeServingUnit(unit) {
   let clean = unit.replace(/\s*\([^)]*\)\s*$/i, "").toLowerCase().trim();
   
   const result = SERVING_UNIT_ALIASES[clean] || (SERVING_UNIT_ALIASES[clean.split(/\s+/)[0]] || clean);
-  console.log(`NORMALIZE_UNIT: in="${unit}", clean="${clean}", result="${result}"`);
   return result;
 }
 
@@ -399,6 +398,7 @@ function mapFatSecretSearchItem(item) {
 
   const pSize = parenMetricMatch ? parseFloat(parenMetricMatch[1]) : 0;
   const pUnit = parenMetricMatch ? parenMetricMatch[2] : "";
+  let usedParenMetric = false;
 
   if (householdMatch && !isGeneric) {
     // Specific household unit like "cup", "slice", "tbsp"
@@ -408,6 +408,7 @@ function mapFatSecretSearchItem(item) {
     // Metric in parents is usually better for "serving" or "portion" unless it's a whole container/pot
     servingSize = pSize;
     servingUnit = normalizeServingUnit(pUnit);
+    usedParenMetric = true;
   } else if (householdMatch) {
     // Fallback to generic or container household
     servingSize = hSize;
@@ -434,7 +435,8 @@ function mapFatSecretSearchItem(item) {
   let scaledCarbs = carbs;
   let scaledFat = fat;
 
-  if ((servingUnit === "g" || servingUnit === "ml") && servingSize > 0 && servingSize !== 100 && servingSize > 1) {
+  const keepParenMetric = usedParenMetric && servingSize <= 1000;
+  if (!keepParenMetric && (servingUnit === "g" || servingUnit === "ml") && servingSize > 0 && servingSize !== 100 && servingSize > 1) {
     const factor = 100 / servingSize;
     scaledCalories = Math.round(calories * factor);
     scaledProtein = Math.round(protein * factor * 10) / 10;
