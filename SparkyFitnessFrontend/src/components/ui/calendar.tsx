@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DayPicker } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   yearsRange?: number;
@@ -15,8 +16,11 @@ function Calendar({
   yearsRange = 10, // Default to 10 years if not provided
   ...props
 }: CalendarProps) {
+  const { firstDayOfWeek } = usePreferences();
+
   return (
     <DayPicker
+      weekStartsOn={firstDayOfWeek}
       showOutsideDays={showOutsideDays}
       className={cn('p-3', className)}
       captionLayout="dropdown"
