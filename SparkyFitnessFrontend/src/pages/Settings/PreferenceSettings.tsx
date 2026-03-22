@@ -46,6 +46,8 @@ export const PreferenceSettings = () => {
     setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
     autoScaleOpenFoodFactsImports,
     setAutoScaleOpenFoodFactsImports, // Add auto-scale preference
+    autoScaleOnlineImports,
+    setAutoScaleOnlineImports,
     setLanguage,
     language,
     loggingLevel,
@@ -71,6 +73,7 @@ export const PreferenceSettings = () => {
         dateFormat,
         itemDisplayLimit,
         autoScaleOpenFoodFactsImports,
+        autoScaleOnlineImports,
         language,
         loggingLevel: localLoggingLevel,
       });
@@ -335,6 +338,27 @@ export const PreferenceSettings = () => {
               id="auto-scale-openfoodfacts"
               checked={autoScaleOpenFoodFactsImports}
               onCheckedChange={setAutoScaleOpenFoodFactsImports}
+            />
+          </div>
+          <div className="flex items-center justify-between col-span-2 py-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="auto-scale-online-imports">
+                {t(
+                  'settings.preferences.autoScaleOnlineImports',
+                  'Auto-scale Online Database Imports'
+                )}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  'settings.preferences.autoScaleOnlineImportsHint',
+                  'When enabled, the Auto-Scale checkbox will be on by default when editing foods imported from any online database, so nutrition values scale automatically when you change the serving size.'
+                )}
+              </p>
+            </div>
+            <Switch
+              id="auto-scale-online-imports"
+              checked={autoScaleOnlineImports}
+              onCheckedChange={setAutoScaleOnlineImports}
             />
           </div>
         </div>
