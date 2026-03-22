@@ -84,7 +84,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
         : 0;
       const durSec = lap.duration ?? 0;
       acc.push({
-        lapIndex: (lap.lapIndex ?? i) + 1,
+        lapIndex: lap.lapIndex ?? i + 1,
         lapDistance: dist,
         lapDurationSeconds: durSec,
         cumulativeDistance: (prev?.cumulativeDistance ?? 0) + dist,
