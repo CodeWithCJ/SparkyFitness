@@ -13,6 +13,7 @@ import {
   type TransformedRecord,
 } from '../types/healthRecords';
 import { SyncDuration } from './healthconnect/preferences';
+import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../utils/concurrency';
 
 const METRIC_FETCH_CONCURRENCY = 3;
@@ -142,6 +143,17 @@ export const saveStringPreference = HealthConnectPreferences.saveStringPreferenc
 export const loadStringPreference = HealthConnectPreferences.loadStringPreference;
 export const saveSyncDuration = HealthConnectPreferences.saveSyncDuration;
 export const loadSyncDuration = HealthConnectPreferences.loadSyncDuration;
+export const refreshEnabledMetricPermissions = async (
+  healthMetricStates: HealthMetricStates,
+): Promise<boolean> =>
+  migrateEnabledMetricPermissionsIfNeeded({
+    healthMetricStates,
+    metrics: HEALTH_METRICS,
+    loadHealthPreference,
+    saveHealthPreference,
+    requestHealthPermissions,
+    logTag: '[HealthConnectService]',
+  });
 
 // Locked-device detection stubs for Android (iOS-only feature)
 export const resetDatabaseInaccessibleCount = (): void => {};

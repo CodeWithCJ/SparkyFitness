@@ -274,7 +274,7 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
       endTime,
     };
 
-    const [caloriesResult, distanceResult] = await Promise.allSettled([
+    const [activeCaloriesResult, distanceResult] = await Promise.allSettled([
       aggregateRecord({
         recordType: 'ActiveCaloriesBurned',
         timeRangeFilter,
@@ -293,12 +293,38 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
     // potentially valid data with a synthetic zero.
     const enrichedFields: Record<string, unknown> = {};
 
-    if (caloriesResult.status === 'fulfilled') {
-      const result = caloriesResult.value as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } };
-      const kcal = result.ACTIVE_CALORIES_TOTAL?.inKilocalories;
-      if (kcal != null) {
-        enrichedFields.energy = { inKilocalories: kcal };
+    // Try ActiveCaloriesBurned first, fall back to TotalCaloriesBurned.
+    // Many apps (Fitbit, OHealth, etc.) only write TotalCaloriesBurned to
+    // Health Connect, so ActiveCaloriesBurned alone misses those sessions.
+    // Treat 0 as missing — the Android Health Connect bridge defaults
+    // ACTIVE_CALORIES_TOTAL to 0.0 when no records exist for the range.
+    let kcal: number | undefined;
+    if (activeCaloriesResult.status === 'fulfilled') {
+      const result = activeCaloriesResult.value as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } };
+      const active = result.ACTIVE_CALORIES_TOTAL?.inKilocalories;
+      if (active != null && active > 0) {
+        kcal = active;
       }
+    }
+
+    if (kcal == null) {
+      try {
+        const totalResult = await aggregateRecord({
+          recordType: 'TotalCaloriesBurned',
+          timeRangeFilter,
+          dataOriginFilter,
+        }) as { ENERGY_TOTAL?: { inKilocalories?: number } };
+        const total = totalResult.ENERGY_TOTAL?.inKilocalories;
+        if (total != null && total > 0) {
+          kcal = total;
+        }
+      } catch {
+        // Permission not granted or no data — leave untouched
+      }
+    }
+
+    if (kcal != null) {
+      enrichedFields.energy = { inKilocalories: kcal };
     }
 
     if (distanceResult.status === 'fulfilled') {

@@ -5,6 +5,7 @@ import {
   readHealthRecords,
   getAggregatedStepsByDate,
   getAggregatedActiveCaloriesByDate,
+  enrichExerciseSessions,
   syncHealthData,
 } from '../../../src/services/healthconnect/index';
 
@@ -12,6 +13,7 @@ import {
   initialize,
   requestPermission,
   readRecords,
+  aggregateRecord,
 } from 'react-native-health-connect';
 
 import type { PermissionRequest, GrantedPermission, HealthMetricStates } from '../../../src/types/healthRecords';
@@ -34,6 +36,7 @@ jest.mock('../../../src/HealthMetrics', () => ({
 const mockInitialize = initialize as jest.Mock;
 const mockRequestPermission = requestPermission as jest.Mock;
 const mockReadRecords = readRecords as jest.Mock;
+const mockAggregateRecord = aggregateRecord as jest.Mock;
 
 describe('initHealthConnect', () => {
   beforeEach(() => {
@@ -600,6 +603,183 @@ describe('getAggregatedActiveCaloriesByDate', () => {
     );
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('enrichExerciseSessions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const makeSession = (overrides: Record<string, unknown> = {}) => ({
+    startTime: '2024-01-15T10:00:00Z',
+    endTime: '2024-01-15T11:00:00Z',
+    metadata: { dataOrigin: 'com.fitbit' },
+    ...overrides,
+  });
+
+  test('returns empty array for empty input', async () => {
+    const result = await enrichExerciseSessions([]);
+    expect(result).toEqual([]);
+    expect(mockAggregateRecord).not.toHaveBeenCalled();
+  });
+
+  test('attaches ActiveCaloriesBurned when available', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 350 } });
+      }
+      if (recordType === 'Distance') {
+        return Promise.resolve({ DISTANCE: { inMeters: 5000 } });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([makeSession()]);
+
+    expect(result[0]).toMatchObject({
+      energy: { inKilocalories: 350 },
+      distance: { inMeters: 5000 },
+    });
+  });
+
+  test('falls back to TotalCaloriesBurned when ActiveCaloriesBurned returns 0 (Android bridge default)', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        // Android bridge defaults missing data to 0.0
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 0 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 380 } });
+      }
+      if (recordType === 'Distance') {
+        return Promise.resolve({});
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([makeSession()]);
+
+    expect(result[0]).toMatchObject({
+      energy: { inKilocalories: 380 },
+    });
+  });
+
+  test('falls back to TotalCaloriesBurned when ActiveCaloriesBurned returns nothing', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({}); // No ACTIVE_CALORIES_TOTAL
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 420 } });
+      }
+      if (recordType === 'Distance') {
+        return Promise.resolve({});
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([makeSession()]);
+
+    expect(result[0]).toMatchObject({
+      energy: { inKilocalories: 420 },
+    });
+  });
+
+  test('falls back to TotalCaloriesBurned when ActiveCaloriesBurned rejects', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.reject(new Error('Permission denied'));
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 200 } });
+      }
+      if (recordType === 'Distance') {
+        return Promise.resolve({});
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([makeSession()]);
+
+    expect(result[0]).toMatchObject({
+      energy: { inKilocalories: 200 },
+    });
+  });
+
+  test('leaves record untouched when both calorie aggregates return 0', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 0 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 0 } });
+      }
+      if (recordType === 'Distance') {
+        return Promise.resolve({});
+      }
+      return Promise.resolve({});
+    });
+
+    const session = makeSession();
+    const result = await enrichExerciseSessions([session]);
+
+    expect(result[0]).toEqual(session);
+  });
+
+  test('leaves record untouched when both calorie sources return nothing', async () => {
+    mockAggregateRecord.mockResolvedValue({});
+
+    const session = makeSession();
+    const result = await enrichExerciseSessions([session]);
+
+    expect(result[0]).toEqual(session);
+  });
+
+  test('leaves record untouched when all aggregate calls fail', async () => {
+    mockAggregateRecord.mockRejectedValue(new Error('Permission denied'));
+
+    const session = makeSession();
+    const result = await enrichExerciseSessions([session]);
+
+    expect(result[0]).toEqual(session);
+  });
+
+  test('skips records without startTime or endTime', async () => {
+    const incompleteSession = { metadata: { dataOrigin: 'com.fitbit' } };
+
+    const result = await enrichExerciseSessions([incompleteSession]);
+
+    expect(result[0]).toEqual(incompleteSession);
+    expect(mockAggregateRecord).not.toHaveBeenCalled();
+  });
+
+  test('does not query TotalCaloriesBurned when ActiveCaloriesBurned has data', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 300 } });
+      }
+      if (recordType === 'Distance') {
+        return Promise.resolve({});
+      }
+      return Promise.resolve({});
+    });
+
+    await enrichExerciseSessions([makeSession()]);
+
+    const recordTypes = mockAggregateRecord.mock.calls.map((c: unknown[]) => (c[0] as { recordType: string }).recordType);
+    expect(recordTypes).not.toContain('TotalCaloriesBurned');
+  });
+
+  test('passes dataOriginFilter from session metadata', async () => {
+    mockAggregateRecord.mockResolvedValue({});
+
+    await enrichExerciseSessions([makeSession({ metadata: { dataOrigin: 'com.ohealth' } })]);
+
+    // All aggregate calls should include the data origin filter
+    for (const call of mockAggregateRecord.mock.calls) {
+      expect(call[0].dataOriginFilter).toEqual(['com.ohealth']);
+    }
   });
 });
 

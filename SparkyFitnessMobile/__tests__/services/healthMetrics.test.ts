@@ -11,6 +11,7 @@ describe('HEALTH_METRICS', () => {
       expect.arrayContaining([
         { accessType: 'read', recordType: 'ExerciseSession' },
         { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
+        { accessType: 'read', recordType: 'TotalCaloriesBurned' },
         { accessType: 'read', recordType: 'Distance' },
       ])
     );
