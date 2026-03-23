@@ -1,6 +1,6 @@
 export interface MobileHealthData {
   type: 'Stress' | 'SleepSession' | 'ExerciseSession' | 'Workout';
-  source: 'HealthConnect' | 'HealthKit';
+  source: 'Health Connect' | 'HealthKit';
   timestamp: string; // ISO 8601 format
   value?: number; // For Stress (level), or other single-value metrics
   // SleepSession specific fields

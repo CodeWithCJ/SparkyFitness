@@ -341,7 +341,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       distance: rec.totalDistance as number || 0,
       notes: 'Source: HealthKit',
       raw_data: record,
-      sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }]
+      sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }],
+      source_id: rec.uuid as string | undefined,
     };
     output.push(exerciseSession);
   },

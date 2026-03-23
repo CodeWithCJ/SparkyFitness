@@ -187,6 +187,12 @@ async function processMetric(
     dataToTransform = await getAggregatedDistanceByDate(startDate, endDate);
   } else if (type === 'FloorsClimbed') {
     dataToTransform = await getAggregatedFloorsClimbedByDate(startDate, endDate);
+  } else if (type === 'ExerciseSession') {
+    const rawRecords = await HealthConnect.readHealthRecords(type, startDate, endDate);
+    if (rawRecords.length === 0) {
+      return { data: [] };
+    }
+    dataToTransform = await HealthConnect.enrichExerciseSessions(rawRecords);
   } else {
     // For other types, read raw records
     const rawRecords = await HealthConnect.readHealthRecords(type, startDate, endDate);

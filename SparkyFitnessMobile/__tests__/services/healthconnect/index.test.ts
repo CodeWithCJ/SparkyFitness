@@ -139,6 +139,27 @@ describe('requestHealthPermissions', () => {
 
     expect(result).toBe(false);
   });
+
+  test('deduplicates repeated permissions before requesting them', async () => {
+    const permissions: PermissionRequest[] = [
+      { recordType: 'Distance', accessType: 'read' },
+      { recordType: 'ExerciseSession', accessType: 'read' },
+      { recordType: 'Distance', accessType: 'read' },
+    ];
+
+    mockRequestPermission.mockResolvedValue([
+      { recordType: 'Distance', accessType: 'read' },
+      { recordType: 'ExerciseSession', accessType: 'read' },
+    ] as GrantedPermission[]);
+
+    const result = await requestHealthPermissions(permissions);
+
+    expect(result).toBe(true);
+    expect(mockRequestPermission).toHaveBeenCalledWith([
+      { recordType: 'Distance', accessType: 'read' },
+      { recordType: 'ExerciseSession', accessType: 'read' },
+    ]);
+  });
 });
 
 describe('getSyncStartDate', () => {

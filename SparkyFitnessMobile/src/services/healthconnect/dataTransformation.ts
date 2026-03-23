@@ -531,6 +531,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       distance = distanceObj.inMeters;
     }
 
+    const metadata = rec.metadata as { id?: string } | undefined;
+
     const exerciseSession: TransformedExerciseSession = {
       type: 'ExerciseSession',
       source: HEALTH_CONNECT_SOURCE,
@@ -546,7 +548,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       distance: parseFloat(distance.toFixed(2)),
       notes: rec.notes as string | undefined,
       raw_data: record,
-      sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }]
+      sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }],
+      source_id: metadata?.id,
     };
     output.push(exerciseSession);
   },
