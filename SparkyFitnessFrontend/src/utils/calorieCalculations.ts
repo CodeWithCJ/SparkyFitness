@@ -20,25 +20,38 @@ export interface ResolvedExerciseCalories {
 }
 
 /**
- * Returns the calorie contribution from one of three mutually exclusive sources.
- * Priority: logged exercise entries > device active calories > step-based estimate.
- * Sources are mutually exclusive to avoid double-counting (e.g. device active
- * calories already include calories from workouts tracked by that device).
+ * Returns the calorie contribution from the most complete source.
+ * It compares:
+ * 1. Summary "Active Calories" from a device (which usually includes steps + workouts).
+ * 2. Logged individual workouts + estimated background steps.
+ *
+ * It returns whichever is larger to ensure we don't under-count, but avoids
+ * double-counting by not adding steps on top of a device-wide "Active Calories" summary.
  */
 export function resolveExerciseCalories(
   loggedExerciseCalories: number,
   activeCaloriesFromExercise: number,
-  stepsCalories: number
+  backgroundStepCalories: number
 ): ResolvedExerciseCalories {
-  if (loggedExerciseCalories > 0) {
-    return { calories: loggedExerciseCalories, source: 'logged' };
+  const workoutPlusSteps = loggedExerciseCalories + backgroundStepCalories;
+
+  if (
+    activeCaloriesFromExercise > 0 &&
+    activeCaloriesFromExercise >= workoutPlusSteps
+  ) {
+    return {
+      calories: activeCaloriesFromExercise,
+      source: 'active',
+    };
   }
-  if (activeCaloriesFromExercise > 0) {
-    return { calories: activeCaloriesFromExercise, source: 'active' };
+
+  if (workoutPlusSteps > 0) {
+    return {
+      calories: workoutPlusSteps,
+      source: loggedExerciseCalories > 0 ? 'logged' : 'steps',
+    };
   }
-  if (stepsCalories > 0) {
-    return { calories: stepsCalories, source: 'steps' };
-  }
+
   return { calories: 0, source: 'none' };
 }
 

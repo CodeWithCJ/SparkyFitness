@@ -25,31 +25,35 @@ describe('ACTIVITY_MULTIPLIERS', () => {
 // resolveExerciseCalories
 // ---------------------------------------------------------------------------
 describe('resolveExerciseCalories', () => {
-  it('returns logged exercise calories when present', () => {
+  it('returns sum of logged and steps when greater than active', () => {
+    // workoutPlusSteps = 300 + 100 = 400. 400 > 200.
     expect(resolveExerciseCalories(300, 200, 100)).toEqual({
-      calories: 300,
+      calories: 400,
       source: 'logged',
     });
   });
 
-  it('logged exercises take priority even when lower than active', () => {
+  it('active calories take priority when higher than workout + steps', () => {
+    // workoutPlusSteps = 100 + 300 = 400. 500 > 400.
     expect(resolveExerciseCalories(100, 500, 300)).toEqual({
-      calories: 100,
-      source: 'logged',
+      calories: 500,
+      source: 'active',
     });
   });
 
-  it('falls back to active calories when no logged exercises', () => {
+  it('falls back to active calories when no logged exercises and active is higher than steps', () => {
+    // workoutPlusSteps = 0 + 100 = 100. 200 > 100.
     expect(resolveExerciseCalories(0, 200, 100)).toEqual({
       calories: 200,
       source: 'active',
     });
   });
 
-  it('active calories take priority over higher steps', () => {
+  it('steps take priority over active calories if steps are higher', () => {
+    // workoutPlusSteps = 0 + 500 = 500. 500 > 100.
     expect(resolveExerciseCalories(0, 100, 500)).toEqual({
-      calories: 100,
-      source: 'active',
+      calories: 500,
+      source: 'steps',
     });
   });
 

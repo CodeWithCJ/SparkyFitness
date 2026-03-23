@@ -108,6 +108,7 @@ function _buildExerciseEntryWithSnapshot(
     notes: (entryData.notes as string) ?? null,
     distance: (entryData.distance as number) ?? null,
     avg_heart_rate: (entryData.avg_heart_rate as number) ?? null,
+    steps: (entryData.steps as number) ?? null,
     source: (source as string) ?? null,
     sets: ((entryData.sets as unknown[]) ?? []) as ExerciseEntrySetResponse[],
     exercise_snapshot: {
@@ -189,7 +190,10 @@ async function getExerciseEntryHistorySessions(
   const presetMetaMap = new Map<string, Record<string, unknown>>();
   const presetChildrenMap = new Map<string, ExerciseEntryResponse[]>();
   const presetActivityMap = new Map<string, ActivityDetailRow[]>();
-  const individualMap = new Map<string, ExerciseEntryResponse & { name: string | null }>();
+  const individualMap = new Map<
+    string,
+    ExerciseEntryResponse & { name: string | null }
+  >();
   const allExerciseEntryIds: string[] = [];
 
   const batchQueries: Promise<void>[] = [];
@@ -205,7 +209,7 @@ async function getExerciseEntryHistorySessions(
     batchQueries.push(
       client
         .query(
-          `SELECT id, workout_preset_id, name, description, notes, source
+          `SELECT id, workout_preset_id, name, description, notes, source, steps
            FROM exercise_preset_entries WHERE id = ANY($1::uuid[])`,
           [presetIds],
         )
@@ -352,6 +356,7 @@ async function getExerciseEntryHistorySessions(
         notes: (meta.notes as string) ?? null,
         source: meta.source as string,
         total_duration_minutes: totalDuration,
+        steps: (meta.steps as number) ?? null,
         exercises: children,
         activity_details: presetDetails,
       });
@@ -429,7 +434,7 @@ async function _getExerciseEntriesByDateWithClient(
   // Fetch preset entries and all exercise entries for the date in parallel
   const [presetResult, entriesResult] = await Promise.all([
     client.query(
-      `SELECT id, workout_preset_id, name, description, notes, source, created_at
+      `SELECT id, workout_preset_id, name, description, notes, source, created_at, steps
        FROM exercise_preset_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY created_at ASC`,
@@ -449,7 +454,10 @@ async function _getExerciseEntriesByDateWithClient(
 
   // Group entries: preset children vs standalone individuals
   const presetChildrenMap = new Map<string, ExerciseEntryResponse[]>();
-  const individualMap = new Map<string, ExerciseEntryResponse & { name: string | null }>();
+  const individualMap = new Map<
+    string,
+    ExerciseEntryResponse & { name: string | null }
+  >();
   const allEntryIds: string[] = [];
 
   // Track created_at for chronological ordering of standalone entries
@@ -535,16 +543,24 @@ async function _getExerciseEntriesByDateWithClient(
 
   for (const children of presetChildrenMap.values()) {
     for (const child of children) {
-      child.activity_details = mapActivityDetails(entryActivityMap.get(child.id) ?? []);
+      child.activity_details = mapActivityDetails(
+        entryActivityMap.get(child.id) ?? [],
+      );
     }
   }
 
   for (const entry of individualMap.values()) {
-    entry.activity_details = mapActivityDetails(entryActivityMap.get(entry.id) ?? []);
+    entry.activity_details = mapActivityDetails(
+      entryActivityMap.get(entry.id) ?? [],
+    );
   }
 
   // Build a unified stub list for chronological ordering
-  const stubs: Array<{ sessionType: "preset" | "individual"; id: string; createdAt: Date }> = [];
+  const stubs: Array<{
+    sessionType: "preset" | "individual";
+    id: string;
+    createdAt: Date;
+  }> = [];
 
   for (const presetRow of presetRows) {
     stubs.push({
@@ -568,7 +584,9 @@ async function _getExerciseEntriesByDateWithClient(
       const presetRow = presetRows.find((r) => r.id === stub.id);
       if (!presetRow) continue;
       const children = presetChildrenMap.get(stub.id) ?? [];
-      const presetDetails = mapActivityDetails(presetActivityMap.get(stub.id) ?? []);
+      const presetDetails = mapActivityDetails(
+        presetActivityMap.get(stub.id) ?? [],
+      );
       const totalDuration = children.reduce(
         (sum, c) => sum + (c.duration_minutes ?? 0),
         0,
@@ -584,6 +602,7 @@ async function _getExerciseEntriesByDateWithClient(
         notes: (presetRow.notes as string) ?? null,
         source: presetRow.source as string,
         total_duration_minutes: totalDuration,
+        steps: (presetRow.steps as number) ?? null,
         exercises: children,
         activity_details: presetDetails,
       });
@@ -625,7 +644,7 @@ export async function getGroupedExerciseSessionByIdWithClient(
   presetEntryId: string,
 ): Promise<PresetSessionResponse | null> {
   const metaResult = await client.query(
-    `SELECT id, workout_preset_id, name, description, notes, source, entry_date
+    `SELECT id, workout_preset_id, name, description, notes, source, entry_date, steps
      FROM exercise_preset_entries
      WHERE user_id = $1 AND id = $2`,
     [targetUserId, presetEntryId],
@@ -702,6 +721,7 @@ export async function getGroupedExerciseSessionByIdWithClient(
     description: (meta.description as string) ?? null,
     notes: (meta.notes as string) ?? null,
     source: meta.source as string,
+    steps: (meta.steps as number) ?? null,
     total_duration_minutes: exercises.reduce(
       (sum, exercise) => sum + (exercise.duration_minutes ?? 0),
       0,
