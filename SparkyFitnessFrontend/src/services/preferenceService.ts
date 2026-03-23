@@ -36,6 +36,7 @@ export interface UserPreferences {
     | string;
   exercise_calorie_percentage: number;
   auto_scale_open_food_facts_imports: boolean;
+  auto_scale_online_imports: boolean;
   auto_clear_history: 'never' | string;
   logging_level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
   system_prompt: string;
