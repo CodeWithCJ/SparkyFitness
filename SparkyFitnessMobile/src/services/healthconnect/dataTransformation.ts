@@ -57,7 +57,13 @@ const extractNestedValue = (rec: Record<string, unknown>, key: string, nestedKey
 
 const extractDirectValue = (rec: Record<string, unknown>, key: string): number | null => {
   const val = rec[key];
-  return typeof val === 'number' ? val : null;
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string') {
+    // Handle comma decimal separator (European locales e.g. "49,51")
+    const parsed = parseFloat(val.replace(',', '.'));
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
 };
 
 // Try multiple date fields in order of preference
@@ -327,10 +333,10 @@ VALUE_TRANSFORMERS['Vo2Max'] = createRobustTransformer({
   dateFields: ['time', 'startTime', 'timestamp', 'date'],
   validateValue: (v) => v > 0 && v < 100,
   valueStrategies: [
+    (rec) => extractDirectValue(rec, 'vo2MillilitersPerMinuteKilogram'),
     (rec) => extractDirectValue(rec, 'vo2Max'),
     (rec) => extractDirectValue(rec, 'vo2'),
     (rec) => extractDirectValue(rec, 'value'),
-    (rec) => extractDirectValue(rec, 'vo2MaxMillilitersPerMinuteKilogram'),
   ],
 });
 
