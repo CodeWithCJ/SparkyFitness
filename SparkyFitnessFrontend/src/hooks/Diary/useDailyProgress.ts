@@ -77,6 +77,7 @@ export const useDailyExerciseStats = (date: string) => {
     select: (data) => {
       let activeCalories = 0;
       let otherCalories = 0;
+      let activitySteps = 0;
 
       data.forEach((groupedEntry) => {
         if (groupedEntry.type === 'preset' && groupedEntry.exercises) {
@@ -86,6 +87,7 @@ export const useDailyExerciseStats = (date: string) => {
             } else {
               otherCalories += Number(entry.calories_burned || 0);
             }
+            activitySteps += Number(entry.steps || 0);
           });
         } else if (groupedEntry.type === 'individual') {
           if (groupedEntry.exercise_snapshot?.name === 'Active Calories') {
@@ -93,6 +95,7 @@ export const useDailyExerciseStats = (date: string) => {
           } else {
             otherCalories += Number(groupedEntry.calories_burned || 0);
           }
+          activitySteps += Number(groupedEntry.steps || 0);
         }
       });
 
@@ -100,6 +103,7 @@ export const useDailyExerciseStats = (date: string) => {
         entries: data,
         activeCalories,
         otherCalories,
+        activitySteps,
       };
     },
     meta: {
@@ -200,8 +204,10 @@ export const useCalculatedBMR = () => {
     return {
       bmr,
       includeInNet: includeBmrInNetCalories || false,
+      weight: weightData.weight,
+      height: heightData.height,
     };
   } catch (err) {
-    return { bmr: 0, includeInNet: false };
+    return { bmr: 0, includeInNet: false, weight: 0, height: 0 };
   }
 };

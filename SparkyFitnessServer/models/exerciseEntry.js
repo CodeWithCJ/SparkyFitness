@@ -336,8 +336,9 @@ async function _updateExerciseEntryWithClient(
       instructions = $22,
       images = $23,
       sort_order = $24,
+      steps = $25,
       updated_at = now()
-    WHERE id = $25 AND user_id = $26
+    WHERE id = $26 AND user_id = $27
     RETURNING id`,
     [
       mergedData.exercise_id,
@@ -368,6 +369,7 @@ async function _updateExerciseEntryWithClient(
       mergedData.instructions ? JSON.stringify(mergedData.instructions) : null,
       mergedData.images ? JSON.stringify(mergedData.images) : null,
       mergedData.sort_order || 0,
+      mergedData.steps || null,
       id,
       userId,
     ],
@@ -495,8 +497,8 @@ async function _createExerciseEntryWithClient(
            workout_plan_assignment_id, image_url, created_by_user_id,
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
-           distance, avg_heart_rate, exercise_preset_entry_id, sort_order
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) RETURNING id`,
+           distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) RETURNING id`,
         [
           userId,
           entryData.exercise_id,
@@ -524,6 +526,7 @@ async function _createExerciseEntryWithClient(
           entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
           exercisePresetEntryId, // New parameter
           entryData.sort_order || 0,
+          entryData.steps || null,
         ],
       );
       newEntryId = entryResult.rows[0].id;

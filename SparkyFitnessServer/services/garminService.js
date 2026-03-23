@@ -166,6 +166,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
     created_by_user_id: userId,
     notes: `Garmin Workout Session: ${workoutName}`,
     source: 'garmin', // Add source to exercise_preset_entries
+    steps: activity.steps || activity.totalSteps || activity.stepCount || 0,
   };
   const newExercisePresetEntry = await exercisePresetEntryRepository.createExercisePresetEntry(userId, exercisePresetEntryData, userId);
 
@@ -347,6 +348,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
         exercise_preset_entry_id: newExercisePresetEntry.id, // Link to preset entry
         avg_heart_rate: perExerciseAvgHeartRate ? Math.round(perExerciseAvgHeartRate) : null, // Round to nearest whole number or keep null
         source_id: activity.activityId?.toString() ?? null,
+        steps: activity.steps || activity.totalSteps || activity.stepCount || 0,
       };
       await exerciseEntryRepository.createExerciseEntry(userId, { ...exerciseEntryData, sort_order: exerciseSortOrder }, userId, 'garmin', newExercisePresetEntry.id);
 
@@ -454,6 +456,7 @@ async function processGarminSimpleActivity(userId, activityData) {
     distance: activity.distance,
     avg_heart_rate: activity.averageHR || activity.averageHeartRateInBeatsPerMinute || null,
     source_id: activity.activityId?.toString() ?? null,
+    steps: activity.steps || activity.totalSteps || activity.stepCount || 0,
   };
 
   const newEntry = await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, userId, 'garmin');

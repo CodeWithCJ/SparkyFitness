@@ -41,7 +41,10 @@ import {
   useAdaptiveTdee,
 } from '@/hooks/Diary/useDailyProgress';
 import { DailyProgressSkeleton } from './DailyProgressSkeleton';
-import { getEnergyUnitString } from '@/utils/nutritionCalculations';
+import {
+  convertStepsToCalories,
+  getEnergyUnitString,
+} from '@/utils/nutritionCalculations';
 import { formatWeight } from '@/utils/numberFormatting';
 import { EnergyCircle } from './EnergyProgressCircle';
 import { useDailyGoals } from '@/hooks/Goals/useGoals';
@@ -60,7 +63,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     weightUnit,
   } = usePreferences();
 
-  const { bmr, includeInNet } = useCalculatedBMR();
+  const { bmr, includeInNet, weight, height } = useCalculatedBMR();
   const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
     useAdaptiveTdee(selectedDate);
 
@@ -110,11 +113,20 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const activeCaloriesFromExercise = exerciseData?.activeCalories || 0;
   const stepsCalories = stepsData?.calories || 0;
   const dailySteps = stepsData?.steps || 0;
+  const activitySteps = exerciseData?.activitySteps || 0;
+
+  // Deduct steps already captured by tracked activities
+  const backgroundSteps = Math.max(0, dailySteps - activitySteps);
+  const backgroundStepCalories = convertStepsToCalories(
+    backgroundSteps,
+    weight || 70,
+    height || 175
+  );
 
   const resolved = resolveExerciseCalories(
     otherExerciseCalories,
     activeCaloriesFromExercise,
-    stepsCalories
+    backgroundStepCalories
   );
 
   const bmrCalories = includeInNet && bmr ? bmr : 0;
