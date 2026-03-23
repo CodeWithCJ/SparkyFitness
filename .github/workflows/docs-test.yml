@@ -15,11 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: corepack enable
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 10
       - uses: actions/setup-node@v3
         with:
           node-version: "20"
+          cache: 'pnpm'
+          cache-dependency-path: 'docs/pnpm-lock.yaml'
       # Pick your own package manager and build script
       - run: |
           cd docs
-          npm install
-          NUXT_APP_BASE_URL=/SparkyFitness/ npx nuxt build --preset github_pages
+          pnpm install --frozen-lockfile
+          NUXT_APP_BASE_URL=/SparkyFitness/ pnpm exec nuxt build --preset github_pages

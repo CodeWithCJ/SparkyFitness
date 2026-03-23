@@ -4,6 +4,7 @@ packages:
   - "shared"
   - "SparkyFitnessMobile"
   - "SparkyFitnessServer"
+  - "docs"
 
 packageExtensions:
   "@kingstinct/react-native-healthkit@13":
