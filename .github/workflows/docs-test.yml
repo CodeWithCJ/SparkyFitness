@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: "20"
           cache: 'pnpm'
-          cache-dependency-path: 'docs/pnpm-lock.yaml'
+          cache-dependency-path: 'pnpm-lock.yaml'
       # Pick your own package manager and build script
       - run: |
           cd docs
