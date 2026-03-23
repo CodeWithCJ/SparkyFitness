@@ -347,7 +347,7 @@ const ExerciseCard = ({
         if (entry.sets && entry.sets.length > 0) {
           setsCount += entry.sets.length;
           duration += entry.sets.reduce<number>(
-            (sum, set) => sum + (set.duration || 0),
+            (sum, set) => sum + (set.duration || 0) + (set.rest_time || 0) / 60,
             0
           );
         } else if (entry.duration_minutes) {
