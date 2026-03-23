@@ -2,6 +2,7 @@ import {
   initialize,
   requestPermission,
   readRecords,
+  aggregateRecord,
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
 import { HEALTH_METRICS } from '../../HealthMetrics';
@@ -72,12 +73,19 @@ export const requestHealthPermissions = async (
   permissionsToRequest: PermissionRequest[]
 ): Promise<boolean> => {
   try {
+    const uniquePermissions = permissionsToRequest.filter((permission, index, allPermissions) =>
+      allPermissions.findIndex(candidate =>
+        candidate.recordType === permission.recordType &&
+        candidate.accessType === permission.accessType
+      ) === index
+    );
+
     // Cast to library's Permission type - our PermissionRequest interface is compatible
     const grantedPermissions = await requestPermission(
-      permissionsToRequest as Parameters<typeof requestPermission>[0]
+      uniquePermissions as Parameters<typeof requestPermission>[0]
     ) as GrantedPermission[];
 
-    const allGranted = permissionsToRequest.every(requestedPerm =>
+    const allGranted = uniquePermissions.every(requestedPerm =>
       grantedPermissions.some(grantedPerm =>
         grantedPerm.recordType === requestedPerm.recordType &&
         grantedPerm.accessType === requestedPerm.accessType
@@ -241,6 +249,100 @@ export const getAggregatedActiveCaloriesByDate = async (
   }
 };
 
+/**
+ * Enriches raw exercise session records with calories and distance data.
+ * Health Connect stores these as separate record types, so we query
+ * ActiveCaloriesBurned and Distance aggregated over each session's time range.
+ */
+export const enrichExerciseSessions = async (records: unknown[]): Promise<unknown[]> => {
+  if (records.length === 0) return records;
+
+  addLog(`[HealthConnectService] Enriching ${records.length} exercise session(s) with calories/distance`, 'DEBUG');
+
+  const enriched = await Promise.all(records.map(async (record) => {
+    const rec = record as Record<string, unknown>;
+    const startTime = rec.startTime as string | undefined;
+    const endTime = rec.endTime as string | undefined;
+    if (!startTime || !endTime) return record;
+
+    const metadata = rec.metadata as { dataOrigin?: string } | undefined;
+    const dataOriginFilter = metadata?.dataOrigin ? [metadata.dataOrigin] : undefined;
+
+    const timeRangeFilter = {
+      operator: 'between' as const,
+      startTime,
+      endTime,
+    };
+
+    const [activeCaloriesResult, distanceResult] = await Promise.allSettled([
+      aggregateRecord({
+        recordType: 'ActiveCaloriesBurned',
+        timeRangeFilter,
+        dataOriginFilter,
+      }),
+      aggregateRecord({
+        recordType: 'Distance',
+        timeRangeFilter,
+        dataOriginFilter,
+      }),
+    ]);
+
+    // Only attach enriched values when the aggregate call succeeded.
+    // If permissions for ActiveCaloriesBurned or Distance aren't granted,
+    // the call rejects — leave the record untouched so we don't overwrite
+    // potentially valid data with a synthetic zero.
+    const enrichedFields: Record<string, unknown> = {};
+
+    // Try ActiveCaloriesBurned first, fall back to TotalCaloriesBurned.
+    // Many apps (Fitbit, OHealth, etc.) only write TotalCaloriesBurned to
+    // Health Connect, so ActiveCaloriesBurned alone misses those sessions.
+    // Treat 0 as missing — the Android Health Connect bridge defaults
+    // ACTIVE_CALORIES_TOTAL to 0.0 when no records exist for the range.
+    let kcal: number | undefined;
+    if (activeCaloriesResult.status === 'fulfilled') {
+      const result = activeCaloriesResult.value as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } };
+      const active = result.ACTIVE_CALORIES_TOTAL?.inKilocalories;
+      if (active != null && active > 0) {
+        kcal = active;
+      }
+    }
+
+    if (kcal == null) {
+      try {
+        const totalResult = await aggregateRecord({
+          recordType: 'TotalCaloriesBurned',
+          timeRangeFilter,
+          dataOriginFilter,
+        }) as { ENERGY_TOTAL?: { inKilocalories?: number } };
+        const total = totalResult.ENERGY_TOTAL?.inKilocalories;
+        if (total != null && total > 0) {
+          kcal = total;
+        }
+      } catch {
+        // Permission not granted or no data — leave untouched
+      }
+    }
+
+    if (kcal != null) {
+      enrichedFields.energy = { inKilocalories: kcal };
+    }
+
+    if (distanceResult.status === 'fulfilled') {
+      const result = distanceResult.value as { DISTANCE?: { inMeters?: number } };
+      const meters = result.DISTANCE?.inMeters;
+      if (meters != null) {
+        enrichedFields.distance = { inMeters: meters };
+      }
+    }
+
+    return Object.keys(enrichedFields).length > 0
+      ? { ...rec, ...enrichedFields }
+      : record;
+  }));
+
+  return enriched;
+};
+
 export const syncHealthData = async (
   syncDuration: SyncDuration,
   healthMetricStates: HealthMetricStates = {},
@@ -279,6 +381,8 @@ export const syncHealthData = async (
         dataToTransform = aggregateActiveCaloriesByDate(rawRecords as Parameters<typeof aggregateActiveCaloriesByDate>[0]);
       } else if (type === 'TotalCaloriesBurned') {
         dataToTransform = aggregateTotalCaloriesByDate(rawRecords as Parameters<typeof aggregateTotalCaloriesByDate>[0]);
+      } else if (type === 'ExerciseSession') {
+        dataToTransform = await enrichExerciseSessions(rawRecords);
       }
 
       const transformed = transformHealthRecords(dataToTransform, metricConfig);

@@ -11,28 +11,21 @@ jest.mock('../../src/services/api/goalsApi', () => ({
   fetchDailyGoals: jest.fn(),
 }));
 
-jest.mock('../../src/services/api/foodEntriesApi', () => ({
-  fetchFoodEntries: jest.fn(),
-  calculateCaloriesConsumed: jest.fn((entries) => entries.reduce((sum: number, e: { calories: number }) => sum + e.calories, 0)),
-  calculateProtein: jest.fn((entries) => entries.reduce((sum: number, e: { protein: number }) => sum + e.protein, 0)),
-  calculateCarbs: jest.fn((entries) => entries.reduce((sum: number, e: { carbs: number }) => sum + e.carbs, 0)),
-  calculateFat: jest.fn((entries) => entries.reduce((sum: number, e: { fat: number }) => sum + e.fat, 0)),
-  calculateFiber: jest.fn((entries) => entries.reduce((sum: number, e: { dietary_fiber: number }) => sum + e.dietary_fiber, 0)),
-}));
+jest.mock('../../src/services/api/foodEntriesApi', () => {
+  const actual = jest.requireActual('../../src/services/api/foodEntriesApi');
+  return {
+    ...actual,
+    fetchFoodEntries: jest.fn(),
+  };
+});
 
-jest.mock('../../src/services/api/exerciseApi', () => ({
-  fetchExerciseEntries: jest.fn(),
-  calculateCaloriesBurned: jest.fn((entries) => entries.reduce((sum: number, e: { calories_burned: number }) => sum + e.calories_burned, 0)),
-  calculateActiveCalories: jest.fn((entries) => entries
-    .filter((e: { exercise_snapshot?: { name: string } }) => e.exercise_snapshot?.name === 'Active Calories')
-    .reduce((sum: number, e: { calories_burned: number }) => sum + e.calories_burned, 0)),
-  calculateOtherExerciseCalories: jest.fn((entries) => entries
-    .filter((e: { exercise_snapshot?: { name: string } }) => e.exercise_snapshot?.name !== 'Active Calories')
-    .reduce((sum: number, e: { calories_burned: number }) => sum + e.calories_burned, 0)),
-  calculateExerciseDuration: jest.fn((entries) => entries
-    .filter((e: { exercise_snapshot?: { name: string } }) => e.exercise_snapshot?.name !== 'Active Calories')
-    .reduce((sum: number, e: { duration_minutes?: number }) => sum + (e.duration_minutes ?? 0), 0)),
-}));
+jest.mock('../../src/services/api/exerciseApi', () => {
+  const actual = jest.requireActual('../../src/services/api/exerciseApi');
+  return {
+    ...actual,
+    fetchExerciseEntries: jest.fn(),
+  };
+});
 
 jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchWaterIntake: jest.fn(),
@@ -95,11 +88,13 @@ describe('useDailySummary', () => {
         fat: 65,
         dietary_fiber: 30,
       });
+      // Real formula: (nutrient * quantity) / serving_size
+      // e.g. calories: (500 * 2) / 1 = 1000
       mockFetchFoodEntries.mockResolvedValue([
-        { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 2, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
       ]);
       mockFetchExerciseEntries.mockResolvedValue([
-        { id: '1', calories_burned: 200 },
+        { type: 'individual', id: '1', calories_burned: 200, exercise_snapshot: { name: 'Running' }, duration_minutes: 30 },
       ]);
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
@@ -113,8 +108,14 @@ describe('useDailySummary', () => {
       expect(result.current.summary).toBeDefined();
       expect(result.current.summary?.date).toBe(testDate);
       expect(result.current.summary?.calorieGoal).toBe(2000);
+      expect(result.current.summary?.caloriesConsumed).toBe(1000);
+      expect(result.current.summary?.protein.consumed).toBe(60);
+      expect(result.current.summary?.carbs.consumed).toBe(100);
+      expect(result.current.summary?.fat.consumed).toBe(30);
+      expect(result.current.summary?.fiber.consumed).toBe(10);
+      expect(result.current.summary?.caloriesBurned).toBe(200);
+      expect(result.current.summary?.exerciseMinutes).toBe(30);
       expect(result.current.summary?.foodEntries).toHaveLength(1);
-      expect(result.current.summary?.foodEntries[0].id).toBe('1');
     });
 
     test('includes water intake from API', async () => {
@@ -202,7 +203,7 @@ describe('useDailySummary', () => {
         { id: '1', calories: 800, protein: 40, carbs: 80, fat: 20, dietary_fiber: 10, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
       ]);
       mockFetchExerciseEntries.mockResolvedValue([
-        { id: '1', calories_burned: 300 },
+        { type: 'individual', id: '1', calories_burned: 300, exercise_snapshot: { name: 'Running' }, duration_minutes: 45 },
       ]);
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
@@ -221,24 +222,47 @@ describe('useDailySummary', () => {
 
   });
 
-  describe('options', () => {
-    test('respects enabled option', async () => {
+  describe('goal fallback defaults', () => {
+    test('defaults falsy goal values to 0 and water_goal_ml to 2500', async () => {
       mockFetchDailyGoals.mockResolvedValue({
-        calories: 2000,
-        protein: 150,
-        carbs: 200,
-        fat: 65,
-        dietary_fiber: 30,
-      });
+        calories: 0,
+        protein: undefined,
+        carbs: null,
+        fat: 0,
+        dietary_fiber: undefined,
+        target_exercise_duration_minutes: 0,
+        target_exercise_calories_burned: undefined,
+        water_goal_ml: null,
+      } as any);
       mockFetchFoodEntries.mockResolvedValue([]);
       mockFetchExerciseEntries.mockResolvedValue([]);
+      mockFetchWaterIntake.mockResolvedValue({ water_ml: 0 });
 
-      renderHook(() => useDailySummary({ date: testDate, enabled: false }), {
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
         wrapper: createQueryWrapper(queryClient),
       });
 
-      // Wait a bit to ensure no fetch occurs
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.calorieGoal).toBe(0);
+      expect(result.current.summary?.protein.goal).toBe(0);
+      expect(result.current.summary?.carbs.goal).toBe(0);
+      expect(result.current.summary?.fat.goal).toBe(0);
+      expect(result.current.summary?.fiber.goal).toBe(0);
+      expect(result.current.summary?.exerciseMinutesGoal).toBe(0);
+      expect(result.current.summary?.exerciseCaloriesGoal).toBe(0);
+      expect(result.current.summary?.waterConsumed).toBe(0);
+      expect(result.current.summary?.waterGoal).toBe(2500);
+    });
+  });
+
+  describe('options', () => {
+    test('respects enabled option', () => {
+      renderHook(() => useDailySummary({ date: testDate, enabled: false }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
 
       expect(mockFetchDailyGoals).not.toHaveBeenCalled();
     });

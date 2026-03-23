@@ -491,6 +491,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
               distance,
               duration,
               raw_data,
+              source_id,
             } = dataEntry;
             const exerciseName = activityType || `${source} Exercise`;
             let exercise = await exerciseDb.findExerciseByNameAndUserId(
@@ -521,6 +522,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
                 notes: `Source: ${source}, Activity Type: ${activityType}`,
                 distance: distance,
                 sets: dataEntry.sets || null, // Pass sets if present for mobile workout sync
+                source_id: source_id || null,
               },
               actingUserId,
               source,

@@ -33,19 +33,15 @@ function ToastContent({
   text2?: string;
 }) {
   const tokens = variantTokens[variant];
-  const [bgColor, textColor, borderColor] = useCSSVariable([
+  const [bgColor, textColor] = useCSSVariable([
     tokens.bg,
     tokens.text,
-    tokens.border,
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   return (
     <View
       style={{
         backgroundColor: bgColor,
-        borderLeftColor: borderColor,
-        borderLeftWidth: 4,
-        borderRadius: 8,
         paddingHorizontal: 14,
         paddingVertical: 10,
         marginHorizontal: 16,

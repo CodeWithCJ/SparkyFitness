@@ -68,6 +68,7 @@ jest.mock('react-native-health-connect', () => ({
   initialize: jest.fn().mockResolvedValue(true),
   requestPermission: jest.fn().mockResolvedValue([]),
   readRecords: jest.fn().mockResolvedValue({ records: [] }),
+  aggregateRecord: jest.fn().mockResolvedValue({}),
   getSdkStatus: jest.fn().mockResolvedValue(3),
   SdkAvailabilityStatus: {
     SDK_AVAILABLE: 3,

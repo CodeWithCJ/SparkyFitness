@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import Clipboard from '@react-native-clipboard/clipboard';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -112,7 +113,7 @@ const LogScreen: React.FC<LogScreenProps> = () => {
         loadLogs(0, false);
         loadSummary();
       } catch (error) {
-        Alert.alert('Error', 'Failed to save log filter settings.');
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save log filter settings.' });
         console.error('Failed to save log filter settings:', error);
       }
     }
@@ -130,7 +131,7 @@ const LogScreen: React.FC<LogScreenProps> = () => {
 
     Clipboard.setString(logText);
 
-    Alert.alert('Copied', 'Log entry copied to clipboard');
+    Toast.show({ type: 'success', text1: 'Copied', text2: 'Log entry copied to clipboard' });
   };
 
   const getStatusColor = (status: string) => {

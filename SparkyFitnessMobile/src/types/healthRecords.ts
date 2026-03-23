@@ -132,6 +132,7 @@ export interface TransformedExerciseSession {
   notes?: string;
   raw_data?: unknown;
   sets?: ExerciseSet[];
+  source_id?: string;
 }
 
 // ==========================================

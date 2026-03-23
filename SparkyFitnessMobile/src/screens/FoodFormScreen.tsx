@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { View, TouchableOpacity, Platform, Text, TextInput, Switch, Alert } from 'react-native';
+import { View, TouchableOpacity, Platform, Text, TextInput, Switch } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { CommonActions, StackActions } from '@react-navigation/native';
@@ -90,19 +91,19 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
 
   const handleSubmit = (data: FoodFormData) => {
     if (!data.name.trim()) {
-      Alert.alert('Missing name', 'Please enter a food name.');
+      Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
       return;
     }
     if (!parseFloat(data.servingSize)) {
-      Alert.alert('Invalid serving size', 'Serving size must be greater than zero.');
+      Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
       return;
     }
     if (!quantity) {
-      Alert.alert('Invalid amount', 'Amount must be greater than zero.');
+      Toast.show({ type: 'error', text1: 'Invalid amount', text2: 'Amount must be greater than zero.' });
       return;
     }
     if (!effectiveMealId) {
-      Alert.alert('No meal type', 'No meal types are available. Please check your account settings.');
+      Toast.show({ type: 'error', text1: 'No meal type', text2: 'No meal types are available. Please check your account settings.' });
       return;
     }
 
@@ -259,11 +260,11 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 
   const handleSubmit = (data: FoodFormData) => {
     if (!data.name.trim()) {
-      Alert.alert('Missing name', 'Please enter a food name.');
+      Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
       return;
     }
     if (!parseFloat(data.servingSize)) {
-      Alert.alert('Invalid serving size', 'Serving size must be greater than zero.');
+      Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
       return;
     }
     navigation.dispatch({

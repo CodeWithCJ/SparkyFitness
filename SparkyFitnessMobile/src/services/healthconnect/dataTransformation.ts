@@ -57,7 +57,13 @@ const extractNestedValue = (rec: Record<string, unknown>, key: string, nestedKey
 
 const extractDirectValue = (rec: Record<string, unknown>, key: string): number | null => {
   const val = rec[key];
-  return typeof val === 'number' ? val : null;
+  if (typeof val === 'number') return val;
+  if (typeof val === 'string') {
+    // Handle comma decimal separator (European locales e.g. "49,51")
+    const parsed = parseFloat(val.replace(',', '.'));
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
 };
 
 // Try multiple date fields in order of preference
@@ -327,10 +333,10 @@ VALUE_TRANSFORMERS['Vo2Max'] = createRobustTransformer({
   dateFields: ['time', 'startTime', 'timestamp', 'date'],
   validateValue: (v) => v > 0 && v < 100,
   valueStrategies: [
+    (rec) => extractDirectValue(rec, 'vo2MillilitersPerMinuteKilogram'),
     (rec) => extractDirectValue(rec, 'vo2Max'),
     (rec) => extractDirectValue(rec, 'vo2'),
     (rec) => extractDirectValue(rec, 'value'),
-    (rec) => extractDirectValue(rec, 'vo2MaxMillilitersPerMinuteKilogram'),
   ],
 });
 
@@ -531,6 +537,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       distance = distanceObj.inMeters;
     }
 
+    const metadata = rec.metadata as { id?: string } | undefined;
+
     const exerciseSession: TransformedExerciseSession = {
       type: 'ExerciseSession',
       source: HEALTH_CONNECT_SOURCE,
@@ -546,7 +554,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       distance: parseFloat(distance.toFixed(2)),
       notes: rec.notes as string | undefined,
       raw_data: record,
-      sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }]
+      sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }],
+      source_id: metadata?.id,
     };
     output.push(exerciseSession);
   },

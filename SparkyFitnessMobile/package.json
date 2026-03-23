@@ -14,12 +14,12 @@
     "test:ci": "jest --ci --coverage --maxWorkers=2"
   },
   "dependencies": {
-    "@bottom-tabs/react-navigation": "^1.1.0",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
     "@kingstinct/react-native-healthkit": "^13.3.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-clipboard/clipboard": "^1.16.0",
+    "@react-navigation/bottom-tabs": "^7.15.6",
     "@react-navigation/native": "^7.1.14",
     "@react-navigation/stack": "^7.4.2",
     "@shopify/react-native-skia": "2.2.12",
@@ -45,7 +45,6 @@
     "expo-web-browser": "~15.0.10",
     "react": "19.1.0",
     "react-native": "0.81.5",
-    "react-native-bottom-tabs": "^1.1.0",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-health-connect": "^3.5.0",
     "react-native-nitro-modules": "^0.33.2",

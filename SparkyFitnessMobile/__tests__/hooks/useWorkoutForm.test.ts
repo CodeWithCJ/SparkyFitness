@@ -1,5 +1,12 @@
 import { workoutFormReducer, type WorkoutDraft } from '../../src/hooks/useWorkoutForm';
 import type { Exercise } from '../../src/types/exercise';
+import type { PresetSessionResponse, ExerciseEntrySetResponse } from '@workspace/shared';
+import type { WorkoutPreset } from '../../src/types/workoutPresets';
+
+jest.mock('../../src/utils/dateUtils', () => ({
+  getTodayDate: () => '2026-03-12',
+  normalizeDate: (d: string) => d.split('T')[0],
+}));
 
 const makeExercise = (overrides?: Partial<Exercise>): Exercise => ({
   id: 'ex-1',
@@ -305,6 +312,273 @@ describe('workoutFormReducer', () => {
       expect(result.name).toBe('Workout');
       expect(result.exercises).toEqual([]);
       expect(result.entryDate).toBeTruthy();
+    });
+  });
+
+  describe('SET_DATE', () => {
+    it('updates the entry date', () => {
+      const state = makeEmptyDraft();
+      const result = workoutFormReducer(state, { type: 'SET_DATE', date: '2026-04-01' });
+      expect(result.entryDate).toBe('2026-04-01');
+    });
+
+    it('preserves other fields', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        name: 'Leg Day',
+        exercises: [
+          {
+            clientId: 'ex-1',
+            exerciseId: 'uuid-1',
+            exerciseName: 'Squat',
+            exerciseCategory: 'Strength',
+            sets: [],
+          },
+        ],
+      };
+      const result = workoutFormReducer(state, { type: 'SET_DATE', date: '2026-04-01' });
+      expect(result.name).toBe('Leg Day');
+      expect(result.exercises).toHaveLength(1);
+    });
+  });
+
+  describe('POPULATE', () => {
+    const makeSession = (overrides?: Partial<PresetSessionResponse>): PresetSessionResponse => ({
+      type: 'preset',
+      id: 'session-1',
+      entry_date: '2026-03-15',
+      workout_preset_id: null,
+      name: 'Push Day',
+      description: null,
+      notes: null,
+      source: 'sparky',
+      total_duration_minutes: 60,
+      activity_details: [],
+      exercises: [
+        {
+          exercise_id: 'ex-1',
+          exercise_snapshot: {
+            id: 'ex-1',
+            name: 'Bench Press',
+            category: 'Strength',
+            calories_per_hour: 400,
+            source: 'system',
+          },
+          duration_minutes: 20,
+          calories_burned: 150,
+          sets: [
+            { id: 'set-1', set_number: 1, weight: 60, reps: 10, set_type: 'working' } as ExerciseEntrySetResponse,
+            { id: 'set-2', set_number: 2, weight: 80, reps: 8, set_type: 'working' } as ExerciseEntrySetResponse,
+          ],
+        } as any,
+      ],
+      ...overrides,
+    });
+
+    it('populates from a preset session in kg', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession();
+      const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'kg' });
+
+      expect(result.name).toBe('Push Day');
+      expect(result.entryDate).toBe('2026-03-15');
+      expect(result.exercises).toHaveLength(1);
+      expect(result.exercises[0].exerciseName).toBe('Bench Press');
+      expect(result.exercises[0].exerciseCategory).toBe('Strength');
+      expect(result.exercises[0].sets).toHaveLength(2);
+      expect(result.exercises[0].sets[0].weight).toBe('60');
+      expect(result.exercises[0].sets[0].reps).toBe('10');
+      expect(result.exercises[0].sets[1].weight).toBe('80');
+      expect(result.exercises[0].sets[1].reps).toBe('8');
+    });
+
+    it('converts weight from kg to lbs', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession();
+      const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'lbs' });
+
+      // 60 kg in lbs ≈ 132.3
+      const weight1 = parseFloat(result.exercises[0].sets[0].weight);
+      expect(weight1).toBeGreaterThan(100);
+      // 80 kg in lbs ≈ 176.4
+      const weight2 = parseFloat(result.exercises[0].sets[1].weight);
+      expect(weight2).toBeGreaterThan(150);
+    });
+
+    it('handles null weight in sets', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession({
+        exercises: [
+          {
+            exercise_id: 'ex-1',
+            exercise_snapshot: { id: 'ex-1', name: 'Plank', category: 'Core', calories_per_hour: 200, source: 'system' },
+            duration_minutes: 10,
+            calories_burned: 50,
+            sets: [
+              { id: 'set-1', set_number: 1, weight: null, reps: null, set_type: 'working' } as ExerciseEntrySetResponse,
+            ],
+          } as any,
+        ],
+      });
+      const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'kg' });
+
+      expect(result.exercises[0].sets[0].weight).toBe('');
+      expect(result.exercises[0].sets[0].reps).toBe('');
+    });
+
+    it('uses today date when session entry_date is null', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession({ entry_date: null as any });
+      const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'kg' });
+
+      expect(result.entryDate).toBe('2026-03-12');
+    });
+
+    it('handles missing exercise_snapshot gracefully', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession({
+        exercises: [
+          {
+            exercise_id: 'ex-1',
+            exercise_snapshot: null,
+            duration_minutes: 20,
+            calories_burned: 150,
+            sets: [],
+          } as any,
+        ],
+      });
+      const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'kg' });
+
+      expect(result.exercises[0].exerciseName).toBe('Unknown');
+      expect(result.exercises[0].exerciseCategory).toBeNull();
+    });
+  });
+
+  describe('POPULATE_FROM_PRESET', () => {
+    const makePreset = (overrides?: Partial<WorkoutPreset>): WorkoutPreset => ({
+      id: 'preset-1',
+      user_id: 'user-1',
+      name: 'Full Body',
+      description: null,
+      is_public: false,
+      created_at: '2026-03-01',
+      updated_at: '2026-03-01',
+      exercises: [
+        {
+          id: 'pe-1',
+          exercise_id: 'ex-1',
+          exercise_name: 'Squat',
+          image_url: null,
+          sets: [
+            { id: 's-1', set_number: 1, set_type: 'working', reps: 5, weight: 100, duration: null, rest_time: null, notes: null },
+            { id: 's-2', set_number: 2, set_type: 'working', reps: 5, weight: 100, duration: null, rest_time: null, notes: null },
+          ],
+        },
+      ],
+      ...overrides,
+    });
+
+    it('populates from a workout preset in kg', () => {
+      const state = makeEmptyDraft();
+      const preset = makePreset();
+      const result = workoutFormReducer(state, {
+        type: 'POPULATE_FROM_PRESET',
+        preset,
+        weightUnit: 'kg',
+        date: '2026-03-20',
+      });
+
+      expect(result.name).toBe('Full Body');
+      expect(result.entryDate).toBe('2026-03-20');
+      expect(result.exercises).toHaveLength(1);
+      expect(result.exercises[0].exerciseName).toBe('Squat');
+      expect(result.exercises[0].exerciseCategory).toBeNull();
+      expect(result.exercises[0].sets).toHaveLength(2);
+      expect(result.exercises[0].sets[0].weight).toBe('100');
+      expect(result.exercises[0].sets[0].reps).toBe('5');
+    });
+
+    it('converts weight from kg to lbs', () => {
+      const state = makeEmptyDraft();
+      const preset = makePreset();
+      const result = workoutFormReducer(state, {
+        type: 'POPULATE_FROM_PRESET',
+        preset,
+        weightUnit: 'lbs',
+      });
+
+      // 100 kg in lbs ≈ 220.5
+      const weight = parseFloat(result.exercises[0].sets[0].weight);
+      expect(weight).toBeGreaterThan(200);
+    });
+
+    it('uses today date when date is undefined', () => {
+      const state = makeEmptyDraft();
+      const preset = makePreset();
+      const result = workoutFormReducer(state, {
+        type: 'POPULATE_FROM_PRESET',
+        preset,
+        weightUnit: 'kg',
+      });
+
+      expect(result.entryDate).toBe('2026-03-12');
+    });
+
+    it('handles null weight and reps in preset sets', () => {
+      const state = makeEmptyDraft();
+      const preset = makePreset({
+        exercises: [
+          {
+            id: 'pe-1',
+            exercise_id: 'ex-1',
+            exercise_name: 'Plank',
+            image_url: null,
+            sets: [
+              { id: 's-1', set_number: 1, set_type: 'working', reps: null, weight: null, duration: 60, rest_time: null, notes: null },
+            ],
+          },
+        ],
+      });
+      const result = workoutFormReducer(state, {
+        type: 'POPULATE_FROM_PRESET',
+        preset,
+        weightUnit: 'kg',
+      });
+
+      expect(result.exercises[0].sets[0].weight).toBe('');
+      expect(result.exercises[0].sets[0].reps).toBe('');
+    });
+
+    it('handles preset with multiple exercises', () => {
+      const state = makeEmptyDraft();
+      const preset = makePreset({
+        exercises: [
+          {
+            id: 'pe-1',
+            exercise_id: 'ex-1',
+            exercise_name: 'Bench Press',
+            image_url: null,
+            sets: [{ id: 's-1', set_number: 1, set_type: 'working', reps: 8, weight: 60, duration: null, rest_time: null, notes: null }],
+          },
+          {
+            id: 'pe-2',
+            exercise_id: 'ex-2',
+            exercise_name: 'Overhead Press',
+            image_url: null,
+            sets: [{ id: 's-2', set_number: 1, set_type: 'working', reps: 10, weight: 40, duration: null, rest_time: null, notes: null }],
+          },
+        ],
+      });
+      const result = workoutFormReducer(state, {
+        type: 'POPULATE_FROM_PRESET',
+        preset,
+        weightUnit: 'kg',
+        date: '2026-03-20',
+      });
+
+      expect(result.exercises).toHaveLength(2);
+      expect(result.exercises[0].exerciseName).toBe('Bench Press');
+      expect(result.exercises[1].exerciseName).toBe('Overhead Press');
     });
   });
 });

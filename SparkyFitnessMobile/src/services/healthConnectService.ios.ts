@@ -12,6 +12,7 @@ import {
   type TransformedRecord,
 } from '../types/healthRecords';
 import { SyncDuration } from './healthkit/preferences';
+import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../utils/concurrency';
 
 const METRIC_FETCH_CONCURRENCY = 3;
@@ -68,6 +69,17 @@ export const saveStringPreference = HealthKitPreferences.saveStringPreference;
 export const loadStringPreference = HealthKitPreferences.loadStringPreference;
 export const saveSyncDuration = HealthKitPreferences.saveSyncDuration;
 export const loadSyncDuration = HealthKitPreferences.loadSyncDuration;
+export const refreshEnabledMetricPermissions = async (
+  healthMetricStates: HealthMetricStates,
+): Promise<boolean> =>
+  migrateEnabledMetricPermissionsIfNeeded({
+    healthMetricStates,
+    metrics: HEALTH_METRICS,
+    loadHealthPreference,
+    saveHealthPreference,
+    requestHealthPermissions,
+    logTag: '[HealthKitService]',
+  });
 
 // Background delivery (iOS only)
 export {

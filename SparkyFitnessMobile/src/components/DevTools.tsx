@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, Pressable, Platform } from 'react-native';
+import Toast from 'react-native-toast-message';
 import Button from './ui/Button';
 import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
@@ -13,10 +14,10 @@ const DevTools: React.FC = () => {
     setIsSyncing(true);
     try {
       await triggerManualSync();
-      Alert.alert('Success', 'Background sync completed. Check Logs for details.');
+      Toast.show({ type: 'success', text1: 'Success', text2: 'Background sync completed. Check Logs for details.' });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      Alert.alert('Error', `Sync failed: ${message}`);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Sync failed: ${message}` });
     } finally {
       setIsSyncing(false);
     }
@@ -27,16 +28,13 @@ const DevTools: React.FC = () => {
     try {
       const result = await seedHistoricalSteps();
       if (result.success) {
-        Alert.alert(
-          'Success',
-          `Seeded ${result.recordsInserted} historical step records across the past year.`
-        );
+        Toast.show({ type: 'success', text1: 'Success', text2: `Seeded ${result.recordsInserted} historical step records across the past year.` });
       } else {
-        Alert.alert('Error', result.error || 'Failed to seed historical step data.');
+        Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Failed to seed historical step data.' });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      Alert.alert('Error', `Failed to seed historical step data: ${message}`);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to seed historical step data: ${message}` });
     } finally {
       setIsSeeding(false);
     }
@@ -47,16 +45,13 @@ const DevTools: React.FC = () => {
     try {
       const result = await seedHealthData(days);
       if (result.success) {
-        Alert.alert(
-          'Success',
-          `Seeded ${result.recordsInserted} health records for the past ${days} days.`
-        );
+        Toast.show({ type: 'success', text1: 'Success', text2: `Seeded ${result.recordsInserted} health records for the past ${days} days.` });
       } else {
-        Alert.alert('Error', result.error || 'Failed to seed health data.');
+        Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Failed to seed health data.' });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      Alert.alert('Error', `Failed to seed health data: ${message}`);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to seed health data: ${message}` });
     } finally {
       setIsSeeding(false);
     }
@@ -70,12 +65,13 @@ const DevTools: React.FC = () => {
         permission.recordType === 'BackgroundAccessPermission'
     );
 
-    Alert.alert(
-      'Background Access Permission',
-      hasBackgroundAccess
+    Toast.show({
+      type: hasBackgroundAccess ? 'success' : 'error',
+      text1: 'Background Access Permission',
+      text2: hasBackgroundAccess
         ? 'Background access permission is granted.'
-        : 'Background access permission is NOT granted.'
-    );
+        : 'Background access permission is NOT granted.',
+    });
   };
 
   return (

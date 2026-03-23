@@ -597,44 +597,33 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Summary card / Edit form */}
         {isEditing && !isPreset ? (
           renderIndividualEditForm()
-        ) : (isPreset || duration > 0 || calories > 0) ? (
-          <View className="bg-surface rounded-xl p-4">
-            <View className="flex-row items-center justify-around">
-              {duration > 0 && (
-                <View className="items-center">
-                  <Text className="text-lg font-semibold text-text-primary">
-                    {formatDuration(duration)}
-                  </Text>
-                  <Text className="text-xs text-text-muted mt-0.5">Duration</Text>
-                </View>
-              )}
-              {duration > 0 && calories > 0 && (
-                <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
-              )}
-              {calories > 0 && (
-                <View className="items-center">
-                  <Text className="text-lg font-semibold text-text-primary">
-                    {Math.round(calories)}
-                  </Text>
-                  <Text className="text-xs text-text-muted mt-0.5">Calories</Text>
-                </View>
-              )}
-              {isPreset && (
-                <>
-                  <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
-                  <View className="items-center">
-                    <Text className="text-lg font-semibold text-text-primary">
-                      {session.exercises.length}
-                    </Text>
-                    <Text className="text-xs text-text-muted mt-0.5">
-                      {session.exercises.length === 1 ? 'Exercise' : 'Exercises'}
-                    </Text>
-                  </View>
-                </>
-              )}
+        ) : (() => {
+          const summaryItems: { value: string; label: string }[] = [];
+          if (duration > 0) summaryItems.push({ value: formatDuration(duration), label: 'Duration' });
+          if (calories > 0) summaryItems.push({ value: String(Math.round(calories)), label: 'Calories' });
+          if (isPreset) summaryItems.push({
+            value: String(session.exercises.length),
+            label: session.exercises.length === 1 ? 'Exercise' : 'Exercises',
+          });
+          if (summaryItems.length === 0) return null;
+          return (
+            <View className="bg-surface rounded-xl p-4">
+              <View className="flex-row items-center justify-around">
+                {summaryItems.map((item, i) => (
+                  <React.Fragment key={item.label}>
+                    {i > 0 && (
+                      <View style={{ width: 1, height: 32, backgroundColor: borderSubtle }} />
+                    )}
+                    <View className="items-center">
+                      <Text className="text-lg font-semibold text-text-primary">{item.value}</Text>
+                      <Text className="text-xs text-text-muted mt-0.5">{item.label}</Text>
+                    </View>
+                  </React.Fragment>
+                ))}
+              </View>
             </View>
-          </View>
-        ) : null}
+          );
+        })()}
 
         {/* Exercise images (individual sessions only) */}
         {session.type === 'individual' && renderExerciseImages(session.exercise_snapshot?.images)}

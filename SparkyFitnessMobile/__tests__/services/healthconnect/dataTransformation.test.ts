@@ -757,14 +757,34 @@ describe('transformHealthRecords', () => {
       expect(result[0].value).toBe(40.0);
     });
 
-    test('extracts from record.vo2MaxMillilitersPerMinuteKilogram', () => {
+    test('extracts from record.vo2MillilitersPerMinuteKilogram', () => {
       const records = [
-        { time: '2024-01-15T08:00:00Z', vo2MaxMillilitersPerMinuteKilogram: 38.0 },
+        { time: '2024-01-15T08:00:00Z', vo2MillilitersPerMinuteKilogram: 38.0 },
       ];
       const result = transformHealthRecords(records, { recordType: 'Vo2Max', unit: 'ml/min/kg', type: 'vo2max' }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(38.0);
+    });
+
+    test('handles string values with comma decimal separator', () => {
+      const records = [
+        { time: '2024-01-15T08:00:00Z', vo2MillilitersPerMinuteKilogram: '49,51' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Vo2Max', unit: 'ml/min/kg', type: 'vo2max' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].value).toBeCloseTo(49.51);
+    });
+
+    test('handles string values with dot decimal separator', () => {
+      const records = [
+        { time: '2024-01-15T08:00:00Z', vo2Max: '45.5' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Vo2Max', unit: 'ml/min/kg', type: 'vo2max' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].value).toBeCloseTo(45.5);
     });
 
     test('validates Vo2Max is within reasonable range (0-100)', () => {

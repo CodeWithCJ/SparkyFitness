@@ -17,7 +17,7 @@ export { CATEGORY_ICON_MAP, getWorkoutIcon, getSourceLabel, formatDuration, getF
 const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
   const textMuted = useCSSVariable('--color-text-muted') as string;
-
+  const textSecondary = useCSSVariable('--color-text-secondary') as string;
   const iconName = getWorkoutIcon(session);
   const { name, duration, calories } = getWorkoutSummary(session);
   const source = session.source;
@@ -51,7 +51,7 @@ const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource }) =
             >
               <Text
                 className="text-xs font-medium"
-                style={{ color: isSparky ? accentPrimary : textMuted }}
+                style={{ color: isSparky ? accentPrimary : textSecondary }}
               >
                 {sourceLabel}
               </Text>

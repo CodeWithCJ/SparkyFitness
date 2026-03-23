@@ -13,6 +13,7 @@ import {
   type TransformedRecord,
 } from '../types/healthRecords';
 import { SyncDuration } from './healthconnect/preferences';
+import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../utils/concurrency';
 
 const METRIC_FETCH_CONCURRENCY = 3;
@@ -142,6 +143,17 @@ export const saveStringPreference = HealthConnectPreferences.saveStringPreferenc
 export const loadStringPreference = HealthConnectPreferences.loadStringPreference;
 export const saveSyncDuration = HealthConnectPreferences.saveSyncDuration;
 export const loadSyncDuration = HealthConnectPreferences.loadSyncDuration;
+export const refreshEnabledMetricPermissions = async (
+  healthMetricStates: HealthMetricStates,
+): Promise<boolean> =>
+  migrateEnabledMetricPermissionsIfNeeded({
+    healthMetricStates,
+    metrics: HEALTH_METRICS,
+    loadHealthPreference,
+    saveHealthPreference,
+    requestHealthPermissions,
+    logTag: '[HealthConnectService]',
+  });
 
 // Locked-device detection stubs for Android (iOS-only feature)
 export const resetDatabaseInaccessibleCount = (): void => {};
@@ -187,6 +199,12 @@ async function processMetric(
     dataToTransform = await getAggregatedDistanceByDate(startDate, endDate);
   } else if (type === 'FloorsClimbed') {
     dataToTransform = await getAggregatedFloorsClimbedByDate(startDate, endDate);
+  } else if (type === 'ExerciseSession') {
+    const rawRecords = await HealthConnect.readHealthRecords(type, startDate, endDate);
+    if (rawRecords.length === 0) {
+      return { data: [] };
+    }
+    dataToTransform = await HealthConnect.enrichExerciseSessions(rawRecords);
   } else {
     // For other types, read raw records
     const rawRecords = await HealthConnect.readHealthRecords(type, startDate, endDate);

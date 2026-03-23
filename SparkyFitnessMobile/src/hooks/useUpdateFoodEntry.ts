@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { updateFoodEntry, type UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { normalizeDate } from '../utils/dateUtils';
 import { dailySummaryQueryKey } from './queryKeys';
@@ -24,7 +24,7 @@ export function useUpdateFoodEntry({ entryId, entryDate, onSuccess }: UseUpdateF
       const message = error instanceof Error && error.message.includes('403')
         ? "You don't have permission to edit this entry."
         : 'Please try again.';
-      Alert.alert('Failed to save changes', message);
+      Toast.show({ type: 'error', text1: 'Failed to save changes', text2: message });
     },
   });
 

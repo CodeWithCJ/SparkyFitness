@@ -20,7 +20,7 @@ const ICON_MAP = {
   'add-circle': { sf: 'plus.circle', ion: 'add-circle-outline' },
   'remove-circle': { sf: 'minus.circle', ion: 'remove-circle-outline' },
   'checkmark': { sf: 'checkmark', ion: 'checkmark' },
-  'settings': { sf: 'gearshape', ion: 'settings-outline' },
+  'settings': { sf: 'gearshape.fill', ion: 'settings' },
   'add': { sf: 'plus', ion: 'add' },
   'remove': { sf: 'minus', ion: 'remove' },
   'close': { sf: 'xmark', ion: 'close' },
@@ -70,6 +70,10 @@ const ICON_MAP = {
   'exercise-pilates': { sf: 'figure.pilates', ion: 'body-outline' },
   'exercise-stair': { sf: 'figure.stair.stepper', ion: 'fitness-outline' },
   'exercise-default': { sf: 'figure.run', ion: 'fitness-outline' },
+
+  // Tabs
+  'tab-dashboard': { sf: 'square.grid.2x2.fill', ion: 'grid' },
+  'tab-workouts': { sf: 'dumbbell.fill', ion: 'barbell-outline' },
 
   // Charts/Data
   'chart-bar': { sf: 'chart.bar.fill', ion: 'bar-chart' },

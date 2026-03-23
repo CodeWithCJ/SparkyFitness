@@ -417,7 +417,7 @@ async function _createExerciseEntryWithClient(
     const syncDuplicateCheck = entryData.source_id ? true : false;
     const skipManualDuplicateCheck = [
       "HealthKit",
-      "HealthConnect",
+      "Health Connect",
       "Fitbit",
       "Strava",
     ].includes(entrySource);

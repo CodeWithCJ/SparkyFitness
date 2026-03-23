@@ -582,16 +582,17 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
   // Fetch statistics (calories, distance) for each workout
   const workoutsWithStats = await Promise.all(filteredWorkouts.map(async (w) => {
     const workoutAny = w as unknown as {
-      totalEnergyBurned?: number | { inKilocalories?: number };
-      totalDistance?: number | { inMeters?: number };
+      totalEnergyBurned?: number | { quantity?: number };
+      totalDistance?: number | { quantity?: number };
     };
 
-    // Start with direct properties from workout sample (fallback for older workouts)
+    // Start with direct properties from workout sample (fallback for older workouts).
+    // The HealthKit library returns Quantity objects: { unit: string, quantity: number }
     let totalEnergyBurned = typeof workoutAny.totalEnergyBurned === 'object'
-      ? (workoutAny.totalEnergyBurned?.inKilocalories ?? 0)
+      ? (workoutAny.totalEnergyBurned?.quantity ?? 0)
       : (workoutAny.totalEnergyBurned ?? 0);
     let totalDistance = typeof workoutAny.totalDistance === 'object'
-      ? (workoutAny.totalDistance?.inMeters ?? 0)
+      ? (workoutAny.totalDistance?.quantity ?? 0)
       : (workoutAny.totalDistance ?? 0);
 
     try {
@@ -629,6 +630,7 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
       duration: w.duration,
       totalEnergyBurned,
       totalDistance,
+      uuid: (w as unknown as { uuid?: string }).uuid,
     };
   }));
 

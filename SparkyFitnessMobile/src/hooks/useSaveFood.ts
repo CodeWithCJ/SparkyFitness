@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { saveFood, type SaveFoodPayload } from '../services/api/foodsApi';
 import { foodsQueryKey } from './queryKeys';
 
@@ -12,7 +12,7 @@ export function useSaveFood() {
       queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
     },
     onError: () => {
-      Alert.alert('Failed to save food', 'Please try again.');
+      Toast.show({ type: 'error', text1: 'Failed to save food', text2: 'Please try again.' });
     },
   });
 

@@ -13,6 +13,7 @@ import {
   loadHealthPreference,
   saveHealthPreference,
   requestHealthPermissions,
+  refreshEnabledMetricPermissions,
   enableBackgroundDeliveryForMetric,
   disableBackgroundDeliveryForMetric,
   setupBackgroundDeliveryForEnabledMetrics,
@@ -97,6 +98,10 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
 
     setSelectedTimeRange(initialTimeRange);
     setHealthMetricStates(newHealthMetricStates);
+
+    if (initialized) {
+      await refreshEnabledMetricPermissions(newHealthMetricStates);
+    }
 
     const bgSyncEnabled = await loadBackgroundSyncEnabled();
     setIsBackgroundSyncEnabled(bgSyncEnabled);

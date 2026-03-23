@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Platform, Button, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, Button, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import Toast from 'react-native-toast-message';
 import UIButton from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
@@ -86,7 +87,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         });
       }
     } catch {
-      Alert.alert('Error', 'Something went wrong looking up this barcode.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Something went wrong looking up this barcode.' });
     } finally {
       setLoading(false);
     }
@@ -97,12 +98,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     try {
       const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.7 });
       if (!photo?.base64) {
-        Alert.alert('Error', 'Failed to capture photo.');
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
         return;
       }
       setCapturedPhoto({ base64: photo.base64, uri: photo.uri });
     } catch {
-      Alert.alert('Error', 'Failed to capture photo.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
     }
   };
 
@@ -131,7 +132,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         providerType: 'label_scan',
       });
     } catch {
-      Alert.alert('Error', 'Failed to analyze nutrition label. Please try again.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to analyze nutrition label. Please try again.' });
     } finally {
       setLabelProcessing(false);
     }

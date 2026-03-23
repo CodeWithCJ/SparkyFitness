@@ -21,12 +21,54 @@ export const CATEGORY_ICON_MAP: Record<string, IconName> = {
   'Stair Stepper': 'exercise-stair',
 };
 
+// Keyword matching for exercise names that don't exactly match CATEGORY_ICON_MAP keys
+// (e.g. HealthKit's "Traditional Strength Training", "Stair Climbing")
+const NAME_KEYWORDS: [string, IconName][] = [
+  ['cycling', 'exercise-cycling'],
+  ['biking', 'exercise-cycling'],
+  ['swim', 'exercise-swimming'],
+  ['walk', 'exercise-walking'],
+  ['hik', 'exercise-hiking'],
+  ['yoga', 'exercise-yoga'],
+  ['pilates', 'exercise-pilates'],
+  ['danc', 'exercise-dance'],
+  ['box', 'exercise-boxing'],
+  ['row', 'exercise-rowing'],
+  ['tennis', 'exercise-tennis'],
+  ['basketball', 'exercise-basketball'],
+  ['soccer', 'exercise-soccer'],
+  ['elliptical', 'exercise-elliptical'],
+  ['stair', 'exercise-stair'],
+  ['strength', 'exercise-weights'],
+  ['weight', 'exercise-weights'],
+  ['run', 'exercise-running'],
+];
+
 export function getWorkoutIcon(session: ExerciseSessionResponse): IconName {
   if (session.type === 'preset') return 'exercise-weights';
+
+  const name = session.name ?? session.exercise_snapshot?.name ?? '';
   const category = session.exercise_snapshot?.category;
+
+  // Exact name match (handles synced workouts where name is the activity type)
+  if (name in CATEGORY_ICON_MAP) return CATEGORY_ICON_MAP[name];
+
+  // Category match (for manually created exercises with proper categories)
+  if (category && category !== 'Cardio' && category in CATEGORY_ICON_MAP) {
+    return CATEGORY_ICON_MAP[category];
+  }
+
+  // Keyword match on name (e.g. "Traditional Strength Training" → strength → weights icon)
+  const nameLower = name.toLowerCase();
+  for (const [keyword, icon] of NAME_KEYWORDS) {
+    if (nameLower.includes(keyword)) return icon;
+  }
+
+  // Generic Cardio category fallback
   if (category && category in CATEGORY_ICON_MAP) {
     return CATEGORY_ICON_MAP[category];
   }
+
   return 'exercise-default';
 }
 

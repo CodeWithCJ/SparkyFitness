@@ -580,8 +580,8 @@ describe('readHealthRecords', () => {
           endDate: '2024-01-15T09:00:00Z',
           workoutActivityType: 37,
           duration: 3600,
-          totalEnergyBurned: { inKilocalories: 500 },
-          totalDistance: { inMeters: 5000 },
+          totalEnergyBurned: { unit: 'kcal', quantity: 500 },
+          totalDistance: { unit: 'm', quantity: 5000 },
           getAllStatistics: mockGetAllStatistics,
         },
       ]);
@@ -645,8 +645,8 @@ describe('readHealthRecords', () => {
           endDate: '2024-01-15T09:00:00Z',
           workoutActivityType: 37,
           duration: 3600,
-          totalEnergyBurned: { inKilocalories: 500 },
-          totalDistance: { inMeters: 5000 },
+          totalEnergyBurned: { unit: 'kcal', quantity: 500 },
+          totalDistance: { unit: 'm', quantity: 5000 },
           getAllStatistics: mockGetAllStatistics,
         },
       ]);

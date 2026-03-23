@@ -8,6 +8,12 @@ import {
   selectFatSecretServing,
   searchFatSecret,
   fetchFatSecretNutrients,
+  lookupBarcode,
+  hasMetricServing,
+  transformFatSecretServing,
+  transformMealieItem,
+  searchMealie,
+  scanNutritionLabel,
 } from '../../src/services/api/externalFoodSearchApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 
@@ -745,6 +751,584 @@ describe('externalFoodSearchApi', () => {
 
         expect(result.sodium).toBe(480);
       });
+    });
+
+    test('fetchFatSecretNutrients falls back to raw values when no metric servings exist', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            food: {
+              food_id: '77',
+              food_name: 'Non-metric Food',
+              servings: {
+                serving: {
+                  serving_id: '1',
+                  serving_description: '1 cup',
+                  measurement_description: 'cup',
+                  // No metric_serving_amount or metric_serving_unit
+                  calories: '250.5',
+                  protein: '12.3',
+                  carbohydrate: '30.7',
+                  fat: '8.9',
+                  saturated_fat: '2.1',
+                  sodium: '350',
+                  fiber: '4.6',
+                  sugar: '5.8',
+                },
+              },
+            },
+          }),
+      });
+
+      const result = await fetchFatSecretNutrients('77', 'provider-fs');
+
+      expect(result.id).toBe('77');
+      expect(result.name).toBe('Non-metric Food');
+      // Fallback: serving_size=1, serving_unit='serving'
+      expect(result.serving_size).toBe(1);
+      expect(result.serving_unit).toBe('serving');
+      expect(result.calories).toBe(251);
+      expect(result.protein).toBe(12);
+      expect(result.carbs).toBe(31);
+      expect(result.fat).toBe(9);
+      expect(result.saturated_fat).toBe(2);
+      expect(result.sodium).toBe(350);
+      expect(result.fiber).toBe(5);
+      expect(result.sugars).toBe(6);
+      expect(result.variants).toBeUndefined();
+    });
+
+    describe('hasMetricServing', () => {
+      test('returns true when both metric_serving_amount and metric_serving_unit present', () => {
+        const serving = {
+          serving_id: '1',
+          serving_description: '100g',
+          measurement_description: '100 g',
+          metric_serving_amount: '100.00',
+          metric_serving_unit: 'g',
+          calories: '100',
+          protein: '5',
+          carbohydrate: '10',
+          fat: '3',
+        };
+
+        expect(hasMetricServing(serving as any)).toBe(true);
+      });
+
+      test('returns false when metric_serving_amount missing', () => {
+        const serving = {
+          serving_id: '1',
+          serving_description: '100g',
+          measurement_description: '100 g',
+          metric_serving_unit: 'g',
+          calories: '100',
+          protein: '5',
+          carbohydrate: '10',
+          fat: '3',
+        };
+
+        expect(hasMetricServing(serving as any)).toBe(false);
+      });
+
+      test('returns false when metric_serving_unit missing', () => {
+        const serving = {
+          serving_id: '1',
+          serving_description: '100g',
+          measurement_description: '100 g',
+          metric_serving_amount: '100.00',
+          calories: '100',
+          protein: '5',
+          carbohydrate: '10',
+          fat: '3',
+        };
+
+        expect(hasMetricServing(serving as any)).toBe(false);
+      });
+
+      test('returns false when both missing', () => {
+        const serving = {
+          serving_id: '1',
+          serving_description: '100g',
+          measurement_description: '100 g',
+          calories: '100',
+          protein: '5',
+          carbohydrate: '10',
+          fat: '3',
+        };
+
+        expect(hasMetricServing(serving as any)).toBe(false);
+      });
+    });
+
+    describe('transformFatSecretServing', () => {
+      test('transforms a complete serving with all fields', () => {
+        const serving = {
+          serving_id: '1',
+          serving_description: '1 serving (140g)',
+          measurement_description: '1 serving',
+          metric_serving_amount: '140.00',
+          metric_serving_unit: 'g',
+          calories: '220.50',
+          protein: '8.06',
+          carbohydrate: '43.20',
+          fat: '1.30',
+          saturated_fat: '0.25',
+          sodium: '320.00',
+          fiber: '2.52',
+          sugar: '0.78',
+        };
+
+        const result = transformFatSecretServing(serving as any);
+
+        expect(result).toEqual({
+          serving_size: 140,
+          serving_unit: 'g',
+          serving_description: '1 serving (140g)',
+          calories: 221,
+          protein: 8,
+          carbs: 43,
+          fat: 1,
+          saturated_fat: 0,
+          sodium: 320,
+          fiber: 3,
+          sugars: 1,
+        });
+      });
+
+      test('rounds all numeric values', () => {
+        const serving = {
+          serving_id: '1',
+          serving_description: 'serving',
+          measurement_description: 'serving',
+          metric_serving_amount: '99.9',
+          metric_serving_unit: 'g',
+          calories: '123.456',
+          protein: '7.89',
+          carbohydrate: '45.123',
+          fat: '2.999',
+          saturated_fat: '1.1',
+          sodium: '50.6',
+          fiber: '0.4',
+          sugar: '9.5',
+        };
+
+        const result = transformFatSecretServing(serving as any);
+
+        expect(result.serving_size).toBe(100);
+        expect(result.calories).toBe(123);
+        expect(result.protein).toBe(8);
+        expect(result.carbs).toBe(45);
+        expect(result.fat).toBe(3);
+      });
+
+      test('defaults optional fields (saturated_fat, sodium, fiber, sugar) to 0 when missing', () => {
+        const serving = {
+          serving_id: '1',
+          serving_description: '100g',
+          measurement_description: '100 g',
+          metric_serving_amount: '100.00',
+          metric_serving_unit: 'g',
+          calories: '200',
+          protein: '10',
+          carbohydrate: '20',
+          fat: '8',
+        };
+
+        const result = transformFatSecretServing(serving as any);
+
+        expect(result.saturated_fat).toBe(0);
+        expect(result.sodium).toBe(0);
+        expect(result.fiber).toBe(0);
+        expect(result.sugars).toBe(0);
+      });
+    });
+  });
+
+  describe('lookupBarcode', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key',
+    };
+
+    test('calls correct endpoint with barcode', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            source: 'local',
+            food: {
+              id: 'food-1',
+              name: 'Test Food',
+              brand: null,
+              is_custom: false,
+              default_variant: {
+                serving_size: 100,
+                serving_unit: 'g',
+                calories: 100,
+                protein: 5,
+                carbs: 10,
+                fat: 3,
+              },
+            },
+          }),
+      });
+
+      await lookupBarcode('1234567890');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/foods/barcode/1234567890'),
+        expect.anything(),
+      );
+    });
+
+    test('returns local source result', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      const localFood = {
+        id: 'food-42',
+        name: 'Scanned Food',
+        brand: 'Brand X',
+        is_custom: false,
+        default_variant: {
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 250,
+          protein: 12,
+          carbs: 30,
+          fat: 8,
+        },
+      };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ source: 'local', food: localFood }),
+      });
+
+      const result = await lookupBarcode('0987654321');
+
+      expect(result.source).toBe('local');
+      expect(result.food).toEqual(localFood);
+    });
+
+    test('returns not_found result', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ source: 'not_found', food: null }),
+      });
+
+      const result = await lookupBarcode('0000000000');
+
+      expect(result.source).toBe('not_found');
+      expect(result.food).toBeNull();
+    });
+
+    test('throws on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: () => Promise.resolve('Not Found'),
+      });
+
+      await expect(lookupBarcode('1234567890')).rejects.toThrow('Server error: 404');
+    });
+  });
+
+  describe('Mealie', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key',
+    };
+
+    describe('transformMealieItem', () => {
+      test('transforms a complete item with all optional fields', () => {
+        const item = {
+          provider_external_id: 'mealie-123',
+          name: 'Chicken Soup',
+          brand: 'Home Kitchen',
+          default_variant: {
+            serving_size: 250,
+            serving_unit: 'ml',
+            calories: 180.6,
+            protein: 15.4,
+            carbs: 12.3,
+            fat: 7.8,
+            saturated_fat: 2.1,
+            sodium: 450.9,
+            dietary_fiber: 1.5,
+            sugars: 3.2,
+          },
+        };
+
+        const result = transformMealieItem(item as any);
+
+        expect(result).toEqual({
+          id: 'mealie-123',
+          name: 'Chicken Soup',
+          brand: 'Home Kitchen',
+          calories: 181,
+          protein: 15,
+          carbs: 12,
+          fat: 8,
+          saturated_fat: 2,
+          sodium: 451,
+          fiber: 2,
+          sugars: 3,
+          serving_size: 250,
+          serving_unit: 'ml',
+          source: 'mealie',
+        });
+      });
+
+      test('handles null optional fields (saturated_fat, sodium, dietary_fiber, sugars become undefined in output)', () => {
+        const item = {
+          provider_external_id: 'mealie-456',
+          name: 'Simple Dish',
+          brand: null,
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 200,
+            protein: 10,
+            carbs: 25,
+            fat: 5,
+            saturated_fat: null,
+            sodium: null,
+            dietary_fiber: null,
+            sugars: null,
+          },
+        };
+
+        const result = transformMealieItem(item as any);
+
+        expect(result.saturated_fat).toBeUndefined();
+        expect(result.sodium).toBeUndefined();
+        expect(result.fiber).toBeUndefined();
+        expect(result.sugars).toBeUndefined();
+      });
+
+      test('rounds numeric values', () => {
+        const item = {
+          provider_external_id: 'mealie-789',
+          name: 'Rounded Food',
+          brand: null,
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 123.456,
+            protein: 7.89,
+            carbs: 45.123,
+            fat: 2.999,
+          },
+        };
+
+        const result = transformMealieItem(item as any);
+
+        expect(result.calories).toBe(123);
+        expect(result.protein).toBe(8);
+        expect(result.carbs).toBe(45);
+        expect(result.fat).toBe(3);
+      });
+
+      test('passes brand through (can be null)', () => {
+        const item = {
+          provider_external_id: 'mealie-999',
+          name: 'Unbranded',
+          brand: null,
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 100,
+            protein: 5,
+            carbs: 10,
+            fat: 3,
+          },
+        };
+
+        const result = transformMealieItem(item as any);
+
+        expect(result.brand).toBeNull();
+      });
+    });
+
+    describe('searchMealie', () => {
+      test('calls correct endpoint with x-provider-id header and page', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              items: [],
+              pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
+            }),
+        });
+
+        await searchMealie('soup', 'provider-mealie', 1);
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/foods/mealie/search?query=soup&page=1'),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              'x-provider-id': 'provider-mealie',
+            }),
+          }),
+        );
+      });
+
+      test('returns items and pagination', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              items: [
+                {
+                  provider_external_id: 'mealie-1',
+                  name: 'Tomato Soup',
+                  brand: null,
+                  default_variant: {
+                    serving_size: 250,
+                    serving_unit: 'ml',
+                    calories: 90,
+                    protein: 3,
+                    carbs: 15,
+                    fat: 2,
+                  },
+                },
+              ],
+              pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+            }),
+        });
+
+        const result = await searchMealie('soup', 'provider-mealie');
+
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].name).toBe('Tomato Soup');
+        expect(result.items[0].source).toBe('mealie');
+        expect(result.pagination).toEqual({ page: 1, pageSize: 20, totalCount: 1, hasMore: false });
+      });
+
+      test('filters out items with empty name', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              items: [
+                {
+                  provider_external_id: 'mealie-1',
+                  name: 'Good Item',
+                  brand: null,
+                  default_variant: { serving_size: 100, serving_unit: 'g', calories: 100, protein: 5, carbs: 10, fat: 3 },
+                },
+                {
+                  provider_external_id: 'mealie-2',
+                  name: '',
+                  brand: null,
+                  default_variant: { serving_size: 100, serving_unit: 'g', calories: 50, protein: 2, carbs: 5, fat: 1 },
+                },
+              ],
+              pagination: { page: 1, pageSize: 20, totalCount: 2, hasMore: false },
+            }),
+        });
+
+        const result = await searchMealie('food', 'provider-mealie');
+
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].name).toBe('Good Item');
+      });
+
+      test('propagates errors', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 500,
+          text: () => Promise.resolve('Internal Server Error'),
+        });
+
+        await expect(searchMealie('soup', 'provider-mealie')).rejects.toThrow('Server error: 500');
+      });
+    });
+  });
+
+  describe('scanNutritionLabel', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key',
+    };
+
+    test('sends POST to /api/foods/scan-label with image and mime_type in body', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            name: 'Granola Bar',
+            brand: 'Nature Valley',
+            serving_size: 42,
+            serving_unit: 'g',
+            calories: 190,
+            protein: 4,
+            carbs: 29,
+            fat: 7,
+            fiber: 2,
+            saturated_fat: 1,
+            sodium: 150,
+            sugars: 12,
+          }),
+      });
+
+      await scanNutritionLabel('base64encodedimage==', 'image/jpeg');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/foods/scan-label'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ image: 'base64encodedimage==', mime_type: 'image/jpeg' }),
+        }),
+      );
+    });
+
+    test('returns parsed scan result', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      const scanResult = {
+        name: 'Granola Bar',
+        brand: 'Nature Valley',
+        serving_size: 42,
+        serving_unit: 'g',
+        calories: 190,
+        protein: 4,
+        carbs: 29,
+        fat: 7,
+        fiber: 2,
+        saturated_fat: 1,
+        sodium: 150,
+        sugars: 12,
+      };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(scanResult),
+      });
+
+      const result = await scanNutritionLabel('base64encodedimage==', 'image/png');
+
+      expect(result).toEqual(scanResult);
+    });
+
+    test('throws on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 422,
+        text: () => Promise.resolve('Unprocessable Entity'),
+      });
+
+      await expect(scanNutritionLabel('bad_image', 'image/jpeg')).rejects.toThrow('Server error: 422');
     });
   });
 });

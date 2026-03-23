@@ -1,5 +1,5 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useCreateExerciseEntry } from '../../src/hooks/useExerciseMutations';
 import { createExerciseEntry } from '../../src/services/api/exerciseApi';
 import {
@@ -17,8 +17,6 @@ jest.mock('../../src/services/api/exerciseApi', () => ({
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
-
-jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 const mockCreateExerciseEntry = createExerciseEntry as jest.MockedFunction<typeof createExerciseEntry>;
 
@@ -60,7 +58,7 @@ describe('useCreateExerciseEntry', () => {
     });
   });
 
-  test('shows error Alert on failure', async () => {
+  test('shows error toast on failure', async () => {
     mockCreateExerciseEntry.mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(
@@ -77,7 +75,11 @@ describe('useCreateExerciseEntry', () => {
     });
 
     await waitFor(() => {
-      expect(Alert.alert).toHaveBeenCalledWith('Failed to save activity', 'Please try again.');
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'error',
+        text1: 'Failed to save activity',
+        text2: 'Please try again.',
+      });
     });
   });
 

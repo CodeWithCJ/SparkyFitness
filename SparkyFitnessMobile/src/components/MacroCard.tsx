@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text } from 'react-native';
-import { Canvas, Rect, Group, rect, rrect } from '@shopify/react-native-skia';
-import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 
@@ -52,6 +51,15 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
     return Math.max(0, barWidth - gapStart);
   }, [barWidth]);
 
+  const fillStyle = useAnimatedStyle(() => ({
+    width: fillWidth.value,
+  }));
+
+  const overflowStyle = useAnimatedStyle(() => ({
+    left: overflowX.value,
+    width: overflowWidth.value,
+  }));
+
   return (
     <View className="w-[48%] p-1 mb-2">
       <View className="flex-row justify-between items-center mb-2">
@@ -66,25 +74,28 @@ const MacroCard: React.FC<MacroCardProps> = ({ label, consumed, goal, color, ove
         onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
       >
         {barWidth > 0 && (
-          <Canvas style={{ width: barWidth, height: barHeight }}>
-            {/* Clip entire bar for rounded corners */}
-            <Group clip={rrect(rect(0, 0, barWidth, barHeight), borderRadius, borderRadius)}>
-              {/* Track background */}
-              <Rect
-                x={0}
-                y={0}
-                width={barWidth}
-                height={barHeight}
-                color={trackColor}
-              />
-              {/* Animated fill portion */}
-              <Rect x={0} y={0} width={fillWidth} height={barHeight} color={color} />
-              {/* Overflow portion with reduced opacity */}
-              <Group opacity={0.65}>
-                <Rect x={overflowX} y={0} width={overflowWidth} height={barHeight} color={color} />
-              </Group>
-            </Group>
-          </Canvas>
+          <View
+            style={{
+              width: barWidth,
+              height: barHeight,
+              borderRadius,
+              overflow: 'hidden',
+              backgroundColor: trackColor,
+            }}
+          >
+            <Animated.View
+              style={[
+                { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
+                fillStyle,
+              ]}
+            />
+            <Animated.View
+              style={[
+                { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
+                overflowStyle,
+              ]}
+            />
+          </View>
         )}
       </View>
     </View>

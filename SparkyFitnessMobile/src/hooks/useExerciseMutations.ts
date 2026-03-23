@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import {
   createWorkout,
   updateWorkout,
@@ -35,7 +36,7 @@ function useCrudMutation<TPayload, TResult>({
       ? (data: TResult) => onMutationSuccess(data, queryClient)
       : undefined,
     onError: () => {
-      Alert.alert(errorTitle, 'Please try again.');
+      Toast.show({ type: 'error', text1: errorTitle, text2: 'Please try again.' });
     },
   });
 
@@ -69,7 +70,7 @@ function useDeleteMutation({
     mutationFn: () => deleteFn(id),
     onSuccess: () => onSuccess?.(),
     onError: () => {
-      Alert.alert('Failed to delete', 'Please try again.');
+      Toast.show({ type: 'error', text1: 'Failed to delete', text2: 'Please try again.' });
     },
   });
 

@@ -20,7 +20,7 @@ import HealthTrendsPager from '../components/HealthTrendsPager';
 import ExerciseProgressCard from '../components/ExerciseProgressCard';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
-import type { NativeBottomTabScreenProps } from '@bottom-tabs/react-navigation';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 
 const RANGE_SEGMENTS: Segment<StepsRange>[] = [
@@ -30,7 +30,7 @@ const RANGE_SEGMENTS: Segment<StepsRange>[] = [
 ];
 
 type DashboardScreenProps = CompositeScreenProps<
-  NativeBottomTabScreenProps<TabParamList, 'Dashboard'>,
+  BottomTabScreenProps<TabParamList, 'Dashboard'>,
   StackScreenProps<RootStackParamList>
 >;
 
