@@ -38,6 +38,7 @@ export const createFoodVariant = async (
       vitamin_c: variant.vitamin_c,
       calcium: variant.calcium,
       iron: variant.iron,
+      glycemic_index: variant.glycemic_index,
       is_default: false,
       custom_nutrients: variant.custom_nutrients || {},
     },
