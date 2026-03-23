@@ -243,7 +243,7 @@ const EditExerciseEntryDialog = ({
 
       const caloriesPerHour = exerciseData?.calories_per_hour || 300;
       const totalDurationFromSets = sets.reduce(
-        (acc, set) => acc + (set.duration || 0),
+        (acc, set) => acc + (set.duration || 0) + (set.rest_time || 0) / 60,
         0
       );
       const totalDuration = totalDurationFromSets;

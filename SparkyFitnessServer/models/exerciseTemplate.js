@@ -112,7 +112,7 @@ async function createExerciseEntriesFromTemplate(
               exerciseDetails,
             );
             const durationMinutes =
-              sets?.reduce((acc, set) => acc + (set.duration || 0), 0) || 30;
+              sets?.reduce((acc, set) => acc + (set.duration || 0) + ((set.rest_time || 0) / 60), 0) || 30;
             const caloriesPerHour = exerciseDetails.calories_per_hour || 0;
             const caloriesBurned = (caloriesPerHour / 60) * durationMinutes;
 

@@ -86,7 +86,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           <div className="text-xs text-gray-500 dark:text-gray-400">
             {exerciseEntry.exercise_snapshot?.name === 'Active Calories'
               ? `${Math.round(convertEnergy(exerciseEntry.calories_burned || 0, 'kcal', energyUnit))} active ${getEnergyUnitString(energyUnit)}`
-              : `${formatMinutesToHHMM(exerciseEntry.sets && exerciseEntry.sets.length > 0 ? exerciseEntry.sets.reduce((sum, set) => sum + (set.duration || 0), 0) : exerciseEntry.duration_minutes || 0)} • ${Math.round(convertEnergy(exerciseEntry.calories_burned || 0, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`}
+              : `${formatMinutesToHHMM(exerciseEntry.sets && exerciseEntry.sets.length > 0 ? exerciseEntry.sets.reduce((sum, set) => sum + (set.duration || 0) + (set.rest_time || 0) / 60, 0) : exerciseEntry.duration_minutes || 0)} • ${Math.round(convertEnergy(exerciseEntry.calories_burned || 0, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`}
             {exerciseEntry.sets &&
               Array.isArray(exerciseEntry.sets) &&
               exerciseEntry.sets.length > 0 && (

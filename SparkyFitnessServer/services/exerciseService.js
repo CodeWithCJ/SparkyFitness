@@ -195,7 +195,7 @@ async function prepareExerciseEntryForCreate(
   }
 
   const durationFromSets = Array.isArray(entryData.sets)
-    ? entryData.sets.reduce((sum, set) => sum + (set.duration || 0), 0)
+    ? entryData.sets.reduce((sum, set) => sum + (set.duration || 0) + ((set.rest_time || 0) / 60), 0)
     : 0;
   const durationMinutes =
     typeof entryData.duration_minutes === "number"
@@ -1526,7 +1526,7 @@ async function createGroupedExerciseEntriesWithClient(
   const createdEntries = [];
   for (const exercise of exercises || []) {
     const durationFromSets =
-      exercise.sets?.reduce((sum, set) => sum + (set.duration || 0), 0) || 0;
+      exercise.sets?.reduce((sum, set) => sum + (set.duration || 0) + ((set.rest_time || 0) / 60), 0) || 0;
     const durationMinutes =
       typeof exercise.duration_minutes === "number"
         ? exercise.duration_minutes

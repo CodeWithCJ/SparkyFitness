@@ -228,7 +228,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         entry_date: selectedDate,
         calories_burned: Number(caloriesBurnedInput),
         duration_minutes: sets.reduce(
-          (acc, set) => acc + (set.duration || 0),
+          (acc, set) => acc + (set.duration || 0) + (set.rest_time || 0) / 60,
           0
         ),
         imageFile: imageFile,

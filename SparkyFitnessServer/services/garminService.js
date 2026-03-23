@@ -222,6 +222,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
             exerciseDetails: { category: garminCategory },
             sets: [],
             totalDuration: 0,
+            activeDuration: 0,
             startTime: null, // To store the start time of the first active set for this exercise
             endTime: null,   // To store the end time of the last active set for this exercise
           };
@@ -240,39 +241,45 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
         const durationSeconds = garminSet.duration ? Math.round(garminSet.duration) : 0;
         const weightKg = garminSet.weight ? parseFloat((garminSet.weight * 0.001).toFixed(2)) : 0; // Assuming weight is in grams, convert to kg and round to 2 decimal places
 
-        const currentSet = {
-          set_number: currentGroup.sets.length + 1, // Incremental set number
-          set_type: setType,
-          reps: Math.round(garminSet.repetitionCount || 0),
-          weight: weightKg,
-          duration: Math.round(durationSeconds / 60),
-          rest_time: 0, // Default rest time
-          notes: garminSet.notes || '',
-        };
-        currentGroup.sets.push(currentSet);
+        if (garminSet.setType !== 'REST') {
+          const currentSet = {
+            set_number: currentGroup.sets.length + 1, // Incremental set number
+            set_type: setType,
+            reps: Math.round(garminSet.repetitionCount || 0),
+            weight: weightKg,
+            duration: Math.round(durationSeconds / 60),
+            rest_time: 0, // Default rest time
+            notes: garminSet.notes || '',
+          };
+          currentGroup.sets.push(currentSet);
 
-        if (garminSet.setType === 'ACTIVE') {
+          if (garminSet.setType === 'ACTIVE') {
+            currentGroup.totalDuration += durationSeconds;
+            currentGroup.activeDuration += durationSeconds;
+            totalActiveDurationSeconds += durationSeconds;
+
+            const setStartTime = new Date(garminSet.startTime).getTime(); // Convert to milliseconds
+            const setEndTime = setStartTime + (durationSeconds * 1000);
+
+            if (!currentGroup.startTime || setStartTime < currentGroup.startTime) {
+              currentGroup.startTime = setStartTime;
+            }
+            if (!currentGroup.endTime || setEndTime > currentGroup.endTime) {
+              currentGroup.endTime = setEndTime;
+            }
+            lastActiveSet = currentSet; // Store this active set for potential rest time assignment
+
+            // Store active set details for later rest time calculation
+            activeSetsWithStartAndEndTimes.push({
+              set: currentSet,
+              startTime: setStartTime,
+              endTime: setEndTime,
+              garminSetIndex: i // Store original index to find next active set
+            });
+          }
+        } else {
+          // It's a REST set, just add its duration to the group's total duration
           currentGroup.totalDuration += durationSeconds;
-          totalActiveDurationSeconds += durationSeconds;
-
-          const setStartTime = new Date(garminSet.startTime).getTime(); // Convert to milliseconds
-          const setEndTime = setStartTime + (durationSeconds * 1000);
-
-          if (!currentGroup.startTime || setStartTime < currentGroup.startTime) {
-            currentGroup.startTime = setStartTime;
-          }
-          if (!currentGroup.endTime || setEndTime > currentGroup.endTime) {
-            currentGroup.endTime = setEndTime;
-          }
-          lastActiveSet = currentSet; // Store this active set for potential rest time assignment
-
-          // Store active set details for later rest time calculation
-          activeSetsWithStartAndEndTimes.push({
-            set: currentSet,
-            startTime: setStartTime,
-            endTime: setEndTime,
-            garminSetIndex: i // Store original index to find next active set
-          });
         }
       }
     }
@@ -289,7 +296,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
         if (potentialNextGarminSet.setType === 'ACTIVE' && potentialNextGarminSet.exercises && potentialNextGarminSet.exercises.length > 0) {
           // Found the next active set
           const nextSetStartTime = new Date(potentialNextGarminSet.startTime).getTime();
-          const nextSetDuration = potentialNextGarminSet.duration ? Math.round(potentialNextGarminSet.duration / 1000) : 0;
+          const nextSetDuration = potentialNextGarminSet.duration ? Math.round(potentialNextGarminSet.duration) : 0;
           nextActiveSetInfo = {
             startTime: nextSetStartTime,
             duration: nextSetDuration
@@ -297,7 +304,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
           break;
         } else if (potentialNextGarminSet.setType === 'REST') {
           // If there's a REST set immediately following, and it has a duration, use that
-          const restDuration = potentialNextGarminSet.duration ? Math.round(potentialNextGarminSet.duration / 1000) : 0;
+          const restDuration = potentialNextGarminSet.duration ? Math.round(potentialNextGarminSet.duration) : 0;
           if (restDuration > 0) {
             currentSet.rest_time = restDuration;
             break; // Rest time assigned, move to next active set
@@ -316,7 +323,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
     let exerciseSortOrder = 0;
     for (const group of groupedExercises) {
       const exerciseName = group.name;
-      const { exerciseDetails, sets, totalDuration, startTime, endTime } = group;
+      const { exerciseDetails, sets, totalDuration, activeDuration, startTime, endTime } = group;
 
       let exercise = await exerciseRepository.findExerciseByNameAndUserId(exerciseName, userId);
       if (!exercise) {
@@ -340,7 +347,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
 
       let perExerciseCaloriesBurned = 0;
       if (totalActiveDurationSeconds > 0 && activity.active_calories) {
-        perExerciseCaloriesBurned = (totalDuration / totalActiveDurationSeconds) * activity.active_calories;
+        perExerciseCaloriesBurned = (activeDuration / totalActiveDurationSeconds) * activity.active_calories;
       }
 
 

@@ -83,7 +83,7 @@ async function importExerciseEntriesFromCsv(authenticatedUserId, actingUserId, e
       });
 
       // Calculate total duration from sets
-      const totalDurationMinutes = setsWithConvertedWeight.reduce((sum, set) => sum + (set.duration || 0), 0);
+      const totalDurationMinutes = setsWithConvertedWeight.reduce((sum, set) => sum + (set.duration || 0) + ((set.rest_time || 0) / 60), 0);
 
       // 4. Lookup or Create Workout Preset (if preset_name is provided)
       let workoutPresetId = null; // Initialize workoutPresetId once
