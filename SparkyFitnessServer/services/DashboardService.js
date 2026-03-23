@@ -6,6 +6,7 @@ const preferenceRepository = require("../models/preferenceRepository");
 const bmrService = require("./bmrService");
 const adaptiveTdeeService = require("./AdaptiveTdeeService");
 const { log } = require("../config/logging");
+const { CALORIE_CALCULATION_CONSTANTS } = require("@workspace/shared");
 
 /**
  * Aggregates stats for external dashboards (like gethomepage.dev).
@@ -43,25 +44,37 @@ async function getDashboardStats(userId, date) {
     // 3. Exercise Calories
     let activeCalories = 0;
     let otherCalories = 0;
+    let activitySteps = 0;
     exerciseEntries.forEach((entry) => {
       if (entry.exercise_name === "Active Calories") {
         activeCalories += parseFloat(entry.calories_burned || 0);
       } else {
         otherCalories += parseFloat(entry.calories_burned || 0);
       }
+      activitySteps += parseInt(entry.steps || 0);
     });
 
     // 4. Steps Calories
     const stepsCount = parseInt(checkInMeasurements?.steps || 0);
+    const backgroundSteps = Math.max(0, stepsCount - activitySteps);
 
-    let weightKg = parseFloat(latestMeasurements?.weight) || 70;
-    let heightCm = parseFloat(latestMeasurements?.height) || 175;
+    let weightKg =
+      parseFloat(latestMeasurements?.weight) ||
+      CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
+    let heightCm =
+      parseFloat(latestMeasurements?.height) ||
+      CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
 
     // Distance-based step calorie calculation (Net calories above BMR)
     // Formula matches frontend: steps * stride_length * weight * 0.4
-    const strideLengthM = (heightCm * 0.414) / 100;
-    const distanceKm = (stepsCount * strideLengthM) / 1000;
-    const stepsCalories = Math.round(distanceKm * weightKg * 0.4);
+    const strideLengthM =
+      (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
+    const distanceKm = (backgroundSteps * strideLengthM) / 1000;
+    const backgroundStepCalories = Math.round(
+      distanceKm *
+        weightKg *
+        CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM,
+    );
 
     // 5. BMR & Activity Baselines
     let bmr = 0;
@@ -107,7 +120,7 @@ async function getDashboardStats(userId, date) {
     // 1. Device total "Active Calories" (which includes steps + workouts)
     // 2. Individual workouts + background steps
     // We take whichever is larger.
-    const workoutPlusSteps = otherCalories + stepsCalories;
+    const workoutPlusSteps = otherCalories + backgroundStepCalories;
     const exerciseCalories = activeCalories >= workoutPlusSteps 
       ? activeCalories 
       : workoutPlusSteps;

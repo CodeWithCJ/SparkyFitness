@@ -48,6 +48,7 @@ import {
 import { formatWeight } from '@/utils/numberFormatting';
 import { EnergyCircle } from './EnergyProgressCircle';
 import { useDailyGoals } from '@/hooks/Goals/useGoals';
+import { CALORIE_CALCULATION_CONSTANTS } from '@workspace/shared';
 
 const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const { t } = useTranslation();
@@ -119,8 +120,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const backgroundSteps = Math.max(0, dailySteps - activitySteps);
   const backgroundStepCalories = convertStepsToCalories(
     backgroundSteps,
-    weight || 70,
-    height || 175
+    weight || CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
+    height || CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM
   );
 
   const resolved = resolveExerciseCalories(
