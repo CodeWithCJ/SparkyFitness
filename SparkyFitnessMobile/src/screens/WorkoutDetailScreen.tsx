@@ -601,11 +601,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           const summaryItems: { value: string; label: string }[] = [];
           if (duration > 0) summaryItems.push({ value: formatDuration(duration), label: 'Duration' });
           if (calories > 0) summaryItems.push({ value: String(Math.round(calories)), label: 'Calories' });
-          if (summaryItems.length === 0) return null;
           if (isPreset) summaryItems.push({
             value: String(session.exercises.length),
             label: session.exercises.length === 1 ? 'Exercise' : 'Exercises',
           });
+          if (summaryItems.length === 0) return null;
           return (
             <View className="bg-surface rounded-xl p-4">
               <View className="flex-row items-center justify-around">
