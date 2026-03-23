@@ -208,7 +208,7 @@ export const exerciseProgressResponseSchema = z.object({
   entry_date: z.string(),
   duration_minutes: z.number().min(0).default(0),
   calories_burned: z.number().min(0).default(0),
-  notes: z.string(),
+  notes: z.string().nullable(),
   image_url: z.string().nullable(),
   distance: z.number().nullable(),
   avg_heart_rate: z.number().nullable(),
