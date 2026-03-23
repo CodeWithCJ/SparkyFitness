@@ -14,14 +14,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: corepack enable
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
       # Pick your own package manager and build script
       - run: |
           cd docs
-          npm install
-          NUXT_APP_BASE_URL=/SparkyFitness/ npx nuxt build --preset github_pages
+          pnpm install --frozen-lockfile
+          NUXT_APP_BASE_URL=/SparkyFitness/ pnpm exec nuxt build --preset github_pages
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
