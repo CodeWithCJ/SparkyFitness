@@ -200,6 +200,7 @@ export const exerciseEntryResponseSchema = z
     sets: z.array(exerciseEntrySetResponseSchema),
     exercise_snapshot: exerciseSnapshotResponseSchema.nullable(),
     activity_details: z.array(activityDetailResponseSchema),
+    steps: z.number().nullable().optional(),
   })
   .strict();
 
@@ -238,6 +239,7 @@ export const presetSessionResponseSchema = z
     source: z.string(),
     created_at: z.string().nullable().optional(),
     total_duration_minutes: z.number(),
+    steps: z.number().nullable().optional(),
     exercises: z.array(exerciseEntryResponseSchema),
     exercise_snapshot: exerciseSnapshotResponseSchema.nullable().optional(),
     activity_details: z.array(activityDetailResponseSchema),

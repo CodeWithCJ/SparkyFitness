@@ -71,3 +71,4 @@ export * from "./schemas/database/WorkoutPresetExerciseSets.zod";
 export * from "./schemas/database/WorkoutPresetExercises.zod";
 export * from "./schemas/database/WorkoutPresets.zod";
 export * from "./constants/measurements";
+export * from "./constants/calorieConstants";

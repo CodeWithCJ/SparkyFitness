@@ -166,6 +166,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
     created_by_user_id: userId,
     notes: `Garmin Workout Session: ${workoutName}`,
     source: 'garmin', // Add source to exercise_preset_entries
+    steps: activity.steps || activity.totalSteps || activity.stepCount || 0,
   };
   const newExercisePresetEntry = await exercisePresetEntryRepository.createExercisePresetEntry(userId, exercisePresetEntryData, userId);
 
@@ -178,7 +179,8 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
   });
 
   if (exercise_sets && Array.isArray(exercise_sets.exerciseSets)) {
-    const groupedExercises = {};
+    const groupedExercises = [];
+    let currentGroup = null;
     let totalActiveDurationSeconds = 0;
     let lastActiveSet = null; // To store the last active set for assigning rest time
     const activeSetsWithStartAndEndTimes = []; // Store active sets with their calculated start and end times
@@ -188,18 +190,43 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
       const garminSet = exercise_sets.exerciseSets[i];
       // We need to look further ahead to find the next ACTIVE set for rest time calculation
 
-      if (garminSet.exercises && garminSet.exercises.length > 0) {
-        const garminExerciseName = garminSet.exercises[0].name || garminSet.exercises[0].category;
-        const exerciseName = garminExerciseName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      let garminExerciseName = null;
+      let garminCategory = 'Uncategorized';
 
-        if (!groupedExercises[exerciseName]) {
-          groupedExercises[exerciseName] = {
-            exerciseDetails: garminSet.exercises[0],
+      if (garminSet.exercises && garminSet.exercises.length > 0) {
+        garminExerciseName = garminSet.exercises[0].name || garminSet.exercises[0].category;
+        garminCategory = garminSet.exercises[0].category || 'Uncategorized';
+      } else if (garminSet.category) {
+        garminExerciseName = garminSet.category;
+        garminCategory = garminSet.category;
+      }
+
+      // If we still don't have an exercise name (e.g. an unnamed REST or WARM_UP set),
+      // inherit it from the current group to prevent breaking the exercise into multiple 1-set entries.
+      // We ONLY inherit for non-ACTIVE sets. An ACTIVE set without a name is a new, unrecognized exercise.
+      if (!garminExerciseName && currentGroup && garminSet.setType !== 'ACTIVE') {
+        garminExerciseName = currentGroup.name;
+        garminCategory = currentGroup.exerciseDetails.category || 'Uncategorized';
+      } else if (!garminExerciseName) {
+        garminExerciseName = 'Unknown Exercise';
+      }
+
+      if (garminExerciseName) {
+        const exerciseName = garminExerciseName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        const stepIndex = garminSet.stepIndex || garminSet.wktStepId || null;
+
+        if (!currentGroup || currentGroup.name !== exerciseName || (stepIndex !== null && currentGroup.stepIndex !== null && currentGroup.stepIndex !== stepIndex)) {
+          currentGroup = {
+            name: exerciseName,
+            stepIndex: stepIndex,
+            exerciseDetails: { category: garminCategory },
             sets: [],
             totalDuration: 0,
+            activeDuration: 0,
             startTime: null, // To store the start time of the first active set for this exercise
             endTime: null,   // To store the end time of the last active set for this exercise
           };
+          groupedExercises.push(currentGroup);
         }
 
         const setTypeMapping = {
@@ -214,39 +241,45 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
         const durationSeconds = garminSet.duration ? Math.round(garminSet.duration) : 0;
         const weightKg = garminSet.weight ? parseFloat((garminSet.weight * 0.001).toFixed(2)) : 0; // Assuming weight is in grams, convert to kg and round to 2 decimal places
 
-        const currentSet = {
-          set_number: groupedExercises[exerciseName].sets.length + 1, // Incremental set number
-          set_type: setType,
-          reps: Math.round(garminSet.repetitionCount || 0),
-          weight: weightKg,
-          duration: Math.round(durationSeconds / 60),
-          rest_time: 0, // Default rest time
-          notes: garminSet.notes || '',
-        };
-        groupedExercises[exerciseName].sets.push(currentSet);
+        if (garminSet.setType !== 'REST') {
+          const currentSet = {
+            set_number: currentGroup.sets.length + 1, // Incremental set number
+            set_type: setType,
+            reps: Math.round(garminSet.repetitionCount || 0),
+            weight: weightKg,
+            duration: Math.round(durationSeconds / 60),
+            rest_time: 0, // Default rest time
+            notes: garminSet.notes || '',
+          };
+          currentGroup.sets.push(currentSet);
 
-        if (garminSet.setType === 'ACTIVE') {
-          groupedExercises[exerciseName].totalDuration += durationSeconds;
-          totalActiveDurationSeconds += durationSeconds;
+          if (garminSet.setType === 'ACTIVE') {
+            currentGroup.totalDuration += durationSeconds;
+            currentGroup.activeDuration += durationSeconds;
+            totalActiveDurationSeconds += durationSeconds;
 
-          const setStartTime = new Date(garminSet.startTime).getTime(); // Convert to milliseconds
-          const setEndTime = setStartTime + (durationSeconds * 1000);
+            const setStartTime = new Date(garminSet.startTime).getTime(); // Convert to milliseconds
+            const setEndTime = setStartTime + (durationSeconds * 1000);
 
-          if (!groupedExercises[exerciseName].startTime || setStartTime < groupedExercises[exerciseName].startTime) {
-            groupedExercises[exerciseName].startTime = setStartTime;
+            if (!currentGroup.startTime || setStartTime < currentGroup.startTime) {
+              currentGroup.startTime = setStartTime;
+            }
+            if (!currentGroup.endTime || setEndTime > currentGroup.endTime) {
+              currentGroup.endTime = setEndTime;
+            }
+            lastActiveSet = currentSet; // Store this active set for potential rest time assignment
+
+            // Store active set details for later rest time calculation
+            activeSetsWithStartAndEndTimes.push({
+              set: currentSet,
+              startTime: setStartTime,
+              endTime: setEndTime,
+              garminSetIndex: i // Store original index to find next active set
+            });
           }
-          if (!groupedExercises[exerciseName].endTime || setEndTime > groupedExercises[exerciseName].endTime) {
-            groupedExercises[exerciseName].endTime = setEndTime;
-          }
-          lastActiveSet = currentSet; // Store this active set for potential rest time assignment
-
-          // Store active set details for later rest time calculation
-          activeSetsWithStartAndEndTimes.push({
-            set: currentSet,
-            startTime: setStartTime,
-            endTime: setEndTime,
-            garminSetIndex: i // Store original index to find next active set
-          });
+        } else {
+          // It's a REST set, just add its duration to the group's total duration
+          currentGroup.totalDuration += durationSeconds;
         }
       }
     }
@@ -263,7 +296,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
         if (potentialNextGarminSet.setType === 'ACTIVE' && potentialNextGarminSet.exercises && potentialNextGarminSet.exercises.length > 0) {
           // Found the next active set
           const nextSetStartTime = new Date(potentialNextGarminSet.startTime).getTime();
-          const nextSetDuration = potentialNextGarminSet.duration ? Math.round(potentialNextGarminSet.duration / 1000) : 0;
+          const nextSetDuration = potentialNextGarminSet.duration ? Math.round(potentialNextGarminSet.duration) : 0;
           nextActiveSetInfo = {
             startTime: nextSetStartTime,
             duration: nextSetDuration
@@ -271,7 +304,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
           break;
         } else if (potentialNextGarminSet.setType === 'REST') {
           // If there's a REST set immediately following, and it has a duration, use that
-          const restDuration = potentialNextGarminSet.duration ? Math.round(potentialNextGarminSet.duration / 1000) : 0;
+          const restDuration = potentialNextGarminSet.duration ? Math.round(potentialNextGarminSet.duration) : 0;
           if (restDuration > 0) {
             currentSet.rest_time = restDuration;
             break; // Rest time assigned, move to next active set
@@ -288,8 +321,9 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
     }
 
     let exerciseSortOrder = 0;
-    for (const exerciseName in groupedExercises) {
-      const { exerciseDetails, sets, totalDuration, startTime, endTime } = groupedExercises[exerciseName];
+    for (const group of groupedExercises) {
+      const exerciseName = group.name;
+      const { exerciseDetails, sets, totalDuration, activeDuration, startTime, endTime } = group;
 
       let exercise = await exerciseRepository.findExerciseByNameAndUserId(exerciseName, userId);
       if (!exercise) {
@@ -313,7 +347,7 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
 
       let perExerciseCaloriesBurned = 0;
       if (totalActiveDurationSeconds > 0 && activity.active_calories) {
-        perExerciseCaloriesBurned = (totalDuration / totalActiveDurationSeconds) * activity.active_calories;
+        perExerciseCaloriesBurned = (activeDuration / totalActiveDurationSeconds) * activity.active_calories;
       }
 
 
@@ -346,7 +380,8 @@ async function processGarminWorkoutSession(userId, sessionData, startDate, endDa
         sets: sets,
         exercise_preset_entry_id: newExercisePresetEntry.id, // Link to preset entry
         avg_heart_rate: perExerciseAvgHeartRate ? Math.round(perExerciseAvgHeartRate) : null, // Round to nearest whole number or keep null
-        source_id: activity.activityId?.toString() ?? null,
+        source_id: activity.activityId ? `${activity.activityId}_${exerciseSortOrder}` : null,
+        steps: activity.steps || activity.totalSteps || activity.stepCount || 0,
       };
       await exerciseEntryRepository.createExerciseEntry(userId, { ...exerciseEntryData, sort_order: exerciseSortOrder }, userId, 'garmin', newExercisePresetEntry.id);
 
@@ -454,6 +489,7 @@ async function processGarminSimpleActivity(userId, activityData) {
     distance: activity.distance,
     avg_heart_rate: activity.averageHR || activity.averageHeartRateInBeatsPerMinute || null,
     source_id: activity.activityId?.toString() ?? null,
+    steps: activity.steps || activity.totalSteps || activity.stepCount || 0,
   };
 
   const newEntry = await exerciseEntryRepository.createExerciseEntry(userId, exerciseEntryData, userId, 'garmin');

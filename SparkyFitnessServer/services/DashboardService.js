@@ -6,6 +6,7 @@ const preferenceRepository = require("../models/preferenceRepository");
 const bmrService = require("./bmrService");
 const adaptiveTdeeService = require("./AdaptiveTdeeService");
 const { log } = require("../config/logging");
+const { CALORIE_CALCULATION_CONSTANTS } = require("@workspace/shared");
 
 /**
  * Aggregates stats for external dashboards (like gethomepage.dev).
@@ -43,19 +44,37 @@ async function getDashboardStats(userId, date) {
     // 3. Exercise Calories
     let activeCalories = 0;
     let otherCalories = 0;
+    let activitySteps = 0;
     exerciseEntries.forEach((entry) => {
       if (entry.exercise_name === "Active Calories") {
         activeCalories += parseFloat(entry.calories_burned || 0);
       } else {
         otherCalories += parseFloat(entry.calories_burned || 0);
       }
+      activitySteps += parseInt(entry.steps || 0);
     });
 
     // 4. Steps Calories
     const stepsCount = parseInt(checkInMeasurements?.steps || 0);
+    const backgroundSteps = Math.max(0, stepsCount - activitySteps);
 
-    let weightKg = parseFloat(latestMeasurements?.weight) || 70;
-    const stepsCalories = Math.round(stepsCount * 0.04 * (weightKg / 70));
+    let weightKg =
+      parseFloat(latestMeasurements?.weight) ||
+      CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
+    let heightCm =
+      parseFloat(latestMeasurements?.height) ||
+      CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
+
+    // Distance-based step calorie calculation (Net calories above BMR)
+    // Formula matches frontend: steps * stride_length * weight * 0.4
+    const strideLengthM =
+      (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
+    const distanceKm = (backgroundSteps * strideLengthM) / 1000;
+    const backgroundStepCalories = Math.round(
+      distanceKm *
+        weightKg *
+        CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM,
+    );
 
     // 5. BMR & Activity Baselines
     let bmr = 0;
@@ -96,12 +115,15 @@ async function getDashboardStats(userId, date) {
     const sparkyfitnessBurned = Math.round(bmr * multiplier);
     const calorieGoalOffset = bmr > 0 ? rawGoalCalories - sparkyfitnessBurned : 0;
 
-    // 3-tier mutually exclusive fallback to avoid double-counting
-    // (device active calories already include workout calories)
-    const exerciseCalories =
-      otherCalories > 0 ? otherCalories
-      : activeCalories > 0 ? activeCalories
-      : stepsCalories;
+    // 3-tier fallback to avoid double-counting
+    // We compare:
+    // 1. Device total "Active Calories" (which includes steps + workouts)
+    // 2. Individual workouts + background steps
+    // We take whichever is larger.
+    const workoutPlusSteps = otherCalories + backgroundStepCalories;
+    const exerciseCalories = activeCalories >= workoutPlusSteps 
+      ? activeCalories 
+      : workoutPlusSteps;
     const bmrToAdd = includeInNet ? bmr : 0;
     const totalBurned = exerciseCalories + bmrToAdd;
 
