@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, Image, ScrollView, Platform, Alert } from 'react-native';
+import { View, Text, Image, ScrollView, Platform, Alert, ActivityIndicator } from 'react-native';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import SyncFrequency from '../components/SyncFrequency';
@@ -33,6 +33,7 @@ import type { HealthMetricStates, HealthDataDisplayState } from '../types/health
 import { useSyncHealthData } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
 import { fetchHealthDisplayData } from '../services/healthDataDisplay';
+import { shareHealthDiagnosticReport } from '../services/healthDiagnosticService';
 
 type SyncScreenProps = RootStackScreenProps<'Sync'>;
 
@@ -66,6 +67,8 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const [healthDataRefreshKey, setHealthDataRefreshKey] = useState(0);
   const isAndroid = Platform.OS === 'android';
   const healthSettingsName = isAndroid ? 'Health Connect settings' : 'Health app settings';
+
+  const [isSharingReport, setIsSharingReport] = useState(false);
 
   const isAllMetricsEnabled = useMemo(
     () => HEALTH_METRICS.every(metric => healthMetricStates[metric.stateKey]),
@@ -281,6 +284,18 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     setHealthDataRefreshKey(k => k + 1);
   };
 
+  const handleShareHealthReport = async (): Promise<void> => {
+    setIsSharingReport(true);
+    try {
+      await shareHealthDiagnosticReport();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      Alert.alert('Error', `Failed to generate health data report: ${errorMessage}`);
+    } finally {
+      setIsSharingReport(false);
+    }
+  };
+
   const handleSync = (): void => {
     if (syncMutation.isPending) return;
     syncMutation.mutate({ timeRange: selectedTimeRange, healthMetricStates });
@@ -394,6 +409,36 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           healthData={healthData}
           isLoadingHealthData={isLoadingHealthData}
         />
+
+        {/* Health Data Report — Android only */}
+        {isAndroid && (
+          <View className="mt-4">
+            <Button
+              variant="outline"
+              className="flex-row items-center"
+              onPress={handleShareHealthReport}
+              disabled={!isHealthConnectInitialized || isSharingReport}
+            >
+              {isSharingReport ? (
+                <ActivityIndicator size="small" className="mr-3" />
+              ) : (
+                <Icon name="share" size={20} color={accentPrimary} />
+              )}
+              <View className="flex-1 ml-3">
+                <Text className="text-accent-primary text-base font-semibold">
+                  {isSharingReport ? 'Generating...' : 'Health Data Report'}
+                </Text>
+                <Text className="text-text-secondary text-sm mt-0.5">
+                  Export anonymized health data for bug reports
+                </Text>
+              </View>
+            </Button>
+            <Text className="text-text-muted text-xs px-2 mt-2">
+              Reads the last 4 hours of data from Health Connect for troubleshooting.
+              Values are rounded for privacy. Nothing is sent automatically.
+            </Text>
+          </View>
+        )}
 
       </ScrollView>
     </View>

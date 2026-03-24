@@ -17,6 +17,10 @@
   ],
   "exclude": [
     "__tests__",
-    "plugins"
+    "plugins",
+    "drivers",
+    "reports",
+    "plans",
+    
   ]
 }
