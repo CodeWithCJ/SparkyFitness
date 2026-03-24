@@ -205,7 +205,7 @@ describe('healthDiagnosticService', () => {
       expect(section.error).toBe('Permission denied for Vo2Max');
     });
 
-    it('paginates through multiple pages of records', async () => {
+    it('paginates through multiple pages and forwards pageToken', async () => {
       mockReadRecords
         .mockResolvedValueOnce({
           records: [{ startTime: '2026-03-23T11:00:00Z', endTime: '2026-03-23T11:30:00Z', energy: { inKilocalories: 100 }, metadata: {} }],
@@ -219,6 +219,21 @@ describe('healthDiagnosticService', () => {
       const section = await collectMetricSection('ActiveCaloriesBurned', start, end);
       expect(section.recordCount).toBe(2);
       expect(mockReadRecords).toHaveBeenCalledTimes(2);
+      // Verify pageToken from first response is forwarded to second call
+      expect(mockReadRecords.mock.calls[1][1]).toEqual(
+        expect.objectContaining({ pageToken: 'page2' }),
+      );
+    });
+
+    it('stops paginating after max pages to prevent infinite loops', async () => {
+      mockReadRecords.mockImplementation(() =>
+        Promise.resolve({ records: [{ metadata: {} }], pageToken: 'next' }),
+      );
+
+      const section = await collectMetricSection('ActiveCaloriesBurned', start, end);
+      // DIAGNOSTIC_MAX_PAGES = 20
+      expect(mockReadRecords).toHaveBeenCalledTimes(20);
+      expect(section.recordCount).toBe(20);
     });
 
     it('calls readRecords with the metric type as recordType', async () => {
@@ -302,6 +317,22 @@ describe('healthDiagnosticService', () => {
 
       const section = await collectMetricSection('ExerciseSession', start, end);
       expect(section.records[0].dataOrigin).toBe('com.samsung.health');
+    });
+
+    it('handles exercise session with no optional fields', async () => {
+      mockReadRecords.mockResolvedValueOnce({ records: [{
+        startTime: '2026-03-23T11:00:00Z',
+        endTime: '2026-03-23T11:30:00Z',
+        exerciseType: 1,
+        metadata: {},
+      }] });
+
+      const section = await collectMetricSection('ExerciseSession', start, end);
+      expect(section.recordCount).toBe(1);
+      expect(section.records[0].energy).toBeUndefined();
+      expect(section.records[0].distance).toBeUndefined();
+      expect(section.records[0].exerciseRoute).toBeUndefined();
+      expect(section.records[0].hasTitle).toBe(false);
     });
 
     it('rounds duration, energy, and distance', async () => {
