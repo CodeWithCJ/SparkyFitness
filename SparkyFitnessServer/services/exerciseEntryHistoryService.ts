@@ -209,7 +209,7 @@ async function getExerciseEntryHistorySessions(
     batchQueries.push(
       client
         .query(
-          `SELECT id, workout_preset_id, name, description, notes, source, steps
+          `SELECT id, workout_preset_id, name, description, notes, source
            FROM exercise_preset_entries WHERE id = ANY($1::uuid[])`,
           [presetIds],
         )
@@ -356,7 +356,6 @@ async function getExerciseEntryHistorySessions(
         notes: (meta.notes as string) ?? null,
         source: meta.source as string,
         total_duration_minutes: totalDuration,
-        steps: (meta.steps as number) ?? null,
         exercises: children,
         activity_details: presetDetails,
       });
@@ -434,7 +433,7 @@ async function _getExerciseEntriesByDateWithClient(
   // Fetch preset entries and all exercise entries for the date in parallel
   const [presetResult, entriesResult] = await Promise.all([
     client.query(
-      `SELECT id, workout_preset_id, name, description, notes, source, created_at, steps
+      `SELECT id, workout_preset_id, name, description, notes, source, created_at
        FROM exercise_preset_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY created_at ASC`,
@@ -602,7 +601,6 @@ async function _getExerciseEntriesByDateWithClient(
         notes: (presetRow.notes as string) ?? null,
         source: presetRow.source as string,
         total_duration_minutes: totalDuration,
-        steps: (presetRow.steps as number) ?? null,
         exercises: children,
         activity_details: presetDetails,
       });
@@ -644,7 +642,7 @@ export async function getGroupedExerciseSessionByIdWithClient(
   presetEntryId: string,
 ): Promise<PresetSessionResponse | null> {
   const metaResult = await client.query(
-    `SELECT id, workout_preset_id, name, description, notes, source, entry_date, steps
+    `SELECT id, workout_preset_id, name, description, notes, source, entry_date
      FROM exercise_preset_entries
      WHERE user_id = $1 AND id = $2`,
     [targetUserId, presetEntryId],
@@ -721,7 +719,6 @@ export async function getGroupedExerciseSessionByIdWithClient(
     description: (meta.description as string) ?? null,
     notes: (meta.notes as string) ?? null,
     source: meta.source as string,
-    steps: (meta.steps as number) ?? null,
     total_duration_minutes: exercises.reduce(
       (sum, exercise) => sum + (exercise.duration_minutes ?? 0),
       0,
