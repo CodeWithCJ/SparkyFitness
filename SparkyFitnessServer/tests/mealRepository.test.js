@@ -169,6 +169,63 @@ describe('mealRepository', () => {
     });
   });
 
+  describe('getPublicMeals', () => {
+    it('should return public meals with their foods attached', async () => {
+      const userId = uuidv4();
+      const mealId = uuidv4();
+      const mockMeals = [
+        { id: mealId, user_id: uuidv4(), name: 'Public Meal', is_public: true },
+      ];
+      const mockMealFoods = [
+        { id: uuidv4(), meal_id: mealId, food_id: uuidv4(), food_name: 'Food A' },
+      ];
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: mockMeals })
+        .mockResolvedValueOnce({ rows: mockMealFoods });
+
+      const result = await mealRepository.getPublicMeals(userId);
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE is_public = TRUE')
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('FROM meal_foods mf'),
+        [mealId]
+      );
+      expect(result).toEqual([{ ...mockMeals[0], foods: mockMealFoods }]);
+    });
+  });
+
+  describe('getFamilyMeals', () => {
+    it('should return family meals with their foods attached', async () => {
+      const userId = uuidv4();
+      const mealId = uuidv4();
+      const mockMeals = [
+        { id: mealId, user_id: uuidv4(), name: 'Family Meal', is_public: false },
+      ];
+      const mockMealFoods = [
+        { id: uuidv4(), meal_id: mealId, food_id: uuidv4(), food_name: 'Food B' },
+      ];
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: mockMeals })
+        .mockResolvedValueOnce({ rows: mockMealFoods });
+
+      const result = await mealRepository.getFamilyMeals(userId);
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('JOIN family_access fa'),
+        [userId]
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('FROM meal_foods mf'),
+        [mealId]
+      );
+      expect(result).toEqual([{ ...mockMeals[0], foods: mockMealFoods }]);
+    });
+  });
+
   describe('updateMeal', () => {
     it('should update a meal and its associated foods', async () => {
       const mealId = uuidv4();

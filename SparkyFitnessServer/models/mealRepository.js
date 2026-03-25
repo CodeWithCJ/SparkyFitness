@@ -51,6 +51,31 @@ async function createMeal(mealData) {
   }
 }
 
+async function attachFoodsToMeal(client, meal) {
+  const mealFoodsResult = await client.query(
+    `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
+            f.name AS food_name, f.brand,
+            fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
+            fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
+            fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
+            fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
+     FROM meal_foods mf
+     JOIN foods f ON mf.food_id = f.id
+     LEFT JOIN food_variants fv ON mf.variant_id = fv.id
+     WHERE mf.meal_id = $1`,
+    [meal.id],
+  );
+  meal.foods = mealFoodsResult.rows;
+  return meal;
+}
+
+async function attachFoodsToMeals(client, meals) {
+  for (const meal of meals) {
+    await attachFoodsToMeal(client, meal);
+  }
+  return meals;
+}
+
 async function getMeals(userId, filter = "all") {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -74,26 +99,7 @@ async function getMeals(userId, filter = "all") {
 
     const result = await client.query(query, queryParams);
     const meals = result.rows;
-
-    // For each meal, fetch its associated foods
-    for (const meal of meals) {
-      const mealFoodsResult = await client.query(
-        `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
-                f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
-         FROM meal_foods mf
-         JOIN foods f ON mf.food_id = f.id
-         LEFT JOIN food_variants fv ON mf.variant_id = fv.id
-         WHERE mf.meal_id = $1`,
-        [meal.id],
-      );
-      meal.foods = mealFoodsResult.rows;
-    }
-
-    return meals;
+    return attachFoodsToMeals(client, meals);
   } finally {
     client.release();
   }
@@ -116,25 +122,7 @@ async function searchMeals(searchTerm, userId, limit = null) {
 
     const result = await client.query(query, queryParams);
     const meals = result.rows;
-
-    // For each meal, fetch its associated foods
-    for (const meal of meals) {
-      const mealFoodsResult = await client.query(
-        `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
-                f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
-         FROM meal_foods mf
-         JOIN foods f ON mf.food_id = f.id
-         LEFT JOIN food_variants fv ON mf.variant_id = fv.id
-         WHERE mf.meal_id = $1`,
-        [meal.id],
-      );
-      meal.foods = mealFoodsResult.rows;
-    }
-    return meals;
+    return attachFoodsToMeals(client, meals);
   } finally {
     client.release();
   }
@@ -151,20 +139,7 @@ async function getMealById(mealId, userId) {
     const meal = mealResult.rows[0];
 
     if (meal) {
-      const mealFoodsResult = await client.query(
-        `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
-                f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
-         FROM meal_foods mf
-         JOIN foods f ON mf.food_id = f.id
-         LEFT JOIN food_variants fv ON mf.variant_id = fv.id
-         WHERE mf.meal_id = $1`,
-        [mealId],
-      );
-      meal.foods = mealFoodsResult.rows;
+      await attachFoodsToMeal(client, meal);
     }
     return meal;
   } finally {
@@ -509,24 +484,7 @@ async function getRecentMeals(userId, limit = null) {
 
     const result = await client.query(query, queryParams);
     const meals = result.rows;
-
-    for (const meal of meals) {
-      const mealFoodsResult = await client.query(
-        `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
-                f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
-         FROM meal_foods mf
-         JOIN foods f ON mf.food_id = f.id
-         LEFT JOIN food_variants fv ON mf.variant_id = fv.id
-         WHERE mf.meal_id = $1`,
-        [meal.id],
-      );
-      meal.foods = mealFoodsResult.rows;
-    }
-    return meals;
+    return attachFoodsToMeals(client, meals);
   } finally {
     client.release();
   }
@@ -553,24 +511,7 @@ async function getTopMeals(userId, limit = null) {
 
     const result = await client.query(query, queryParams);
     const meals = result.rows;
-
-    for (const meal of meals) {
-      const mealFoodsResult = await client.query(
-        `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
-                f.name AS food_name, f.brand,
-                fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
-                fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
-                fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
-                fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
-         FROM meal_foods mf
-         JOIN foods f ON mf.food_id = f.id
-         LEFT JOIN food_variants fv ON mf.variant_id = fv.id
-         WHERE mf.meal_id = $1`,
-        [meal.id],
-      );
-      meal.foods = mealFoodsResult.rows;
-    }
-    return meals;
+    return attachFoodsToMeals(client, meals);
   } finally {
     client.release();
   }
@@ -717,7 +658,7 @@ async function getPublicMeals(userId) {
        WHERE is_public = TRUE
        ORDER BY name ASC`,
     );
-    return result.rows;
+    return attachFoodsToMeals(client, result.rows);
   } finally {
     client.release();
   }
@@ -738,7 +679,7 @@ async function getFamilyMeals(userId) {
        ORDER BY m.name ASC`,
       [userId],
     );
-    return result.rows;
+    return attachFoodsToMeals(client, result.rows);
   } finally {
     client.release();
   }
