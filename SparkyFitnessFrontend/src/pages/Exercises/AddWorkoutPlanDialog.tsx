@@ -62,6 +62,7 @@ import AddExerciseDialog from './AddExerciseDialog';
 import ExerciseHistoryDisplay from '../../components/ExerciseHistoryDisplay';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug } from '@/utils/logging';
+import { generateClientId } from '@/utils/generateClientId';
 import { useWorkoutPresets } from '@/hooks/Exercises/useWorkoutPresets';
 import { Exercise } from '@/types/exercises';
 import { TFunction } from 'i18next';
@@ -525,11 +526,11 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
       return (
         initialData?.assignments?.map((a) => ({
           ...a,
-          id: a.id ? String(a.id) : crypto.randomUUID(),
+          id: a.id ? String(a.id) : generateClientId(),
           sets:
             a.sets?.map((s) => ({
               ...s,
-              id: s.id ? String(s.id) : crypto.randomUUID(),
+              id: s.id ? String(s.id) : generateClientId(),
               weight: parseFloat(
                 convertWeight(s.weight ?? 0, 'kg', weightUnit).toFixed(1)
               ),
@@ -604,7 +605,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
         }
         const newSet: WorkoutPresetSet = {
           ...lastSet,
-          id: crypto.randomUUID(),
+          id: generateClientId(),
           set_number: assignment.sets.length + 1,
         };
         return {
@@ -629,7 +630,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
           }
           const newSets = [
             ...sets.slice(0, setIndex + 1),
-            { ...setToDuplicate, id: crypto.randomUUID() },
+            { ...setToDuplicate, id: generateClientId() },
             ...sets.slice(setIndex + 1),
           ].map((s, i) => ({ ...s, set_number: i + 1 }));
           return { ...assignment, sets: newSets };
@@ -774,7 +775,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
         setAssignments((prev) => [
           ...prev,
           {
-            id: crypto.randomUUID(),
+            id: generateClientId(),
             day_of_week: selectedDayForAssignment as number,
             template_id: '',
             workout_preset_id: preset.id as string,
@@ -787,7 +788,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
         setAssignments((prev) => [
           ...prev,
           {
-            id: crypto.randomUUID(),
+            id: generateClientId(),
             day_of_week: selectedDayForAssignment,
             template_id: '',
             workout_preset_id: undefined,
@@ -795,7 +796,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
             exercise_name: exercise.name,
             sets: [
               {
-                id: crypto.randomUUID(),
+                id: generateClientId(),
                 set_number: 1,
                 set_type: 'Working Set',
                 reps: 10,
@@ -826,13 +827,13 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
     if (copiedAssignment) {
       const newAssignment: WorkoutPlanAssignment = {
         ...copiedAssignment,
-        id: crypto.randomUUID(),
+        id: generateClientId(),
         day_of_week: dayOfWeek,
         template_id: '', // Reset template_id for the new assignment
         sets:
           copiedAssignment.sets?.map((s) => ({
             ...s,
-            id: crypto.randomUUID(),
+            id: generateClientId(),
           })) || [],
       };
       setAssignments((prev) => [...prev, newAssignment]);
