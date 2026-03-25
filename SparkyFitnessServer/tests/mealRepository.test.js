@@ -98,13 +98,16 @@ describe('mealRepository', () => {
       ];
       mockClient.query
         .mockResolvedValueOnce({ rows: mockMeals }) // For meals query
-        .mockResolvedValueOnce({ rows: [] }) // For meal_foods query for first meal
-        .mockResolvedValueOnce({ rows: [] }); // For meal_foods query for second meal
+        .mockResolvedValueOnce({ rows: [] }); // For batched meal_foods query
 
       const result = await mealRepository.getMeals(userId, 'all');
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('AND (user_id = $1 OR is_public = TRUE)'),
         [userId]
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId1, mealId2]]
       );
       expect(result).toEqual([
         { ...mockMeals[0], foods: [] },
@@ -122,13 +125,16 @@ describe('mealRepository', () => {
       ];
       mockClient.query
         .mockResolvedValueOnce({ rows: mockMeals }) // For meals query
-        .mockResolvedValueOnce({ rows: [] }) // For meal_foods query for first meal
-        .mockResolvedValueOnce({ rows: [] }); // For meal_foods query for second meal
+        .mockResolvedValueOnce({ rows: [] }); // For batched meal_foods query
 
       const result = await mealRepository.getMeals(userId, 'all');
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('AND (user_id = $1 OR is_public = TRUE)'),
         [userId]
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId1, mealId2]]
       );
       expect(result).toEqual([
         { ...mockMeals[0], foods: [] },
@@ -166,6 +172,63 @@ describe('mealRepository', () => {
       mockClient.query.mockResolvedValueOnce({ rows: [] });
       const result = await mealRepository.getMealById(uuidv4(), uuidv4());
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('getPublicMeals', () => {
+    it('should return public meals with their foods attached', async () => {
+      const userId = uuidv4();
+      const mealId = uuidv4();
+      const mockMeals = [
+        { id: mealId, user_id: uuidv4(), name: 'Public Meal', is_public: true },
+      ];
+      const mockMealFoods = [
+        { id: uuidv4(), meal_id: mealId, food_id: uuidv4(), food_name: 'Food A' },
+      ];
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: mockMeals })
+        .mockResolvedValueOnce({ rows: mockMealFoods });
+
+      const result = await mealRepository.getPublicMeals(userId);
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE is_public = TRUE')
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId]]
+      );
+      expect(result).toEqual([{ ...mockMeals[0], foods: mockMealFoods }]);
+    });
+  });
+
+  describe('getFamilyMeals', () => {
+    it('should return family meals with their foods attached', async () => {
+      const userId = uuidv4();
+      const mealId = uuidv4();
+      const mockMeals = [
+        { id: mealId, user_id: uuidv4(), name: 'Family Meal', is_public: false },
+      ];
+      const mockMealFoods = [
+        { id: uuidv4(), meal_id: mealId, food_id: uuidv4(), food_name: 'Food B' },
+      ];
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: mockMeals })
+        .mockResolvedValueOnce({ rows: mockMealFoods });
+
+      const result = await mealRepository.getFamilyMeals(userId);
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('JOIN family_access fa'),
+        [userId]
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId]]
+      );
+      expect(result).toEqual([{ ...mockMeals[0], foods: mockMealFoods }]);
     });
   });
 
