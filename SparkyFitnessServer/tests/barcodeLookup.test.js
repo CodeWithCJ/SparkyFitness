@@ -456,6 +456,61 @@ describe("mapUsdaBarcodeProduct", () => {
     expect(result.default_variant.serving_unit).toBe("g");
   });
 
+  it("should use Atwater Specific Factors (2048) when standard Energy (1008) is absent", () => {
+    // Foundation foods use nutrient ID 2048 instead of 1008
+    const usdaFood = makeUsdaFood({
+      servingSize: 100,
+      foodNutrients: [
+        { nutrientId: 2048, value: 125 },
+        { nutrientId: 2047, value: 119 },
+        { nutrientId: 1003, value: 20.5 },
+        { nutrientId: 1004, value: 3.5 },
+        { nutrientId: 1005, value: 0 },
+      ],
+    });
+    const result = mapUsdaBarcodeProduct(usdaFood);
+    // Should prefer 2048 (Atwater Specific) over 2047 (Atwater General)
+    expect(result.default_variant.calories).toBe(125);
+  });
+
+  it("should fall back to Atwater General Factors (2047) when 1008 and 2048 are absent", () => {
+    const usdaFood = makeUsdaFood({
+      servingSize: 100,
+      foodNutrients: [
+        { nutrientId: 2047, value: 119 },
+        { nutrientId: 1003, value: 20.5 },
+      ],
+    });
+    const result = mapUsdaBarcodeProduct(usdaFood);
+    expect(result.default_variant.calories).toBe(119);
+  });
+
+  it("should prefer standard Energy (1008) over Atwater factors when present", () => {
+    const usdaFood = makeUsdaFood({
+      servingSize: 100,
+      foodNutrients: [
+        { nutrientId: 1008, value: 120 },
+        { nutrientId: 2048, value: 125 },
+        { nutrientId: 2047, value: 119 },
+      ],
+    });
+    const result = mapUsdaBarcodeProduct(usdaFood);
+    expect(result.default_variant.calories).toBe(120);
+  });
+
+  it("should preserve explicit zero from 1008 and not fall through to Atwater", () => {
+    const usdaFood = makeUsdaFood({
+      servingSize: 100,
+      foodNutrients: [
+        { nutrientId: 1008, value: 0 },
+        { nutrientId: 2048, value: 125 },
+        { nutrientId: 2047, value: 119 },
+      ],
+    });
+    const result = mapUsdaBarcodeProduct(usdaFood);
+    expect(result.default_variant.calories).toBe(0);
+  });
+
   it("should normalize a 12-digit gtinUpc to 13 digits", () => {
     const usdaFood = makeUsdaFood({ gtinUpc: "094395000172" });
     const result = mapUsdaBarcodeProduct(usdaFood);
