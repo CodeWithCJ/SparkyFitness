@@ -1,11 +1,11 @@
-const { getClient, getSystemClient } = require("../db/poolManager");
+const { getClient, getSystemClient } = require('../db/poolManager');
 
 async function getFoodDataProviderById(providerId) {
   const client = await getSystemClient(); // System-level operation
   try {
     const result = await client.query(
-      "SELECT * FROM external_data_providers WHERE id = $1",
-      [providerId],
+      'SELECT * FROM external_data_providers WHERE id = $1',
+      [providerId]
     );
     return result.rows[0];
   } finally {
@@ -17,7 +17,7 @@ async function getRecentFoods(userId, limit, mealType) {
   const client = await getClient(userId); // User-specific operation
 
   const queryParams = [userId];
-  let mealTypeCondition = "";
+  let mealTypeCondition = '';
   if (mealType) {
     queryParams.push(mealType);
     mealTypeCondition = `AND (LOWER(mt.name) = LOWER($${queryParams.length}) OR fe.meal_type_id::text = $${queryParams.length})`;
@@ -76,7 +76,7 @@ async function getRecentFoods(userId, limit, mealType) {
       LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
       WHERE f.is_quick_food = FALSE
       ORDER BY rfe.last_used_date DESC`,
-      queryParams,
+      queryParams
     );
     return result.rows;
   } finally {
@@ -88,7 +88,7 @@ async function getTopFoods(userId, limit, mealType) {
   const client = await getClient(userId); // User-specific operation
 
   const queryParams = [userId];
-  let mealTypeCondition = "";
+  let mealTypeCondition = '';
   if (mealType) {
     queryParams.push(mealType);
     mealTypeCondition = `AND (LOWER(mt.name) = LOWER($${queryParams.length}) OR fe.meal_type_id::text = $${queryParams.length})`;
@@ -148,7 +148,7 @@ async function getTopFoods(userId, limit, mealType) {
       LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
       WHERE f.is_quick_food = FALSE
       ORDER BY tfe.usage_count DESC`,
-      queryParams,
+      queryParams
     );
     return result.rows;
   } finally {
@@ -183,7 +183,7 @@ async function getDailyNutritionSummary(userId, date) {
         ) AS total_custom_nutrients
        FROM food_entries fe
        WHERE fe.user_id = $1 AND fe.entry_date = $2`,
-      [userId, date],
+      [userId, date]
     );
     return result.rows[0];
   } finally {
@@ -213,7 +213,7 @@ async function getFoodsNeedingReview(userId) {
                AND uiu.ignored_at_timestamp = fe.updated_at
          )
        ORDER BY fe.food_id, fe.variant_id, fe.created_at DESC`,
-      [userId],
+      [userId]
     );
     return result.rows;
   } finally {
@@ -225,7 +225,7 @@ async function updateFoodEntriesSnapshot(
   userId,
   foodId,
   variantId,
-  newSnapshotData,
+  newSnapshotData
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -284,7 +284,7 @@ async function updateFoodEntriesSnapshot(
         userId,
         foodId,
         variantId,
-      ],
+      ]
     );
     return result.rowCount;
   } finally {
@@ -298,7 +298,7 @@ async function clearUserIgnoredUpdate(userId, variantId) {
     await client.query(
       `DELETE FROM user_ignored_updates
        WHERE user_id = $1 AND variant_id = $2`,
-      [userId, variantId],
+      [userId, variantId]
     );
   } finally {
     client.release();

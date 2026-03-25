@@ -1,8 +1,8 @@
-const { getClient } = require("../db/poolManager");
-const foodDb = require("./food"); // Import foodDb to get food owner
-const { log } = require("../config/logging");
-const format = require("pg-format");
-const { sanitizeGlycemicIndex } = require("./food");
+const { getClient } = require('../db/poolManager');
+const foodDb = require('./food'); // Import foodDb to get food owner
+const { log } = require('../config/logging');
+const format = require('pg-format');
+const { sanitizeGlycemicIndex } = require('./food');
 
 async function createFoodVariant(variantData, userId) {
   const foodOwnerId = await foodDb.getFoodOwnerId(variantData.food_id, userId);
@@ -51,7 +51,7 @@ async function getFoodVariantById(id, userId) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      "SELECT *, glycemic_index, custom_nutrients FROM food_variants WHERE id = $1",
+      'SELECT *, glycemic_index, custom_nutrients FROM food_variants WHERE id = $1',
       [id]
     );
     return result.rows[0];
@@ -71,7 +71,7 @@ async function getFoodVariantOwnerId(variantId, userId) {
     );
     const ownerId = result.rows[0]?.user_id;
     log(
-      "info",
+      'info',
       `getFoodVariantOwnerId: Variant ID ${variantId} owner: ${ownerId}`
     );
     return ownerId;
@@ -84,7 +84,7 @@ async function getFoodVariantsByFoodId(foodId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      "SELECT * FROM food_variants WHERE food_id = $1",
+      'SELECT * FROM food_variants WHERE food_id = $1',
       [foodId]
     );
     return result.rows;
@@ -174,7 +174,7 @@ async function deleteFoodVariant(id, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      "DELETE FROM food_variants WHERE id = $1 RETURNING id",
+      'DELETE FROM food_variants WHERE id = $1 RETURNING id',
       [id]
     );
     return result.rowCount > 0;
@@ -185,7 +185,10 @@ async function deleteFoodVariant(id, userId) {
 
 async function bulkCreateFoodVariants(variantsData, userId) {
   // For bulk create, we need the user_id of the food owner. Assuming all variants belong to the same food.
-  const foodOwnerId = variantsData.length > 0 ? await foodDb.getFoodOwnerId(variantsData[0].food_id, userId) : null;
+  const foodOwnerId =
+    variantsData.length > 0
+      ? await foodDb.getFoodOwnerId(variantsData[0].food_id, userId)
+      : null;
   const client = await getClient(userId); // User-specific operation
   try {
     const query = `
@@ -220,8 +223,8 @@ async function bulkCreateFoodVariants(variantsData, userId) {
       variant.is_default || false,
       sanitizeGlycemicIndex(variant.glycemic_index),
       variant.custom_nutrients || {},
-      "now()",
-      "now()",
+      'now()',
+      'now()',
     ]);
 
     const formattedQuery = format(query, values);

@@ -1,16 +1,16 @@
 // SparkyFitnessServer/integrations/strava/stravaService.js
 
-const axios = require("axios");
-const { getSystemClient } = require("../../db/poolManager");
+const axios = require('axios');
+const { getSystemClient } = require('../../db/poolManager');
 const {
   encrypt,
   decrypt,
   ENCRYPTION_KEY,
-} = require("../../security/encryption");
-const { log } = require("../../config/logging");
+} = require('../../security/encryption');
+const { log } = require('../../config/logging');
 
-const STRAVA_API_BASE_URL = "https://www.strava.com/api/v3";
-const STRAVA_AUTH_BASE_URL = "https://www.strava.com/oauth";
+const STRAVA_API_BASE_URL = 'https://www.strava.com/api/v3';
+const STRAVA_AUTH_BASE_URL = 'https://www.strava.com/oauth';
 
 /**
  * Construct the Strava authorization URL
@@ -22,11 +22,11 @@ async function getAuthorizationUrl(userId, redirectUri) {
       `SELECT encrypted_app_id, app_id_iv, app_id_tag
        FROM external_data_providers
        WHERE user_id = $1 AND provider_type = 'strava'`,
-      [userId],
+      [userId]
     );
 
     if (result.rows.length === 0) {
-      throw new Error("Strava client credentials not found for user.");
+      throw new Error('Strava client credentials not found for user.');
     }
 
     const { encrypted_app_id, app_id_iv, app_id_tag } = result.rows[0];
@@ -34,10 +34,10 @@ async function getAuthorizationUrl(userId, redirectUri) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
-    const scope = "read,activity:read_all,profile:read_all";
+    const scope = 'read,activity:read_all,profile:read_all';
     const state = userId;
 
     return `${STRAVA_AUTH_BASE_URL}/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&approval_prompt=auto&scope=${scope}&state=${state}`;
@@ -56,11 +56,11 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
       `SELECT encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag
        FROM external_data_providers
        WHERE user_id = $1 AND provider_type = 'strava'`,
-      [userId],
+      [userId]
     );
 
     if (providerResult.rows.length === 0) {
-      throw new Error("Strava client credentials not found for user.");
+      throw new Error('Strava client credentials not found for user.');
     }
 
     const {
@@ -76,13 +76,13 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const clientSecret = await decrypt(
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     // Strava uses POST body params (not Basic auth header like Fitbit)
@@ -90,7 +90,7 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
       client_id: clientId,
       client_secret: clientSecret,
       code: code,
-      grant_type: "authorization_code",
+      grant_type: 'authorization_code',
     });
 
     const {
@@ -102,7 +102,7 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
 
     if (!access_token || !refresh_token) {
       throw new Error(
-        "Missing access_token or refresh_token in Strava API response.",
+        'Missing access_token or refresh_token in Strava API response.'
       );
     }
 
@@ -128,7 +128,7 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
       encryptedRefreshToken.encryptedText,
       encryptedRefreshToken.iv,
       encryptedRefreshToken.tag,
-      "read,activity:read_all,profile:read_all",
+      'read,activity:read_all,profile:read_all',
       tokenExpiresAt,
       externalUserId,
       userId,
@@ -136,7 +136,7 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
 
     return { success: true, externalUserId };
   } catch (error) {
-    log("error", `Error exchanging code for Strava tokens: ${error.message}`);
+    log('error', `Error exchanging code for Strava tokens: ${error.message}`);
     throw error;
   } finally {
     client.release();
@@ -154,11 +154,11 @@ async function refreshAccessToken(userId) {
               encrypted_refresh_token, refresh_token_iv, refresh_token_tag
        FROM external_data_providers
        WHERE user_id = $1 AND provider_type = 'strava'`,
-      [userId],
+      [userId]
     );
 
     if (providerResult.rows.length === 0) {
-      throw new Error("Strava credentials not found for token refresh.");
+      throw new Error('Strava credentials not found for token refresh.');
     }
 
     const {
@@ -177,26 +177,26 @@ async function refreshAccessToken(userId) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const clientSecret = await decrypt(
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const refreshToken = await decrypt(
       encrypted_refresh_token,
       refresh_token_iv,
       refresh_token_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     // Strava uses POST body params for token refresh
     const response = await axios.post(`${STRAVA_AUTH_BASE_URL}/token`, {
       client_id: clientId,
       client_secret: clientSecret,
-      grant_type: "refresh_token",
+      grant_type: 'refresh_token',
       refresh_token: refreshToken,
     });
 
@@ -209,7 +209,7 @@ async function refreshAccessToken(userId) {
     const encryptedAccessToken = await encrypt(access_token, ENCRYPTION_KEY);
     const encryptedNewRefreshToken = await encrypt(
       newRefreshToken,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     // Strava returns expires_at as Unix epoch seconds
     const tokenExpiresAt = new Date(expires_at * 1000);
@@ -235,7 +235,7 @@ async function refreshAccessToken(userId) {
 
     return access_token;
   } catch (error) {
-    log("error", `Error refreshing Strava access token: ${error.message}`);
+    log('error', `Error refreshing Strava access token: ${error.message}`);
     throw error;
   } finally {
     client.release();
@@ -252,11 +252,11 @@ async function getValidAccessToken(userId) {
       `SELECT encrypted_access_token, access_token_iv, access_token_tag, token_expires_at
        FROM external_data_providers
        WHERE user_id = $1 AND provider_type = 'strava'`,
-      [userId],
+      [userId]
     );
 
     if (result.rows.length === 0) {
-      throw new Error("Strava provider not found for user.");
+      throw new Error('Strava provider not found for user.');
     }
 
     const {
@@ -282,7 +282,7 @@ async function getValidAccessToken(userId) {
       encrypted_access_token,
       access_token_iv,
       access_token_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
   } finally {
     client.release();
@@ -299,7 +299,7 @@ async function getStatus(userId) {
       `SELECT is_active, last_sync_at, token_expires_at, external_user_id
        FROM external_data_providers
        WHERE user_id = $1 AND provider_type = 'strava'`,
-      [userId],
+      [userId]
     );
 
     if (result.rows.length === 0) {
@@ -332,7 +332,7 @@ async function disconnectStrava(userId) {
            encrypted_refresh_token = NULL, refresh_token_iv = NULL, refresh_token_tag = NULL,
            token_expires_at = NULL, external_user_id = NULL, is_active = FALSE, updated_at = NOW()
        WHERE user_id = $1 AND provider_type = 'strava'`,
-      [userId],
+      [userId]
     );
     return { success: true };
   } finally {
@@ -358,7 +358,7 @@ async function fetchAthleteActivities(
   after = null,
   before = null,
   page = 1,
-  perPage = 30,
+  perPage = 30
 ) {
   try {
     const params = { page, per_page: perPage };
@@ -370,15 +370,15 @@ async function fetchAthleteActivities(
       {
         headers: { Authorization: `Bearer ${accessToken}` },
         params,
-      },
+      }
     );
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("strava", "raw_activities_list", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('strava', 'raw_activities_list', response.data);
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[stravaIntegration] Error fetching activities: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[stravaIntegration] Error fetching activities: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -397,19 +397,19 @@ async function fetchActivityById(accessToken, activityId) {
       {
         headers: { Authorization: `Bearer ${accessToken}` },
         params: { include_all_efforts: true },
-      },
+      }
     );
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
     logRawResponse(
-      "strava",
+      'strava',
       `raw_activity_detail_${activityId}`,
-      response.data,
+      response.data
     );
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[stravaIntegration] Error fetching activity ${activityId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[stravaIntegration] Error fetching activity ${activityId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -425,13 +425,13 @@ async function fetchAthlete(accessToken) {
     const response = await axios.get(`${STRAVA_API_BASE_URL}/athlete`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("strava", "raw_athlete", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('strava', 'raw_athlete', response.data);
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[stravaIntegration] Error fetching athlete profile: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[stravaIntegration] Error fetching athlete profile: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -455,7 +455,7 @@ async function fetchAllActivitiesInRange(accessToken, afterEpoch, beforeEpoch) {
       afterEpoch,
       beforeEpoch,
       page,
-      perPage,
+      perPage
     );
 
     if (!activities || activities.length === 0) {

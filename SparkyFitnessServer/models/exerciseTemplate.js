@@ -1,19 +1,19 @@
-const { getClient } = require("../db/poolManager");
-const format = require("pg-format");
-const { log } = require("../config/logging");
-const workoutPresetRepository = require("./workoutPresetRepository");
-const { getExerciseById } = require("./exercise");
+const { getClient } = require('../db/poolManager');
+const format = require('pg-format');
+const { log } = require('../config/logging');
+const workoutPresetRepository = require('./workoutPresetRepository');
+const { getExerciseById } = require('./exercise');
 
 async function createExerciseEntriesFromTemplate(
   templateId,
   userId,
-  currentClientDate = null,
+  currentClientDate = null
 ) {
   log(
-    "info",
-    `createExerciseEntriesFromTemplate called for templateId: ${templateId}, userId: ${userId}`,
+    'info',
+    `createExerciseEntriesFromTemplate called for templateId: ${templateId}, userId: ${userId}`
   );
-  const exerciseService = require("../services/exerciseService");
+  const exerciseService = require('../services/exerciseService');
   const client = await getClient(userId); // User-specific operation
   try {
     // Fetch the workout plan template with its assignments
@@ -43,14 +43,14 @@ async function createExerciseEntriesFromTemplate(
           ) as assignments
        FROM workout_plan_templates wpt
        WHERE wpt.id = $1 AND wpt.user_id = $2`,
-      [templateId, userId],
+      [templateId, userId]
     );
 
     const template = templateResult.rows[0];
     log(
-      "info",
+      'info',
       `createExerciseEntriesFromTemplate - Fetched template:`,
-      template,
+      template
     );
 
     if (
@@ -59,8 +59,8 @@ async function createExerciseEntriesFromTemplate(
       template.assignments.length === 0
     ) {
       log(
-        "info",
-        `No assignments found for workout plan template ${templateId} or template not found.`,
+        'info',
+        `No assignments found for workout plan template ${templateId} or template not found.`
       );
       return;
     }
@@ -86,12 +86,12 @@ async function createExerciseEntriesFromTemplate(
       : new Date(
           startDate.getFullYear() + 1,
           startDate.getMonth(),
-          startDate.getDate(),
+          startDate.getDate()
         );
 
     log(
-      "info",
-      `createExerciseEntriesFromTemplate - Plan start_date: ${startDate.toISOString().split("T")[0]}, end_date: ${endDate.toISOString().split("T")[0]}`,
+      'info',
+      `createExerciseEntriesFromTemplate - Plan start_date: ${startDate.toISOString().split('T')[0]}, end_date: ${endDate.toISOString().split('T')[0]}`
     );
 
     for (
@@ -100,25 +100,29 @@ async function createExerciseEntriesFromTemplate(
       d.setDate(d.getDate() + 1)
     ) {
       const currentDayOfWeek = d.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
-      const entryDate = d.toISOString().split("T")[0];
+      const entryDate = d.toISOString().split('T')[0];
 
       for (const assignment of template.assignments) {
         if (assignment.day_of_week === currentDayOfWeek) {
           const processExercise = async (exerciseId, sets, notes) => {
             const exerciseDetails = await getExerciseById(exerciseId, userId);
             log(
-              "info",
+              'info',
               `createExerciseEntriesFromTemplate - Fetched exerciseDetails for ${exerciseId}:`,
-              exerciseDetails,
+              exerciseDetails
             );
             const durationMinutes =
-              sets?.reduce((acc, set) => acc + (set.duration || 0) + ((set.rest_time || 0) / 60), 0) || 30;
+              sets?.reduce(
+                (acc, set) =>
+                  acc + (set.duration || 0) + (set.rest_time || 0) / 60,
+                0
+              ) || 30;
             const caloriesPerHour = exerciseDetails.calories_per_hour || 0;
             const caloriesBurned = (caloriesPerHour / 60) * durationMinutes;
 
             log(
-              "info",
-              `createExerciseEntriesFromTemplate - Assignment day_of_week (${assignment.day_of_week}) matches currentDayOfWeek (${currentDayOfWeek}) for date ${entryDate}. Creating exercise entry.`,
+              'info',
+              `createExerciseEntriesFromTemplate - Assignment day_of_week (${assignment.day_of_week}) matches currentDayOfWeek (${currentDayOfWeek}) for date ${entryDate}. Creating exercise entry.`
             );
             await exerciseService.createExerciseEntry(userId, userId, {
               exercise_id: exerciseId,
@@ -133,15 +137,15 @@ async function createExerciseEntriesFromTemplate(
 
           if (assignment.exercise_id) {
             const setsResult = await client.query(
-              "SELECT * FROM workout_plan_assignment_sets WHERE assignment_id = $1",
-              [assignment.id],
+              'SELECT * FROM workout_plan_assignment_sets WHERE assignment_id = $1',
+              [assignment.id]
             );
             const sets = setsResult.rows;
             await processExercise(assignment.exercise_id, sets, null);
           } else if (assignment.workout_preset_id) {
             log(
-              "info",
-              `createExerciseEntriesFromTemplate - Found workout_preset_id ${assignment.workout_preset_id} for date ${entryDate}. Grouping in diary.`,
+              'info',
+              `createExerciseEntriesFromTemplate - Found workout_preset_id ${assignment.workout_preset_id} for date ${entryDate}. Grouping in diary.`
             );
             await exerciseService.logWorkoutPresetGrouped(
               userId,
@@ -149,20 +153,20 @@ async function createExerciseEntriesFromTemplate(
               assignment.workout_preset_id,
               entryDate,
               {
-                source: "Workout Plan",
+                source: 'Workout Plan',
                 workoutPlanAssignmentId: assignment.id,
-              },
+              }
             );
           }
         }
       }
-      log("info", `Finished processing assignments for date ${entryDate}.`);
+      log('info', `Finished processing assignments for date ${entryDate}.`);
     }
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error creating exercise entries from template ${templateId} for user ${userId}: ${error.message}`,
-      error,
+      error
     );
     throw error;
   } finally {
@@ -181,18 +185,18 @@ async function deleteExerciseEntriesByTemplateId(templateId, userId) {
              SELECT id FROM workout_plan_template_assignments
              WHERE template_id = $2
          ) RETURNING id`,
-      [userId, templateId],
+      [userId, templateId]
     );
     log(
-      "info",
-      `Deleted ${result.rowCount} exercise entries associated with workout plan template ${templateId} for user ${userId}.`,
+      'info',
+      `Deleted ${result.rowCount} exercise entries associated with workout plan template ${templateId} for user ${userId}.`
     );
     return result.rowCount;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting exercise entries for template ${templateId} for user ${userId}: ${error.message}`,
-      error,
+      error
     );
     throw error;
   } finally {

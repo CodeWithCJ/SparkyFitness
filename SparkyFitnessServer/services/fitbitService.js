@@ -1,20 +1,20 @@
 // SparkyFitnessServer/services/fitbitService.js
 
-const { log } = require("../config/logging");
-const fitbitIntegrationService = require("../integrations/fitbit/fitbitService");
-const fitbitDataProcessor = require("../integrations/fitbit/fitbitDataProcessor");
-const { getSystemClient } = require("../db/poolManager");
-const { loadRawBundle } = require("../utils/diagnosticLogger");
-const moment = require("moment");
-const fs = require("fs");
-const path = require("path");
+const { log } = require('../config/logging');
+const fitbitIntegrationService = require('../integrations/fitbit/fitbitService');
+const fitbitDataProcessor = require('../integrations/fitbit/fitbitDataProcessor');
+const { getSystemClient } = require('../db/poolManager');
+const { loadRawBundle } = require('../utils/diagnosticLogger');
+const moment = require('moment');
+const fs = require('fs');
+const path = require('path');
 
 // Configuration for data mocking/caching
 const FITBIT_DATA_SOURCE =
-  process.env.SPARKY_FITNESS_FITBIT_DATA_SOURCE || "fitbit";
+  process.env.SPARKY_FITNESS_FITBIT_DATA_SOURCE || 'fitbit';
 log(
-  "info",
-  `[fitbitService] Fitbit data source configured to: ${FITBIT_DATA_SOURCE}`,
+  'info',
+  `[fitbitService] Fitbit data source configured to: ${FITBIT_DATA_SOURCE}`
 );
 
 /**
@@ -26,42 +26,42 @@ log(
  */
 async function syncFitbitData(
   userId,
-  syncType = "manual",
+  syncType = 'manual',
   customStartDate = null,
-  customEndDate = null,
+  customEndDate = null
 ) {
   let startDate, endDate;
   const today = moment();
 
   if (customStartDate) {
     startDate = customStartDate;
-    endDate = customEndDate || today.format("YYYY-MM-DD");
-  } else if (syncType === "manual") {
-    endDate = today.format("YYYY-MM-DD");
-    startDate = today.clone().subtract(7, "days").format("YYYY-MM-DD");
-  } else if (syncType === "scheduled") {
-    endDate = today.format("YYYY-MM-DD");
-    startDate = today.format("YYYY-MM-DD");
+    endDate = customEndDate || today.format('YYYY-MM-DD');
+  } else if (syncType === 'manual') {
+    endDate = today.format('YYYY-MM-DD');
+    startDate = today.clone().subtract(7, 'days').format('YYYY-MM-DD');
+  } else if (syncType === 'scheduled') {
+    endDate = today.format('YYYY-MM-DD');
+    startDate = today.format('YYYY-MM-DD');
   } else {
     throw new Error("Invalid syncType. Must be 'manual' or 'scheduled'.");
   }
 
   log(
-    "info",
-    `[fitbitService] Starting Fitbit sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}.`,
+    'info',
+    `[fitbitService] Starting Fitbit sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}.`
   );
 
-  if (FITBIT_DATA_SOURCE === "local") {
+  if (FITBIT_DATA_SOURCE === 'local') {
     log(
-      "info",
-      `[fitbitService] Replaying Fitbit sync from raw diagnostic bundle for user ${userId}`,
+      'info',
+      `[fitbitService] Replaying Fitbit sync from raw diagnostic bundle for user ${userId}`
     );
-    const bundle = loadRawBundle("fitbit");
+    const bundle = loadRawBundle('fitbit');
 
     if (!bundle || !bundle.responses) {
       throw new Error(
         'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_FITBIT_DATA_SOURCE unset (or set to "fitbit") ' +
-          "and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.",
+          'and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.'
       );
     }
 
@@ -69,133 +69,133 @@ async function syncFitbitData(
 
     try {
       // 1. Extract Unit Preferences and Timezone from Profil/Responses if available
-      const profileResponse = responses["raw_profile"]?.data;
+      const profileResponse = responses['raw_profile']?.data;
       const timezoneOffset = profileResponse?.user?.offsetFromUTCMillis || 0;
-      const weightUnit = profileResponse?.user?.weightUnit || "METRIC";
-      const distanceUnit = profileResponse?.user?.distanceUnit || "METRIC";
-      const waterUnit = profileResponse?.user?.waterUnit || "METRIC";
+      const weightUnit = profileResponse?.user?.weightUnit || 'METRIC';
+      const distanceUnit = profileResponse?.user?.distanceUnit || 'METRIC';
+      const waterUnit = profileResponse?.user?.waterUnit || 'METRIC';
       const temperatureUnit =
-        profileResponse?.user?.temperatureUnit || "METRIC";
+        profileResponse?.user?.temperatureUnit || 'METRIC';
 
       // 2. Process all raw items from bundle
-      log("debug", `[fitbitService] Processing raw data for ${userId}...`);
-      if (responses["raw_profile"])
+      log('debug', `[fitbitService] Processing raw data for ${userId}...`);
+      if (responses['raw_profile'])
         await fitbitDataProcessor.processFitbitProfile(
           userId,
           userId,
-          responses["raw_profile"].data,
+          responses['raw_profile'].data
         );
-      if (responses["raw_heart_rate"])
+      if (responses['raw_heart_rate'])
         await fitbitDataProcessor.processFitbitHeartRate(
           userId,
           userId,
-          responses["raw_heart_rate"].data,
+          responses['raw_heart_rate'].data
         );
-      if (responses["raw_steps"])
+      if (responses['raw_steps'])
         await fitbitDataProcessor.processFitbitSteps(
           userId,
           userId,
-          responses["raw_steps"].data,
+          responses['raw_steps'].data
         );
-      if (responses["raw_weight"])
+      if (responses['raw_weight'])
         await fitbitDataProcessor.processFitbitWeight(
           userId,
           userId,
-          responses["raw_weight"].data,
-          weightUnit,
+          responses['raw_weight'].data,
+          weightUnit
         );
-      if (responses["raw_body_fat"])
+      if (responses['raw_body_fat'])
         await fitbitDataProcessor.processFitbitBodyFat(
           userId,
           userId,
-          responses["raw_body_fat"].data,
+          responses['raw_body_fat'].data
         );
-      if (responses["raw_spo2"])
+      if (responses['raw_spo2'])
         await fitbitDataProcessor.processFitbitSpO2(
           userId,
           userId,
-          responses["raw_spo2"].data,
+          responses['raw_spo2'].data
         );
-      if (responses["raw_temperature"])
+      if (responses['raw_temperature'])
         await fitbitDataProcessor.processFitbitTemperature(
           userId,
           userId,
-          responses["raw_temperature"].data,
-          temperatureUnit,
+          responses['raw_temperature'].data,
+          temperatureUnit
         );
-      if (responses["raw_hrv"])
+      if (responses['raw_hrv'])
         await fitbitDataProcessor.processFitbitHRV(
           userId,
           userId,
-          responses["raw_hrv"].data,
+          responses['raw_hrv'].data
         );
-      if (responses["raw_respiratory_rate"])
+      if (responses['raw_respiratory_rate'])
         await fitbitDataProcessor.processFitbitRespiratoryRate(
           userId,
           userId,
-          responses["raw_respiratory_rate"].data,
+          responses['raw_respiratory_rate'].data
         );
-      if (responses["raw_active_zone_minutes"])
+      if (responses['raw_active_zone_minutes'])
         await fitbitDataProcessor.processFitbitActiveZoneMinutes(
           userId,
           userId,
-          responses["raw_active_zone_minutes"].data,
+          responses['raw_active_zone_minutes'].data
         );
 
       // Activity metrics (handle multi-part if needed, usually consolidated now)
       const activityMetrics = {};
-      ["Sedentary", "LightlyActive", "FairlyActive", "VeryActive"].forEach(
+      ['Sedentary', 'LightlyActive', 'FairlyActive', 'VeryActive'].forEach(
         (m) => {
           const key = `raw_activity_metric_minutes${m}`;
           if (responses[key]) {
             activityMetrics[`minutes${m}`] =
               responses[key].data[`activities-tracker-minutes${m}`];
           }
-        },
+        }
       );
       if (Object.keys(activityMetrics).length > 0) {
         await fitbitDataProcessor.processFitbitActivityMinutes(
           userId,
           userId,
-          activityMetrics,
+          activityMetrics
         );
       }
 
-      if (responses["raw_sleep"])
+      if (responses['raw_sleep'])
         await fitbitDataProcessor.processFitbitSleep(
           userId,
           userId,
-          responses["raw_sleep"].data,
-          timezoneOffset,
+          responses['raw_sleep'].data,
+          timezoneOffset
         );
-      if (responses["raw_activities_list"])
+      if (responses['raw_activities_list'])
         await fitbitDataProcessor.processFitbitActivities(
           userId,
           userId,
-          responses["raw_activities_list"].data,
+          responses['raw_activities_list'].data,
           timezoneOffset,
           distanceUnit,
-          null, // Pass null to skip the date safety filter during local replay
+          null // Pass null to skip the date safety filter during local replay
         );
-      if (responses["raw_water"])
+      if (responses['raw_water'])
         await fitbitDataProcessor.processFitbitWater(
           userId,
           userId,
-          responses["raw_water"].data,
-          waterUnit,
+          responses['raw_water'].data,
+          waterUnit
         );
-      if (responses["raw_cardio_fitness"])
+      if (responses['raw_cardio_fitness'])
         await fitbitDataProcessor.processFitbitCardioFitness(
           userId,
           userId,
-          responses["raw_cardio_fitness"].data,
+          responses['raw_cardio_fitness'].data
         );
-      if (responses["raw_core_temperature"])
+      if (responses['raw_core_temperature'])
         await fitbitDataProcessor.processFitbitCoreTemperature(
           userId,
           userId,
-          responses["raw_core_temperature"].data,
-          temperatureUnit,
+          responses['raw_core_temperature'].data,
+          temperatureUnit
         );
 
       // Update last_sync_at
@@ -203,26 +203,26 @@ async function syncFitbitData(
       try {
         await client.query(
           `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'fitbit'`,
-          [userId],
+          [userId]
         );
       } finally {
         client.release();
       }
 
       log(
-        "info",
-        `[fitbitService] Fitbit sync from raw bundle completed for user ${userId}.`,
+        'info',
+        `[fitbitService] Fitbit sync from raw bundle completed for user ${userId}.`
       );
       return {
         success: true,
-        source: "local_raw_replay",
+        source: 'local_raw_replay',
         bundle_updated: bundle.last_updated,
       };
     } catch (error) {
       log(
-        "error",
+        'error',
         `[fitbitService] Error replaying Fitbit data from raw bundle for user ${userId}:`,
-        error.message,
+        error.message
       );
       throw error;
     }
@@ -234,13 +234,13 @@ async function syncFitbitData(
       await fitbitIntegrationService.getValidAccessToken(userId);
     const profileData = await fitbitIntegrationService.fetchProfile(
       userId,
-      accessToken,
+      accessToken
     );
     const timezoneOffset = profileData?.user?.offsetFromUTCMillis || 0;
-    const weightUnit = profileData?.user?.weightUnit || "METRIC";
-    const distanceUnit = profileData?.user?.distanceUnit || "METRIC";
-    const waterUnit = profileData?.user?.waterUnit || "METRIC";
-    const temperatureUnit = profileData?.user?.temperatureUnit || "METRIC";
+    const weightUnit = profileData?.user?.weightUnit || 'METRIC';
+    const distanceUnit = profileData?.user?.distanceUnit || 'METRIC';
+    const waterUnit = profileData?.user?.waterUnit || 'METRIC';
+    const temperatureUnit = profileData?.user?.temperatureUnit || 'METRIC';
 
     // 2. Fetch all other data sequentially to avoid 429 Resource Exhausted errors
     const safeFetch = async (fetchFn, name) => {
@@ -250,205 +250,205 @@ async function syncFitbitData(
         return await fetchFn();
       } catch (error) {
         log(
-          "warn",
-          `[fitbitService] Failed to fetch ${name} for user ${userId}: ${error.message}`,
+          'warn',
+          `[fitbitService] Failed to fetch ${name} for user ${userId}: ${error.message}`
         );
         return null;
       }
     };
 
-    log("debug", `[fitbitService] Fetching heart rate for ${userId}...`);
+    log('debug', `[fitbitService] Fetching heart rate for ${userId}...`);
     const heartRateData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchHeartRate(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "heart rate",
+      'heart rate'
     );
 
-    log("debug", `[fitbitService] Fetching steps for ${userId}...`);
+    log('debug', `[fitbitService] Fetching steps for ${userId}...`);
     const stepsData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchSteps(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "steps",
+      'steps'
     );
 
-    log("debug", `[fitbitService] Fetching weight for ${userId}...`);
+    log('debug', `[fitbitService] Fetching weight for ${userId}...`);
     const weightData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchWeight(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "weight",
+      'weight'
     );
 
-    log("debug", `[fitbitService] Fetching body fat for ${userId}...`);
+    log('debug', `[fitbitService] Fetching body fat for ${userId}...`);
     const bodyFatData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchBodyFat(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "body fat",
+      'body fat'
     );
 
-    log("debug", `[fitbitService] Fetching SpO2 for ${userId}...`);
+    log('debug', `[fitbitService] Fetching SpO2 for ${userId}...`);
     const spo2Data = await safeFetch(
       () =>
         fitbitIntegrationService.fetchSpO2(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "SpO2",
+      'SpO2'
     );
 
-    log("debug", `[fitbitService] Fetching temperature for ${userId}...`);
+    log('debug', `[fitbitService] Fetching temperature for ${userId}...`);
     const tempData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchTemperature(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "temperature",
+      'temperature'
     );
 
-    log("debug", `[fitbitService] Fetching HRV for ${userId}...`);
+    log('debug', `[fitbitService] Fetching HRV for ${userId}...`);
     const hrvData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchHRV(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "HRV",
+      'HRV'
     );
 
-    log("debug", `[fitbitService] Fetching respiratory rate for ${userId}...`);
+    log('debug', `[fitbitService] Fetching respiratory rate for ${userId}...`);
     const respiratoryRateData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchRespiratoryRate(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "respiratory rate",
+      'respiratory rate'
     );
 
-    log("debug", `[fitbitService] Fetching AZM for ${userId}...`);
+    log('debug', `[fitbitService] Fetching AZM for ${userId}...`);
     const azmData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchActiveZoneMinutes(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "AZM",
+      'AZM'
     );
 
-    log("debug", `[fitbitService] Fetching activity minutes for ${userId}...`);
+    log('debug', `[fitbitService] Fetching activity minutes for ${userId}...`);
     const activityMinutesData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchActivityMinutes(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "activity minutes",
+      'activity minutes'
     );
 
-    log("debug", `[fitbitService] Fetching sleep for ${userId}...`);
+    log('debug', `[fitbitService] Fetching sleep for ${userId}...`);
     const sleepData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchSleep(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "sleep",
+      'sleep'
     );
 
-    log("debug", `[fitbitService] Fetching activities for ${userId}...`);
+    log('debug', `[fitbitService] Fetching activities for ${userId}...`);
     const activitiesData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchActivities(
           userId,
           startDate,
-          accessToken,
+          accessToken
         ),
-      "activities",
+      'activities'
     );
 
-    log("debug", `[fitbitService] Fetching water for ${userId}...`);
+    log('debug', `[fitbitService] Fetching water for ${userId}...`);
     const waterData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchWater(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "water",
+      'water'
     );
 
-    log("debug", `[fitbitService] Fetching cardio fitness for ${userId}...`);
+    log('debug', `[fitbitService] Fetching cardio fitness for ${userId}...`);
     const cardioFitnessData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchCardioFitnessScore(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "cardio fitness",
+      'cardio fitness'
     );
 
-    log("debug", `[fitbitService] Fetching core temperature for ${userId}...`);
+    log('debug', `[fitbitService] Fetching core temperature for ${userId}...`);
     const coreTempData = await safeFetch(
       () =>
         fitbitIntegrationService.fetchCoreTemperature(
           userId,
           startDate,
           endDate,
-          accessToken,
+          accessToken
         ),
-      "core temperature",
+      'core temperature'
     );
 
     // 3. Process all data sequentially
-    log("debug", `[fitbitService] Processing fetched data for ${userId}...`);
+    log('debug', `[fitbitService] Processing fetched data for ${userId}...`);
     if (profileData)
       await fitbitDataProcessor.processFitbitProfile(
         userId,
         userId,
-        profileData,
+        profileData
       );
     if (heartRateData)
       await fitbitDataProcessor.processFitbitHeartRate(
         userId,
         userId,
-        heartRateData,
+        heartRateData
       );
     if (stepsData)
       await fitbitDataProcessor.processFitbitSteps(userId, userId, stepsData);
@@ -457,13 +457,13 @@ async function syncFitbitData(
         userId,
         userId,
         weightData,
-        weightUnit,
+        weightUnit
       );
     if (bodyFatData)
       await fitbitDataProcessor.processFitbitBodyFat(
         userId,
         userId,
-        bodyFatData,
+        bodyFatData
       );
     if (spo2Data)
       await fitbitDataProcessor.processFitbitSpO2(userId, userId, spo2Data);
@@ -472,7 +472,7 @@ async function syncFitbitData(
         userId,
         userId,
         tempData,
-        temperatureUnit,
+        temperatureUnit
       );
     if (hrvData)
       await fitbitDataProcessor.processFitbitHRV(userId, userId, hrvData);
@@ -480,26 +480,26 @@ async function syncFitbitData(
       await fitbitDataProcessor.processFitbitRespiratoryRate(
         userId,
         userId,
-        respiratoryRateData,
+        respiratoryRateData
       );
     if (azmData)
       await fitbitDataProcessor.processFitbitActiveZoneMinutes(
         userId,
         userId,
-        azmData,
+        azmData
       );
     if (activityMinutesData)
       await fitbitDataProcessor.processFitbitActivityMinutes(
         userId,
         userId,
-        activityMinutesData,
+        activityMinutesData
       );
     if (sleepData)
       await fitbitDataProcessor.processFitbitSleep(
         userId,
         userId,
         sleepData,
-        timezoneOffset,
+        timezoneOffset
       );
     if (activitiesData)
       await fitbitDataProcessor.processFitbitActivities(
@@ -508,27 +508,27 @@ async function syncFitbitData(
         activitiesData,
         timezoneOffset,
         distanceUnit,
-        startDate,
+        startDate
       );
     if (waterData)
       await fitbitDataProcessor.processFitbitWater(
         userId,
         userId,
         waterData,
-        waterUnit,
+        waterUnit
       );
     if (cardioFitnessData)
       await fitbitDataProcessor.processFitbitCardioFitness(
         userId,
         userId,
-        cardioFitnessData,
+        cardioFitnessData
       );
     if (coreTempData)
       await fitbitDataProcessor.processFitbitCoreTemperature(
         userId,
         userId,
         coreTempData,
-        temperatureUnit,
+        temperatureUnit
       );
 
     // 4. Update last_sync_at
@@ -536,22 +536,22 @@ async function syncFitbitData(
     try {
       await client.query(
         `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'fitbit'`,
-        [userId],
+        [userId]
       );
     } finally {
       client.release();
     }
 
     log(
-      "info",
-      `[fitbitService] Full Fitbit sync completed for user ${userId}.`,
+      'info',
+      `[fitbitService] Full Fitbit sync completed for user ${userId}.`
     );
-    return { success: true, source: "live_api" };
+    return { success: true, source: 'live_api' };
   } catch (error) {
     log(
-      "error",
+      'error',
       `[fitbitService] Error during full Fitbit sync for user ${userId}:`,
-      error.message,
+      error.message
     );
     throw error;
   }

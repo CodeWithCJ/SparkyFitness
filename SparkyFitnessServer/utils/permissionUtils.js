@@ -1,6 +1,10 @@
 const { getClient, getSystemClient } = require('../db/poolManager');
 
-async function canAccessUserData(targetUserId, permissionType, authenticatedUserId) {
+async function canAccessUserData(
+  targetUserId,
+  permissionType,
+  authenticatedUserId
+) {
   // If accessing own data, always allow
   if (targetUserId === authenticatedUserId) {
     return true;
@@ -17,8 +21,12 @@ async function canAccessUserData(targetUserId, permissionType, authenticatedUser
     );
 
     const emails = emailCheckResult.rows[0];
-    if (emails && emails.target_email && emails.auth_email &&
-      emails.target_email.toLowerCase() === emails.auth_email.toLowerCase()) {
+    if (
+      emails &&
+      emails.target_email &&
+      emails.auth_email &&
+      emails.target_email.toLowerCase() === emails.auth_email.toLowerCase()
+    ) {
       return true;
     }
   } catch (error) {
@@ -38,7 +46,10 @@ async function canAccessUserData(targetUserId, permissionType, authenticatedUser
          AND (fa.access_end_date IS NULL OR fa.access_end_date > NOW())`;
 
     // First, just check if ANY row exists and what it looks like
-    const debugResult = await client.query(queryText, [authenticatedUserId, targetUserId]);
+    const debugResult = await client.query(queryText, [
+      authenticatedUserId,
+      targetUserId,
+    ]);
     //console.log(`[DEBUG] Family Access Check: Auth=${authenticatedUserId}, Owner=${targetUserId}, Permission=${permissionType}`);
     //console.log(`[DEBUG] Rows Found: ${debugResult.rowCount}`);
     if (debugResult.rowCount > 0) {
@@ -47,8 +58,11 @@ async function canAccessUserData(targetUserId, permissionType, authenticatedUser
       // Manual check in JS to verify logic
       const perms = debugResult.rows[0].access_permissions;
       const normalizedPerm = permissionType.replace(/ /g, '_'); // Just in case
-      const hasDirect = perms[permissionType] === true || perms[normalizedPerm] === true;
-      const hasManageDiary = perms['can_manage_diary'] === true || perms['can manage diary'] === true; // Handle both
+      const hasDirect =
+        perms[permissionType] === true || perms[normalizedPerm] === true;
+      const hasManageDiary =
+        perms['can_manage_diary'] === true ||
+        perms['can manage diary'] === true; // Handle both
 
       //console.log(`[DEBUG] JS Check: Direct=${hasDirect}, ManageDiary=${hasManageDiary}`);
     } else {

@@ -1,20 +1,20 @@
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
-const format = require("pg-format");
-const foodEntryDb = require("./foodEntry");
-const foodEntryMealRepository = require("./foodEntryMealRepository");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
+const format = require('pg-format');
+const foodEntryDb = require('./foodEntry');
+const foodEntryMealRepository = require('./foodEntryMealRepository');
 
 async function deleteFoodEntriesByMealPlanId(mealPlanId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      "DELETE FROM food_entries WHERE meal_plan_template_id = $1 AND user_id = $2 RETURNING id",
+      'DELETE FROM food_entries WHERE meal_plan_template_id = $1 AND user_id = $2 RETURNING id',
       [mealPlanId, userId]
     );
     return result.rowCount;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting food entries for meal plan ${mealPlanId}:`,
       error
     );
@@ -56,7 +56,7 @@ async function deleteFoodEntriesByTemplateId(
         [entryMealIds]
       );
       log(
-        "info",
+        'info',
         `Deleted ${entryMealIds.length} orphaned food_entry_meals for template ${templateId}`
       );
     }
@@ -64,7 +64,7 @@ async function deleteFoodEntriesByTemplateId(
     return result.rowCount;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting food entries for template ${templateId}:`,
       error
     );
@@ -81,9 +81,9 @@ async function createFoodEntriesFromTemplate(
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
     log(
-      "info",
+      'info',
       `Creating food entries from template ${templateId} for user ${userId}`
     );
 
@@ -118,16 +118,16 @@ async function createFoodEntriesFromTemplate(
       userId,
     ]);
     if (templateResult.rows.length === 0) {
-      throw new Error("Meal plan template not found or access denied.");
+      throw new Error('Meal plan template not found or access denied.');
     }
 
     const { start_date, end_date, assignments } = templateResult.rows[0];
     if (!assignments || assignments.length === 0) {
       log(
-        "info",
+        'info',
         `No assignments for template ${templateId}, skipping food entry creation.`
       );
-      await client.query("COMMIT");
+      await client.query('COMMIT');
       return;
     }
 
@@ -152,10 +152,10 @@ async function createFoodEntriesFromTemplate(
     const variantIds = new Set();
 
     assignments.forEach((assignment) => {
-      if (assignment.item_type === "meal") {
+      if (assignment.item_type === 'meal') {
         mealIds.add(assignment.meal_id);
         foodIds.add(assignment.meal_id);
-      } else if (assignment.item_type === "food") {
+      } else if (assignment.item_type === 'food') {
         foodIds.add(assignment.food_id);
         if (assignment.variant_id) {
           variantIds.add(assignment.variant_id);
@@ -229,7 +229,7 @@ async function createFoodEntriesFromTemplate(
     ]);
     existingEntriesResult.rows.forEach((entry) => {
       const key = `${entry.food_id || entry.meal_id}-${entry.meal_type_id}-${
-        entry.entry_date.toISOString().split("T")[0]
+        entry.entry_date.toISOString().split('T')[0]
       }-${entry.variant_id}`;
       existingFoodEntries.add(key);
     });
@@ -241,12 +241,12 @@ async function createFoodEntriesFromTemplate(
       );
 
       for (const assignment of assignmentsForDay) {
-        if (assignment.item_type === "meal") {
+        if (assignment.item_type === 'meal') {
           const mealFoods = mealFoodsMap.get(assignment.meal_id) || [];
           if (mealFoods.length === 0) continue;
 
           const entryKey = `${assignment.meal_id}-${assignment.meal_type_id}-${
-            currentDate.toISOString().split("T")[0]
+            currentDate.toISOString().split('T')[0]
           }-null`;
           if (existingFoodEntries.has(entryKey)) continue;
 
@@ -254,10 +254,10 @@ async function createFoodEntriesFromTemplate(
           if (!meal) continue;
 
           const mealQuantity = assignment.quantity || 1.0;
-          const mealUnit = assignment.unit || "serving";
+          const mealUnit = assignment.unit || 'serving';
 
           log(
-            "info",
+            'info',
             `Creating food_entry_meal for meal ${meal.name} with quantity ${mealQuantity} ${mealUnit}`
           );
 
@@ -266,9 +266,9 @@ async function createFoodEntriesFromTemplate(
             user_id: userId,
             meal_template_id: assignment.meal_id,
             meal_type_id: assignment.meal_type_id,
-            entry_date: currentDate.toISOString().split("T")[0],
+            entry_date: currentDate.toISOString().split('T')[0],
             name: meal.name,
-            description: meal.description || "",
+            description: meal.description || '',
             quantity: mealQuantity,
             unit: mealUnit,
             created_by_user_id: userId,
@@ -282,21 +282,21 @@ async function createFoodEntriesFromTemplate(
             );
 
           log(
-            "info",
+            'info',
             `Created food_entry_meal ${newFoodEntryMeal.id} for meal ${meal.name}`
           );
 
           // Calculate multiplier for scaling component foods
           const mealServingSize = meal.serving_size || 1.0;
           let multiplier = 1.0;
-          if (mealUnit === "serving" || mealUnit === meal.serving_unit) {
+          if (mealUnit === 'serving' || mealUnit === meal.serving_unit) {
             multiplier = mealQuantity;
           } else {
             multiplier = mealQuantity / mealServingSize;
           }
 
           log(
-            "info",
+            'info',
             `Multiplier for meal scaling: ${multiplier} (quantity: ${mealQuantity}, serving_size: ${mealServingSize})`
           );
 
@@ -304,7 +304,7 @@ async function createFoodEntriesFromTemplate(
             const variant = variantsMap.get(foodItem.variant_id);
             if (!variant) {
               log(
-                "warn",
+                'warn',
                 `Variant ${foodItem.variant_id} not found for food ${foodItem.food_id}`
               );
               continue;
@@ -318,7 +318,7 @@ async function createFoodEntriesFromTemplate(
               assignment.meal_type_id,
               scaledQuantity,
               foodItem.unit,
-              currentDate.toISOString().split("T")[0],
+              currentDate.toISOString().split('T')[0],
               foodItem.variant_id,
               templateId,
               foodItem.food_name,
@@ -349,17 +349,17 @@ async function createFoodEntriesFromTemplate(
             ]);
           }
           log(
-            "info",
+            'info',
             `Created ${mealFoods.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}`
           );
           existingFoodEntries.add(entryKey);
-        } else if (assignment.item_type === "food") {
+        } else if (assignment.item_type === 'food') {
           const food = foodsMap.get(assignment.food_id);
           const variant = variantsMap.get(assignment.variant_id);
           if (!food || !variant) continue;
 
           const entryKey = `${assignment.food_id}-${assignment.meal_type_id}-${
-            currentDate.toISOString().split("T")[0]
+            currentDate.toISOString().split('T')[0]
           }-${assignment.variant_id}`;
           if (existingFoodEntries.has(entryKey)) continue;
 
@@ -369,7 +369,7 @@ async function createFoodEntriesFromTemplate(
             assignment.meal_type_id,
             assignment.quantity,
             assignment.unit,
-            currentDate.toISOString().split("T")[0],
+            currentDate.toISOString().split('T')[0],
             assignment.variant_id,
             templateId,
             food.name,
@@ -418,22 +418,22 @@ async function createFoodEntriesFromTemplate(
       );
       await client.query(insertQuery);
       log(
-        "info",
+        'info',
         `Inserted ${foodEntriesToInsert.length} food entries for template ${templateId}`
       );
     } else {
-      log("info", `No new food entries to insert for template ${templateId}`);
+      log('info', `No new food entries to insert for template ${templateId}`);
     }
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     log(
-      "info",
+      'info',
       `Successfully created food entries from template ${templateId}`
     );
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     log(
-      "error",
+      'error',
       `Error creating food entries from template ${templateId}: ${error.message}`,
       error
     );

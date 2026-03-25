@@ -10,7 +10,12 @@ async function createWorkoutPreset(presetData) {
     const presetResult = await client.query(
       `INSERT INTO workout_presets (user_id, name, description, is_public)
        VALUES ($1, $2, $3, $4) RETURNING id, user_id, name, description, is_public`,
-      [presetData.user_id, presetData.name, presetData.description, presetData.is_public]
+      [
+        presetData.user_id,
+        presetData.name,
+        presetData.description,
+        presetData.is_public,
+      ]
     );
     const newPreset = { ...presetResult.rows[0], isNew: true };
 
@@ -19,13 +24,25 @@ async function createWorkoutPreset(presetData) {
         const exerciseResult = await client.query(
           `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order)
            VALUES ($1, $2, $3, $4) RETURNING id`,
-          [newPreset.id, exercise.exercise_id, exercise.image_url, exercise.sort_order || 0]
+          [
+            newPreset.id,
+            exercise.exercise_id,
+            exercise.image_url,
+            exercise.sort_order || 0,
+          ]
         );
         const newExerciseId = exerciseResult.rows[0].id;
 
         if (exercise.sets && exercise.sets.length > 0) {
-          const setsValues = exercise.sets.map(set => [
-            newExerciseId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
+          const setsValues = exercise.sets.map((set) => [
+            newExerciseId,
+            set.set_number,
+            set.set_type,
+            set.reps,
+            set.weight,
+            set.duration,
+            set.rest_time,
+            set.notes,
           ]);
           const setsQuery = format(
             `INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
@@ -141,7 +158,7 @@ async function getWorkoutPresets(userId, page = 1, limit = 10) {
       presets: result.rows,
       total,
       page,
-      limit
+      limit,
     };
   } finally {
     client.release();
@@ -208,7 +225,10 @@ async function updateWorkoutPreset(presetId, userId, updateData) {
 
     if (result.rows.length > 0 && updateData.exercises !== undefined) {
       // Delete old exercises and sets (cascade will handle sets)
-      await client.query('DELETE FROM workout_preset_exercises WHERE workout_preset_id = $1', [presetId]);
+      await client.query(
+        'DELETE FROM workout_preset_exercises WHERE workout_preset_id = $1',
+        [presetId]
+      );
 
       // Insert new exercises and sets
       if (updateData.exercises.length > 0) {
@@ -216,13 +236,25 @@ async function updateWorkoutPreset(presetId, userId, updateData) {
           const exerciseResult = await client.query(
             `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order)
              VALUES ($1, $2, $3, $4) RETURNING id`,
-            [presetId, exercise.exercise_id, exercise.image_url, exercise.sort_order || 0]
+            [
+              presetId,
+              exercise.exercise_id,
+              exercise.image_url,
+              exercise.sort_order || 0,
+            ]
           );
           const newExerciseId = exerciseResult.rows[0].id;
 
           if (exercise.sets && exercise.sets.length > 0) {
-            const setsValues = exercise.sets.map(set => [
-              newExerciseId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
+            const setsValues = exercise.sets.map((set) => [
+              newExerciseId,
+              set.set_number,
+              set.set_type,
+              set.reps,
+              set.weight,
+              set.duration,
+              set.rest_time,
+              set.notes,
             ]);
             const setsQuery = format(
               `INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
@@ -278,7 +310,14 @@ async function getWorkoutPresetOwnerId(userId, presetId) {
   }
 }
 
-async function addExerciseToWorkoutPreset(userId, workoutPresetId, exerciseId, imageUrl, sets, sortOrder = 0) {
+async function addExerciseToWorkoutPreset(
+  userId,
+  workoutPresetId,
+  exerciseId,
+  imageUrl,
+  sets,
+  sortOrder = 0
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
@@ -291,8 +330,15 @@ async function addExerciseToWorkoutPreset(userId, workoutPresetId, exerciseId, i
     const newExerciseId = exerciseResult.rows[0].id;
 
     if (sets && sets.length > 0) {
-      const setsValues = sets.map(set => [
-        newExerciseId, set.set_number, set.set_type, set.reps, set.weight, set.duration, set.rest_time, set.notes
+      const setsValues = sets.map((set) => [
+        newExerciseId,
+        set.set_number,
+        set.set_type,
+        set.reps,
+        set.weight,
+        set.duration,
+        set.rest_time,
+        set.notes,
       ]);
       const setsQuery = format(
         `INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
@@ -305,7 +351,11 @@ async function addExerciseToWorkoutPreset(userId, workoutPresetId, exerciseId, i
     return newExerciseId;
   } catch (error) {
     await client.query('ROLLBACK');
-    log('error', `Error adding exercise to workout preset ${workoutPresetId}:`, error);
+    log(
+      'error',
+      `Error adding exercise to workout preset ${workoutPresetId}:`,
+      error
+    );
     throw error;
   } finally {
     client.release();

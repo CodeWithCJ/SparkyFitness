@@ -3,11 +3,12 @@ const exerciseRepository = require('../models/exerciseRepository');
 
 async function getNeedsReviewItems(userId) {
   const foodsNeedingReview = await foodRepository.getFoodsNeedingReview(userId);
-  const exercisesNeedingReview = await exerciseRepository.getExercisesNeedingReview(userId);
+  const exercisesNeedingReview =
+    await exerciseRepository.getExercisesNeedingReview(userId);
 
   const reviewItems = [];
 
-  foodsNeedingReview.forEach(food => {
+  foodsNeedingReview.forEach((food) => {
     reviewItems.push({
       id: food.id,
       type: 'food',
@@ -16,7 +17,7 @@ async function getNeedsReviewItems(userId) {
     });
   });
 
-  exercisesNeedingReview.forEach(exercise => {
+  exercisesNeedingReview.forEach((exercise) => {
     reviewItems.push({
       id: exercise.id,
       type: 'exercise',
@@ -36,7 +37,8 @@ async function getNeedsReviewItems(userId) {
  */
 async function getNeedsReviewCount(userId) {
   const foodsNeedingReview = await foodRepository.getFoodsNeedingReview(userId);
-  const exercisesNeedingReview = await exerciseRepository.getExercisesNeedingReview(userId);
+  const exercisesNeedingReview =
+    await exerciseRepository.getExercisesNeedingReview(userId);
 
   return foodsNeedingReview.length + exercisesNeedingReview.length;
 }

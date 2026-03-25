@@ -13,9 +13,18 @@ async function createWeeklyGoalPlan(planData) {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
-        planData.user_id, planData.plan_name, planData.start_date, planData.end_date, planData.is_active,
-        planData.monday_preset_id, planData.tuesday_preset_id, planData.wednesday_preset_id,
-        planData.thursday_preset_id, planData.friday_preset_id, planData.saturday_preset_id, planData.sunday_preset_id
+        planData.user_id,
+        planData.plan_name,
+        planData.start_date,
+        planData.end_date,
+        planData.is_active,
+        planData.monday_preset_id,
+        planData.tuesday_preset_id,
+        planData.wednesday_preset_id,
+        planData.thursday_preset_id,
+        planData.friday_preset_id,
+        planData.saturday_preset_id,
+        planData.sunday_preset_id,
       ]
     );
     return result.rows[0];
@@ -67,10 +76,19 @@ async function updateWeeklyGoalPlan(planId, planData) {
       WHERE id = $12 AND user_id = $13
       RETURNING *`,
       [
-        planData.plan_name, planData.start_date, planData.end_date, planData.is_active,
-        planData.monday_preset_id, planData.tuesday_preset_id, planData.wednesday_preset_id,
-        planData.thursday_preset_id, planData.friday_preset_id, planData.saturday_preset_id, planData.sunday_preset_id,
-        planId, planData.user_id
+        planData.plan_name,
+        planData.start_date,
+        planData.end_date,
+        planData.is_active,
+        planData.monday_preset_id,
+        planData.tuesday_preset_id,
+        planData.wednesday_preset_id,
+        planData.thursday_preset_id,
+        planData.friday_preset_id,
+        planData.saturday_preset_id,
+        planData.sunday_preset_id,
+        planId,
+        planData.user_id,
       ]
     );
     return result.rows[0];

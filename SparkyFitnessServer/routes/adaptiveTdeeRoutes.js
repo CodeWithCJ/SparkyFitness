@@ -18,7 +18,10 @@ const adaptiveTdeeService = require('../services/AdaptiveTdeeService');
 router.get('/', authenticate, async (req, res, next) => {
   try {
     const { date } = req.query;
-    const result = await adaptiveTdeeService.calculateAdaptiveTdee(req.userId, date);
+    const result = await adaptiveTdeeService.calculateAdaptiveTdee(
+      req.userId,
+      date
+    );
     res.status(200).json(result);
   } catch (error) {
     next(error);

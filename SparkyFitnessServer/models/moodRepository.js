@@ -23,7 +23,11 @@ async function getMoodEntriesByUserId(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
     // Log the parameters received by getMoodEntriesByUserId
-    console.log('moodRepository: getMoodEntriesByUserId - Parameters:', { userId, startDate, endDate });
+    console.log('moodRepository: getMoodEntriesByUserId - Parameters:', {
+      userId,
+      startDate,
+      endDate,
+    });
     const result = await client.query(
       `SELECT id, user_id, mood_value, notes, entry_date, created_at, updated_at
        FROM mood_entries
@@ -32,7 +36,10 @@ async function getMoodEntriesByUserId(userId, startDate, endDate) {
       [userId, startDate, endDate]
     );
     // Log the result.rows obtained from the SQL query
-    console.log('moodRepository: getMoodEntriesByUserId - Query Result Rows:', result.rows);
+    console.log(
+      'moodRepository: getMoodEntriesByUserId - Query Result Rows:',
+      result.rows
+    );
     return result.rows;
   } finally {
     client.release();
@@ -100,12 +107,19 @@ async function getMoodEntryByDate(userId, entryDate) {
     if (result.rows[0]) {
       log('debug', `Found mood entry:`, result.rows[0]);
     } else {
-      log('debug', `No mood entry found for user ${userId} on date ${entryDate}`);
+      log(
+        'debug',
+        `No mood entry found for user ${userId} on date ${entryDate}`
+      );
     }
     log('debug', `Returning from getMoodEntryByDate:`, result.rows[0]);
     return result.rows[0];
   } catch (error) {
-    log('error', `Error fetching mood entry for user ${userId} on date ${entryDate}:`, error);
+    log(
+      'error',
+      `Error fetching mood entry for user ${userId} on date ${entryDate}:`,
+      error
+    );
     throw error;
   } finally {
     client.release();

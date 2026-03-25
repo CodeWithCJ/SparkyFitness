@@ -1,10 +1,10 @@
 // SparkyFitnessServer/integrations/strava/stravaDataProcessor.js
 
-const { log } = require("../../config/logging");
-const exerciseRepository = require("../../models/exercise");
-const exerciseEntryRepository = require("../../models/exerciseEntry");
-const activityDetailsRepository = require("../../models/activityDetailsRepository");
-const measurementRepository = require("../../models/measurementRepository");
+const { log } = require('../../config/logging');
+const exerciseRepository = require('../../models/exercise');
+const exerciseEntryRepository = require('../../models/exerciseEntry');
+const activityDetailsRepository = require('../../models/activityDetailsRepository');
+const measurementRepository = require('../../models/measurementRepository');
 
 /**
  * Map Strava sport_type to a general exercise category
@@ -12,56 +12,56 @@ const measurementRepository = require("../../models/measurementRepository");
 function mapSportTypeToCategory(sportType) {
   const categoryMap = {
     // Cardio / Running
-    Run: "Cardio",
-    TrailRun: "Cardio",
-    VirtualRun: "Cardio",
-    Walk: "Cardio",
-    Hike: "Cardio",
+    Run: 'Cardio',
+    TrailRun: 'Cardio',
+    VirtualRun: 'Cardio',
+    Walk: 'Cardio',
+    Hike: 'Cardio',
     // Cycling
-    Ride: "Cardio",
-    MountainBikeRide: "Cardio",
-    GravelRide: "Cardio",
-    EBikeRide: "Cardio",
-    EMountainBikeRide: "Cardio",
-    VirtualRide: "Cardio",
-    Velomobile: "Cardio",
-    Handcycle: "Cardio",
+    Ride: 'Cardio',
+    MountainBikeRide: 'Cardio',
+    GravelRide: 'Cardio',
+    EBikeRide: 'Cardio',
+    EMountainBikeRide: 'Cardio',
+    VirtualRide: 'Cardio',
+    Velomobile: 'Cardio',
+    Handcycle: 'Cardio',
     // Swimming
-    Swim: "Cardio",
+    Swim: 'Cardio',
     // Water Sports
-    Canoeing: "Cardio",
-    Kayaking: "Cardio",
-    Rowing: "Cardio",
-    Sail: "Other",
-    StandUpPaddling: "Cardio",
-    Surfing: "Cardio",
-    Kitesurf: "Cardio",
-    Windsurf: "Cardio",
+    Canoeing: 'Cardio',
+    Kayaking: 'Cardio',
+    Rowing: 'Cardio',
+    Sail: 'Other',
+    StandUpPaddling: 'Cardio',
+    Surfing: 'Cardio',
+    Kitesurf: 'Cardio',
+    Windsurf: 'Cardio',
     // Winter Sports
-    AlpineSki: "Cardio",
-    BackcountrySki: "Cardio",
-    NordicSki: "Cardio",
-    Snowboard: "Cardio",
-    Snowshoe: "Cardio",
-    IceSkate: "Cardio",
+    AlpineSki: 'Cardio',
+    BackcountrySki: 'Cardio',
+    NordicSki: 'Cardio',
+    Snowboard: 'Cardio',
+    Snowshoe: 'Cardio',
+    IceSkate: 'Cardio',
     // Strength / Flexibility
-    WeightTraining: "Strength",
-    Crossfit: "Strength",
-    Yoga: "Flexibility",
+    WeightTraining: 'Strength',
+    Crossfit: 'Strength',
+    Yoga: 'Flexibility',
     // Other
-    Elliptical: "Cardio",
-    StairStepper: "Cardio",
-    RockClimbing: "Strength",
-    Skateboard: "Other",
-    RollerSki: "Cardio",
-    InlineSkate: "Cardio",
-    Golf: "Other",
-    Soccer: "Cardio",
-    Wheelchair: "Cardio",
-    Workout: "Other",
+    Elliptical: 'Cardio',
+    StairStepper: 'Cardio',
+    RockClimbing: 'Strength',
+    Skateboard: 'Other',
+    RollerSki: 'Cardio',
+    InlineSkate: 'Cardio',
+    Golf: 'Other',
+    Soccer: 'Cardio',
+    Wheelchair: 'Cardio',
+    Workout: 'Other',
   };
 
-  return categoryMap[sportType] || "Other";
+  return categoryMap[sportType] || 'Other';
 }
 
 /**
@@ -77,7 +77,7 @@ async function processStravaActivities(
   createdByUserId,
   activities = [],
   detailedActivities = {},
-  startDate = null,
+  startDate = null
 ) {
   if (!activities || activities.length === 0) return;
 
@@ -86,32 +86,32 @@ async function processStravaActivities(
       // Extract entry date from start_date_local (e.g., "2024-01-15T07:30:00Z")
       const entryDate = activity.start_date_local
         ? activity.start_date_local.substring(0, 10)
-        : new Date(activity.start_date).toISOString().split("T")[0];
+        : new Date(activity.start_date).toISOString().split('T')[0];
 
       // Safety filter
       if (startDate && entryDate < startDate) {
         log(
-          "debug",
-          `[stravaDataProcessor] Skipping activity "${activity.name}" from ${entryDate} (before sync range ${startDate})`,
+          'debug',
+          `[stravaDataProcessor] Skipping activity "${activity.name}" from ${entryDate} (before sync range ${startDate})`
         );
         continue;
       }
 
-      const exerciseName = activity.name || "Strava Activity";
-      const sportType = activity.sport_type || activity.type || "Workout";
+      const exerciseName = activity.name || 'Strava Activity';
+      const sportType = activity.sport_type || activity.type || 'Workout';
       const category = mapSportTypeToCategory(sportType);
 
       // Find or create exercise by name
       let exercise = await exerciseRepository.findExerciseByNameAndUserId(
         exerciseName,
-        userId,
+        userId
       );
       if (!exercise) {
         exercise = await exerciseRepository.createExercise({
           user_id: userId,
           name: exerciseName,
           category: category,
-          source: "Strava",
+          source: 'Strava',
           is_custom: true,
           shared_with_public: false,
         });
@@ -143,15 +143,15 @@ async function processStravaActivities(
         calories_burned: caloriesAuto,
         distance: distanceKm,
         avg_heart_rate: activity.average_heartrate || null,
-        notes: `Synced from Strava. Type: ${sportType}${activity.moving_time ? `. Moving time: ${Math.round(activity.moving_time / 60)}min` : ""}${activity.total_elevation_gain ? `. Elevation: ${activity.total_elevation_gain}m` : ""}`,
-        entry_source: "Strava",
+        notes: `Synced from Strava. Type: ${sportType}${activity.moving_time ? `. Moving time: ${Math.round(activity.moving_time / 60)}min` : ''}${activity.total_elevation_gain ? `. Elevation: ${activity.total_elevation_gain}m` : ''}`,
+        entry_source: 'Strava',
         source_id: activity.id ? activity.id.toString() : null,
         sets: [
           {
             set_number: 1,
-            set_type: "Working Set",
+            set_type: 'Working Set',
             duration: durationMinutes,
-            notes: "Automatically created from Strava sync summary",
+            notes: 'Automatically created from Strava sync summary',
           },
         ],
       };
@@ -160,7 +160,7 @@ async function processStravaActivities(
         userId,
         entryData,
         createdByUserId,
-        "Strava",
+        'Strava'
       );
 
       // Store detailed activity data (GPS, laps, splits, segments) if available
@@ -170,21 +170,21 @@ async function processStravaActivities(
 
         await activityDetailsRepository.createActivityDetail(userId, {
           exercise_entry_id: newEntry.id,
-          provider_name: "Strava",
-          detail_type: "full_activity_data",
+          provider_name: 'Strava',
+          detail_type: 'full_activity_data',
           detail_data: detailData,
           created_by_user_id: createdByUserId,
         });
       }
 
       log(
-        "info",
-        `[stravaDataProcessor] Processed activity "${exerciseName}" (${sportType}) for user ${userId} on ${entryDate}`,
+        'info',
+        `[stravaDataProcessor] Processed activity "${exerciseName}" (${sportType}) for user ${userId} on ${entryDate}`
       );
     } catch (error) {
       log(
-        "error",
-        `[stravaDataProcessor] Error processing activity "${activity.name || activity.id}": ${error.message}`,
+        'error',
+        `[stravaDataProcessor] Error processing activity "${activity.name || activity.id}": ${error.message}`
       );
       // Continue processing remaining activities
     }
@@ -201,24 +201,24 @@ async function processStravaAthleteWeight(userId, createdByUserId, athlete) {
   if (!athlete || !athlete.weight || athlete.weight <= 0) return;
 
   try {
-    const entryDate = new Date().toISOString().split("T")[0];
+    const entryDate = new Date().toISOString().split('T')[0];
     const measurementsToUpsert = { weight: athlete.weight }; // Already in kg
 
     await measurementRepository.upsertCheckInMeasurements(
       userId,
       createdByUserId,
       entryDate,
-      measurementsToUpsert,
+      measurementsToUpsert
     );
 
     log(
-      "info",
-      `[stravaDataProcessor] Upserted Strava weight (${athlete.weight}kg) for user ${userId} on ${entryDate}`,
+      'info',
+      `[stravaDataProcessor] Upserted Strava weight (${athlete.weight}kg) for user ${userId} on ${entryDate}`
     );
   } catch (error) {
     log(
-      "error",
-      `[stravaDataProcessor] Error processing athlete weight: ${error.message}`,
+      'error',
+      `[stravaDataProcessor] Error processing athlete weight: ${error.message}`
     );
   }
 }

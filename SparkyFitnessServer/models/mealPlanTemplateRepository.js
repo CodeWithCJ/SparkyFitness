@@ -1,31 +1,31 @@
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
-const format = require("pg-format");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
+const format = require('pg-format');
 
 async function createMealPlanTemplate(planData) {
   const client = await getClient(planData.user_id); // User-specific operation
   try {
-    log("info", "createMealPlanTemplate - planData:", planData);
-    await client.query("BEGIN");
+    log('info', 'createMealPlanTemplate - planData:', planData);
+    await client.query('BEGIN');
 
     const insertTemplateQuery = `
             INSERT INTO meal_plan_templates (user_id, plan_name, description, start_date, end_date, is_active)
             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
     const templateValues = [
       planData.user_id,
-      planData.plan_name ?? "",
-      planData.description ?? "",
+      planData.plan_name ?? '',
+      planData.description ?? '',
       planData.start_date ?? new Date(),
       planData.end_date,
       planData.is_active ?? false,
     ];
 
     log(
-      "info",
-      "createMealPlanTemplate - insertTemplateQuery:",
+      'info',
+      'createMealPlanTemplate - insertTemplateQuery:',
       insertTemplateQuery
     );
-    log("info", "createMealPlanTemplate - templateValues:", templateValues);
+    log('info', 'createMealPlanTemplate - templateValues:', templateValues);
 
     const templateResult = await client.query(
       insertTemplateQuery,
@@ -37,7 +37,7 @@ async function createMealPlanTemplate(planData) {
 
     if (assignments && assignments.length > 0) {
       const mealTypesRes = await client.query(
-        "SELECT id, name FROM meal_types WHERE user_id = $1 OR user_id IS NULL",
+        'SELECT id, name FROM meal_types WHERE user_id = $1 OR user_id IS NULL',
         [planData.user_id]
       );
       const mealTypeMap = new Map();
@@ -51,10 +51,12 @@ async function createMealPlanTemplate(planData) {
           typeId = mealTypeMap.get(a.meal_type.toLowerCase());
         }
         if (!typeId) {
-          throw new Error(`Invalid meal type: ${a.meal_type || a.meal_type_id}`);
+          throw new Error(
+            `Invalid meal type: ${a.meal_type || a.meal_type_id}`
+          );
         }
 
-        if (a.item_type === "meal") {
+        if (a.item_type === 'meal') {
           return [
             newTemplate.id,
             a.day_of_week,
@@ -64,13 +66,13 @@ async function createMealPlanTemplate(planData) {
             null,
             null,
             a.quantity || 1.0,
-            a.unit || "serving",
+            a.unit || 'serving',
           ];
-        } else if (a.item_type === "food") {
+        } else if (a.item_type === 'food') {
           return [
             newTemplate.id,
             a.day_of_week,
-           typeId,
+            typeId,
             a.item_type,
             null,
             a.food_id,
@@ -85,13 +87,13 @@ async function createMealPlanTemplate(planData) {
         `INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L`,
         assignmentValues
       );
-      log("info", "createMealPlanTemplate - assignmentQuery:", assignmentQuery);
+      log('info', 'createMealPlanTemplate - assignmentQuery:', assignmentQuery);
       await client.query(assignmentQuery);
-      log("info", "createMealPlanTemplate - Executed assignmentQuery");
+      log('info', 'createMealPlanTemplate - Executed assignmentQuery');
     }
 
-    await client.query("COMMIT");
-    log("info", "createMealPlanTemplate - Committed transaction");
+    await client.query('COMMIT');
+    log('info', 'createMealPlanTemplate - Committed transaction');
     const finalQuery = `
             SELECT
                 t.*,
@@ -127,8 +129,8 @@ async function createMealPlanTemplate(planData) {
     const finalResult = await client.query(finalQuery, [newTemplate.id]);
     return finalResult.rows[0];
   } catch (error) {
-    await client.query("ROLLBACK");
-    log("error", `Error creating meal plan template: ${error.message}`, error);
+    await client.query('ROLLBACK');
+    log('error', `Error creating meal plan template: ${error.message}`, error);
     throw error;
   } finally {
     client.release();
@@ -186,15 +188,15 @@ async function getMealPlanTemplateAssignments(templateId, userId) {
 async function updateMealPlanTemplate(planId, planData) {
   const client = await getClient(planData.user_id); // User-specific operation
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     const templateResult = await client.query(
       `UPDATE meal_plan_templates SET
                 plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5, updated_at = now()
              WHERE id = $6 RETURNING *`,
       [
-        planData.plan_name ?? "",
-        planData.description ?? "",
+        planData.plan_name ?? '',
+        planData.description ?? '',
         planData.start_date ?? new Date(),
         planData.end_date,
         planData.is_active ?? false,
@@ -204,34 +206,30 @@ async function updateMealPlanTemplate(planId, planData) {
     const updatedTemplate = templateResult.rows[0];
 
     await client.query(
-      "DELETE FROM meal_plan_template_assignments WHERE template_id = $1",
+      'DELETE FROM meal_plan_template_assignments WHERE template_id = $1',
       [planId]
     );
 
     if (planData.assignments && planData.assignments.length > 0) {
-
-        const mealTypesRes = await client.query(
-                "SELECT id, name FROM meal_types WHERE user_id = $1 OR user_id IS NULL",
-                [planData.user_id]
-            );
-            const mealTypeMap = new Map();
-            mealTypesRes.rows.forEach(r => mealTypeMap.set(r.name.toLowerCase(), r.id));
-
-
+      const mealTypesRes = await client.query(
+        'SELECT id, name FROM meal_types WHERE user_id = $1 OR user_id IS NULL',
+        [planData.user_id]
+      );
+      const mealTypeMap = new Map();
+      mealTypesRes.rows.forEach((r) =>
+        mealTypeMap.set(r.name.toLowerCase(), r.id)
+      );
 
       const assignmentValues = planData.assignments.map((a) => {
+        let typeId = a.meal_type_id;
+        if (!typeId && a.meal_type) {
+          typeId = mealTypeMap.get(a.meal_type.toLowerCase());
+        }
+        if (!typeId) {
+          throw new Error(`Invalid meal type: ${a.meal_type}`);
+        }
 
-         let typeId = a.meal_type_id;
-                if (!typeId && a.meal_type) {
-                    typeId = mealTypeMap.get(a.meal_type.toLowerCase());
-                }
-                if (!typeId) {
-                    throw new Error(`Invalid meal type: ${a.meal_type}`);
-                }
-
-
-
-        if (a.item_type === "meal") {
+        if (a.item_type === 'meal') {
           return [
             planId,
             a.day_of_week,
@@ -241,9 +239,9 @@ async function updateMealPlanTemplate(planId, planData) {
             null,
             null,
             a.quantity || 1.0,
-            a.unit || "serving",
+            a.unit || 'serving',
           ];
-        } else if (a.item_type === "food") {
+        } else if (a.item_type === 'food') {
           return [
             planId,
             a.day_of_week,
@@ -265,7 +263,7 @@ async function updateMealPlanTemplate(planId, planData) {
       await client.query(assignmentQuery);
     }
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     const finalQuery = `
             SELECT
                 t.*,
@@ -301,9 +299,9 @@ async function updateMealPlanTemplate(planId, planData) {
     const finalResult = await client.query(finalQuery, [planId]);
     return finalResult.rows[0];
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     log(
-      "error",
+      'error',
       `Error updating meal plan template ${planId}: ${error.message}`,
       error
     );
@@ -324,7 +322,7 @@ async function deleteMealPlanTemplate(planId, userId) {
     return result.rows[0];
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting meal plan template ${planId}: ${error.message}`,
       error
     );

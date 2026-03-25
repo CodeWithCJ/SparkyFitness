@@ -20,29 +20,39 @@ function mapDbToWaterGoalMl(presetData) {
 }
 
 // Helper function to calculate grams from percentages
-function calculateGramsFromPercentages(calories, protein_percentage, carbs_percentage, fat_percentage) {
-  const protein_grams = calories * (protein_percentage / 100) / 4;
-  const carbs_grams = calories * (carbs_percentage / 100) / 4;
-  const fat_grams = calories * (fat_percentage / 100) / 9;
+function calculateGramsFromPercentages(
+  calories,
+  protein_percentage,
+  carbs_percentage,
+  fat_percentage
+) {
+  const protein_grams = (calories * (protein_percentage / 100)) / 4;
+  const carbs_grams = (calories * (carbs_percentage / 100)) / 4;
+  const fat_grams = (calories * (fat_percentage / 100)) / 9;
   return { protein_grams, carbs_grams, fat_grams };
 }
 
 async function createGoalPreset(userId, presetData) {
   try {
     // If percentages are provided, calculate grams
-    if (presetData.protein_percentage !== null && presetData.carbs_percentage !== null && presetData.fat_percentage !== null) {
-      const { protein_grams, carbs_grams, fat_grams } = calculateGramsFromPercentages(
-        presetData.calories,
-        presetData.protein_percentage,
-        presetData.carbs_percentage,
-        presetData.fat_percentage
-      );
+    if (
+      presetData.protein_percentage !== null &&
+      presetData.carbs_percentage !== null &&
+      presetData.fat_percentage !== null
+    ) {
+      const { protein_grams, carbs_grams, fat_grams } =
+        calculateGramsFromPercentages(
+          presetData.calories,
+          presetData.protein_percentage,
+          presetData.carbs_percentage,
+          presetData.fat_percentage
+        );
       presetData.protein = protein_grams;
       presetData.carbs = carbs_grams;
       presetData.fat = fat_grams;
     }
 
-    const dbPresetData = mapWaterGoalMlToDb({ ...presetData, user_id: userId });    
+    const dbPresetData = mapWaterGoalMlToDb({ ...presetData, user_id: userId });
     const newPreset = await goalPresetRepository.createGoalPreset(dbPresetData);
     return newPreset;
   } catch (error) {
@@ -63,10 +73,17 @@ async function getGoalPresets(userId) {
 
 async function getGoalPreset(presetId, userId) {
   try {
-    const preset = await goalPresetRepository.getGoalPresetById(presetId, userId);
+    const preset = await goalPresetRepository.getGoalPresetById(
+      presetId,
+      userId
+    );
     return preset ? mapDbToWaterGoalMl(preset) : null;
   } catch (error) {
-    log('error', `Error fetching goal preset ${presetId} for user ${userId}:`, error);
+    log(
+      'error',
+      `Error fetching goal preset ${presetId} for user ${userId}:`,
+      error
+    );
     throw new Error('Failed to fetch goal preset.');
   }
 }
@@ -74,33 +91,52 @@ async function getGoalPreset(presetId, userId) {
 async function updateGoalPreset(presetId, userId, presetData) {
   try {
     // If percentages are provided, calculate grams
-    if (presetData.protein_percentage !== null && presetData.carbs_percentage !== null && presetData.fat_percentage !== null) {
-      const { protein_grams, carbs_grams, fat_grams } = calculateGramsFromPercentages(
-        presetData.calories,
-        presetData.protein_percentage,
-        presetData.carbs_percentage,
-        presetData.fat_percentage
-      );
+    if (
+      presetData.protein_percentage !== null &&
+      presetData.carbs_percentage !== null &&
+      presetData.fat_percentage !== null
+    ) {
+      const { protein_grams, carbs_grams, fat_grams } =
+        calculateGramsFromPercentages(
+          presetData.calories,
+          presetData.protein_percentage,
+          presetData.carbs_percentage,
+          presetData.fat_percentage
+        );
       presetData.protein = protein_grams;
       presetData.carbs = carbs_grams;
       presetData.fat = fat_grams;
     }
 
     const dbPresetData = mapWaterGoalMlToDb({ ...presetData, user_id: userId });
-    const updatedPreset = await goalPresetRepository.updateGoalPreset(presetId, dbPresetData); 
+    const updatedPreset = await goalPresetRepository.updateGoalPreset(
+      presetId,
+      dbPresetData
+    );
     return updatedPreset;
   } catch (error) {
-    log('error', `Error updating goal preset ${presetId} for user ${userId}:`, error);
+    log(
+      'error',
+      `Error updating goal preset ${presetId} for user ${userId}:`,
+      error
+    );
     throw new Error('Failed to update goal preset.');
   }
 }
 
 async function deleteGoalPreset(presetId, userId) {
   try {
-    const deletedPreset = await goalPresetRepository.deleteGoalPreset(presetId, userId);
+    const deletedPreset = await goalPresetRepository.deleteGoalPreset(
+      presetId,
+      userId
+    );
     return deletedPreset;
   } catch (error) {
-    log('error', `Error deleting goal preset ${presetId} for user ${userId}:`, error);
+    log(
+      'error',
+      `Error deleting goal preset ${presetId} for user ${userId}:`,
+      error
+    );
     throw new Error('Failed to delete goal preset.');
   }
 }

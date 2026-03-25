@@ -1,21 +1,21 @@
-jest.mock("../models/foodRepository");
-jest.mock("../config/logging", () => ({ log: jest.fn() }));
+jest.mock('../models/foodRepository');
+jest.mock('../config/logging', () => ({ log: jest.fn() }));
 
-const foodRepository = require("../models/foodRepository");
-const foodCoreService = require("../services/foodCoreService");
+const foodRepository = require('../models/foodRepository');
+const foodCoreService = require('../services/foodCoreService');
 
-const TEST_USER_ID = "user-123";
+const TEST_USER_ID = 'user-123';
 
 const makeFoodData = (overrides = {}) => ({
-  name: "Test Food",
-  brand: "Test Brand",
+  name: 'Test Food',
+  brand: 'Test Brand',
   is_custom: true,
   user_id: TEST_USER_ID,
-  barcode: "3017620422003",
-  provider_external_id: "3017620422003",
-  provider_type: "openfoodfacts",
+  barcode: '3017620422003',
+  provider_external_id: '3017620422003',
+  provider_type: 'openfoodfacts',
   serving_size: 100,
-  serving_unit: "g",
+  serving_unit: 'g',
   calories: 200,
   protein: 10,
   carbs: 25,
@@ -24,17 +24,17 @@ const makeFoodData = (overrides = {}) => ({
 });
 
 const makeExistingFood = (overrides = {}) => ({
-  id: "food-existing-456",
-  name: "Test Food",
-  brand: "Test Brand",
+  id: 'food-existing-456',
+  name: 'Test Food',
+  brand: 'Test Brand',
   is_custom: true,
   user_id: TEST_USER_ID,
-  provider_external_id: "3017620422003",
-  provider_type: "openfoodfacts",
+  provider_external_id: '3017620422003',
+  provider_type: 'openfoodfacts',
   default_variant: {
-    id: "variant-789",
+    id: 'variant-789',
     serving_size: 100,
-    serving_unit: "g",
+    serving_unit: 'g',
     calories: 200,
     protein: 10,
     carbs: 25,
@@ -44,30 +44,30 @@ const makeExistingFood = (overrides = {}) => ({
   ...overrides,
 });
 
-describe("foodCoreService.createFood", () => {
+describe('foodCoreService.createFood', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("should return existing food when barcode already exists for user", async () => {
+  it('should return existing food when barcode already exists for user', async () => {
     const existingFood = makeExistingFood();
     foodRepository.findFoodByBarcode.mockResolvedValue(existingFood);
 
     const result = await foodCoreService.createFood(
       TEST_USER_ID,
-      makeFoodData(),
+      makeFoodData()
     );
 
     expect(foodRepository.findFoodByBarcode).toHaveBeenCalledWith(
-      "3017620422003",
-      TEST_USER_ID,
+      '3017620422003',
+      TEST_USER_ID
     );
     expect(foodRepository.createFood).not.toHaveBeenCalled();
     expect(result).toEqual(existingFood);
   });
 
-  it("should create a new food when barcode does not exist for user", async () => {
-    const newFood = makeExistingFood({ id: "food-new-789" });
+  it('should create a new food when barcode does not exist for user', async () => {
+    const newFood = makeExistingFood({ id: 'food-new-789' });
     foodRepository.findFoodByBarcode.mockResolvedValue(null);
     foodRepository.createFood.mockResolvedValue(newFood);
 
@@ -75,23 +75,23 @@ describe("foodCoreService.createFood", () => {
     const result = await foodCoreService.createFood(TEST_USER_ID, foodData);
 
     expect(foodRepository.findFoodByBarcode).toHaveBeenCalledWith(
-      "3017620422003",
-      TEST_USER_ID,
+      '3017620422003',
+      TEST_USER_ID
     );
     expect(foodRepository.createFood).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: "Test Food",
-        brand: "Test Brand",
-        barcode: "3017620422003",
+        name: 'Test Food',
+        brand: 'Test Brand',
+        barcode: '3017620422003',
         glycemic_index: null,
         custom_nutrients: {},
-      }),
+      })
     );
     expect(result).toEqual(newFood);
   });
 
-  it("should skip barcode check and create food when no barcode provided", async () => {
-    const newFood = makeExistingFood({ id: "food-new-101" });
+  it('should skip barcode check and create food when no barcode provided', async () => {
+    const newFood = makeExistingFood({ id: 'food-new-101' });
     foodRepository.createFood.mockResolvedValue(newFood);
 
     const foodData = makeFoodData({ barcode: undefined });
@@ -102,25 +102,25 @@ describe("foodCoreService.createFood", () => {
     expect(result).toEqual(newFood);
   });
 
-  it("should sanitize custom_nutrients by stripping empty values", async () => {
-    const newFood = makeExistingFood({ id: "food-new-202" });
+  it('should sanitize custom_nutrients by stripping empty values', async () => {
+    const newFood = makeExistingFood({ id: 'food-new-202' });
     foodRepository.findFoodByBarcode.mockResolvedValue(null);
     foodRepository.createFood.mockResolvedValue(newFood);
 
     const foodData = makeFoodData({
-      custom_nutrients: { fiber: "2g", empty: "", blank: null, valid: "5mg" },
+      custom_nutrients: { fiber: '2g', empty: '', blank: null, valid: '5mg' },
     });
     await foodCoreService.createFood(TEST_USER_ID, foodData);
 
     expect(foodRepository.createFood).toHaveBeenCalledWith(
       expect.objectContaining({
-        custom_nutrients: { fiber: "2g", valid: "5mg" },
-      }),
+        custom_nutrients: { fiber: '2g', valid: '5mg' },
+      })
     );
   });
 
-  it("should coerce glycemic_index 0 to null", async () => {
-    const newFood = makeExistingFood({ id: "food-new-303" });
+  it('should coerce glycemic_index 0 to null', async () => {
+    const newFood = makeExistingFood({ id: 'food-new-303' });
     foodRepository.findFoodByBarcode.mockResolvedValue(null);
     foodRepository.createFood.mockResolvedValue(newFood);
 
@@ -129,12 +129,12 @@ describe("foodCoreService.createFood", () => {
 
     // glycemic_index uses `|| null`, so falsy values (0, "", false) become null
     expect(foodRepository.createFood).toHaveBeenCalledWith(
-      expect.objectContaining({ glycemic_index: null }),
+      expect.objectContaining({ glycemic_index: null })
     );
   });
 
-  it("should pass through a truthy glycemic_index value", async () => {
-    const newFood = makeExistingFood({ id: "food-new-404" });
+  it('should pass through a truthy glycemic_index value', async () => {
+    const newFood = makeExistingFood({ id: 'food-new-404' });
     foodRepository.findFoodByBarcode.mockResolvedValue(null);
     foodRepository.createFood.mockResolvedValue(newFood);
 
@@ -142,17 +142,17 @@ describe("foodCoreService.createFood", () => {
     await foodCoreService.createFood(TEST_USER_ID, foodData);
 
     expect(foodRepository.createFood).toHaveBeenCalledWith(
-      expect.objectContaining({ glycemic_index: 55 }),
+      expect.objectContaining({ glycemic_index: 55 })
     );
   });
 
-  it("should propagate errors from the repository", async () => {
+  it('should propagate errors from the repository', async () => {
     foodRepository.findFoodByBarcode.mockRejectedValue(
-      new Error("Database error"),
+      new Error('Database error')
     );
 
     await expect(
-      foodCoreService.createFood(TEST_USER_ID, makeFoodData()),
-    ).rejects.toThrow("Database error");
+      foodCoreService.createFood(TEST_USER_ID, makeFoodData())
+    ).rejects.toThrow('Database error');
   });
 });

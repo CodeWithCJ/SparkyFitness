@@ -9,19 +9,37 @@ const checkPermissionMiddleware = (permissionType) => {
     }
 
     try {
-      log('debug', `checkPermissionMiddleware: User ${req.originalUserId} acting as ${req.userId}. Checking '${permissionType}' permission.`);
+      log(
+        'debug',
+        `checkPermissionMiddleware: User ${req.originalUserId} acting as ${req.userId}. Checking '${permissionType}' permission.`
+      );
 
-      const hasPermission = await canAccessUserData(req.userId, permissionType, req.originalUserId);
+      const hasPermission = await canAccessUserData(
+        req.userId,
+        permissionType,
+        req.originalUserId
+      );
 
       if (hasPermission) {
         next();
       } else {
-        log('warn', `Forbidden: User ${req.originalUserId} attempted to access ${permissionType} for user ${req.userId} without permission.`);
-        return res.status(403).json({ error: `Forbidden: You do not have permission to access ${permissionType} for this user.` });
+        log(
+          'warn',
+          `Forbidden: User ${req.originalUserId} attempted to access ${permissionType} for user ${req.userId} without permission.`
+        );
+        return res.status(403).json({
+          error: `Forbidden: You do not have permission to access ${permissionType} for this user.`,
+        });
       }
     } catch (error) {
-      log('error', `Error in checkPermissionMiddleware for user ${req.originalUserId} accessing ${permissionType} for ${req.userId}:`, error);
-      return res.status(500).json({ error: 'Internal server error during permission check.' });
+      log(
+        'error',
+        `Error in checkPermissionMiddleware for user ${req.originalUserId} accessing ${permissionType} for ${req.userId}:`,
+        error
+      );
+      return res
+        .status(500)
+        .json({ error: 'Internal server error during permission check.' });
     }
   };
 };

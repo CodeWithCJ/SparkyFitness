@@ -1,10 +1,10 @@
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
 
 async function upsertSleepEntry(userId, actingUserId, sleepEntryData) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     const {
       id, // Optional: if provided, attempt to update
@@ -39,13 +39,13 @@ async function upsertSleepEntry(userId, actingUserId, sleepEntryData) {
     if (!sleepEntryId) {
       const existingCheck = await client.query(
         `SELECT id FROM sleep_entries WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
-        [userId, entry_date, source],
+        [userId, entry_date, source]
       );
       if (existingCheck.rows.length > 0) {
         sleepEntryId = existingCheck.rows[0].id;
         log(
-          "info",
-          `Found existing sleep entry ${sleepEntryId} for user ${userId} on ${entry_date} from source ${source}. Switching to update.`,
+          'info',
+          `Found existing sleep entry ${sleepEntryId} for user ${userId} on ${entry_date} from source ${source}. Switching to update.`
         );
       }
     }
@@ -112,7 +112,7 @@ async function upsertSleepEntry(userId, actingUserId, sleepEntryData) {
 
       if (updateResult.rows.length > 0) {
         sleepEntryId = updateResult.rows[0].id;
-        log("info", `Updated sleep entry ${sleepEntryId} for user ${userId}.`);
+        log('info', `Updated sleep entry ${sleepEntryId} for user ${userId}.`);
       } else {
         // If it was supposed to update but the ID (from param) didn't exist for this user,
         // we fall back to insert if id was explicitly provided but not found.
@@ -154,16 +154,16 @@ async function upsertSleepEntry(userId, actingUserId, sleepEntryData) {
       ]);
       sleepEntryId = insertResult.rows[0].id;
       log(
-        "info",
-        `Inserted new sleep entry ${sleepEntryId} for user ${userId}.`,
+        'info',
+        `Inserted new sleep entry ${sleepEntryId} for user ${userId}.`
       );
     }
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return { id: sleepEntryId, ...sleepEntryData };
   } catch (error) {
-    await client.query("ROLLBACK");
-    log("error", `Error upserting sleep entry for user ${userId}: `, error);
+    await client.query('ROLLBACK');
+    log('error', `Error upserting sleep entry for user ${userId}: `, error);
     throw error;
   } finally {
     client.release();
@@ -173,7 +173,7 @@ async function upsertSleepEntry(userId, actingUserId, sleepEntryData) {
 async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     const { id } = sleepStageEventData; // Optional: if provided, attempt to update
     let { stage_type, start_time, end_time, duration_in_seconds } =
@@ -183,11 +183,11 @@ async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
     if (!end_time && start_time && duration_in_seconds) {
       const start = new Date(start_time);
       end_time = new Date(
-        start.getTime() + duration_in_seconds * 1000,
+        start.getTime() + duration_in_seconds * 1000
       ).toISOString();
       log(
-        "info",
-        `[sleepRepository] Derived missing end_time (${end_time}) for stage ${stage_type} at ${start_time} for user ${userId}`,
+        'info',
+        `[sleepRepository] Derived missing end_time (${end_time}) for stage ${stage_type} at ${start_time} for user ${userId}`
       );
     }
 
@@ -196,7 +196,7 @@ async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
     // Basic UUID validation
     const isUUID =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
-        id,
+        id
       );
 
     if (id && isUUID) {
@@ -225,8 +225,8 @@ async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
       if (updateResult.rows.length > 0) {
         sleepStageEventId = updateResult.rows[0].id;
         log(
-          "info",
-          `Updated sleep stage event ${sleepStageEventId} for entry ${entryId}.`,
+          'info',
+          `Updated sleep stage event ${sleepStageEventId} for entry ${entryId}.`
         );
       } else {
         // If no row was updated, insert new event
@@ -245,8 +245,8 @@ async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
         ]);
         sleepStageEventId = insertResult.rows[0].id;
         log(
-          "info",
-          `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId}.`,
+          'info',
+          `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId}.`
         );
       }
     } else {
@@ -266,22 +266,22 @@ async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
       ]);
       sleepStageEventId = insertResult.rows[0].id;
       const reason =
-        id === undefined ? "no ID provided" : `ignoring invalid ID: ${id}`;
+        id === undefined ? 'no ID provided' : `ignoring invalid ID: ${id}`;
       log(
-        "info",
-        `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId} (${reason}).`,
+        'info',
+        `Inserted new sleep stage event ${sleepStageEventId} for entry ${entryId} (${reason}).`
       );
     }
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     const { id: originalId, ...restOfData } = sleepStageEventData;
     return { id: sleepStageEventId, ...restOfData };
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     log(
-      "error",
+      'error',
       `Error upserting sleep stage event for entry ${entryId}: `,
-      error,
+      error
     );
     throw error;
   } finally {
@@ -332,9 +332,9 @@ async function getSleepEntriesByUserIdAndDateRange(userId, startDate, endDate) {
     return result.rows;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching sleep entries for user ${userId} from ${startDate} to ${endDate}: `,
-      error,
+      error
     );
     throw error;
   } finally {
@@ -345,7 +345,7 @@ async function getSleepEntriesByUserIdAndDateRange(userId, startDate, endDate) {
 async function getAggregatedSleepStageDataByDateRange(
   userId,
   startDate,
-  endDate,
+  endDate
 ) {
   const client = await getClient(userId);
   try {
@@ -364,9 +364,9 @@ async function getAggregatedSleepStageDataByDateRange(
     return result.rows;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching aggregated sleep stage data for user ${userId} from ${startDate} to ${endDate}: `,
-      error,
+      error
     );
     throw error;
   } finally {
@@ -377,7 +377,7 @@ async function getAggregatedSleepStageDataByDateRange(
 async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     const {
       entry_date,
@@ -511,21 +511,21 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
 
     if (
       updateFields.length === 1 &&
-      updateFields[0].includes("updated_at") &&
+      updateFields[0].includes('updated_at') &&
       !stage_events
     ) {
       // Only updated_at, no other fields to update
-      await client.query("COMMIT");
+      await client.query('COMMIT');
       return {
         id: entryId,
-        message: "No specific fields to update for sleep entry.",
+        message: 'No specific fields to update for sleep entry.',
       };
     }
 
     if (updateFields.length > 0) {
       const updateQuery = `
                 UPDATE sleep_entries
-                SET ${updateFields.join(", ")}
+                SET ${updateFields.join(', ')}
                 WHERE id = $${paramIndex++} AND user_id = $${paramIndex++}
                 RETURNING id;
         `;
@@ -535,7 +535,7 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
 
       if (result.rows.length === 0) {
         throw new Error(
-          `Sleep entry with ID ${entryId} not found for user ${userId}.`,
+          `Sleep entry with ID ${entryId} not found for user ${userId}.`
         );
       }
     }
@@ -544,8 +544,8 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
     if (stage_events && stage_events.length > 0) {
       // Delete existing stage events for this entry
       await client.query(
-        "DELETE FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2",
-        [entryId, userId],
+        'DELETE FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2',
+        [entryId, userId]
       );
 
       // Insert new stage events with audit columns
@@ -564,27 +564,27 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
           actingUserId, // Use actingUserId for creation/update
         ]);
       }
-      log("info", `Updated sleep stage events for entry ${entryId}.`);
+      log('info', `Updated sleep stage events for entry ${entryId}.`);
     } else if (stage_events && stage_events.length === 0) {
       // If an empty array is sent, it means all stage events should be deleted
       await client.query(
-        "DELETE FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2",
-        [entryId, userId],
+        'DELETE FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2',
+        [entryId, userId]
       );
       log(
-        "info",
-        `Deleted all sleep stage events for entry ${entryId} as an empty array was provided.`,
+        'info',
+        `Deleted all sleep stage events for entry ${entryId} as an empty array was provided.`
       );
     }
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return { id: entryId, ...updateData };
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     log(
-      "error",
+      'error',
       `Error updating sleep entry ${entryId} for user ${userId}: `,
-      error,
+      error
     );
     throw error;
   } finally {
@@ -595,26 +595,26 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
 async function deleteSleepStageEventsByEntryId(userId, entryId) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
     const query = `
             DELETE FROM sleep_entry_stages
             WHERE entry_id = $1 AND user_id = $2;
         `;
     await client.query(query, [entryId, userId]);
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     log(
-      "info",
-      `Deleted all sleep stage events for entry ${entryId} for user ${userId}.`,
+      'info',
+      `Deleted all sleep stage events for entry ${entryId} for user ${userId}.`
     );
     return {
       message: `Deleted all sleep stage events for entry ${entryId} for user ${userId}.`,
     };
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     log(
-      "error",
+      'error',
       `Error deleting sleep stage events for entry ${entryId} for user ${userId}: `,
-      error,
+      error
     );
     throw error;
   } finally {
@@ -626,23 +626,23 @@ async function deleteSleepEntriesByEntrySourceAndDate(
   userId,
   entrySource,
   startDate,
-  endDate,
+  endDate
 ) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
     const query = `
             DELETE FROM sleep_entries
             WHERE user_id = $1 AND source = $2 AND entry_date BETWEEN $3 AND $4
             RETURNING id;
         `;
     log(
-      "debug",
-      `[sleepRepository.deleteSleepEntriesByEntrySourceAndDate] Deletion query: ${query} `,
+      'debug',
+      `[sleepRepository.deleteSleepEntriesByEntrySourceAndDate] Deletion query: ${query} `
     );
     log(
-      "debug",
-      `[sleepRepository.deleteSleepEntriesByEntrySourceAndDate] Deletion parameters: userId = ${userId}, entrySource = ${entrySource}, startDate = ${startDate}, endDate = ${endDate} `,
+      'debug',
+      `[sleepRepository.deleteSleepEntriesByEntrySourceAndDate] Deletion parameters: userId = ${userId}, entrySource = ${entrySource}, startDate = ${startDate}, endDate = ${endDate} `
     );
     const result = await client.query(query, [
       userId,
@@ -650,18 +650,18 @@ async function deleteSleepEntriesByEntrySourceAndDate(
       startDate,
       endDate,
     ]);
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     log(
-      "info",
-      `Deleted ${result.rows.length} sleep entries for user ${userId} from source ${entrySource} between ${startDate} and ${endDate}.`,
+      'info',
+      `Deleted ${result.rows.length} sleep entries for user ${userId} from source ${entrySource} between ${startDate} and ${endDate}.`
     );
     return { message: `Deleted ${result.rows.length} sleep entries.` };
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     log(
-      "error",
+      'error',
       `Error deleting sleep entries for user ${userId} from source ${entrySource} between ${startDate} and ${endDate}: `,
-      error,
+      error
     );
     throw error;
   } finally {
@@ -684,7 +684,7 @@ module.exports = {
 async function getSleepEntriesWithAllDetailsByUserIdAndDateRange(
   userId,
   startDate,
-  endDate,
+  endDate
 ) {
   const client = await getClient(userId);
   try {
@@ -743,9 +743,9 @@ async function getSleepEntriesWithAllDetailsByUserIdAndDateRange(
     return result.rows;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching sleep entries with all details for user ${userId} from ${startDate} to ${endDate}: `,
-      error,
+      error
     );
     throw error;
   } finally {
@@ -756,7 +756,7 @@ async function getSleepEntriesWithAllDetailsByUserIdAndDateRange(
 async function deleteSleepEntry(userId, entryId) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     // First, delete associated sleep stage events
     await deleteSleepStageEventsByEntryId(userId, entryId);
@@ -770,19 +770,19 @@ async function deleteSleepEntry(userId, entryId) {
 
     if (result.rows.length === 0) {
       throw new Error(
-        `Sleep entry with ID ${entryId} not found for user ${userId}.`,
+        `Sleep entry with ID ${entryId} not found for user ${userId}.`
       );
     }
 
-    await client.query("COMMIT");
-    log("info", `Deleted sleep entry ${entryId} for user ${userId}.`);
+    await client.query('COMMIT');
+    log('info', `Deleted sleep entry ${entryId} for user ${userId}.`);
     return { message: `Sleep entry ${entryId} deleted successfully.` };
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     log(
-      "error",
+      'error',
       `Error deleting sleep entry ${entryId} for user ${userId}: `,
-      error,
+      error
     );
     throw error;
   } finally {

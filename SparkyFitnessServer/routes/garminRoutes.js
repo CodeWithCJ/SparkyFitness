@@ -24,42 +24,48 @@ const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/; // YYYY-MM-DD format
  * @returns {{ valid: boolean, error?: string }} Validation result
  */
 function validateDateRange(startDate, endDate) {
-    // Check required
-    if (!startDate || !endDate) {
-        return { valid: false, error: 'startDate and endDate are required.' };
-    }
+  // Check required
+  if (!startDate || !endDate) {
+    return { valid: false, error: 'startDate and endDate are required.' };
+  }
 
-    // Check format
-    if (!DATE_FORMAT_REGEX.test(startDate) || !DATE_FORMAT_REGEX.test(endDate)) {
-        return { valid: false, error: 'Dates must be in YYYY-MM-DD format.' };
-    }
+  // Check format
+  if (!DATE_FORMAT_REGEX.test(startDate) || !DATE_FORMAT_REGEX.test(endDate)) {
+    return { valid: false, error: 'Dates must be in YYYY-MM-DD format.' };
+  }
 
-    const start = moment(startDate, 'YYYY-MM-DD', true);
-    const end = moment(endDate, 'YYYY-MM-DD', true);
+  const start = moment(startDate, 'YYYY-MM-DD', true);
+  const end = moment(endDate, 'YYYY-MM-DD', true);
 
-    // Check valid dates
-    if (!start.isValid() || !end.isValid()) {
-        return { valid: false, error: 'Invalid date values provided.' };
-    }
+  // Check valid dates
+  if (!start.isValid() || !end.isValid()) {
+    return { valid: false, error: 'Invalid date values provided.' };
+  }
 
-    // Check start is before or equal to end
-    if (start.isAfter(end)) {
-        return { valid: false, error: 'startDate must be before or equal to endDate.' };
-    }
+  // Check start is before or equal to end
+  if (start.isAfter(end)) {
+    return {
+      valid: false,
+      error: 'startDate must be before or equal to endDate.',
+    };
+  }
 
-    // Check date range limit
-    const daysDiff = end.diff(start, 'days');
-    if (daysDiff > MAX_DATE_RANGE_DAYS) {
-        return { valid: false, error: `Date range cannot exceed ${MAX_DATE_RANGE_DAYS} days.` };
-    }
+  // Check date range limit
+  const daysDiff = end.diff(start, 'days');
+  if (daysDiff > MAX_DATE_RANGE_DAYS) {
+    return {
+      valid: false,
+      error: `Date range cannot exceed ${MAX_DATE_RANGE_DAYS} days.`,
+    };
+  }
 
-    // Check not too far in the future (allow 1 day buffer for timezone differences)
-    const tomorrow = moment().add(1, 'day').endOf('day');
-    if (end.isAfter(tomorrow)) {
-        return { valid: false, error: 'endDate cannot be in the future.' };
-    }
+  // Check not too far in the future (allow 1 day buffer for timezone differences)
+  const tomorrow = moment().add(1, 'day').endOf('day');
+  if (end.isAfter(tomorrow)) {
+    return { valid: false, error: 'endDate cannot be in the future.' };
+  }
 
-    return { valid: true };
+  return { valid: true };
 }
 
 /**
@@ -85,24 +91,40 @@ function validateDateRange(startDate, endDate) {
  *         description: Login result.
  */
 router.post('/login', authenticate, async (req, res, next) => {
-    try {
-        const userId = req.userId;
-        const { email, password } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({ error: 'Email and password are required.' });
-        }
-        const result = await garminConnectService.garminLogin(userId, email, password);
-        log('info', `Garmin login microservice response for user ${userId}:`, result);
-        if (result.status === 'success' && result.tokens) {
-            log('info', `Garmin login successful for user ${userId}. Handling tokens...`);
-            const provider = await garminConnectService.handleGarminTokens(userId, result.tokens);
-            res.status(200).json({ status: 'success', provider: provider });
-        } else {
-            res.status(200).json(result);
-        }
-    } catch (error) {
-        next(error);
+  try {
+    const userId = req.userId;
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ error: 'Email and password are required.' });
     }
+    const result = await garminConnectService.garminLogin(
+      userId,
+      email,
+      password
+    );
+    log(
+      'info',
+      `Garmin login microservice response for user ${userId}:`,
+      result
+    );
+    if (result.status === 'success' && result.tokens) {
+      log(
+        'info',
+        `Garmin login successful for user ${userId}. Handling tokens...`
+      );
+      const provider = await garminConnectService.handleGarminTokens(
+        userId,
+        result.tokens
+      );
+      res.status(200).json({ status: 'success', provider: provider });
+    } else {
+      res.status(200).json(result);
+    }
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
@@ -128,24 +150,36 @@ router.post('/login', authenticate, async (req, res, next) => {
  *         description: Login result.
  */
 router.post('/resume_login', authenticate, async (req, res, next) => {
-    try {
-        const userId = req.userId;
-        const { client_state, mfa_code } = req.body;
-        if (!client_state || !mfa_code) {
-            return res.status(400).json({ error: 'Client state and MFA code are required.' });
-        }
-        const result = await garminConnectService.garminResumeLogin(userId, client_state, mfa_code);
-        log('info', `Garmin resume login microservice response for user ${userId}:`, result);
-        if (result.status === 'success' && result.tokens) {
-            log('info', `Garmin resume login successful for user ${userId}. Handling tokens...`);
-            await garminConnectService.handleGarminTokens(userId, result.tokens);
-        }
-        res.status(200).json(result);
-    } catch (error) {
-        next(error);
+  try {
+    const userId = req.userId;
+    const { client_state, mfa_code } = req.body;
+    if (!client_state || !mfa_code) {
+      return res
+        .status(400)
+        .json({ error: 'Client state and MFA code are required.' });
     }
+    const result = await garminConnectService.garminResumeLogin(
+      userId,
+      client_state,
+      mfa_code
+    );
+    log(
+      'info',
+      `Garmin resume login microservice response for user ${userId}:`,
+      result
+    );
+    if (result.status === 'success' && result.tokens) {
+      log(
+        'info',
+        `Garmin resume login successful for user ${userId}. Handling tokens...`
+      );
+      await garminConnectService.handleGarminTokens(userId, result.tokens);
+    }
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
 });
-
 
 /**
  * @swagger
@@ -170,103 +204,169 @@ router.post('/resume_login', authenticate, async (req, res, next) => {
  *       200:
  *         description: Sync completed successfully.
  */
-router.post('/sync/health_and_wellness', authenticate, async (req, res, next) => {
+router.post(
+  '/sync/health_and_wellness',
+  authenticate,
+  async (req, res, next) => {
     try {
-        const userId = req.userId;
-        const { startDate, endDate, metricTypes } = req.body;
-        log('debug', `[garminRoutes] Sync health_and_wellness received startDate: ${startDate}, endDate: ${endDate}`);
+      const userId = req.userId;
+      const { startDate, endDate, metricTypes } = req.body;
+      log(
+        'debug',
+        `[garminRoutes] Sync health_and_wellness received startDate: ${startDate}, endDate: ${endDate}`
+      );
 
-        const dateValidation = validateDateRange(startDate, endDate);
-        if (!dateValidation.valid) {
-            return res.status(400).json({ error: dateValidation.error });
-        }
+      const dateValidation = validateDateRange(startDate, endDate);
+      if (!dateValidation.valid) {
+        return res.status(400).json({ error: dateValidation.error });
+      }
 
-        const healthWellnessData = await garminConnectService.syncGarminHealthAndWellness(userId, startDate, endDate, metricTypes);
-        log('debug', `Raw healthWellnessData from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, healthWellnessData);
+      const healthWellnessData =
+        await garminConnectService.syncGarminHealthAndWellness(
+          userId,
+          startDate,
+          endDate,
+          metricTypes
+        );
+      log(
+        'debug',
+        `Raw healthWellnessData from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`,
+        healthWellnessData
+      );
 
-        // Process the raw healthWellnessData using garminService
-        // This will handle storing raw stress data and derived mood
-        const processedGarminHealthData = await garminService.processGarminHealthAndWellnessData(userId, userId, healthWellnessData.data, startDate, endDate);
+      // Process the raw healthWellnessData using garminService
+      // This will handle storing raw stress data and derived mood
+      const processedGarminHealthData =
+        await garminService.processGarminHealthAndWellnessData(
+          userId,
+          userId,
+          healthWellnessData.data,
+          startDate,
+          endDate
+        );
 
-        // Existing processing for other metrics (if any)
-        const processedHealthData = [];
+      // Existing processing for other metrics (if any)
+      const processedHealthData = [];
 
-        log('info', `[GARMIN_SYNC] Processing metrics from Garmin. Available metrics: ${Object.keys(healthWellnessData.data || {}).join(', ')}`);
+      log(
+        'info',
+        `[GARMIN_SYNC] Processing metrics from Garmin. Available metrics: ${Object.keys(healthWellnessData.data || {}).join(', ')}`
+      );
 
-        for (const metric in healthWellnessData.data) {
-            // Skip stress as it's handled by processGarminHealthAndWellnessData
-            if (metric === 'stress') continue;
+      for (const metric in healthWellnessData.data) {
+        // Skip stress as it's handled by processGarminHealthAndWellnessData
+        if (metric === 'stress') continue;
 
-            const dailyEntries = healthWellnessData.data[metric];
-            log('info', `[GARMIN_SYNC] Processing metric '${metric}': ${dailyEntries?.length || 0} entries`);
+        const dailyEntries = healthWellnessData.data[metric];
+        log(
+          'info',
+          `[GARMIN_SYNC] Processing metric '${metric}': ${dailyEntries?.length || 0} entries`
+        );
 
-            if (Array.isArray(dailyEntries)) {
-                for (const entry of dailyEntries) {
-                    const calendarDateRaw = entry.date;
-                    if (!calendarDateRaw) continue;
+        if (Array.isArray(dailyEntries)) {
+          for (const entry of dailyEntries) {
+            const calendarDateRaw = entry.date;
+            if (!calendarDateRaw) continue;
 
-                    const calendarDate = moment(calendarDateRaw).format('YYYY-MM-DD');
-                    log('debug', `[GARMIN_SYNC] Entry for ${metric} on ${calendarDate}: ${JSON.stringify(entry)}`);
+            const calendarDate = moment(calendarDateRaw).format('YYYY-MM-DD');
+            log(
+              'debug',
+              `[GARMIN_SYNC] Entry for ${metric} on ${calendarDate}: ${JSON.stringify(entry)}`
+            );
 
-                    for (const key in entry) {
-                        if (key === 'date') continue;
+            for (const key in entry) {
+              if (key === 'date') continue;
 
-                        let mapping = garminMeasurementMapping[key];
-                        // If no mapping is found for the key, check if there's a mapping for the metric itself.
-                        // This handles cases like 'blood_pressure' where the entry is just { date, value }.
-                        if (!mapping && key === 'value') {
-                            mapping = garminMeasurementMapping[metric];
-                        }
-                        if (mapping) {
-                            const value = entry[key];
-                            if (value === null || value === undefined) {
-                                log('debug', `[GARMIN_SYNC] Skipping ${key}: value is null/undefined`);
-                                continue;
-                            }
-
-                            const type = mapping.targetType === 'check_in' ? mapping.field : mapping.name;
-                            log('info', `[GARMIN_SYNC] Mapped ${key}=${value} -> type='${type}' (${mapping.targetType})`);
-                            processedHealthData.push({
-                                type: type,
-                                value: value,
-                                date: calendarDate,
-                                source: 'garmin',
-                                dataType: mapping.dataType,
-                                measurementType: mapping.measurementType
-                            });
-                        } else {
-                            log('warn', `[GARMIN_SYNC] No mapping found for key '${key}' in metric '${metric}'`);
-                        }
-                    }
+              let mapping = garminMeasurementMapping[key];
+              // If no mapping is found for the key, check if there's a mapping for the metric itself.
+              // This handles cases like 'blood_pressure' where the entry is just { date, value }.
+              if (!mapping && key === 'value') {
+                mapping = garminMeasurementMapping[metric];
+              }
+              if (mapping) {
+                const value = entry[key];
+                if (value === null || value === undefined) {
+                  log(
+                    'debug',
+                    `[GARMIN_SYNC] Skipping ${key}: value is null/undefined`
+                  );
+                  continue;
                 }
+
+                const type =
+                  mapping.targetType === 'check_in'
+                    ? mapping.field
+                    : mapping.name;
+                log(
+                  'info',
+                  `[GARMIN_SYNC] Mapped ${key}=${value} -> type='${type}' (${mapping.targetType})`
+                );
+                processedHealthData.push({
+                  type: type,
+                  value: value,
+                  date: calendarDate,
+                  source: 'garmin',
+                  dataType: mapping.dataType,
+                  measurementType: mapping.measurementType,
+                });
+              } else {
+                log(
+                  'warn',
+                  `[GARMIN_SYNC] No mapping found for key '${key}' in metric '${metric}'`
+                );
+              }
             }
+          }
         }
+      }
 
-        log('info', `[GARMIN_SYNC] Total processed health data items: ${processedHealthData.length}`);
+      log(
+        'info',
+        `[GARMIN_SYNC] Total processed health data items: ${processedHealthData.length}`
+      );
 
-        log('debug', `Processed health data for measurementService:`, processedHealthData);
+      log(
+        'debug',
+        `Processed health data for measurementService:`,
+        processedHealthData
+      );
 
-        let measurementServiceResult = {};
-        if (processedHealthData.length > 0) {
-            measurementServiceResult = await measurementService.processHealthData(processedHealthData, userId, userId);
-        }
+      let measurementServiceResult = {};
+      if (processedHealthData.length > 0) {
+        measurementServiceResult = await measurementService.processHealthData(
+          processedHealthData,
+          userId,
+          userId
+        );
+      }
 
-        let processedSleepData = {};
-        if (healthWellnessData.data && healthWellnessData.data.sleep && healthWellnessData.data.sleep.length > 0) {
-            processedSleepData = await garminService.processGarminSleepData(userId, userId, healthWellnessData.data.sleep, startDate, endDate);
-        }
+      let processedSleepData = {};
+      if (
+        healthWellnessData.data &&
+        healthWellnessData.data.sleep &&
+        healthWellnessData.data.sleep.length > 0
+      ) {
+        processedSleepData = await garminService.processGarminSleepData(
+          userId,
+          userId,
+          healthWellnessData.data.sleep,
+          startDate,
+          endDate
+        );
+      }
 
-        res.status(200).json({
-            message: 'Health and wellness sync completed.',
-            garminRawData: healthWellnessData, // Keep raw data for debugging/reference
-            processedGarminHealthData: processedGarminHealthData,
-            processedMeasurements: measurementServiceResult,
-            processedSleep: processedSleepData
-        });
+      res.status(200).json({
+        message: 'Health and wellness sync completed.',
+        garminRawData: healthWellnessData, // Keep raw data for debugging/reference
+        processedGarminHealthData: processedGarminHealthData,
+        processedMeasurements: measurementServiceResult,
+        processedSleep: processedSleepData,
+      });
     } catch (error) {
-        next(error);
+      next(error);
     }
-});
+  }
+);
 
 /**
  * @swagger
@@ -291,27 +391,49 @@ router.post('/sync/health_and_wellness', authenticate, async (req, res, next) =>
  *       200:
  *         description: Sync result.
  */
-router.post('/sync/activities_and_workouts', authenticate, async (req, res, next) => {
+router.post(
+  '/sync/activities_and_workouts',
+  authenticate,
+  async (req, res, next) => {
     try {
-        const userId = req.userId;
-        const { startDate, endDate, activityType } = req.body;
-        log('debug', `[garminRoutes] Sync activities_and_workouts received startDate: ${startDate}, endDate: ${endDate}`);
+      const userId = req.userId;
+      const { startDate, endDate, activityType } = req.body;
+      log(
+        'debug',
+        `[garminRoutes] Sync activities_and_workouts received startDate: ${startDate}, endDate: ${endDate}`
+      );
 
-        const dateValidation = validateDateRange(startDate, endDate);
-        if (!dateValidation.valid) {
-            return res.status(400).json({ error: dateValidation.error });
-        }
+      const dateValidation = validateDateRange(startDate, endDate);
+      if (!dateValidation.valid) {
+        return res.status(400).json({ error: dateValidation.error });
+      }
 
-        const rawData = await garminConnectService.fetchGarminActivitiesAndWorkouts(userId, startDate, endDate, activityType);
-        log('debug', `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`, rawData);
+      const rawData =
+        await garminConnectService.fetchGarminActivitiesAndWorkouts(
+          userId,
+          startDate,
+          endDate,
+          activityType
+        );
+      log(
+        'debug',
+        `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`,
+        rawData
+      );
 
-        const result = await garminService.processActivitiesAndWorkouts(userId, rawData, startDate, endDate);
+      const result = await garminService.processActivitiesAndWorkouts(
+        userId,
+        rawData,
+        startDate,
+        endDate
+      );
 
-        res.status(200).json(result);
+      res.status(200).json(result);
     } catch (error) {
-        next(error);
+      next(error);
     }
-});
+  }
+);
 
 /**
  * @swagger
@@ -326,29 +448,40 @@ router.post('/sync/activities_and_workouts', authenticate, async (req, res, next
  *         description: Full sync result.
  */
 router.post('/sync', authenticate, async (req, res, next) => {
-    try {
-        const userId = req.userId;
-        const { startDate, endDate } = req.body;
-        
-        log(
-            'info',
-            `[garminRoutes] Manual full sync requested for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
-        );
+  try {
+    const userId = req.userId;
+    const { startDate, endDate } = req.body;
 
-        const result = await garminService.syncGarminData(userId, 'manual', startDate, endDate);
+    log(
+      'info',
+      `[garminRoutes] Manual full sync requested for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
+    );
 
-        // Update the last sync timestamp
-        const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
-        if (provider) {
-            await externalProviderRepository.updateProviderLastSync(provider.id, new Date());
-        }
+    const result = await garminService.syncGarminData(
+      userId,
+      'manual',
+      startDate,
+      endDate
+    );
 
-        res.status(200).json(result);
-    } catch (error) {
-        next(error);
+    // Update the last sync timestamp
+    const provider =
+      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
+        userId,
+        'garmin'
+      );
+    if (provider) {
+      await externalProviderRepository.updateProviderLastSync(
+        provider.id,
+        new Date()
+      );
     }
-});
 
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -367,32 +500,36 @@ router.post('/sync', authenticate, async (req, res, next) => {
  *               $ref: '#/components/schemas/GarminStatus'
  */
 router.get('/status', authenticate, async (req, res, next) => {
-    try {
-        const userId = req.userId;
-        log('debug', `Garmin /status endpoint called for user: ${userId}`);
-        const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
-        // log('debug', `Provider data from externalProviderRepository for user ${userId}:`, provider);
+  try {
+    const userId = req.userId;
+    log('debug', `Garmin /status endpoint called for user: ${userId}`);
+    const provider =
+      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
+        userId,
+        'garmin'
+      );
+    // log('debug', `Provider data from externalProviderRepository for user ${userId}:`, provider);
 
-        if (provider) {
-            // For security, do not send raw tokens to the frontend.
-            // Instead, send status, last updated, and token expiry.
-            // You might also send a masked external_user_id if available and useful for display.
-            res.status(200).json({
-                isLinked: true,
-                lastUpdated: provider.updated_at,
-                tokenExpiresAt: provider.token_expires_at,
-                // externalUserId: provider.external_user_id ? `${provider.external_user_id.substring(0, 4)}...` : null, // Example masking
-                message: "Garmin Connect is linked."
-            });
-        } else {
-            res.status(200).json({
-                isLinked: false,
-                message: "Garmin Connect is not linked."
-            });
-        }
-    } catch (error) {
-        next(error);
+    if (provider) {
+      // For security, do not send raw tokens to the frontend.
+      // Instead, send status, last updated, and token expiry.
+      // You might also send a masked external_user_id if available and useful for display.
+      res.status(200).json({
+        isLinked: true,
+        lastUpdated: provider.updated_at,
+        tokenExpiresAt: provider.token_expires_at,
+        // externalUserId: provider.external_user_id ? `${provider.external_user_id.substring(0, 4)}...` : null, // Example masking
+        message: 'Garmin Connect is linked.',
+      });
+    } else {
+      res.status(200).json({
+        isLinked: false,
+        message: 'Garmin Connect is not linked.',
+      });
     }
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
@@ -408,19 +545,31 @@ router.get('/status', authenticate, async (req, res, next) => {
  *         description: Unlinked successfully.
  */
 router.post('/unlink', authenticate, async (req, res, next) => {
-    try {
-        const userId = req.userId;
-        const provider = await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(userId, 'garmin');
+  try {
+    const userId = req.userId;
+    const provider =
+      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
+        userId,
+        'garmin'
+      );
 
-        if (provider) {
-            await externalProviderRepository.deleteExternalDataProvider(provider.id, userId);
-            res.status(200).json({ success: true, message: "Garmin Connect account unlinked successfully." });
-        } else {
-            res.status(400).json({ error: "Garmin Connect account not found for this user." });
-        }
-    } catch (error) {
-        next(error);
+    if (provider) {
+      await externalProviderRepository.deleteExternalDataProvider(
+        provider.id,
+        userId
+      );
+      res.status(200).json({
+        success: true,
+        message: 'Garmin Connect account unlinked successfully.',
+      });
+    } else {
+      res
+        .status(400)
+        .json({ error: 'Garmin Connect account not found for this user.' });
     }
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
@@ -447,23 +596,31 @@ router.post('/unlink', authenticate, async (req, res, next) => {
  *         description: Sleep data processed successfully.
  */
 router.post('/sleep_data', authenticate, async (req, res, next) => {
-    try {
-        const userId = req.userId;
-        const { sleepData, startDate, endDate } = req.body; // Expecting an array of sleep entries, startDate, and endDate
+  try {
+    const userId = req.userId;
+    const { sleepData, startDate, endDate } = req.body; // Expecting an array of sleep entries, startDate, and endDate
 
-        if (!sleepData || !Array.isArray(sleepData)) {
-            return res.status(400).json({ error: 'Invalid sleepData format. Expected an array.' });
-        }
-        const dateValidation = validateDateRange(startDate, endDate);
-        if (!dateValidation.valid) {
-            return res.status(400).json({ error: dateValidation.error });
-        }
-
-        const result = await garminService.processGarminSleepData(userId, userId, sleepData, startDate, endDate);
-        res.status(200).json(result);
-    } catch (error) {
-        next(error);
+    if (!sleepData || !Array.isArray(sleepData)) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid sleepData format. Expected an array.' });
     }
+    const dateValidation = validateDateRange(startDate, endDate);
+    if (!dateValidation.valid) {
+      return res.status(400).json({ error: dateValidation.error });
+    }
+
+    const result = await garminService.processGarminSleepData(
+      userId,
+      userId,
+      sleepData,
+      startDate,
+      endDate
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;

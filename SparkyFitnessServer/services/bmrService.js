@@ -27,20 +27,35 @@ const ActivityMultiplier = {
  * @param {number} [bodyFatPercentage] - Body fat percentage
  * @returns {number} - Calculated BMR
  */
-function calculateBmr(algorithm, weight, height, age, gender, bodyFatPercentage) {
+function calculateBmr(
+  algorithm,
+  weight,
+  height,
+  age,
+  gender,
+  bodyFatPercentage
+) {
   log('info', `Calculating BMR with ${algorithm} algorithm.`);
 
   switch (algorithm) {
     case BmrAlgorithm.MIFFLIN_ST_JEOR:
       if (!weight || !height || !age || !gender) {
-        log('warn', 'BMR calculation skipped: Missing weight, height, age, or gender.');
+        log(
+          'warn',
+          'BMR calculation skipped: Missing weight, height, age, or gender.'
+        );
         return 0;
       }
-      return 10 * weight + 6.25 * height - 5 * age + (gender === 'male' ? 5 : -161);
+      return (
+        10 * weight + 6.25 * height - 5 * age + (gender === 'male' ? 5 : -161)
+      );
 
     case BmrAlgorithm.REVISED_HARRIS_BENEDICT:
       if (!weight || !height || !age || !gender) {
-        log('warn', 'BMR calculation skipped: Missing weight, height, age, or gender.');
+        log(
+          'warn',
+          'BMR calculation skipped: Missing weight, height, age, or gender.'
+        );
         return 0;
       }
       if (gender === 'male') {
@@ -51,7 +66,10 @@ function calculateBmr(algorithm, weight, height, age, gender, bodyFatPercentage)
 
     case BmrAlgorithm.KATCH_MCARDLE:
       if (!weight || !bodyFatPercentage) {
-        log('warn', 'BMR calculation skipped: Missing weight or body fat percentage.');
+        log(
+          'warn',
+          'BMR calculation skipped: Missing weight or body fat percentage.'
+        );
         return 0;
       }
       const lbmKatch = weight * (1 - bodyFatPercentage / 100);
@@ -59,14 +77,18 @@ function calculateBmr(algorithm, weight, height, age, gender, bodyFatPercentage)
 
     case BmrAlgorithm.CUNNINGHAM:
       if (!weight || !bodyFatPercentage) {
-        log('warn', 'BMR calculation skipped: Missing weight or body fat percentage.');
+        log(
+          'warn',
+          'BMR calculation skipped: Missing weight or body fat percentage.'
+        );
         return 0;
       }
       const lbmCunningham = weight * (1 - bodyFatPercentage / 100);
       return 500 + 22 * lbmCunningham;
 
     case BmrAlgorithm.OXFORD:
-      if (!weight || !height || !age || !gender) throw new Error('Oxford requires weight, height, age, and gender.');
+      if (!weight || !height || !age || !gender)
+        throw new Error('Oxford requires weight, height, age, and gender.');
       // NOTE: The Oxford equation has many variations based on age/gender groups.
       // This implementation uses a simplified version for adults.
       // A more complex implementation could be added later if needed.

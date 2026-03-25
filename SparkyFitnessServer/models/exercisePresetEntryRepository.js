@@ -16,7 +16,12 @@ async function getExercisePresetEntryByIdWithClient(client, id, userId) {
   return result.rows[0] || null;
 }
 
-async function createExercisePresetEntryWithClient(client, userId, entryData, createdByUserId) {
+async function createExercisePresetEntryWithClient(
+  client,
+  userId,
+  entryData,
+  createdByUserId
+) {
   const result = await client.query(
     `INSERT INTO exercise_preset_entries (user_id, workout_preset_id, name, description, entry_date, created_by_user_id, notes, source)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
@@ -32,14 +37,23 @@ async function createExercisePresetEntryWithClient(client, userId, entryData, cr
     ]
   );
 
-  return getExercisePresetEntryByIdWithClient(client, result.rows[0].id, userId);
+  return getExercisePresetEntryByIdWithClient(
+    client,
+    result.rows[0].id,
+    userId
+  );
 }
 
 async function createExercisePresetEntry(userId, entryData, createdByUserId) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-    const entry = await createExercisePresetEntryWithClient(client, userId, entryData, createdByUserId);
+    const entry = await createExercisePresetEntryWithClient(
+      client,
+      userId,
+      entryData,
+      createdByUserId
+    );
     await client.query('COMMIT');
     return entry;
   } catch (error) {
@@ -75,8 +89,17 @@ async function getExercisePresetEntriesByDate(userId, entryDate) {
   }
 }
 
-async function updateExercisePresetEntryWithClient(client, id, userId, updateData) {
-  const existingEntry = await getExercisePresetEntryByIdWithClient(client, id, userId);
+async function updateExercisePresetEntryWithClient(
+  client,
+  id,
+  userId,
+  updateData
+) {
+  const existingEntry = await getExercisePresetEntryByIdWithClient(
+    client,
+    id,
+    userId
+  );
   if (!existingEntry) {
     return null;
   }
@@ -95,8 +118,12 @@ async function updateExercisePresetEntryWithClient(client, id, userId, updateDat
       updateData.entry_date !== undefined
         ? updateData.entry_date
         : existingEntry.entry_date,
-    notes: updateData.notes !== undefined ? updateData.notes : existingEntry.notes,
-    source: updateData.source !== undefined ? updateData.source : existingEntry.source,
+    notes:
+      updateData.notes !== undefined ? updateData.notes : existingEntry.notes,
+    source:
+      updateData.source !== undefined
+        ? updateData.source
+        : existingEntry.source,
   };
 
   const result = await client.query(
@@ -133,7 +160,12 @@ async function updateExercisePresetEntry(id, userId, updateData) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-    const updatedEntry = await updateExercisePresetEntryWithClient(client, id, userId, updateData);
+    const updatedEntry = await updateExercisePresetEntryWithClient(
+      client,
+      id,
+      userId,
+      updateData
+    );
     await client.query('COMMIT');
     return updatedEntry;
   } catch (error) {
@@ -164,7 +196,12 @@ async function deleteExercisePresetEntry(id, userId) {
   }
 }
 
-async function deleteExercisePresetEntriesByEntrySourceAndDate(userId, startDate, endDate, entrySource) {
+async function deleteExercisePresetEntriesByEntrySourceAndDate(
+  userId,
+  startDate,
+  endDate,
+  entrySource
+) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
@@ -177,7 +214,7 @@ async function deleteExercisePresetEntriesByEntrySourceAndDate(userId, startDate
          AND source = $4`,
       [userId, startDate, endDate, entrySource]
     );
-    const presetEntryIds = presetEntryIdsResult.rows.map(row => row.id);
+    const presetEntryIds = presetEntryIdsResult.rows.map((row) => row.id);
 
     if (presetEntryIds.length > 0) {
       // Delete associated activity details (if any, though currently full_activity_data is linked to exercise_entry)
@@ -190,17 +227,27 @@ async function deleteExercisePresetEntriesByEntrySourceAndDate(userId, startDate
         `DELETE FROM exercise_preset_entries WHERE id = ANY($1::uuid[])`,
         [presetEntryIds]
       );
-      log('info', `[exercisePresetEntryRepository] Deleted ${result.rowCount} exercise preset entries with source '${entrySource}' for user ${userId} from ${startDate} to ${endDate}.`);
+      log(
+        'info',
+        `[exercisePresetEntryRepository] Deleted ${result.rowCount} exercise preset entries with source '${entrySource}' for user ${userId} from ${startDate} to ${endDate}.`
+      );
       await client.query('COMMIT');
       return result.rowCount;
     } else {
-      log('info', `[exercisePresetEntryRepository] No exercise preset entries with source '${entrySource}' found for user ${userId} from ${startDate} to ${endDate}.`);
+      log(
+        'info',
+        `[exercisePresetEntryRepository] No exercise preset entries with source '${entrySource}' found for user ${userId} from ${startDate} to ${endDate}.`
+      );
       await client.query('COMMIT');
       return 0;
     }
   } catch (error) {
     await client.query('ROLLBACK');
-    log('error', `Error deleting exercise preset entries by source and date: ${error.message}`, { userId, startDate, endDate, entrySource, error });
+    log(
+      'error',
+      `Error deleting exercise preset entries by source and date: ${error.message}`,
+      { userId, startDate, endDate, entrySource, error }
+    );
     throw error;
   } finally {
     client.release();

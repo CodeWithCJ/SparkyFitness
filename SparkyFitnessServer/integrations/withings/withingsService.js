@@ -1,14 +1,14 @@
 // SparkyFitnessServer/integrations/withings/withingsService.js
 
-const axios = require("axios");
-const { getClient, getSystemClient } = require("../../db/poolManager");
+const axios = require('axios');
+const { getClient, getSystemClient } = require('../../db/poolManager');
 const {
   encrypt,
   decrypt,
   ENCRYPTION_KEY,
-} = require("../../security/encryption");
-const { log } = require("../../config/logging");
-const withingsDataProcessor = require("./withingsDataProcessor"); // Import the data processor
+} = require('../../security/encryption');
+const { log } = require('../../config/logging');
+const withingsDataProcessor = require('./withingsDataProcessor'); // Import the data processor
 
 // Helper function to interpolate parameters into a SQL query for logging
 function interpolateQuery(sql, params) {
@@ -19,7 +19,7 @@ function interpolateQuery(sql, params) {
       return match; // Return original placeholder if param is missing
     }
     // Handle different types for proper SQL representation
-    if (typeof params[index] === "string") {
+    if (typeof params[index] === 'string') {
       return `'${params[index].replace(/'/g, "''")}'`; // Escape single quotes
     }
     if (params[index] instanceof Date) {
@@ -29,8 +29,8 @@ function interpolateQuery(sql, params) {
   });
 }
 
-const WITHINGS_API_BASE_URL = "https://wbsapi.withings.net";
-const WITHINGS_ACCOUNT_BASE_URL = "https://account.withings.com";
+const WITHINGS_API_BASE_URL = 'https://wbsapi.withings.net';
+const WITHINGS_ACCOUNT_BASE_URL = 'https://account.withings.com';
 
 // Function to construct the Withings authorization URL
 async function getAuthorizationUrl(userId, redirectUri) {
@@ -40,11 +40,11 @@ async function getAuthorizationUrl(userId, redirectUri) {
       `SELECT encrypted_app_id, app_id_iv, app_id_tag
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
 
     if (result.rows.length === 0) {
-      throw new Error("Withings client credentials not found for user.");
+      throw new Error('Withings client credentials not found for user.');
     }
 
     const { encrypted_app_id, app_id_iv, app_id_tag } = result.rows[0];
@@ -52,10 +52,10 @@ async function getAuthorizationUrl(userId, redirectUri) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
-    const scope = "user.info,user.metrics,user.activity"; // Define required scopes
+    const scope = 'user.info,user.metrics,user.activity'; // Define required scopes
     const state = userId; // Use the userId as the state to identify the user on callback
     // Store state in session or database to validate on callback
 
@@ -76,11 +76,11 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
       `SELECT encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
 
     if (providerResult.rows.length === 0) {
-      throw new Error("Withings client credentials not found for user.");
+      throw new Error('Withings client credentials not found for user.');
     }
 
     const {
@@ -95,13 +95,13 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const clientSecret = await decrypt(
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     const response = await axios.post(
@@ -109,23 +109,23 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
       null,
       {
         params: {
-          action: "requesttoken",
-          grant_type: "authorization_code",
+          action: 'requesttoken',
+          grant_type: 'authorization_code',
           client_id: clientId,
           client_secret: clientSecret,
           code: code,
           redirect_uri: redirectUri,
         },
-      },
+      }
     );
 
     if (!response.data || !response.data.body) {
       log(
-        "error",
+        'error',
         `Withings requesttoken error: Invalid response structure.`,
-        JSON.stringify(response.data),
+        JSON.stringify(response.data)
       );
-      throw new Error("Invalid Withings API response structure.");
+      throw new Error('Invalid Withings API response structure.');
     }
 
     const { access_token, refresh_token, expires_in, scope, userid } =
@@ -133,7 +133,7 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
 
     if (!access_token || !refresh_token) {
       throw new Error(
-        "Missing access_token or refresh_token in Withings API response.",
+        'Missing access_token or refresh_token in Withings API response.'
       );
     }
 
@@ -145,8 +145,8 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
     let validExpiresIn = parseInt(expires_in, 10);
     if (isNaN(validExpiresIn) || validExpiresIn <= 0) {
       log(
-        "warn",
-        `Invalid or missing expires_in value received from Withings API: ${expires_in}. Defaulting to 0.`,
+        'warn',
+        `Invalid or missing expires_in value received from Withings API: ${expires_in}. Defaulting to 0.`
       );
       validExpiresIn = 0; // Force immediate expiration to trigger refresh
     }
@@ -166,8 +166,8 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
     ];
 
     log(
-      "info",
-      "Attempting to update database with payload:",
+      'info',
+      'Attempting to update database with payload:',
       JSON.stringify(
         {
           encrypted_access_token: encryptedAccessToken.encryptedText,
@@ -177,8 +177,8 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
           user_id: userId,
         },
         null,
-        2,
-      ),
+        2
+      )
     );
 
     try {
@@ -187,29 +187,29 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
                     encrypted_refresh_token = $4, refresh_token_iv = $5, refresh_token_tag = $6,
                     scope = $7, token_expires_at = $8, external_user_id = $9, is_active = TRUE, updated_at = NOW()
                 WHERE user_id = $10 AND provider_type = 'withings'`;
-      log("info", `Executing SQL query: ${updateQuery}`);
-      log("info", `With payload: ${JSON.stringify(updatePayload)}`);
+      log('info', `Executing SQL query: ${updateQuery}`);
+      log('info', `With payload: ${JSON.stringify(updatePayload)}`);
       log(
-        "info",
-        `Interpolated SQL query: ${interpolateQuery(updateQuery, updatePayload)}`,
+        'info',
+        `Interpolated SQL query: ${interpolateQuery(updateQuery, updatePayload)}`
       );
       const dbResult = await client.query(updateQuery, updatePayload);
       log(
-        "info",
-        `Database update result for user ${userId}: ${dbResult.rowCount} rows updated.`,
+        'info',
+        `Database update result for user ${userId}: ${dbResult.rowCount} rows updated.`
       );
     } catch (dbError) {
       log(
-        "error",
+        'error',
         `FATAL: Database update failed for user ${userId}:`,
-        dbError,
+        dbError
       );
       throw dbError; // Re-throw to ensure the outer catch block handles it
     }
 
     return { success: true, userId: userid };
   } catch (error) {
-    log("error", `Error exchanging Withings code for tokens: ${error.message}`);
+    log('error', `Error exchanging Withings code for tokens: ${error.message}`);
     throw error;
   } finally {
     client.release();
@@ -225,12 +225,12 @@ async function refreshAccessToken(userId) {
                     encrypted_refresh_token, refresh_token_iv, refresh_token_tag
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
 
     if (providerResult.rows.length === 0) {
       throw new Error(
-        "Withings client credentials or refresh token not found for user.",
+        'Withings client credentials or refresh token not found for user.'
       );
     }
 
@@ -250,19 +250,19 @@ async function refreshAccessToken(userId) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const clientSecret = await decrypt(
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const refreshToken = await decrypt(
       encrypted_refresh_token,
       refresh_token_iv,
       refresh_token_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     const response = await axios.post(
@@ -270,23 +270,23 @@ async function refreshAccessToken(userId) {
       null,
       {
         params: {
-          action: "requesttoken",
-          grant_type: "refresh_token",
+          action: 'requesttoken',
+          grant_type: 'refresh_token',
           client_id: clientId,
           client_secret: clientSecret,
           refresh_token: refreshToken,
         },
-      },
+      }
     );
 
     if (!response.data || !response.data.body) {
       log(
-        "error",
+        'error',
         `Withings refresh access token error: Invalid response structure.`,
-        JSON.stringify(response.data),
+        JSON.stringify(response.data)
       );
       throw new Error(
-        "Invalid Withings API response structure during token refresh.",
+        'Invalid Withings API response structure during token refresh.'
       );
     }
 
@@ -301,8 +301,8 @@ async function refreshAccessToken(userId) {
     let validExpiresIn = parseInt(expires_in, 10);
     if (isNaN(validExpiresIn) || validExpiresIn <= 0) {
       log(
-        "warn",
-        `Invalid or missing expires_in value received from Withings API during refresh: ${expires_in}. Defaulting to 0.`,
+        'warn',
+        `Invalid or missing expires_in value received from Withings API during refresh: ${expires_in}. Defaulting to 0.`
       );
       validExpiresIn = 0; // Force immediate expiration to trigger refresh
     }
@@ -311,7 +311,7 @@ async function refreshAccessToken(userId) {
     const encryptedAccessToken = await encrypt(access_token, ENCRYPTION_KEY);
     const encryptedNewRefreshToken = await encrypt(
       newRefreshToken,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     // Update tokens in external_data_providers table
@@ -331,14 +331,14 @@ async function refreshAccessToken(userId) {
         scope,
         new Date(Date.now() + validExpiresIn * 1000),
         userId,
-      ],
+      ]
     );
 
     return access_token;
   } catch (error) {
     log(
-      "error",
-      `Error refreshing Withings access token for user ${userId}: ${error.message}`,
+      'error',
+      `Error refreshing Withings access token for user ${userId}: ${error.message}`
     );
     throw error;
   } finally {
@@ -354,11 +354,11 @@ async function getValidAccessToken(userId) {
       `SELECT encrypted_access_token, access_token_iv, access_token_tag, token_expires_at
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
 
     if (providerResult.rows.length === 0) {
-      throw new Error("Withings provider not configured for user.");
+      throw new Error('Withings provider not configured for user.');
     }
 
     let {
@@ -371,13 +371,13 @@ async function getValidAccessToken(userId) {
       encrypted_access_token,
       access_token_iv,
       access_token_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     if (new Date() >= new Date(token_expires_at)) {
       log(
-        "info",
-        `Withings access token expired for user ${userId}. Refreshing...`,
+        'info',
+        `Withings access token expired for user ${userId}. Refreshing...`
       );
       accessToken = await refreshAccessToken(userId);
     }
@@ -394,7 +394,7 @@ async function fetchMeasuresData(userId, startDate, endDate) {
   try {
     const providerResult = await client.query(
       `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
 
@@ -408,35 +408,39 @@ async function fetchMeasuresData(userId, startDate, endDate) {
         null,
         {
           params: {
-            action: "getmeas",
+            action: 'getmeas',
             access_token: accessToken,
             userid: withingsUserId,
             startdate: startDate, // Unix timestamp
             enddate: endDate, // Unix timestamp
             offset: offset,
           },
-        },
+        }
       );
 
       if (response.data && response.data.body) {
         if (response.data.body.measuregrps) {
           allGroups = allGroups.concat(response.data.body.measuregrps);
         }
-        hasMore = response.data.body.more === true || response.data.body.more === 1;
+        hasMore =
+          response.data.body.more === true || response.data.body.more === 1;
         offset = response.data.body.offset || 0;
       } else {
         hasMore = false;
       }
     }
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("withings", "raw_measures", { status: 0, body: { measuregrps: allGroups } });
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('withings', 'raw_measures', {
+      status: 0,
+      body: { measuregrps: allGroups },
+    });
 
     return allGroups;
   } catch (error) {
     log(
-      "error",
-      `Error fetching Withings measures data for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching Withings measures data for user ${userId}: ${error.message}`
     );
     throw error;
   } finally {
@@ -448,14 +452,14 @@ async function fetchAndProcessMeasuresData(
   userId,
   createdByUserId,
   startDate,
-  endDate,
+  endDate
 ) {
   const measuregrps = await fetchMeasuresData(userId, startDate, endDate);
   if (measuregrps && measuregrps.length > 0) {
     await withingsDataProcessor.processWithingsMeasures(
       userId,
       createdByUserId,
-      measuregrps,
+      measuregrps
     );
   }
   return measuregrps;
@@ -468,7 +472,7 @@ async function fetchHeartData(userId, startDate, endDate) {
   try {
     const providerResult = await client.query(
       `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
 
@@ -482,36 +486,42 @@ async function fetchHeartData(userId, startDate, endDate) {
         null,
         {
           params: {
-            action: "list",
+            action: 'list',
             access_token: accessToken,
             userid: withingsUserId,
             startdate: startDate, // Unix timestamp
             enddate: endDate, // Unix timestamp
             offset: offset,
           },
-        },
+        }
       );
 
       if (response.data && response.data.body) {
         if (response.data.body.series) {
           const series = response.data.body.series;
-          allSeries = allSeries.concat(Array.isArray(series) ? series : [series]);
+          allSeries = allSeries.concat(
+            Array.isArray(series) ? series : [series]
+          );
         }
-        hasMore = response.data.body.more === true || response.data.body.more === 1;
+        hasMore =
+          response.data.body.more === true || response.data.body.more === 1;
         offset = response.data.body.offset || 0;
       } else {
         hasMore = false;
       }
     }
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("withings", "raw_heart", { status: 0, body: { series: allSeries } });
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('withings', 'raw_heart', {
+      status: 0,
+      body: { series: allSeries },
+    });
 
     return allSeries;
   } catch (error) {
     log(
-      "error",
-      `Error fetching Withings heart data for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching Withings heart data for user ${userId}: ${error.message}`
     );
     throw error;
   } finally {
@@ -523,14 +533,14 @@ async function fetchAndProcessHeartData(
   userId,
   createdByUserId,
   startDate,
-  endDate,
+  endDate
 ) {
   const heartSeries = await fetchHeartData(userId, startDate, endDate);
   if (heartSeries && heartSeries.length > 0) {
     await withingsDataProcessor.processWithingsHeartData(
       userId,
       createdByUserId,
-      heartSeries,
+      heartSeries
     );
   }
   return heartSeries;
@@ -543,7 +553,7 @@ async function fetchSleepData(userId, startDate, endDate) {
   try {
     const providerResult = await client.query(
       `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
 
@@ -554,19 +564,19 @@ async function fetchSleepData(userId, startDate, endDate) {
     // Withings limit: only 24h of high-frequency data per call
     while (currentStart < endDate) {
       const currentEnd = Math.min(currentStart + SECONDS_IN_DAY, endDate);
-      
+
       const response = await axios.post(
         `${WITHINGS_API_BASE_URL}/v2/sleep`,
         null,
         {
           params: {
-            action: "get",
+            action: 'get',
             access_token: accessToken,
             userid: withingsUserId,
             startdate: currentStart,
             enddate: currentEnd,
           },
-        },
+        }
       );
 
       if (response.data && response.data.body && response.data.body.series) {
@@ -577,18 +587,21 @@ async function fetchSleepData(userId, startDate, endDate) {
           allSeries.push(series);
         }
       }
-      
+
       currentStart = currentEnd;
     }
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("withings", "raw_sleep", { status: 0, body: { series: allSeries } });
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('withings', 'raw_sleep', {
+      status: 0,
+      body: { series: allSeries },
+    });
 
     return allSeries;
   } catch (error) {
     log(
-      "error",
-      `Error fetching Withings sleep data for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching Withings sleep data for user ${userId}: ${error.message}`
     );
     throw error;
   } finally {
@@ -600,14 +613,14 @@ async function fetchAndProcessSleepData(
   userId,
   createdByUserId,
   startDate,
-  endDate,
+  endDate
 ) {
   const sleepSeries = await fetchSleepData(userId, startDate, endDate);
   if (sleepSeries && sleepSeries.length > 0) {
     await withingsDataProcessor.processWithingsSleepData(
       userId,
       createdByUserId,
-      sleepSeries,
+      sleepSeries
     );
   }
   return sleepSeries;
@@ -620,13 +633,13 @@ async function fetchSleepSummaryData(userId, startDate, endDate) {
   try {
     const providerResult = await client.query(
       `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
 
     // Convert dates to YYYY-MM-DD for getsummary
-    const startDateYMD = new Date(startDate * 1000).toISOString().split("T")[0];
-    const endDateYMD = new Date(endDate * 1000).toISOString().split("T")[0];
+    const startDateYMD = new Date(startDate * 1000).toISOString().split('T')[0];
+    const endDateYMD = new Date(endDate * 1000).toISOString().split('T')[0];
 
     let allSeries = [];
     let offset = 0;
@@ -638,38 +651,44 @@ async function fetchSleepSummaryData(userId, startDate, endDate) {
         null,
         {
           params: {
-            action: "getsummary",
+            action: 'getsummary',
             access_token: accessToken,
             userid: withingsUserId,
             startdateymd: startDateYMD,
             enddateymd: endDateYMD,
             data_fields:
-              "total_timeinbed,total_sleep_time,asleepduration,lightsleepduration,remsleepduration,deepsleepduration,sleep_efficiency,sleep_latency,wakeup_latency,wakeupduration,wakeupcount,waso,nb_rem_episodes,sleep_score,breathing_disturbances_intensity,snoring,snoringepisodecount,hr_average,hr_min,hr_max,rr_average,rr_min,rr_max",
+              'total_timeinbed,total_sleep_time,asleepduration,lightsleepduration,remsleepduration,deepsleepduration,sleep_efficiency,sleep_latency,wakeup_latency,wakeupduration,wakeupcount,waso,nb_rem_episodes,sleep_score,breathing_disturbances_intensity,snoring,snoringepisodecount,hr_average,hr_min,hr_max,rr_average,rr_min,rr_max',
             offset: offset,
           },
-        },
+        }
       );
 
       if (response.data && response.data.body) {
         if (response.data.body.series) {
           const series = response.data.body.series;
-          allSeries = allSeries.concat(Array.isArray(series) ? series : [series]);
+          allSeries = allSeries.concat(
+            Array.isArray(series) ? series : [series]
+          );
         }
-        hasMore = response.data.body.more === true || response.data.body.more === 1;
+        hasMore =
+          response.data.body.more === true || response.data.body.more === 1;
         offset = response.data.body.offset || 0;
       } else {
         hasMore = false;
       }
     }
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("withings", "raw_sleep_summary", { status: 0, body: { series: allSeries } });
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('withings', 'raw_sleep_summary', {
+      status: 0,
+      body: { series: allSeries },
+    });
 
     return allSeries;
   } catch (error) {
     log(
-      "error",
-      `Error fetching Withings sleep summary data for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching Withings sleep summary data for user ${userId}: ${error.message}`
     );
     throw error;
   } finally {
@@ -684,7 +703,7 @@ async function fetchActivityData(userId, startDateYMD, endDateYMD) {
   try {
     const providerResult = await client.query(
       `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
 
@@ -698,36 +717,41 @@ async function fetchActivityData(userId, startDateYMD, endDateYMD) {
         null,
         {
           params: {
-            action: "getactivity",
+            action: 'getactivity',
             access_token: accessToken,
             userid: withingsUserId,
             startdateymd: startDateYMD,
             enddateymd: endDateYMD,
-            data_fields: "steps,distance,elevation,soft,moderate,intense,active,calories,totalcalories,hr_average,hr_min,hr_max,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3",
+            data_fields:
+              'steps,distance,elevation,soft,moderate,intense,active,calories,totalcalories,hr_average,hr_min,hr_max,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3',
             offset: offset,
           },
-        },
+        }
       );
 
       if (response.data && response.data.body) {
         if (response.data.body.activities) {
           allActivities = allActivities.concat(response.data.body.activities);
         }
-        hasMore = response.data.body.more === true || response.data.body.more === 1;
+        hasMore =
+          response.data.body.more === true || response.data.body.more === 1;
         offset = response.data.body.offset || 0;
       } else {
         hasMore = false;
       }
     }
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("withings", "raw_activity", { status: 0, body: { activities: allActivities } });
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('withings', 'raw_activity', {
+      status: 0,
+      body: { activities: allActivities },
+    });
 
     return allActivities;
   } catch (error) {
     log(
-      "error",
-      `Error fetching Withings activity data for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching Withings activity data for user ${userId}: ${error.message}`
     );
     throw error;
   } finally {
@@ -742,7 +766,7 @@ async function fetchWorkoutsData(userId, startDateYMD, endDateYMD) {
   try {
     const providerResult = await client.query(
       `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
 
@@ -756,37 +780,44 @@ async function fetchWorkoutsData(userId, startDateYMD, endDateYMD) {
         null,
         {
           params: {
-            action: "getworkouts",
+            action: 'getworkouts',
             access_token: accessToken,
             userid: withingsUserId,
             startdateymd: startDateYMD,
             enddateymd: endDateYMD,
-            data_fields: "calories,intensity,manual_intensity,manual_distance,manual_calories,hr_average,hr_min,hr_max,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3,pause_duration,spo2_average,steps,distance,elevation",
+            data_fields:
+              'calories,intensity,manual_intensity,manual_distance,manual_calories,hr_average,hr_min,hr_max,hr_zone_0,hr_zone_1,hr_zone_2,hr_zone_3,pause_duration,spo2_average,steps,distance,elevation',
             offset: offset,
           },
-        },
+        }
       );
 
       if (response.data && response.data.body) {
         if (response.data.body.series) {
           const series = response.data.body.series;
-          allSeries = allSeries.concat(Array.isArray(series) ? series : [series]);
+          allSeries = allSeries.concat(
+            Array.isArray(series) ? series : [series]
+          );
         }
-        hasMore = response.data.body.more === true || response.data.body.more === 1;
+        hasMore =
+          response.data.body.more === true || response.data.body.more === 1;
         offset = response.data.body.offset || 0;
       } else {
         hasMore = false;
       }
     }
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("withings", "raw_workouts", { status: 0, body: { series: allSeries } });
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('withings', 'raw_workouts', {
+      status: 0,
+      body: { series: allSeries },
+    });
 
     return allSeries;
   } catch (error) {
     log(
-      "error",
-      `Error fetching Withings workout data for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching Withings workout data for user ${userId}: ${error.message}`
     );
     throw error;
   } finally {
@@ -798,14 +829,14 @@ async function fetchAndProcessWorkoutsData(
   userId,
   createdByUserId,
   startDateYMD,
-  endDateYMD,
+  endDateYMD
 ) {
   const workouts = await fetchWorkoutsData(userId, startDateYMD, endDateYMD);
   if (workouts && workouts.length > 0) {
     await withingsDataProcessor.processWithingsWorkouts(
       userId,
       createdByUserId,
-      workouts,
+      workouts
     );
   }
   return workouts;
@@ -819,13 +850,13 @@ async function disconnectWithings(userId) {
       `SELECT encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag, external_user_id
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
 
     if (providerResult.rows.length === 0) {
       log(
-        "warn",
-        `Attempted to disconnect Withings for user ${userId}, but no provider found.`,
+        'warn',
+        `Attempted to disconnect Withings for user ${userId}, but no provider found.`
       );
       return { success: true }; // Already disconnected or never connected
     }
@@ -844,19 +875,19 @@ async function disconnectWithings(userId) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const clientSecret = await decrypt(
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     // Revoke token with Withings
     await axios.post(`${WITHINGS_API_BASE_URL}/v2/oauth2`, null, {
       params: {
-        action: "revoke",
+        action: 'revoke',
         client_id: clientId,
         client_secret: clientSecret,
         userid: external_user_id,
@@ -870,15 +901,15 @@ async function disconnectWithings(userId) {
                  encrypted_refresh_token = NULL, refresh_token_iv = NULL, refresh_token_tag = NULL,
                  scope = NULL, token_expires_at = NULL, external_user_id = NULL, is_active = FALSE, updated_at = NOW()
              WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
 
-    log("info", `Withings account disconnected for user ${userId}`);
+    log('info', `Withings account disconnected for user ${userId}`);
     return { success: true };
   } catch (error) {
     log(
-      "error",
-      `Error disconnecting Withings account for user ${userId}: ${error.message}`,
+      'error',
+      `Error disconnecting Withings account for user ${userId}: ${error.message}`
     );
     throw error;
   } finally {
@@ -889,8 +920,8 @@ async function disconnectWithings(userId) {
 // Helper function to generate a random string for state parameter
 function generateRandomString(length) {
   const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
   const charactersLength = characters.length;
   for (let i = 0; i < length; i++) {
     result += characters.charAt(Math.floor(Math.random() * charactersLength));
@@ -905,7 +936,7 @@ async function getStatus(userId) {
       `SELECT last_sync_at, token_expires_at
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId],
+      [userId]
     );
 
     if (result.rows.length === 0) {
@@ -924,8 +955,8 @@ async function getStatus(userId) {
     };
   } catch (error) {
     log(
-      "error",
-      `Error getting Withings status for user ${userId}: ${error.message}`,
+      'error',
+      `Error getting Withings status for user ${userId}: ${error.message}`
     );
     throw error;
   } finally {

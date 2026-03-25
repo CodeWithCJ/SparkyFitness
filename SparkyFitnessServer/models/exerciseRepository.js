@@ -34,7 +34,11 @@ async function getExercisesNeedingReview(userId) {
   }
 }
 
-async function updateExerciseEntriesSnapshot(userId, exerciseId, newSnapshotData) {
+async function updateExerciseEntriesSnapshot(
+  userId,
+  exerciseId,
+  newSnapshotData
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(

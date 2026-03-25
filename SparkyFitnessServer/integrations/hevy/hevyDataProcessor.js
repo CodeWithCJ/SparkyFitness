@@ -1,9 +1,9 @@
 // SparkyFitnessServer/integrations/hevy/hevyDataProcessor.js
 
-const exerciseEntryRepository = require("../../models/exerciseEntry");
-const exerciseRepository = require("../../models/exercise");
-const measurementRepository = require("../../models/measurementRepository");
-const { log } = require("../../config/logging");
+const exerciseEntryRepository = require('../../models/exerciseEntry');
+const exerciseRepository = require('../../models/exercise');
+const measurementRepository = require('../../models/measurementRepository');
+const { log } = require('../../config/logging');
 
 /**
  * Process Hevy user info to sync measurements.
@@ -15,8 +15,8 @@ async function processHevyUserInfo(userId, createdByUserId, data) {
   if (!data || !data.user) return;
   const { weight_kg, height_cm, updated_at } = data.user;
   const entryDate = updated_at
-    ? updated_at.split("T")[0]
-    : new Date().toISOString().split("T")[0];
+    ? updated_at.split('T')[0]
+    : new Date().toISOString().split('T')[0];
 
   try {
     const measurements = {};
@@ -28,17 +28,17 @@ async function processHevyUserInfo(userId, createdByUserId, data) {
         userId,
         createdByUserId,
         entryDate,
-        measurements,
+        measurements
       );
       log(
-        "info",
-        `Synced Hevy user measurements for user ${userId}: ${JSON.stringify(measurements)}`,
+        'info',
+        `Synced Hevy user measurements for user ${userId}: ${JSON.stringify(measurements)}`
       );
     }
   } catch (error) {
     log(
-      "error",
-      `Failed to sync Hevy user measurements for user ${userId}: ${error.message}`,
+      'error',
+      `Failed to sync Hevy user measurements for user ${userId}: ${error.message}`
     );
   }
 }
@@ -51,8 +51,8 @@ async function processHevyUserInfo(userId, createdByUserId, data) {
  */
 async function processHevyWorkouts(userId, createdByUserId, workouts) {
   log(
-    "info",
-    `Processing ${workouts.length} Hevy workouts for user ${userId}...`,
+    'info',
+    `Processing ${workouts.length} Hevy workouts for user ${userId}...`
   );
 
   for (const workout of workouts) {
@@ -60,8 +60,8 @@ async function processHevyWorkouts(userId, createdByUserId, workouts) {
       await processSingleWorkout(userId, createdByUserId, workout);
     } catch (error) {
       log(
-        "error",
-        `Failed to process Hevy workout ${workout.id}: ${error.message}`,
+        'error',
+        `Failed to process Hevy workout ${workout.id}: ${error.message}`
       );
     }
   }
@@ -79,40 +79,40 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
   const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
 
   log(
-    "debug",
-    `Processing Hevy workout: ${workout.title} (${startTime.toISOString()})`,
+    'debug',
+    `Processing Hevy workout: ${workout.title} (${startTime.toISOString()})`
   );
 
   for (const hevyExercise of workout.exercises) {
     // 1. Find or create exercise template
     let exercise = await exerciseRepository.findExerciseByNameAndUserId(
       hevyExercise.title,
-      userId,
+      userId
     );
     if (!exercise) {
       exercise = await exerciseRepository.createExercise(
         {
           user_id: userId,
           name: hevyExercise.title,
-          source: "Hevy",
+          source: 'Hevy',
           is_custom: true,
           shared_with_public: false,
         },
-        createdByUserId,
+        createdByUserId
       );
     }
 
     // 2. Prepare entry data
     const entryData = {
       exercise_id: exercise.id,
-      entry_date: startTime.toISOString().split("T")[0],
+      entry_date: startTime.toISOString().split('T')[0],
       duration_minutes: durationMinutes, // Note: Hevy provides total workout duration, not per-exercise
       calories_burned: 0, // Hevy typically doesn't provide per-exercise calories
       notes:
         hevyExercise.notes ||
         workout.description ||
         `Synced from Hevy: ${workout.title}`,
-      entry_source: "Hevy",
+      entry_source: 'Hevy',
       sets: hevyExercise.sets.map((set) => ({
         set_number: set.index + 1,
         set_type: mapSetType(set.type),
@@ -129,7 +129,7 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
       userId,
       entryData,
       createdByUserId,
-      "Hevy",
+      'Hevy'
     );
   }
 }
@@ -141,12 +141,12 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
  */
 function mapSetType(hevyType) {
   const mapping = {
-    normal: "Working Set",
-    warm_up: "Warm-up",
-    drop_set: "Drop Set",
-    failure: "To Failure",
+    normal: 'Working Set',
+    warm_up: 'Warm-up',
+    drop_set: 'Drop Set',
+    failure: 'To Failure',
   };
-  return mapping[hevyType] || "Working Set";
+  return mapping[hevyType] || 'Working Set';
 }
 
 module.exports = {

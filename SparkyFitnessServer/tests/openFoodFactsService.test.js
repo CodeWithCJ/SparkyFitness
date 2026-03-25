@@ -1,27 +1,27 @@
 const {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
-} = require("../integrations/openfoodfacts/openFoodFactsService");
+} = require('../integrations/openfoodfacts/openFoodFactsService');
 
 global.fetch = jest.fn();
 
-describe("openFoodFactsService", () => {
+describe('openFoodFactsService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe("searchOpenFoodFacts", () => {
-    it("should append the lc parameter with the specified language to the search URL", async () => {
+  describe('searchOpenFoodFacts', () => {
+    it('should append the lc parameter with the specified language to the search URL', async () => {
       fetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ products: [], count: 0 }),
       });
 
-      await searchOpenFoodFacts("pizza", 1, "fr");
+      await searchOpenFoodFacts('pizza', 1, 'fr');
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining("&lc=fr"),
-        expect.any(Object),
+        expect.stringContaining('&lc=fr'),
+        expect.any(Object)
       );
     });
 
@@ -31,27 +31,27 @@ describe("openFoodFactsService", () => {
         json: () => Promise.resolve({ products: [], count: 0 }),
       });
 
-      await searchOpenFoodFacts("pizza", 1);
+      await searchOpenFoodFacts('pizza', 1);
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining("&lc=en"),
-        expect.any(Object),
+        expect.stringContaining('&lc=en'),
+        expect.any(Object)
       );
     });
   });
 
-  describe("searchOpenFoodFactsByBarcodeFields", () => {
-    it("should append the lc parameter with the specified language to the product URL", async () => {
+  describe('searchOpenFoodFactsByBarcodeFields', () => {
+    it('should append the lc parameter with the specified language to the product URL', async () => {
       fetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ status: 1, product: {} }),
       });
 
-      await searchOpenFoodFactsByBarcodeFields("12345678", undefined, "it");
+      await searchOpenFoodFactsByBarcodeFields('12345678', undefined, 'it');
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining("&lc=it"),
-        expect.any(Object),
+        expect.stringContaining('&lc=it'),
+        expect.any(Object)
       );
     });
 
@@ -61,11 +61,11 @@ describe("openFoodFactsService", () => {
         json: () => Promise.resolve({ status: 1, product: {} }),
       });
 
-      await searchOpenFoodFactsByBarcodeFields("12345678");
+      await searchOpenFoodFactsByBarcodeFields('12345678');
 
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining("&lc=en"),
-        expect.any(Object),
+        expect.stringContaining('&lc=en'),
+        expect.any(Object)
       );
     });
   });

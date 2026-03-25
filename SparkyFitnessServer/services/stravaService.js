@@ -1,20 +1,20 @@
 // SparkyFitnessServer/services/stravaService.js
 
-const { log } = require("../config/logging");
-const stravaIntegrationService = require("../integrations/strava/stravaService");
-const stravaDataProcessor = require("../integrations/strava/stravaDataProcessor");
-const { getSystemClient } = require("../db/poolManager");
-const { loadRawBundle } = require("../utils/diagnosticLogger");
-const moment = require("moment");
-const fs = require("fs");
-const path = require("path");
+const { log } = require('../config/logging');
+const stravaIntegrationService = require('../integrations/strava/stravaService');
+const stravaDataProcessor = require('../integrations/strava/stravaDataProcessor');
+const { getSystemClient } = require('../db/poolManager');
+const { loadRawBundle } = require('../utils/diagnosticLogger');
+const moment = require('moment');
+const fs = require('fs');
+const path = require('path');
 
 // Configuration for data mocking/caching
 const STRAVA_DATA_SOURCE =
-  process.env.SPARKY_FITNESS_STRAVA_DATA_SOURCE || "strava";
+  process.env.SPARKY_FITNESS_STRAVA_DATA_SOURCE || 'strava';
 log(
-  "info",
-  `[stravaService] Strava data source configured to: ${STRAVA_DATA_SOURCE}`,
+  'info',
+  `[stravaService] Strava data source configured to: ${STRAVA_DATA_SOURCE}`
 );
 
 /**
@@ -26,74 +26,74 @@ log(
  */
 async function syncStravaData(
   userId,
-  syncType = "manual",
+  syncType = 'manual',
   customStartDate = null,
-  customEndDate = null,
+  customEndDate = null
 ) {
   let startDate, endDate;
   const today = moment();
 
   if (customStartDate) {
     startDate = customStartDate;
-    endDate = customEndDate || today.format("YYYY-MM-DD");
-  } else if (syncType === "manual") {
-    endDate = today.format("YYYY-MM-DD");
-    startDate = today.clone().subtract(7, "days").format("YYYY-MM-DD");
-  } else if (syncType === "scheduled") {
-    endDate = today.format("YYYY-MM-DD");
-    startDate = today.format("YYYY-MM-DD");
+    endDate = customEndDate || today.format('YYYY-MM-DD');
+  } else if (syncType === 'manual') {
+    endDate = today.format('YYYY-MM-DD');
+    startDate = today.clone().subtract(7, 'days').format('YYYY-MM-DD');
+  } else if (syncType === 'scheduled') {
+    endDate = today.format('YYYY-MM-DD');
+    startDate = today.format('YYYY-MM-DD');
   } else {
     throw new Error("Invalid syncType. Must be 'manual' or 'scheduled'.");
   }
 
   // Convert dates to epoch for Strava API (seconds since epoch)
   const afterEpoch = Math.floor(
-    moment(startDate, "YYYY-MM-DD").startOf("day").valueOf() / 1000,
+    moment(startDate, 'YYYY-MM-DD').startOf('day').valueOf() / 1000
   );
   const beforeEpoch = Math.floor(
-    moment(endDate, "YYYY-MM-DD").endOf("day").valueOf() / 1000,
+    moment(endDate, 'YYYY-MM-DD').endOf('day').valueOf() / 1000
   );
 
   log(
-    "info",
-    `[stravaService] Starting Strava sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`,
+    'info',
+    `[stravaService] Starting Strava sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`
   );
 
-  if (STRAVA_DATA_SOURCE === "local") {
+  if (STRAVA_DATA_SOURCE === 'local') {
     log(
-      "info",
-      `[stravaService] Replaying Strava sync from raw diagnostic bundle for user ${userId}`,
+      'info',
+      `[stravaService] Replaying Strava sync from raw diagnostic bundle for user ${userId}`
     );
-    const bundle = loadRawBundle("strava");
+    const bundle = loadRawBundle('strava');
 
     if (!bundle || !bundle.responses) {
       throw new Error(
         'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_STRAVA_DATA_SOURCE unset (or set to "strava") ' +
-          "and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.",
+          'and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.'
       );
     }
 
     const responses = bundle.responses;
 
     try {
-      log("debug", `[stravaService] Processing raw data for ${userId}...`);
+      log('debug', `[stravaService] Processing raw data for ${userId}...`);
 
       // Athlete profile (for weight)
-      if (responses["raw_athlete"]) {
+      if (responses['raw_athlete']) {
         await stravaDataProcessor.processStravaAthleteWeight(
           userId,
           userId,
-          responses["raw_athlete"].data,
+          responses['raw_athlete'].data
         );
       }
 
       // Activities
-      if (responses["raw_activities_list"]) {
+      if (responses['raw_activities_list']) {
         // Collect detailed activities from bundle if any
         const detailedActivities = {};
         Object.keys(responses).forEach((key) => {
-          if (key.startsWith("raw_activity_detail_")) {
-            const activityId = key.replace("raw_activity_detail_", "");
+          if (key.startsWith('raw_activity_detail_')) {
+            const activityId = key.replace('raw_activity_detail_', '');
             detailedActivities[activityId] = responses[key].data;
           }
         });
@@ -101,9 +101,9 @@ async function syncStravaData(
         await stravaDataProcessor.processStravaActivities(
           userId,
           userId,
-          responses["raw_activities_list"].data,
+          responses['raw_activities_list'].data,
           detailedActivities,
-          null, // Pass null to skip the date safety filter during local replay
+          null // Pass null to skip the date safety filter during local replay
         );
       }
 
@@ -112,26 +112,26 @@ async function syncStravaData(
       try {
         await client.query(
           `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'strava'`,
-          [userId],
+          [userId]
         );
       } finally {
         client.release();
       }
 
       log(
-        "info",
-        `[stravaService] Strava sync from raw bundle completed for user ${userId}.`,
+        'info',
+        `[stravaService] Strava sync from raw bundle completed for user ${userId}.`
       );
       return {
         success: true,
-        source: "local_raw_replay",
+        source: 'local_raw_replay',
         bundle_updated: bundle.last_updated,
       };
     } catch (error) {
       log(
-        "error",
+        'error',
         `[stravaService] Error replaying Strava data from raw bundle for user ${userId}:`,
-        error.message,
+        error.message
       );
       throw error;
     }
@@ -144,7 +144,7 @@ async function syncStravaData(
 
     if (!accessToken) {
       throw new Error(
-        "No valid Strava access token. Please re-authorize Strava.",
+        'No valid Strava access token. Please re-authorize Strava.'
       );
     }
 
@@ -154,43 +154,40 @@ async function syncStravaData(
         return await fetchFn();
       } catch (error) {
         log(
-          "warn",
-          `[stravaService] Failed to fetch ${dataType} for user ${userId}: ${error.message}`,
+          'warn',
+          `[stravaService] Failed to fetch ${dataType} for user ${userId}: ${error.message}`
         );
         return null;
       }
     }
 
     // 1. Fetch EVERYTHING first (The Safe Phase)
-    log("debug", `[stravaService] Phase 1: Capturing raw API responses...`);
+    log('debug', `[stravaService] Phase 1: Capturing raw API responses...`);
 
-    const athleteData = await safeFetch("raw_athlete", () =>
-      stravaIntegrationService.fetchAthlete(accessToken),
+    const athleteData = await safeFetch('raw_athlete', () =>
+      stravaIntegrationService.fetchAthlete(accessToken)
     );
 
     const activities =
-      (await safeFetch("raw_activities_list", () =>
+      (await safeFetch('raw_activities_list', () =>
         stravaIntegrationService.fetchAllActivitiesInRange(
           accessToken,
           afterEpoch,
-          beforeEpoch,
-        ),
+          beforeEpoch
+        )
       )) || [];
 
     const detailedActivities = {};
     if (activities.length > 0) {
       log(
-        "debug",
-        `[stravaService] Fetching details for ${activities.length} activities...`,
+        'debug',
+        `[stravaService] Fetching details for ${activities.length} activities...`
       );
       for (const activity of activities) {
         const detail = await safeFetch(
           `raw_activity_detail_${activity.id}`,
           () =>
-            stravaIntegrationService.fetchActivityById(
-              accessToken,
-              activity.id,
-            ),
+            stravaIntegrationService.fetchActivityById(accessToken, activity.id)
         );
         if (detail) {
           detailedActivities[activity.id] = detail;
@@ -201,7 +198,7 @@ async function syncStravaData(
     }
 
     // 2. Process EVERYTHING second (The Action Phase)
-    log("debug", `[stravaService] Phase 2: Processing captured data...`);
+    log('debug', `[stravaService] Phase 2: Processing captured data...`);
 
     if (activities.length > 0) {
       await stravaDataProcessor.processStravaActivities(
@@ -209,7 +206,7 @@ async function syncStravaData(
         userId,
         activities,
         detailedActivities,
-        startDate,
+        startDate
       );
     }
 
@@ -217,7 +214,7 @@ async function syncStravaData(
       await stravaDataProcessor.processStravaAthleteWeight(
         userId,
         userId,
-        athleteData,
+        athleteData
       );
     }
 
@@ -226,26 +223,26 @@ async function syncStravaData(
     try {
       await client.query(
         `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'strava'`,
-        [userId],
+        [userId]
       );
     } finally {
       client.release();
     }
 
     log(
-      "info",
-      `[stravaService] Full Strava sync completed for user ${userId}. ${activities.length} activities processed.`,
+      'info',
+      `[stravaService] Full Strava sync completed for user ${userId}. ${activities.length} activities processed.`
     );
     return {
       success: true,
-      source: "live_api",
+      source: 'live_api',
       activitiesProcessed: activities.length,
     };
   } catch (error) {
     log(
-      "error",
+      'error',
       `[stravaService] Error during full Strava sync for user ${userId}:`,
-      error.message,
+      error.message
     );
     throw error;
   }

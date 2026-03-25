@@ -80,24 +80,28 @@ router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
  *       404:
  *         description: API key not found.
  */
-router.delete('/user/api-key/:apiKeyId', authenticate, async (req, res, next) => {
-  const { apiKeyId } = req.params;
+router.delete(
+  '/user/api-key/:apiKeyId',
+  authenticate,
+  async (req, res, next) => {
+    const { apiKeyId } = req.params;
 
-  try {
-    const { auth } = require('../../auth');
-    await auth.api.deleteApiKey({
-      apiKeyId,
-      userId: req.userId,
-    });
+    try {
+      const { auth } = require('../../auth');
+      await auth.api.deleteApiKey({
+        apiKeyId,
+        userId: req.userId,
+      });
 
-    res.status(200).json({ message: 'API key deleted successfully.' });
-  } catch (error) {
-    if (error.message.includes('not found')) {
-      return res.status(404).json({ error: 'API key not found.' });
+      res.status(200).json({ message: 'API key deleted successfully.' });
+    } catch (error) {
+      if (error.message.includes('not found')) {
+        return res.status(404).json({ error: 'API key not found.' });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger

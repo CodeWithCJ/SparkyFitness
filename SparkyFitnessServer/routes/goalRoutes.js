@@ -27,23 +27,28 @@ const goalService = require('../services/goalService');
  *             schema:
  *               $ref: '#/components/schemas/UserGoal'
  */
-router.get('/by-date/:date', authenticate, checkPermissionMiddleware('diary'), async (req, res, next) => {
-  const { date } = req.params;
+router.get(
+  '/by-date/:date',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const { date } = req.params;
 
-  if (!date) {
-    return res.status(400).json({ error: 'Date is required.' });
-  }
-
-  try {
-    const goals = await goalService.getUserGoals(req.userId, date);
-    res.status(200).json(goals);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+    if (!date) {
+      return res.status(400).json({ error: 'Date is required.' });
     }
-    next(error);
+
+    try {
+      const goals = await goalService.getUserGoals(req.userId, date);
+      res.status(200).json(goals);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -68,26 +73,31 @@ router.get('/by-date/:date', authenticate, checkPermissionMiddleware('diary'), a
  *             schema:
  *               $ref: '#/components/schemas/UserGoal'
  */
-router.get('/for-date', authenticate, checkPermissionMiddleware('diary'), async (req, res, next) => {
-  const { date, userId } = req.query; // Check for userId in query (for backward compatibility if needed, but middleware handles it)
+router.get(
+  '/for-date',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const { date, userId } = req.query; // Check for userId in query (for backward compatibility if needed, but middleware handles it)
 
-  if (!date) {
-    return res.status(400).json({ error: 'Date is required.' });
-  }
-
-  // Determine target user
-  const targetUserId = userId || req.userId;
-
-  try {
-    const goals = await goalService.getUserGoals(targetUserId, date);
-    res.status(200).json(goals);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+    if (!date) {
+      return res.status(400).json({ error: 'Date is required.' });
     }
-    next(error);
+
+    // Determine target user
+    const targetUserId = userId || req.userId;
+
+    try {
+      const goals = await goalService.getUserGoals(targetUserId, date);
+      res.status(200).json(goals);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -122,7 +132,10 @@ router.post('/manage-timeline', authenticate, async (req, res, next) => {
   }
 
   try {
-    const result = await goalService.manageGoalTimeline(authenticatedUserId, goalData);
+    const result = await goalService.manageGoalTimeline(
+      authenticatedUserId,
+      goalData
+    );
     res.status(200).json(result);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {

@@ -1,5 +1,5 @@
 const onboardingRepository = require('../models/onboardingRepository');
-const { log } = require('../config/logging'); 
+const { log } = require('../config/logging');
 
 /**
  * Processes and saves the user's onboarding data.
@@ -47,7 +47,11 @@ async function resetOnboardingStatus(userId) {
     await onboardingRepository.resetOnboardingStatus(userId);
     log('info', `Successfully reset onboarding status for user: ${userId}`);
   } catch (error) {
-    log('error', `Error resetting onboarding status for user ${userId}:`, error);
+    log(
+      'error',
+      `Error resetting onboarding status for user ${userId}:`,
+      error
+    );
     throw new Error('Failed to reset onboarding status.');
   }
 }

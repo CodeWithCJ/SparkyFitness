@@ -1,4 +1,4 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 
 /**
@@ -8,13 +8,13 @@ const router = express.Router();
  *   description: Food database, meal planning, meal types, and nutritional tracking.
  */
 
-const foodIntegrationRoutes = require("./foodIntegrationRoutes");
-const foodCrudRoutes = require("./foodCrudRoutes");
-const foodEntryRoutes = require("./foodEntryRoutes");
+const foodIntegrationRoutes = require('./foodIntegrationRoutes');
+const foodCrudRoutes = require('./foodCrudRoutes');
+const foodEntryRoutes = require('./foodEntryRoutes');
 
 // Mount the new routers
-router.use("/", foodIntegrationRoutes);
-router.use("/", foodCrudRoutes);
+router.use('/', foodIntegrationRoutes);
+router.use('/', foodCrudRoutes);
 
 /**
  * @swagger
@@ -38,8 +38,8 @@ router.use("/", foodCrudRoutes);
  *         description: Invalid date parameter.
  */
 router.get('/food-entries/:date', (req, res, next) => {
-    req.url = `/by-date/${req.params.date}`; // Modify URL to match foodEntryRoutes expectation
-    foodEntryRoutes(req, res, next);
+  req.url = `/by-date/${req.params.date}`; // Modify URL to match foodEntryRoutes expectation
+  foodEntryRoutes(req, res, next);
 });
 
 module.exports = router;

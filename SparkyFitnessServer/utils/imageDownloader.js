@@ -9,12 +9,14 @@ const UPLOADS_DIR = path.join(__dirname, '../uploads/exercises'); // Relative to
  * Ensures the upload directory exists.
  */
 async function ensureUploadsDir() {
-    try {
-        await fsp.mkdir(UPLOADS_DIR, { recursive: true });
-    } catch (error) {
-        console.error(`[imageDownloader] Error ensuring uploads directory exists: ${error.message}`);
-        throw error;
-    }
+  try {
+    await fsp.mkdir(UPLOADS_DIR, { recursive: true });
+  } catch (error) {
+    console.error(
+      `[imageDownloader] Error ensuring uploads directory exists: ${error.message}`
+    );
+    throw error;
+  }
 }
 
 /**
@@ -24,33 +26,38 @@ async function ensureUploadsDir() {
  * @returns {Promise<string>} The local path to the downloaded image.
  */
 async function downloadImage(imageUrl, exerciseId) {
-    await ensureUploadsDir();
+  await ensureUploadsDir();
 
-    const imageFileName = path.basename(imageUrl);
-    const exerciseUploadDir = path.join(UPLOADS_DIR, exerciseId);
-    const localImagePath = path.join(exerciseUploadDir, imageFileName);
+  const imageFileName = path.basename(imageUrl);
+  const exerciseUploadDir = path.join(UPLOADS_DIR, exerciseId);
+  const localImagePath = path.join(exerciseUploadDir, imageFileName);
 
-    try {
-        await fsp.mkdir(exerciseUploadDir, { recursive: true });
-        const response = await axios({
-            method: 'get',
-            url: imageUrl,
-            responseType: 'stream'
-        });
+  try {
+    await fsp.mkdir(exerciseUploadDir, { recursive: true });
+    const response = await axios({
+      method: 'get',
+      url: imageUrl,
+      responseType: 'stream',
+    });
 
-        const writer = fs.createWriteStream(localImagePath);
-        response.data.pipe(writer);
+    const writer = fs.createWriteStream(localImagePath);
+    response.data.pipe(writer);
 
-        return new Promise((resolve, reject) => {
-            writer.on('finish', () => resolve(`/uploads/exercises/${exerciseId}/${imageFileName}`)); // Return web-accessible path
-            writer.on('error', reject);
-        });
-    } catch (error) {
-        console.error(`[imageDownloader] Error downloading image ${imageUrl}:`, error.message);
-        throw error;
-    }
+    return new Promise((resolve, reject) => {
+      writer.on('finish', () =>
+        resolve(`/uploads/exercises/${exerciseId}/${imageFileName}`)
+      ); // Return web-accessible path
+      writer.on('error', reject);
+    });
+  } catch (error) {
+    console.error(
+      `[imageDownloader] Error downloading image ${imageUrl}:`,
+      error.message
+    );
+    throw error;
+  }
 }
 
 module.exports = {
-    downloadImage
+  downloadImage,
 };

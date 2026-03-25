@@ -10,17 +10,22 @@ const fs = require('fs');
 // Setup Multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const exerciseName = req.body.exerciseData ? JSON.parse(req.body.exerciseData).name : 'unknown-exercise';
-    const uploadPath = path.join(__dirname, '../uploads/exercises', exerciseName.replace(/[^a-zA-Z0-9]/g, '_'));
+    const exerciseName = req.body.exerciseData
+      ? JSON.parse(req.body.exerciseData).name
+      : 'unknown-exercise';
+    const uploadPath = path.join(
+      __dirname,
+      '../uploads/exercises',
+      exerciseName.replace(/[^a-zA-Z0-9]/g, '_')
+    );
     fs.mkdirSync(uploadPath, { recursive: true });
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`);
-  }
+  },
 });
 const upload = multer({ storage: storage });
-
 
 /**
  * @swagger
@@ -97,22 +102,35 @@ const upload = multer({ storage: storage });
  *         description: Server error.
  */
 router.get('/', authenticate, async (req, res, next) => {
-  const { searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, currentPage, itemsPerPage } = req.query;
-  const equipmentFilterArray = equipmentFilter ? equipmentFilter.split(',') : [];
-  const muscleGroupFilterArray = muscleGroupFilter ? muscleGroupFilter.split(',') : [];
+  const {
+    searchTerm,
+    categoryFilter,
+    ownershipFilter,
+    equipmentFilter,
+    muscleGroupFilter,
+    currentPage,
+    itemsPerPage,
+  } = req.query;
+  const equipmentFilterArray = equipmentFilter
+    ? equipmentFilter.split(',')
+    : [];
+  const muscleGroupFilterArray = muscleGroupFilter
+    ? muscleGroupFilter.split(',')
+    : [];
 
   try {
-    const { exercises, totalCount } = await exerciseService.getExercisesWithPagination(
-      req.userId,
-      req.userId,
-      searchTerm,
-      categoryFilter,
-      ownershipFilter,
-      equipmentFilterArray,
-      muscleGroupFilterArray,
-      currentPage,
-      itemsPerPage
-    );
+    const { exercises, totalCount } =
+      await exerciseService.getExercisesWithPagination(
+        req.userId,
+        req.userId,
+        searchTerm,
+        categoryFilter,
+        ownershipFilter,
+        equipmentFilterArray,
+        muscleGroupFilterArray,
+        currentPage,
+        itemsPerPage
+      );
     res.status(200).json({ exercises, totalCount });
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -155,7 +173,10 @@ router.get('/', authenticate, async (req, res, next) => {
 router.get('/suggested', authenticate, async (req, res, next) => {
   const { limit } = req.query;
   try {
-    const suggestedExercises = await exerciseService.getSuggestedExercises(req.userId, limit);
+    const suggestedExercises = await exerciseService.getSuggestedExercises(
+      req.userId,
+      limit
+    );
     res.status(200).json(suggestedExercises);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -198,7 +219,10 @@ router.get('/suggested', authenticate, async (req, res, next) => {
 router.get('/recent', authenticate, async (req, res, next) => {
   const { limit } = req.query;
   try {
-    const recentExercises = await exerciseService.getRecentExercises(req.userId, limit);
+    const recentExercises = await exerciseService.getRecentExercises(
+      req.userId,
+      limit
+    );
     res.status(200).json(recentExercises);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -241,7 +265,10 @@ router.get('/recent', authenticate, async (req, res, next) => {
 router.get('/top', authenticate, async (req, res, next) => {
   const { limit } = req.query;
   try {
-    const topExercises = await exerciseService.getTopExercises(req.userId, limit);
+    const topExercises = await exerciseService.getTopExercises(
+      req.userId,
+      limit
+    );
     res.status(200).json(topExercises);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -292,12 +319,22 @@ router.get('/top', authenticate, async (req, res, next) => {
  */
 router.get('/search', authenticate, async (req, res, next) => {
   const { searchTerm, equipmentFilter, muscleGroupFilter } = req.query;
-  const equipmentFilterArray = equipmentFilter ? equipmentFilter.split(',') : [];
-  const muscleGroupFilterArray = muscleGroupFilter ? muscleGroupFilter.split(',') : [];
+  const equipmentFilterArray = equipmentFilter
+    ? equipmentFilter.split(',')
+    : [];
+  const muscleGroupFilterArray = muscleGroupFilter
+    ? muscleGroupFilter.split(',')
+    : [];
 
   // Allow broad search for internal exercises even if searchTerm and filters are empty
   try {
-    const exercises = await exerciseService.searchExercises(req.userId, searchTerm, req.userId, equipmentFilterArray, muscleGroupFilterArray);
+    const exercises = await exerciseService.searchExercises(
+      req.userId,
+      searchTerm,
+      req.userId,
+      equipmentFilterArray,
+      muscleGroupFilterArray
+    );
     res.status(200).json(exercises);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -386,25 +423,53 @@ router.get('/search', authenticate, async (req, res, next) => {
  *         description: Server error.
  */
 router.get('/search-external', authenticate, async (req, res, next) => {
-  const { query, providerId, providerType, equipmentFilter, muscleGroupFilter } = req.query;
-  const paginated = req.query.page !== undefined || req.query.pageSize !== undefined;
+  const {
+    query,
+    providerId,
+    providerType,
+    equipmentFilter,
+    muscleGroupFilter,
+  } = req.query;
+  const paginated =
+    req.query.page !== undefined || req.query.pageSize !== undefined;
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const rawSize = parseInt(req.query.pageSize, 10) || parseInt(req.query.limit, 10) || 20;
+  const rawSize =
+    parseInt(req.query.pageSize, 10) || parseInt(req.query.limit, 10) || 20;
   const pageSize = Math.min(100, Math.max(1, rawSize));
-  const equipmentFilterArray = equipmentFilter && equipmentFilter.length > 0 ? equipmentFilter.split(',') : [];
-  const muscleGroupFilterArray = muscleGroupFilter && muscleGroupFilter.length > 0 ? muscleGroupFilter.split(',') : [];
+  const equipmentFilterArray =
+    equipmentFilter && equipmentFilter.length > 0
+      ? equipmentFilter.split(',')
+      : [];
+  const muscleGroupFilterArray =
+    muscleGroupFilter && muscleGroupFilter.length > 0
+      ? muscleGroupFilter.split(',')
+      : [];
 
   const hasQuery = query && query.trim().length > 0;
-  const hasFilters = equipmentFilterArray.length > 0 || muscleGroupFilterArray.length > 0;
+  const hasFilters =
+    equipmentFilterArray.length > 0 || muscleGroupFilterArray.length > 0;
 
   if (!hasQuery && !hasFilters) {
-    return res.status(400).json({ error: 'Search query or filters are required.' });
+    return res
+      .status(400)
+      .json({ error: 'Search query or filters are required.' });
   }
   if (!providerId || !providerType) {
-    return res.status(400).json({ error: 'Provider ID and Type are required for external search.' });
+    return res.status(400).json({
+      error: 'Provider ID and Type are required for external search.',
+    });
   }
   try {
-    const result = await exerciseService.searchExternalExercises(req.userId, query, providerId, providerType, equipmentFilterArray, muscleGroupFilterArray, page, pageSize);
+    const result = await exerciseService.searchExternalExercises(
+      req.userId,
+      query,
+      providerId,
+      providerType,
+      equipmentFilterArray,
+      muscleGroupFilterArray,
+      page,
+      pageSize
+    );
     res.status(200).json(paginated ? result : result.items);
   } catch (error) {
     next(error);
@@ -509,8 +574,12 @@ router.get('/wger-filters', authenticate, async (req, res, next) => {
     const ourMuscles = await exerciseService.getAvailableMuscleGroups();
     const ourEquipment = await exerciseService.getAvailableEquipment();
 
-    const uniqueMuscles = Object.keys(wgerMuscles).filter(m => !ourMuscles.includes(m));
-    const uniqueEquipment = Object.keys(wgerEquipment).filter(e => !ourEquipment.includes(e));
+    const uniqueMuscles = Object.keys(wgerMuscles).filter(
+      (m) => !ourMuscles.includes(m)
+    );
+    const uniqueEquipment = Object.keys(wgerEquipment).filter(
+      (e) => !ourEquipment.includes(e)
+    );
 
     res.status(200).json({ uniqueMuscles, uniqueEquipment });
   } catch (error) {
@@ -554,7 +623,11 @@ router.get('/wger-filters', authenticate, async (req, res, next) => {
 router.get('/names', authenticate, async (req, res, next) => {
   try {
     const { muscle, equipment } = req.query;
-    const exerciseNames = await reportRepository.getExerciseNames(req.userId, muscle, equipment);
+    const exerciseNames = await reportRepository.getExerciseNames(
+      req.userId,
+      muscle,
+      equipment
+    );
     res.status(200).json(exerciseNames);
   } catch (error) {
     next(error);
@@ -600,7 +673,11 @@ router.post('/add-external', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Wger exercise ID is required.' });
   }
   try {
-    const newExercise = await exerciseService.addExternalExerciseToUserExercises(req.userId, wgerExerciseId);
+    const newExercise =
+      await exerciseService.addExternalExerciseToUserExercises(
+        req.userId,
+        wgerExerciseId
+      );
     res.status(201).json(newExercise);
   } catch (error) {
     next(error);
@@ -643,19 +720,28 @@ router.post('/add-external', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.post('/add-nutritionix-exercise', authenticate, async (req, res, next) => {
-  const nutritionixExerciseData = req.body;
-  if (!nutritionixExerciseData) {
-    return res.status(400).json({ error: 'Nutritionix exercise data is required.' });
+router.post(
+  '/add-nutritionix-exercise',
+  authenticate,
+  async (req, res, next) => {
+    const nutritionixExerciseData = req.body;
+    if (!nutritionixExerciseData) {
+      return res
+        .status(400)
+        .json({ error: 'Nutritionix exercise data is required.' });
+    }
+    try {
+      const newExercise =
+        await exerciseService.addNutritionixExerciseToUserExercises(
+          req.userId,
+          nutritionixExerciseData
+        );
+      res.status(201).json(newExercise);
+    } catch (error) {
+      next(error);
+    }
   }
-  try {
-    const newExercise = await exerciseService.addNutritionixExerciseToUserExercises(req.userId, nutritionixExerciseData);
-    res.status(201).json(newExercise);
-  } catch (error) {
-    next(error);
-  }
-});
-
+);
 
 // Endpoint to fetch an exercise by ID
 /**
@@ -693,9 +779,12 @@ router.post('/add-nutritionix-exercise', authenticate, async (req, res, next) =>
  */
 router.get('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  const uuidRegex =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
-    return res.status(400).json({ error: 'Exercise ID is required and must be a valid UUID.' });
+    return res
+      .status(400)
+      .json({ error: 'Exercise ID is required and must be a valid UUID.' });
   }
   try {
     const exercise = await exerciseService.getExerciseById(req.userId, id);
@@ -749,21 +838,31 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.post('/', authenticate, upload.array('images', 10), async (req, res, next) => {
-  try {
-    const exerciseData = JSON.parse(req.body.exerciseData);
-    const imagePaths = req.files ? req.files.map(file => `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`) : [];
+router.post(
+  '/',
+  authenticate,
+  upload.array('images', 10),
+  async (req, res, next) => {
+    try {
+      const exerciseData = JSON.parse(req.body.exerciseData);
+      const imagePaths = req.files
+        ? req.files.map(
+            (file) =>
+              `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
+          )
+        : [];
 
-    const newExercise = await exerciseService.createExercise(req.userId, {
-      ...exerciseData,
-      user_id: req.userId,
-      images: imagePaths,
-    });
-    res.status(201).json(newExercise);
-  } catch (error) {
-    next(error);
+      const newExercise = await exerciseService.createExercise(req.userId, {
+        ...exerciseData,
+        user_id: req.userId,
+        images: imagePaths,
+      });
+      res.status(201).json(newExercise);
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 // Endpoint to import exercises from CSV (file upload)
 /**
  * @swagger
@@ -804,14 +903,22 @@ router.post('/', authenticate, upload.array('images', 10), async (req, res, next
  *       500:
  *         description: Server error.
  */
-router.post('/import', authenticate, upload.single('file'), async (req, res, next) => {
-  try {
-    const result = await exerciseService.importExercisesFromCSV(req.userId, req.file.path);
-    res.status(201).json(result);
-  } catch (error) {
-    next(error);
+router.post(
+  '/import',
+  authenticate,
+  upload.single('file'),
+  async (req, res, next) => {
+    try {
+      const result = await exerciseService.importExercisesFromCSV(
+        req.userId,
+        req.file.path
+      );
+      res.status(201).json(result);
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -863,13 +970,20 @@ router.post('/import-json', authenticate, async (req, res, next) => {
   try {
     const { exercises } = req.body;
     if (!exercises || !Array.isArray(exercises)) {
-      return res.status(400).json({ error: 'Invalid data format. Expected an array of exercises.' });
+      return res.status(400).json({
+        error: 'Invalid data format. Expected an array of exercises.',
+      });
     }
-    const result = await exerciseService.importExercisesFromJson(req.userId, exercises);
+    const result = await exerciseService.importExercisesFromJson(
+      req.userId,
+      exercises
+    );
     res.status(201).json(result);
   } catch (error) {
     if (error.status === 409) {
-      return res.status(409).json({ error: error.message, duplicates: error.data.duplicates });
+      return res
+        .status(409)
+        .json({ error: error.message, duplicates: error.data.duplicates });
     }
     next(error);
   }
@@ -926,35 +1040,54 @@ router.post('/import-json', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.put('/:id', authenticate, upload.array('images', 10), async (req, res, next) => {
-  const { id } = req.params;
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-  if (!id || !uuidRegex.test(id)) {
-    return res.status(400).json({ error: 'Exercise ID is required and must be a valid UUID.' });
-  }
-
-  try {
-    const exerciseData = JSON.parse(req.body.exerciseData);
-    const newImagePaths = req.files ? req.files.map(file => `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`) : [];
-
-    // Combine existing images with new images
-    const allImages = [...(exerciseData.images || []), ...newImagePaths];
-
-    const updatedExercise = await exerciseService.updateExercise(req.userId, id, {
-      ...exerciseData,
-      ...((allImages.length > 0 || !!exerciseData.images) ? { images: allImages } : {}),
-    });
-    res.status(200).json(updatedExercise);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.put(
+  '/:id',
+  authenticate,
+  upload.array('images', 10),
+  async (req, res, next) => {
+    const { id } = req.params;
+    const uuidRegex =
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!id || !uuidRegex.test(id)) {
+      return res
+        .status(400)
+        .json({ error: 'Exercise ID is required and must be a valid UUID.' });
     }
-    if (error.message === 'Exercise not found or not authorized to update.') {
-      return res.status(404).json({ error: error.message });
+
+    try {
+      const exerciseData = JSON.parse(req.body.exerciseData);
+      const newImagePaths = req.files
+        ? req.files.map(
+            (file) =>
+              `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
+          )
+        : [];
+
+      // Combine existing images with new images
+      const allImages = [...(exerciseData.images || []), ...newImagePaths];
+
+      const updatedExercise = await exerciseService.updateExercise(
+        req.userId,
+        id,
+        {
+          ...exerciseData,
+          ...(allImages.length > 0 || !!exerciseData.images
+            ? { images: allImages }
+            : {}),
+        }
+      );
+      res.status(200).json(updatedExercise);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (error.message === 'Exercise not found or not authorized to update.') {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -1001,12 +1134,18 @@ router.put('/:id', authenticate, upload.array('images', 10), async (req, res, ne
  */
 router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
   const { id } = req.params;
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  const uuidRegex =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
-    return res.status(400).json({ error: 'Exercise ID is required and must be a valid UUID.' });
+    return res
+      .status(400)
+      .json({ error: 'Exercise ID is required and must be a valid UUID.' });
   }
   try {
-    const impact = await exerciseService.getExerciseDeletionImpact(req.userId, id);
+    const impact = await exerciseService.getExerciseDeletionImpact(
+      req.userId,
+      id
+    );
     res.status(200).json(impact);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -1065,34 +1204,45 @@ router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
 router.delete('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const { forceDelete } = req.query; // Get forceDelete from query parameters
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  const uuidRegex =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
-    return res.status(400).json({ error: 'Exercise ID is required and must be a valid UUID.' });
+    return res
+      .status(400)
+      .json({ error: 'Exercise ID is required and must be a valid UUID.' });
   }
   try {
-    const result = await exerciseService.deleteExercise(req.userId, id, forceDelete === "true");
+    const result = await exerciseService.deleteExercise(
+      req.userId,
+      id,
+      forceDelete === 'true'
+    );
     // Based on the result status, return appropriate messages and status codes
-    if (result.status === "deleted") {
+    if (result.status === 'deleted') {
       res.status(200).json({ message: result.message });
-    } else if (result.status === "force_deleted") {
+    } else if (result.status === 'force_deleted') {
       res.status(200).json({ message: result.message });
-    } else if (result.status === "hidden") {
+    } else if (result.status === 'hidden') {
       res.status(200).json({ message: result.message });
     } else {
       // Fallback for unexpected status
-      res.status(500).json({ error: "An unexpected error occurred during deletion." });
+      res
+        .status(500)
+        .json({ error: 'An unexpected error occurred during deletion.' });
     }
   } catch (error) {
-    if (error.message.startsWith("Forbidden")) {
+    if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message === "Exercise not found." || error.message === "Exercise not found or not authorized to delete.") {
+    if (
+      error.message === 'Exercise not found.' ||
+      error.message === 'Exercise not found or not authorized to delete.'
+    ) {
       return res.status(404).json({ error: error.message });
     }
     next(error);
   }
 });
-
 
 /**
  * @swagger
@@ -1115,18 +1265,15 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.get(
-  "/needs-review",
-  authenticate,
-  async (req, res, next) => {
-    try {
-      const exercisesNeedingReview = await exerciseService.getExercisesNeedingReview(req.userId);
-      res.status(200).json(exercisesNeedingReview);
-    } catch (error) {
-      next(error);
-    }
+router.get('/needs-review', authenticate, async (req, res, next) => {
+  try {
+    const exercisesNeedingReview =
+      await exerciseService.getExercisesNeedingReview(req.userId);
+    res.status(200).json(exercisesNeedingReview);
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -1165,22 +1312,21 @@ router.get(
  *       500:
  *         description: Server error.
  */
-router.post(
-  "/update-snapshot",
-  authenticate,
-  async (req, res, next) => {
-    const { exerciseId } = req.body;
-    if (!exerciseId) {
-      return res.status(400).json({ error: "exerciseId is required." });
-    }
-    try {
-      const result = await exerciseService.updateExerciseEntriesSnapshot(req.userId, exerciseId);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
+router.post('/update-snapshot', authenticate, async (req, res, next) => {
+  const { exerciseId } = req.body;
+  if (!exerciseId) {
+    return res.status(400).json({ error: 'exerciseId is required.' });
   }
-);
+  try {
+    const result = await exerciseService.updateExerciseEntriesSnapshot(
+      req.userId,
+      exerciseId
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Endpoint to get Garmin activity details by exercise entry ID
 /**
@@ -1256,22 +1402,35 @@ router.post(
  *       500:
  *         description: Server error.
  */
-router.get('/garmin-activity-details/:exerciseEntryId', authenticate, async (req, res, next) => {
-  const { exerciseEntryId } = req.params;
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-  if (!exerciseEntryId || !uuidRegex.test(exerciseEntryId)) {
-    return res.status(400).json({ error: 'Exercise Entry ID is required and must be a valid UUID.' });
-  }
-  try {
-    const garminDetails = await exerciseService.getGarminActivityDetailsByExerciseEntryId(req.userId, exerciseEntryId);
-    if (!garminDetails) {
-      return res.status(404).json({ error: 'Garmin activity details not found for this exercise entry.' });
+router.get(
+  '/garmin-activity-details/:exerciseEntryId',
+  authenticate,
+  async (req, res, next) => {
+    const { exerciseEntryId } = req.params;
+    const uuidRegex =
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!exerciseEntryId || !uuidRegex.test(exerciseEntryId)) {
+      return res.status(400).json({
+        error: 'Exercise Entry ID is required and must be a valid UUID.',
+      });
     }
-    res.status(200).json(garminDetails);
-  } catch (error) {
-    next(error);
+    try {
+      const garminDetails =
+        await exerciseService.getGarminActivityDetailsByExerciseEntryId(
+          req.userId,
+          exerciseEntryId
+        );
+      if (!garminDetails) {
+        return res.status(404).json({
+          error: 'Garmin activity details not found for this exercise entry.',
+        });
+      }
+      res.status(200).json(garminDetails);
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -1321,24 +1480,38 @@ router.get('/garmin-activity-details/:exerciseEntryId', authenticate, async (req
  *       500:
  *         description: Server error.
  */
-router.get('/activity-details/:exerciseEntryId/:providerName', authenticate, async (req, res, next) => {
-  const { exerciseEntryId, providerName } = req.params;
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-  if (!exerciseEntryId || !uuidRegex.test(exerciseEntryId)) {
-    return res.status(400).json({ error: 'Exercise Entry ID is required and must be a valid UUID.' });
-  }
-  if (!providerName) {
-    return res.status(400).json({ error: 'Provider name is required.' });
-  }
-  try {
-    const activityDetails = await exerciseService.getActivityDetailsByExerciseEntryIdAndProvider(req.userId, exerciseEntryId, providerName);
-    if (!activityDetails) {
-      return res.status(404).json({ error: `Activity details not found for this exercise entry and provider: ${providerName}.` });
+router.get(
+  '/activity-details/:exerciseEntryId/:providerName',
+  authenticate,
+  async (req, res, next) => {
+    const { exerciseEntryId, providerName } = req.params;
+    const uuidRegex =
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!exerciseEntryId || !uuidRegex.test(exerciseEntryId)) {
+      return res.status(400).json({
+        error: 'Exercise Entry ID is required and must be a valid UUID.',
+      });
     }
-    res.status(200).json(activityDetails);
-  } catch (error) {
-    next(error);
+    if (!providerName) {
+      return res.status(400).json({ error: 'Provider name is required.' });
+    }
+    try {
+      const activityDetails =
+        await exerciseService.getActivityDetailsByExerciseEntryIdAndProvider(
+          req.userId,
+          exerciseEntryId,
+          providerName
+        );
+      if (!activityDetails) {
+        return res.status(404).json({
+          error: `Activity details not found for this exercise entry and provider: ${providerName}.`,
+        });
+      }
+      res.status(200).json(activityDetails);
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 module.exports = router;

@@ -1,11 +1,11 @@
 // SparkyFitnessServer/routes/stravaRoutes.js
 
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const authMiddleware = require("../middleware/authMiddleware");
-const stravaIntegrationService = require("../integrations/strava/stravaService");
-const stravaService = require("../services/stravaService");
-const { log } = require("../config/logging");
+const authMiddleware = require('../middleware/authMiddleware');
+const stravaIntegrationService = require('../integrations/strava/stravaService');
+const stravaService = require('../services/stravaService');
+const { log } = require('../config/logging');
 
 // All Strava routes require authentication
 router.use(authMiddleware.authenticate);
@@ -14,7 +14,7 @@ router.use(authMiddleware.authenticate);
  * GET /authorize
  * Returns the Strava OAuth authorization URL
  */
-router.get("/authorize", async (req, res) => {
+router.get('/authorize', async (req, res) => {
   try {
     const userId = req.userId;
     const redirectUri =
@@ -23,13 +23,13 @@ router.get("/authorize", async (req, res) => {
 
     const authUrl = await stravaIntegrationService.getAuthorizationUrl(
       userId,
-      redirectUri,
+      redirectUri
     );
     res.json({ url: authUrl });
   } catch (error) {
     log(
-      "error",
-      `[stravaRoutes] Error getting authorization URL: ${error.message}`,
+      'error',
+      `[stravaRoutes] Error getting authorization URL: ${error.message}`
     );
     res.status(500).json({ error: error.message });
   }
@@ -39,7 +39,7 @@ router.get("/authorize", async (req, res) => {
  * POST /callback
  * Exchange authorization code for tokens
  */
-router.post("/callback", async (req, res) => {
+router.post('/callback', async (req, res) => {
   try {
     const userId = req.userId;
     const { code } = req.body;
@@ -48,17 +48,17 @@ router.post("/callback", async (req, res) => {
       `${process.env.SPARKY_FITNESS_FRONTEND_URL}/strava/callback`;
 
     if (!code) {
-      return res.status(400).json({ error: "Authorization code is required." });
+      return res.status(400).json({ error: 'Authorization code is required.' });
     }
 
     const result = await stravaIntegrationService.exchangeCodeForTokens(
       userId,
       code,
-      redirectUri,
+      redirectUri
     );
     res.json(result);
   } catch (error) {
-    log("error", `[stravaRoutes] Error exchanging code: ${error.message}`);
+    log('error', `[stravaRoutes] Error exchanging code: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 });
@@ -67,23 +67,23 @@ router.post("/callback", async (req, res) => {
  * POST /sync
  * Trigger a manual Strava data sync
  */
-router.post("/sync", async (req, res) => {
+router.post('/sync', async (req, res) => {
   try {
     const userId = req.userId;
     const { startDate, endDate } = req.body;
     log(
-      "info",
-      `[stravaRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ""}${endDate ? ` to ${endDate}` : ""}`,
+      'info',
+      `[stravaRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
     );
     const result = await stravaService.syncStravaData(
       userId,
-      "manual",
+      'manual',
       startDate,
-      endDate,
+      endDate
     );
     res.json(result);
   } catch (error) {
-    log("error", `[stravaRoutes] Error syncing data: ${error.message}`);
+    log('error', `[stravaRoutes] Error syncing data: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 });
@@ -92,13 +92,13 @@ router.post("/sync", async (req, res) => {
  * POST /disconnect
  * Disconnect Strava integration
  */
-router.post("/disconnect", async (req, res) => {
+router.post('/disconnect', async (req, res) => {
   try {
     const userId = req.userId;
     const result = await stravaService.disconnectStrava(userId);
     res.json(result);
   } catch (error) {
-    log("error", `[stravaRoutes] Error disconnecting: ${error.message}`);
+    log('error', `[stravaRoutes] Error disconnecting: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 });
@@ -107,13 +107,13 @@ router.post("/disconnect", async (req, res) => {
  * GET /status
  * Get Strava connection status
  */
-router.get("/status", async (req, res) => {
+router.get('/status', async (req, res) => {
   try {
     const userId = req.userId;
     const status = await stravaService.getStatus(userId);
     res.json(status);
   } catch (error) {
-    log("error", `[stravaRoutes] Error getting status: ${error.message}`);
+    log('error', `[stravaRoutes] Error getting status: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 });
