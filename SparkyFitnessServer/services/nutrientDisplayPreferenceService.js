@@ -119,7 +119,7 @@ async function removeNutrientFromAllViews(userId, nutrientName) {
     );
 
   for (const pref of rawUserPrefs) {
-    let visibleNutrients =
+    const visibleNutrients =
       typeof pref.visible_nutrients === 'string'
         ? JSON.parse(pref.visible_nutrients)
         : pref.visible_nutrients;

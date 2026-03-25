@@ -447,7 +447,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             );
             if (!stressCategory || !stressCategory.id) {
               errors.push({
-                error: `Failed to get or create custom category for Stress`,
+                error: 'Failed to get or create custom category for Stress',
                 entry: dataEntry,
               });
               break;
@@ -757,7 +757,7 @@ async function processMobileHealthData(
           );
           if (!stressCategory || !stressCategory.id) {
             errors.push({
-              error: `Failed to get or create custom category for Stress`,
+              error: 'Failed to get or create custom category for Stress',
               entry: dataEntry,
             });
             break;
@@ -944,7 +944,7 @@ async function getOrCreateCustomCategory(
   // Try to get existing category
   const existingCategories =
     await measurementRepository.getCustomCategories(userId);
-  let category = existingCategories.find((cat) => cat.name === categoryName);
+  const category = existingCategories.find((cat) => cat.name === categoryName);
 
   if (category) {
     return category;
@@ -1509,8 +1509,8 @@ async function calculateSleepScore(
   let optimalMaxDuration = 9 * 3600; // Default 9 hours
   let optimalDeepMin = 15; // Default 15%
   let optimalDeepMax = 25; // Default 25%
-  let optimalRemMin = 20; // Default 20%
-  let optimalRemMax = 25; // Default 25%
+  const optimalRemMin = 20; // Default 20%
+  const optimalRemMax = 25; // Default 25%
 
   // Adjust optimal sleep duration based on age
   if (age !== null) {
@@ -1741,7 +1741,7 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
     };
     log(
       'debug',
-      `[processSleepEntry] entryToUpsert before upsert:`,
+      '[processSleepEntry] entryToUpsert before upsert:',
       entryToUpsert
     );
 
@@ -1836,7 +1836,7 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
     };
     log(
       'debug',
-      `[updateSleepEntry] updatedEntryDetails before update:`,
+      '[updateSleepEntry] updatedEntryDetails before update:',
       updatedEntryDetails
     );
 

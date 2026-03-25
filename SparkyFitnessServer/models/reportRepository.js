@@ -333,7 +333,7 @@ async function getMeasurementData(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, weight, neck, waist, hips, steps FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date`,
+      "SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, weight, neck, waist, hips, steps FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date",
       [userId, startDate, endDate]
     );
     return result.rows;
@@ -351,7 +351,7 @@ async function getCustomMeasurementsData(
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT category_id, TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, entry_hour AS hour, value, notes, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp`,
+      "SELECT category_id, TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, entry_hour AS hour, value, notes, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp",
       [userId, categoryId, startDate, endDate]
     );
     return result.rows;
@@ -541,7 +541,7 @@ async function getExerciseEntries(
       paramIndex++;
     }
 
-    query += ` ORDER BY ee.entry_date DESC, ee.created_at DESC`;
+    query += ' ORDER BY ee.entry_date DESC, ee.created_at DESC';
 
     const result = await client.query(query, params);
     return result.rows;
@@ -553,7 +553,8 @@ async function getExerciseEntries(
 async function getExerciseNames(userId, muscle, equipment) {
   const client = await getClient(userId); // User-specific operation
   try {
-    let query = `SELECT DISTINCT exercise_id as id, exercise_name as name FROM exercise_entries WHERE user_id = $1`;
+    let query =
+      'SELECT DISTINCT exercise_id as id, exercise_name as name FROM exercise_entries WHERE user_id = $1';
     const params = [userId];
     let paramIndex = 2;
 
@@ -567,7 +568,7 @@ async function getExerciseNames(userId, muscle, equipment) {
       params.push(`%${equipment}%`);
       paramIndex++;
     }
-    query += ` ORDER BY name`;
+    query += ' ORDER BY name';
 
     const result = await client.query(query, params);
     return result.rows;

@@ -31,11 +31,12 @@ async function deleteFoodEntriesByTemplateId(
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
-    let query = `DELETE FROM food_entries WHERE meal_plan_template_id = $1 AND user_id = $2`;
+    let query =
+      'DELETE FROM food_entries WHERE meal_plan_template_id = $1 AND user_id = $2';
     const params = [templateId, userId];
 
     // Only delete from today onwards
-    query += ` AND entry_date >= CURRENT_DATE`;
+    query += ' AND entry_date >= CURRENT_DATE';
 
     // 1. Identify food_entry_meals to delete (orphaned by this operation)
     const entryMealsQuery = `
@@ -52,7 +53,7 @@ async function deleteFoodEntriesByTemplateId(
     // 3. Delete the orphaned food_entry_meals
     if (entryMealIds.length > 0) {
       await client.query(
-        `DELETE FROM food_entry_meals WHERE id = ANY($1::uuid[])`,
+        'DELETE FROM food_entry_meals WHERE id = ANY($1::uuid[])',
         [entryMealIds]
       );
       log(
@@ -188,7 +189,7 @@ async function createFoodEntriesFromTemplate(
     const foodsMap = new Map();
     if (foodIds.size > 0) {
       const foodsResult = await client.query(
-        `SELECT * FROM foods WHERE id = ANY($1::uuid[])`,
+        'SELECT * FROM foods WHERE id = ANY($1::uuid[])',
         [Array.from(foodIds)]
       );
       foodsResult.rows.forEach((row) => foodsMap.set(row.id, row));
@@ -197,7 +198,7 @@ async function createFoodEntriesFromTemplate(
     const mealsMap = new Map();
     if (mealIds.size > 0) {
       const mealsResult = await client.query(
-        `SELECT * FROM meals WHERE id = ANY($1::uuid[])`,
+        'SELECT * FROM meals WHERE id = ANY($1::uuid[])',
         [Array.from(mealIds)]
       );
       mealsResult.rows.forEach((row) => mealsMap.set(row.id, row));
@@ -206,7 +207,7 @@ async function createFoodEntriesFromTemplate(
     const variantsMap = new Map();
     if (variantIds.size > 0) {
       const variantsResult = await client.query(
-        `SELECT * FROM food_variants WHERE id = ANY($1::uuid[])`,
+        'SELECT * FROM food_variants WHERE id = ANY($1::uuid[])',
         [Array.from(variantIds)]
       );
       variantsResult.rows.forEach((row) => variantsMap.set(row.id, row));

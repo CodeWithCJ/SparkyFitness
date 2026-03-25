@@ -111,7 +111,7 @@ async function syncStravaData(
       const client = await getSystemClient();
       try {
         await client.query(
-          `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'strava'`,
+          "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'strava'",
           [userId]
         );
       } finally {
@@ -162,7 +162,7 @@ async function syncStravaData(
     }
 
     // 1. Fetch EVERYTHING first (The Safe Phase)
-    log('debug', `[stravaService] Phase 1: Capturing raw API responses...`);
+    log('debug', '[stravaService] Phase 1: Capturing raw API responses...');
 
     const athleteData = await safeFetch('raw_athlete', () =>
       stravaIntegrationService.fetchAthlete(accessToken)
@@ -198,7 +198,7 @@ async function syncStravaData(
     }
 
     // 2. Process EVERYTHING second (The Action Phase)
-    log('debug', `[stravaService] Phase 2: Processing captured data...`);
+    log('debug', '[stravaService] Phase 2: Processing captured data...');
 
     if (activities.length > 0) {
       await stravaDataProcessor.processStravaActivities(
@@ -222,7 +222,7 @@ async function syncStravaData(
     const client = await getSystemClient();
     try {
       await client.query(
-        `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'strava'`,
+        "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'strava'",
         [userId]
       );
     } finally {

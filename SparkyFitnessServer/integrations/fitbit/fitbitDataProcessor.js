@@ -53,7 +53,7 @@ async function processFitbitProfile(
   date = null
 ) {
   if (!data || !data.user) return;
-  let height = data.user.height;
+  const height = data.user.height;
   const heightUnit = data.user.heightUnit;
 
   // Fitbit Profile API height is typically returned in Centimeters by default.
@@ -745,8 +745,8 @@ async function upsertCustomMeasurementLogic(
     frequency,
   } = customMeasurement;
 
-  let categories = await measurementRepository.getCustomCategories(userId);
-  let category = categories.find((cat) => cat.name === categoryName);
+  const categories = await measurementRepository.getCustomCategories(userId);
+  const category = categories.find((cat) => cat.name === categoryName);
 
   let categoryId;
   if (!category) {

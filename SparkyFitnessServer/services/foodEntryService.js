@@ -479,7 +479,7 @@ async function copyFoodEntries(
     if (entriesToCreate.length === 0) {
       log(
         'debug',
-        `All food entries already exist in target slot. No new entries created.`
+        'All food entries already exist in target slot. No new entries created.'
       );
       return [];
     }
@@ -890,7 +890,7 @@ async function updateFoodEntryMeal(
       'debug',
       `Deleted existing component food entries for food_entry_meal ${foodEntryMealId}.`
     );
-    log('info', `[DEBUG] updateFoodEntryMeal Service Data:`, updatedMealData); // DEBUG LOG
+    log('info', '[DEBUG] updateFoodEntryMeal Service Data:', updatedMealData); // DEBUG LOG
 
     // Calculate portion multiplier
     // Foods from getFoodEntryMealWithComponents now have BASE (unscaled) quantities,
@@ -1063,7 +1063,7 @@ async function getFoodEntryMealWithComponents(
       } catch (err) {
         log(
           'warn',
-          `Failed to fetch meal template for unscaling, using multiplier 1.0`,
+          'Failed to fetch meal template for unscaling, using multiplier 1.0',
           err
         );
       }
@@ -1087,7 +1087,7 @@ async function getFoodEntryMealWithComponents(
     let totalVitaminC = 0;
     let totalCalcium = 0;
     let totalIron = 0;
-    let totalCustomNutrients = {};
+    const totalCustomNutrients = {};
     let totalCarbsForGI = 0;
     let weightedGIAccumulator = 0;
 
@@ -1251,7 +1251,7 @@ async function getFoodEntryMealsByDate(
       let totalVitaminC = 0;
       let totalCalcium = 0;
       let totalIron = 0;
-      let totalCustomNutrients = {};
+      const totalCustomNutrients = {};
       let totalProtein = 0;
       let totalCarbs = 0;
       let totalFat = 0;

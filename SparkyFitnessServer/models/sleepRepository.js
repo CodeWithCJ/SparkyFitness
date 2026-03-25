@@ -38,7 +38,7 @@ async function upsertSleepEntry(userId, actingUserId, sleepEntryData) {
     // If no ID is provided, check for an existing entry for this user, date, and source to prevent duplicates
     if (!sleepEntryId) {
       const existingCheck = await client.query(
-        `SELECT id FROM sleep_entries WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
+        'SELECT id FROM sleep_entries WHERE user_id = $1 AND entry_date = $2 AND source = $3',
         [userId, entry_date, source]
       );
       if (existingCheck.rows.length > 0) {
@@ -507,7 +507,7 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
     updateFields.push(`updated_by_user_id = $${paramIndex++}`);
     updateValues.push(actingUserId);
 
-    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
 
     if (
       updateFields.length === 1 &&

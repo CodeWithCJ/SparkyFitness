@@ -612,7 +612,7 @@ async function getFoodDeletionImpact(authenticatedUserId, foodId) {
 async function importFoodsInBulk(authenticatedUserId, foodDataArray) {
   try {
     if (!foodDataArray) {
-      log('error', `importFoodsInBulk: No food data provided.`);
+      log('error', 'importFoodsInBulk: No food data provided.');
       throw new Error('No food data provided.');
     }
     return await foodRepository.createFoodsInBulk(

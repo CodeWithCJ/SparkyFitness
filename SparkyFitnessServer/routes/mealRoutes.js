@@ -64,7 +64,7 @@ router.post('/plan', authenticate, async (req, res, next) => {
     );
     res.status(201).json(newMealPlanEntry);
   } catch (error) {
-    log('error', `Error creating meal plan entry:`, error);
+    log('error', 'Error creating meal plan entry:', error);
     next(error);
   }
 });
@@ -114,7 +114,7 @@ router.get('/plan', authenticate, async (req, res, next) => {
     );
     res.status(200).json(mealPlanEntries);
   } catch (error) {
-    log('error', `Error getting meal plan entries:`, error);
+    log('error', 'Error getting meal plan entries:', error);
     next(error);
   }
 });
@@ -283,7 +283,7 @@ router.post('/', authenticate, async (req, res, next) => {
     const newMeal = await mealService.createMeal(req.userId, req.body);
     res.status(201).json(newMeal);
   } catch (error) {
-    log('error', `Error creating meal:`, error);
+    log('error', 'Error creating meal:', error);
     next(error);
   }
 });
@@ -318,7 +318,7 @@ router.get('/', authenticate, async (req, res, next) => {
     const meals = await mealService.getMeals(req.userId, filter, search);
     res.status(200).json(meals);
   } catch (error) {
-    log('error', `Error getting meals:`, error);
+    log('error', 'Error getting meals:', error);
     next(error);
   }
 });
@@ -352,7 +352,7 @@ router.get('/search', authenticate, async (req, res, next) => {
     const meals = await mealService.searchMeals(req.userId, searchTerm);
     res.status(200).json(meals);
   } catch (error) {
-    log('error', `Error searching meals:`, error);
+    log('error', 'Error searching meals:', error);
     next(error);
   }
 });
@@ -802,7 +802,7 @@ router.post('/create-meal-from-diary', authenticate, async (req, res, next) => {
     );
     res.status(201).json(newMeal);
   } catch (error) {
-    log('error', `Error creating meal from diary entries:`, error);
+    log('error', 'Error creating meal from diary entries:', error);
     if (
       error.message.startsWith('No food entries found') ||
       error.message.startsWith('Cannot create meal')

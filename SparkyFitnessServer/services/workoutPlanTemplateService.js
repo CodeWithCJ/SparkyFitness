@@ -10,7 +10,7 @@ async function createWorkoutPlanTemplate(
 ) {
   log(
     'info',
-    `createWorkoutPlanTemplate service - received planData:`,
+    'createWorkoutPlanTemplate service - received planData:',
     planData
   );
   // Validate assignments
@@ -64,7 +64,7 @@ async function createWorkoutPlanTemplate(
     } else {
       log(
         'info',
-        `createWorkoutPlanTemplate service - New plan is not active, skipping exercise entry creation.`
+        'createWorkoutPlanTemplate service - New plan is not active, skipping exercise entry creation.'
       );
     }
     return newPlan;
@@ -186,7 +186,7 @@ async function updateWorkoutPlanTemplate(
     } else {
       log(
         'info',
-        `updateWorkoutPlanTemplate service - Updated plan is not active, skipping exercise entry creation.`
+        'updateWorkoutPlanTemplate service - Updated plan is not active, skipping exercise entry creation.'
       );
     }
     return updatedPlan;

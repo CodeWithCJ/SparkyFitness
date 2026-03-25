@@ -431,7 +431,7 @@ async function getFoodsWithPagination(
 ) {
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
-    let whereClauses = ['f.is_quick_food = FALSE'];
+    const whereClauses = ['f.is_quick_food = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -514,7 +514,7 @@ async function getFoodsWithPagination(
 async function countFoods(searchTerm, foodFilter, authenticatedUserId) {
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
-    let whereClauses = ['is_quick_food = FALSE'];
+    const whereClauses = ['is_quick_food = FALSE'];
     const countQueryParams = [];
     let paramIndex = 1;
 
@@ -837,7 +837,7 @@ async function createFoodsInBulk(userId, foodDataArray) {
   if (existingFoods.length > 0) {
     // If duplicates are found, throw an error.
     throw new DuplicateFoodError(
-      `The import was terminated because duplicate entries were found in your food list.`,
+      'The import was terminated because duplicate entries were found in your food list.',
       existingFoods
     );
   }

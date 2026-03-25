@@ -101,7 +101,7 @@ async function syncWithingsData(userId, syncType = 'manual') {
       const client = await getSystemClient();
       try {
         await client.query(
-          `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'withings'`,
+          "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'withings'",
           [userId]
         );
       } finally {
@@ -147,7 +147,7 @@ async function syncWithingsData(userId, syncType = 'manual') {
     }
 
     // 1. Fetch EVERYTHING first (The Safe Phase)
-    log('debug', `[withingsService] Phase 1: Capturing raw API responses...`);
+    log('debug', '[withingsService] Phase 1: Capturing raw API responses...');
     const bundle = {
       measures: await safeFetch('raw_measures', () =>
         withingsIntegrationService.fetchMeasuresData(
@@ -194,7 +194,7 @@ async function syncWithingsData(userId, syncType = 'manual') {
     };
 
     // 2. Process EVERYTHING second (The Action Phase)
-    log('debug', `[withingsService] Phase 2: Processing captured data...`);
+    log('debug', '[withingsService] Phase 2: Processing captured data...');
 
     if (bundle.measures) {
       await withingsDataProcessor.processWithingsMeasures(
@@ -239,7 +239,7 @@ async function syncWithingsData(userId, syncType = 'manual') {
     const client = await getSystemClient();
     try {
       await client.query(
-        `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'withings'`,
+        "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'withings'",
         [userId]
       );
     } finally {

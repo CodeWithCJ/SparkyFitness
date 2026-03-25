@@ -34,7 +34,7 @@ async function createMeal(mealData) {
         'now()',
       ]);
       const mealFoodsQuery = format(
-        `INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id`,
+        'INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id',
         mealFoodsValues
       );
       await client.query(mealFoodsQuery);
@@ -44,7 +44,7 @@ async function createMeal(mealData) {
     return newMeal;
   } catch (error) {
     await client.query('ROLLBACK');
-    log('error', `Error creating meal:`, error);
+    log('error', 'Error creating meal:', error);
     throw error;
   } finally {
     client.release();
@@ -61,16 +61,16 @@ async function getMeals(userId, filter = 'all') {
     const queryParams = [];
 
     if (filter === 'mine') {
-      query += ` AND user_id = $1`;
+      query += ' AND user_id = $1';
       queryParams.push(userId);
     } else if (filter === 'all') {
       // 'all' means user's own meals and public meals
-      query += ` AND (user_id = $1 OR is_public = TRUE)`;
+      query += ' AND (user_id = $1 OR is_public = TRUE)';
       queryParams.push(userId);
     }
     // For 'family' and 'public' filters, separate functions will be called in mealService
 
-    query += ` ORDER BY name ASC`;
+    query += ' ORDER BY name ASC';
 
     const result = await client.query(query, queryParams);
     const meals = result.rows;
@@ -110,7 +110,7 @@ async function searchMeals(searchTerm, userId, limit = null) {
     const queryParams = [searchTerm];
 
     if (limit !== null) {
-      query += ` LIMIT $3`;
+      query += ' LIMIT $3';
       queryParams.push(limit);
     }
 
@@ -214,7 +214,7 @@ async function updateMeal(mealId, userId, updateData) {
           'now()',
         ]);
         const mealFoodsQuery = format(
-          `INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id`,
+          'INSERT INTO meal_foods (meal_id, food_id, variant_id, quantity, unit, created_at, updated_at) VALUES %L RETURNING id',
           mealFoodsValues
         );
         await client.query(mealFoodsQuery);
@@ -287,7 +287,7 @@ async function createMealPlanEntry(planData) {
     );
     return result.rows[0];
   } catch (error) {
-    log('error', `Error creating meal plan entry:`, error);
+    log('error', 'Error creating meal plan entry:', error);
     throw error;
   } finally {
     client.release();
@@ -466,7 +466,7 @@ async function createFoodEntryFromMealPlan(entryData) {
     );
     return result.rows[0];
   } catch (error) {
-    log('error', `Error creating food entry from meal plan:`, error);
+    log('error', 'Error creating food entry from meal plan:', error);
     throw error;
   } finally {
     client.release();
@@ -503,7 +503,7 @@ async function getRecentMeals(userId, limit = null) {
     const queryParams = [];
 
     if (limit !== null) {
-      query += ` LIMIT $2`;
+      query += ' LIMIT $2';
       queryParams.push(limit);
     }
 
@@ -547,7 +547,7 @@ async function getTopMeals(userId, limit = null) {
     const queryParams = [];
 
     if (limit !== null) {
-      query += ` LIMIT $2`;
+      query += ' LIMIT $2';
       queryParams.push(limit);
     }
 

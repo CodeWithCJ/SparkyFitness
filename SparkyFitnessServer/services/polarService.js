@@ -151,11 +151,11 @@ async function syncPolarData(
       try {
         const updateQuery = providerId
           ? {
-              text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE id = $1 AND user_id = $2`,
+              text: 'UPDATE external_data_providers SET last_sync_at = NOW() WHERE id = $1 AND user_id = $2',
               values: [providerId, userId],
             }
           : {
-              text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'`,
+              text: "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'",
               values: [userId],
             };
 
@@ -204,7 +204,7 @@ async function syncPolarData(
     }
 
     // 1. Fetch EVERYTHING first (The Safe Phase)
-    log('debug', `[polarService] Phase 1: Capturing raw API responses...`);
+    log('debug', '[polarService] Phase 1: Capturing raw API responses...');
 
     const physicalInfo =
       (await safeFetch('physical_info', () =>
@@ -281,7 +281,7 @@ async function syncPolarData(
     );
 
     // 2. Process EVERYTHING second (The Action Phase)
-    log('debug', `[polarService] Phase 2: Processing captured data...`);
+    log('debug', '[polarService] Phase 2: Processing captured data...');
 
     // Remove duplicates before processing
     allExercises = Array.from(
@@ -338,11 +338,11 @@ async function syncPolarData(
     try {
       const updateQuery = providerId
         ? {
-            text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE id = $1 AND user_id = $2`,
+            text: 'UPDATE external_data_providers SET last_sync_at = NOW() WHERE id = $1 AND user_id = $2',
             values: [providerId, userId],
           }
         : {
-            text: `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'`,
+            text: "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'polar'",
             values: [userId],
           };
 

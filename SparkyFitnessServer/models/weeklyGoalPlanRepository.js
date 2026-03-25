@@ -37,7 +37,7 @@ async function getWeeklyGoalPlansByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT * FROM weekly_goal_plans WHERE user_id = $1 ORDER BY start_date DESC`,
+      'SELECT * FROM weekly_goal_plans WHERE user_id = $1 ORDER BY start_date DESC',
       [userId]
     );
     return result.rows;
@@ -101,7 +101,7 @@ async function deactivateAllWeeklyGoalPlans(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
-      `UPDATE weekly_goal_plans SET is_active = FALSE WHERE user_id = $1`,
+      'UPDATE weekly_goal_plans SET is_active = FALSE WHERE user_id = $1',
       [userId]
     );
     return true;
@@ -114,7 +114,7 @@ async function deleteWeeklyGoalPlan(planId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `DELETE FROM weekly_goal_plans WHERE id = $1 AND user_id = $2 RETURNING *`,
+      'DELETE FROM weekly_goal_plans WHERE id = $1 AND user_id = $2 RETURNING *',
       [planId, userId]
     );
     return result.rows[0];

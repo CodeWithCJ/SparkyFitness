@@ -327,7 +327,7 @@ router.post(
 
       log(
         'debug',
-        `Processed health data for measurementService:`,
+        'Processed health data for measurementService:',
         processedHealthData
       );
 

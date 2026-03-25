@@ -8,7 +8,7 @@ async function createMealPlanTemplate(
   planData,
   currentClientDate = null
 ) {
-  log('info', `createMealPlanTemplate service - received planData:`, planData);
+  log('info', 'createMealPlanTemplate service - received planData:', planData);
   try {
     if (planData.is_active) {
       log(
@@ -35,7 +35,7 @@ async function createMealPlanTemplate(
     } else {
       log(
         'info',
-        `createMealPlanTemplate service - New plan is not active, skipping food entry creation.`
+        'createMealPlanTemplate service - New plan is not active, skipping food entry creation.'
       );
     }
     return newPlan;
@@ -124,7 +124,7 @@ async function updateMealPlanTemplate(
     } else {
       log(
         'info',
-        `updateMealPlanTemplate service - Updated plan is not active, skipping food entry creation.`
+        'updateMealPlanTemplate service - Updated plan is not active, skipping food entry creation.'
       );
     }
 

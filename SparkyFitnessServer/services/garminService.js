@@ -110,7 +110,7 @@ async function processGarminHealthAndWellnessData(
                 category_id: customCategory.id,
                 value: raw_stress_data,
                 entry_date: date,
-                notes: `Source: Garmin`,
+                notes: 'Source: Garmin',
                 source: 'garmin',
               }
             );
@@ -802,7 +802,7 @@ async function syncGarminData(
   // Phase 1: Health and Wellness — runs independently so a failure here does not skip activities
   try {
     // 1. Sync Health and Wellness
-    log('info', `[garminService] Fetching Health and Wellness data...`);
+    log('info', '[garminService] Fetching Health and Wellness data...');
     const healthWellnessData =
       await garminConnectService.syncGarminHealthAndWellness(
         userId,
@@ -909,7 +909,7 @@ async function syncGarminData(
   // Phase 2: Activities and Workouts — always runs even if Phase 1 failed
   try {
     // 5. Sync Activities and Workouts
-    log('info', `[garminService] Fetching Activities and Workouts data...`);
+    log('info', '[garminService] Fetching Activities and Workouts data...');
     const activitiesData =
       await garminConnectService.fetchGarminActivitiesAndWorkouts(
         userId,

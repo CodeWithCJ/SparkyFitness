@@ -66,7 +66,7 @@ async function canAccessUserData(
 
       //console.log(`[DEBUG] JS Check: Direct=${hasDirect}, ManageDiary=${hasManageDiary}`);
     } else {
-      console.log(`[DEBUG] No active family access row found matching IDs.`);
+      console.log('[DEBUG] No active family access row found matching IDs.');
     }
 
     const result = await client.query(

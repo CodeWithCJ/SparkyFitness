@@ -52,7 +52,7 @@ async function createWorkoutPlanTemplate(planData) {
             set.notes,
           ]);
           const setsQuery = format(
-            `INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
+            'INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
             setsValues
           );
           await client.query(setsQuery);
@@ -238,7 +238,7 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
       );
       if (assignmentsToDelete.length > 0) {
         await client.query(
-          `DELETE FROM workout_plan_template_assignments WHERE id = ANY($1::int[])`,
+          'DELETE FROM workout_plan_template_assignments WHERE id = ANY($1::int[])',
           [assignmentsToDelete]
         );
       }
@@ -255,7 +255,7 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
         ) {
           // This is an existing assignment, so we update it
           await client.query(
-            `UPDATE workout_plan_template_assignments SET day_of_week = $1, workout_preset_id = $2, exercise_id = $3, sort_order = $4 WHERE id = $5`,
+            'UPDATE workout_plan_template_assignments SET day_of_week = $1, workout_preset_id = $2, exercise_id = $3, sort_order = $4 WHERE id = $5',
             [
               a.day_of_week,
               a.workout_preset_id,
@@ -281,7 +281,7 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
               set.notes,
             ]);
             const setsQuery = format(
-              `INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
+              'INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
               setsValues
             );
             await client.query(setsQuery);
@@ -312,7 +312,7 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
               set.notes,
             ]);
             const setsQuery = format(
-              `INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L`,
+              'INSERT INTO workout_plan_assignment_sets (assignment_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
               setsValues
             );
             await client.query(setsQuery);
@@ -371,7 +371,7 @@ async function deleteWorkoutPlanTemplate(templateId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `DELETE FROM workout_plan_templates WHERE id = $1 AND user_id = $2 RETURNING *`,
+      'DELETE FROM workout_plan_templates WHERE id = $1 AND user_id = $2 RETURNING *',
       [templateId, userId]
     );
     return result.rows[0];

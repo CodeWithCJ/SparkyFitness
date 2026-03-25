@@ -202,7 +202,7 @@ async function syncFitbitData(
       const client = await getSystemClient();
       try {
         await client.query(
-          `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'fitbit'`,
+          "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'fitbit'",
           [userId]
         );
       } finally {
@@ -535,7 +535,7 @@ async function syncFitbitData(
     const client = await getSystemClient();
     try {
       await client.query(
-        `UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'fitbit'`,
+        "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'fitbit'",
         [userId]
       );
     } finally {

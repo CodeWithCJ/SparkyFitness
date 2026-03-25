@@ -232,7 +232,12 @@ describe('mealRepository', () => {
         { id: mealId, user_id: uuidv4(), name: 'Public Meal', is_public: true },
       ];
       const mockMealFoods = [
-        { id: uuidv4(), meal_id: mealId, food_id: uuidv4(), food_name: 'Food A' },
+        {
+          id: uuidv4(),
+          meal_id: mealId,
+          food_id: uuidv4(),
+          food_name: 'Food A',
+        },
       ];
 
       mockClient.query
@@ -257,10 +262,20 @@ describe('mealRepository', () => {
       const userId = uuidv4();
       const mealId = uuidv4();
       const mockMeals = [
-        { id: mealId, user_id: uuidv4(), name: 'Family Meal', is_public: false },
+        {
+          id: mealId,
+          user_id: uuidv4(),
+          name: 'Family Meal',
+          is_public: false,
+        },
       ];
       const mockMealFoods = [
-        { id: uuidv4(), meal_id: mealId, food_id: uuidv4(), food_name: 'Food B' },
+        {
+          id: uuidv4(),
+          meal_id: mealId,
+          food_id: uuidv4(),
+          food_name: 'Food B',
+        },
       ];
 
       mockClient.query

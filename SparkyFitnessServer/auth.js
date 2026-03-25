@@ -238,7 +238,7 @@ const auth = betterAuth({
       // Use a getter to ensure Better Auth always checks the current state of our dynamic list
       get trustedProviders() {
         console.log(
-          `[AUTH DEBUG] Better Auth is checking trustedProviders. Current list:`,
+          '[AUTH DEBUG] Better Auth is checking trustedProviders. Current list:',
           dynamicTrustedProviders
         );
         return dynamicTrustedProviders;
@@ -393,9 +393,9 @@ const auth = betterAuth({
     account: {
       create: {
         before: async (account, ctx) => {
-          console.log(`[AUTH DEBUG] account.create.before hook triggered`);
+          console.log('[AUTH DEBUG] account.create.before hook triggered');
           console.log(
-            `[AUTH DEBUG] Account data:`,
+            '[AUTH DEBUG] Account data:',
             JSON.stringify({
               providerId: account.providerId,
               accountId: account.accountId,
@@ -407,10 +407,10 @@ const auth = betterAuth({
         },
         after: async (account) => {
           console.log(
-            `[AUTH DEBUG] account.create.after hook - Account link created successfully`
+            '[AUTH DEBUG] account.create.after hook - Account link created successfully'
           );
           console.log(
-            `[AUTH DEBUG] Created account:`,
+            '[AUTH DEBUG] Created account:',
             JSON.stringify({
               id: account.id,
               providerId: account.providerId,

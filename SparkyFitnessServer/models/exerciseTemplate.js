@@ -49,7 +49,7 @@ async function createExerciseEntriesFromTemplate(
     const template = templateResult.rows[0];
     log(
       'info',
-      `createExerciseEntriesFromTemplate - Fetched template:`,
+      'createExerciseEntriesFromTemplate - Fetched template:',
       template
     );
 

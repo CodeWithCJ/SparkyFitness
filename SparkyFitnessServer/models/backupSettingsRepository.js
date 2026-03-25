@@ -101,7 +101,7 @@ class BackupSettingsRepository {
       }
       log(
         'info',
-        `Successfully updated last backup status. New settings:`,
+        'Successfully updated last backup status. New settings:',
         result.rows[0]
       );
       return result.rows[0];

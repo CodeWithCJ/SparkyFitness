@@ -83,7 +83,7 @@ const SERVING_UNIT_ALIASES = {
 function normalizeServingUnit(unit) {
   if (!unit) return 'g';
   // Strip anything in parentheses at the end: "serving (237g)" -> "serving"
-  let clean = unit
+  const clean = unit
     .replace(/\s*\([^)]*\)\s*$/i, '')
     .toLowerCase()
     .trim();

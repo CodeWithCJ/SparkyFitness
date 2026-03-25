@@ -58,7 +58,7 @@ async function getOidcProviders() {
   const client = await getSystemClient();
   try {
     const result = await client.query(
-      `SELECT * FROM "sso_provider" ORDER BY created_at ASC`
+      'SELECT * FROM "sso_provider" ORDER BY created_at ASC'
     );
     return result.rows.map((row) => {
       const config = row.additional_config
@@ -94,7 +94,7 @@ async function getOidcProviderById(id) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
-      `SELECT * FROM "sso_provider" WHERE id::text = $1 OR provider_id = $1`,
+      'SELECT * FROM "sso_provider" WHERE id::text = $1 OR provider_id = $1',
       [id]
     );
     const row = result.rows[0];

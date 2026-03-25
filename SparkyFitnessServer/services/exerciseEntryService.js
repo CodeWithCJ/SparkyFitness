@@ -13,7 +13,7 @@ async function importExerciseEntriesFromCsv(
   entries
 ) {
   let createdCount = 0;
-  let updatedCount = 0;
+  const updatedCount = 0;
   let failedCount = 0;
   const failedEntries = [];
 
@@ -77,7 +77,7 @@ async function importExerciseEntriesFromCsv(
         };
         log(
           'debug',
-          `Calling createExercise with newExerciseData:`,
+          'Calling createExercise with newExerciseData:',
           newExerciseData
         );
         exercise = await exerciseRepository.createExercise(newExerciseData);
@@ -139,7 +139,7 @@ async function importExerciseEntriesFromCsv(
           workoutPreset = await workoutPresetRepository.createWorkoutPreset({
             user_id: authenticatedUserId,
             name: entryGroup.preset_name,
-            description: `Auto-created from CSV import`,
+            description: 'Auto-created from CSV import',
             is_public: false,
             exercises: [
               {

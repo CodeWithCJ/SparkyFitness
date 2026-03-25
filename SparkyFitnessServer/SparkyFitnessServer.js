@@ -262,7 +262,7 @@ app.get(
         return res.status(404).send('Image not found for this exercise.');
       }
 
-      let externalImageUrl = freeExerciseDBService.getExerciseImageUrl(
+      const externalImageUrl = freeExerciseDBService.getExerciseImageUrl(
         originalRelativeImagePath
       );
 
@@ -294,7 +294,7 @@ app.use((req, res, next) => {
     '/api/ping',
   ];
 
-  let isPublic = publicRoutes.some((route) => {
+  const isPublic = publicRoutes.some((route) => {
     // Exact match or subpath match with trailing slash to prevent partial matches
     // e.g. "/api/health" matches "/api/health" and "/api/health/" but NOT "/api/health-data"
     // e.g. "/api/onboarding" matches "/api/onboarding" and "/api/onboarding/step1"

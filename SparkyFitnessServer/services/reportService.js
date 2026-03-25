@@ -300,7 +300,7 @@ async function getNutritionTrendsWithGoals(
     );
 
     const trendData = [];
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     const end = new Date(endDate);
 
     while (currentDate <= end) {
@@ -591,7 +591,7 @@ async function getExerciseDashboardData(
 
     let totalVolume = 0;
     let totalReps = 0;
-    let totalWorkouts = new Set(); // To count unique workout days
+    const totalWorkouts = new Set(); // To count unique workout days
     const prData = {}; // Stores max 1RM for each exercise
     const bestSetRepRange = {}; // Stores max weight for each exercise and rep range
     const muscleGroupVolume = {}; // Stores total volume per muscle group

@@ -322,7 +322,7 @@ router.post(
         imageUrl = `/uploads/exercise_entries/${today}/${req.file.filename}`;
       }
 
-      let targetUserId = req.body.user_id || req.userId;
+      const targetUserId = req.body.user_id || req.userId;
       // Check permission if explicitly creating for another user
       if (req.body.user_id && req.body.user_id !== req.userId) {
         const hasPermission =

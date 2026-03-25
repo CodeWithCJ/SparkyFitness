@@ -23,11 +23,11 @@ async function getAuthorizationUrl(userId, redirectUri, providerId) {
   try {
     const query = providerId
       ? {
-          text: `SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE id = $1 AND user_id = $2`,
+          text: 'SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE id = $1 AND user_id = $2',
           values: [providerId, userId],
         }
       : {
-          text: `SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE user_id = $1 AND provider_type = 'polar'`,
+          text: "SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE user_id = $1 AND provider_type = 'polar'",
           values: [userId],
         };
 
@@ -51,11 +51,11 @@ async function getAuthorizationUrl(userId, redirectUri, providerId) {
     // Store state in DB for validation during callback
     const updateQuery = providerId
       ? {
-          text: `UPDATE external_data_providers SET oauth_state = $1 WHERE id = $2 AND user_id = $3`,
+          text: 'UPDATE external_data_providers SET oauth_state = $1 WHERE id = $2 AND user_id = $3',
           values: [state, providerId, userId],
         }
       : {
-          text: `UPDATE external_data_providers SET oauth_state = $1 WHERE user_id = $2 AND provider_type = 'polar'`,
+          text: "UPDATE external_data_providers SET oauth_state = $1 WHERE user_id = $2 AND provider_type = 'polar'",
           values: [state, userId],
         };
 
@@ -338,7 +338,7 @@ async function checkNotifications(userId, providerId) {
     } else {
       log(
         'info',
-        `[Polar] No pending notifications found specifically for this user.`
+        '[Polar] No pending notifications found specifically for this user.'
       );
     }
 

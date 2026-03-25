@@ -454,7 +454,7 @@ router.get(
   authenticate,
   checkPermissionMiddleware('diary'), // Add permission check
   async (req, res, next) => {
-    let { selectedDate, userId } = req.query; // accepted userId from query
+    const { selectedDate, userId } = req.query; // accepted userId from query
     if (!selectedDate) {
       return res.status(400).json({ error: 'Selected date is required.' });
     }

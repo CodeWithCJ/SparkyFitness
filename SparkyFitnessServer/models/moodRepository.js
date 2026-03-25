@@ -83,7 +83,7 @@ async function deleteMoodEntry(moodEntryId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `DELETE FROM mood_entries WHERE id = $1 AND user_id = $2 RETURNING id`,
+      'DELETE FROM mood_entries WHERE id = $1 AND user_id = $2 RETURNING id',
       [moodEntryId, userId]
     );
     return result.rowCount > 0;
@@ -105,14 +105,14 @@ async function getMoodEntryByDate(userId, entryDate) {
       [userId, entryDate]
     );
     if (result.rows[0]) {
-      log('debug', `Found mood entry:`, result.rows[0]);
+      log('debug', 'Found mood entry:', result.rows[0]);
     } else {
       log(
         'debug',
         `No mood entry found for user ${userId} on date ${entryDate}`
       );
     }
-    log('debug', `Returning from getMoodEntryByDate:`, result.rows[0]);
+    log('debug', 'Returning from getMoodEntryByDate:', result.rows[0]);
     return result.rows[0];
   } catch (error) {
     log(

@@ -209,9 +209,9 @@ async function updateExternalDataProvider(id, userId, updateData) {
     let appKeyIv = updateData.app_key_iv || null;
     let appKeyTag = updateData.app_key_tag || null;
 
-    let encryptedGarthDump = updateData.encrypted_garth_dump || null;
-    let garthDumpIv = updateData.garth_dump_iv || null;
-    let garthDumpTag = updateData.garth_dump_tag || null;
+    const encryptedGarthDump = updateData.encrypted_garth_dump || null;
+    const garthDumpIv = updateData.garth_dump_iv || null;
+    const garthDumpTag = updateData.garth_dump_tag || null;
 
     if (updateData.app_id !== undefined) {
       const encryptedId = await encrypt(updateData.app_id, ENCRYPTION_KEY);

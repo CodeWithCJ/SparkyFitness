@@ -145,7 +145,7 @@ async function getAvailableEquipment() {
     const equipment = await exerciseDb.getDistinctEquipment();
     return equipment;
   } catch (error) {
-    log('error', `Error fetching available equipment:`, error);
+    log('error', 'Error fetching available equipment:', error);
     throw error;
   }
 }
@@ -155,7 +155,7 @@ async function getAvailableMuscleGroups() {
     const muscleGroups = await exerciseDb.getDistinctMuscleGroups();
     return muscleGroups;
   } catch (error) {
-    log('error', `Error fetching available muscle groups:`, error);
+    log('error', 'Error fetching available muscle groups:', error);
     throw error;
   }
 }
@@ -1660,7 +1660,7 @@ async function createGroupedWorkoutSession(userId, actingUserId, sessionData) {
     return groupedSession;
   } catch (error) {
     await client.query('ROLLBACK');
-    log('error', `Error creating grouped workout session:`, error);
+    log('error', 'Error creating grouped workout session:', error);
     throw error;
   } finally {
     client.release();
@@ -1748,7 +1748,7 @@ async function updateGroupedWorkoutSession(
     return groupedSession;
   } catch (error) {
     await client.query('ROLLBACK');
-    log('error', `Error updating grouped workout session:`, error);
+    log('error', 'Error updating grouped workout session:', error);
     throw error;
   } finally {
     client.release();
@@ -1815,7 +1815,7 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(
     let activityDetails = [];
 
     // First, try to find an exercise entry with the given ID
-    let exerciseEntry = await exerciseEntryDb.getExerciseEntryById(
+    const exerciseEntry = await exerciseEntryDb.getExerciseEntryById(
       entryId,
       authenticatedUserId
     );
@@ -1842,7 +1842,7 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(
       }
     } else {
       // If not an exercise entry, try to find an exercise preset entry with the given ID
-      let presetEntry =
+      const presetEntry =
         await exercisePresetEntryRepository.getExercisePresetEntryById(
           entryId,
           authenticatedUserId

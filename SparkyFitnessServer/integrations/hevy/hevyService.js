@@ -38,11 +38,11 @@ async function getHevyApiKey(userId, providerId) {
     const params = [userId];
 
     if (providerId) {
-      query += ` AND id = $2`;
+      query += ' AND id = $2';
       params.push(providerId);
     } else {
       // If no providerId, prefer active ones
-      query += ` ORDER BY is_active DESC, created_at DESC LIMIT 1`;
+      query += ' ORDER BY is_active DESC, created_at DESC LIMIT 1';
     }
 
     const result = await client.query(query, params);
@@ -296,7 +296,7 @@ async function syncHevyData(
     }
 
     // 1. Fetch EVERYTHING first (The Safe Phase)
-    log('debug', `[hevyService] Phase 1: Capturing raw API responses...`);
+    log('debug', '[hevyService] Phase 1: Capturing raw API responses...');
 
     const userInfoData = await safeFetch('raw_user_info', () =>
       getUserInfo(userId, providerId)
@@ -345,7 +345,7 @@ async function syncHevyData(
     }
 
     // 2. Process EVERYTHING second (The Action Phase)
-    log('debug', `[hevyService] Phase 2: Processing captured data...`);
+    log('debug', '[hevyService] Phase 2: Processing captured data...');
 
     if (userInfoData) {
       await hevyDataProcessor.processHevyUserInfo(

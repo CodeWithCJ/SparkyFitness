@@ -12,7 +12,7 @@ const withingsDataProcessor = require('./withingsDataProcessor'); // Import the 
 
 // Helper function to interpolate parameters into a SQL query for logging
 function interpolateQuery(sql, params) {
-  let i = 0;
+  const i = 0;
   return sql.replace(/\$([0-9]+)/g, (match, p1) => {
     const index = parseInt(p1, 10) - 1;
     if (params[index] === undefined) {
@@ -122,7 +122,7 @@ async function exchangeCodeForTokens(userId, code, redirectUri, state) {
     if (!response.data || !response.data.body) {
       log(
         'error',
-        `Withings requesttoken error: Invalid response structure.`,
+        'Withings requesttoken error: Invalid response structure.',
         JSON.stringify(response.data)
       );
       throw new Error('Invalid Withings API response structure.');
@@ -282,7 +282,7 @@ async function refreshAccessToken(userId) {
     if (!response.data || !response.data.body) {
       log(
         'error',
-        `Withings refresh access token error: Invalid response structure.`,
+        'Withings refresh access token error: Invalid response structure.',
         JSON.stringify(response.data)
       );
       throw new Error(
@@ -361,7 +361,7 @@ async function getValidAccessToken(userId) {
       throw new Error('Withings provider not configured for user.');
     }
 
-    let {
+    const {
       encrypted_access_token,
       access_token_iv,
       access_token_tag,
@@ -393,7 +393,7 @@ async function fetchMeasuresData(userId, startDate, endDate) {
   const client = await getClient(userId);
   try {
     const providerResult = await client.query(
-      `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
+      "SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'",
       [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
@@ -471,7 +471,7 @@ async function fetchHeartData(userId, startDate, endDate) {
   const client = await getClient(userId);
   try {
     const providerResult = await client.query(
-      `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
+      "SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'",
       [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
@@ -552,7 +552,7 @@ async function fetchSleepData(userId, startDate, endDate) {
   const client = await getClient(userId);
   try {
     const providerResult = await client.query(
-      `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
+      "SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'",
       [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
@@ -632,7 +632,7 @@ async function fetchSleepSummaryData(userId, startDate, endDate) {
   const client = await getClient(userId);
   try {
     const providerResult = await client.query(
-      `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
+      "SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'",
       [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
@@ -702,7 +702,7 @@ async function fetchActivityData(userId, startDateYMD, endDateYMD) {
   const client = await getClient(userId);
   try {
     const providerResult = await client.query(
-      `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
+      "SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'",
       [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
@@ -765,7 +765,7 @@ async function fetchWorkoutsData(userId, startDateYMD, endDateYMD) {
   const client = await getClient(userId);
   try {
     const providerResult = await client.query(
-      `SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'`,
+      "SELECT external_user_id FROM external_data_providers WHERE user_id = $1 AND provider_type = 'withings'",
       [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;

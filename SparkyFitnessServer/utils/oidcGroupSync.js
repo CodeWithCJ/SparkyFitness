@@ -98,7 +98,7 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
           }
         }
       } catch (error) {
-        log('error', `[AUTH] OIDC Sync: UserInfo fetch failed:`, error);
+        log('error', '[AUTH] OIDC Sync: UserInfo fetch failed:', error);
       }
     }
 

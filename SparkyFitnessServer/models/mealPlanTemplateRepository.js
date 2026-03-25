@@ -84,7 +84,7 @@ async function createMealPlanTemplate(planData) {
         return []; // Should not happen
       });
       const assignmentQuery = format(
-        `INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L`,
+        'INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L',
         assignmentValues
       );
       log('info', 'createMealPlanTemplate - assignmentQuery:', assignmentQuery);
@@ -257,7 +257,7 @@ async function updateMealPlanTemplate(planId, planData) {
         return []; // Should not happen
       });
       const assignmentQuery = format(
-        `INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L`,
+        'INSERT INTO meal_plan_template_assignments (template_id, day_of_week, meal_type_id, item_type, meal_id, food_id, variant_id, quantity, unit) VALUES %L',
         assignmentValues
       );
       await client.query(assignmentQuery);
@@ -316,7 +316,7 @@ async function deleteMealPlanTemplate(planId, userId) {
   try {
     // The assignments table will be cascade deleted due to the foreign key constraint
     const result = await client.query(
-      `DELETE FROM meal_plan_templates WHERE id = $1 RETURNING *`,
+      'DELETE FROM meal_plan_templates WHERE id = $1 RETURNING *',
       [planId]
     );
     return result.rows[0];
@@ -335,7 +335,7 @@ async function deleteMealPlanTemplate(planId, userId) {
 async function deactivateAllMealPlanTemplates(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
-    await client.query(`UPDATE meal_plan_templates SET is_active = FALSE`, []);
+    await client.query('UPDATE meal_plan_templates SET is_active = FALSE', []);
     return true;
   } finally {
     client.release();
@@ -346,7 +346,7 @@ async function getMealPlanTemplateOwnerId(templateId) {
   const client = await getClient(templateId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      `SELECT user_id FROM meal_plan_templates WHERE id = $1`,
+      'SELECT user_id FROM meal_plan_templates WHERE id = $1',
       [templateId]
     );
     return result.rows[0]?.user_id;

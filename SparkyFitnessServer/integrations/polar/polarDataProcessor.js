@@ -344,8 +344,8 @@ async function upsertCustomMeasurementLogic(
   const { categoryName, value, unit, entryDate, entryTimestamp, frequency } =
     customMeasurement;
 
-  let categories = await measurementRepository.getCustomCategories(userId);
-  let category = categories.find((cat) => cat.name === categoryName);
+  const categories = await measurementRepository.getCustomCategories(userId);
+  const category = categories.find((cat) => cat.name === categoryName);
 
   let categoryId;
   if (!category) {

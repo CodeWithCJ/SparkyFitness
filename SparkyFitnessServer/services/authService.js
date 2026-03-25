@@ -83,7 +83,7 @@ async function getAccessibleUsers(authenticatedUserId) {
     const users = await userRepository.getAccessibleUsers(authenticatedUserId);
     return users;
   } catch (error) {
-    log('error', `Error fetching accessible users in authService:`, error);
+    log('error', 'Error fetching accessible users in authService:', error);
     throw error;
   }
 }
@@ -186,7 +186,7 @@ async function updateUserPassword(authenticatedUserId, newPassword) {
     }
     return true;
   } catch (error) {
-    log('error', `Error updating password in authService:`, error);
+    log('error', 'Error updating password in authService:', error);
     throw error;
   }
 }
@@ -206,7 +206,7 @@ async function updateUserEmail(authenticatedUserId, newEmail) {
     }
     return true;
   } catch (error) {
-    log('error', `Error updating email in authService:`, error);
+    log('error', 'Error updating email in authService:', error);
     throw error;
   }
 }
@@ -220,7 +220,7 @@ async function checkFamilyAccess(authenticatedUserId, ownerUserId, permission) {
     );
     return hasAccess;
   } catch (error) {
-    log('error', `Error checking family access in authService:`, error);
+    log('error', 'Error checking family access in authService:', error);
     throw error;
   }
 }
@@ -233,7 +233,7 @@ async function getFamilyAccessEntries(authenticatedUserId) {
       );
     return entries;
   } catch (error) {
-    log('error', `Error fetching family access entries in authService:`, error);
+    log('error', 'Error fetching family access entries in authService:', error);
     throw error;
   }
 }
@@ -249,7 +249,7 @@ async function createFamilyAccessEntry(authenticatedUserId, entryData) {
       entryData.status
     );
   } catch (error) {
-    log('error', `Error creating family access entry in authService:`, error);
+    log('error', 'Error creating family access entry in authService:', error);
     throw error;
   }
 }
@@ -267,7 +267,7 @@ async function updateFamilyAccessEntry(authenticatedUserId, id, updateData) {
     if (!updatedEntry) throw new Error('Family access entry not found.');
     return updatedEntry;
   } catch (error) {
-    log('error', `Error updating family access entry in authService:`, error);
+    log('error', 'Error updating family access entry in authService:', error);
     throw error;
   }
 }
@@ -281,7 +281,7 @@ async function deleteFamilyAccessEntry(authenticatedUserId, id) {
     if (!success) throw new Error('Family access entry not found.');
     return true;
   } catch (error) {
-    log('error', `Error deleting family access entry in authService:`, error);
+    log('error', 'Error deleting family access entry in authService:', error);
     throw error;
   }
 }
@@ -319,7 +319,7 @@ async function updateUserMfaSettings(
     );
     return success;
   } catch (error) {
-    log('error', `Error updating MFA settings in authService:`, error);
+    log('error', 'Error updating MFA settings in authService:', error);
     throw error;
   }
 }

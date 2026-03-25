@@ -97,7 +97,7 @@ function mapUsdaBarcodeProduct(food) {
     serving_size: servingSize,
     serving_unit: normalizeServingUnit(food.servingSizeUnit),
     calories: Math.round(
-      (nutrients[1008] ?? nutrients[2048] ?? nutrients[2047] ?? 0) * scale,
+      (nutrients[1008] ?? nutrients[2048] ?? nutrients[2047] ?? 0) * scale
     ),
     protein: Math.round((nutrients[1003] || 0) * scale * 10) / 10,
     carbs: Math.round((nutrients[1005] || 0) * scale * 10) / 10,

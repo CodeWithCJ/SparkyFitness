@@ -47,7 +47,7 @@ async function createFoodEntryMeal(foodEntryMealData, createdByUserId) {
     );
     return result.rows[0];
   } catch (error) {
-    log('error', `Error creating food entry meal in repository:`, error);
+    log('error', 'Error creating food entry meal in repository:', error);
     throw error;
   } finally {
     client.release();

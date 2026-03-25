@@ -62,7 +62,7 @@ class FreeExerciseDBService {
     offset = 0
   ) {
     const cacheKey = `search_exercises_${query}_${equipmentFilter.join(',')}_${muscleGroupFilter.join(',')}_${limit}_${offset}`;
-    let cachedResults = githubCache.get(cacheKey);
+    const cachedResults = githubCache.get(cacheKey);
 
     if (cachedResults) {
       console.log(

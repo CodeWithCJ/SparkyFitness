@@ -68,7 +68,7 @@ async function getGoalPresetsByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT * FROM goal_presets WHERE user_id = $1 ORDER BY preset_name`,
+      'SELECT * FROM goal_presets WHERE user_id = $1 ORDER BY preset_name',
       [userId]
     );
     return result.rows;
@@ -81,7 +81,7 @@ async function getGoalPresetById(presetId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT * FROM goal_presets WHERE id = $1 AND user_id = $2`,
+      'SELECT * FROM goal_presets WHERE id = $1 AND user_id = $2',
       [presetId, userId]
     );
     return result.rows[0];
@@ -158,7 +158,7 @@ async function deleteGoalPreset(presetId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `DELETE FROM goal_presets WHERE id = $1 AND user_id = $2 RETURNING *`,
+      'DELETE FROM goal_presets WHERE id = $1 AND user_id = $2 RETURNING *',
       [presetId, userId]
     );
     return result.rows[0];

@@ -58,10 +58,10 @@ async function getDashboardStats(userId, date) {
     const stepsCount = parseInt(checkInMeasurements?.steps || 0);
     const backgroundSteps = Math.max(0, stepsCount - activitySteps);
 
-    let weightKg =
+    const weightKg =
       parseFloat(latestMeasurements?.weight) ||
       CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
-    let heightCm =
+    const heightCm =
       parseFloat(latestMeasurements?.height) ||
       CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
 

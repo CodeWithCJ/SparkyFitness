@@ -110,7 +110,7 @@ async function getExercisesWithPagination(
 ) {
   const client = await getClient(targetUserId);
   try {
-    let whereClauses = ['is_quick_exercise = FALSE'];
+    const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -145,7 +145,7 @@ async function getExercisesWithPagination(
       paramIndex += muscleGroupFilter.length * 2;
     }
 
-    let query = `
+    const query = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
              primary_muscles, secondary_muscles, instructions, category, images,
              calories_per_hour, description, user_id, is_custom, shared_with_public,
@@ -184,7 +184,7 @@ async function countExercises(
 ) {
   const client = await getClient(targetUserId);
   try {
-    let whereClauses = ['is_quick_exercise = FALSE'];
+    const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -235,7 +235,7 @@ async function getDistinctEquipment() {
   const client = await getSystemClient();
   try {
     const result = await client.query(
-      `SELECT equipment FROM exercises WHERE equipment IS NOT NULL AND equipment <> '[]' AND equipment <> ''`
+      "SELECT equipment FROM exercises WHERE equipment IS NOT NULL AND equipment <> '[]' AND equipment <> ''"
     );
     const equipmentSet = new Set();
     result.rows.forEach((row) => {
@@ -246,8 +246,8 @@ async function getDistinctEquipment() {
         }
       } catch (e) {
         // Fallback for non-JSON string
-        let equipment = row.equipment.replace(/[\[\]'"`]/g, ''); // Clean the string
-        let equipmentList = equipment
+        const equipment = row.equipment.replace(/[\[\]'"`]/g, ''); // Clean the string
+        const equipmentList = equipment
           .split(',')
           .map((item) => item.trim())
           .filter(Boolean);
@@ -267,7 +267,7 @@ async function getDistinctMuscleGroups() {
   const client = await getSystemClient();
   try {
     const result = await client.query(
-      `SELECT primary_muscles, secondary_muscles FROM exercises WHERE (primary_muscles IS NOT NULL AND primary_muscles <> '[]' AND primary_muscles <> '') OR (secondary_muscles IS NOT NULL AND secondary_muscles <> '[]' AND secondary_muscles <> '')`
+      "SELECT primary_muscles, secondary_muscles FROM exercises WHERE (primary_muscles IS NOT NULL AND primary_muscles <> '[]' AND primary_muscles <> '') OR (secondary_muscles IS NOT NULL AND secondary_muscles <> '[]' AND secondary_muscles <> '')"
     );
     const muscleGroupSet = new Set();
 
@@ -281,8 +281,8 @@ async function getDistinctMuscleGroups() {
             }
           } catch (e) {
             // Fallback for non-JSON string
-            let muscles = row[field].replace(/[\[\]'"`]/g, ''); // Clean the string
-            let muscleList = muscles
+            const muscles = row[field].replace(/[\[\]'"`]/g, ''); // Clean the string
+            const muscleList = muscles
               .split(',')
               .map((item) => item.trim())
               .filter(Boolean);
@@ -308,7 +308,7 @@ async function searchExercises(
 ) {
   const client = await getClient(userId);
   try {
-    let whereClauses = ['is_quick_exercise = FALSE'];
+    const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 

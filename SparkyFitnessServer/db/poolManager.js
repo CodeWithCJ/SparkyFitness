@@ -71,7 +71,7 @@ async function getClient(userId, authenticatedUserId = null) {
   // If authenticatedUserId is not provided, it means the user is acting as themselves.
   // In this case, the authenticated actor IS the target user.
   const actualAuthUserId = authenticatedUserId || userId;
-  await client.query(`SELECT public.set_app_context($1, $2)`, [
+  await client.query('SELECT public.set_app_context($1, $2)', [
     userId,
     actualAuthUserId,
   ]);
