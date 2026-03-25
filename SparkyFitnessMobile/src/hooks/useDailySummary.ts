@@ -16,6 +16,7 @@ import {
   calculateExerciseDuration,
 } from '../services/api/exerciseApi';
 import { fetchWaterIntake } from '../services/api/measurementsApi';
+import { fetchDashboardStats } from '../services/api/dashboardApi';
 import type { DailySummary } from '../types/dailySummary';
 import type { DailyGoals } from '../types/goals';
 import type { FoodEntry } from '../types/foodEntries';
@@ -29,6 +30,7 @@ export interface DailySummaryRawData {
   foodEntries: FoodEntry[];
   exerciseEntries: ExerciseSessionResponse[];
   waterIntake: WaterIntake;
+  stepCalories: number;
 }
 
 interface UseDailySummaryOptions {
@@ -40,17 +42,18 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
   const query = useQuery({
     queryKey: dailySummaryQueryKey(date),
     queryFn: async () => {
-      const [goals, foodEntries, exerciseEntries, waterIntake] = await Promise.all([
+      const [goals, foodEntries, exerciseEntries, waterIntake, dashboardStats] = await Promise.all([
         fetchDailyGoals(date),
         fetchFoodEntries(date),
         fetchExerciseEntries(date),
         fetchWaterIntake(date).catch(() => ({ water_ml: 0 })),
+        fetchDashboardStats(date).catch(() => ({ stepCalories: 0 })),
       ]);
 
-      return { goals, foodEntries, exerciseEntries, waterIntake };
+      return { goals, foodEntries, exerciseEntries, waterIntake, stepCalories: dashboardStats.stepCalories };
     },
     select: (raw): DailySummary => {
-      const { goals, foodEntries, exerciseEntries, waterIntake } = raw;
+      const { goals, foodEntries, exerciseEntries, waterIntake, stepCalories } = raw;
 
       const calorieGoal = goals.calories || 0;
       const caloriesConsumed = calculateCaloriesConsumed(foodEntries);
@@ -68,6 +71,7 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         caloriesBurned,
         activeCalories,
         otherExerciseCalories,
+        stepCalories,
         exerciseMinutes,
         exerciseMinutesGoal: goals.target_exercise_duration_minutes || 0,
         exerciseCaloriesGoal: goals.target_exercise_calories_burned || 0,

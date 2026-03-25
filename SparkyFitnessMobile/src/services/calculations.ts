@@ -102,30 +102,22 @@ export function calculateBodyFatNavy({
   );
 }
 
-/**
- * Converts steps to estimated calories burned.
- * Uses a simple approximation of 0.04 kcal per step.
- */
-export function stepsToCalories(steps: number): number {
-  return steps * 0.04;
-}
-
 interface EffectiveBurnedParams {
   activeCalories: number;
   otherExerciseCalories: number;
-  steps: number;
+  stepCalories: number; // Server-computed via stride formula (height/weight-aware)
 }
 
 /**
  * Calculates effective burned calories using a priority cascade:
  * 1. Manually logged exercise calories (what the user explicitly entered)
  * 2. Active calories from a watch/tracker (more accurate than steps)
- * 3. Step-derived calorie estimate (fallback)
+ * 3. Server-computed step calories (fallback)
  */
 export function calculateEffectiveBurned({
   activeCalories,
   otherExerciseCalories,
-  steps,
+  stepCalories,
 }: EffectiveBurnedParams): number {
   if (otherExerciseCalories > 0) {
     return otherExerciseCalories;
@@ -133,7 +125,7 @@ export function calculateEffectiveBurned({
   if (activeCalories > 0) {
     return activeCalories;
   }
-  return stepsToCalories(steps);
+  return stepCalories;
 }
 
 interface CalorieBalanceParams {

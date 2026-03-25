@@ -70,7 +70,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const { preferences, isLoading: isPreferencesLoading, isError: isPreferencesError, refetch: refetchPreferences } = usePreferences({
     enabled: isConnected,
   });
-  const { measurements, isLoading: isMeasurementsLoading, isError: isMeasurementsError, refetch: refetchMeasurements } = useMeasurements({
+  const { isLoading: isMeasurementsLoading, isError: isMeasurementsError, refetch: refetchMeasurements } = useMeasurements({
     date: selectedDate,
     enabled: isConnected,
   });
@@ -197,7 +197,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     const totalBurned = calculateEffectiveBurned({
       activeCalories: summary.activeCalories,
       otherExerciseCalories: summary.otherExerciseCalories,
-      steps: measurements?.steps || 0,
+      stepCalories: summary.stepCalories,
     });
 
     const { netCalories, remainingCalories } = calculateCalorieBalance({

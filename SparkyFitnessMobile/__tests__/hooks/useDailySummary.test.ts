@@ -5,6 +5,7 @@ import { fetchDailyGoals } from '../../src/services/api/goalsApi';
 import { fetchFoodEntries } from '../../src/services/api/foodEntriesApi';
 import { fetchExerciseEntries } from '../../src/services/api/exerciseApi';
 import { fetchWaterIntake } from '../../src/services/api/measurementsApi';
+import { fetchDashboardStats } from '../../src/services/api/dashboardApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/goalsApi', () => ({
@@ -31,6 +32,10 @@ jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchWaterIntake: jest.fn(),
 }));
 
+jest.mock('../../src/services/api/dashboardApi', () => ({
+  fetchDashboardStats: jest.fn(),
+}));
+
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn((callback) => {
     callback();
@@ -41,6 +46,7 @@ const mockFetchDailyGoals = fetchDailyGoals as jest.MockedFunction<typeof fetchD
 const mockFetchFoodEntries = fetchFoodEntries as jest.MockedFunction<typeof fetchFoodEntries>;
 const mockFetchExerciseEntries = fetchExerciseEntries as jest.MockedFunction<typeof fetchExerciseEntries>;
 const mockFetchWaterIntake = fetchWaterIntake as jest.MockedFunction<typeof fetchWaterIntake>;
+const mockFetchDashboardStats = fetchDashboardStats as jest.MockedFunction<typeof fetchDashboardStats>;
 
 describe('useDailySummary', () => {
   let queryClient: QueryClient;
@@ -48,6 +54,10 @@ describe('useDailySummary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetchWaterIntake.mockResolvedValue({ water_ml: 0 });
+    mockFetchDashboardStats.mockResolvedValue({
+      eaten: 0, burned: 0, remaining: 0, goal: 0, net: 0, progress: 0,
+      steps: 0, stepCalories: 0, bmr: 0, unit: 'kcal',
+    });
     queryClient = createTestQueryClient();
   });
 
@@ -189,6 +199,43 @@ describe('useDailySummary', () => {
 
       expect(result.current.summary?.waterConsumed).toBe(0);
       expect(result.current.summary?.waterGoal).toBe(2500);
+    });
+
+    test('includes server-computed stepCalories in summary', async () => {
+      mockFetchDailyGoals.mockResolvedValue({ calories: 2000, protein: 150, carbs: 200, fat: 65, dietary_fiber: 30 });
+      mockFetchFoodEntries.mockResolvedValue([]);
+      mockFetchExerciseEntries.mockResolvedValue([]);
+      mockFetchDashboardStats.mockResolvedValue({
+        eaten: 0, burned: 203, remaining: 1797, goal: 2000, net: -203, progress: 0,
+        steps: 5000, stepCalories: 105, bmr: 1600, unit: 'kcal',
+      });
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.stepCalories).toBe(105);
+    });
+
+    test('gracefully handles dashboard stats API failure with stepCalories defaulting to 0', async () => {
+      mockFetchDailyGoals.mockResolvedValue({ calories: 2000, protein: 150, carbs: 200, fat: 65, dietary_fiber: 30 });
+      mockFetchFoodEntries.mockResolvedValue([]);
+      mockFetchExerciseEntries.mockResolvedValue([]);
+      mockFetchDashboardStats.mockRejectedValue(new Error('Server error'));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.stepCalories).toBe(0);
     });
 
     test('calculates net and remaining calories correctly', async () => {
