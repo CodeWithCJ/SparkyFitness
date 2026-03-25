@@ -498,6 +498,19 @@ describe("mapUsdaBarcodeProduct", () => {
     expect(result.default_variant.calories).toBe(120);
   });
 
+  it("should preserve explicit zero from 1008 and not fall through to Atwater", () => {
+    const usdaFood = makeUsdaFood({
+      servingSize: 100,
+      foodNutrients: [
+        { nutrientId: 1008, value: 0 },
+        { nutrientId: 2048, value: 125 },
+        { nutrientId: 2047, value: 119 },
+      ],
+    });
+    const result = mapUsdaBarcodeProduct(usdaFood);
+    expect(result.default_variant.calories).toBe(0);
+  });
+
   it("should normalize a 12-digit gtinUpc to 13 digits", () => {
     const usdaFood = makeUsdaFood({ gtinUpc: "094395000172" });
     const result = mapUsdaBarcodeProduct(usdaFood);
