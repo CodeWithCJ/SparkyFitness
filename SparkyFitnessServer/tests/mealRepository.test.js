@@ -98,13 +98,16 @@ describe('mealRepository', () => {
       ];
       mockClient.query
         .mockResolvedValueOnce({ rows: mockMeals }) // For meals query
-        .mockResolvedValueOnce({ rows: [] }) // For meal_foods query for first meal
-        .mockResolvedValueOnce({ rows: [] }); // For meal_foods query for second meal
+        .mockResolvedValueOnce({ rows: [] }); // For batched meal_foods query
 
       const result = await mealRepository.getMeals(userId, 'all');
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('AND (user_id = $1 OR is_public = TRUE)'),
         [userId]
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId1, mealId2]]
       );
       expect(result).toEqual([
         { ...mockMeals[0], foods: [] },
@@ -122,13 +125,16 @@ describe('mealRepository', () => {
       ];
       mockClient.query
         .mockResolvedValueOnce({ rows: mockMeals }) // For meals query
-        .mockResolvedValueOnce({ rows: [] }) // For meal_foods query for first meal
-        .mockResolvedValueOnce({ rows: [] }); // For meal_foods query for second meal
+        .mockResolvedValueOnce({ rows: [] }); // For batched meal_foods query
 
       const result = await mealRepository.getMeals(userId, 'all');
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('AND (user_id = $1 OR is_public = TRUE)'),
         [userId]
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId1, mealId2]]
       );
       expect(result).toEqual([
         { ...mockMeals[0], foods: [] },
@@ -190,8 +196,8 @@ describe('mealRepository', () => {
         expect.stringContaining('WHERE is_public = TRUE')
       );
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('FROM meal_foods mf'),
-        [mealId]
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId]]
       );
       expect(result).toEqual([{ ...mockMeals[0], foods: mockMealFoods }]);
     });
@@ -219,8 +225,8 @@ describe('mealRepository', () => {
         [userId]
       );
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('FROM meal_foods mf'),
-        [mealId]
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId]]
       );
       expect(result).toEqual([{ ...mockMeals[0], foods: mockMealFoods }]);
     });
