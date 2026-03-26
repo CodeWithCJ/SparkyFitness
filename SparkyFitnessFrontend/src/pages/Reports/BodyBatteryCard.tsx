@@ -34,6 +34,7 @@ interface BodyBatteryDay {
   at_wake: number | null;
   charged: number | null;
   drained: number | null;
+  current: number | null;
 }
 
 const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
@@ -73,6 +74,7 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
             at_wake: null,
             charged: null,
             drained: null,
+            current: null,
           };
         }
 
@@ -97,6 +99,9 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
           case 'Body Battery Drained':
             dataByDate[date].drained = value;
             break;
+          case 'Body Battery Current':
+            dataByDate[date].current = value;
+            break;
         }
       });
     });
@@ -114,7 +119,8 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
       : null;
 
   // Use at_wake if available, otherwise highest
-  const gaugeValue = latestData?.at_wake ?? latestData?.highest ?? 0;
+  const gaugeValue =
+    latestData?.current ?? latestData?.at_wake ?? latestData?.highest ?? 0;
   const chargedValue = latestData?.charged ?? 0;
   const drainedValue = latestData?.drained ?? 0;
 
