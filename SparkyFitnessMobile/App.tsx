@@ -1,5 +1,5 @@
 import './global.css'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { StatusBar, Platform, Alert } from 'react-native';
 import {
   NavigationContainer,
@@ -30,12 +30,11 @@ import WorkoutFormScreen from './src/screens/WorkoutFormScreen';
 import ActivityFormScreen from './src/screens/ActivityFormScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
-import LoginModal from './src/components/LoginModal';
+import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
-import { saveServerConfig, getActiveServerConfig, loadBackgroundSyncEnabled, loadTimeRange } from './src/services/storage';
+import { loadBackgroundSyncEnabled, loadTimeRange } from './src/services/storage';
 import type { TimeRange } from './src/services/storage';
-import { notifyNoConfigs } from './src/services/api/authService';
 import { initHealthConnect, loadHealthPreference } from './src/services/healthConnectService';
 import { HEALTH_METRICS } from './src/HealthMetrics';
 import { useSyncHealthData } from './src/hooks';
@@ -58,11 +57,11 @@ const EmptyScreen = () => null;
 
 function AppContent() {
   const { theme } = useUniwind();
-  const { showLoginModal, expiredConfigId, dismissLoginModal, handleLoginSuccess } = useAuth();
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [apiKeyUrl, setApiKeyUrl] = useState('');
-  const [apiKeyValue, setApiKeyValue] = useState('');
-  const [apiKeyProxyHeaders, setApiKeyProxyHeaders] = useState<import('./src/services/storage').ProxyHeader[]>([]);
+  const {
+    showReauthModal, showSetupModal, showApiKeySwitchModal,
+    expiredConfigId, switchToApiKeyConfig,
+    dismissModal, handleLoginSuccess, handleSwitchToApiKey, handleSwitchToApiKeyDone,
+  } = useAuth();
 
   const addSheetRef = useRef<AddSheetRef>(null);
   const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
@@ -326,57 +325,33 @@ function AppContent() {
           />
         </Stack.Navigator>
         <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddExercise={handleAddExercise} onSyncHealthData={handleSyncHealthData} />
-        <LoginModal
-          visible={showLoginModal}
-          defaultConfigId={expiredConfigId}
+        <ReauthModal
+          visible={showReauthModal}
+          expiredConfigId={expiredConfigId}
           onLoginSuccess={() => {
             handleLoginSuccess();
             queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
           }}
-          onUseApiKey={(serverUrl, proxyHeaders) => {
-            dismissLoginModal();
-            setApiKeyUrl(serverUrl);
-            setApiKeyValue('');
-            setApiKeyProxyHeaders(proxyHeaders);
-            setShowApiKeyModal(true);
-          }}
-          onDismiss={dismissLoginModal}
+          onSwitchToApiKey={handleSwitchToApiKey}
+          onDismiss={dismissModal}
         />
         <ServerConfigModal
-          visible={showApiKeyModal}
-          url={apiKeyUrl}
-          setUrl={setApiKeyUrl}
-          apiKey={apiKeyValue}
-          setApiKey={setApiKeyValue}
-          proxyHeaders={apiKeyProxyHeaders}
-          setProxyHeaders={setApiKeyProxyHeaders}
-          isEditing={false}
-          onSave={async () => {
-            const url = apiKeyUrl.trim().replace(/\/+$/, '');
-            if (!url || !apiKeyValue.trim()) {
-              Alert.alert('Missing fields', 'Please enter both a server URL and API key.');
-              return;
+          visible={showSetupModal || showApiKeySwitchModal}
+          editingConfig={switchToApiKeyConfig}
+          defaultAuthTab={showApiKeySwitchModal ? 'apiKey' : undefined}
+          onSuccess={() => {
+            if (showApiKeySwitchModal) {
+              handleSwitchToApiKeyDone();
+            } else {
+              handleLoginSuccess();
             }
-            if (__DEV__ === false && !url.startsWith('https://')) {
-              Alert.alert('Insecure URL', 'Please use an HTTPS URL for production.');
-              return;
-            }
-            await saveServerConfig({
-              id: Date.now().toString(),
-              url,
-              apiKey: apiKeyValue.trim(),
-              authType: 'apiKey',
-              proxyHeaders: apiKeyProxyHeaders,
-            });
-            setShowApiKeyModal(false);
-            dismissLoginModal();
             queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
           }}
-          onClose={async () => {
-            setShowApiKeyModal(false);
-            const config = await getActiveServerConfig();
-            if (!config) {
-              notifyNoConfigs();
+          onDismiss={() => {
+            if (showApiKeySwitchModal) {
+              handleSwitchToApiKeyDone();
+            } else {
+              dismissModal();
             }
           }}
         />
