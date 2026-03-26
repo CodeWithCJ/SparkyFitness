@@ -18,6 +18,7 @@ import type { DailyGoals } from '../types/goals';
 import type { FoodEntry } from '../types/foodEntries';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { WaterIntake } from '../types/measurements';
+
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { dailySummaryQueryKey } from './queryKeys';
 
@@ -39,8 +40,8 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
     queryFn: async () => {
       const data = await fetchDailySummary(date);
       return {
-        goals: data.goals as DailyGoals,
-        foodEntries: data.foodEntries as unknown as FoodEntry[],
+        goals: data.goals,
+        foodEntries: data.foodEntries,
         exerciseEntries: data.exerciseSessions,
         waterIntake: { water_ml: data.waterIntake },
       };
