@@ -80,6 +80,7 @@ const garminService = require('./services/garminService'); // Import garminServi
 const fitbitService = require('./services/fitbitService'); // Import fitbitService
 const polarService = require('./services/polarService'); // Import polarService
 const stravaService = require('./services/stravaService'); // Import stravaService
+const dailySummaryRoutes = require("./routes/dailySummaryRoutes");
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const mealTypeRoutes = require('./routes/mealTypeRoutes');
 const swaggerUi = require('swagger-ui-express');
@@ -324,6 +325,7 @@ app.use('/api/v2/exercise-entries', v2ExerciseEntryRoutes);
 app.use('/api/food-entries', foodEntryRoutes);
 app.use('/api/food-entry-meals', foodEntryMealRoutes);
 app.use('/api/meals', mealRoutes);
+app.use("/api/daily-summary", dailySummaryRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/user-preferences', preferenceRoutes);
