@@ -10,7 +10,10 @@ async function upsertAiServiceSetting(settingData) {
     let apiKeyTag = settingData.api_key_tag || null;
 
     if (settingData.api_key) {
-      const { encryptedText, iv, tag } = await encrypt(settingData.api_key, ENCRYPTION_KEY);
+      const { encryptedText, iv, tag } = await encrypt(
+        settingData.api_key,
+        ENCRYPTION_KEY
+      );
       encryptedApiKey = encryptedText;
       apiKeyIv = iv;
       apiKeyTag = tag;
@@ -28,10 +31,16 @@ async function upsertAiServiceSetting(settingData) {
           updated_at = now()
         WHERE id = $10 RETURNING *`,
         [
-          settingData.service_name, settingData.service_type, settingData.custom_url,
-          settingData.system_prompt, settingData.is_active, settingData.model_name,
-          encryptedApiKey, apiKeyIv, apiKeyTag,
-          settingData.id
+          settingData.service_name,
+          settingData.service_type,
+          settingData.custom_url,
+          settingData.system_prompt,
+          settingData.is_active,
+          settingData.model_name,
+          encryptedApiKey,
+          apiKeyIv,
+          apiKeyTag,
+          settingData.id,
         ]
       );
       return result.rows[0];
@@ -43,9 +52,16 @@ async function upsertAiServiceSetting(settingData) {
           is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now()) RETURNING *`,
         [
-          settingData.user_id, settingData.service_name, settingData.service_type,
-          settingData.custom_url, settingData.system_prompt, settingData.is_active,
-          settingData.model_name, encryptedApiKey, apiKeyIv, apiKeyTag
+          settingData.user_id,
+          settingData.service_name,
+          settingData.service_type,
+          settingData.custom_url,
+          settingData.system_prompt,
+          settingData.is_active,
+          settingData.model_name,
+          encryptedApiKey,
+          apiKeyIv,
+          apiKeyTag,
         ]
       );
       return result.rows[0];
@@ -67,16 +83,28 @@ async function getAiServiceSettingForBackend(id, userId) {
     if (!setting) return null;
 
     let decryptedApiKey = null;
-    if (setting.encrypted_api_key && setting.api_key_iv && setting.api_key_tag) {
+    if (
+      setting.encrypted_api_key &&
+      setting.api_key_iv &&
+      setting.api_key_tag
+    ) {
       try {
-        decryptedApiKey = await decrypt(setting.encrypted_api_key, setting.api_key_iv, setting.api_key_tag, ENCRYPTION_KEY);
+        decryptedApiKey = await decrypt(
+          setting.encrypted_api_key,
+          setting.api_key_iv,
+          setting.api_key_tag,
+          ENCRYPTION_KEY
+        );
       } catch (e) {
         log('error', 'Error decrypting API key for AI service setting:', id, e);
       }
     }
-    
+
     const source = setting.is_public ? 'global' : 'user';
-    log('debug', `Retrieved AI service setting ${id} (source: ${source}) for user ${userId}`);
+    log(
+      'debug',
+      `Retrieved AI service setting ${id} (source: ${source}) for user ${userId}`
+    );
     return { ...setting, api_key: decryptedApiKey, source };
   } finally {
     client.release();
@@ -117,18 +145,24 @@ async function getAiServiceSettingsByUserId(userId) {
       'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_public = FALSE AND user_id = $1 ORDER BY created_at DESC',
       [userId]
     );
-    
+
     // Get global settings (all authenticated users can read)
     const globalResult = await client.query(
       'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
       []
     );
-    
+
     // Combine results: user settings first, then public settings
     // Add is_public flag to distinguish them
-    const userSettings = userResult.rows.map(row => ({ ...row, is_public: false }));
-    const publicSettings = globalResult.rows.map(row => ({ ...row, is_public: true }));
-    
+    const userSettings = userResult.rows.map((row) => ({
+      ...row,
+      is_public: false,
+    }));
+    const publicSettings = globalResult.rows.map((row) => ({
+      ...row,
+      is_public: true,
+    }));
+
     return [...userSettings, ...publicSettings];
   } finally {
     client.release();
@@ -143,25 +177,31 @@ async function getActiveAiServiceSetting(userId) {
       'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_public = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
       [userId]
     );
-    
+
     if (userResult.rows.length > 0) {
       const setting = userResult.rows[0];
-      log('debug', `Using user-specific AI service setting for user ${userId}: ${setting.id}`);
+      log(
+        'debug',
+        `Using user-specific AI service setting for user ${userId}: ${setting.id}`
+      );
       return { ...setting, source: 'user' };
     }
-    
+
     // Priority 2: Database global active setting
     const globalResult = await client.query(
       'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_public = TRUE ORDER BY created_at DESC LIMIT 1',
       []
     );
-    
+
     if (globalResult.rows.length > 0) {
       const setting = globalResult.rows[0];
-      log('debug', `Using global database AI service setting for user ${userId}: ${setting.id}`);
+      log(
+        'debug',
+        `Using global database AI service setting for user ${userId}: ${setting.id}`
+      );
       return { ...setting, source: 'global' };
     }
-    
+
     log('debug', `No active AI service setting found for user ${userId}`);
     return null;
   } finally {
@@ -172,10 +212,13 @@ async function getActiveAiServiceSetting(userId) {
 async function clearOldChatHistory(userId) {
   const client = await getClient(userId);
   try {
-    await client.query(`
+    await client.query(
+      `
       DELETE FROM sparky_chat_history
       WHERE created_at < NOW() - INTERVAL '7 days'
-    `, []);
+    `,
+      []
+    );
     return true;
   } finally {
     client.release();
@@ -235,7 +278,15 @@ async function updateChatHistoryEntry(id, userId, updateData) {
         updated_at = now()
       WHERE id = $7
       RETURNING *`,
-      [updateData.content, updateData.message_type, updateData.metadata, updateData.session_id, updateData.message, updateData.response, id]
+      [
+        updateData.content,
+        updateData.message_type,
+        updateData.metadata,
+        updateData.session_id,
+        updateData.message,
+        updateData.response,
+        id,
+      ]
     );
     return result.rows[0];
   } finally {
@@ -259,10 +310,7 @@ async function deleteChatHistoryEntry(id, userId) {
 async function clearAllChatHistory(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
-    await client.query(
-      'DELETE FROM sparky_chat_history',
-      []
-    );
+    await client.query('DELETE FROM sparky_chat_history', []);
     return true;
   } finally {
     client.release();
@@ -275,7 +323,12 @@ async function saveChatHistory(historyData) {
     await client.query(
       `INSERT INTO sparky_chat_history (user_id, content, message_type, metadata, created_at)
        VALUES ($1, $2, $3, $4, now())`,
-      [historyData.user_id, historyData.content, historyData.messageType, historyData.metadata]
+      [
+        historyData.user_id,
+        historyData.content,
+        historyData.messageType,
+        historyData.metadata,
+      ]
     );
     return true;
   } finally {
@@ -291,7 +344,10 @@ async function upsertGlobalAiServiceSetting(settingData) {
     let apiKeyTag = settingData.api_key_tag || null;
 
     if (settingData.api_key) {
-      const { encryptedText, iv, tag } = await encrypt(settingData.api_key, ENCRYPTION_KEY);
+      const { encryptedText, iv, tag } = await encrypt(
+        settingData.api_key,
+        ENCRYPTION_KEY
+      );
       encryptedApiKey = encryptedText;
       apiKeyIv = iv;
       apiKeyTag = tag;
@@ -309,10 +365,16 @@ async function upsertGlobalAiServiceSetting(settingData) {
           updated_at = now()
         WHERE id = $10 AND is_public = TRUE RETURNING *`,
         [
-          settingData.service_name, settingData.service_type, settingData.custom_url,
-          settingData.system_prompt, settingData.is_active, settingData.model_name,
-          encryptedApiKey, apiKeyIv, apiKeyTag,
-          settingData.id
+          settingData.service_name,
+          settingData.service_type,
+          settingData.custom_url,
+          settingData.system_prompt,
+          settingData.is_active,
+          settingData.model_name,
+          encryptedApiKey,
+          apiKeyIv,
+          apiKeyTag,
+          settingData.id,
         ]
       );
       return result.rows[0];
@@ -324,9 +386,15 @@ async function upsertGlobalAiServiceSetting(settingData) {
           is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, created_at, updated_at
         ) VALUES (NULL, TRUE, $1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now()) RETURNING *`,
         [
-          settingData.service_name, settingData.service_type,
-          settingData.custom_url, settingData.system_prompt, settingData.is_active,
-          settingData.model_name, encryptedApiKey, apiKeyIv, apiKeyTag
+          settingData.service_name,
+          settingData.service_type,
+          settingData.custom_url,
+          settingData.system_prompt,
+          settingData.is_active,
+          settingData.model_name,
+          encryptedApiKey,
+          apiKeyIv,
+          apiKeyTag,
         ]
       );
       return result.rows[0];

@@ -46,19 +46,26 @@ const exerciseService = require('../services/exerciseService');
  *         description: Error adding free-exercise-db exercise.
  */
 router.post('/add', authenticate, async (req, res, next) => {
-    try {
-        const { exerciseId } = req.body;
-        if (!exerciseId) {
-            return res.status(400).json({ message: 'Exercise ID is required.' });
-        }
-
-        const authenticatedUserId = req.userId;
-        const newExercise = await exerciseService.addFreeExerciseDBExerciseToUserExercises(authenticatedUserId, exerciseId);
-        res.status(201).json(newExercise);
-    } catch (error) {
-        console.error('[freeExerciseDBRoutes] Error adding free-exercise-db exercise:', error);
-        next(error); // Pass error to centralized error handler
+  try {
+    const { exerciseId } = req.body;
+    if (!exerciseId) {
+      return res.status(400).json({ message: 'Exercise ID is required.' });
     }
+
+    const authenticatedUserId = req.userId;
+    const newExercise =
+      await exerciseService.addFreeExerciseDBExerciseToUserExercises(
+        authenticatedUserId,
+        exerciseId
+      );
+    res.status(201).json(newExercise);
+  } catch (error) {
+    console.error(
+      '[freeExerciseDBRoutes] Error adding free-exercise-db exercise:',
+      error
+    );
+    next(error); // Pass error to centralized error handler
+  }
 });
 
 module.exports = router;

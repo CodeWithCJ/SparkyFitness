@@ -18,5 +18,13 @@
     }
   },
   "include": ["**/*.ts", "../shared/src"],
-  "exclude": ["node_modules", "dist", "coverage", "backup", "uploads", "temp_uploads", "mock_data"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "backup",
+    "uploads",
+    "temp_uploads",
+    "mock_data"
+  ]
 }

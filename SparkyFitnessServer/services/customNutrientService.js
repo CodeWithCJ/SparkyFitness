@@ -1,6 +1,6 @@
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
-const { v4: uuidv4 } = require("uuid");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
+const { v4: uuidv4 } = require('uuid');
 
 class CustomNutrientService {
   /**
@@ -17,16 +17,16 @@ class CustomNutrientService {
         `INSERT INTO user_custom_nutrients (id, user_id, name, unit)
                      VALUES ($1, $2, $3, $4)
                      RETURNING *`,
-        [id, userId, name, unit],
+        [id, userId, name, unit]
       );
-      log("info", `Custom nutrient created: ${name} for user ${userId}`);
+      log('info', `Custom nutrient created: ${name} for user ${userId}`);
 
       // Automatically add to specific views (Food Database, Goal, Reports)
       try {
-        const nutrientDisplayPreferenceService = require("./nutrientDisplayPreferenceService");
+        const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
         await nutrientDisplayPreferenceService.addNutrientToSpecificViews(
           userId,
-          name,
+          name
         );
 
         // Also add to goal_presets and future user_goals with 0 value
@@ -38,18 +38,17 @@ class CustomNutrientService {
           [name, userId]
         );
 
-        const today = new Date().toISOString().split("T")[0];
+        const today = new Date().toISOString().split('T')[0];
         await client.query(
           `UPDATE user_goals 
            SET custom_nutrients = jsonb_set(custom_nutrients, ARRAY[$1], '0'::jsonb) 
            WHERE user_id = $2 AND (goal_date >= $3 OR goal_date IS NULL)`,
           [name, userId, today]
         );
-
       } catch (autoAddError) {
         log(
-          "error",
-          `Failed to automatically add custom nutrient ${name} to views or goals: ${autoAddError.message}`,
+          'error',
+          `Failed to automatically add custom nutrient ${name} to views or goals: ${autoAddError.message}`
         );
         // We don't want to fail the whole creation if preference/goal update fails
       }
@@ -71,11 +70,11 @@ class CustomNutrientService {
       const result = await client.query(
         `SELECT * FROM user_custom_nutrients
                      WHERE user_id = $1`,
-        [userId],
+        [userId]
       );
       log(
-        "info",
-        `CustomNutrientService.getCustomNutrients: Fetched ${result.rows.length} custom nutrients for user ${userId}. Data: ${JSON.stringify(result.rows)}`,
+        'info',
+        `CustomNutrientService.getCustomNutrients: Fetched ${result.rows.length} custom nutrients for user ${userId}. Data: ${JSON.stringify(result.rows)}`
       );
       return result.rows;
     } finally {
@@ -95,7 +94,7 @@ class CustomNutrientService {
       const result = await client.query(
         `SELECT * FROM user_custom_nutrients
                  WHERE id = $1 AND user_id = $2`,
-        [id, userId],
+        [id, userId]
       );
       return result.rows[0] || null;
     } finally {
@@ -120,10 +119,10 @@ class CustomNutrientService {
                          updated_at = NOW()
                      WHERE id = $3 AND user_id = $4
                      RETURNING *`,
-        [name, unit, id, userId],
+        [name, unit, id, userId]
       );
       if (result.rows.length > 0) {
-        log("info", `Custom nutrient updated: ${id} for user ${userId}`);
+        log('info', `Custom nutrient updated: ${id} for user ${userId}`);
         return result.rows[0];
       }
       return null;
@@ -144,8 +143,8 @@ class CustomNutrientService {
     try {
       // 1. Get the nutrient name first so we know what to clean up from JSONB
       const nutrientRes = await client.query(
-        "SELECT name FROM user_custom_nutrients WHERE id = $1 AND user_id = $2",
-        [id, userId],
+        'SELECT name FROM user_custom_nutrients WHERE id = $1 AND user_id = $2',
+        [id, userId]
       );
 
       if (nutrientRes.rows.length === 0) {
@@ -154,77 +153,77 @@ class CustomNutrientService {
 
       const nutrientName = nutrientRes.rows[0].name;
       log(
-        "info",
-        `Deleting custom nutrient "${nutrientName}" for user ${userId}. Delete history: ${deleteAllHistory}`,
+        'info',
+        `Deleting custom nutrient "${nutrientName}" for user ${userId}. Delete history: ${deleteAllHistory}`
       );
 
       // Start transaction for atomic cleanup
-      await client.query("BEGIN");
+      await client.query('BEGIN');
 
       // 2. Remove the definition
       await client.query(
-        "DELETE FROM user_custom_nutrients WHERE id = $1 AND user_id = $2",
-        [id, userId],
+        'DELETE FROM user_custom_nutrients WHERE id = $1 AND user_id = $2',
+        [id, userId]
       );
 
       // 3. Remove from UI Display Preferences (Always)
-      const nutrientDisplayPreferenceService = require("./nutrientDisplayPreferenceService");
+      const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
       await nutrientDisplayPreferenceService.removeNutrientFromAllViews(
         userId,
-        nutrientName,
+        nutrientName
       );
 
       // 4. Remove from Goal Presets (Always)
       await client.query(
-        "UPDATE goal_presets SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2",
-        [nutrientName, userId],
+        'UPDATE goal_presets SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2',
+        [nutrientName, userId]
       );
 
       // 5. Remove from Food Database (Always - standardizes the library)
       await client.query(
         `UPDATE food_variants SET custom_nutrients = custom_nutrients - $1 
          WHERE food_id IN (SELECT id FROM foods WHERE user_id = $2)`,
-        [nutrientName, userId],
+        [nutrientName, userId]
       );
 
       // 6. Remove from Future Goals (Always - date >= today)
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date().toISOString().split('T')[0];
       await client.query(
-        "UPDATE user_goals SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2 AND (goal_date >= $3 OR goal_date IS NULL)",
-        [nutrientName, userId, today],
+        'UPDATE user_goals SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2 AND (goal_date >= $3 OR goal_date IS NULL)',
+        [nutrientName, userId, today]
       );
 
       // 7. Optional: Remove from History (Diary Entries and Past Goals)
       if (deleteAllHistory) {
         log(
-          "info",
-          `Cleaning up historical data for nutrient "${nutrientName}" for user ${userId}`,
+          'info',
+          `Cleaning up historical data for nutrient "${nutrientName}" for user ${userId}`
         );
 
         // Remove from all Diary Entries
         await client.query(
-          "UPDATE food_entries SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2",
-          [nutrientName, userId],
+          'UPDATE food_entries SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2',
+          [nutrientName, userId]
         );
 
         // Remove from all Past Goals
         await client.query(
-          "UPDATE user_goals SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2 AND goal_date < $3",
-          [nutrientName, userId, today],
+          'UPDATE user_goals SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2 AND goal_date < $3',
+          [nutrientName, userId, today]
         );
       }
 
-      await client.query("COMMIT");
+      await client.query('COMMIT');
       log(
-        "info",
-        `Successfully deleted custom nutrient "${nutrientName}" and performed cascading cleanup for user ${userId}`,
+        'info',
+        `Successfully deleted custom nutrient "${nutrientName}" and performed cascading cleanup for user ${userId}`
       );
       return true;
     } catch (error) {
-      await client.query("ROLLBACK");
+      await client.query('ROLLBACK');
       log(
-        "error",
-        `Failed to delete custom nutrient ${id} for user ${userId}: ${error.message}`,
+        'error',
+        `Failed to delete custom nutrient ${id} for user ${userId}: ${error.message}`
       );
       throw error;
     } finally {

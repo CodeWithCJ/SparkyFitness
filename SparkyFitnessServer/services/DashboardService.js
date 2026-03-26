@@ -1,12 +1,12 @@
-const goalRepository = require("../models/goalRepository");
-const reportRepository = require("../models/reportRepository");
-const measurementRepository = require("../models/measurementRepository");
-const userRepository = require("../models/userRepository");
-const preferenceRepository = require("../models/preferenceRepository");
-const bmrService = require("./bmrService");
-const adaptiveTdeeService = require("./AdaptiveTdeeService");
-const { log } = require("../config/logging");
-const { CALORIE_CALCULATION_CONSTANTS } = require("@workspace/shared");
+const goalRepository = require('../models/goalRepository');
+const reportRepository = require('../models/reportRepository');
+const measurementRepository = require('../models/measurementRepository');
+const userRepository = require('../models/userRepository');
+const preferenceRepository = require('../models/preferenceRepository');
+const bmrService = require('./bmrService');
+const adaptiveTdeeService = require('./AdaptiveTdeeService');
+const { log } = require('../config/logging');
+const { CALORIE_CALCULATION_CONSTANTS } = require('@workspace/shared');
 
 /**
  * Aggregates stats for external dashboards (like gethomepage.dev).
@@ -46,7 +46,7 @@ async function getDashboardStats(userId, date) {
     let otherCalories = 0;
     let activitySteps = 0;
     exerciseEntries.forEach((entry) => {
-      if (entry.exercise_name === "Active Calories") {
+      if (entry.exercise_name === 'Active Calories') {
         activeCalories += parseFloat(entry.calories_burned || 0);
       } else {
         otherCalories += parseFloat(entry.calories_burned || 0);
@@ -58,10 +58,10 @@ async function getDashboardStats(userId, date) {
     const stepsCount = parseInt(checkInMeasurements?.steps || 0);
     const backgroundSteps = Math.max(0, stepsCount - activitySteps);
 
-    let weightKg =
+    const weightKg =
       parseFloat(latestMeasurements?.weight) ||
       CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
-    let heightCm =
+    const heightCm =
       parseFloat(latestMeasurements?.height) ||
       CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
 
@@ -73,13 +73,13 @@ async function getDashboardStats(userId, date) {
     const backgroundStepCalories = Math.round(
       distanceKm *
         weightKg *
-        CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM,
+        CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM
     );
 
     // 5. BMR & Activity Baselines
     let bmr = 0;
     const includeInNet = userPreferences?.include_bmr_in_net_calories || false;
-    const activityLevel = userPreferences?.activity_level || "not_much";
+    const activityLevel = userPreferences?.activity_level || 'not_much';
     const multiplier = bmrService.ActivityMultiplier[activityLevel] || 1.2;
 
     if (userProfile && userPreferences) {
@@ -94,8 +94,8 @@ async function getDashboardStats(userId, date) {
           age--;
         }
       }
-      const gender = userProfile.gender || "male";
-      const bmrAlgorithm = userPreferences.bmr_algorithm || "Mifflin-St Jeor";
+      const gender = userProfile.gender || 'male';
+      const bmrAlgorithm = userPreferences.bmr_algorithm || 'Mifflin-St Jeor';
       const bodyFat = latestMeasurements?.body_fat_percentage;
 
       try {
@@ -105,15 +105,16 @@ async function getDashboardStats(userId, date) {
           parseFloat(latestMeasurements?.height) || 170,
           age,
           gender,
-          bodyFat,
+          bodyFat
         );
       } catch (error) {
-        log("warn", `DashboardService: BMR calc failed: ${error.message}`);
+        log('warn', `DashboardService: BMR calc failed: ${error.message}`);
       }
     }
 
     const sparkyfitnessBurned = Math.round(bmr * multiplier);
-    const calorieGoalOffset = bmr > 0 ? rawGoalCalories - sparkyfitnessBurned : 0;
+    const calorieGoalOffset =
+      bmr > 0 ? rawGoalCalories - sparkyfitnessBurned : 0;
 
     // 3-tier fallback to avoid double-counting
     // We compare:
@@ -121,9 +122,8 @@ async function getDashboardStats(userId, date) {
     // 2. Individual workouts + background steps
     // We take whichever is larger.
     const workoutPlusSteps = otherCalories + backgroundStepCalories;
-    const exerciseCalories = activeCalories >= workoutPlusSteps 
-      ? activeCalories 
-      : workoutPlusSteps;
+    const exerciseCalories =
+      activeCalories >= workoutPlusSteps ? activeCalories : workoutPlusSteps;
     const bmrToAdd = includeInNet ? bmr : 0;
     const totalBurned = exerciseCalories + bmrToAdd;
 
@@ -133,27 +133,27 @@ async function getDashboardStats(userId, date) {
     let remaining = 0;
     let finalGoalCalories = rawGoalCalories;
     const adjustmentMode =
-      userPreferences?.calorie_goal_adjustment_mode || "dynamic";
+      userPreferences?.calorie_goal_adjustment_mode || 'dynamic';
     const exerciseCaloriePercentage =
       userPreferences?.exercise_calorie_percentage ?? 100;
     const allowNegativeAdjustment =
       userPreferences?.tdee_allow_negative_adjustment ?? false;
 
     // Apply Adaptive TDEE baseline if mode is active and BMR is available
-    if (adjustmentMode === "adaptive" && adaptiveTdeeData && bmr > 0) {
+    if (adjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
       finalGoalCalories = Math.round(adaptiveTdeeData.tdee + calorieGoalOffset);
     }
 
-    if (adjustmentMode === "dynamic") {
+    if (adjustmentMode === 'dynamic') {
       // 100% of all burned calories credited
       remaining = finalGoalCalories - netCalories;
-    } else if (adjustmentMode === "percentage") {
+    } else if (adjustmentMode === 'percentage') {
       // Only a percentage of exercise calories are credited
       const adjustedExerciseBurned =
         exerciseCalories * (exerciseCaloriePercentage / 100);
       const adjustedTotalBurned = adjustedExerciseBurned + bmrToAdd;
       remaining = finalGoalCalories - (eatenCalories - adjustedTotalBurned);
-    } else if (adjustmentMode === "tdee" || adjustmentMode === "smart") {
+    } else if (adjustmentMode === 'tdee' || adjustmentMode === 'smart') {
       // Device Projection (TDEE adjustment)
       // For dashboard, we assume current time is "now" for projection
       const now = new Date();
@@ -172,7 +172,7 @@ async function getDashboardStats(userId, date) {
       }
 
       remaining = finalGoalCalories - eatenCalories + tdeeAdjustment;
-    } else if (adjustmentMode === "adaptive") {
+    } else if (adjustmentMode === 'adaptive') {
       remaining = finalGoalCalories - eatenCalories;
     } else {
       // fixed: no exercise calories credited
@@ -195,13 +195,13 @@ async function getDashboardStats(userId, date) {
       progress: Math.round(progress),
       steps: stepsCount,
       bmr: Math.round(bmr),
-      unit: "kcal",
+      unit: 'kcal',
     };
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error calculating Dashboard stats for user ${userId}:`,
-      error,
+      error
     );
     throw error;
   }

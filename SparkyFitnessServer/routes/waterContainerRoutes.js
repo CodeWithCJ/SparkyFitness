@@ -22,12 +22,15 @@ const waterContainerService = require('../services/waterContainerService');
  *         description: Water container created successfully.
  */
 router.post('/', authenticate, async (req, res, next) => {
-    try {
-        const container = await waterContainerService.createWaterContainer(req.userId, req.body);
-        res.status(201).json(container);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const container = await waterContainerService.createWaterContainer(
+      req.userId,
+      req.body
+    );
+    res.status(201).json(container);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
@@ -49,20 +52,26 @@ router.post('/', authenticate, async (req, res, next) => {
  *                 $ref: '#/components/schemas/WaterContainer'
  */
 router.get('/', authenticate, async (req, res, next) => {
-    try {
-        const { userId } = req.query;
-        const targetUserId = userId || req.userId;
+  try {
+    const { userId } = req.query;
+    const targetUserId = userId || req.userId;
 
-        if (targetUserId !== req.userId) {
-            const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId); // Assuming diary permission allows viewing containers
-            if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
-        }
-
-        const containers = await waterContainerService.getWaterContainersByUserId(targetUserId);
-        res.status(200).json(containers);
-    } catch (error) {
-        next(error);
+    if (targetUserId !== req.userId) {
+      const hasPermission =
+        await require('../utils/permissionUtils').canAccessUserData(
+          targetUserId,
+          'diary',
+          req.userId
+        ); // Assuming diary permission allows viewing containers
+      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
+
+    const containers =
+      await waterContainerService.getWaterContainersByUserId(targetUserId);
+    res.status(200).json(containers);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
@@ -90,15 +99,21 @@ router.get('/', authenticate, async (req, res, next) => {
  *         description: Water container updated successfully.
  */
 router.put('/:id', authenticate, async (req, res, next) => {
-    try {
-        const container = await waterContainerService.updateWaterContainer(req.params.id, req.userId, req.body);
-        if (!container) {
-            return res.status(404).json({ error: 'Container not found or not authorized.' });
-        }
-        res.status(200).json(container);
-    } catch (error) {
-        next(error);
+  try {
+    const container = await waterContainerService.updateWaterContainer(
+      req.params.id,
+      req.userId,
+      req.body
+    );
+    if (!container) {
+      return res
+        .status(404)
+        .json({ error: 'Container not found or not authorized.' });
     }
+    res.status(200).json(container);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
@@ -121,15 +136,18 @@ router.put('/:id', authenticate, async (req, res, next) => {
  *         description: Deleted successfully.
  */
 router.delete('/:id', authenticate, async (req, res, next) => {
-    try {
-        const result = await waterContainerService.deleteWaterContainer(req.params.id, req.userId);
-        res.status(200).json(result);
-    } catch (error) {
-        if (error.message.includes('not found')) {
-            return res.status(404).json({ error: error.message });
-        }
-        next(error);
+  try {
+    const result = await waterContainerService.deleteWaterContainer(
+      req.params.id,
+      req.userId
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: error.message });
     }
+    next(error);
+  }
 });
 
 /**
@@ -152,15 +170,20 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *         description: Primary container set successfully.
  */
 router.put('/:id/set-primary', authenticate, async (req, res, next) => {
-    try {
-        const container = await waterContainerService.setPrimaryWaterContainer(req.params.id, req.userId);
-        if (!container) {
-            return res.status(404).json({ error: 'Container not found or not authorized.' });
-        }
-        res.status(200).json(container);
-    } catch (error) {
-        next(error);
+  try {
+    const container = await waterContainerService.setPrimaryWaterContainer(
+      req.params.id,
+      req.userId
+    );
+    if (!container) {
+      return res
+        .status(404)
+        .json({ error: 'Container not found or not authorized.' });
     }
+    res.status(200).json(container);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
@@ -176,33 +199,41 @@ router.put('/:id/set-primary', authenticate, async (req, res, next) => {
  *         description: The primary water container.
  */
 router.get('/primary', authenticate, async (req, res, next) => {
-    try {
-        const { userId } = req.query;
-        const targetUserId = userId || req.userId;
+  try {
+    const { userId } = req.query;
+    const targetUserId = userId || req.userId;
 
-        if (targetUserId !== req.userId) {
-            const hasPermission = await require('../utils/permissionUtils').canAccessUserData(targetUserId, 'diary', req.userId);
-            if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
-        }
-
-        const primaryContainer = await waterContainerService.getPrimaryWaterContainerByUserId(targetUserId);
-        if (primaryContainer) {
-            res.status(200).json(primaryContainer);
-        } else {
-            // Return a default container if no primary is found
-            res.status(200).json({
-                id: null, // Indicate no actual container ID
-                user_id: targetUserId,
-                name: 'Default Container',
-                volume: 2000, // Default to 2000ml
-                unit: 'ml',
-                is_primary: true,
-                servings_per_container: 8, // Default to 8 servings
-            });
-        }
-    } catch (error) {
-        next(error);
+    if (targetUserId !== req.userId) {
+      const hasPermission =
+        await require('../utils/permissionUtils').canAccessUserData(
+          targetUserId,
+          'diary',
+          req.userId
+        );
+      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
+
+    const primaryContainer =
+      await waterContainerService.getPrimaryWaterContainerByUserId(
+        targetUserId
+      );
+    if (primaryContainer) {
+      res.status(200).json(primaryContainer);
+    } else {
+      // Return a default container if no primary is found
+      res.status(200).json({
+        id: null, // Indicate no actual container ID
+        user_id: targetUserId,
+        name: 'Default Container',
+        volume: 2000, // Default to 2000ml
+        unit: 'ml',
+        is_primary: true,
+        servings_per_container: 8, // Default to 8 servings
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;

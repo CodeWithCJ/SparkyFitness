@@ -2,7 +2,10 @@ const request = require('supertest');
 const express = require('express');
 const mealRoutes = require('../routes/mealRoutes');
 const mealService = require('../services/mealService');
-const { authenticateToken, authorizeAccess } = require('../middleware/authMiddleware');
+const {
+  authenticateToken,
+  authorizeAccess,
+} = require('../middleware/authMiddleware');
 const errorHandler = require('../middleware/errorHandler');
 const { v4: uuidv4 } = require('uuid');
 
@@ -17,9 +20,11 @@ jest.mock('../middleware/authMiddleware', () => ({
     req.userId = 'testUserId';
     next();
   }),
-  authorizeAccess: jest.fn((permission, getTargetUserId) => (req, res, next) => {
-    next();
-  }),
+  authorizeAccess: jest.fn(
+    (permission, getTargetUserId) => (req, res, next) => {
+      next();
+    }
+  ),
 }));
 
 const app = express();
@@ -45,11 +50,16 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(201);
       expect(res.body).toEqual(newMeal);
-      expect(mealService.createMeal).toHaveBeenCalledWith('testUserId', { name: 'New Meal', foods: [] });
+      expect(mealService.createMeal).toHaveBeenCalledWith('testUserId', {
+        name: 'New Meal',
+        foods: [],
+      });
     });
 
     it('should return 500 if meal creation fails', async () => {
-      mealService.createMeal.mockRejectedValue(new Error('Failed to create meal'));
+      mealService.createMeal.mockRejectedValue(
+        new Error('Failed to create meal')
+      );
 
       const res = await request(app)
         .post('/meals')
@@ -69,7 +79,11 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(meals);
-      expect(mealService.getMeals).toHaveBeenCalledWith('testUserId', undefined, undefined);
+      expect(mealService.getMeals).toHaveBeenCalledWith(
+        'testUserId',
+        undefined,
+        undefined
+      );
     });
 
     it('should return public meals when filter is public', async () => {
@@ -80,7 +94,11 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(meals);
-      expect(mealService.getMeals).toHaveBeenCalledWith('testUserId', 'public', undefined);
+      expect(mealService.getMeals).toHaveBeenCalledWith(
+        'testUserId',
+        'public',
+        undefined
+      );
     });
   });
 
@@ -94,7 +112,10 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(meal);
-      expect(mealService.getMealById).toHaveBeenCalledWith('testUserId', mealId);
+      expect(mealService.getMealById).toHaveBeenCalledWith(
+        'testUserId',
+        mealId
+      );
     });
 
     it('should return 404 if meal not found', async () => {
@@ -107,12 +128,17 @@ describe('Meal Routes', () => {
     });
 
     it('should return 403 if not authorized to access meal', async () => {
-      mealService.getMealById.mockRejectedValue(new Error('Forbidden: You do not have permission to access this meal.'));
+      mealService.getMealById.mockRejectedValue(
+        new Error('Forbidden: You do not have permission to access this meal.')
+      );
 
       const res = await request(app).get(`/meals/${uuidv4()}`);
 
       expect(res.statusCode).toEqual(403);
-      expect(res.body).toHaveProperty('error', 'Forbidden: You do not have permission to access this meal.');
+      expect(res.body).toHaveProperty(
+        'error',
+        'Forbidden: You do not have permission to access this meal.'
+      );
     });
   });
 
@@ -128,7 +154,11 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(updatedMeal);
-      expect(mealService.updateMeal).toHaveBeenCalledWith('testUserId', mealId, { name: 'Updated Meal', foods: [] });
+      expect(mealService.updateMeal).toHaveBeenCalledWith(
+        'testUserId',
+        mealId,
+        { name: 'Updated Meal', foods: [] }
+      );
     });
 
     it('should return 404 if meal not found during update', async () => {
@@ -151,7 +181,10 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toHaveProperty('message', 'Meal deleted successfully.');
-      expect(mealService.deleteMeal).toHaveBeenCalledWith('testUserId', expect.any(String));
+      expect(mealService.deleteMeal).toHaveBeenCalledWith(
+        'testUserId',
+        expect.any(String)
+      );
     });
 
     it('should return 404 if meal not found during delete', async () => {
@@ -177,7 +210,10 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(201);
       expect(res.body).toEqual(newPlanEntry);
-      expect(mealService.createMealPlanEntry).toHaveBeenCalledWith('testUserId', { meal_type: 'breakfast', plan_date: '2024-07-15' });
+      expect(mealService.createMealPlanEntry).toHaveBeenCalledWith(
+        'testUserId',
+        { meal_type: 'breakfast', plan_date: '2024-07-15' }
+      );
     });
   });
 
@@ -186,17 +222,26 @@ describe('Meal Routes', () => {
       const planEntries = [{ id: uuidv4(), meal_type: 'lunch' }];
       mealService.getMealPlanEntries.mockResolvedValue(planEntries);
 
-      const res = await request(app).get('/meals/plan?startDate=2024-07-01&endDate=2024-07-31');
+      const res = await request(app).get(
+        '/meals/plan?startDate=2024-07-01&endDate=2024-07-31'
+      );
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(planEntries);
-      expect(mealService.getMealPlanEntries).toHaveBeenCalledWith('testUserId', '2024-07-01', '2024-07-31');
+      expect(mealService.getMealPlanEntries).toHaveBeenCalledWith(
+        'testUserId',
+        '2024-07-01',
+        '2024-07-31'
+      );
     });
 
     it('should return 400 if startDate or endDate are missing', async () => {
       const res = await request(app).get('/meals/plan?startDate=2024-07-01');
       expect(res.statusCode).toEqual(400);
-      expect(res.body).toHaveProperty('error', 'startDate and endDate are required for meal plan retrieval.');
+      expect(res.body).toHaveProperty(
+        'error',
+        'startDate and endDate are required for meal plan retrieval.'
+      );
     });
   });
 
@@ -212,18 +257,27 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(updatedPlanEntry);
-      expect(mealService.updateMealPlanEntry).toHaveBeenCalledWith('testUserId', planId, { meal_type: 'dinner' });
+      expect(mealService.updateMealPlanEntry).toHaveBeenCalledWith(
+        'testUserId',
+        planId,
+        { meal_type: 'dinner' }
+      );
     });
 
     it('should return 404 if meal plan entry not found during update', async () => {
-      mealService.updateMealPlanEntry.mockRejectedValue(new Error('Meal plan entry not found or not authorized.'));
+      mealService.updateMealPlanEntry.mockRejectedValue(
+        new Error('Meal plan entry not found or not authorized.')
+      );
 
       const res = await request(app)
         .put(`/meals/plan/${uuidv4()}`)
         .send({ meal_type: 'dinner' });
 
       expect(res.statusCode).toEqual(404);
-      expect(res.body).toHaveProperty('error', 'Meal plan entry not found or not authorized.');
+      expect(res.body).toHaveProperty(
+        'error',
+        'Meal plan entry not found or not authorized.'
+      );
     });
   });
 
@@ -234,17 +288,28 @@ describe('Meal Routes', () => {
       const res = await request(app).delete(`/meals/plan/${uuidv4()}`);
 
       expect(res.statusCode).toEqual(200);
-      expect(res.body).toHaveProperty('message', 'Meal plan entry deleted successfully.');
-      expect(mealService.deleteMealPlanEntry).toHaveBeenCalledWith('testUserId', expect.any(String));
+      expect(res.body).toHaveProperty(
+        'message',
+        'Meal plan entry deleted successfully.'
+      );
+      expect(mealService.deleteMealPlanEntry).toHaveBeenCalledWith(
+        'testUserId',
+        expect.any(String)
+      );
     });
 
     it('should return 404 if meal plan entry not found during delete', async () => {
-      mealService.deleteMealPlanEntry.mockRejectedValue(new Error('Meal plan entry not found or not authorized.'));
+      mealService.deleteMealPlanEntry.mockRejectedValue(
+        new Error('Meal plan entry not found or not authorized.')
+      );
 
       const res = await request(app).delete(`/meals/plan/${uuidv4()}`);
 
       expect(res.statusCode).toEqual(404);
-      expect(res.body).toHaveProperty('error', 'Meal plan entry not found or not authorized.');
+      expect(res.body).toHaveProperty(
+        'error',
+        'Meal plan entry not found or not authorized.'
+      );
     });
   });
 
@@ -262,18 +327,27 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(201);
       expect(res.body).toEqual(createdFoodEntries);
-      expect(mealService.logMealPlanEntryToDiary).toHaveBeenCalledWith('testUserId', mealPlanId, '2024-07-16');
+      expect(mealService.logMealPlanEntryToDiary).toHaveBeenCalledWith(
+        'testUserId',
+        mealPlanId,
+        '2024-07-16'
+      );
     });
 
     it('should return 404 if meal plan entry not found during logging', async () => {
-      mealService.logMealPlanEntryToDiary.mockRejectedValue(new Error('Meal plan entry not found or not authorized.'));
+      mealService.logMealPlanEntryToDiary.mockRejectedValue(
+        new Error('Meal plan entry not found or not authorized.')
+      );
 
       const res = await request(app)
         .post(`/meals/plan/${uuidv4()}/log-to-diary`)
         .send({ target_date: '2024-07-16' });
 
       expect(res.statusCode).toEqual(404);
-      expect(res.body).toHaveProperty('error', 'Meal plan entry not found or not authorized.');
+      expect(res.body).toHaveProperty(
+        'error',
+        'Meal plan entry not found or not authorized.'
+      );
     });
   });
 
@@ -288,7 +362,11 @@ describe('Meal Routes', () => {
 
       expect(res.statusCode).toEqual(201);
       expect(res.body).toEqual(createdFoodEntries);
-      expect(mealService.logDayMealPlanToDiary).toHaveBeenCalledWith('testUserId', '2024-07-15', '2024-07-15');
+      expect(mealService.logDayMealPlanToDiary).toHaveBeenCalledWith(
+        'testUserId',
+        '2024-07-15',
+        '2024-07-15'
+      );
     });
 
     it('should return 400 if plan_date is missing', async () => {

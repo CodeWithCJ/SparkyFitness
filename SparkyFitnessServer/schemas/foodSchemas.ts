@@ -1,4 +1,4 @@
-import { z } from "zod/v4";
+import { z } from 'zod/v4';
 
 export const FoodVariantSchema = z.object({
   id: z.string().optional(),
@@ -23,7 +23,9 @@ export const FoodVariantSchema = z.object({
   iron: z.number().optional(),
   is_default: z.boolean(),
   glycemic_index: z.string().optional(),
-  custom_nutrients: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  custom_nutrients: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .optional(),
 });
 
 export type FoodVariant = z.infer<typeof FoodVariantSchema>;

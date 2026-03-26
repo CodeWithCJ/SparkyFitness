@@ -9,11 +9,16 @@ const customNutrientService = require('./customNutrientService');
 const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
 const { log } = require('../config/logging');
 
-async function getReportsData(authenticatedUserId, targetUserId, startDate, endDate) {
+async function getReportsData(
+  authenticatedUserId,
+  targetUserId,
+  startDate,
+  endDate
+) {
   try {
-
     // Fetch custom nutrients first as they are needed for dynamic SQL generation in repositories
-    const customNutrients = await customNutrientService.getCustomNutrients(targetUserId);
+    const customNutrients =
+      await customNutrientService.getCustomNutrients(targetUserId);
 
     const [
       fetchedNutritionData,
@@ -25,8 +30,18 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
       userPreferences,
       sleepAnalyticsData,
     ] = await Promise.all([
-      reportRepository.getNutritionData(targetUserId, startDate, endDate, customNutrients),
-      reportRepository.getTabularFoodData(targetUserId, startDate, endDate, customNutrients),
+      reportRepository.getNutritionData(
+        targetUserId,
+        startDate,
+        endDate,
+        customNutrients
+      ),
+      reportRepository.getTabularFoodData(
+        targetUserId,
+        startDate,
+        endDate,
+        customNutrients
+      ),
       reportRepository.getExerciseEntries(targetUserId, startDate, endDate),
       reportRepository.getMeasurementData(targetUserId, startDate, endDate),
       measurementRepository.getCustomCategories(targetUserId),
@@ -37,11 +52,17 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
 
     const customMeasurementsData = [];
     for (const category of customCategoriesResult) {
-      const customMeasurementResult = await reportRepository.getCustomMeasurementsData(targetUserId, category.id, startDate, endDate);
+      const customMeasurementResult =
+        await reportRepository.getCustomMeasurementsData(
+          targetUserId,
+          category.id,
+          startDate,
+          endDate
+        );
       customMeasurementsData.push(...customMeasurementResult);
     }
 
-    const tabularData = tabularDataRaw.map(row => {
+    const tabularData = tabularDataRaw.map((row) => {
       // Custom nutrients are now already in the row, scaled and summed by the repository
 
       return {
@@ -68,11 +89,11 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
           calcium: row.calcium,
           iron: row.iron,
           serving_size: row.serving_size,
-        }
+        },
       };
     });
 
-    const nutritionData = fetchedNutritionData.map(item => {
+    const nutritionData = fetchedNutritionData.map((item) => {
       const mappedItem = {
         date: item.date,
         calories: parseFloat(item.calories) || 0,
@@ -95,7 +116,7 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
       };
 
       // Map custom nutrients dynamically
-      customNutrients.forEach(cn => {
+      customNutrients.forEach((cn) => {
         const key = cn.name; // Use exact name as key, matching frontend expectation
         mappedItem[key] = parseFloat(item[key]) || 0;
       });
@@ -106,14 +127,16 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
     // BMR Calculation
     if (userProfile && userPreferences) {
       const dob = userProfile.date_of_birth;
-      const age = dob ? new Date().getFullYear() - new Date(dob).getFullYear() : null;
+      const age = dob
+        ? new Date().getFullYear() - new Date(dob).getFullYear()
+        : null;
       const gender = userProfile.gender;
       const bmrAlgorithm = userPreferences.bmr_algorithm;
 
-      nutritionData.forEach(day => {
+      nutritionData.forEach((day) => {
         // Find the most recent measurement on or before the current day
         const relevantMeasurements = measurementData
-          .filter(m => new Date(m.entry_date) <= new Date(day.date))
+          .filter((m) => new Date(m.entry_date) <= new Date(day.date))
           .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date));
 
         const latestMeasurement = relevantMeasurements[0];
@@ -123,19 +146,30 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
 
         if (weight && height && age && gender && bmrAlgorithm) {
           try {
-            day.bmr = bmrService.calculateBmr(bmrAlgorithm, weight, height, age, gender, bodyFat);
+            day.bmr = bmrService.calculateBmr(
+              bmrAlgorithm,
+              weight,
+              height,
+              age,
+              gender,
+              bodyFat
+            );
           } catch (error) {
-            log('warn', `Could not calculate BMR for user ${targetUserId} on date ${day.date}: ${error.message}`);
+            log(
+              'warn',
+              `Could not calculate BMR for user ${targetUserId} on date ${day.date}: ${error.message}`
+            );
             day.bmr = null;
           }
         } else {
           day.bmr = null;
         }
-        day.include_bmr_in_net_calories = userPreferences.include_bmr_in_net_calories;
+        day.include_bmr_in_net_calories =
+          userPreferences.include_bmr_in_net_calories;
       });
     }
 
-    const exerciseEntries = exerciseEntriesRaw.map(entry => ({
+    const exerciseEntries = exerciseEntriesRaw.map((entry) => ({
       ...entry,
       exercises: {
         id: entry.exercise_id,
@@ -154,7 +188,7 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
         level: entry.exercise_level,
         force: entry.exercise_force,
         mechanic: entry.exercise_mechanic,
-      }
+      },
     }));
 
     return {
@@ -167,23 +201,41 @@ async function getReportsData(authenticatedUserId, targetUserId, startDate, endD
       sleepAnalyticsData, // New: Include sleep analytics data
     };
   } catch (error) {
-    log('error', `Error fetching reports data for user ${targetUserId} by ${authenticatedUserId}:`, error);
+    log(
+      'error',
+      `Error fetching reports data for user ${targetUserId} by ${authenticatedUserId}:`,
+      error
+    );
     throw error;
   }
 }
 
-async function getMiniNutritionTrends(authenticatedUserId, targetUserId, startDate, endDate) {
+async function getMiniNutritionTrends(
+  authenticatedUserId,
+  targetUserId,
+  startDate,
+  endDate
+) {
   try {
     if (!targetUserId) {
-      log('error', 'getMiniNutritionTrends: targetUserId is undefined. Returning empty array.');
+      log(
+        'error',
+        'getMiniNutritionTrends: targetUserId is undefined. Returning empty array.'
+      );
       return [];
     }
     // Fetch custom nutrients to include in the trends
-    const customNutrients = await customNutrientService.getCustomNutrients(targetUserId);
+    const customNutrients =
+      await customNutrientService.getCustomNutrients(targetUserId);
 
-    const result = await reportRepository.getMiniNutritionTrends(targetUserId, startDate, endDate, customNutrients);
+    const result = await reportRepository.getMiniNutritionTrends(
+      targetUserId,
+      startDate,
+      endDate,
+      customNutrients
+    );
 
-    const formattedResults = result.map(row => {
+    const formattedResults = result.map((row) => {
       const mappedRow = {
         date: row.entry_date,
         calories: parseFloat(row.total_calories || 0),
@@ -206,7 +258,7 @@ async function getMiniNutritionTrends(authenticatedUserId, targetUserId, startDa
       };
 
       // Map custom nutrients dynamically
-      customNutrients.forEach(cn => {
+      customNutrients.forEach((cn) => {
         // The repository will return them as columns like "MyNutrient", matching the nutrient name
         // However, standard nutrients in this query are prefixed with "total_", so let's check how we implement the repo.
         // Usually, for consistency, I might prefix them or just use the name.
@@ -219,21 +271,36 @@ async function getMiniNutritionTrends(authenticatedUserId, targetUserId, startDa
 
     return formattedResults;
   } catch (error) {
-    log('error', `Error fetching mini nutrition trends for user ${targetUserId} by ${authenticatedUserId}:`, error);
+    log(
+      'error',
+      `Error fetching mini nutrition trends for user ${targetUserId} by ${authenticatedUserId}:`,
+      error
+    );
     throw error;
   }
 }
 
-async function getNutritionTrendsWithGoals(authenticatedUserId, targetUserId, startDate, endDate) {
+async function getNutritionTrendsWithGoals(
+  authenticatedUserId,
+  targetUserId,
+  startDate,
+  endDate
+) {
   try {
     // Fetch daily nutrition data
-    const nutritionData = await reportRepository.getNutritionData(targetUserId, startDate, endDate);
+    const nutritionData = await reportRepository.getNutritionData(
+      targetUserId,
+      startDate,
+      endDate
+    );
 
     // Create a map for quick lookup of nutrition data by date
-    const nutritionMap = new Map(nutritionData.map(item => [item.date, item]));
+    const nutritionMap = new Map(
+      nutritionData.map((item) => [item.date, item])
+    );
 
     const trendData = [];
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     const end = new Date(endDate);
 
     while (currentDate <= end) {
@@ -241,7 +308,10 @@ async function getNutritionTrendsWithGoals(authenticatedUserId, targetUserId, st
       const dailyNutrition = nutritionMap.get(formattedDate) || {};
 
       // Fetch the most recent goal for the current date
-      const dailyGoal = await goalRepository.getMostRecentGoalBeforeDate(targetUserId, formattedDate);
+      const dailyGoal = await goalRepository.getMostRecentGoalBeforeDate(
+        targetUserId,
+        formattedDate
+      );
 
       trendData.push({
         date: formattedDate,
@@ -258,7 +328,11 @@ async function getNutritionTrendsWithGoals(authenticatedUserId, targetUserId, st
     }
     return trendData;
   } catch (error) {
-    log('error', `Error fetching nutrition trends with goals for user ${targetUserId} by ${authenticatedUserId}:`, error);
+    log(
+      'error',
+      `Error fetching nutrition trends with goals for user ${targetUserId} by ${authenticatedUserId}:`,
+      error
+    );
     throw error;
   }
 }
@@ -266,7 +340,7 @@ async function getNutritionTrendsWithGoals(authenticatedUserId, targetUserId, st
 // Helper function to calculate 1RM using the Epley formula
 function calculate1RM(weight, reps) {
   if (reps === 0) return 0;
-  return weight * (1 + (reps / 30));
+  return weight * (1 + reps / 30);
 }
 
 // Helper function to categorize rep ranges
@@ -289,7 +363,13 @@ function calculateWorkoutConsistency(exerciseEntries, startDate, endDate) {
     };
   }
 
-  const workoutDates = [...new Set(exerciseEntries.map(e => new Date(e.entry_date).toISOString().split('T')[0]))].sort();
+  const workoutDates = [
+    ...new Set(
+      exerciseEntries.map(
+        (e) => new Date(e.entry_date).toISOString().split('T')[0]
+      )
+    ),
+  ].sort();
 
   let currentStreak = 0;
   let longestStreak = 0;
@@ -320,7 +400,10 @@ function calculateWorkoutConsistency(exerciseEntries, startDate, endDate) {
     yesterday.setDate(yesterday.getDate() - 1);
 
     const lastWorkoutTime = lastWorkoutDate.getTime();
-    if (lastWorkoutTime === today.getTime() || lastWorkoutTime === yesterday.getTime()) {
+    if (
+      lastWorkoutTime === today.getTime() ||
+      lastWorkoutTime === yesterday.getTime()
+    ) {
       currentStreak = streak;
     } else {
       currentStreak = 0;
@@ -348,9 +431,11 @@ function calculateWorkoutConsistency(exerciseEntries, startDate, endDate) {
 // Helper function to calculate muscle group recovery
 function calculateMuscleGroupRecovery(exerciseEntries) {
   const recoveryData = {};
-  exerciseEntries.forEach(entry => {
-    const muscles = entry.exercises ? JSON.parse(entry.exercises.primary_muscles || '[]') : [];
-    muscles.forEach(muscle => {
+  exerciseEntries.forEach((entry) => {
+    const muscles = entry.exercises
+      ? JSON.parse(entry.exercises.primary_muscles || '[]')
+      : [];
+    muscles.forEach((muscle) => {
       const entryDate = new Date(entry.entry_date);
       if (!recoveryData[muscle] || entryDate > new Date(recoveryData[muscle])) {
         recoveryData[muscle] = entryDate.toISOString().split('T')[0];
@@ -365,10 +450,12 @@ function calculateExerciseVariety(exerciseEntries) {
   const varietyData = {};
   const muscleExerciseMap = {};
 
-  exerciseEntries.forEach(entry => {
+  exerciseEntries.forEach((entry) => {
     if (entry.exercises && entry.exercises.primary_muscles) {
-      const primaryMuscles = JSON.parse(entry.exercises.primary_muscles || '[]');
-      primaryMuscles.forEach(muscle => {
+      const primaryMuscles = JSON.parse(
+        entry.exercises.primary_muscles || '[]'
+      );
+      primaryMuscles.forEach((muscle) => {
         if (!muscleExerciseMap[muscle]) {
           muscleExerciseMap[muscle] = new Set();
         }
@@ -389,11 +476,14 @@ function calculatePrProgression(exerciseEntries) {
   const progression = {};
 
   // Sort entries by date ascending to process in chronological order
-  const sortedEntries = [...exerciseEntries].sort((a, b) => new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime());
+  const sortedEntries = [...exerciseEntries].sort(
+    (a, b) =>
+      new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
+  );
 
-  sortedEntries.forEach(entry => {
+  sortedEntries.forEach((entry) => {
     if (entry.sets && entry.sets.length > 0) {
-      entry.sets.forEach(set => {
+      entry.sets.forEach((set) => {
         const weight = parseFloat(set.weight) || 0;
         const reps = parseInt(set.reps) || 0;
         const oneRM = calculate1RM(weight, reps);
@@ -403,9 +493,17 @@ function calculatePrProgression(exerciseEntries) {
         }
 
         const exerciseProgression = progression[entry.exercise_name];
-        const lastPr = exerciseProgression.length > 0 ? exerciseProgression[exerciseProgression.length - 1] : null;
+        const lastPr =
+          exerciseProgression.length > 0
+            ? exerciseProgression[exerciseProgression.length - 1]
+            : null;
 
-        if (!lastPr || oneRM > lastPr.oneRM || weight > lastPr.maxWeight || reps > lastPr.maxReps) {
+        if (
+          !lastPr ||
+          oneRM > lastPr.oneRM ||
+          weight > lastPr.maxWeight ||
+          reps > lastPr.maxReps
+        ) {
           progression[entry.exercise_name].push({
             date: new Date(entry.entry_date).toISOString().split('T')[0],
             oneRM: oneRM,
@@ -423,7 +521,7 @@ function calculatePrProgression(exerciseEntries) {
 function calculateSetPerformance(exerciseEntries) {
   const setPerformance = {};
 
-  exerciseEntries.forEach(entry => {
+  exerciseEntries.forEach((entry) => {
     if (entry.sets && entry.sets.length >= 3) {
       const exerciseName = entry.exercise_name;
       if (!setPerformance[exerciseName]) {
@@ -451,45 +549,78 @@ function calculateSetPerformance(exerciseEntries) {
   // Averaging the results for a cleaner data structure
   for (const exercise in setPerformance) {
     const data = setPerformance[exercise];
-    data.firstSet.avgReps = data.firstSet.reps.reduce((a, b) => a + b, 0) / data.firstSet.reps.length;
-    data.firstSet.avgWeight = data.firstSet.weight.reduce((a, b) => a + b, 0) / data.firstSet.weight.length;
-    data.middleSet.avgReps = data.middleSet.reps.reduce((a, b) => a + b, 0) / data.middleSet.reps.length;
-    data.middleSet.avgWeight = data.middleSet.weight.reduce((a, b) => a + b, 0) / data.middleSet.weight.length;
-    data.lastSet.avgReps = data.lastSet.reps.reduce((a, b) => a + b, 0) / data.lastSet.reps.length;
-    data.lastSet.avgWeight = data.lastSet.weight.reduce((a, b) => a + b, 0) / data.lastSet.weight.length;
+    data.firstSet.avgReps =
+      data.firstSet.reps.reduce((a, b) => a + b, 0) / data.firstSet.reps.length;
+    data.firstSet.avgWeight =
+      data.firstSet.weight.reduce((a, b) => a + b, 0) /
+      data.firstSet.weight.length;
+    data.middleSet.avgReps =
+      data.middleSet.reps.reduce((a, b) => a + b, 0) /
+      data.middleSet.reps.length;
+    data.middleSet.avgWeight =
+      data.middleSet.weight.reduce((a, b) => a + b, 0) /
+      data.middleSet.weight.length;
+    data.lastSet.avgReps =
+      data.lastSet.reps.reduce((a, b) => a + b, 0) / data.lastSet.reps.length;
+    data.lastSet.avgWeight =
+      data.lastSet.weight.reduce((a, b) => a + b, 0) /
+      data.lastSet.weight.length;
   }
 
   return setPerformance;
 }
 
-async function getExerciseDashboardData(authenticatedUserId, targetUserId, startDate, endDate, equipment, muscle, exercise) {
+async function getExerciseDashboardData(
+  authenticatedUserId,
+  targetUserId,
+  startDate,
+  endDate,
+  equipment,
+  muscle,
+  exercise
+) {
   try {
-    const exerciseEntries = await reportRepository.getExerciseEntries(targetUserId, startDate, endDate, equipment, muscle, exercise);
+    const exerciseEntries = await reportRepository.getExerciseEntries(
+      targetUserId,
+      startDate,
+      endDate,
+      equipment,
+      muscle,
+      exercise
+    );
 
     let totalVolume = 0;
     let totalReps = 0;
-    let totalWorkouts = new Set(); // To count unique workout days
+    const totalWorkouts = new Set(); // To count unique workout days
     const prData = {}; // Stores max 1RM for each exercise
     const bestSetRepRange = {}; // Stores max weight for each exercise and rep range
     const muscleGroupVolume = {}; // Stores total volume per muscle group
 
-    exerciseEntries.forEach(entry => {
+    exerciseEntries.forEach((entry) => {
       totalWorkouts.add(new Date(entry.entry_date).toISOString().split('T')[0]); // Add unique dates
 
       if (entry.sets && entry.sets.length > 0) {
-        entry.sets.forEach(set => {
+        entry.sets.forEach((set) => {
           const weight = parseFloat(set.weight) || 0;
           const reps = parseInt(set.reps) || 0;
           const duration = parseFloat(set.duration) || 0;
 
           // Calculate total volume and reps
-          totalVolume += (weight * reps);
+          totalVolume += weight * reps;
           totalReps += reps;
 
           // Calculate 1RM and track PRs
           const oneRM = calculate1RM(weight, reps);
-          if (!prData[entry.exercise_name] || oneRM > prData[entry.exercise_name].oneRM) {
-            prData[entry.exercise_name] = { oneRM, date: new Date(entry.entry_date).toISOString().split('T')[0], weight, reps };
+          if (
+            !prData[entry.exercise_name] ||
+            oneRM > prData[entry.exercise_name].oneRM
+          ) {
+            prData[entry.exercise_name] = {
+              oneRM,
+              date: new Date(entry.entry_date).toISOString().split('T')[0],
+              weight,
+              reps,
+            };
           }
 
           // Best set per rep range
@@ -498,8 +629,15 @@ async function getExerciseDashboardData(authenticatedUserId, targetUserId, start
             if (!bestSetRepRange[entry.exercise_name]) {
               bestSetRepRange[entry.exercise_name] = {};
             }
-            if (!bestSetRepRange[entry.exercise_name][repRange] || weight > bestSetRepRange[entry.exercise_name][repRange].weight) {
-              bestSetRepRange[entry.exercise_name][repRange] = { weight, reps, date: new Date(entry.entry_date).toISOString().split('T')[0] };
+            if (
+              !bestSetRepRange[entry.exercise_name][repRange] ||
+              weight > bestSetRepRange[entry.exercise_name][repRange].weight
+            ) {
+              bestSetRepRange[entry.exercise_name][repRange] = {
+                weight,
+                reps,
+                date: new Date(entry.entry_date).toISOString().split('T')[0],
+              };
             }
           }
 
@@ -508,8 +646,9 @@ async function getExerciseDashboardData(authenticatedUserId, targetUserId, start
             // It's already parsed in getReportsData, so no need to parse again
             const primaryMuscles = entry.exercises.primary_muscles;
             if (Array.isArray(primaryMuscles)) {
-              primaryMuscles.forEach(muscle => {
-                muscleGroupVolume[muscle] = (muscleGroupVolume[muscle] || 0) + (weight * reps);
+              primaryMuscles.forEach((muscle) => {
+                muscleGroupVolume[muscle] =
+                  (muscleGroupVolume[muscle] || 0) + weight * reps;
               });
             }
           }
@@ -517,7 +656,11 @@ async function getExerciseDashboardData(authenticatedUserId, targetUserId, start
       }
     });
 
-    const consistencyData = calculateWorkoutConsistency(exerciseEntries, startDate, endDate);
+    const consistencyData = calculateWorkoutConsistency(
+      exerciseEntries,
+      startDate,
+      endDate
+    );
     const recoveryData = calculateMuscleGroupRecovery(exerciseEntries);
     const prProgressionData = calculatePrProgression(exerciseEntries);
     const exerciseVarietyData = calculateExerciseVariety(exerciseEntries);
@@ -539,9 +682,12 @@ async function getExerciseDashboardData(authenticatedUserId, targetUserId, start
       setPerformanceData, // Add set performance data
       exerciseEntries, // Return raw entries for tabular display
     };
-
   } catch (error) {
-    log('error', `Error fetching exercise dashboard data for user ${targetUserId} by ${authenticatedUserId}:`, error);
+    log(
+      'error',
+      `Error fetching exercise dashboard data for user ${targetUserId} by ${authenticatedUserId}:`,
+      error
+    );
     throw error;
   }
 }

@@ -1,13 +1,13 @@
-const foodRepository = require("../models/foodRepository");
-const { v4: uuidv4 } = require("uuid");
+const foodRepository = require('../models/foodRepository');
+const { v4: uuidv4 } = require('uuid');
 
-jest.mock("../db/poolManager", () => ({
+jest.mock('../db/poolManager', () => ({
   getClient: jest.fn(),
 }));
 
-const { getClient } = require("../db/poolManager");
+const { getClient } = require('../db/poolManager');
 
-describe("foodRepository snapshot functions", () => {
+describe('foodRepository snapshot functions', () => {
   let mockClient;
 
   beforeEach(() => {
@@ -24,16 +24,16 @@ describe("foodRepository snapshot functions", () => {
 
   // --- updateFoodEntriesSnapshot (from foodMisc.js) ---
 
-  describe("updateFoodEntriesSnapshot", () => {
+  describe('updateFoodEntriesSnapshot', () => {
     const userId = uuidv4();
     const foodId = uuidv4();
     const variantId = uuidv4();
 
     const makeSnapshotData = (overrides = {}) => ({
-      food_name: "Chicken Breast",
-      brand_name: "Acme",
+      food_name: 'Chicken Breast',
+      brand_name: 'Acme',
       serving_size: 100,
-      serving_unit: "g",
+      serving_unit: 'g',
       calories: 165,
       protein: 31,
       carbs: 0,
@@ -52,11 +52,11 @@ describe("foodRepository snapshot functions", () => {
       calcium: 11,
       iron: 0.7,
       glycemic_index: null,
-      custom_nutrients: { zinc: "1.3mg" },
+      custom_nutrients: { zinc: '1.3mg' },
       ...overrides,
     });
 
-    it("should execute UPDATE with all 26 params in correct order and return rowCount", async () => {
+    it('should execute UPDATE with all 26 params in correct order and return rowCount', async () => {
       const snapshot = makeSnapshotData();
       mockClient.query.mockResolvedValue({ rowCount: 3 });
 
@@ -64,12 +64,12 @@ describe("foodRepository snapshot functions", () => {
         userId,
         foodId,
         variantId,
-        snapshot,
+        snapshot
       );
 
       expect(result).toBe(3);
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining("UPDATE food_entries"),
+        expect.stringContaining('UPDATE food_entries'),
         [
           snapshot.food_name,
           snapshot.brand_name,
@@ -97,11 +97,11 @@ describe("foodRepository snapshot functions", () => {
           userId,
           foodId,
           variantId,
-        ],
+        ]
       );
     });
 
-    it("should default custom_nutrients to {} when null or undefined", async () => {
+    it('should default custom_nutrients to {} when null or undefined', async () => {
       for (const falsy of [null, undefined]) {
         mockClient.query.mockResolvedValue({ rowCount: 1 });
 
@@ -109,7 +109,7 @@ describe("foodRepository snapshot functions", () => {
           userId,
           foodId,
           variantId,
-          makeSnapshotData({ custom_nutrients: falsy }),
+          makeSnapshotData({ custom_nutrients: falsy })
         );
 
         const params = mockClient.query.mock.calls[0][1];
@@ -119,30 +119,30 @@ describe("foodRepository snapshot functions", () => {
       }
     });
 
-    it("should always release client on success", async () => {
+    it('should always release client on success', async () => {
       mockClient.query.mockResolvedValue({ rowCount: 0 });
 
       await foodRepository.updateFoodEntriesSnapshot(
         userId,
         foodId,
         variantId,
-        makeSnapshotData(),
+        makeSnapshotData()
       );
 
       expect(mockClient.release).toHaveBeenCalledTimes(1);
     });
 
-    it("should always release client when query throws", async () => {
-      mockClient.query.mockRejectedValue(new Error("DB error"));
+    it('should always release client when query throws', async () => {
+      mockClient.query.mockRejectedValue(new Error('DB error'));
 
       await expect(
         foodRepository.updateFoodEntriesSnapshot(
           userId,
           foodId,
           variantId,
-          makeSnapshotData(),
-        ),
-      ).rejects.toThrow("DB error");
+          makeSnapshotData()
+        )
+      ).rejects.toThrow('DB error');
 
       expect(mockClient.release).toHaveBeenCalledTimes(1);
     });
@@ -150,8 +150,8 @@ describe("foodRepository snapshot functions", () => {
 
   // --- clearUserIgnoredUpdate (from food.js) ---
 
-  describe("clearUserIgnoredUpdate", () => {
-    it("should execute DELETE with correct params", async () => {
+  describe('clearUserIgnoredUpdate', () => {
+    it('should execute DELETE with correct params', async () => {
       const userId = uuidv4();
       const variantId = uuidv4();
       mockClient.query.mockResolvedValue({});
@@ -159,12 +159,12 @@ describe("foodRepository snapshot functions", () => {
       await foodRepository.clearUserIgnoredUpdate(userId, variantId);
 
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining("DELETE FROM user_ignored_updates"),
-        [userId, variantId],
+        expect.stringContaining('DELETE FROM user_ignored_updates'),
+        [userId, variantId]
       );
     });
 
-    it("should always release client", async () => {
+    it('should always release client', async () => {
       mockClient.query.mockResolvedValue({});
 
       await foodRepository.clearUserIgnoredUpdate(uuidv4(), uuidv4());
@@ -175,11 +175,11 @@ describe("foodRepository snapshot functions", () => {
 
   // --- getFoodsNeedingReview (from food.js) ---
 
-  describe("getFoodsNeedingReview", () => {
-    it("should execute SELECT query with userId and return rows", async () => {
+  describe('getFoodsNeedingReview', () => {
+    it('should execute SELECT query with userId and return rows', async () => {
       const userId = uuidv4();
       const mockRows = [
-        { food_id: uuidv4(), food_name: "Oats", serving_size: 40 },
+        { food_id: uuidv4(), food_name: 'Oats', serving_size: 40 },
       ];
       mockClient.query.mockResolvedValue({ rows: mockRows });
 
@@ -187,12 +187,12 @@ describe("foodRepository snapshot functions", () => {
 
       expect(result).toEqual(mockRows);
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining("food_entries"),
-        [userId],
+        expect.stringContaining('food_entries'),
+        [userId]
       );
     });
 
-    it("should use the food.js version that JOINs foods and food_variants tables", async () => {
+    it('should use the food.js version that JOINs foods and food_variants tables', async () => {
       const userId = uuidv4();
       mockClient.query.mockResolvedValue({ rows: [] });
 
@@ -205,7 +205,7 @@ describe("foodRepository snapshot functions", () => {
       expect(sql).toMatch(/JOIN\s+food_variants\s+fv/);
     });
 
-    it("should return empty array when no matches", async () => {
+    it('should return empty array when no matches', async () => {
       mockClient.query.mockResolvedValue({ rows: [] });
 
       const result = await foodRepository.getFoodsNeedingReview(uuidv4());

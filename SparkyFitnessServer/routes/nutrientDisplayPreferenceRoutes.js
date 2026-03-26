@@ -71,12 +71,15 @@ const { authenticate } = require('../middleware/authMiddleware');
  *         description: Failed to fetch nutrient display preferences.
  */
 router.get('/', authenticate, async (req, res, next) => {
-    try {
-        const preferences = await nutrientDisplayPreferenceService.getNutrientDisplayPreferences(req.userId);
-        res.json(preferences);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const preferences =
+      await nutrientDisplayPreferenceService.getNutrientDisplayPreferences(
+        req.userId
+      );
+    res.json(preferences);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
@@ -128,14 +131,20 @@ router.get('/', authenticate, async (req, res, next) => {
  *         description: Failed to upsert nutrient display preference.
  */
 router.put('/:viewGroup/:platform', authenticate, async (req, res, next) => {
-    try {
-        const { viewGroup, platform } = req.params;
-        const { visible_nutrients } = req.body;
-        const preference = await nutrientDisplayPreferenceService.upsertNutrientDisplayPreference(req.userId, viewGroup, platform, visible_nutrients);
-        res.json(preference);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const { viewGroup, platform } = req.params;
+    const { visible_nutrients } = req.body;
+    const preference =
+      await nutrientDisplayPreferenceService.upsertNutrientDisplayPreference(
+        req.userId,
+        viewGroup,
+        platform,
+        visible_nutrients
+      );
+    res.json(preference);
+  } catch (error) {
+    next(error);
+  }
 });
 
 /**
@@ -173,13 +182,18 @@ router.put('/:viewGroup/:platform', authenticate, async (req, res, next) => {
  *         description: Failed to reset nutrient display preference.
  */
 router.delete('/:viewGroup/:platform', authenticate, async (req, res, next) => {
-    try {
-        const { viewGroup, platform } = req.params;
-        const defaultPreference = await nutrientDisplayPreferenceService.resetNutrientDisplayPreference(req.userId, viewGroup, platform);
-        res.json(defaultPreference);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const { viewGroup, platform } = req.params;
+    const defaultPreference =
+      await nutrientDisplayPreferenceService.resetNutrientDisplayPreference(
+        req.userId,
+        viewGroup,
+        platform
+      );
+    res.json(defaultPreference);
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;

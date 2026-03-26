@@ -1,24 +1,24 @@
-const { log } = require("../../config/logging");
+const { log } = require('../../config/logging');
 const {
   normalizeBarcode,
   normalizeServingUnit,
-} = require("../../utils/foodUtils");
+} = require('../../utils/foodUtils');
 // Using native fetch (standard in Node 22+)
 
-const USDA_API_BASE_URL = "https://api.nal.usda.gov/fdc/v1";
+const USDA_API_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 
 async function searchUsdaFoods(query, apiKey, page = 1, pageSize = 50) {
   try {
     const searchUrl = `${USDA_API_BASE_URL}/foods/search?query=${encodeURIComponent(query)}&pageNumber=${page}&pageSize=${pageSize}&api_key=${apiKey}`;
-    const response = await fetch(searchUrl, { method: "GET" });
-    log("debug", "USDA API Search Response Status:", response.status);
+    const response = await fetch(searchUrl, { method: 'GET' });
+    log('debug', 'USDA API Search Response Status:', response.status);
     if (!response.ok) {
       const errorText = await response.text();
-      log("error", "USDA Food Search API error:", errorText);
+      log('error', 'USDA Food Search API error:', errorText);
       throw new Error(`USDA API error: ${errorText}`);
     }
     const data = await response.json();
-    log("debug", "USDA API Search Response Data:", data);
+    log('debug', 'USDA API Search Response Data:', data);
     return {
       ...data,
       pagination: {
@@ -30,9 +30,9 @@ async function searchUsdaFoods(query, apiKey, page = 1, pageSize = 50) {
     };
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error searching USDA foods with query "${query}" in usdaService:`,
-      error,
+      error
     );
     throw error;
   }
@@ -41,21 +41,21 @@ async function searchUsdaFoods(query, apiKey, page = 1, pageSize = 50) {
 async function searchUsdaFoodsByBarcode(barcode, apiKey) {
   try {
     const searchUrl = `${USDA_API_BASE_URL}/foods/search?query=${encodeURIComponent(barcode)}&dataType=Branded&api_key=${apiKey}`;
-    const response = await fetch(searchUrl, { method: "GET" });
-    log("debug", "USDA API Barcode Search Response Status:", response.status);
+    const response = await fetch(searchUrl, { method: 'GET' });
+    log('debug', 'USDA API Barcode Search Response Status:', response.status);
     if (!response.ok) {
       const errorText = await response.text();
-      log("error", "USDA Barcode Search API error:", errorText);
+      log('error', 'USDA Barcode Search API error:', errorText);
       throw new Error(`USDA API error: ${errorText}`);
     }
     const data = await response.json();
-    log("debug", "USDA API Barcode Search Response Data:", data);
+    log('debug', 'USDA API Barcode Search Response Data:', data);
     return data;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error searching USDA foods by barcode "${barcode}" in usdaService:`,
-      error,
+      error
     );
     throw error;
   }
@@ -64,21 +64,21 @@ async function searchUsdaFoodsByBarcode(barcode, apiKey) {
 async function getUsdaFoodDetails(fdcId, apiKey) {
   try {
     const detailsUrl = `${USDA_API_BASE_URL}/food/${fdcId}?api_key=${apiKey}`;
-    const response = await fetch(detailsUrl, { method: "GET" });
-    log("debug", "USDA API Details Response Status:", response.status);
+    const response = await fetch(detailsUrl, { method: 'GET' });
+    log('debug', 'USDA API Details Response Status:', response.status);
     if (!response.ok) {
       const errorText = await response.text();
-      log("error", "USDA Food Details API error:", errorText);
+      log('error', 'USDA Food Details API error:', errorText);
       throw new Error(`USDA API error: ${errorText}`);
     }
     const data = await response.json();
-    log("debug", "USDA API Details Response Data:", data);
+    log('debug', 'USDA API Details Response Data:', data);
     return data;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching USDA food details for FDC ID "${fdcId}" in usdaService:`,
-      error,
+      error
     );
     throw error;
   }
@@ -97,7 +97,7 @@ function mapUsdaBarcodeProduct(food) {
     serving_size: servingSize,
     serving_unit: normalizeServingUnit(food.servingSizeUnit),
     calories: Math.round(
-      (nutrients[1008] ?? nutrients[2048] ?? nutrients[2047] ?? 0) * scale,
+      (nutrients[1008] ?? nutrients[2048] ?? nutrients[2047] ?? 0) * scale
     ),
     protein: Math.round((nutrients[1003] || 0) * scale * 10) / 10,
     carbs: Math.round((nutrients[1005] || 0) * scale * 10) / 10,
@@ -120,10 +120,10 @@ function mapUsdaBarcodeProduct(food) {
 
   return {
     name: food.description,
-    brand: food.brandName || food.brandOwner || "",
+    brand: food.brandName || food.brandOwner || '',
     barcode: normalizeBarcode(food.gtinUpc),
     provider_external_id: String(food.fdcId),
-    provider_type: "usda",
+    provider_type: 'usda',
     is_custom: false,
     default_variant: defaultVariant,
   };

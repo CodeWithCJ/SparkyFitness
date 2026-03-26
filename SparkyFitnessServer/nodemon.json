@@ -1,25 +1,25 @@
 {
-    "watch": [
-        ".",
-        "routes",
-        "services",
-        "models",
-        "integrations",
-        "config",
-        "db",
-        "security"
-    ],
-    "ignore": [
-        "mock_data",
-        "mock_data/**",
-        ".tmp",
-        "node_modules",
-        "test",
-        "coverage"
-    ],
-    "ext": "js,ts,json",
-    "execMap": {
-        "js": "tsx",
-        "ts": "tsx"
-    }
+  "watch": [
+    ".",
+    "routes",
+    "services",
+    "models",
+    "integrations",
+    "config",
+    "db",
+    "security"
+  ],
+  "ignore": [
+    "mock_data",
+    "mock_data/**",
+    ".tmp",
+    "node_modules",
+    "test",
+    "coverage"
+  ],
+  "ext": "js,ts,json",
+  "execMap": {
+    "js": "tsx",
+    "ts": "tsx"
+  }
 }

@@ -26,13 +26,20 @@ router.put('/', authenticate, async (req, res, next) => {
   const preferenceData = req.body;
 
   try {
-    const updatedPreferences = await preferenceService.updateUserPreferences(req.userId, req.userId, preferenceData);
+    const updatedPreferences = await preferenceService.updateUserPreferences(
+      req.userId,
+      req.userId,
+      preferenceData
+    );
     res.status(200).json(updatedPreferences);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message === 'User preferences not found or not authorized to update.') {
+    if (
+      error.message ===
+      'User preferences not found or not authorized to update.'
+    ) {
       return res.status(404).json({ error: error.message });
     }
     next(error);
@@ -54,7 +61,10 @@ router.put('/', authenticate, async (req, res, next) => {
  */
 router.delete('/', authenticate, async (req, res, next) => {
   try {
-    const result = await preferenceService.deleteUserPreferences(req.userId, req.userId);
+    const result = await preferenceService.deleteUserPreferences(
+      req.userId,
+      req.userId
+    );
     res.status(200).json(result);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -86,7 +96,10 @@ router.delete('/', authenticate, async (req, res, next) => {
  */
 router.get('/', authenticate, async (req, res, next) => {
   try {
-    const preferences = await preferenceService.getUserPreferences(req.userId, req.userId);
+    const preferences = await preferenceService.getUserPreferences(
+      req.userId,
+      req.userId
+    );
     res.status(200).json(preferences);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -122,7 +135,10 @@ router.post('/', authenticate, async (req, res, next) => {
   const preferenceData = req.body;
 
   try {
-    const newPreferences = await preferenceService.upsertUserPreferences(req.userId, preferenceData);
+    const newPreferences = await preferenceService.upsertUserPreferences(
+      req.userId,
+      preferenceData
+    );
     res.status(200).json(newPreferences);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {

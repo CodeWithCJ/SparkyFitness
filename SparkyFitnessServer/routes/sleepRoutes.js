@@ -46,22 +46,33 @@ const { log } = require('../config/logging');
  *       500:
  *         description: Internal server error.
  */
-router.get('/analytics', authenticate, checkPermissionMiddleware('reports'), async (req, res, next) => {
-  try {
-    const { startDate, endDate, userId } = req.query;
-    if (!startDate || !endDate) {
-      return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
+router.get(
+  '/analytics',
+  authenticate,
+  checkPermissionMiddleware('reports'),
+  async (req, res, next) => {
+    try {
+      const { startDate, endDate, userId } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          error: 'Missing required query parameters: startDate and endDate.',
+        });
+      }
+
+      const targetUserId = userId || req.userId;
+
+      const analyticsData = await sleepAnalyticsService.getSleepAnalytics(
+        targetUserId,
+        startDate,
+        endDate
+      );
+      res.status(200).json(analyticsData);
+    } catch (error) {
+      log('error', 'Error fetching sleep analytics:', error);
+      next(error);
     }
-
-    const targetUserId = userId || req.userId;
-
-    const analyticsData = await sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate);
-    res.status(200).json(analyticsData);
-  } catch (error) {
-    log('error', "Error fetching sleep analytics:", error);
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -103,29 +114,47 @@ router.get('/analytics', authenticate, checkPermissionMiddleware('reports'), asy
  *             schema:
  *               $ref: '#/components/schemas/SleepEntry'
  */
-router.post('/manual_entry', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  try {
-    const { entry_date, bedtime, wake_time, duration_in_seconds, stage_events } = req.body;
-    if (!entry_date || !bedtime || !wake_time || !duration_in_seconds) {
-      return res.status(400).json({ error: "Missing required fields: entry_date, bedtime, wake_time, or duration_in_seconds." });
+router.post(
+  '/manual_entry',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    try {
+      const {
+        entry_date,
+        bedtime,
+        wake_time,
+        duration_in_seconds,
+        stage_events,
+      } = req.body;
+      if (!entry_date || !bedtime || !wake_time || !duration_in_seconds) {
+        return res.status(400).json({
+          error:
+            'Missing required fields: entry_date, bedtime, wake_time, or duration_in_seconds.',
+        });
+      }
+
+      const sleepEntryData = {
+        entry_date: entry_date,
+        bedtime: new Date(bedtime),
+        wake_time: new Date(wake_time),
+        duration_in_seconds: duration_in_seconds,
+        source: 'manual',
+        stage_events: stage_events,
+      };
+
+      const result = await measurementService.processSleepEntry(
+        req.userId,
+        req.userId,
+        sleepEntryData
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      log('error', 'Error during manual sleep entry:', error);
+      next(error);
     }
-
-    const sleepEntryData = {
-      entry_date: entry_date,
-      bedtime: new Date(bedtime),
-      wake_time: new Date(wake_time),
-      duration_in_seconds: duration_in_seconds,
-      source: 'manual',
-      stage_events: stage_events
-    };
-
-    const result = await measurementService.processSleepEntry(req.userId, req.userId, sleepEntryData);
-    res.status(200).json(result);
-  } catch (error) {
-    log('error', "Error during manual sleep entry:", error);
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -158,30 +187,49 @@ router.post('/manual_entry', authenticate, checkPermissionMiddleware('checkin'),
  *               items:
  *                 $ref: '#/components/schemas/SleepEntry'
  */
-router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  try {
-    const { startDate, endDate, userId } = req.query;
-    if (!startDate || !endDate) {
-      return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
-    }
-
-    const targetUserId = userId || req.userId;
-
-    if (userId && userId !== req.userId) {
-      const permissionUtils = require('../utils/permissionUtils');
-      const hasPermission = await permissionUtils.canAccessUserData(userId, 'reports', req.userId);
-      if (!hasPermission) {
-        return res.status(403).json({ error: 'Forbidden: You do not have permission to access this user\'s sleep data' });
+router.get(
+  '/',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    try {
+      const { startDate, endDate, userId } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          error: 'Missing required query parameters: startDate and endDate.',
+        });
       }
-    }
 
-    const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(targetUserId, startDate, endDate);
-    res.status(200).json(sleepEntries);
-  } catch (error) {
-    log('error', "Error fetching sleep entries:", error);
-    next(error);
+      const targetUserId = userId || req.userId;
+
+      if (userId && userId !== req.userId) {
+        const permissionUtils = require('../utils/permissionUtils');
+        const hasPermission = await permissionUtils.canAccessUserData(
+          userId,
+          'reports',
+          req.userId
+        );
+        if (!hasPermission) {
+          return res.status(403).json({
+            error:
+              "Forbidden: You do not have permission to access this user's sleep data",
+          });
+        }
+      }
+
+      const sleepEntries =
+        await measurementService.getSleepEntriesByUserIdAndDateRange(
+          targetUserId,
+          startDate,
+          endDate
+        );
+      res.status(200).json(sleepEntries);
+    } catch (error) {
+      log('error', 'Error fetching sleep entries:', error);
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -209,30 +257,49 @@ router.get('/', authenticate, checkPermissionMiddleware('checkin'), async (req, 
  *       200:
  *         description: Sleep entries details.
  */
-router.get('/details', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  try {
-    const { startDate, endDate, userId } = req.query;
-    if (!startDate || !endDate) {
-      return res.status(400).json({ error: "Missing required query parameters: startDate and endDate." });
-    }
-
-    const targetUserId = userId || req.userId;
-
-    if (userId && userId !== req.userId) {
-      const permissionUtils = require('../utils/permissionUtils');
-      const hasPermission = await permissionUtils.canAccessUserData(userId, 'reports', req.userId);
-      if (!hasPermission) {
-        return res.status(403).json({ error: 'Forbidden: You do not have permission to access this user\'s sleep data' });
+router.get(
+  '/details',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    try {
+      const { startDate, endDate, userId } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          error: 'Missing required query parameters: startDate and endDate.',
+        });
       }
-    }
 
-    const sleepEntries = await measurementService.getSleepEntriesByUserIdAndDateRange(targetUserId, startDate, endDate);
-    res.status(200).json(sleepEntries);
-  } catch (error) {
-    log('error', "Error fetching sleep entries details:", error);
-    next(error);
+      const targetUserId = userId || req.userId;
+
+      if (userId && userId !== req.userId) {
+        const permissionUtils = require('../utils/permissionUtils');
+        const hasPermission = await permissionUtils.canAccessUserData(
+          userId,
+          'reports',
+          req.userId
+        );
+        if (!hasPermission) {
+          return res.status(403).json({
+            error:
+              "Forbidden: You do not have permission to access this user's sleep data",
+          });
+        }
+      }
+
+      const sleepEntries =
+        await measurementService.getSleepEntriesByUserIdAndDateRange(
+          targetUserId,
+          startDate,
+          endDate
+        );
+      res.status(200).json(sleepEntries);
+    } catch (error) {
+      log('error', 'Error fetching sleep entries details:', error);
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -271,25 +338,40 @@ router.get('/details', authenticate, checkPermissionMiddleware('checkin'), async
  *       200:
  *         description: Sleep entry updated successfully.
  */
-router.put('/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { bedtime, wake_time, duration_in_seconds, stage_events } = req.body;
+router.put(
+  '/:id',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const { bedtime, wake_time, duration_in_seconds, stage_events } =
+        req.body;
 
-    const updatedSleepEntryData = {
-      bedtime: bedtime ? new Date(bedtime) : undefined,
-      wake_time: wake_time ? new Date(wake_time) : undefined,
-      duration_in_seconds: duration_in_seconds,
-      stage_events: stage_events,
-    };
+      const updatedSleepEntryData = {
+        bedtime: bedtime ? new Date(bedtime) : undefined,
+        wake_time: wake_time ? new Date(wake_time) : undefined,
+        duration_in_seconds: duration_in_seconds,
+        stage_events: stage_events,
+      };
 
-    const result = await measurementService.updateSleepEntry(req.userId, id, req.originalUserId || req.userId, updatedSleepEntryData);
-    res.status(200).json(result);
-  } catch (error) {
-    log('error', `Error updating sleep entry with ID ${req.params.id}:`, error);
-    next(error);
+      const result = await measurementService.updateSleepEntry(
+        req.userId,
+        id,
+        req.originalUserId || req.userId,
+        updatedSleepEntryData
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      log(
+        'error',
+        `Error updating sleep entry with ID ${req.params.id}:`,
+        error
+      );
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -310,15 +392,24 @@ router.put('/:id', authenticate, checkPermissionMiddleware('checkin'), async (re
  *       200:
  *         description: Sleep entry deleted successfully.
  */
-router.delete('/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const result = await measurementService.deleteSleepEntry(req.userId, id);
-    res.status(200).json(result);
-  } catch (error) {
-    log('error', `Error deleting sleep entry with ID ${req.params.id}:`, error);
-    next(error);
+router.delete(
+  '/:id',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const result = await measurementService.deleteSleepEntry(req.userId, id);
+      res.status(200).json(result);
+    } catch (error) {
+      log(
+        'error',
+        `Error deleting sleep entry with ID ${req.params.id}:`,
+        error
+      );
+      next(error);
+    }
   }
-});
+);
 
 module.exports = router;

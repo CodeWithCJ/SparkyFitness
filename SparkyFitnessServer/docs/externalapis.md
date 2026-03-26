@@ -7,15 +7,17 @@ curl -X GET 'http://10.0.0.75:8080/api/foods/barcode/094395000172' \
   --header 'Accept: */*' \
   --header 'Authorization: Bearer {token}'
 ```
+
 ## Specify Provider
 
 ```bash
 curl -X GET 'http://10.0.0.75:8080/api/foods/barcode/094395000172?providerId={provider id}' \
   --header 'Accept: */*' \
   --header 'Authorization: Bearer {token}'
-  ```
+```
 
 ### Response
+
 ```json
 {
   "source": "openfoodfacts",
@@ -74,22 +76,16 @@ curl -X POST 'https://api.nal.usda.gov/fdc/v1/foods/search?api_key={api key}' \
   "totalHits": 1,
   "currentPage": 1,
   "totalPages": 1,
-  "pageList": [
-    1
-  ],
+  "pageList": [1],
   "foodSearchCriteria": {
-    "dataType": [
-      "Branded"
-    ],
+    "dataType": ["Branded"],
     "query": "094395000172",
     "generalSearchInput": "094395000172",
     "pageNumber": 1,
     "numberOfResultsPerPage": 50,
     "pageSize": 50,
     "requireAllWords": false,
-    "foodTypes": [
-      "Branded"
-    ]
+    "foodTypes": ["Branded"]
   },
   "foods": [
     {
@@ -109,9 +105,7 @@ curl -X POST 'https://api.nal.usda.gov/fdc/v1/foods/search?api_key={api key}' \
       "servingSizeUnit": "g",
       "servingSize": 28.0,
       "householdServingFullText": "1 ONZ",
-      "tradeChannels": [
-        "NO_TRADE_CHANNEL"
-      ],
+      "tradeChannels": ["NO_TRADE_CHANNEL"],
       "allHighlightFields": "<b>GTIN/UPC</b>: <em>094395000172</em>",
       "score": -402.1905,
       "microbes": [],

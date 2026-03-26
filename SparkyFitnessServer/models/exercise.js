@@ -40,8 +40,11 @@ async function getExerciseOwnerId(id, userId) {
   }
 }
 
-async function getOrCreateActiveCaloriesExercise(userId, source = 'Health Data') {
-  const exerciseName = "Active Calories";
+async function getOrCreateActiveCaloriesExercise(
+  userId,
+  source = 'Health Data'
+) {
+  const exerciseName = 'Active Calories';
   const client = await getClient(userId);
   let exercise = null;
   try {
@@ -51,26 +54,42 @@ async function getOrCreateActiveCaloriesExercise(userId, source = 'Health Data')
     );
     exercise = result.rows[0];
   } catch (error) {
-    log('error', "Error fetching active calories exercise:", error);
-    throw new Error(`Failed to retrieve active calories exercise: ${error.message}`);
+    log('error', 'Error fetching active calories exercise:', error);
+    throw new Error(
+      `Failed to retrieve active calories exercise: ${error.message}`
+    );
   } finally {
     client.release();
   }
 
   if (!exercise) {
-    log('info', `Creating default exercise: ${exerciseName} for user ${userId}`);
+    log(
+      'info',
+      `Creating default exercise: ${exerciseName} for user ${userId}`
+    );
     const insertClient = await getClient(userId);
     let newExercise = null;
     try {
       const result = await insertClient.query(
         `INSERT INTO exercises (user_id, name, category, calories_per_hour, description, is_custom, shared_with_public, source)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [userId, exerciseName, 'Cardio', 600, 'Automatically logged active calories from a health tracking shortcut.', true, false, source]
+        [
+          userId,
+          exerciseName,
+          'Cardio',
+          600,
+          'Automatically logged active calories from a health tracking shortcut.',
+          true,
+          false,
+          source,
+        ]
       );
       newExercise = result.rows[0];
     } catch (createError) {
-      log('error', "Error creating active calories exercise:", createError);
-      throw new Error(`Failed to create active calories exercise: ${createError.message}`);
+      log('error', 'Error creating active calories exercise:', createError);
+      throw new Error(
+        `Failed to create active calories exercise: ${createError.message}`
+      );
     } finally {
       insertClient.release();
     }
@@ -79,10 +98,19 @@ async function getOrCreateActiveCaloriesExercise(userId, source = 'Health Data')
   return exercise.id;
 }
 
-async function getExercisesWithPagination(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter, limit, offset) {
+async function getExercisesWithPagination(
+  targetUserId,
+  searchTerm,
+  categoryFilter,
+  ownershipFilter,
+  equipmentFilter,
+  muscleGroupFilter,
+  limit,
+  offset
+) {
   const client = await getClient(targetUserId);
   try {
-    let whereClauses = ['is_quick_exercise = FALSE'];
+    const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -101,19 +129,23 @@ async function getExercisesWithPagination(targetUserId, searchTerm, categoryFilt
     // RLS will handle ownership filtering
 
     if (equipmentFilter && equipmentFilter.length > 0) {
-      whereClauses.push(`equipment::jsonb ?| ARRAY[${equipmentFilter.map((_, i) => `$${paramIndex + i}`).join(',')}]`);
+      whereClauses.push(
+        `equipment::jsonb ?| ARRAY[${equipmentFilter.map((_, i) => `$${paramIndex + i}`).join(',')}]`
+      );
       queryParams.push(...equipmentFilter);
       paramIndex += equipmentFilter.length;
     }
 
     if (muscleGroupFilter && muscleGroupFilter.length > 0) {
-      whereClauses.push(`(primary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}] OR secondary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}])`);
+      whereClauses.push(
+        `(primary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}] OR secondary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}])`
+      );
       queryParams.push(...muscleGroupFilter);
       queryParams.push(...muscleGroupFilter); // Push twice for primary and secondary muscles
-      paramIndex += (muscleGroupFilter.length * 2);
+      paramIndex += muscleGroupFilter.length * 2;
     }
 
-    let query = `
+    const query = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
              primary_muscles, secondary_muscles, instructions, category, images,
              calories_per_hour, description, user_id, is_custom, shared_with_public,
@@ -126,7 +158,7 @@ async function getExercisesWithPagination(targetUserId, searchTerm, categoryFilt
     queryParams.push(limit, offset);
 
     const result = await client.query(query, queryParams);
-    return result.rows.map(row => {
+    return result.rows.map((row) => {
       if (row.images) {
         try {
           row.images = JSON.parse(row.images);
@@ -142,10 +174,17 @@ async function getExercisesWithPagination(targetUserId, searchTerm, categoryFilt
   }
 }
 
-async function countExercises(targetUserId, searchTerm, categoryFilter, ownershipFilter, equipmentFilter, muscleGroupFilter) {
+async function countExercises(
+  targetUserId,
+  searchTerm,
+  categoryFilter,
+  ownershipFilter,
+  equipmentFilter,
+  muscleGroupFilter
+) {
   const client = await getClient(targetUserId);
   try {
-    let whereClauses = ['is_quick_exercise = FALSE'];
+    const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -164,16 +203,20 @@ async function countExercises(targetUserId, searchTerm, categoryFilter, ownershi
     // RLS will handle ownership filtering
 
     if (equipmentFilter && equipmentFilter.length > 0) {
-      whereClauses.push(`equipment::jsonb ?| ARRAY[${equipmentFilter.map((_, i) => `$${paramIndex + i}`).join(',')}]`);
+      whereClauses.push(
+        `equipment::jsonb ?| ARRAY[${equipmentFilter.map((_, i) => `$${paramIndex + i}`).join(',')}]`
+      );
       queryParams.push(...equipmentFilter);
       paramIndex += equipmentFilter.length;
     }
 
     if (muscleGroupFilter && muscleGroupFilter.length > 0) {
-      whereClauses.push(`(primary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}] OR secondary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}])`);
+      whereClauses.push(
+        `(primary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}] OR secondary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}])`
+      );
       queryParams.push(...muscleGroupFilter);
       queryParams.push(...muscleGroupFilter); // Push twice for primary and secondary muscles
-      paramIndex += (muscleGroupFilter.length * 2);
+      paramIndex += muscleGroupFilter.length * 2;
     }
 
     const countQuery = `
@@ -191,19 +234,24 @@ async function countExercises(targetUserId, searchTerm, categoryFilter, ownershi
 async function getDistinctEquipment() {
   const client = await getSystemClient();
   try {
-    const result = await client.query(`SELECT equipment FROM exercises WHERE equipment IS NOT NULL AND equipment <> '[]' AND equipment <> ''`);
+    const result = await client.query(
+      "SELECT equipment FROM exercises WHERE equipment IS NOT NULL AND equipment <> '[]' AND equipment <> ''"
+    );
     const equipmentSet = new Set();
-    result.rows.forEach(row => {
+    result.rows.forEach((row) => {
       try {
         const equipmentList = JSON.parse(row.equipment);
         if (Array.isArray(equipmentList)) {
-          equipmentList.forEach(item => equipmentSet.add(item));
+          equipmentList.forEach((item) => equipmentSet.add(item));
         }
       } catch (e) {
         // Fallback for non-JSON string
-        let equipment = row.equipment.replace(/[\[\]'"`]/g, ''); // Clean the string
-        let equipmentList = equipment.split(',').map(item => item.trim()).filter(Boolean);
-        equipmentList.forEach(item => equipmentSet.add(item));
+        const equipment = row.equipment.replace(/[\[\]'"`]/g, ''); // Clean the string
+        const equipmentList = equipment
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean);
+        equipmentList.forEach((item) => equipmentSet.add(item));
       }
     });
     return Array.from(equipmentSet).sort();
@@ -218,22 +266,27 @@ async function getDistinctEquipment() {
 async function getDistinctMuscleGroups() {
   const client = await getSystemClient();
   try {
-    const result = await client.query(`SELECT primary_muscles, secondary_muscles FROM exercises WHERE (primary_muscles IS NOT NULL AND primary_muscles <> '[]' AND primary_muscles <> '') OR (secondary_muscles IS NOT NULL AND secondary_muscles <> '[]' AND secondary_muscles <> '')`);
+    const result = await client.query(
+      "SELECT primary_muscles, secondary_muscles FROM exercises WHERE (primary_muscles IS NOT NULL AND primary_muscles <> '[]' AND primary_muscles <> '') OR (secondary_muscles IS NOT NULL AND secondary_muscles <> '[]' AND secondary_muscles <> '')"
+    );
     const muscleGroupSet = new Set();
 
-    result.rows.forEach(row => {
-      ['primary_muscles', 'secondary_muscles'].forEach(field => {
+    result.rows.forEach((row) => {
+      ['primary_muscles', 'secondary_muscles'].forEach((field) => {
         if (row[field]) {
           try {
             const muscleList = JSON.parse(row[field]);
             if (Array.isArray(muscleList)) {
-              muscleList.forEach(item => muscleGroupSet.add(item));
+              muscleList.forEach((item) => muscleGroupSet.add(item));
             }
           } catch (e) {
             // Fallback for non-JSON string
-            let muscles = row[field].replace(/[\[\]'"`]/g, ''); // Clean the string
-            let muscleList = muscles.split(',').map(item => item.trim()).filter(Boolean);
-            muscleList.forEach(item => muscleGroupSet.add(item));
+            const muscles = row[field].replace(/[\[\]'"`]/g, ''); // Clean the string
+            const muscleList = muscles
+              .split(',')
+              .map((item) => item.trim())
+              .filter(Boolean);
+            muscleList.forEach((item) => muscleGroupSet.add(item));
           }
         }
       });
@@ -247,10 +300,15 @@ async function getDistinctMuscleGroups() {
   }
 }
 
-async function searchExercises(name, userId, equipmentFilter, muscleGroupFilter) {
+async function searchExercises(
+  name,
+  userId,
+  equipmentFilter,
+  muscleGroupFilter
+) {
   const client = await getClient(userId);
   try {
-    let whereClauses = ['is_quick_exercise = FALSE'];
+    const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
 
@@ -260,20 +318,27 @@ async function searchExercises(name, userId, equipmentFilter, muscleGroupFilter)
       paramIndex++;
     }
 
-
     if (equipmentFilter && equipmentFilter.length > 0) {
-      whereClauses.push(`equipment::jsonb ?| ARRAY[${equipmentFilter.map((_, i) => `$${paramIndex + i}`).join(',')}]`);
+      whereClauses.push(
+        `equipment::jsonb ?| ARRAY[${equipmentFilter.map((_, i) => `$${paramIndex + i}`).join(',')}]`
+      );
       queryParams.push(...equipmentFilter);
       paramIndex += equipmentFilter.length;
     }
 
     if (muscleGroupFilter && muscleGroupFilter.length > 0) {
-      const primaryMusclesPlaceholders = muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',');
-      const secondaryMusclesPlaceholders = muscleGroupFilter.map((_, i) => `$${paramIndex + muscleGroupFilter.length + i}`).join(',');
-      whereClauses.push(`(primary_muscles::jsonb ?| ARRAY[${primaryMusclesPlaceholders}] OR secondary_muscles::jsonb ?| ARRAY[${secondaryMusclesPlaceholders}])`);
+      const primaryMusclesPlaceholders = muscleGroupFilter
+        .map((_, i) => `$${paramIndex + i}`)
+        .join(',');
+      const secondaryMusclesPlaceholders = muscleGroupFilter
+        .map((_, i) => `$${paramIndex + muscleGroupFilter.length + i}`)
+        .join(',');
+      whereClauses.push(
+        `(primary_muscles::jsonb ?| ARRAY[${primaryMusclesPlaceholders}] OR secondary_muscles::jsonb ?| ARRAY[${secondaryMusclesPlaceholders}])`
+      );
       queryParams.push(...muscleGroupFilter);
       queryParams.push(...muscleGroupFilter); // Push twice for primary and secondary muscles
-      paramIndex += (muscleGroupFilter.length * 2);
+      paramIndex += muscleGroupFilter.length * 2;
     }
 
     const finalQuery = `
@@ -283,7 +348,7 @@ async function searchExercises(name, userId, equipmentFilter, muscleGroupFilter)
        FROM exercises
   WHERE ${whereClauses.join(' AND ')} LIMIT 50`; // Added a limit to prevent too many results
     const result = await client.query(finalQuery, queryParams);
-    return result.rows.map(row => {
+    return result.rows.map((row) => {
       // Helper function to safely parse JSONB fields into arrays
       const parseJsonbField = (field) => {
         if (row[field]) {
@@ -303,7 +368,7 @@ async function searchExercises(name, userId, equipmentFilter, muscleGroupFilter)
       row.secondary_muscles = parseJsonbField('secondary_muscles');
       row.instructions = parseJsonbField('instructions');
       row.images = parseJsonbField('images');
-      
+
       return row;
     });
   } finally {
@@ -314,7 +379,10 @@ async function searchExercises(name, userId, equipmentFilter, muscleGroupFilter)
 async function createExercise(exerciseData) {
   const client = await getClient(exerciseData.user_id);
   try {
-    log('debug', `[exerciseRepository] createExercise - incoming exerciseData: ${JSON.stringify(exerciseData)}`);
+    log(
+      'debug',
+      `[exerciseRepository] createExercise - incoming exerciseData: ${JSON.stringify(exerciseData)}`
+    );
     const result = await client.query(
       `INSERT INTO exercises (
         source, source_id, name, force, level, mechanic, equipment,
@@ -332,9 +400,15 @@ async function createExercise(exerciseData) {
         exerciseData.level,
         exerciseData.mechanic,
         exerciseData.equipment ? JSON.stringify(exerciseData.equipment) : null,
-        exerciseData.primary_muscles ? JSON.stringify(exerciseData.primary_muscles) : null,
-        exerciseData.secondary_muscles ? JSON.stringify(exerciseData.secondary_muscles) : null,
-        exerciseData.instructions ? JSON.stringify(exerciseData.instructions) : null,
+        exerciseData.primary_muscles
+          ? JSON.stringify(exerciseData.primary_muscles)
+          : null,
+        exerciseData.secondary_muscles
+          ? JSON.stringify(exerciseData.secondary_muscles)
+          : null,
+        exerciseData.instructions
+          ? JSON.stringify(exerciseData.instructions)
+          : null,
         exerciseData.category,
         exerciseData.images ? JSON.stringify(exerciseData.images) : null,
         exerciseData.calories_per_hour || 0, // Ensure calories_per_hour is a number, default to 0
@@ -384,11 +458,19 @@ async function updateExercise(id, userId, updateData) {
         updateData.level,
         updateData.mechanic,
         updateData.equipment ? JSON.stringify(updateData.equipment) : null,
-        updateData.primary_muscles ? JSON.stringify(updateData.primary_muscles) : null,
-        updateData.secondary_muscles ? JSON.stringify(updateData.secondary_muscles) : null,
-        updateData.instructions ? JSON.stringify(updateData.instructions) : null,
+        updateData.primary_muscles
+          ? JSON.stringify(updateData.primary_muscles)
+          : null,
+        updateData.secondary_muscles
+          ? JSON.stringify(updateData.secondary_muscles)
+          : null,
+        updateData.instructions
+          ? JSON.stringify(updateData.instructions)
+          : null,
         updateData.images ? JSON.stringify(updateData.images) : null,
-        typeof updateData.is_quick_exercise === 'boolean' ? updateData.is_quick_exercise : null,
+        typeof updateData.is_quick_exercise === 'boolean'
+          ? updateData.is_quick_exercise
+          : null,
         id,
       ]
     );
@@ -432,7 +514,7 @@ async function getRecentExercises(userId, limit) {
       LIMIT $2`,
       [userId, limit]
     );
-    return result.rows.map(row => {
+    return result.rows.map((row) => {
       // Helper function to safely parse JSONB fields into arrays
       const parseJsonbField = (field) => {
         if (row[field]) {
@@ -452,7 +534,7 @@ async function getRecentExercises(userId, limit) {
       row.secondary_muscles = parseJsonbField('secondary_muscles');
       row.instructions = parseJsonbField('instructions');
       row.images = parseJsonbField('images');
-      
+
       return row;
     });
   } finally {
@@ -482,7 +564,7 @@ async function getTopExercises(userId, limit) {
       LIMIT $2`,
       [userId, limit]
     );
-    return result.rows.map(row => {
+    return result.rows.map((row) => {
       // Helper function to safely parse JSONB fields into arrays
       const parseJsonbField = (field) => {
         if (row[field]) {
@@ -502,7 +584,7 @@ async function getTopExercises(userId, limit) {
       row.secondary_muscles = parseJsonbField('secondary_muscles');
       row.instructions = parseJsonbField('instructions');
       row.images = parseJsonbField('images');
-      
+
       return row;
     });
   } finally {
@@ -541,26 +623,47 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
   const systemClient = await getSystemClient();
   try {
     const publicExerciseResult = await systemClient.query(
-      "SELECT shared_with_public FROM exercises WHERE id = $1",
+      'SELECT shared_with_public FROM exercises WHERE id = $1',
       [exerciseId]
     );
-    const isPubliclyShared = publicExerciseResult.rows[0]?.shared_with_public || false;
+    const isPubliclyShared =
+      publicExerciseResult.rows[0]?.shared_with_public || false;
 
     const exerciseOwnerResult = await systemClient.query(
-      "SELECT user_id FROM exercises WHERE id = $1",
+      'SELECT user_id FROM exercises WHERE id = $1',
       [exerciseId]
     );
     const exerciseOwnerId = exerciseOwnerResult.rows[0]?.user_id;
 
     const currentUserReferencesQueries = [
-      client.query("SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2", [exerciseId, authenticatedUserId]),
-      client.query("SELECT COUNT(*) FROM workout_plan_template_assignments wpta JOIN workout_plan_templates wpt ON wpta.template_id = wpt.id WHERE wpta.exercise_id = $1 AND wpt.user_id = $2", [exerciseId, authenticatedUserId]),
-      client.query("SELECT COUNT(*) FROM workout_preset_exercises wpe JOIN workout_presets wp ON wpe.workout_preset_id = wp.id WHERE wpe.exercise_id = $1 AND wp.user_id = $2", [exerciseId, authenticatedUserId]),
+      client.query(
+        'SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2',
+        [exerciseId, authenticatedUserId]
+      ),
+      client.query(
+        'SELECT COUNT(*) FROM workout_plan_template_assignments wpta JOIN workout_plan_templates wpt ON wpta.template_id = wpt.id WHERE wpta.exercise_id = $1 AND wpt.user_id = $2',
+        [exerciseId, authenticatedUserId]
+      ),
+      client.query(
+        'SELECT COUNT(*) FROM workout_preset_exercises wpe JOIN workout_presets wp ON wpe.workout_preset_id = wp.id WHERE wpe.exercise_id = $1 AND wp.user_id = $2',
+        [exerciseId, authenticatedUserId]
+      ),
     ];
-    const currentUserReferencesResults = await Promise.all(currentUserReferencesQueries);
-    const currentUserExerciseEntriesCount = parseInt(currentUserReferencesResults[0].rows[0].count, 10);
-    const currentUserWorkoutPlansCount = parseInt(currentUserReferencesResults[1].rows[0].count, 10);
-    const currentUserWorkoutPresetsCount = parseInt(currentUserReferencesResults[2].rows[0].count, 10);
+    const currentUserReferencesResults = await Promise.all(
+      currentUserReferencesQueries
+    );
+    const currentUserExerciseEntriesCount = parseInt(
+      currentUserReferencesResults[0].rows[0].count,
+      10
+    );
+    const currentUserWorkoutPlansCount = parseInt(
+      currentUserReferencesResults[1].rows[0].count,
+      10
+    );
+    const currentUserWorkoutPresetsCount = parseInt(
+      currentUserReferencesResults[2].rows[0].count,
+      10
+    );
 
     const currentUserReferences =
       currentUserExerciseEntriesCount +
@@ -568,14 +671,34 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
       currentUserWorkoutPresetsCount;
 
     const otherUserReferencesQueries = [
-      systemClient.query("SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id != $2", [exerciseId, authenticatedUserId]),
-      systemClient.query("SELECT COUNT(*) FROM workout_plan_template_assignments wpta JOIN workout_plan_templates wpt ON wpta.template_id = wpt.id WHERE wpta.exercise_id = $1 AND wpt.user_id != $2", [exerciseId, authenticatedUserId]),
-      systemClient.query("SELECT COUNT(*) FROM workout_preset_exercises wpe JOIN workout_presets wp ON wpe.workout_preset_id = wp.id WHERE wpe.exercise_id = $1 AND wp.user_id != $2", [exerciseId, authenticatedUserId]),
+      systemClient.query(
+        'SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id != $2',
+        [exerciseId, authenticatedUserId]
+      ),
+      systemClient.query(
+        'SELECT COUNT(*) FROM workout_plan_template_assignments wpta JOIN workout_plan_templates wpt ON wpta.template_id = wpt.id WHERE wpta.exercise_id = $1 AND wpt.user_id != $2',
+        [exerciseId, authenticatedUserId]
+      ),
+      systemClient.query(
+        'SELECT COUNT(*) FROM workout_preset_exercises wpe JOIN workout_presets wp ON wpe.workout_preset_id = wp.id WHERE wpe.exercise_id = $1 AND wp.user_id != $2',
+        [exerciseId, authenticatedUserId]
+      ),
     ];
-    const otherUserReferencesResults = await Promise.all(otherUserReferencesQueries);
-    const otherUserExerciseEntriesCount = parseInt(otherUserReferencesResults[0].rows[0].count, 10);
-    const otherUserWorkoutPlansCount = parseInt(otherUserReferencesResults[1].rows[0].count, 10);
-    const otherUserWorkoutPresetsCount = parseInt(otherUserReferencesResults[2].rows[0].count, 10);
+    const otherUserReferencesResults = await Promise.all(
+      otherUserReferencesQueries
+    );
+    const otherUserExerciseEntriesCount = parseInt(
+      otherUserReferencesResults[0].rows[0].count,
+      10
+    );
+    const otherUserWorkoutPlansCount = parseInt(
+      otherUserReferencesResults[1].rows[0].count,
+      10
+    );
+    const otherUserWorkoutPresetsCount = parseInt(
+      otherUserReferencesResults[2].rows[0].count,
+      10
+    );
 
     const otherUserReferences =
       otherUserExerciseEntriesCount +
@@ -593,13 +716,18 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
            AND (fa.access_permissions->>'diary')::boolean = TRUE`,
         [authenticatedUserId]
       );
-      familySharedUsers = familyAccessResult.rows.map(row => row.family_user_id);
+      familySharedUsers = familyAccessResult.rows.map(
+        (row) => row.family_user_id
+      );
     }
 
     return {
-      exerciseEntriesCount: currentUserExerciseEntriesCount + otherUserExerciseEntriesCount,
-      workoutPlansCount: currentUserWorkoutPlansCount + otherUserWorkoutPlansCount,
-      workoutPresetsCount: currentUserWorkoutPresetsCount + otherUserWorkoutPresetsCount,
+      exerciseEntriesCount:
+        currentUserExerciseEntriesCount + otherUserExerciseEntriesCount,
+      workoutPlansCount:
+        currentUserWorkoutPlansCount + otherUserWorkoutPlansCount,
+      workoutPresetsCount:
+        currentUserWorkoutPresetsCount + otherUserWorkoutPresetsCount,
       totalReferences: currentUserReferences + otherUserReferences,
       currentUserReferences: currentUserReferences,
       otherUserReferences: otherUserReferences,
@@ -615,37 +743,62 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
 async function deleteExerciseAndDependencies(exerciseId, userId) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
-    await client.query("DELETE FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2", [exerciseId, userId]);
-    log("info", `Deleted exercise entries for exercise ${exerciseId} by user ${userId}`);
+    await client.query(
+      'DELETE FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2',
+      [exerciseId, userId]
+    );
+    log(
+      'info',
+      `Deleted exercise entries for exercise ${exerciseId} by user ${userId}`
+    );
 
-    await client.query(`
+    await client.query(
+      `
       DELETE FROM workout_plan_template_assignments wpta
       USING workout_plan_templates wpt
       WHERE wpta.template_id = wpt.id
         AND wpta.exercise_id = $1
         AND wpt.user_id = $2
-    `, [exerciseId, userId]);
-log("info", `Deleted workout plan exercises for exercise ${exerciseId} in plans by user ${userId}`);
+    `,
+      [exerciseId, userId]
+    );
+    log(
+      'info',
+      `Deleted workout plan exercises for exercise ${exerciseId} in plans by user ${userId}`
+    );
 
-    await client.query(`
+    await client.query(
+      `
       DELETE FROM workout_preset_exercises wpe
       USING workout_presets wp
       WHERE wpe.workout_preset_id = wp.id
         AND wpe.exercise_id = $1
         AND wp.user_id = $2
-    `, [exerciseId, userId]);
-    log("info", `Deleted workout preset exercises for exercise ${exerciseId} in presets by user ${userId}`);
+    `,
+      [exerciseId, userId]
+    );
+    log(
+      'info',
+      `Deleted workout preset exercises for exercise ${exerciseId} in presets by user ${userId}`
+    );
 
-    const result = await client.query("DELETE FROM exercises WHERE id = $1 AND user_id = $2 RETURNING id", [exerciseId, userId]);
-    log("info", `Deleted exercise ${exerciseId} by user ${userId}`);
+    const result = await client.query(
+      'DELETE FROM exercises WHERE id = $1 AND user_id = $2 RETURNING id',
+      [exerciseId, userId]
+    );
+    log('info', `Deleted exercise ${exerciseId} by user ${userId}`);
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return result.rowCount > 0;
   } catch (error) {
-    await client.query("ROLLBACK");
-    log("error", `Error deleting exercise and dependencies for exercise ${exerciseId} by user ${userId}:`, error);
+    await client.query('ROLLBACK');
+    log(
+      'error',
+      `Error deleting exercise and dependencies for exercise ${exerciseId} by user ${userId}:`,
+      error
+    );
     throw error;
   } finally {
     client.release();

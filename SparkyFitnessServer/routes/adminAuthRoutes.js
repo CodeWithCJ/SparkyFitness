@@ -44,7 +44,8 @@ router.use(isAdmin);
  */
 router.get('/settings/mfa-mandatory', async (req, res, next) => {
   try {
-    const isMfaMandatory = await globalSettingsRepository.getMfaMandatorySetting();
+    const isMfaMandatory =
+      await globalSettingsRepository.getMfaMandatorySetting();
     res.status(200).json({ isMfaMandatory });
   } catch (error) {
     log('error', 'Error fetching global MFA mandatory setting:', error);
@@ -90,8 +91,11 @@ router.get('/settings/mfa-mandatory', async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.put('/settings/mfa-mandatory',
-  body('isMfaMandatory').isBoolean().withMessage('isMfaMandatory must be a boolean value.'),
+router.put(
+  '/settings/mfa-mandatory',
+  body('isMfaMandatory')
+    .isBoolean()
+    .withMessage('isMfaMandatory must be a boolean value.'),
   async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -100,8 +104,15 @@ router.put('/settings/mfa-mandatory',
     const { isMfaMandatory } = req.body;
     try {
       await globalSettingsRepository.setMfaMandatorySetting(isMfaMandatory);
-      await authService.logAdminAction(req.userId, null, 'GLOBAL_MFA_SETTING_UPDATED', { isMfaMandatory });
-      res.status(200).json({ message: `Global MFA mandatory setting updated to ${isMfaMandatory}.` });
+      await authService.logAdminAction(
+        req.userId,
+        null,
+        'GLOBAL_MFA_SETTING_UPDATED',
+        { isMfaMandatory }
+      );
+      res.status(200).json({
+        message: `Global MFA mandatory setting updated to ${isMfaMandatory}.`,
+      });
     } catch (error) {
       log('error', 'Error updating global MFA mandatory setting:', error);
       next(error);
@@ -155,7 +166,11 @@ router.post('/users/:userId/mfa/reset', async (req, res, next) => {
     await authService.resetUserMfa(req.userId, userId);
     res.status(200).json({ message: `MFA for user ${userId} has been reset.` });
   } catch (error) {
-    log('error', `Error resetting MFA for user ${req.params.userId} by admin ${req.userId}:`, error);
+    log(
+      'error',
+      `Error resetting MFA for user ${req.params.userId} by admin ${req.userId}:`,
+      error
+    );
     next(error);
   }
 });

@@ -1,105 +1,105 @@
-const path = require("path");
+const path = require('path');
 
-const fs = require("fs");
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") }); // Load .env from root directory
+const fs = require('fs');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') }); // Load .env from root directory
 
 // Load secrets from files (Docker Swarm / Kubernetes support)
-const { loadSecrets } = require("./utils/secretLoader");
+const { loadSecrets } = require('./utils/secretLoader');
 loadSecrets();
 
 // Run pre-flight checks for essential environment variables
-const { runPreflightChecks } = require("./utils/preflightChecks");
+const { runPreflightChecks } = require('./utils/preflightChecks');
 runPreflightChecks();
 
-const express = require("express");
-const cors = require("cors"); // Added this line
-const cookieParser = require("cookie-parser");
-const { getRawOwnerPool, endPool } = require("./db/poolManager");
-const { log } = require("./config/logging");
-const { getDefaultModel } = require("./ai/config");
-const { authenticate } = require("./middleware/authMiddleware");
-const onBehalfOfMiddleware = require("./middleware/onBehalfOfMiddleware"); // Import the new middleware
-const foodRoutes = require("./routes/foodRoutes");
-const v2FoodRoutes = require("./routes/v2/foodRoutes");
-const v2ExerciseEntryRoutes = require("./routes/v2/exerciseEntryRoutes");
-const mealRoutes = require("./routes/mealRoutes");
-const foodEntryRoutes = require("./routes/foodEntryRoutes"); // Add this line
-const foodEntryMealRoutes = require("./routes/foodEntryMealRoutes"); // New: FoodEntryMeal routes
-const reportRoutes = require("./routes/reportRoutes");
-const preferenceRoutes = require("./routes/preferenceRoutes");
-const nutrientDisplayPreferenceRoutes = require("./routes/nutrientDisplayPreferenceRoutes");
-const chatRoutes = require("./routes/chatRoutes");
-const measurementRoutes = require("./routes/measurementRoutes");
-const goalRoutes = require("./routes/goalRoutes");
-const goalPresetRoutes = require("./routes/goalPresetRoutes");
-const weeklyGoalPlanRoutes = require("./routes/weeklyGoalPlanRoutes");
-const mealPlanTemplateRoutes = require("./routes/mealPlanTemplateRoutes");
-const exerciseRoutes = require("./routes/exerciseRoutes");
-const exerciseEntryRoutes = require("./routes/exerciseEntryRoutes");
-const exercisePresetEntryRoutes = require("./routes/exercisePresetEntryRoutes"); // New import
-const freeExerciseDBRoutes = require("./routes/freeExerciseDBRoutes"); // Import freeExerciseDB routes
-const healthDataRoutes = require("./integrations/healthData/healthDataRoutes");
-const sleepRoutes = require("./routes/sleepRoutes");
-const sleepScienceRoutes = require("./routes/sleepScienceRoutes");
+const express = require('express');
+const cors = require('cors'); // Added this line
+const cookieParser = require('cookie-parser');
+const { getRawOwnerPool, endPool } = require('./db/poolManager');
+const { log } = require('./config/logging');
+const { getDefaultModel } = require('./ai/config');
+const { authenticate } = require('./middleware/authMiddleware');
+const onBehalfOfMiddleware = require('./middleware/onBehalfOfMiddleware'); // Import the new middleware
+const foodRoutes = require('./routes/foodRoutes');
+const v2FoodRoutes = require('./routes/v2/foodRoutes');
+const v2ExerciseEntryRoutes = require('./routes/v2/exerciseEntryRoutes');
+const mealRoutes = require('./routes/mealRoutes');
+const foodEntryRoutes = require('./routes/foodEntryRoutes'); // Add this line
+const foodEntryMealRoutes = require('./routes/foodEntryMealRoutes'); // New: FoodEntryMeal routes
+const reportRoutes = require('./routes/reportRoutes');
+const preferenceRoutes = require('./routes/preferenceRoutes');
+const nutrientDisplayPreferenceRoutes = require('./routes/nutrientDisplayPreferenceRoutes');
+const chatRoutes = require('./routes/chatRoutes');
+const measurementRoutes = require('./routes/measurementRoutes');
+const goalRoutes = require('./routes/goalRoutes');
+const goalPresetRoutes = require('./routes/goalPresetRoutes');
+const weeklyGoalPlanRoutes = require('./routes/weeklyGoalPlanRoutes');
+const mealPlanTemplateRoutes = require('./routes/mealPlanTemplateRoutes');
+const exerciseRoutes = require('./routes/exerciseRoutes');
+const exerciseEntryRoutes = require('./routes/exerciseEntryRoutes');
+const exercisePresetEntryRoutes = require('./routes/exercisePresetEntryRoutes'); // New import
+const freeExerciseDBRoutes = require('./routes/freeExerciseDBRoutes'); // Import freeExerciseDB routes
+const healthDataRoutes = require('./integrations/healthData/healthDataRoutes');
+const sleepRoutes = require('./routes/sleepRoutes');
+const sleepScienceRoutes = require('./routes/sleepScienceRoutes');
 // Auth routes are lazy-loaded to ensure database migrations run first
 // const authRoutes = require("./routes/authRoutes");
-const healthRoutes = require("./routes/healthRoutes");
-const externalProviderRoutes = require("./routes/externalProviderRoutes"); // Renamed import
-const garminRoutes = require("./routes/garminRoutes"); // Import Garmin routes
-const withingsRoutes = require("./routes/withingsRoutes"); // Import Withings routes
-const withingsDataRoutes = require("./routes/withingsDataRoutes"); // Import Withings Data routes
-const fitbitRoutes = require("./routes/fitbitRoutes"); // Import Fitbit routes
-const polarRoutes = require("./routes/polarRoutes"); // Import Polar routes
-const stravaRoutes = require("./routes/stravaRoutes"); // Import Strava routes
-const hevyRoutes = require("./routes/hevyRoutes"); // Import Hevy routes
-const moodRoutes = require("./routes/moodRoutes"); // Import Mood routes
-const fastingRoutes = require("./routes/fastingRoutes"); // Import Fasting routes
-const adaptiveTdeeRoutes = require("./routes/adaptiveTdeeRoutes"); // Import Adaptive TDEE routes
-const adminRoutes = require("./routes/adminRoutes"); // Import admin routes
+const healthRoutes = require('./routes/healthRoutes');
+const externalProviderRoutes = require('./routes/externalProviderRoutes'); // Renamed import
+const garminRoutes = require('./routes/garminRoutes'); // Import Garmin routes
+const withingsRoutes = require('./routes/withingsRoutes'); // Import Withings routes
+const withingsDataRoutes = require('./routes/withingsDataRoutes'); // Import Withings Data routes
+const fitbitRoutes = require('./routes/fitbitRoutes'); // Import Fitbit routes
+const polarRoutes = require('./routes/polarRoutes'); // Import Polar routes
+const stravaRoutes = require('./routes/stravaRoutes'); // Import Strava routes
+const hevyRoutes = require('./routes/hevyRoutes'); // Import Hevy routes
+const moodRoutes = require('./routes/moodRoutes'); // Import Mood routes
+const fastingRoutes = require('./routes/fastingRoutes'); // Import Fasting routes
+const adaptiveTdeeRoutes = require('./routes/adaptiveTdeeRoutes'); // Import Adaptive TDEE routes
+const adminRoutes = require('./routes/adminRoutes'); // Import admin routes
 // const adminAuthRoutes = require("./routes/adminAuthRoutes"); // Import new admin auth routes
-const globalSettingsRoutes = require("./routes/globalSettingsRoutes");
-const versionRoutes = require("./routes/versionRoutes");
-const onboardingRoutes = require("./routes/onboardingRoutes"); // Import onboarding routes
-const customNutrientRoutes = require("./routes/customNutrientRoutes"); // Import custom nutrient routes
-const { applyMigrations } = require("./utils/dbMigrations");
-const { applyRlsPolicies } = require("./utils/applyRlsPolicies");
-const { grantPermissions } = require("./db/grantPermissions");
-const waterContainerRoutes = require("./routes/waterContainerRoutes");
-const backupRoutes = require("./routes/backupRoutes"); // Import backup routes
-const errorHandler = require("./middleware/errorHandler"); // Import the new error handler
-const reviewRoutes = require("./routes/reviewRoutes");
-const cron = require("node-cron"); // Import node-cron
+const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
+const versionRoutes = require('./routes/versionRoutes');
+const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
+const customNutrientRoutes = require('./routes/customNutrientRoutes'); // Import custom nutrient routes
+const { applyMigrations } = require('./utils/dbMigrations');
+const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
+const { grantPermissions } = require('./db/grantPermissions');
+const waterContainerRoutes = require('./routes/waterContainerRoutes');
+const backupRoutes = require('./routes/backupRoutes'); // Import backup routes
+const errorHandler = require('./middleware/errorHandler'); // Import the new error handler
+const reviewRoutes = require('./routes/reviewRoutes');
+const cron = require('node-cron'); // Import node-cron
 const {
   performBackup,
   applyRetentionPolicy,
-} = require("./services/backupService"); // Import backup service
-const externalProviderRepository = require("./models/externalProviderRepository"); // Import externalProviderRepository
-const withingsService = require("./integrations/withings/withingsService"); // Import withingsService
-const garminConnectService = require("./integrations/garminconnect/garminConnectService"); // Import garminConnectService
-const garminService = require("./services/garminService"); // Import garminService
-const fitbitService = require("./services/fitbitService"); // Import fitbitService
-const polarService = require("./services/polarService"); // Import polarService
-const stravaService = require("./services/stravaService"); // Import stravaService
-const dashboardRoutes = require("./routes/dashboardRoutes");
-const mealTypeRoutes = require("./routes/mealTypeRoutes");
-const swaggerUi = require("swagger-ui-express");
-const swaggerJsdoc = require("swagger-jsdoc");
-const redoc = require("redoc-express");
-const swaggerSpecs = require("./config/swagger");
-const { createCorsOriginChecker } = require("./utils/corsHelper");
+} = require('./services/backupService'); // Import backup service
+const externalProviderRepository = require('./models/externalProviderRepository'); // Import externalProviderRepository
+const withingsService = require('./integrations/withings/withingsService'); // Import withingsService
+const garminConnectService = require('./integrations/garminconnect/garminConnectService'); // Import garminConnectService
+const garminService = require('./services/garminService'); // Import garminService
+const fitbitService = require('./services/fitbitService'); // Import fitbitService
+const polarService = require('./services/polarService'); // Import polarService
+const stravaService = require('./services/stravaService'); // Import stravaService
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const mealTypeRoutes = require('./routes/mealTypeRoutes');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
+const redoc = require('redoc-express');
+const swaggerSpecs = require('./config/swagger');
+const { createCorsOriginChecker } = require('./utils/corsHelper');
 
 const app = express();
-app.set("trust proxy", 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
+app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
 
 console.log(
-  `DEBUG: SPARKY_FITNESS_FRONTEND_URL is: ${process.env.SPARKY_FITNESS_FRONTEND_URL}`,
+  `DEBUG: SPARKY_FITNESS_FRONTEND_URL is: ${process.env.SPARKY_FITNESS_FRONTEND_URL}`
 );
 
-const allowPrivateNetworks = process.env.ALLOW_PRIVATE_NETWORK_CORS === "true";
+const allowPrivateNetworks = process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true';
 if (allowPrivateNetworks) {
   console.warn(
-    "[SECURITY] Private network CORS is ENABLED. Ensure this is only on self-hosted/private networks.",
+    '[SECURITY] Private network CORS is ENABLED. Ensure this is only on self-hosted/private networks.'
   );
 }
 
@@ -107,24 +107,24 @@ if (allowPrivateNetworks) {
 app.use(
   cors({
     origin: createCorsOriginChecker(
-      process.env.SPARKY_FITNESS_FRONTEND_URL || "http://localhost:8080",
+      process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080',
       allowPrivateNetworks,
-      process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS,
+      process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS
     ),
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "x-provider-id",
-      "x-api-key",
+      'Content-Type',
+      'Authorization',
+      'x-provider-id',
+      'x-api-key',
     ],
     credentials: true, // Allow cookies to be sent from the frontend
-  }),
+  })
 );
 
 // Middleware to parse JSON bodies for all incoming requests
 // Increased limit to 50mb to accommodate image uploads
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 
 // --- Better Auth Mounting Logic (Moved to after migrations) ---
@@ -132,40 +132,39 @@ let syncTrustedProviders;
 let betterAuthHandlerInstance = null;
 const mountBetterAuth = () => {
   try {
-    console.log("[AUTH] Starting Better Auth mounting phase...");
-    const authModule = require("./auth");
+    console.log('[AUTH] Starting Better Auth mounting phase...');
+    const authModule = require('./auth');
     const { auth } = authModule;
     syncTrustedProviders = authModule.syncTrustedProviders;
-    const { toNodeHandler } = require("better-auth/node");
+    const { toNodeHandler } = require('better-auth/node');
     betterAuthHandlerInstance = toNodeHandler(auth);
-    console.log("[AUTH] Better Auth handler successfully mounted.");
+    console.log('[AUTH] Better Auth handler successfully mounted.');
   } catch (error) {
-    console.error("[AUTH FATAL] Initialization failed:", error);
+    console.error('[AUTH FATAL] Initialization failed:', error);
     throw error; // Propagate to block startup if auth fails
   }
 };
 
 // Catch ALL requests starting with /api/auth early.
 app.use(async (req, res, next) => {
-  if (req.originalUrl.startsWith("/api/auth") && betterAuthHandlerInstance) {
+  if (req.originalUrl.startsWith('/api/auth') && betterAuthHandlerInstance) {
     // 1. Skip interceptor for discovery routes - let them fall through to authRoutes.js
     const isDiscovery =
-      req.path === "/api/auth/settings" ||
-      req.path === "/api/auth/mfa-factors";
+      req.path === '/api/auth/settings' || req.path === '/api/auth/mfa-factors';
     if (isDiscovery) {
       return next();
     }
 
     // 2. Manual Sign-Out Cleanup: Clear sparky_active_user_id cookie
-    if (req.method === "POST" && req.path === "/sign-out") {
+    if (req.method === 'POST' && req.path === '/sign-out') {
       console.log(
-        "[AUTH HANDLER] Manual Cleanup: Clearing sparky_active_user_id on logout",
+        '[AUTH HANDLER] Manual Cleanup: Clearing sparky_active_user_id on logout'
       );
-      res.clearCookie("sparky_active_user_id", { path: "/" });
+      res.clearCookie('sparky_active_user_id', { path: '/' });
     }
 
     console.log(
-      `[AUTH HANDLER] Intercepted request: ${req.method} ${req.originalUrl}`,
+      `[AUTH HANDLER] Intercepted request: ${req.method} ${req.originalUrl}`
     );
 
     return betterAuthHandlerInstance(req, res);
@@ -176,18 +175,18 @@ app.use(async (req, res, next) => {
 // Log all incoming requests - AFTER auth to see what falls through
 app.use((req, res, next) => {
   log(
-    "info",
-    `Incoming request: ${req.method} ${req.originalUrl} (Path: ${req.path})`,
+    'info',
+    `Incoming request: ${req.method} ${req.originalUrl} (Path: ${req.path})`
   );
   next();
 });
 
 // Serve static files from the 'uploads' directory
-const UPLOADS_BASE_DIR = path.join(__dirname, "uploads");
-console.log("SparkyFitnessServer UPLOADS_BASE_DIR:", UPLOADS_BASE_DIR);
+const UPLOADS_BASE_DIR = path.join(__dirname, 'uploads');
+console.log('SparkyFitnessServer UPLOADS_BASE_DIR:', UPLOADS_BASE_DIR);
 // Mount at both paths for compatibility during transition
-app.use("/api/uploads", express.static(UPLOADS_BASE_DIR));
-app.use("/uploads", express.static(UPLOADS_BASE_DIR));
+app.use('/api/uploads', express.static(UPLOADS_BASE_DIR));
+app.use('/uploads', express.static(UPLOADS_BASE_DIR));
 
 // On-demand image serving route
 /**
@@ -224,16 +223,16 @@ app.use("/uploads", express.static(UPLOADS_BASE_DIR));
  */
 app.get(
   [
-    "/api/uploads/exercises/:exerciseId/:imageFileName",
-    "/uploads/exercises/:exerciseId/:imageFileName",
+    '/api/uploads/exercises/:exerciseId/:imageFileName',
+    '/uploads/exercises/:exerciseId/:imageFileName',
   ],
   async (req, res, next) => {
     const { exerciseId, imageFileName } = req.params;
     const localImagePath = path.join(
       __dirname,
-      "uploads/exercises",
+      'uploads/exercises',
       exerciseId,
-      imageFileName,
+      imageFileName
     );
 
     // Check if the file already exists locally
@@ -243,63 +242,63 @@ app.get(
 
     // If not found, attempt to re-download
     try {
-      const exerciseRepository = require("./models/exerciseRepository");
-      const freeExerciseDBService = require("./integrations/freeexercisedb/FreeExerciseDBService"); // Import service
+      const exerciseRepository = require('./models/exerciseRepository');
+      const freeExerciseDBService = require('./integrations/freeexercisedb/FreeExerciseDBService'); // Import service
 
       const exercise = await exerciseRepository.getExerciseBySourceAndSourceId(
-        "free-exercise-db",
-        exerciseId,
+        'free-exercise-db',
+        exerciseId
       );
 
       if (!exercise) {
-        return res.status(404).send("Exercise not found.");
+        return res.status(404).send('Exercise not found.');
       }
 
       const originalRelativeImagePath = exercise.images.find((img) =>
-        img.endsWith(imageFileName),
+        img.endsWith(imageFileName)
       );
 
       if (!originalRelativeImagePath) {
-        return res.status(404).send("Image not found for this exercise.");
+        return res.status(404).send('Image not found for this exercise.');
       }
 
-      let externalImageUrl = freeExerciseDBService.getExerciseImageUrl(
-        originalRelativeImagePath,
+      const externalImageUrl = freeExerciseDBService.getExerciseImageUrl(
+        originalRelativeImagePath
       );
 
       // Download the image
-      const { downloadImage } = require("./utils/imageDownloader");
+      const { downloadImage } = require('./utils/imageDownloader');
       const downloadedLocalPath = await downloadImage(
         externalImageUrl,
-        exerciseId,
+        exerciseId
       );
 
       const finalImagePath = path.join(__dirname, downloadedLocalPath);
       res.sendFile(finalImagePath);
     } catch (error) {
-      log("error", `Error serving image: ${error.message}`);
-      res.status(500).send("Error serving image.");
+      log('error', `Error serving image: ${error.message}`);
+      res.status(500).send('Error serving image.');
     }
-  },
+  }
 );
 
 // Apply authentication middleware to all protected routes
 app.use((req, res, next) => {
   const publicRoutes = [
-    "/api/auth/settings",
-    "/api/auth/mfa-factors",
-    "/api/health",
-    "/api/version",
-    "/api/uploads",
-    "/uploads",
-    "/api/ping",
+    '/api/auth/settings',
+    '/api/auth/mfa-factors',
+    '/api/health',
+    '/api/version',
+    '/api/uploads',
+    '/uploads',
+    '/api/ping',
   ];
 
-  let isPublic = publicRoutes.some((route) => {
+  const isPublic = publicRoutes.some((route) => {
     // Exact match or subpath match with trailing slash to prevent partial matches
     // e.g. "/api/health" matches "/api/health" and "/api/health/" but NOT "/api/health-data"
     // e.g. "/api/onboarding" matches "/api/onboarding" and "/api/onboarding/step1"
-    if (req.path === route || req.path.startsWith(route + "/")) {
+    if (req.path === route || req.path.startsWith(route + '/')) {
       return true;
     }
     return false;
@@ -313,89 +312,89 @@ app.use((req, res, next) => {
 });
 
 // Test route
-app.get("/api/ping", (req, res) =>
-  res.json({ status: "ok", time: new Date().toISOString() }),
+app.get('/api/ping', (req, res) =>
+  res.json({ status: 'ok', time: new Date().toISOString() })
 );
 
 // Mounting all API routes
-app.use("/api/chat", chatRoutes);
-app.use("/api/foods", foodRoutes);
-app.use("/api/v2/foods", v2FoodRoutes);
-app.use("/api/v2/exercise-entries", v2ExerciseEntryRoutes);
-app.use("/api/food-entries", foodEntryRoutes);
-app.use("/api/food-entry-meals", foodEntryMealRoutes);
-app.use("/api/meals", mealRoutes);
-app.use("/api/dashboard", dashboardRoutes);
-app.use("/api/reports", reportRoutes);
-app.use("/api/user-preferences", preferenceRoutes);
-app.use("/api/preferences/nutrient-display", nutrientDisplayPreferenceRoutes);
-app.use("/api/measurements", measurementRoutes);
-app.use("/api/goals", goalRoutes);
-app.use("/api/user-goals", goalRoutes);
-app.use("/api/goal-presets", goalPresetRoutes);
-app.use("/api/weekly-goal-plans", weeklyGoalPlanRoutes);
-app.use("/api/meal-plan-templates", mealPlanTemplateRoutes);
-app.use("/api/exercises", exerciseRoutes);
-app.use("/api/exercise-entries", exerciseEntryRoutes);
-app.use("/api/exercise-preset-entries", exercisePresetEntryRoutes);
-app.use("/api/freeexercisedb", freeExerciseDBRoutes);
-app.use("/api/health-data", healthDataRoutes);
-app.use("/api/sleep", sleepRoutes);
-app.use("/api/sleep-science", sleepScienceRoutes);
-app.use("/api/auth", (req, res, next) =>
-  require("./routes/authRoutes")(req, res, next),
+app.use('/api/chat', chatRoutes);
+app.use('/api/foods', foodRoutes);
+app.use('/api/v2/foods', v2FoodRoutes);
+app.use('/api/v2/exercise-entries', v2ExerciseEntryRoutes);
+app.use('/api/food-entries', foodEntryRoutes);
+app.use('/api/food-entry-meals', foodEntryMealRoutes);
+app.use('/api/meals', mealRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/user-preferences', preferenceRoutes);
+app.use('/api/preferences/nutrient-display', nutrientDisplayPreferenceRoutes);
+app.use('/api/measurements', measurementRoutes);
+app.use('/api/goals', goalRoutes);
+app.use('/api/user-goals', goalRoutes);
+app.use('/api/goal-presets', goalPresetRoutes);
+app.use('/api/weekly-goal-plans', weeklyGoalPlanRoutes);
+app.use('/api/meal-plan-templates', mealPlanTemplateRoutes);
+app.use('/api/exercises', exerciseRoutes);
+app.use('/api/exercise-entries', exerciseEntryRoutes);
+app.use('/api/exercise-preset-entries', exercisePresetEntryRoutes);
+app.use('/api/freeexercisedb', freeExerciseDBRoutes);
+app.use('/api/health-data', healthDataRoutes);
+app.use('/api/sleep', sleepRoutes);
+app.use('/api/sleep-science', sleepScienceRoutes);
+app.use('/api/auth', (req, res, next) =>
+  require('./routes/authRoutes')(req, res, next)
 );
-app.use("/api/identity", (req, res, next) =>
-  require("./routes/identityRoutes")(req, res, next),
+app.use('/api/identity', (req, res, next) =>
+  require('./routes/identityRoutes')(req, res, next)
 );
-app.use("/api/health", healthRoutes);
-app.use("/api/external-providers", externalProviderRoutes);
-app.use("/api/integrations/garmin", garminRoutes);
-app.use("/api/withings", withingsRoutes);
-app.use("/api/version", versionRoutes);
-app.use("/api/onboarding", onboardingRoutes);
-app.use("/api/admin/global-settings", globalSettingsRoutes);
-app.use("/api/global-settings", globalSettingsRoutes); // Public route for allow-user-ai-config
-app.use("/api/admin/oidc-settings", require("./routes/oidcSettingsRoutes"));
-app.use("/api/admin/backup", backupRoutes);
-app.use("/api/integrations/withings/data", withingsDataRoutes);
-app.use("/api/integrations/fitbit", fitbitRoutes);
-app.use("/api/integrations/polar", polarRoutes);
-app.use("/api/integrations/strava", stravaRoutes);
-app.use("/api/integrations/hevy", hevyRoutes);
-app.use("/api/mood", moodRoutes);
-app.use("/api/fasting", fastingRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/admin/auth", (req, res, next) =>
-  require("./routes/adminAuthRoutes")(req, res, next),
+app.use('/api/health', healthRoutes);
+app.use('/api/external-providers', externalProviderRoutes);
+app.use('/api/integrations/garmin', garminRoutes);
+app.use('/api/withings', withingsRoutes);
+app.use('/api/version', versionRoutes);
+app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/admin/global-settings', globalSettingsRoutes);
+app.use('/api/global-settings', globalSettingsRoutes); // Public route for allow-user-ai-config
+app.use('/api/admin/oidc-settings', require('./routes/oidcSettingsRoutes'));
+app.use('/api/admin/backup', backupRoutes);
+app.use('/api/integrations/withings/data', withingsDataRoutes);
+app.use('/api/integrations/fitbit', fitbitRoutes);
+app.use('/api/integrations/polar', polarRoutes);
+app.use('/api/integrations/strava', stravaRoutes);
+app.use('/api/integrations/hevy', hevyRoutes);
+app.use('/api/mood', moodRoutes);
+app.use('/api/fasting', fastingRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/admin/auth', (req, res, next) =>
+  require('./routes/adminAuthRoutes')(req, res, next)
 );
-app.use("/api/water-containers", waterContainerRoutes);
-app.use("/api/workout-presets", require("./routes/workoutPresetRoutes"));
+app.use('/api/water-containers', waterContainerRoutes);
+app.use('/api/workout-presets', require('./routes/workoutPresetRoutes'));
 app.use(
-  "/api/workout-plan-templates",
-  require("./routes/workoutPlanTemplateRoutes"),
+  '/api/workout-plan-templates',
+  require('./routes/workoutPlanTemplateRoutes')
 );
-app.use("/api/review", reviewRoutes);
-app.use("/api/custom-nutrients", customNutrientRoutes);
-app.use("/api/adaptive-tdee", adaptiveTdeeRoutes);
-app.use("/api/meal-types", mealTypeRoutes);
+app.use('/api/review', reviewRoutes);
+app.use('/api/custom-nutrients', customNutrientRoutes);
+app.use('/api/adaptive-tdee', adaptiveTdeeRoutes);
+app.use('/api/meal-types', mealTypeRoutes);
 
 // Swagger
 app.use(
-  "/api/api-docs/swagger",
+  '/api/api-docs/swagger',
   swaggerUi.serve,
-  swaggerUi.setup(swaggerSpecs),
+  swaggerUi.setup(swaggerSpecs)
 );
 app.get(
-  "/api/api-docs/redoc",
-  redoc({ title: "API Docs", specUrl: "/api/api-docs/json" }),
+  '/api/api-docs/redoc',
+  redoc({ title: 'API Docs', specUrl: '/api/api-docs/json' })
 );
-app.get("/api/api-docs/json", (req, res) => res.json(swaggerSpecs));
-app.get("/api/api-docs", (req, res) => res.redirect("/api/api-docs/swagger"));
+app.get('/api/api-docs/json', (req, res) => res.json(swaggerSpecs));
+app.get('/api/api-docs', (req, res) => res.redirect('/api/api-docs/swagger'));
 
 // Backup scheduling
 const scheduleBackups = async () => {
-  cron.schedule("0 2 * * *", async () => {
+  cron.schedule('0 2 * * *', async () => {
     const result = await performBackup();
     if (result.success) await applyRetentionPolicy(7);
   });
@@ -403,38 +402,38 @@ const scheduleBackups = async () => {
 
 // Session cleanup scheduling
 const scheduleSessionCleanup = async () => {
-  const { cleanupSessions } = require("./auth");
+  const { cleanupSessions } = require('./auth');
   // Run every day at 3 AM
-  cron.schedule("0 3 * * *", async () => {
+  cron.schedule('0 3 * * *', async () => {
     try {
       await cleanupSessions();
     } catch (error) {
-      console.error("[CRON] Session cleanup failed:", error);
+      console.error('[CRON] Session cleanup failed:', error);
     }
   });
 };
 
 // Withings sync
 const scheduleWithingsSyncs = async () => {
-  cron.schedule("0 * * * *", async () => {
+  cron.schedule('0 * * * *', async () => {
     const withingsProviders =
-      await externalProviderRepository.getProvidersByType("withings");
+      await externalProviderRepository.getProvidersByType('withings');
     for (const provider of withingsProviders) {
-      if (provider.is_active && provider.sync_frequency !== "manual") {
+      if (provider.is_active && provider.sync_frequency !== 'manual') {
         try {
-          const withingsServiceCentral = require("./services/withingsService");
+          const withingsServiceCentral = require('./services/withingsService');
           await withingsServiceCentral.syncWithingsData(
             provider.user_id,
-            "scheduled",
+            'scheduled'
           );
           await externalProviderRepository.updateProviderLastSync(
             provider.id,
-            new Date(),
+            new Date()
           );
         } catch (error) {
           console.error(
             `[CRON] Withings sync failed for user ${provider.user_id}:`,
-            error,
+            error
           );
         }
       }
@@ -444,21 +443,21 @@ const scheduleWithingsSyncs = async () => {
 
 // Garmin sync
 const scheduleGarminSyncs = async () => {
-  cron.schedule("0 * * * *", async () => {
+  cron.schedule('0 * * * *', async () => {
     const providers =
-      await externalProviderRepository.getProvidersByType("garmin");
+      await externalProviderRepository.getProvidersByType('garmin');
     for (const provider of providers) {
-      if (provider.is_active && provider.sync_frequency !== "manual") {
+      if (provider.is_active && provider.sync_frequency !== 'manual') {
         try {
-          await garminService.syncGarminData(provider.user_id, "scheduled");
+          await garminService.syncGarminData(provider.user_id, 'scheduled');
           await externalProviderRepository.updateProviderLastSync(
             provider.id,
-            new Date(),
+            new Date()
           );
         } catch (error) {
           console.error(
             `[CRON] Garmin sync failed for user ${provider.user_id}:`,
-            error,
+            error
           );
         }
       }
@@ -468,15 +467,15 @@ const scheduleGarminSyncs = async () => {
 
 // Fitbit sync
 const scheduleFitbitSyncs = async () => {
-  cron.schedule("0 * * * *", async () => {
+  cron.schedule('0 * * * *', async () => {
     const fitbitProviders =
-      await externalProviderRepository.getProvidersByType("fitbit");
+      await externalProviderRepository.getProvidersByType('fitbit');
     for (const provider of fitbitProviders) {
-      if (provider.is_active && provider.sync_frequency !== "manual") {
-        await fitbitService.syncFitbitData(provider.user_id, "scheduled");
+      if (provider.is_active && provider.sync_frequency !== 'manual') {
+        await fitbitService.syncFitbitData(provider.user_id, 'scheduled');
         await externalProviderRepository.updateProviderLastSync(
           provider.id,
-          new Date(),
+          new Date()
         );
       }
     }
@@ -485,21 +484,21 @@ const scheduleFitbitSyncs = async () => {
 
 // Strava sync
 const scheduleStravaSyncs = async () => {
-  cron.schedule("0 * * * *", async () => {
+  cron.schedule('0 * * * *', async () => {
     const stravaProviders =
-      await externalProviderRepository.getProvidersByType("strava");
+      await externalProviderRepository.getProvidersByType('strava');
     for (const provider of stravaProviders) {
-      if (provider.is_active && provider.sync_frequency !== "manual") {
+      if (provider.is_active && provider.sync_frequency !== 'manual') {
         try {
-          await stravaService.syncStravaData(provider.user_id, "scheduled");
+          await stravaService.syncStravaData(provider.user_id, 'scheduled');
           await externalProviderRepository.updateProviderLastSync(
             provider.id,
-            new Date(),
+            new Date()
           );
         } catch (error) {
           console.error(
             `[CRON] Strava sync failed for user ${provider.user_id}:`,
-            error,
+            error
           );
         }
       }
@@ -509,25 +508,25 @@ const scheduleStravaSyncs = async () => {
 
 // Polar sync
 const schedulePolarSyncs = async () => {
-  cron.schedule("0 * * * *", async () => {
+  cron.schedule('0 * * * *', async () => {
     const polarProviders =
-      await externalProviderRepository.getProvidersByType("polar");
+      await externalProviderRepository.getProvidersByType('polar');
     for (const provider of polarProviders) {
-      if (provider.is_active && provider.sync_frequency !== "manual") {
+      if (provider.is_active && provider.sync_frequency !== 'manual') {
         try {
           await polarService.syncPolarData(
             provider.user_id,
-            "scheduled",
-            provider.id,
+            'scheduled',
+            provider.id
           );
           await externalProviderRepository.updateProviderLastSync(
             provider.id,
-            new Date(),
+            new Date()
           );
         } catch (error) {
           console.error(
             `[CRON] Polar sync failed for user ${provider.user_id}:`,
-            error,
+            error
           );
         }
       }
@@ -540,17 +539,17 @@ applyMigrations()
   .then(async () => {
     // Upsert OIDC provider from env when SPARKY_FITNESS_OIDC_ISSUER_URL + CLIENT_ID + SECRET + PROVIDER_SLUG are set
     try {
-      const { upsertEnvOidcProvider } = require("./utils/oidcEnvConfig");
+      const { upsertEnvOidcProvider } = require('./utils/oidcEnvConfig');
       await upsertEnvOidcProvider();
     } catch (err) {
-      log("error", "OIDC env provider upsert failed:", err);
+      log('error', 'OIDC env provider upsert failed:', err);
     }
     mountBetterAuth();
 
     // Sync trusted SSO providers after database is ready (so Better Auth sees env-upserted and DB providers)
     if (syncTrustedProviders) {
       await syncTrustedProviders().catch((err) =>
-        console.error("[AUTH] Post-init SSO sync failed:", err),
+        console.error('[AUTH] Post-init SSO sync failed:', err)
       );
     }
 
@@ -563,52 +562,52 @@ applyMigrations()
     scheduleStravaSyncs();
 
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
-      const userRepository = require("./models/userRepository");
+      const userRepository = require('./models/userRepository');
       const adminUser = await userRepository.findUserByEmail(
-        process.env.SPARKY_FITNESS_ADMIN_EMAIL,
+        process.env.SPARKY_FITNESS_ADMIN_EMAIL
       );
-      if (adminUser) await userRepository.updateUserRole(adminUser.id, "admin");
+      if (adminUser) await userRepository.updateUserRole(adminUser.id, 'admin');
     }
 
     const server = app.listen(PORT, () => {
       console.log(`DEBUG: Server started and listening on port ${PORT}`);
-      log("info", `SparkyFitnessServer listening on port ${PORT}`);
-      console.log("View API documentation at: /api/api-docs/swagger");
+      log('info', `SparkyFitnessServer listening on port ${PORT}`);
+      console.log('View API documentation at: /api/api-docs/swagger');
     });
 
     // Fix for reverse proxies using HTTP keepalive (e.g. Traefik, Caddy)
-server.keepAliveTimeout = 181000;  // Must be > proxy's idle timeout (nginx=75s, traefik=default 180s)
-server.headersTimeout = 182000;    // Must be slightly > keepAliveTimeout
+    server.keepAliveTimeout = 181000; // Must be > proxy's idle timeout (nginx=75s, traefik=default 180s)
+    server.headersTimeout = 182000; // Must be slightly > keepAliveTimeout
     // Graceful shutdown
     let shuttingDown = false;
     const shutdown = async (signal) => {
       if (shuttingDown) return;
       shuttingDown = true;
-      log("info", `${signal} received, shutting down gracefully...`);
+      log('info', `${signal} received, shutting down gracefully...`);
 
       server.close(async () => {
-        log("info", "HTTP server closed, draining database pools...");
+        log('info', 'HTTP server closed, draining database pools...');
         try {
           await endPool();
-          log("info", "Database pools closed. Exiting.");
+          log('info', 'Database pools closed. Exiting.');
         } catch (err) {
-          log("error", "Error closing database pools:", err);
+          log('error', 'Error closing database pools:', err);
         }
         process.exit(0);
       });
 
       // Force exit if graceful shutdown takes too long
       setTimeout(() => {
-        log("error", "Graceful shutdown timed out after 15s, forcing exit.");
+        log('error', 'Graceful shutdown timed out after 15s, forcing exit.');
         process.exit(1);
       }, 15000).unref();
     };
 
-    process.on("SIGTERM", () => shutdown("SIGTERM"));
-    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   })
   .catch((error) => {
-    console.error("Failed to start server:", error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   });
 

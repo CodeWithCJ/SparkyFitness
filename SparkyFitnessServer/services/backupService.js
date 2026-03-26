@@ -25,25 +25,28 @@ async function ensureBackupDirectory() {
 
 async function executeCommand(command, options = {}) {
   return new Promise((resolve, reject) => {
-    exec(command, { ...options, env: { ...process.env, ...options.env } }, (error, stdout, stderr) => {
-      if (error) {
-        log('error', `Command failed: ${command}`, error);
-        log('error', `Stderr: ${stderr}`);
-        return reject(new Error(`Command failed: ${command}\n${stderr}`));
+    exec(
+      command,
+      { ...options, env: { ...process.env, ...options.env } },
+      (error, stdout, stderr) => {
+        if (error) {
+          log('error', `Command failed: ${command}`, error);
+          log('error', `Stderr: ${stderr}`);
+          return reject(new Error(`Command failed: ${command}\n${stderr}`));
+        }
+        if (stderr) {
+          log('warn', `Command stderr: ${stderr}`);
+        }
+        log('info', `Command successful: ${command}`);
+        log('debug', `Stdout: ${stdout}`);
+        resolve(stdout);
       }
-      if (stderr) {
-        log('warn', `Command stderr: ${stderr}`);
-      }
-      log('info', `Command successful: ${command}`);
-      log('debug', `Stdout: ${stdout}`);
-      resolve(stdout);
-    });
+    );
   });
 }
 
 async function performBackup(isManual = false) {
   await ensureBackupDirectory();
-
 
   const settings = await backupSettingsRepository.getBackupSettings();
   if (!isManual && !settings.backup_enabled) {
@@ -63,13 +66,20 @@ async function performBackup(isManual = false) {
   try {
     log('info', 'Starting database backup...');
     const pgDumpArgs = [
-      '-h', process.env.SPARKY_FITNESS_DB_HOST,
-      '-p', process.env.SPARKY_FITNESS_DB_PORT,
-      '-U', process.env.SPARKY_FITNESS_DB_USER,
-      '-d', process.env.SPARKY_FITNESS_DB_NAME,
+      '-h',
+      process.env.SPARKY_FITNESS_DB_HOST,
+      '-p',
+      process.env.SPARKY_FITNESS_DB_PORT,
+      '-U',
+      process.env.SPARKY_FITNESS_DB_USER,
+      '-d',
+      process.env.SPARKY_FITNESS_DB_NAME,
     ];
     const pgDump = spawn('pg_dump', pgDumpArgs, {
-      env: { PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD, ...process.env },
+      env: {
+        PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD,
+        ...process.env,
+      },
     });
     const gzip = zlib.createGzip();
     const output = fs.createWriteStream(dbBackupPath);
@@ -85,7 +95,8 @@ async function performBackup(isManual = false) {
           }
         });
         pgDump.on('error', (err) => reject(err));
-      })]);
+      }),
+    ]);
 
     log('info', `Database backup created: ${dbBackupPath}`);
 
@@ -104,8 +115,16 @@ async function performBackup(isManual = false) {
     await fsp.unlink(uploadsBackupPath);
     log('info', 'Individual backup files removed.');
 
-    await backupSettingsRepository.updateLastBackupStatus('success', new Date());
-    return { success: true, message: 'Backup completed successfully.', path: fullBackupPath, fileName: fullBackupFileName };
+    await backupSettingsRepository.updateLastBackupStatus(
+      'success',
+      new Date()
+    );
+    return {
+      success: true,
+      message: 'Backup completed successfully.',
+      path: fullBackupPath,
+      fileName: fullBackupFileName,
+    };
   } catch (error) {
     log('error', 'Backup failed:', error);
     await backupSettingsRepository.updateLastBackupStatus('failed', new Date());
@@ -118,23 +137,35 @@ async function applyRetentionPolicy() {
   const retentionDays = settings.retention_days;
 
   if (retentionDays <= 0) {
-    log('info', 'Retention policy disabled or invalid days specified in settings.');
+    log(
+      'info',
+      'Retention policy disabled or invalid days specified in settings.'
+    );
     return;
   }
 
-  log('info', `Applying retention policy: keeping backups for ${retentionDays} days.`);
+  log(
+    'info',
+    `Applying retention policy: keeping backups for ${retentionDays} days.`
+  );
   const now = new Date();
   const files = await fsp.readdir(BACKUP_DIR);
 
   for (const file of files) {
-    if (file.startsWith('sparkyfitness_full_backup_') && file.endsWith('.tar.gz')) {
+    if (
+      file.startsWith('sparkyfitness_full_backup_') &&
+      file.endsWith('.tar.gz')
+    ) {
       const filePath = path.join(BACKUP_DIR, file);
       const stats = await fsp.stat(filePath);
       const fileAgeMs = now.getTime() - stats.mtime.getTime();
       const fileAgeDays = fileAgeMs / (1000 * 60 * 60 * 24);
 
       if (fileAgeDays > retentionDays) {
-        log('info', `Deleting old backup file: ${file} (age: ${fileAgeDays.toFixed(2)} days)`);
+        log(
+          'info',
+          `Deleting old backup file: ${file} (age: ${fileAgeDays.toFixed(2)} days)`
+        );
         await fsp.unlink(filePath);
       }
     }
@@ -163,11 +194,18 @@ async function performRestore(backupFilePath) {
     log('info', 'Combined backup archive extracted.');
 
     const extractedFiles = await fsp.readdir(tempRestoreDir);
-    const dbDumpFile = extractedFiles.find(f => f.startsWith('sparkyfitness_db_backup_') && f.endsWith('.sql.gz'));
-    const uploadsTarFile = extractedFiles.find(f => f.startsWith('sparkyfitness_uploads_backup_') && f.endsWith('.tar.gz'));
+    const dbDumpFile = extractedFiles.find(
+      (f) => f.startsWith('sparkyfitness_db_backup_') && f.endsWith('.sql.gz')
+    );
+    const uploadsTarFile = extractedFiles.find(
+      (f) =>
+        f.startsWith('sparkyfitness_uploads_backup_') && f.endsWith('.tar.gz')
+    );
 
     if (!dbDumpFile || !uploadsTarFile) {
-      throw new Error('Combined backup archive does not contain expected database dump or uploads tar file.');
+      throw new Error(
+        'Combined backup archive does not contain expected database dump or uploads tar file.'
+      );
     }
 
     const extractedDbDumpPath = path.join(tempRestoreDir, dbDumpFile);
@@ -181,11 +219,22 @@ async function performRestore(backupFilePath) {
 
     // Terminate all other connections to the database
     const terminateConnectionsCommand = `SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '${process.env.SPARKY_FITNESS_DB_NAME}' AND pid <> pg_backend_pid();`;
-    await executeCommand(`psql -h ${process.env.SPARKY_FITNESS_DB_HOST} -p ${process.env.SPARKY_FITNESS_DB_PORT} -U ${process.env.SPARKY_FITNESS_DB_USER} -d postgres -c "${terminateConnectionsCommand}"`, { env: { PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD, ...process.env } });
+    await executeCommand(
+      `psql -h ${process.env.SPARKY_FITNESS_DB_HOST} -p ${process.env.SPARKY_FITNESS_DB_PORT} -U ${process.env.SPARKY_FITNESS_DB_USER} -d postgres -c "${terminateConnectionsCommand}"`,
+      {
+        env: {
+          PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD,
+          ...process.env,
+        },
+      }
+    );
     log('info', 'Terminated active database connections.');
 
     // Drop and recreate database to ensure a clean state
-    const dbEnv = { PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD, ...process.env };
+    const dbEnv = {
+      PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD,
+      ...process.env,
+    };
     const dropDbCommand = `dropdb -h ${process.env.SPARKY_FITNESS_DB_HOST} -p ${process.env.SPARKY_FITNESS_DB_PORT} -U ${process.env.SPARKY_FITNESS_DB_USER} ${process.env.SPARKY_FITNESS_DB_NAME}`;
     const createDbCommand = `createdb -h ${process.env.SPARKY_FITNESS_DB_HOST} -p ${process.env.SPARKY_FITNESS_DB_PORT} -U ${process.env.SPARKY_FITNESS_DB_USER} ${process.env.SPARKY_FITNESS_DB_NAME}`;
     await executeCommand(dropDbCommand, { env: dbEnv });
@@ -209,10 +258,14 @@ async function performRestore(backupFilePath) {
     // 5. Restore database
     log('info', 'Restoring database from dump...');
     const psqlArgs = [
-      '-h', process.env.SPARKY_FITNESS_DB_HOST,
-      '-p', process.env.SPARKY_FITNESS_DB_PORT,
-      '-U', process.env.SPARKY_FITNESS_DB_USER,
-      '-d', process.env.SPARKY_FITNESS_DB_NAME,
+      '-h',
+      process.env.SPARKY_FITNESS_DB_HOST,
+      '-p',
+      process.env.SPARKY_FITNESS_DB_PORT,
+      '-U',
+      process.env.SPARKY_FITNESS_DB_USER,
+      '-d',
+      process.env.SPARKY_FITNESS_DB_NAME,
     ];
     const psql = spawn('psql', psqlArgs, { env: dbEnv });
     const gunzip = zlib.createGunzip();
@@ -234,7 +287,9 @@ async function performRestore(backupFilePath) {
 
     // 6. Restore uploads
     log('info', 'Restoring uploads folder...');
-    await executeCommand(`tar -xzf ${extractedUploadsTarPath} -C ${UPLOADS_BASE_DIR}`);
+    await executeCommand(
+      `tar -xzf ${extractedUploadsTarPath} -C ${UPLOADS_BASE_DIR}`
+    );
     log('info', 'Uploads folder restored successfully.');
 
     // 7. Clean up temporary directory
@@ -248,11 +303,21 @@ async function performRestore(backupFilePath) {
     // Attempt to clean up temp directory even if restore fails
     if (tempRestoreDir) {
       try {
-        log('info', `Attempting to clean up temporary restore directory ${tempRestoreDir} after failure.`);
+        log(
+          'info',
+          `Attempting to clean up temporary restore directory ${tempRestoreDir} after failure.`
+        );
         await fsp.rm(tempRestoreDir, { recursive: true, force: true });
-        log('info', `Temporary restore directory ${tempRestoreDir} cleaned up successfully after failure.`);
+        log(
+          'info',
+          `Temporary restore directory ${tempRestoreDir} cleaned up successfully after failure.`
+        );
       } catch (cleanupError) {
-        log('error', `Failed to clean up temporary restore directory ${tempRestoreDir}:`, cleanupError);
+        log(
+          'error',
+          `Failed to clean up temporary restore directory ${tempRestoreDir}:`,
+          cleanupError
+        );
       }
     }
     return { success: false, error: error.message };

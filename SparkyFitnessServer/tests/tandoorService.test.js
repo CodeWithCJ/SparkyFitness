@@ -1,44 +1,44 @@
-const TandoorService = require("../integrations/tandoor/tandoorService");
-const { log } = require("../config/logging");
+const TandoorService = require('../integrations/tandoor/tandoorService');
+const { log } = require('../config/logging');
 
-jest.mock("../config/logging", () => ({
+jest.mock('../config/logging', () => ({
   log: jest.fn(),
 }));
 
-describe("TandoorService.mapTandoorRecipeToSparkyFood", () => {
+describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
   const service = new TandoorService(
-    "http://tandoor.example.com",
-    "fake-api-key",
+    'http://tandoor.example.com',
+    'fake-api-key'
   );
-  const userId = "user-123";
+  const userId = 'user-123';
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("should map nutrition from food_properties (Spanish screenshot example)", () => {
+  it('should map nutrition from food_properties (Spanish screenshot example)', () => {
     const mockRecipe = {
       id: 2,
-      name: "Pollo con salsa de mostaza y champiñones",
+      name: 'Pollo con salsa de mostaza y champiñones',
       nutrition: null,
       properties: [],
       food_properties: {
         1: {
           id: 1,
-          name: "Proteínas",
-          open_data_slug: "property-proteins",
+          name: 'Proteínas',
+          open_data_slug: 'property-proteins',
           total_value: 237.57,
         },
         2: {
           id: 2,
-          name: "Grasas",
-          open_data_slug: "property-fats",
+          name: 'Grasas',
+          open_data_slug: 'property-fats',
           total_value: 69.838,
         },
         3: {
           id: 3,
-          name: "Carbohidratos",
-          open_data_slug: "property-carbohydrates",
+          name: 'Carbohidratos',
+          open_data_slug: 'property-carbohydrates',
           total_value: 86.365,
         },
       },
@@ -54,10 +54,10 @@ describe("TandoorService.mapTandoorRecipeToSparkyFood", () => {
     expect(result.variant.serving_size).toBe(1); // mapped data is per serving
   });
 
-  it("should map nutrition from nutrition object (explicit structured data)", () => {
+  it('should map nutrition from nutrition object (explicit structured data)', () => {
     const mockRecipe = {
       id: 5,
-      name: "Healthy Salad",
+      name: 'Healthy Salad',
       nutrition: {
         calories: 250,
         proteins: 15,
@@ -76,13 +76,13 @@ describe("TandoorService.mapTandoorRecipeToSparkyFood", () => {
     expect(result.variant.carbs).toBe(30);
   });
 
-  it("should map nutrition from nutrition array", () => {
+  it('should map nutrition from nutrition array', () => {
     const mockRecipe = {
       id: 6,
-      name: "Protein Shake",
+      name: 'Protein Shake',
       nutrition: [
-        { name: "Protein", value: 40 },
-        { name: "Kcal", value: 300 },
+        { name: 'Protein', value: 40 },
+        { name: 'Kcal', value: 300 },
       ],
       food_properties: {},
       properties: [],
@@ -94,19 +94,19 @@ describe("TandoorService.mapTandoorRecipeToSparkyFood", () => {
     expect(result.variant.calories).toBe(300);
   });
 
-  it("should respect priority: nutrition > food_properties > properties", () => {
+  it('should respect priority: nutrition > food_properties > properties', () => {
     const mockRecipe = {
       id: 10,
-      name: "Priority Test",
+      name: 'Priority Test',
       nutrition: { proteins: 10 },
       food_properties: {
         1: {
-          name: "Proteínas",
-          open_data_slug: "property-proteins",
+          name: 'Proteínas',
+          open_data_slug: 'property-proteins',
           total_value: 20,
         },
       },
-      properties: [{ property_type: { name: "Protein" }, property_amount: 30 }],
+      properties: [{ property_type: { name: 'Protein' }, property_amount: 30 }],
     };
 
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
@@ -114,19 +114,19 @@ describe("TandoorService.mapTandoorRecipeToSparkyFood", () => {
     expect(result.variant.protein).toBe(10); // nutrition takes precedence
   });
 
-  it("should fallback to food_properties if nutrition is missing", () => {
+  it('should fallback to food_properties if nutrition is missing', () => {
     const mockRecipe = {
       id: 11,
-      name: "Fallback Test",
+      name: 'Fallback Test',
       nutrition: null,
       food_properties: {
         1: {
-          name: "Proteínas",
-          open_data_slug: "property-proteins",
+          name: 'Proteínas',
+          open_data_slug: 'property-proteins',
           total_value: 20,
         },
       },
-      properties: [{ property_type: { name: "Protein" }, property_amount: 30 }],
+      properties: [{ property_type: { name: 'Protein' }, property_amount: 30 }],
     };
 
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
@@ -134,14 +134,14 @@ describe("TandoorService.mapTandoorRecipeToSparkyFood", () => {
     expect(result.variant.protein).toBe(20); // food_properties takes precedence over properties
   });
 
-  it("should match open_data_slug even if name is localized", () => {
+  it('should match open_data_slug even if name is localized', () => {
     const mockRecipe = {
       id: 12,
-      name: "Slug Test",
+      name: 'Slug Test',
       food_properties: {
         1: {
-          name: "Whatever",
-          open_data_slug: "property-carbohydrates",
+          name: 'Whatever',
+          open_data_slug: 'property-carbohydrates',
           total_value: 50,
         },
       },
@@ -152,17 +152,17 @@ describe("TandoorService.mapTandoorRecipeToSparkyFood", () => {
     expect(result.variant.carbs).toBe(50);
   });
 
-  it("should ignore 0 values in food_properties and fallback to non-zero values in properties", () => {
+  it('should ignore 0 values in food_properties and fallback to non-zero values in properties', () => {
     const mockRecipe = {
       id: 14,
-      name: "Chicken Pasta (0-value fallback test)",
+      name: 'Chicken Pasta (0-value fallback test)',
       food_properties: {
-        1: { name: "Calories", total_value: 0 },
-        2: { name: "Proteins", total_value: 0 },
+        1: { name: 'Calories', total_value: 0 },
+        2: { name: 'Proteins', total_value: 0 },
       },
       properties: [
-        { property_type: { name: "Calories" }, property_amount: 482 },
-        { property_type: { name: "Proteins" }, property_amount: 34 },
+        { property_type: { name: 'Calories' }, property_amount: 482 },
+        { property_type: { name: 'Proteins' }, property_amount: 34 },
       ],
     };
 
@@ -175,10 +175,10 @@ describe("TandoorService.mapTandoorRecipeToSparkyFood", () => {
   it("should not match 'ca' as 'calories' (partial slug bug fix)", () => {
     const mockRecipe = {
       id: 15,
-      name: "Partial match test",
+      name: 'Partial match test',
       properties: [
         {
-          property_type: { name: "ca", open_data_slug: "ca" },
+          property_type: { name: 'ca', open_data_slug: 'ca' },
           property_amount: 50,
         },
       ],
