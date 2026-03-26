@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const { v4: uuidv4 } = require('uuid');
 const { syncUserGroups } = require('./utils/oidcGroupSync');
 const userRepository = require('./models/userRepository');
+const { resolveTwoFactorDisableUserUpdate } = require('./utils/twoFactorState');
 const {
   sendPasswordResetEmail,
   sendMagicLinkEmail,
@@ -387,6 +388,25 @@ const auth = betterAuth({
             );
             // We don't throw here to avoid blocking the signup, but we log the failure
           }
+        },
+      },
+      update: {
+        before: async (user, ctx) => {
+          const data = await resolveTwoFactorDisableUserUpdate(
+            user,
+            ctx,
+            userRepository.findUserById
+          );
+
+          if (!data) {
+            return;
+          }
+
+          log(
+            'info',
+            '[AUTH] Preserving email MFA while Better Auth disables TOTP.'
+          );
+          return { data };
         },
       },
     },
