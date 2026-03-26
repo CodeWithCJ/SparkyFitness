@@ -7,7 +7,10 @@ async function createWeeklyGoalPlan(userId, planData) {
     if (planData.is_active) {
       await weeklyGoalPlanRepository.deactivateAllWeeklyGoalPlans(userId);
     }
-    const newPlan = await weeklyGoalPlanRepository.createWeeklyGoalPlan({ ...planData, user_id: userId });
+    const newPlan = await weeklyGoalPlanRepository.createWeeklyGoalPlan({
+      ...planData,
+      user_id: userId,
+    });
     return newPlan;
   } catch (error) {
     log('error', `Error creating weekly goal plan for user ${userId}:`, error);
@@ -17,7 +20,8 @@ async function createWeeklyGoalPlan(userId, planData) {
 
 async function getWeeklyGoalPlans(userId) {
   try {
-    const plans = await weeklyGoalPlanRepository.getWeeklyGoalPlansByUserId(userId);
+    const plans =
+      await weeklyGoalPlanRepository.getWeeklyGoalPlansByUserId(userId);
     return plans;
   } catch (error) {
     log('error', `Error fetching weekly goal plans for user ${userId}:`, error);
@@ -27,10 +31,17 @@ async function getWeeklyGoalPlans(userId) {
 
 async function getActiveWeeklyGoalPlan(userId, date) {
   try {
-    const plan = await weeklyGoalPlanRepository.getActiveWeeklyGoalPlan(userId, date);
+    const plan = await weeklyGoalPlanRepository.getActiveWeeklyGoalPlan(
+      userId,
+      date
+    );
     return plan;
   } catch (error) {
-    log('error', `Error fetching active weekly goal plan for user ${userId} on date ${date}:`, error);
+    log(
+      'error',
+      `Error fetching active weekly goal plan for user ${userId} on date ${date}:`,
+      error
+    );
     throw new Error('Failed to fetch active weekly goal plan.');
   }
 }
@@ -41,20 +52,34 @@ async function updateWeeklyGoalPlan(planId, userId, planData) {
     if (planData.is_active) {
       await weeklyGoalPlanRepository.deactivateAllWeeklyGoalPlans(userId);
     }
-    const updatedPlan = await weeklyGoalPlanRepository.updateWeeklyGoalPlan(planId, { ...planData, user_id: userId });
+    const updatedPlan = await weeklyGoalPlanRepository.updateWeeklyGoalPlan(
+      planId,
+      { ...planData, user_id: userId }
+    );
     return updatedPlan;
   } catch (error) {
-    log('error', `Error updating weekly goal plan ${planId} for user ${userId}:`, error);
+    log(
+      'error',
+      `Error updating weekly goal plan ${planId} for user ${userId}:`,
+      error
+    );
     throw new Error('Failed to update weekly goal plan.');
   }
 }
 
 async function deleteWeeklyGoalPlan(planId, userId) {
   try {
-    const deletedPlan = await weeklyGoalPlanRepository.deleteWeeklyGoalPlan(planId, userId);
+    const deletedPlan = await weeklyGoalPlanRepository.deleteWeeklyGoalPlan(
+      planId,
+      userId
+    );
     return deletedPlan;
   } catch (error) {
-    log('error', `Error deleting weekly goal plan ${planId} for user ${userId}:`, error);
+    log(
+      'error',
+      `Error deleting weekly goal plan ${planId} for user ${userId}:`,
+      error
+    );
     throw new Error('Failed to delete weekly goal plan.');
   }
 }

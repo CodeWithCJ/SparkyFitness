@@ -12,7 +12,9 @@ const createUploadMiddleware = (storage) => {
     limits: { fileSize: 10000000 }, // Limit file size to 10MB
     fileFilter: (req, file, cb) => {
       const filetypes = /jpeg|jpg|png|gif/;
-      const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+      const extname = filetypes.test(
+        path.extname(file.originalname).toLowerCase()
+      );
       const mimetype = filetypes.test(file.mimetype);
 
       if (mimetype && extname) {
@@ -20,7 +22,7 @@ const createUploadMiddleware = (storage) => {
       } else {
         cb(new Error('Only image files (jpeg, jpg, png, gif) are allowed.'));
       }
-    }
+    },
   });
 
   return upload;

@@ -41,14 +41,36 @@ describe('mealRepository', () => {
         description: 'A delicious test meal',
         is_public: false,
         foods: [
-          { food_id: foodId1, variant_id: variantId1, quantity: 100, unit: 'g' },
-          { food_id: foodId2, variant_id: variantId2, quantity: 200, unit: 'ml' },
+          {
+            food_id: foodId1,
+            variant_id: variantId1,
+            quantity: 100,
+            unit: 'g',
+          },
+          {
+            food_id: foodId2,
+            variant_id: variantId2,
+            quantity: 200,
+            unit: 'ml',
+          },
         ],
       };
 
       mockClient.query
         .mockResolvedValueOnce({}) // For BEGIN
-        .mockResolvedValueOnce({ rows: [{ id: mealId, user_id: userId, name: 'Test Meal', description: 'A delicious test meal', is_public: false, serving_size: undefined, serving_unit: undefined }] }) // For meal creation
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: mealId,
+              user_id: userId,
+              name: 'Test Meal',
+              description: 'A delicious test meal',
+              is_public: false,
+              serving_size: undefined,
+              serving_unit: undefined,
+            },
+          ],
+        }) // For meal creation
         .mockResolvedValueOnce({ rows: [{ id: uuidv4() }] }) // For meal_foods batch insert
         .mockResolvedValueOnce({}); // For COMMIT
 
@@ -57,14 +79,29 @@ describe('mealRepository', () => {
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO meals'),
-        [mealData.user_id, mealData.name, mealData.description, mealData.is_public, undefined, undefined]
+        [
+          mealData.user_id,
+          mealData.name,
+          mealData.description,
+          mealData.is_public,
+          undefined,
+          undefined,
+        ]
       );
       // pg-format creates a single formatted string, not array parameters
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringMatching(/INSERT INTO meal_foods.*VALUES/)
       );
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-      expect(result).toEqual({ id: mealId, user_id: userId, name: 'Test Meal', description: 'A delicious test meal', is_public: false, serving_size: undefined, serving_unit: undefined });
+      expect(result).toEqual({
+        id: mealId,
+        user_id: userId,
+        name: 'Test Meal',
+        description: 'A delicious test meal',
+        is_public: false,
+        serving_size: undefined,
+        serving_unit: undefined,
+      });
     });
 
     it('should rollback transaction on error', async () => {
@@ -81,7 +118,9 @@ describe('mealRepository', () => {
         return { rows: [] };
       });
 
-      await expect(mealRepository.createMeal(mealData)).rejects.toThrow('Database error');
+      await expect(mealRepository.createMeal(mealData)).rejects.toThrow(
+        'Database error'
+      );
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
       expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
     });
@@ -98,17 +137,20 @@ describe('mealRepository', () => {
       ];
       mockClient.query
         .mockResolvedValueOnce({ rows: mockMeals }) // For meals query
-        .mockResolvedValueOnce({ rows: [] }) // For meal_foods query for first meal
-        .mockResolvedValueOnce({ rows: [] }); // For meal_foods query for second meal
+        .mockResolvedValueOnce({ rows: [] }); // For batched meal_foods query
 
       const result = await mealRepository.getMeals(userId, 'all');
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('AND (user_id = $1 OR is_public = TRUE)'),
         [userId]
       );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId1, mealId2]]
+      );
       expect(result).toEqual([
         { ...mockMeals[0], foods: [] },
-        { ...mockMeals[1], foods: [] }
+        { ...mockMeals[1], foods: [] },
       ]);
     });
 
@@ -118,21 +160,29 @@ describe('mealRepository', () => {
       const mealId2 = uuidv4();
       const mockMeals = [
         { id: mealId1, user_id: userId, name: 'Meal 1', is_public: false },
-        { id: mealId2, user_id: uuidv4(), name: 'Public Meal', is_public: true },
+        {
+          id: mealId2,
+          user_id: uuidv4(),
+          name: 'Public Meal',
+          is_public: true,
+        },
       ];
       mockClient.query
         .mockResolvedValueOnce({ rows: mockMeals }) // For meals query
-        .mockResolvedValueOnce({ rows: [] }) // For meal_foods query for first meal
-        .mockResolvedValueOnce({ rows: [] }); // For meal_foods query for second meal
+        .mockResolvedValueOnce({ rows: [] }); // For batched meal_foods query
 
       const result = await mealRepository.getMeals(userId, 'all');
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('AND (user_id = $1 OR is_public = TRUE)'),
         [userId]
       );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId1, mealId2]]
+      );
       expect(result).toEqual([
         { ...mockMeals[0], foods: [] },
-        { ...mockMeals[1], foods: [] }
+        { ...mockMeals[1], foods: [] },
       ]);
     });
   });
@@ -143,7 +193,12 @@ describe('mealRepository', () => {
       const userId = uuidv4();
       const mockMeal = { id: mealId, name: 'Single Meal', user_id: userId };
       const mockMealFoods = [
-        { id: uuidv4(), meal_id: mealId, food_id: uuidv4(), food_name: 'Food A' },
+        {
+          id: uuidv4(),
+          meal_id: mealId,
+          food_id: uuidv4(),
+          food_name: 'Food A',
+        },
       ];
 
       mockClient.query
@@ -169,6 +224,78 @@ describe('mealRepository', () => {
     });
   });
 
+  describe('getPublicMeals', () => {
+    it('should return public meals with their foods attached', async () => {
+      const userId = uuidv4();
+      const mealId = uuidv4();
+      const mockMeals = [
+        { id: mealId, user_id: uuidv4(), name: 'Public Meal', is_public: true },
+      ];
+      const mockMealFoods = [
+        {
+          id: uuidv4(),
+          meal_id: mealId,
+          food_id: uuidv4(),
+          food_name: 'Food A',
+        },
+      ];
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: mockMeals })
+        .mockResolvedValueOnce({ rows: mockMealFoods });
+
+      const result = await mealRepository.getPublicMeals(userId);
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE is_public = TRUE')
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId]]
+      );
+      expect(result).toEqual([{ ...mockMeals[0], foods: mockMealFoods }]);
+    });
+  });
+
+  describe('getFamilyMeals', () => {
+    it('should return family meals with their foods attached', async () => {
+      const userId = uuidv4();
+      const mealId = uuidv4();
+      const mockMeals = [
+        {
+          id: mealId,
+          user_id: uuidv4(),
+          name: 'Family Meal',
+          is_public: false,
+        },
+      ];
+      const mockMealFoods = [
+        {
+          id: uuidv4(),
+          meal_id: mealId,
+          food_id: uuidv4(),
+          food_name: 'Food B',
+        },
+      ];
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: mockMeals })
+        .mockResolvedValueOnce({ rows: mockMealFoods });
+
+      const result = await mealRepository.getFamilyMeals(userId);
+
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('JOIN family_access fa'),
+        [userId]
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
+        [[mealId]]
+      );
+      expect(result).toEqual([{ ...mockMeals[0], foods: mockMealFoods }]);
+    });
+  });
+
   describe('updateMeal', () => {
     it('should update a meal and its associated foods', async () => {
       const mealId = uuidv4();
@@ -188,17 +315,40 @@ describe('mealRepository', () => {
 
       mockClient.query
         .mockResolvedValueOnce({}) // For BEGIN
-        .mockResolvedValueOnce({ rows: [{ id: mealId, user_id: userId, name: 'Updated Meal', description: 'New description', is_public: true, serving_size: undefined, serving_unit: undefined }] }) // For meal update
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: mealId,
+              user_id: userId,
+              name: 'Updated Meal',
+              description: 'New description',
+              is_public: true,
+              serving_size: undefined,
+              serving_unit: undefined,
+            },
+          ],
+        }) // For meal update
         .mockResolvedValueOnce({ rowCount: 1 }) // For deleting old meal_foods
         .mockResolvedValueOnce({ rows: [{ id: uuidv4() }] }) // For new meal_foods batch insert
         .mockResolvedValueOnce({}); // For COMMIT
 
-      const result = await mealRepository.updateMeal(mealId, userId, updateData);
+      const result = await mealRepository.updateMeal(
+        mealId,
+        userId,
+        updateData
+      );
 
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE meals SET'),
-        [updateData.name, updateData.description, updateData.is_public, undefined, undefined, mealId]
+        [
+          updateData.name,
+          updateData.description,
+          updateData.is_public,
+          undefined,
+          undefined,
+          mealId,
+        ]
       );
       expect(mockClient.query).toHaveBeenCalledWith(
         'DELETE FROM meal_foods WHERE meal_id = $1',
@@ -209,7 +359,15 @@ describe('mealRepository', () => {
         expect.stringMatching(/INSERT INTO meal_foods.*VALUES/)
       );
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-      expect(result).toEqual({ id: mealId, user_id: userId, name: 'Updated Meal', description: 'New description', is_public: true, serving_size: undefined, serving_unit: undefined });
+      expect(result).toEqual({
+        id: mealId,
+        user_id: userId,
+        name: 'Updated Meal',
+        description: 'New description',
+        is_public: true,
+        serving_size: undefined,
+        serving_unit: undefined,
+      });
     });
 
     it('should update meal details without changing foods if foods array is not provided', async () => {
@@ -222,20 +380,55 @@ describe('mealRepository', () => {
 
       mockClient.query
         .mockResolvedValueOnce({}) // For BEGIN
-        .mockResolvedValueOnce({ rows: [{ id: mealId, user_id: userId, name: 'Updated Meal Only', description: 'Only description changed', is_public: false, serving_size: undefined, serving_unit: undefined }] }) // For meal update
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: mealId,
+              user_id: userId,
+              name: 'Updated Meal Only',
+              description: 'Only description changed',
+              is_public: false,
+              serving_size: undefined,
+              serving_unit: undefined,
+            },
+          ],
+        }) // For meal update
         .mockResolvedValueOnce({}); // For COMMIT
 
-      const result = await mealRepository.updateMeal(mealId, userId, updateData);
+      const result = await mealRepository.updateMeal(
+        mealId,
+        userId,
+        updateData
+      );
 
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE meals SET'),
-        [updateData.name, updateData.description, undefined, undefined, undefined, mealId]
+        [
+          updateData.name,
+          updateData.description,
+          undefined,
+          undefined,
+          undefined,
+          mealId,
+        ]
       );
-      expect(mockClient.query).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM meal_foods'));
-      expect(mockClient.query).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO meal_foods'));
+      expect(mockClient.query).not.toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM meal_foods')
+      );
+      expect(mockClient.query).not.toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO meal_foods')
+      );
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
-      expect(result).toEqual({ id: mealId, user_id: userId, name: 'Updated Meal Only', description: 'Only description changed', is_public: false, serving_size: undefined, serving_unit: undefined });
+      expect(result).toEqual({
+        id: mealId,
+        user_id: userId,
+        name: 'Updated Meal Only',
+        description: 'Only description changed',
+        is_public: false,
+        serving_size: undefined,
+        serving_unit: undefined,
+      });
     });
 
     it('should rollback transaction on error', async () => {
@@ -250,7 +443,9 @@ describe('mealRepository', () => {
         return { rows: [] };
       });
 
-      await expect(mealRepository.updateMeal(mealId, userId, updateData)).rejects.toThrow('Database error during update');
+      await expect(
+        mealRepository.updateMeal(mealId, userId, updateData)
+      ).rejects.toThrow('Database error during update');
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
       expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
     });
@@ -293,7 +488,9 @@ describe('mealRepository', () => {
         return { rows: [] };
       });
 
-      await expect(mealRepository.deleteMeal(uuidv4(), uuidv4())).rejects.toThrow('Database error during delete');
+      await expect(
+        mealRepository.deleteMeal(uuidv4(), uuidv4())
+      ).rejects.toThrow('Database error during delete');
       expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
       expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
     });
@@ -313,7 +510,11 @@ describe('mealRepository', () => {
         meal_type: 'breakfast',
         is_template: false,
       };
-      const mockResult = { id: uuidv4(), ...planData, meal_type_id: mealTypeId };
+      const mockResult = {
+        id: uuidv4(),
+        ...planData,
+        meal_type_id: mealTypeId,
+      };
 
       mockClient.query
         .mockResolvedValueOnce({ rows: [{ id: mealTypeId }] }) // For meal_types lookup
@@ -327,9 +528,18 @@ describe('mealRepository', () => {
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO meal_plans'),
         [
-          planData.user_id, planData.meal_id, undefined, undefined,
-          undefined, undefined, planData.plan_date, mealTypeId,
-          planData.is_template, undefined, undefined, undefined
+          planData.user_id,
+          planData.meal_id,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          planData.plan_date,
+          mealTypeId,
+          planData.is_template,
+          undefined,
+          undefined,
+          undefined,
         ]
       );
       expect(result).toEqual(mockResult);
@@ -342,11 +552,20 @@ describe('mealRepository', () => {
       const startDate = '2024-07-01';
       const endDate = '2024-07-31';
       const mockEntries = [
-        { id: uuidv4(), user_id: userId, plan_date: '2024-07-10', meal_type: 'lunch' },
+        {
+          id: uuidv4(),
+          user_id: userId,
+          plan_date: '2024-07-10',
+          meal_type: 'lunch',
+        },
       ];
       mockClient.query.mockResolvedValue({ rows: mockEntries });
 
-      const result = await mealRepository.getMealPlanEntries(userId, startDate, endDate);
+      const result = await mealRepository.getMealPlanEntries(
+        userId,
+        startDate,
+        endDate
+      );
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('WHERE mp.plan_date BETWEEN $1 AND $2'),
         [startDate, endDate]
@@ -364,13 +583,23 @@ describe('mealRepository', () => {
         meal_type: 'dinner',
         quantity: 2,
       };
-      const mockResult = { id: planId, user_id: userId, meal_type: 'dinner', quantity: 2, meal_type_id: mealTypeId };
+      const mockResult = {
+        id: planId,
+        user_id: userId,
+        meal_type: 'dinner',
+        quantity: 2,
+        meal_type_id: mealTypeId,
+      };
 
       mockClient.query
         .mockResolvedValueOnce({ rows: [{ id: mealTypeId }] }) // For meal_types lookup
         .mockResolvedValueOnce({ rows: [mockResult] }); // For UPDATE
 
-      const result = await mealRepository.updateMealPlanEntry(planId, userId, updateData);
+      const result = await mealRepository.updateMealPlanEntry(
+        planId,
+        userId,
+        updateData
+      );
       expect(mockClient.query).toHaveBeenCalledWith(
         'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
         ['dinner']
@@ -378,10 +607,18 @@ describe('mealRepository', () => {
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE meal_plans SET'),
         [
-          undefined, undefined, undefined,
-          updateData.quantity, undefined, undefined, mealTypeId,
-          undefined, undefined, undefined, undefined,
-          planId
+          undefined,
+          undefined,
+          undefined,
+          updateData.quantity,
+          undefined,
+          undefined,
+          mealTypeId,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          planId,
         ]
       );
       expect(result).toEqual(mockResult);
@@ -404,7 +641,10 @@ describe('mealRepository', () => {
 
     it('should return false if meal plan entry not found', async () => {
       mockClient.query.mockResolvedValue({ rowCount: 0 });
-      const result = await mealRepository.deleteMealPlanEntry(uuidv4(), uuidv4());
+      const result = await mealRepository.deleteMealPlanEntry(
+        uuidv4(),
+        uuidv4()
+      );
       expect(result).toBe(false);
     });
   });
@@ -424,13 +664,18 @@ describe('mealRepository', () => {
         variant_id: uuidv4(),
         meal_plan_id: uuidv4(),
       };
-      const mockResult = { id: uuidv4(), ...entryData, meal_type_id: mealTypeId };
+      const mockResult = {
+        id: uuidv4(),
+        ...entryData,
+        meal_type_id: mealTypeId,
+      };
 
       mockClient.query
         .mockResolvedValueOnce({ rows: [{ id: mealTypeId }] }) // For meal_types lookup
         .mockResolvedValueOnce({ rows: [mockResult] }); // For INSERT
 
-      const result = await mealRepository.createFoodEntryFromMealPlan(entryData);
+      const result =
+        await mealRepository.createFoodEntryFromMealPlan(entryData);
       expect(mockClient.query).toHaveBeenCalledWith(
         'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
         ['lunch']
@@ -438,8 +683,14 @@ describe('mealRepository', () => {
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO food_entries'),
         [
-          entryData.user_id, entryData.food_id, mealTypeId, entryData.quantity,
-          entryData.unit, entryData.entry_date, entryData.variant_id, entryData.meal_plan_id
+          entryData.user_id,
+          entryData.food_id,
+          mealTypeId,
+          entryData.quantity,
+          entryData.unit,
+          entryData.entry_date,
+          entryData.variant_id,
+          entryData.meal_plan_id,
         ]
       );
       expect(result).toEqual(mockResult);

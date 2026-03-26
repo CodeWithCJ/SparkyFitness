@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useToast } from '@/hooks/use-toast';
+import { generateClientId } from '@/utils/generateClientId';
 import { debug } from '@/utils/logging';
 import {
   DndContext,
@@ -403,10 +404,10 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     return (
       initialPreset?.exercises.map((ex) => ({
         ...ex,
-        id: ex.id ? String(ex.id) : crypto.randomUUID(),
+        id: ex.id ? String(ex.id) : generateClientId(),
         sets: ex.sets.map((set) => ({
           ...set,
-          id: set.id ? String(set.id) : crypto.randomUUID(),
+          id: set.id ? String(set.id) : generateClientId(),
           weight: Number(set.weight) || 0, // Keep metric (kg)
         })),
       })) || []
@@ -417,7 +418,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
   const handleAddExercise = (exercise: Exercise | undefined) => {
     if (exercise) {
       const newExercise: WorkoutPresetExercise = {
-        id: crypto.randomUUID(), // Stable ID for DND
+        id: generateClientId(), // Stable ID for DND
         exercise_id: exercise.id,
         exercise_name: exercise.name,
         image_url:
@@ -427,7 +428,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         exercise: exercise,
         sets: [
           {
-            id: crypto.randomUUID(),
+            id: generateClientId(),
             set_number: 1,
             set_type: 'Working Set',
             reps: 10,
@@ -483,7 +484,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
         }
         const newSet: WorkoutPresetSet = {
           ...lastSet,
-          id: crypto.randomUUID(),
+          id: generateClientId(),
           set_number: exercise.sets.length + 1,
         };
         return {
@@ -508,7 +509,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
           }
           const newSets = [
             ...sets.slice(0, setIndex + 1),
-            { ...setToDuplicate, id: crypto.randomUUID() },
+            { ...setToDuplicate, id: generateClientId() },
             ...sets.slice(setIndex + 1),
           ].map((s, i) => ({ ...s, set_number: i + 1 }));
           return { ...exercise, sets: newSets };

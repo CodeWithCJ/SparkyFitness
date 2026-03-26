@@ -1,16 +1,16 @@
 // SparkyFitnessServer/integrations/fitbit/fitbitService.js
 
-const axios = require("axios");
-const { getClient, getSystemClient } = require("../../db/poolManager");
+const axios = require('axios');
+const { getClient, getSystemClient } = require('../../db/poolManager');
 const {
   encrypt,
   decrypt,
   ENCRYPTION_KEY,
-} = require("../../security/encryption");
-const { log } = require("../../config/logging");
+} = require('../../security/encryption');
+const { log } = require('../../config/logging');
 
-const FITBIT_API_BASE_URL = "https://api.fitbit.com";
-const FITBIT_ACCOUNT_BASE_URL = "https://www.fitbit.com";
+const FITBIT_API_BASE_URL = 'https://api.fitbit.com';
+const FITBIT_ACCOUNT_BASE_URL = 'https://www.fitbit.com';
 
 /**
  * Function to construct the Fitbit authorization URL
@@ -22,11 +22,11 @@ async function getAuthorizationUrl(userId, redirectUri) {
       `SELECT encrypted_app_id, app_id_iv, app_id_tag
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'fitbit'`,
-      [userId],
+      [userId]
     );
 
     if (result.rows.length === 0) {
-      throw new Error("Fitbit client credentials not found for user.");
+      throw new Error('Fitbit client credentials not found for user.');
     }
 
     const { encrypted_app_id, app_id_iv, app_id_tag } = result.rows[0];
@@ -34,12 +34,12 @@ async function getAuthorizationUrl(userId, redirectUri) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     // Required scopes for heart rate, steps, SpO2, temperature, weight, profile, and nutrition (for water)
     const scope =
-      "activity heartrate oxygen_saturation respiratory_rate sleep weight temperature profile nutrition cardio_fitness";
+      'activity heartrate oxygen_saturation respiratory_rate sleep weight temperature profile nutrition cardio_fitness';
     const state = userId;
 
     return `${FITBIT_ACCOUNT_BASE_URL}/oauth2/authorize?response_type=code&client_id=${clientId}&scope=${scope}&redirect_uri=${redirectUri}&state=${state}`;
@@ -58,11 +58,11 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
       `SELECT encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'fitbit'`,
-      [userId],
+      [userId]
     );
 
     if (providerResult.rows.length === 0) {
-      throw new Error("Fitbit client credentials not found for user.");
+      throw new Error('Fitbit client credentials not found for user.');
     }
 
     const {
@@ -77,23 +77,23 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const clientSecret = await decrypt(
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString(
-      "base64",
+      'base64'
     );
 
     const params = new URLSearchParams();
-    params.append("grant_type", "authorization_code");
-    params.append("code", code);
-    params.append("redirect_uri", redirectUri);
+    params.append('grant_type', 'authorization_code');
+    params.append('code', code);
+    params.append('redirect_uri', redirectUri);
 
     const response = await axios.post(
       `${FITBIT_API_BASE_URL}/oauth2/token`,
@@ -101,9 +101,9 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
       {
         headers: {
           Authorization: `Basic ${authHeader}`,
-          "Content-Type": "application/x-www-form-urlencoded",
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-      },
+      }
     );
 
     const {
@@ -116,7 +116,7 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
 
     if (!access_token || !refresh_token) {
       throw new Error(
-        "Missing access_token or refresh_token in Fitbit API response.",
+        'Missing access_token or refresh_token in Fitbit API response.'
       );
     }
 
@@ -147,7 +147,7 @@ async function exchangeCodeForTokens(userId, code, redirectUri) {
 
     return { success: true, externalUserId };
   } catch (error) {
-    log("error", `Error exchanging code for Fitbit tokens: ${error.message}`);
+    log('error', `Error exchanging code for Fitbit tokens: ${error.message}`);
     throw error;
   } finally {
     client.release();
@@ -165,11 +165,11 @@ async function refreshAccessToken(userId) {
                     encrypted_refresh_token, refresh_token_iv, refresh_token_tag
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'fitbit'`,
-      [userId],
+      [userId]
     );
 
     if (providerResult.rows.length === 0) {
-      throw new Error("Fitbit credentials not found for token refresh.");
+      throw new Error('Fitbit credentials not found for token refresh.');
     }
 
     const {
@@ -188,28 +188,28 @@ async function refreshAccessToken(userId) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const clientSecret = await decrypt(
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const refreshToken = await decrypt(
       encrypted_refresh_token,
       refresh_token_iv,
       refresh_token_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString(
-      "base64",
+      'base64'
     );
 
     const params = new URLSearchParams();
-    params.append("grant_type", "refresh_token");
-    params.append("refresh_token", refreshToken);
+    params.append('grant_type', 'refresh_token');
+    params.append('refresh_token', refreshToken);
 
     const response = await axios.post(
       `${FITBIT_API_BASE_URL}/oauth2/token`,
@@ -217,9 +217,9 @@ async function refreshAccessToken(userId) {
       {
         headers: {
           Authorization: `Basic ${authHeader}`,
-          "Content-Type": "application/x-www-form-urlencoded",
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-      },
+      }
     );
 
     const {
@@ -232,7 +232,7 @@ async function refreshAccessToken(userId) {
     const encryptedAccessToken = await encrypt(access_token, ENCRYPTION_KEY);
     const encryptedNewRefreshToken = await encrypt(
       newRefreshToken,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const tokenExpiresAt = new Date(Date.now() + expires_in * 1000);
 
@@ -258,7 +258,7 @@ async function refreshAccessToken(userId) {
 
     return access_token;
   } catch (error) {
-    log("error", `Error refreshing Fitbit access token: ${error.message}`);
+    log('error', `Error refreshing Fitbit access token: ${error.message}`);
     throw error;
   } finally {
     client.release();
@@ -275,11 +275,11 @@ async function getValidAccessToken(userId) {
       `SELECT encrypted_access_token, access_token_iv, access_token_tag, token_expires_at
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'fitbit'`,
-      [userId],
+      [userId]
     );
 
     if (result.rows.length === 0) {
-      throw new Error("Fitbit provider not found for user.");
+      throw new Error('Fitbit provider not found for user.');
     }
 
     const {
@@ -306,7 +306,7 @@ async function getValidAccessToken(userId) {
       encrypted_access_token,
       access_token_iv,
       access_token_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
   } finally {
     client.release();
@@ -323,7 +323,7 @@ async function getStatus(userId) {
       `SELECT is_active, last_sync_at, token_expires_at, external_user_id
              FROM external_data_providers
              WHERE user_id = $1 AND provider_type = 'fitbit'`,
-      [userId],
+      [userId]
     );
 
     if (result.rows.length === 0) {
@@ -356,7 +356,7 @@ async function disconnectFitbit(userId) {
                  encrypted_refresh_token = NULL, refresh_token_iv = NULL, refresh_token_tag = NULL,
                  token_expires_at = NULL, external_user_id = NULL, is_active = FALSE, updated_at = NOW()
              WHERE user_id = $1 AND provider_type = 'fitbit'`,
-      [userId],
+      [userId]
     );
     return { success: true };
   } finally {
@@ -372,7 +372,7 @@ async function fetchHeartRate(
   userId,
   startDate,
   endDate,
-  providedToken = null,
+  providedToken = null
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
@@ -381,19 +381,19 @@ async function fetchHeartRate(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_heart_rate", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_heart_rate', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching heart rate for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching heart rate for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -407,19 +407,19 @@ async function fetchSteps(userId, startDate, endDate, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_steps", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_steps', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching steps for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching steps for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -433,19 +433,19 @@ async function fetchWeight(userId, startDate, endDate, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_weight", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_weight', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching weight for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching weight for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -459,19 +459,19 @@ async function fetchSpO2(userId, startDate, endDate, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_spo2", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_spo2', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching SpO2 for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching SpO2 for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -481,7 +481,7 @@ async function fetchTemperature(
   userId,
   startDate,
   endDate,
-  providedToken = null,
+  providedToken = null
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
@@ -490,19 +490,19 @@ async function fetchTemperature(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_temperature", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_temperature', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching temperature for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching temperature for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -516,19 +516,19 @@ async function fetchProfile(userId, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_profile", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_profile', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching profile for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching profile for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -541,18 +541,18 @@ async function fetchBodyFat(userId, startDate, endDate, providedToken = null) {
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Accept-Language": "en-US",
+        'Accept-Language': 'en-US',
       },
-    },
+    }
   );
 
-  const { logRawResponse } = require("../../utils/diagnosticLogger");
-  logRawResponse("fitbit", "raw_body_fat", response.data);
+  const { logRawResponse } = require('../../utils/diagnosticLogger');
+  logRawResponse('fitbit', 'raw_body_fat', response.data);
 
   return response.data;
 }
 
-async function fetchActivities(userId, date = "today", providedToken = null) {
+async function fetchActivities(userId, date = 'today', providedToken = null) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
     // Fetching the activity list (max 100 records) after a specific date
@@ -561,19 +561,19 @@ async function fetchActivities(userId, date = "today", providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_activities_list", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_activities_list', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching activities for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching activities for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -587,19 +587,19 @@ async function fetchSleep(userId, startDate, endDate, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_sleep", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_sleep', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching sleep for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching sleep for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -609,7 +609,7 @@ async function fetchRespiratoryRate(
   userId,
   startDate,
   endDate,
-  providedToken = null,
+  providedToken = null
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   const response = await axios.get(
@@ -617,13 +617,13 @@ async function fetchRespiratoryRate(
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Accept-Language": "en-US",
+        'Accept-Language': 'en-US',
       },
-    },
+    }
   );
 
-  const { logRawResponse } = require("../../utils/diagnosticLogger");
-  logRawResponse("fitbit", "raw_respiratory_rate", response.data);
+  const { logRawResponse } = require('../../utils/diagnosticLogger');
+  logRawResponse('fitbit', 'raw_respiratory_rate', response.data);
 
   return response.data;
 }
@@ -635,13 +635,13 @@ async function fetchHRV(userId, startDate, endDate, providedToken = null) {
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Accept-Language": "en-US",
+        'Accept-Language': 'en-US',
       },
-    },
+    }
   );
 
-  const { logRawResponse } = require("../../utils/diagnosticLogger");
-  logRawResponse("fitbit", "raw_hrv", response.data);
+  const { logRawResponse } = require('../../utils/diagnosticLogger');
+  logRawResponse('fitbit', 'raw_hrv', response.data);
 
   return response.data;
 }
@@ -650,7 +650,7 @@ async function fetchActiveZoneMinutes(
   userId,
   startDate,
   endDate,
-  providedToken = null,
+  providedToken = null
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   const response = await axios.get(
@@ -658,13 +658,13 @@ async function fetchActiveZoneMinutes(
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "Accept-Language": "en-US",
+        'Accept-Language': 'en-US',
       },
-    },
+    }
   );
 
-  const { logRawResponse } = require("../../utils/diagnosticLogger");
-  logRawResponse("fitbit", "raw_active_zone_minutes", response.data);
+  const { logRawResponse } = require('../../utils/diagnosticLogger');
+  logRawResponse('fitbit', 'raw_active_zone_minutes', response.data);
 
   return response.data;
 }
@@ -677,19 +677,19 @@ async function fetchWater(userId, startDate, endDate, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_water", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_water', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching water for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching water for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -699,14 +699,14 @@ async function fetchActivityMinutes(
   userId,
   startDate,
   endDate,
-  providedToken = null,
+  providedToken = null
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   const metrics = [
-    "minutesSedentary",
-    "minutesLightlyActive",
-    "minutesFairlyActive",
-    "minutesVeryActive",
+    'minutesSedentary',
+    'minutesLightlyActive',
+    'minutesFairlyActive',
+    'minutesVeryActive',
   ];
   const results = {};
   for (const metric of metrics) {
@@ -717,12 +717,12 @@ async function fetchActivityMinutes(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", `raw_activity_metric_${metric}`, response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', `raw_activity_metric_${metric}`, response.data);
     results[metric] = response.data[`activities-tracker-${metric}`];
   }
   return results;
@@ -732,7 +732,7 @@ async function fetchCardioFitnessScore(
   userId,
   startDate,
   endDate,
-  providedToken = null,
+  providedToken = null
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
@@ -741,19 +741,19 @@ async function fetchCardioFitnessScore(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_cardio_fitness", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_cardio_fitness', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching cardio fitness score for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching cardio fitness score for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }
@@ -763,7 +763,7 @@ async function fetchCoreTemperature(
   userId,
   startDate,
   endDate,
-  providedToken = null,
+  providedToken = null
 ) {
   const accessToken = providedToken || (await getValidAccessToken(userId));
   try {
@@ -772,19 +772,19 @@ async function fetchCoreTemperature(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          "Accept-Language": "en-US",
+          'Accept-Language': 'en-US',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("fitbit", "raw_core_temperature", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('fitbit', 'raw_core_temperature', response.data);
 
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `[fitbitIntegration] Error fetching core temperature for user ${userId}: ${error.message}${error.response ? " - " + JSON.stringify(error.response.data) : ""}`,
+      'error',
+      `[fitbitIntegration] Error fetching core temperature for user ${userId}: ${error.message}${error.response ? ' - ' + JSON.stringify(error.response.data) : ''}`
     );
     throw error;
   }

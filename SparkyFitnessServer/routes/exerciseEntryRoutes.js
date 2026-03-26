@@ -32,7 +32,7 @@ const exerciseEntryStorage = multer.diskStorage({
     const sanitizedOriginalName = sanitizeFilename(file.originalname);
     const newFilename = `${shortUuid}_${timestamp}_${sanitizedOriginalName}`;
     cb(null, newFilename);
-  }
+  },
 });
 
 const upload = createUploadMiddleware(exerciseEntryStorage);
@@ -171,11 +171,20 @@ router.get('/by-date', authenticate, async (req, res, next) => {
     const targetUserId = userId || req.userId;
 
     if (userId && userId !== req.userId) {
-      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(userId, 'diary', req.userId); // Permission check
+      const hasPermission =
+        await require('../utils/permissionUtils').canAccessUserData(
+          userId,
+          'diary',
+          req.userId
+        ); // Permission check
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const entries = await exerciseService.getExerciseEntriesByDate(req.userId, targetUserId, selectedDate);
+    const entries = await exerciseService.getExerciseEntriesByDate(
+      req.userId,
+      targetUserId,
+      selectedDate
+    );
     res.status(200).json(entries);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -250,77 +259,109 @@ router.get('/by-date', authenticate, async (req, res, next) => {
  *       500:
  *         description: Failed to create exercise entry.
  */
-router.post('/', authenticate, upload.single('image'), async (req, res, next) => {
-  try {
-    let entryData;
-    if (req.is('multipart/form-data')) {
-      // When data is FormData, fields are in req.body
-      entryData = { ...req.body };
-      // 'sets' is sent as a JSON string in FormData, so it needs to be parsed
-      if (entryData.sets && typeof entryData.sets === 'string') {
+router.post(
+  '/',
+  authenticate,
+  upload.single('image'),
+  async (req, res, next) => {
+    try {
+      let entryData;
+      if (req.is('multipart/form-data')) {
+        // When data is FormData, fields are in req.body
+        entryData = { ...req.body };
+        // 'sets' is sent as a JSON string in FormData, so it needs to be parsed
+        if (entryData.sets && typeof entryData.sets === 'string') {
+          try {
+            entryData.sets = JSON.parse(entryData.sets);
+          } catch (e) {
+            console.error('Error parsing sets from FormData:', e);
+            return res.status(400).json({ error: 'Invalid format for sets.' });
+          }
+        }
+      } else {
+        // For application/json, the data is the body itself
+        entryData = req.body;
+      }
+      const {
+        exercise_id,
+        duration_minutes,
+        calories_burned,
+        entry_date,
+        notes,
+        sets,
+        reps,
+        weight,
+        workout_plan_assignment_id,
+        distance,
+        avg_heart_rate,
+        activity_details,
+      } = entryData;
+      if (activity_details && typeof activity_details === 'string') {
         try {
-          entryData.sets = JSON.parse(entryData.sets);
+          entryData.activity_details = JSON.parse(activity_details);
         } catch (e) {
-          console.error("Error parsing sets from FormData:", e);
-          return res.status(400).json({ error: "Invalid format for sets." });
+          console.error('Error parsing activity_details from FormData:', e);
+          return res
+            .status(400)
+            .json({ error: 'Invalid format for activity_details.' });
         }
       }
-    } else {
-      // For application/json, the data is the body itself
-      entryData = req.body;
-    }
-    const { exercise_id, duration_minutes, calories_burned, entry_date, notes, sets, reps, weight, workout_plan_assignment_id, distance, avg_heart_rate, activity_details } = entryData;
-    if (activity_details && typeof activity_details === 'string') {
-      try {
-        entryData.activity_details = JSON.parse(activity_details);
-      } catch (e) {
-        console.error("Error parsing activity_details from FormData:", e);
-        return res.status(400).json({ error: "Invalid format for activity_details." });
+
+      const uuidRegex =
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      if (exercise_id && !uuidRegex.test(exercise_id)) {
+        return res
+          .status(400)
+          .json({ error: 'Exercise ID must be a valid UUID.' });
       }
-    }
 
-    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (exercise_id && !uuidRegex.test(exercise_id)) {
-      return res.status(400).json({ error: 'Exercise ID must be a valid UUID.' });
-    }
+      let imageUrl = entryData.image_url || null;
+      if (req.file) {
+        // Construct the URL path for the image
+        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        imageUrl = `/uploads/exercise_entries/${today}/${req.file.filename}`;
+      }
 
-    let imageUrl = entryData.image_url || null;
-    if (req.file) {
-      // Construct the URL path for the image
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      imageUrl = `/uploads/exercise_entries/${today}/${req.file.filename}`;
-    }
+      const targetUserId = req.body.user_id || req.userId;
+      // Check permission if explicitly creating for another user
+      if (req.body.user_id && req.body.user_id !== req.userId) {
+        const hasPermission =
+          await require('../utils/permissionUtils').canAccessUserData(
+            req.body.user_id,
+            'diary',
+            req.userId
+          ); // Permission check
+        if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+      }
 
-    let targetUserId = req.body.user_id || req.userId;
-    // Check permission if explicitly creating for another user
-    if (req.body.user_id && req.body.user_id !== req.userId) {
-      const hasPermission = await require('../utils/permissionUtils').canAccessUserData(req.body.user_id, 'diary', req.userId); // Permission check
-      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+      const newEntry = await exerciseService.createExerciseEntry(
+        targetUserId,
+        req.originalUserId || req.userId,
+        {
+          exercise_id,
+          duration_minutes,
+          calories_burned,
+          entry_date,
+          notes,
+          sets,
+          reps,
+          weight,
+          workout_plan_assignment_id,
+          image_url: imageUrl,
+          distance,
+          avg_heart_rate,
+          activity_details,
+        }
+      );
+      res.status(201).json(newEntry);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
     }
-
-    const newEntry = await exerciseService.createExerciseEntry(targetUserId, req.originalUserId || req.userId, {
-      exercise_id,
-      duration_minutes,
-      calories_burned,
-      entry_date,
-      notes,
-      sets,
-      reps,
-      weight,
-      workout_plan_assignment_id,
-      image_url: imageUrl,
-      distance,
-      avg_heart_rate,
-      activity_details,
-    });
-    res.status(201).json(newEntry);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
-    }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -405,21 +446,30 @@ router.post('/', authenticate, upload.single('image'), async (req, res, next) =>
  */
 router.post('/from-plan', authenticate, async (req, res, next) => {
   try {
-    const { workout_plan_template_id, workout_plan_assignment_id, entry_date, exercises } = req.body;
+    const {
+      workout_plan_template_id,
+      workout_plan_assignment_id,
+      entry_date,
+      exercises,
+    } = req.body;
     const loggedEntries = [];
     for (const exerciseData of exercises) {
-      const newEntry = await exerciseService.createExerciseEntry(req.userId, req.originalUserId || req.userId, {
-        exercise_id: exerciseData.exercise_id,
-        duration_minutes: exerciseData.duration_minutes,
-        calories_burned: exerciseData.calories_burned,
-        entry_date,
-        notes: exerciseData.notes,
-        sets: exerciseData.sets,
-        reps: exerciseData.reps,
-        weight: exerciseData.weight,
-        workout_plan_assignment_id,
-        image_url: exerciseData.image_url,
-      });
+      const newEntry = await exerciseService.createExerciseEntry(
+        req.userId,
+        req.originalUserId || req.userId,
+        {
+          exercise_id: exerciseData.exercise_id,
+          duration_minutes: exerciseData.duration_minutes,
+          calories_burned: exerciseData.calories_burned,
+          entry_date,
+          notes: exerciseData.notes,
+          sets: exerciseData.sets,
+          reps: exerciseData.reps,
+          weight: exerciseData.weight,
+          workout_plan_assignment_id,
+          image_url: exerciseData.image_url,
+        }
+      );
       loggedEntries.push(newEntry);
     }
     res.status(201).json(loggedEntries);
@@ -471,11 +521,18 @@ router.get('/history/:exerciseId', authenticate, async (req, res, next) => {
   try {
     const { exerciseId } = req.params;
     const { limit } = req.query;
-    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    const uuidRegex =
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (!exerciseId || !uuidRegex.test(exerciseId)) {
-      return res.status(400).json({ error: 'Exercise ID is required and must be a valid UUID.' });
+      return res
+        .status(400)
+        .json({ error: 'Exercise ID is required and must be a valid UUID.' });
     }
-    const history = await exerciseService.getExerciseHistory(req.userId, exerciseId, limit);
+    const history = await exerciseService.getExerciseHistory(
+      req.userId,
+      exerciseId,
+      limit
+    );
     res.status(200).json(history);
   } catch (error) {
     next(error);
@@ -517,9 +574,12 @@ router.get('/history/:exerciseId', authenticate, async (req, res, next) => {
  */
 router.get('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  const uuidRegex =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
-    return res.status(400).json({ error: 'Exercise Entry ID is required and must be a valid UUID.' });
+    return res.status(400).json({
+      error: 'Exercise Entry ID is required and must be a valid UUID.',
+    });
   }
   try {
     const entry = await exerciseService.getExerciseEntryById(req.userId, id);
@@ -610,62 +670,83 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *       500:
  *         description: Failed to update exercise entry.
  */
-router.put('/:id', authenticate, upload.single('image'), async (req, res, next) => {
-  const { id } = req.params;
-  let updateData;
-  if (req.is('multipart/form-data')) {
-    updateData = { ...req.body };
-    if (updateData.sets && typeof updateData.sets === 'string') {
+router.put(
+  '/:id',
+  authenticate,
+  upload.single('image'),
+  async (req, res, next) => {
+    const { id } = req.params;
+    let updateData;
+    if (req.is('multipart/form-data')) {
+      updateData = { ...req.body };
+      if (updateData.sets && typeof updateData.sets === 'string') {
+        try {
+          updateData.sets = JSON.parse(updateData.sets);
+        } catch (e) {
+          console.error('Error parsing sets from FormData:', e);
+          return res.status(400).json({ error: 'Invalid format for sets.' });
+        }
+      }
+    } else {
+      updateData = req.body;
+    }
+
+    if (
+      updateData.activity_details &&
+      typeof updateData.activity_details === 'string'
+    ) {
       try {
-        updateData.sets = JSON.parse(updateData.sets);
+        updateData.activity_details = JSON.parse(updateData.activity_details);
       } catch (e) {
-        console.error("Error parsing sets from FormData:", e);
-        return res.status(400).json({ error: "Invalid format for sets." });
+        console.error('Error parsing activity_details from FormData:', e);
+        return res
+          .status(400)
+          .json({ error: 'Invalid format for activity_details.' });
       }
     }
-  } else {
-    updateData = req.body;
-  }
 
-  if (updateData.activity_details && typeof updateData.activity_details === 'string') {
+    // Extract new fields from updateData
+    const { distance, avg_heart_rate } = updateData;
+
+    const uuidRegex =
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!id || !uuidRegex.test(id)) {
+      return res.status(400).json({
+        error: 'Exercise Entry ID is required and must be a valid UUID.',
+      });
+    }
+
+    if (req.file) {
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      updateData.image_url = `/uploads/exercise_entries/${today}/${req.file.filename}`;
+    }
+
+    // Add new fields to updateData
+    updateData.distance = distance;
+    updateData.avg_heart_rate = avg_heart_rate;
+    // activity_details is already in updateData if present in req.body
     try {
-      updateData.activity_details = JSON.parse(updateData.activity_details);
-    } catch (e) {
-      console.error("Error parsing activity_details from FormData:", e);
-      return res.status(400).json({ error: "Invalid format for activity_details." });
+      const updatedEntry = await exerciseService.updateExerciseEntry(
+        req.userId,
+        req.originalUserId || req.userId,
+        id,
+        updateData
+      );
+      res.status(200).json(updatedEntry);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        error.message ===
+        'Exercise entry not found or not authorized to update.'
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
   }
-
-  // Extract new fields from updateData
-  const { distance, avg_heart_rate } = updateData;
-
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-  if (!id || !uuidRegex.test(id)) {
-    return res.status(400).json({ error: 'Exercise Entry ID is required and must be a valid UUID.' });
-  }
-
-  if (req.file) {
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    updateData.image_url = `/uploads/exercise_entries/${today}/${req.file.filename}`;
-  }
-
-  // Add new fields to updateData
-  updateData.distance = distance;
-  updateData.avg_heart_rate = avg_heart_rate;
-  // activity_details is already in updateData if present in req.body
-  try {
-    const updatedEntry = await exerciseService.updateExerciseEntry(req.userId, req.originalUserId || req.userId, id, updateData);
-    res.status(200).json(updatedEntry);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
-    }
-    if (error.message === 'Exercise entry not found or not authorized to update.') {
-      return res.status(404).json({ error: error.message });
-    }
-    next(error);
-  }
-});
+);
 
 /**
  * @swagger
@@ -730,11 +811,18 @@ router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Exercise ID is required.' });
   }
   if (!startDate || !endDate) {
-    return res.status(400).json({ error: 'Start date and end date are required for progress data.' });
+    return res.status(400).json({
+      error: 'Start date and end date are required for progress data.',
+    });
   }
 
   try {
-    const progressData = await exerciseService.getExerciseProgressData(req.userId, exerciseId, startDate, endDate);
+    const progressData = await exerciseService.getExerciseProgressData(
+      req.userId,
+      exerciseId,
+      startDate,
+      endDate
+    );
     res.status(200).json(progressData);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -778,9 +866,12 @@ router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
  */
 router.delete('/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  const uuidRegex =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   if (!id || !uuidRegex.test(id)) {
-    return res.status(400).json({ error: 'Exercise Entry ID is required and must be a valid UUID.' });
+    return res.status(400).json({
+      error: 'Exercise Entry ID is required and must be a valid UUID.',
+    });
   }
   try {
     const result = await exerciseService.deleteExerciseEntry(req.userId, id);
@@ -789,7 +880,9 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message === 'Exercise entry not found or not authorized to delete.') {
+    if (
+      error.message === 'Exercise entry not found or not authorized to delete.'
+    ) {
       return res.status(404).json({ error: error.message });
     }
     next(error);
@@ -877,13 +970,21 @@ router.post('/import-history-csv', authenticate, async (req, res, next) => {
   try {
     const { entries } = req.body;
     if (!entries || !Array.isArray(entries)) {
-      return res.status(400).json({ error: 'Invalid data format. Expected an array of entries.' });
+      return res
+        .status(400)
+        .json({ error: 'Invalid data format. Expected an array of entries.' });
     }
-    const result = await exerciseEntryService.importExerciseEntriesFromCsv(req.userId, req.originalUserId || req.userId, entries);
+    const result = await exerciseEntryService.importExerciseEntriesFromCsv(
+      req.userId,
+      req.originalUserId || req.userId,
+      entries
+    );
     res.status(201).json(result);
   } catch (error) {
     if (error.status === 409) {
-      return res.status(409).json({ error: error.message, details: error.details });
+      return res
+        .status(409)
+        .json({ error: error.message, details: error.details });
     }
     next(error);
   }

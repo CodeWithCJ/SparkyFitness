@@ -21,13 +21,13 @@ const { isAdmin, authenticate } = require('../middleware/authMiddleware');
  *               $ref: '#/components/schemas/GlobalSettings'
  */
 router.get('/', isAdmin, async (req, res) => {
-    try {
-        const settings = await globalSettingsRepository.getGlobalSettings();
-        res.json(settings);
-    } catch (error) {
-        log('error', `Error getting global auth settings: ${error.message}`);
-        res.status(500).json({ message: 'Error retrieving global auth settings' });
-    }
+  try {
+    const settings = await globalSettingsRepository.getGlobalSettings();
+    res.json(settings);
+  } catch (error) {
+    log('error', `Error getting global auth settings: ${error.message}`);
+    res.status(500).json({ message: 'Error retrieving global auth settings' });
+  }
 });
 
 /**
@@ -49,15 +49,16 @@ router.get('/', isAdmin, async (req, res) => {
  *         description: Settings updated successfully.
  */
 router.put('/', isAdmin, async (req, res) => {
-    try {
-        const settingsData = req.body;
-        const newSettings = await globalSettingsRepository.saveGlobalSettings(settingsData);
-        log('info', 'Global auth settings updated successfully.');
-        res.status(200).json(newSettings);
-    } catch (error) {
-        log('error', `Error updating global auth settings: ${error.message}`);
-        res.status(500).json({ message: 'Error updating global auth settings' });
-    }
+  try {
+    const settingsData = req.body;
+    const newSettings =
+      await globalSettingsRepository.saveGlobalSettings(settingsData);
+    log('info', 'Global auth settings updated successfully.');
+    res.status(200).json(newSettings);
+  } catch (error) {
+    log('error', `Error updating global auth settings: ${error.message}`);
+    res.status(500).json({ message: 'Error updating global auth settings' });
+  }
 });
 
 /**
@@ -80,13 +81,15 @@ router.put('/', isAdmin, async (req, res) => {
  *                   type: boolean
  */
 router.get('/allow-user-ai-config', authenticate, async (req, res) => {
-    try {
-        const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
-        res.json({ allow_user_ai_config: isAllowed });
-    } catch (error) {
-        log('error', `Error checking user AI config permission: ${error.message}`);
-        res.status(500).json({ message: 'Error checking user AI config permission' });
-    }
+  try {
+    const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
+    res.json({ allow_user_ai_config: isAllowed });
+  } catch (error) {
+    log('error', `Error checking user AI config permission: ${error.message}`);
+    res
+      .status(500)
+      .json({ message: 'Error checking user AI config permission' });
+  }
 });
 
 module.exports = router;

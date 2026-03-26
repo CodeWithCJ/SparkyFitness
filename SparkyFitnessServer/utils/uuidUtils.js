@@ -3,7 +3,8 @@ const { log } = require('../config/logging');
 
 // Helper function to validate UUID
 const isValidUuid = (uuid) => {
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  const uuidRegex =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   return uuidRegex.test(uuid);
 };
 
@@ -15,12 +16,17 @@ async function resolveExerciseIdToUuid(exerciseId) {
 
   // If not a UUID, assume it's an integer ID from a source like FreeExerciseDB
   // We need to find the corresponding exercise in our DB that has this source_id
-  const exercise = await exerciseRepository.getExerciseBySourceAndSourceId('free-exercise-db', exerciseId);
+  const exercise = await exerciseRepository.getExerciseBySourceAndSourceId(
+    'free-exercise-db',
+    exerciseId
+  );
   if (exercise) {
     return exercise.id;
   }
 
-  throw new Error(`Exercise with ID ${exerciseId} not found or is not a valid UUID.`);
+  throw new Error(
+    `Exercise with ID ${exerciseId} not found or is not a valid UUID.`
+  );
 }
 
 module.exports = {

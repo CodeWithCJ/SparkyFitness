@@ -6,7 +6,8 @@ const options = {
     info: {
       title: 'SparkyFitness API',
       version: '1.0.0',
-      description: 'API documentation for the SparkyFitness application, providing a comprehensive guide to all available endpoints. Have caution using the API directly, as improper use may lead to data loss or corruption.  Also note that the API is subject to change without notice due to heavy development, so always refer to the latest documentation for up-to-date information. It might have flaw and due to vite/nginx internal proxy actual end point accessed via front end URL might be different than hitting them directly on the server.',
+      description:
+        'API documentation for the SparkyFitness application, providing a comprehensive guide to all available endpoints. Have caution using the API directly, as improper use may lead to data loss or corruption.  Also note that the API is subject to change without notice due to heavy development, so always refer to the latest documentation for up-to-date information. It might have flaw and due to vite/nginx internal proxy actual end point accessed via front end URL might be different than hitting them directly on the server.',
       contact: {
         name: 'SparkyFitness Support',
       },
@@ -23,7 +24,8 @@ const options = {
           type: 'apiKey',
           in: 'cookie',
           name: 'token',
-          description: 'Authentication token is stored in a secure, HTTP-only cookie named "token". Most endpoints require this for access.',
+          description:
+            'Authentication token is stored in a secure, HTTP-only cookie named "token". Most endpoints require this for access.',
         },
       },
       schemas: {
@@ -46,7 +48,8 @@ const options = {
             },
             category: {
               type: 'string',
-              description: 'The category of the exercise (e.g., "Strength", "Cardio").',
+              description:
+                'The category of the exercise (e.g., "Strength", "Cardio").',
             },
             equipment: {
               type: 'array',
@@ -71,14 +74,16 @@ const options = {
               items: {
                 type: 'string',
               },
-              description: 'Step-by-step instructions for performing the exercise.',
+              description:
+                'Step-by-step instructions for performing the exercise.',
             },
             images: {
               type: 'array',
               items: {
                 type: 'string',
               },
-              description: 'URLs or paths to images demonstrating the exercise.',
+              description:
+                'URLs or paths to images demonstrating the exercise.',
             },
             is_public: {
               type: 'boolean',
@@ -92,7 +97,8 @@ const options = {
             updated_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the exercise was last updated.',
+              description:
+                'The date and time when the exercise was last updated.',
             },
           },
           required: ['id', 'user_id', 'name', 'category'],
@@ -140,7 +146,8 @@ const options = {
             },
             is_custom: {
               type: 'boolean',
-              description: 'Indicates if the food is a custom entry created by the user.',
+              description:
+                'Indicates if the food is a custom entry created by the user.',
             },
             shared_with_public: {
               type: 'boolean',
@@ -207,11 +214,13 @@ const options = {
             meal_template_id: {
               type: 'string',
               format: 'uuid',
-              description: 'The ID of the meal template used for this entry, if any.',
+              description:
+                'The ID of the meal template used for this entry, if any.',
             },
             meal_type: {
               type: 'string',
-              description: 'The type of meal (e.g., "Breakfast", "Lunch", "Dinner").',
+              description:
+                'The type of meal (e.g., "Breakfast", "Lunch", "Dinner").',
             },
             meal_type_id: {
               type: 'string',
@@ -265,15 +274,25 @@ const options = {
             created_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the food entry meal was created.',
+              description:
+                'The date and time when the food entry meal was created.',
             },
             updated_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the food entry meal was last updated.',
+              description:
+                'The date and time when the food entry meal was last updated.',
             },
           },
-          required: ['user_id', 'meal_type', 'entry_date', 'name', 'foods', 'quantity', 'unit'],
+          required: [
+            'user_id',
+            'meal_type',
+            'entry_date',
+            'name',
+            'foods',
+            'quantity',
+            'unit',
+          ],
         },
         MealDayPreset: {
           type: 'object',
@@ -303,7 +322,8 @@ const options = {
                 properties: {
                   meal_type: {
                     type: 'string',
-                    description: 'The type of meal (e.g., "Breakfast", "Lunch").',
+                    description:
+                      'The type of meal (e.g., "Breakfast", "Lunch").',
                   },
                   food_ids: {
                     type: 'array',
@@ -321,12 +341,14 @@ const options = {
             created_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the meal day preset was created.',
+              description:
+                'The date and time when the meal day preset was created.',
             },
             updated_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the meal day preset was last updated.',
+              description:
+                'The date and time when the meal day preset was last updated.',
             },
           },
           required: ['user_id', 'name', 'meals'],
@@ -342,7 +364,8 @@ const options = {
             user_id: {
               type: 'string',
               format: 'uuid',
-              description: 'The ID of the user who owns the meal plan template.',
+              description:
+                'The ID of the user who owns the meal plan template.',
             },
             name: {
               type: 'string',
@@ -359,28 +382,40 @@ const options = {
                 properties: {
                   day_of_week: {
                     type: 'string',
-                    enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                    enum: [
+                      'monday',
+                      'tuesday',
+                      'wednesday',
+                      'thursday',
+                      'friday',
+                      'saturday',
+                      'sunday',
+                    ],
                     description: 'The day of the week for this preset.',
                   },
                   meal_day_preset_id: {
                     type: 'string',
                     format: 'uuid',
-                    description: 'The ID of the meal day preset to use for this day.',
+                    description:
+                      'The ID of the meal day preset to use for this day.',
                   },
                 },
                 required: ['day_of_week', 'meal_day_preset_id'],
               },
-              description: 'The meal day presets assigned to each day of the week.',
+              description:
+                'The meal day presets assigned to each day of the week.',
             },
             created_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the meal plan template was created.',
+              description:
+                'The date and time when the meal plan template was created.',
             },
             updated_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the meal plan template was last updated.',
+              description:
+                'The date and time when the meal plan template was last updated.',
             },
           },
           required: ['user_id', 'name', 'day_presets'],
@@ -396,11 +431,13 @@ const options = {
             user_id: {
               type: 'string',
               format: 'uuid',
-              description: 'The ID of the user who owns the meal type (null for system defaults).',
+              description:
+                'The ID of the user who owns the meal type (null for system defaults).',
             },
             name: {
               type: 'string',
-              description: 'The name of the meal type (e.g., "Breakfast", "Lunch").',
+              description:
+                'The name of the meal type (e.g., "Breakfast", "Lunch").',
             },
             sort_order: {
               type: 'integer',
@@ -418,7 +455,8 @@ const options = {
             updated_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the meal type was last updated.',
+              description:
+                'The date and time when the meal type was last updated.',
             },
           },
           required: ['id', 'name', 'sort_order', 'is_system_default'],
@@ -447,12 +485,14 @@ const options = {
             created_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the custom nutrient was created.',
+              description:
+                'The date and time when the custom nutrient was created.',
             },
             updated_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the custom nutrient was last updated.',
+              description:
+                'The date and time when the custom nutrient was last updated.',
             },
           },
           required: ['id', 'user_id', 'name', 'unit'],
@@ -467,11 +507,13 @@ const options = {
             },
             view_group: {
               type: 'string',
-              description: 'The group for which the preference applies (e.g., "daily", "meal").',
+              description:
+                'The group for which the preference applies (e.g., "daily", "meal").',
             },
             platform: {
               type: 'string',
-              description: 'The platform for which the preference applies (e.g., "web", "mobile").',
+              description:
+                'The platform for which the preference applies (e.g., "web", "mobile").',
             },
             visible_nutrients: {
               type: 'array',
@@ -488,7 +530,8 @@ const options = {
             updated_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the preference was last updated.',
+              description:
+                'The date and time when the preference was last updated.',
             },
           },
           required: ['user_id', 'view_group', 'platform', 'visible_nutrients'],
@@ -544,7 +587,8 @@ const options = {
                   },
                 },
               },
-              description: 'Details of sets performed (reps, weight, duration).',
+              description:
+                'Details of sets performed (reps, weight, duration).',
             },
             reps: {
               type: 'number',
@@ -557,12 +601,14 @@ const options = {
             workout_plan_assignment_id: {
               type: 'string',
               format: 'uuid',
-              description: 'The ID of the workout plan assignment this entry belongs to.',
+              description:
+                'The ID of the workout plan assignment this entry belongs to.',
             },
             image_url: {
               type: 'string',
               format: 'url',
-              description: 'URL to an image associated with the exercise entry.',
+              description:
+                'URL to an image associated with the exercise entry.',
             },
             distance: {
               type: 'number',
@@ -579,12 +625,14 @@ const options = {
             created_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the exercise entry was created.',
+              description:
+                'The date and time when the exercise entry was created.',
             },
             updated_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the exercise entry was last updated.',
+              description:
+                'The date and time when the exercise entry was last updated.',
             },
           },
           required: ['user_id', 'exercise_id', 'entry_date'],
@@ -595,7 +643,8 @@ const options = {
             id: {
               type: 'string',
               format: 'uuid',
-              description: 'The unique identifier for the exercise preset entry.',
+              description:
+                'The unique identifier for the exercise preset entry.',
             },
             user_id: {
               type: 'string',
@@ -605,7 +654,8 @@ const options = {
             workout_preset_id: {
               type: 'string',
               format: 'uuid',
-              description: 'The ID of the workout preset this entry originated from.',
+              description:
+                'The ID of the workout preset this entry originated from.',
             },
             name: {
               type: 'string',
@@ -626,7 +676,8 @@ const options = {
             },
             source: {
               type: 'string',
-              description: 'The source of the entry (e.g., "manual", "Garmin Connect").',
+              description:
+                'The source of the entry (e.g., "manual", "Garmin Connect").',
             },
             created_at: {
               type: 'string',
@@ -667,7 +718,8 @@ const options = {
             end_time: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the fast ended (null for active fasts).',
+              description:
+                'The date and time when the fast ended (null for active fasts).',
             },
             duration_minutes: {
               type: 'integer',
@@ -714,29 +766,40 @@ const options = {
                   image_url: { type: 'string', nullable: true },
                   sets: {
                     type: 'array',
-                    items: { $ref: '#/components/schemas/WorkoutSet' }
-                  }
-                }
-              }
+                    items: { $ref: '#/components/schemas/WorkoutSet' },
+                  },
+                },
+              },
             },
             created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' }
+            updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['id', 'user_id', 'name']
+          required: ['id', 'user_id', 'name'],
         },
         WorkoutSet: {
           type: 'object',
           properties: {
             id: { type: 'integer', description: 'Internal ID of the set' },
             set_number: { type: 'integer' },
-            set_type: { type: 'string', description: 'e.g., "Normal", "Warmup", "Dropset"' },
+            set_type: {
+              type: 'string',
+              description: 'e.g., "Normal", "Warmup", "Dropset"',
+            },
             reps: { type: 'integer', nullable: true },
             weight: { type: 'number', nullable: true },
-            duration: { type: 'integer', nullable: true, description: 'Duration in seconds' },
-            rest_time: { type: 'integer', nullable: true, description: 'Rest time in seconds' },
-            notes: { type: 'string', nullable: true }
+            duration: {
+              type: 'integer',
+              nullable: true,
+              description: 'Duration in seconds',
+            },
+            rest_time: {
+              type: 'integer',
+              nullable: true,
+              description: 'Rest time in seconds',
+            },
+            notes: { type: 'string', nullable: true },
           },
-          required: ['set_number', 'set_type']
+          required: ['set_number', 'set_type'],
         },
         WorkoutPlanTemplate: {
           type: 'object',
@@ -754,22 +817,33 @@ const options = {
                 type: 'object',
                 properties: {
                   id: { type: 'integer' },
-                  day_of_week: { type: 'integer', description: '0-6 (Sunday-Saturday)' },
-                  workout_preset_id: { type: 'string', format: 'uuid', nullable: true },
+                  day_of_week: {
+                    type: 'integer',
+                    description: '0-6 (Sunday-Saturday)',
+                  },
+                  workout_preset_id: {
+                    type: 'string',
+                    format: 'uuid',
+                    nullable: true,
+                  },
                   workout_preset_name: { type: 'string', nullable: true },
-                  exercise_id: { type: 'string', format: 'uuid', nullable: true },
+                  exercise_id: {
+                    type: 'string',
+                    format: 'uuid',
+                    nullable: true,
+                  },
                   exercise_name: { type: 'string', nullable: true },
                   sets: {
                     type: 'array',
-                    items: { $ref: '#/components/schemas/WorkoutSet' }
-                  }
-                }
-              }
+                    items: { $ref: '#/components/schemas/WorkoutSet' },
+                  },
+                },
+              },
             },
             created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' }
+            updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['id', 'user_id', 'plan_name', 'start_date', 'is_active']
+          required: ['id', 'user_id', 'plan_name', 'start_date', 'is_active'],
         },
         WeeklyGoalPlan: {
           type: 'object',
@@ -780,30 +854,61 @@ const options = {
             start_date: { type: 'string', format: 'date' },
             end_date: { type: 'string', format: 'date', nullable: true },
             is_active: { type: 'boolean' },
-            monday_preset_id: { type: 'string', format: 'uuid', nullable: true },
-            tuesday_preset_id: { type: 'string', format: 'uuid', nullable: true },
-            wednesday_preset_id: { type: 'string', format: 'uuid', nullable: true },
-            thursday_preset_id: { type: 'string', format: 'uuid', nullable: true },
-            friday_preset_id: { type: 'string', format: 'uuid', nullable: true },
-            saturday_preset_id: { type: 'string', format: 'uuid', nullable: true },
-            sunday_preset_id: { type: 'string', format: 'uuid', nullable: true },
+            monday_preset_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            tuesday_preset_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            wednesday_preset_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            thursday_preset_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            friday_preset_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            saturday_preset_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
+            sunday_preset_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+            },
             created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' }
+            updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['id', 'user_id', 'plan_name', 'start_date', 'is_active']
+          required: ['id', 'user_id', 'plan_name', 'start_date', 'is_active'],
         },
         MoodEntry: {
           type: 'object',
           properties: {
             id: { type: 'string', format: 'uuid' },
             user_id: { type: 'string', format: 'uuid' },
-            mood_value: { type: 'integer', description: 'Mood value (e.g., 1-5 or 0-10)' },
+            mood_value: {
+              type: 'integer',
+              description: 'Mood value (e.g., 1-5 or 0-10)',
+            },
             notes: { type: 'string', nullable: true },
             entry_date: { type: 'string', format: 'date' },
             created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' }
+            updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['mood_value', 'entry_date']
+          required: ['mood_value', 'entry_date'],
         },
         SleepEntry: {
           type: 'object',
@@ -817,9 +922,14 @@ const options = {
             source: { type: 'string' },
             sleep_score: { type: 'integer', nullable: true },
             created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' }
+            updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['entry_date', 'bedtime', 'wake_time', 'duration_in_seconds']
+          required: [
+            'entry_date',
+            'bedtime',
+            'wake_time',
+            'duration_in_seconds',
+          ],
         },
         SleepAnalytics: {
           type: 'object',
@@ -828,17 +938,25 @@ const options = {
             totalSleepDuration: { type: 'integer' },
             timeAsleep: { type: 'integer' },
             sleepScore: { type: 'number' },
-            earliestBedtime: { type: 'string', format: 'date-time', nullable: true },
-            latestWakeTime: { type: 'string', format: 'date-time', nullable: true },
+            earliestBedtime: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
+            latestWakeTime: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
             sleepEfficiency: { type: 'number' },
             sleepDebt: { type: 'number' },
             stagePercentages: {
               type: 'object',
-              additionalProperties: { type: 'number' }
+              additionalProperties: { type: 'number' },
             },
             awakePeriods: { type: 'integer' },
-            totalAwakeDuration: { type: 'integer' }
-          }
+            totalAwakeDuration: { type: 'integer' },
+          },
         },
         WaterIntake: {
           type: 'object',
@@ -846,14 +964,21 @@ const options = {
             id: { type: 'string', format: 'uuid' },
             user_id: { type: 'string', format: 'uuid' },
             entry_date: { type: 'string', format: 'date' },
-            water_ml: { type: 'number', description: 'Water amount in milliliters' },
-            source: { type: 'string', description: 'Source of the entry (e.g. manual, healthkit, healthconnect)' },
+            water_ml: {
+              type: 'number',
+              description: 'Water amount in milliliters',
+            },
+            source: {
+              type: 'string',
+              description:
+                'Source of the entry (e.g. manual, healthkit, healthconnect)',
+            },
             created_by_user_id: { type: 'string', format: 'uuid' },
             updated_by_user_id: { type: 'string', format: 'uuid' },
             created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' }
+            updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['entry_date', 'water_ml']
+          required: ['entry_date', 'water_ml'],
         },
         WaterContainer: {
           type: 'object',
@@ -866,9 +991,9 @@ const options = {
             is_primary: { type: 'boolean' },
             servings_per_container: { type: 'number' },
             created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' }
+            updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['name', 'volume', 'unit']
+          required: ['name', 'volume', 'unit'],
         },
         CheckInMeasurement: {
           type: 'object',
@@ -884,9 +1009,9 @@ const options = {
             height: { type: 'number', nullable: true },
             body_fat_percentage: { type: 'number', nullable: true },
             created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' }
+            updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['entry_date']
+          required: ['entry_date'],
         },
         CustomMeasurementCategory: {
           type: 'object',
@@ -897,11 +1022,15 @@ const options = {
             display_name: { type: 'string', nullable: true },
             frequency: { type: 'string' },
             measurement_type: { type: 'string', nullable: true },
-            data_type: { type: 'string', enum: ['numeric', 'boolean', 'text'], nullable: true },
+            data_type: {
+              type: 'string',
+              enum: ['numeric', 'boolean', 'text'],
+              nullable: true,
+            },
             created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' }
+            updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['name', 'frequency']
+          required: ['name', 'frequency'],
         },
         CustomMeasurementEntry: {
           type: 'object',
@@ -909,16 +1038,24 @@ const options = {
             id: { type: 'string', format: 'uuid' },
             user_id: { type: 'string', format: 'uuid' },
             category_id: { type: 'string', format: 'uuid' },
-            value: { type: 'string', description: 'Value as string, castable based on category data_type' },
+            value: {
+              type: 'string',
+              description:
+                'Value as string, castable based on category data_type',
+            },
             entry_date: { type: 'string', format: 'date' },
             entry_hour: { type: 'integer', nullable: true },
-            entry_timestamp: { type: 'string', format: 'date-time', nullable: true },
+            entry_timestamp: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
             notes: { type: 'string', nullable: true },
             source: { type: 'string' },
             created_at: { type: 'string', format: 'date-time' },
-            updated_at: { type: 'string', format: 'date-time' }
+            updated_at: { type: 'string', format: 'date-time' },
           },
-          required: ['category_id', 'value', 'entry_date']
+          required: ['category_id', 'value', 'entry_date'],
         },
         UserGoal: {
           type: 'object',
@@ -933,8 +1070,11 @@ const options = {
             carbs_percentage: { type: 'number' },
             fat_percentage: { type: 'number' },
             target_exercise_calories_burned: { type: 'number', nullable: true },
-            target_exercise_duration_minutes: { type: 'integer', nullable: true }
-          }
+            target_exercise_duration_minutes: {
+              type: 'integer',
+              nullable: true,
+            },
+          },
         },
         GoalPreset: {
           type: 'object',
@@ -949,9 +1089,9 @@ const options = {
             water_goal: { type: 'number' },
             protein_percentage: { type: 'number' },
             carbs_percentage: { type: 'number' },
-            fat_percentage: { type: 'number' }
+            fat_percentage: { type: 'number' },
           },
-          required: ['preset_name', 'calories']
+          required: ['preset_name', 'calories'],
         },
         UserPreferences: {
           type: 'object',
@@ -961,14 +1101,14 @@ const options = {
             theme: { type: 'string' },
             timezone: { type: 'string' },
             unit_system: { type: 'string', enum: ['metric', 'imperial'] },
-            meal_calorie_distribution: { type: 'object' }
-          }
+            meal_calorie_distribution: { type: 'object' },
+          },
         },
         OnboardingStatus: {
           type: 'object',
           properties: {
-            onboarding_complete: { type: 'boolean' }
-          }
+            onboarding_complete: { type: 'boolean' },
+          },
         },
         OidcProvider: {
           type: 'object',
@@ -981,40 +1121,54 @@ const options = {
             redirect_uri: { type: 'string' },
             scopes: { type: 'string' },
             discovery_url: { type: 'string' },
-            is_active: { type: 'boolean' }
+            is_active: { type: 'boolean' },
           },
-          required: ['provider_name', 'issuer', 'client_id', 'client_secret', 'redirect_uri']
+          required: [
+            'provider_name',
+            'issuer',
+            'client_id',
+            'client_secret',
+            'redirect_uri',
+          ],
         },
         GarminStatus: {
           type: 'object',
           properties: {
             is_connected: { type: 'boolean' },
-            last_sync_at: { type: 'string', format: 'date-time', nullable: true }
-          }
+            last_sync_at: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
+          },
         },
         WithingsStatus: {
           type: 'object',
           properties: {
             is_connected: { type: 'boolean' },
-            last_sync_at: { type: 'string', format: 'date-time', nullable: true }
-          }
+            last_sync_at: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
+          },
         },
         GlobalSettings: {
           type: 'object',
           properties: {
             enable_email_password_login: { type: 'boolean' },
             is_oidc_active: { type: 'boolean' },
-            is_mfa_mandatory: { type: 'boolean' }
-          }
+            is_mfa_mandatory: { type: 'boolean' },
+          },
         },
         AppReview: {
           type: 'object',
           properties: {
             rating: { type: 'integer', minimum: 1, maximum: 5 },
             comment: { type: 'string', nullable: true },
-            created_at: { type: 'string', format: 'date-time' }
+            created_at: { type: 'string', format: 'date-time' },
           },
-          required: ['rating']
+          required: ['rating'],
         },
         User: {
           type: 'object',
@@ -1027,12 +1181,12 @@ const options = {
             email: {
               type: 'string',
               format: 'email',
-              description: 'The user\'s email address.',
+              description: "The user's email address.",
             },
             role: {
               type: 'string',
               enum: ['user', 'admin'],
-              description: 'The user\'s role in the system.',
+              description: "The user's role in the system.",
             },
             is_active: {
               type: 'boolean',
@@ -1041,18 +1195,19 @@ const options = {
             full_name: {
               type: 'string',
               nullable: true,
-              description: 'The user\'s full name.',
+              description: "The user's full name.",
             },
             created_at: {
               type: 'string',
               format: 'date-time',
-              description: 'The date and time when the user account was created.',
+              description:
+                'The date and time when the user account was created.',
             },
             last_login_at: {
               type: 'string',
               format: 'date-time',
               nullable: true,
-              description: 'The date and time of the user\'s last login.',
+              description: "The date and time of the user's last login.",
             },
           },
           required: ['id', 'email', 'role', 'is_active'],
@@ -1068,13 +1223,15 @@ const options = {
               type: 'string',
               format: 'date-time',
               nullable: true,
-              description: 'The date and time of the last successful data sync.',
+              description:
+                'The date and time of the last successful data sync.',
             },
             tokenExpiresAt: {
               type: 'string',
               format: 'date-time',
               nullable: true,
-              description: 'The date and time when the Fitbit access token expires.',
+              description:
+                'The date and time when the Fitbit access token expires.',
             },
           },
         },
@@ -1083,10 +1240,11 @@ const options = {
         get: {
           tags: ['Identity & Security'],
           summary: 'Get global MFA mandatory setting',
-          description: 'Retrieves the current global setting for mandatory Multi-Factor Authentication. Requires admin privileges.',
+          description:
+            'Retrieves the current global setting for mandatory Multi-Factor Authentication. Requires admin privileges.',
           security: [{ cookieAuth: [] }],
           responses: {
-            '200': {
+            200: {
               description: 'Successfully retrieved MFA mandatory setting.',
               content: {
                 'application/json': {
@@ -1102,15 +1260,21 @@ const options = {
                 },
               },
             },
-            '401': { description: 'Unauthorized: Authentication token missing or invalid.' },
-            '403': { description: 'Forbidden: User does not have admin privileges.' },
-            '500': { description: 'Internal Server Error.' },
+            401: {
+              description:
+                'Unauthorized: Authentication token missing or invalid.',
+            },
+            403: {
+              description: 'Forbidden: User does not have admin privileges.',
+            },
+            500: { description: 'Internal Server Error.' },
           },
         },
         put: {
           tags: ['Identity & Security'],
           summary: 'Update global MFA mandatory setting',
-          description: 'Updates the global setting for mandatory Multi-Factor Authentication. Requires admin privileges.',
+          description:
+            'Updates the global setting for mandatory Multi-Factor Authentication. Requires admin privileges.',
           security: [{ cookieAuth: [] }],
           requestBody: {
             required: true,
@@ -1121,7 +1285,8 @@ const options = {
                   properties: {
                     isMfaMandatory: {
                       type: 'boolean',
-                      description: 'New value for the global MFA mandatory setting.',
+                      description:
+                        'New value for the global MFA mandatory setting.',
                     },
                   },
                   required: ['isMfaMandatory'],
@@ -1130,7 +1295,7 @@ const options = {
             },
           },
           responses: {
-            '200': {
+            200: {
               description: 'Global MFA mandatory setting updated successfully.',
               content: {
                 'application/json': {
@@ -1139,25 +1304,32 @@ const options = {
                     properties: {
                       message: {
                         type: 'string',
-                        example: 'Global MFA mandatory setting updated to true.',
+                        example:
+                          'Global MFA mandatory setting updated to true.',
                       },
                     },
                   },
                 },
               },
             },
-            '400': { description: 'Bad Request: Invalid input data.' },
-            '401': { description: 'Unauthorized: Authentication token missing or invalid.' },
-            '403': { description: 'Forbidden: User does not have admin privileges.' },
-            '500': { description: 'Internal Server Error.' },
+            400: { description: 'Bad Request: Invalid input data.' },
+            401: {
+              description:
+                'Unauthorized: Authentication token missing or invalid.',
+            },
+            403: {
+              description: 'Forbidden: User does not have admin privileges.',
+            },
+            500: { description: 'Internal Server Error.' },
           },
         },
       },
       '/admin/auth/users/{userId}/mfa/reset': {
         post: {
           tags: ['Identity & Security'],
-          summary: 'Reset a user\'s MFA',
-          description: 'Allows an administrator to reset Multi-Factor Authentication for a specific user. Requires admin privileges.',
+          summary: "Reset a user's MFA",
+          description:
+            'Allows an administrator to reset Multi-Factor Authentication for a specific user. Requires admin privileges.',
           security: [{ cookieAuth: [] }],
           parameters: [
             {
@@ -1168,11 +1340,12 @@ const options = {
                 type: 'string',
                 format: 'uuid',
               },
-              description: 'The unique identifier of the user whose MFA is to be reset.',
+              description:
+                'The unique identifier of the user whose MFA is to be reset.',
             },
           ],
           responses: {
-            '200': {
+            200: {
               description: 'User MFA reset successfully.',
               content: {
                 'application/json': {
@@ -1188,10 +1361,15 @@ const options = {
                 },
               },
             },
-            '401': { description: 'Unauthorized: Authentication token missing or invalid.' },
-            '403': { description: 'Forbidden: User does not have admin privileges.' },
-            '404': { description: 'Not Found: User not found.' },
-            '500': { description: 'Internal Server Error.' },
+            401: {
+              description:
+                'Unauthorized: Authentication token missing or invalid.',
+            },
+            403: {
+              description: 'Forbidden: User does not have admin privileges.',
+            },
+            404: { description: 'Not Found: User not found.' },
+            500: { description: 'Internal Server Error.' },
           },
         },
       },
@@ -1202,18 +1380,54 @@ const options = {
       },
     ],
     tags: [
-      { name: 'Identity & Security', description: 'User authentication, registration, profile management, MFA, and access control.' },
-      { name: 'Nutrition & Meals', description: 'Food database, diary logging, meal planning, and nutritional preferences.' },
-      { name: 'Fitness & Workouts', description: 'Exercise database, workout presets, plan templates, and activity logging.' },
-      { name: 'Wellness & Metrics', description: 'Health metrics tracking (weight, measurements, sleep, mood) and fasting.' },
-      { name: 'Goals & Personalization', description: 'Personal goal setting, goal presets, and application preferences.' },
-      { name: 'External Integrations', description: 'Third-party service connections (Garmin, Withings, OIDC, etc.).' },
-      { name: 'System & Admin', description: 'System configuration, administrative tasks, backups, reviews, and versioning.' },
-      { name: 'AI & Insights', description: 'AI-powered chat assistance, reports, trends, and analytical insights.' },
+      {
+        name: 'Identity & Security',
+        description:
+          'User authentication, registration, profile management, MFA, and access control.',
+      },
+      {
+        name: 'Nutrition & Meals',
+        description:
+          'Food database, diary logging, meal planning, and nutritional preferences.',
+      },
+      {
+        name: 'Fitness & Workouts',
+        description:
+          'Exercise database, workout presets, plan templates, and activity logging.',
+      },
+      {
+        name: 'Wellness & Metrics',
+        description:
+          'Health metrics tracking (weight, measurements, sleep, mood) and fasting.',
+      },
+      {
+        name: 'Goals & Personalization',
+        description:
+          'Personal goal setting, goal presets, and application preferences.',
+      },
+      {
+        name: 'External Integrations',
+        description:
+          'Third-party service connections (Garmin, Withings, OIDC, etc.).',
+      },
+      {
+        name: 'System & Admin',
+        description:
+          'System configuration, administrative tasks, backups, reviews, and versioning.',
+      },
+      {
+        name: 'AI & Insights',
+        description:
+          'AI-powered chat assistance, reports, trends, and analytical insights.',
+      },
     ],
-
   },
-  apis: ['./routes/*.js', './routes/auth/*.js', './models/*.js', './SparkyFitnessServer.js'], // Paths to files containing OpenAPI definitions
+  apis: [
+    './routes/*.js',
+    './routes/auth/*.js',
+    './models/*.js',
+    './SparkyFitnessServer.js',
+  ], // Paths to files containing OpenAPI definitions
 };
 
 const specs = swaggerJsdoc(options);

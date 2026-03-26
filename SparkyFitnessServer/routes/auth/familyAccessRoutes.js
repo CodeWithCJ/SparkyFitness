@@ -19,7 +19,9 @@ const { log } = require('../../config/logging');
  */
 router.get('/users/accessible-users', authenticate, async (req, res, next) => {
   try {
-    const accessibleUsers = await authService.getAccessibleUsers(req.authenticatedUserId || req.userId);
+    const accessibleUsers = await authService.getAccessibleUsers(
+      req.authenticatedUserId || req.userId
+    );
     res.status(200).json(accessibleUsers);
   } catch (error) {
     next(error);
@@ -51,20 +53,30 @@ router.get('/users/accessible-users', authenticate, async (req, res, next) => {
  *       400:
  *         description: Missing targetUserId or permissionType.
  */
-router.get('/access/can-access-user-data', authenticate, async (req, res, next) => {
-  const { targetUserId, permissionType } = req.query;
+router.get(
+  '/access/can-access-user-data',
+  authenticate,
+  async (req, res, next) => {
+    const { targetUserId, permissionType } = req.query;
 
-  if (!targetUserId || !permissionType) {
-    return res.status(400).json({ error: 'targetUserId and permissionType are required.' });
-  }
+    if (!targetUserId || !permissionType) {
+      return res
+        .status(400)
+        .json({ error: 'targetUserId and permissionType are required.' });
+    }
 
-  try {
-    const canAccess = await authService.canAccessUserData(targetUserId, permissionType, req.userId);
-    res.status(200).json({ canAccess });
-  } catch (error) {
-    next(error);
+    try {
+      const canAccess = await authService.canAccessUserData(
+        targetUserId,
+        permissionType,
+        req.userId
+      );
+      res.status(200).json({ canAccess });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -91,20 +103,30 @@ router.get('/access/can-access-user-data', authenticate, async (req, res, next) 
  *       400:
  *         description: Missing ownerUserId or permission.
  */
-router.get('/access/check-family-access', authenticate, async (req, res, next) => {
-  const { ownerUserId, permission } = req.query;
+router.get(
+  '/access/check-family-access',
+  authenticate,
+  async (req, res, next) => {
+    const { ownerUserId, permission } = req.query;
 
-  if (!ownerUserId || !permission) {
-    return res.status(400).json({ error: 'ownerUserId and permission are required.' });
-  }
+    if (!ownerUserId || !permission) {
+      return res
+        .status(400)
+        .json({ error: 'ownerUserId and permission are required.' });
+    }
 
-  try {
-    const hasAccess = await authService.checkFamilyAccess(req.userId, ownerUserId, permission);
-    res.status(200).json({ hasAccess });
-  } catch (error) {
-    next(error);
+    try {
+      const hasAccess = await authService.checkFamilyAccess(
+        req.userId,
+        ownerUserId,
+        permission
+      );
+      res.status(200).json({ hasAccess });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -153,13 +175,17 @@ router.get('/family-access', authenticate, async (req, res, next) => {
   try {
     const authenticatedUserId = req.userId;
     if (!authenticatedUserId) {
-      return res.status(401).json({ error: 'Unauthorized', message: 'Authenticated user ID not found.' });
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authenticated user ID not found.',
+      });
     }
 
-    const entries = await authService.getFamilyAccessEntries(authenticatedUserId);
+    const entries =
+      await authService.getFamilyAccessEntries(authenticatedUserId);
     res.status(200).json(entries);
   } catch (error) {
-    log('error', `Error fetching family access entries:`, error);
+    log('error', 'Error fetching family access entries:', error);
     next(error);
   }
 });
@@ -219,13 +245,22 @@ router.post('/family-access', authenticate, async (req, res, next) => {
     entryData.access_permissions = normalizedPermissions;
   }
 
-
-  if (!entryData.family_user_id || !entryData.family_email || !entryData.access_permissions) {
-    return res.status(400).json({ error: 'Family User ID, Family Email, and Access Permissions are required.' });
+  if (
+    !entryData.family_user_id ||
+    !entryData.family_email ||
+    !entryData.access_permissions
+  ) {
+    return res.status(400).json({
+      error:
+        'Family User ID, Family Email, and Access Permissions are required.',
+    });
   }
 
   try {
-    const newEntry = await authService.createFamilyAccessEntry(req.userId, entryData);
+    const newEntry = await authService.createFamilyAccessEntry(
+      req.userId,
+      entryData
+    );
     res.status(201).json(newEntry);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -297,19 +332,25 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
     updateData.access_permissions = normalizedPermissions;
   }
 
-
   if (!id) {
     return res.status(400).json({ error: 'Family Access ID is required.' });
   }
 
   try {
-    const updatedEntry = await authService.updateFamilyAccessEntry(req.userId, id, updateData);
+    const updatedEntry = await authService.updateFamilyAccessEntry(
+      req.userId,
+      id,
+      updateData
+    );
     res.status(200).json(updatedEntry);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message === 'Family access entry not found or not authorized to update.') {
+    if (
+      error.message ===
+      'Family access entry not found or not authorized to update.'
+    ) {
       return res.status(404).json({ error: error.message });
     }
     next(error);
@@ -356,12 +397,17 @@ router.delete('/family-access/:id', authenticate, async (req, res, next) => {
 
   try {
     await authService.deleteFamilyAccessEntry(req.userId, id);
-    res.status(200).json({ message: 'Family access entry deleted successfully.' });
+    res
+      .status(200)
+      .json({ message: 'Family access entry deleted successfully.' });
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message === 'Family access entry not found or not authorized to delete.') {
+    if (
+      error.message ===
+      'Family access entry not found or not authorized to delete.'
+    ) {
       return res.status(404).json({ error: error.message });
     }
     next(error);

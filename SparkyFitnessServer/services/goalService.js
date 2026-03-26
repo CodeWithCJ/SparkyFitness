@@ -1,15 +1,15 @@
-const goalRepository = require("../models/goalRepository");
-const weeklyGoalPlanRepository = require("../models/weeklyGoalPlanRepository");
-const goalPresetRepository = require("../models/goalPresetRepository");
-const { log } = require("../config/logging");
-const { format, getDay } = require("date-fns");
+const goalRepository = require('../models/goalRepository');
+const weeklyGoalPlanRepository = require('../models/weeklyGoalPlanRepository');
+const goalPresetRepository = require('../models/goalPresetRepository');
+const { log } = require('../config/logging');
+const { format, getDay } = require('date-fns');
 
 // Helper function to calculate grams from percentages
 function calculateGramsFromPercentages(
   calories,
   protein_percentage,
   carbs_percentage,
-  fat_percentage,
+  fat_percentage
 ) {
   const protein_grams = (calories * (protein_percentage / 100)) / 4;
   const carbs_grams = (calories * (carbs_percentage / 100)) / 4;
@@ -21,8 +21,8 @@ async function getUserGoals(targetUserId, selectedDate) {
   try {
     if (!targetUserId) {
       log(
-        "error",
-        "getUserGoals: targetUserId is undefined. Returning default goals.",
+        'error',
+        'getUserGoals: targetUserId is undefined. Returning default goals.'
       );
       return {
         calories: 2000,
@@ -62,7 +62,7 @@ async function getUserGoals(targetUserId, selectedDate) {
       const activeWeeklyPlan =
         await weeklyGoalPlanRepository.getActiveWeeklyGoalPlan(
           targetUserId,
-          selectedDate,
+          selectedDate
         );
       if (activeWeeklyPlan) {
         const dayOfWeek = getDay(new Date(selectedDate)); // Sunday is 0, Monday is 1, etc.
@@ -94,7 +94,7 @@ async function getUserGoals(targetUserId, selectedDate) {
         if (presetId) {
           goals = await goalPresetRepository.getGoalPresetById(
             presetId,
-            targetUserId,
+            targetUserId
           );
         }
       }
@@ -104,7 +104,7 @@ async function getUserGoals(targetUserId, selectedDate) {
       // Fallback to most recent goal before date (which includes default goal if goal_date is NULL)
       goals = await goalRepository.getMostRecentGoalBeforeDate(
         targetUserId,
-        selectedDate,
+        selectedDate
       );
     }
 
@@ -152,7 +152,7 @@ async function getUserGoals(targetUserId, selectedDate) {
           goals.calories,
           goals.protein_percentage,
           goals.carbs_percentage,
-          goals.fat_percentage,
+          goals.fat_percentage
         );
       goals.protein = protein_grams;
       goals.carbs = carbs_grams;
@@ -162,9 +162,9 @@ async function getUserGoals(targetUserId, selectedDate) {
     return goals;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching goals for user ${targetUserId} on ${selectedDate}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -206,10 +206,10 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
     } = goalData;
 
     log(
-      "debug",
-      `manageGoalTimeline - Received goalData: ${JSON.stringify(goalData)}`,
+      'debug',
+      `manageGoalTimeline - Received goalData: ${JSON.stringify(goalData)}`
     );
-    log("debug", `manageGoalTimeline - p_water_goal_ml: ${p_water_goal_ml}`);
+    log('debug', `manageGoalTimeline - p_water_goal_ml: ${p_water_goal_ml}`);
 
     // If percentages are provided, calculate grams for storage
     let protein_to_store = p_protein;
@@ -217,11 +217,11 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
     let fat_to_store = p_fat;
 
     if (
-      typeof p_protein_percentage === "number" &&
+      typeof p_protein_percentage === 'number' &&
       !isNaN(p_protein_percentage) &&
-      typeof p_carbs_percentage === "number" &&
+      typeof p_carbs_percentage === 'number' &&
       !isNaN(p_carbs_percentage) &&
-      typeof p_fat_percentage === "number" &&
+      typeof p_fat_percentage === 'number' &&
       !isNaN(p_fat_percentage)
     ) {
       const { protein_grams, carbs_grams, fat_grams } =
@@ -229,60 +229,64 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
           p_calories,
           p_protein_percentage,
           p_carbs_percentage,
-          p_fat_percentage,
+          p_fat_percentage
         );
       protein_to_store = protein_grams;
       carbs_to_store = carbs_grams;
       fat_to_store = fat_grams;
       log(
-        "debug",
-        `manageGoalTimeline - Calculated grams from percentages: Protein ${protein_to_store}, Carbs ${carbs_to_store}, Fat ${fat_to_store}`,
+        'debug',
+        `manageGoalTimeline - Calculated grams from percentages: Protein ${protein_to_store}, Carbs ${carbs_to_store}, Fat ${fat_to_store}`
       );
     } else {
       log(
-        "debug",
-        `manageGoalTimeline - Using provided grams: Protein ${protein_to_store}, Carbs ${protein_to_store}, Fat ${fat_to_store}. Percentages were not all valid numbers.`,
+        'debug',
+        `manageGoalTimeline - Using provided grams: Protein ${protein_to_store}, Carbs ${protein_to_store}, Fat ${fat_to_store}. Percentages were not all valid numbers.`
       );
     }
 
     // Helper to convert NaN to 0 for numeric fields, or null if specified
     const cleanNumber = (value, allow_null = false) => {
       log(
-        "debug",
-        `cleanNumber: Input value: ${value}, type: ${typeof value}, allow_null: ${allow_null}`,
+        'debug',
+        `cleanNumber: Input value: ${value}, type: ${typeof value}, allow_null: ${allow_null}`
       );
       if (value === null || value === undefined) {
         log(
-          "debug",
-          `cleanNumber: Value is null/undefined, returning ${allow_null ? null : 0}`,
+          'debug',
+          `cleanNumber: Value is null/undefined, returning ${allow_null ? null : 0}`
         );
         return allow_null ? null : 0;
       }
       const num = Number(value);
       if (isNaN(num)) {
         log(
-          "debug",
-          `cleanNumber: Value is NaN, returning ${allow_null ? null : 0}`,
+          'debug',
+          `cleanNumber: Value is NaN, returning ${allow_null ? null : 0}`
         );
         return allow_null ? null : 0;
       }
-      log("debug", `cleanNumber: Returning cleaned number: ${num}`);
+      log('debug', `cleanNumber: Returning cleaned number: ${num}`);
       return num;
     };
 
     // Filter custom nutrients to only include those that are currently defined for the user
     // This prevents "zombie" data from being re-inserted if the frontend sends back old keys
-    const customNutrientService = require("./customNutrientService");
-    const activeCustomNutrients = await customNutrientService.getCustomNutrients(authenticatedUserId);
-    const activeNames = new Set(activeCustomNutrients.map(n => n.name));
-    
+    const customNutrientService = require('./customNutrientService');
+    const activeCustomNutrients =
+      await customNutrientService.getCustomNutrients(authenticatedUserId);
+    const activeNames = new Set(activeCustomNutrients.map((n) => n.name));
+
     const filteredCustomNutrients = {};
     if (custom_nutrients && typeof custom_nutrients === 'object') {
       Object.entries(custom_nutrients).forEach(([name, value]) => {
         if (activeNames.has(name)) {
           filteredCustomNutrients[name] = value;
         } else {
-          log("debug", `manageGoalTimeline: Filtering out inactive custom nutrient: ${name}`);
+          log(
+            'debug',
+            `manageGoalTimeline: Filtering out inactive custom nutrient: ${name}`
+          );
         }
       });
     }
@@ -309,10 +313,10 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       calcium: cleanNumber(p_calcium),
       iron: cleanNumber(p_iron),
       target_exercise_calories_burned: cleanNumber(
-        p_target_exercise_calories_burned,
+        p_target_exercise_calories_burned
       ),
       target_exercise_duration_minutes: cleanNumber(
-        p_target_exercise_duration_minutes,
+        p_target_exercise_duration_minutes
       ),
       protein_percentage: cleanNumber(p_protein_percentage, true),
       carbs_percentage: cleanNumber(p_carbs_percentage, true),
@@ -327,19 +331,19 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
     // If cascade is false, or if editing a past date, only update that specific date
     if (
       !p_cascade ||
-      new Date(p_start_date) < new Date(format(new Date(), "yyyy-MM-dd"))
+      new Date(p_start_date) < new Date(format(new Date(), 'yyyy-MM-dd'))
     ) {
       log(
-        "debug",
-        `manageGoalTimeline - Upserting single goal for date: ${p_start_date}. Final payload before upsert: ${JSON.stringify(goalPayload)}`,
+        'debug',
+        `manageGoalTimeline - Upserting single goal for date: ${p_start_date}. Final payload before upsert: ${JSON.stringify(goalPayload)}`
       );
       await goalRepository.upsertGoal(goalPayload);
-      return { message: "Goal for the specified date updated successfully." };
+      return { message: 'Goal for the specified date updated successfully.' };
     } else {
       // For today or future dates with cascade: delete 6 months and insert new goals
       log(
-        "info",
-        `manageGoalTimeline - Updating goal for today or future date: ${p_start_date}. Applying 6-month cascade. Final payload before upsert: ${JSON.stringify(goalPayload)}`,
+        'info',
+        `manageGoalTimeline - Updating goal for today or future date: ${p_start_date}. Applying 6-month cascade. Final payload before upsert: ${JSON.stringify(goalPayload)}`
       );
       const startDate = new Date(p_start_date);
       const endDate = new Date(startDate);
@@ -349,7 +353,7 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       await goalRepository.deleteGoalsInRange(
         authenticatedUserId,
         p_start_date,
-        format(endDate, "yyyy-MM-dd"),
+        format(endDate, 'yyyy-MM-dd')
       );
 
       // Insert the new goal, which will act as the template for the cascade
@@ -360,13 +364,13 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       // We also remove the default goal to ensure this new goal becomes the baseline.
       await goalRepository.deleteDefaultGoal(authenticatedUserId);
 
-      return { message: "Goal timeline managed successfully with cascade." };
+      return { message: 'Goal timeline managed successfully with cascade.' };
     }
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error managing goal timeline for user ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }

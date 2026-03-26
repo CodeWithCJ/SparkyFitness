@@ -6,14 +6,14 @@ const {
   isSameDay,
   parseISO,
   differenceInDays,
-} = require("date-fns");
-const NodeCache = require("node-cache");
-const measurementRepository = require("../models/measurementRepository");
-const reportRepository = require("../models/reportRepository");
-const userRepository = require("../models/userRepository");
-const preferenceRepository = require("../models/preferenceRepository");
-const bmrService = require("./bmrService");
-const { log } = require("../config/logging");
+} = require('date-fns');
+const NodeCache = require('node-cache');
+const measurementRepository = require('../models/measurementRepository');
+const reportRepository = require('../models/reportRepository');
+const userRepository = require('../models/userRepository');
+const preferenceRepository = require('../models/preferenceRepository');
+const bmrService = require('./bmrService');
+const { log } = require('../config/logging');
 
 const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
 
@@ -25,7 +25,7 @@ async function calculateAdaptiveTdee(userId, dateParam) {
   const calculationDate = dateParam
     ? startOfDay(parseISO(dateParam))
     : startOfDay(new Date());
-  const cacheKey = `adaptive_tdee_${userId}_${format(calculationDate, "yyyy-MM-dd")}`;
+  const cacheKey = `adaptive_tdee_${userId}_${format(calculationDate, 'yyyy-MM-dd')}`;
   const cachedResult = tdeeCache.get(cacheKey);
   if (cachedResult) {
     return cachedResult;
@@ -33,8 +33,8 @@ async function calculateAdaptiveTdee(userId, dateParam) {
 
   try {
     const startDate = subDays(calculationDate, 35); // 35 days to allow for 7-day smoothing startup
-    const startDateStr = format(startDate, "yyyy-MM-dd");
-    const endDateStr = format(calculationDate, "yyyy-MM-dd");
+    const startDateStr = format(startDate, 'yyyy-MM-dd');
+    const endDateStr = format(calculationDate, 'yyyy-MM-dd');
 
     // Fetch all necessary data in parallel
     const [
@@ -49,7 +49,7 @@ async function calculateAdaptiveTdee(userId, dateParam) {
       measurementRepository.getCheckInMeasurementsByDateRange(
         userId,
         startDateStr,
-        endDateStr,
+        endDateStr
       ),
       reportRepository.getNutritionData(userId, startDateStr, endDateStr, []),
       measurementRepository.getLatestMeasurement(userId),
@@ -58,8 +58,8 @@ async function calculateAdaptiveTdee(userId, dateParam) {
     // Fallback Logic Prep
     const weightKg = parseFloat(latestMeasurement?.weight) || 70;
     const heightCm = parseFloat(latestMeasurement?.height) || 170;
-    const bmrAlgorithm = userPreferences?.bmr_algorithm || "Mifflin-St Jeor";
-    const activityLevel = userPreferences?.activity_level || "not_much";
+    const bmrAlgorithm = userPreferences?.bmr_algorithm || 'Mifflin-St Jeor';
+    const activityLevel = userPreferences?.activity_level || 'not_much';
     const multiplier = bmrService.ActivityMultiplier[activityLevel] || 1.2;
 
     let age = 30;
@@ -71,7 +71,7 @@ async function calculateAdaptiveTdee(userId, dateParam) {
         age--;
       }
     }
-    const gender = userProfile?.gender || "male";
+    const gender = userProfile?.gender || 'male';
 
     const fallbackTdee = Math.max(
       1200,
@@ -81,12 +81,12 @@ async function calculateAdaptiveTdee(userId, dateParam) {
         heightCm,
         age,
         gender,
-        latestMeasurement?.body_fat_percentage,
+        latestMeasurement?.body_fat_percentage
       ) ||
         10 * weightKg +
           6.25 * heightCm -
           5 * age +
-          (gender === "male" ? 5 : -161)) * multiplier,
+          (gender === 'male' ? 5 : -161)) * multiplier
     );
 
     // Check if we have enough data (at least 2 weight entries separated by 7 days)
@@ -97,22 +97,22 @@ async function calculateAdaptiveTdee(userId, dateParam) {
     if (weightEntries.length < 2) {
       return returnFallback(
         fallbackTdee,
-        "LOW",
-        "Insufficient weight entries (need at least 2)",
+        'LOW',
+        'Insufficient weight entries (need at least 2)'
       );
     }
 
     const firstWeightDate = new Date(weightEntries[0].entry_date);
     const lastWeightDate = new Date(
-      weightEntries[weightEntries.length - 1].entry_date,
+      weightEntries[weightEntries.length - 1].entry_date
     );
     const dayDiff = differenceInDays(lastWeightDate, firstWeightDate);
 
     if (dayDiff < 7) {
       return returnFallback(
         fallbackTdee,
-        "LOW",
-        "Weight entries span less than 7 days",
+        'LOW',
+        'Weight entries span less than 7 days'
       );
     }
 
@@ -124,11 +124,11 @@ async function calculateAdaptiveTdee(userId, dateParam) {
       end: calculationDate,
     });
     const dailyData = dayInterval.map((day) => {
-      const dateStr = format(day, "yyyy-MM-dd");
+      const dateStr = format(day, 'yyyy-MM-dd');
 
       // Find actual weight or null
       const actualWeightEntry = weightEntries.find((we) =>
-        isSameDay(new Date(we.entry_date), day),
+        isSameDay(new Date(we.entry_date), day)
       );
       const actualWeight = actualWeightEntry
         ? parseFloat(actualWeightEntry.weight)
@@ -187,7 +187,7 @@ async function calculateAdaptiveTdee(userId, dateParam) {
       const last7Days = dailyData.slice(i - 6, i + 1);
       const sum = last7Days.reduce(
         (acc, day) => acc + day.interpolatedWeight,
-        0,
+        0
       );
       dailyData[i].weightTrend = sum / 7;
     }
@@ -207,13 +207,13 @@ async function calculateAdaptiveTdee(userId, dateParam) {
 
     if (calorieDays < 7) {
       const reason =
-        "Insufficient calorie logs (need at least 7 days with at least 200 kcal)";
+        'Insufficient calorie logs (need at least 7 days with at least 200 kcal)';
       return returnFallback(
         fallbackTdee,
-        "LOW",
+        'LOW',
         reason,
         currentWeightTrend,
-        calorieDays,
+        calorieDays
       );
     }
 
@@ -240,7 +240,7 @@ async function calculateAdaptiveTdee(userId, dateParam) {
     const confidence = getConfidence(
       filteredCalories.length,
       weightEntries.length,
-      dayDiff,
+      dayDiff
     );
 
     const result = {
@@ -257,9 +257,9 @@ async function calculateAdaptiveTdee(userId, dateParam) {
     return result;
   } catch (error) {
     log(
-      "error",
+      'error',
       `AdaptiveTdeeService error for user ${userId}: ${error.message}`,
-      error,
+      error
     );
     throw error;
   }
@@ -278,9 +278,9 @@ function returnFallback(tdee, confidence, reason, weightTrend, daysOfData) {
 }
 
 function getConfidence(calorieDays, weightEntries, daySpan) {
-  if (calorieDays >= 21 && weightEntries >= 8 && daySpan >= 21) return "HIGH";
-  if (calorieDays >= 14 && weightEntries >= 4 && daySpan >= 14) return "MEDIUM";
-  return "LOW";
+  if (calorieDays >= 21 && weightEntries >= 8 && daySpan >= 21) return 'HIGH';
+  if (calorieDays >= 14 && weightEntries >= 4 && daySpan >= 14) return 'MEDIUM';
+  return 'LOW';
 }
 
 module.exports = {

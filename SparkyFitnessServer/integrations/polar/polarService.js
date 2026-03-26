@@ -1,19 +1,19 @@
 // SparkyFitnessServer/integrations/polar/polarService.js
 
-const axios = require("axios");
-const crypto = require("crypto");
-const { getClient, getSystemClient } = require("../../db/poolManager");
+const axios = require('axios');
+const crypto = require('crypto');
+const { getClient, getSystemClient } = require('../../db/poolManager');
 const {
   encrypt,
   decrypt,
   ENCRYPTION_KEY,
-} = require("../../security/encryption");
-const { log } = require("../../config/logging");
-const polarDataProcessor = require("./polarDataProcessor");
+} = require('../../security/encryption');
+const { log } = require('../../config/logging');
+const polarDataProcessor = require('./polarDataProcessor');
 
-const POLAR_AUTH_URL = "https://flow.polar.com/oauth2/authorization";
-const POLAR_TOKEN_URL = "https://polarremote.com/v2/oauth2/token";
-const POLAR_API_BASE_URL = "https://www.polaraccesslink.com/v3";
+const POLAR_AUTH_URL = 'https://flow.polar.com/oauth2/authorization';
+const POLAR_TOKEN_URL = 'https://polarremote.com/v2/oauth2/token';
+const POLAR_API_BASE_URL = 'https://www.polaraccesslink.com/v3';
 
 /**
  * Construct the Polar authorization URL.
@@ -23,18 +23,18 @@ async function getAuthorizationUrl(userId, redirectUri, providerId) {
   try {
     const query = providerId
       ? {
-          text: `SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE id = $1 AND user_id = $2`,
+          text: 'SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE id = $1 AND user_id = $2',
           values: [providerId, userId],
         }
       : {
-          text: `SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE user_id = $1 AND provider_type = 'polar'`,
+          text: "SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE user_id = $1 AND provider_type = 'polar'",
           values: [userId],
         };
 
     const result = await client.query(query.text, query.values);
 
     if (result.rows.length === 0) {
-      throw new Error("Polar client credentials not found for user.");
+      throw new Error('Polar client credentials not found for user.');
     }
 
     const { encrypted_app_id, app_id_iv, app_id_tag } = result.rows[0];
@@ -42,20 +42,20 @@ async function getAuthorizationUrl(userId, redirectUri, providerId) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
-    const scope = "accesslink.read_all";
-    const state = crypto.randomBytes(16).toString("hex");
+    const scope = 'accesslink.read_all';
+    const state = crypto.randomBytes(16).toString('hex');
 
     // Store state in DB for validation during callback
     const updateQuery = providerId
       ? {
-          text: `UPDATE external_data_providers SET oauth_state = $1 WHERE id = $2 AND user_id = $3`,
+          text: 'UPDATE external_data_providers SET oauth_state = $1 WHERE id = $2 AND user_id = $3',
           values: [state, providerId, userId],
         }
       : {
-          text: `UPDATE external_data_providers SET oauth_state = $1 WHERE user_id = $2 AND provider_type = 'polar'`,
+          text: "UPDATE external_data_providers SET oauth_state = $1 WHERE user_id = $2 AND provider_type = 'polar'",
           values: [state, userId],
         };
 
@@ -75,7 +75,7 @@ async function exchangeCodeForTokens(
   code,
   state,
   redirectUri,
-  providerId,
+  providerId
 ) {
   const client = await getSystemClient();
   try {
@@ -95,11 +95,11 @@ async function exchangeCodeForTokens(
 
     const providerResult = await client.query(
       providerQuery.text,
-      providerQuery.values,
+      providerQuery.values
     );
 
     if (providerResult.rows.length === 0) {
-      throw new Error("Polar client credentials not found for user.");
+      throw new Error('Polar client credentials not found for user.');
     }
 
     const {
@@ -116,27 +116,27 @@ async function exchangeCodeForTokens(
     // Validate state to prevent CSRF
     if (!storedState || storedState !== state) {
       log(
-        "warn",
-        `[Polar] State mismatch for user ${userId}. Received: ${state}, Stored: ${storedState}`,
+        'warn',
+        `[Polar] State mismatch for user ${userId}. Received: ${state}, Stored: ${storedState}`
       );
-      throw new Error("Invalid OAuth state. Potential CSRF attack.");
+      throw new Error('Invalid OAuth state. Potential CSRF attack.');
     }
 
     const clientId = await decrypt(
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const clientSecret = await decrypt(
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString(
-      "base64",
+      'base64'
     );
 
     const response = await axios.post(
@@ -145,10 +145,10 @@ async function exchangeCodeForTokens(
       {
         headers: {
           Authorization: `Basic ${authHeader}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-          Accept: "application/json",
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json',
         },
-      },
+      }
     );
 
     const { access_token, expires_in, x_user_id } = response.data;
@@ -156,7 +156,7 @@ async function exchangeCodeForTokens(
     const encryptedAccess = await encrypt(access_token, ENCRYPTION_KEY);
     // Polar AccessLink tokens are long-lived and don't typically include a refresh token.
     // However, if the API ever provides one, we should store it. For now, we'll store a placeholder.
-    const encryptedRefresh = await encrypt("no_refresh_token", ENCRYPTION_KEY); // Placeholder
+    const encryptedRefresh = await encrypt('no_refresh_token', ENCRYPTION_KEY); // Placeholder
     const expiresAt = new Date(Date.now() + (expires_in || 0) * 1000);
     const polarUserId = x_user_id;
 
@@ -177,7 +177,7 @@ async function exchangeCodeForTokens(
         expiresAt,
         polarUserId,
         finalProviderId,
-      ],
+      ]
     );
 
     // Polar AccessLink. Check if user is already registered.
@@ -186,12 +186,12 @@ async function exchangeCodeForTokens(
       await axios.get(`${POLAR_API_BASE_URL}/users/${x_user_id}`, {
         headers: {
           Authorization: `Bearer ${access_token}`,
-          Accept: "application/json",
+          Accept: 'application/json',
         },
       });
       log(
-        "info",
-        `User ${userId} (Polar ID: ${x_user_id}) is already registered with Polar AccessLink.`,
+        'info',
+        `User ${userId} (Polar ID: ${x_user_id}) is already registered with Polar AccessLink.`
       );
     } catch (getError) {
       // If 404 or 403 (unauthorized might mean not registered yet?), proceed to register
@@ -200,8 +200,8 @@ async function exchangeCodeForTokens(
       // But getting a 401/403 here might mean the token is valid but user not linked?
 
       log(
-        "info",
-        `User ${x_user_id} lookup status: ${getError.response ? getError.response.status : getError.message}. Proceeding to registration.`,
+        'info',
+        `User ${x_user_id} lookup status: ${getError.response ? getError.response.status : getError.message}. Proceeding to registration.`
       );
 
       const inputBody = `<register><member-id>${userId}</member-id></register>`;
@@ -209,25 +209,25 @@ async function exchangeCodeForTokens(
         await axios.post(`${POLAR_API_BASE_URL}/users`, inputBody, {
           headers: {
             Authorization: `Bearer ${access_token}`,
-            "Content-Type": "application/xml",
-            Accept: "application/json",
+            'Content-Type': 'application/xml',
+            Accept: 'application/json',
           },
         });
         log(
-          "info",
-          `Successfully registered user ${userId} with Polar AccessLink.`,
+          'info',
+          `Successfully registered user ${userId} with Polar AccessLink.`
         );
       } catch (regError) {
         if (regError.response && regError.response.status === 409) {
           log(
-            "info",
-            `User ${userId} already registered with Polar AccessLink (Conflict).`,
+            'info',
+            `User ${userId} already registered with Polar AccessLink (Conflict).`
           );
         } else if (regError.response && regError.response.status === 401) {
           // Log details about 401 which is the current issue
           log(
-            "error",
-            `401 Unauthorized during Polar Registration. Body: ${JSON.stringify(regError.response.data)}`,
+            'error',
+            `401 Unauthorized during Polar Registration. Body: ${JSON.stringify(regError.response.data)}`
           );
           // If we got a 401 here, maybe the token is bad? But we just got it.
           // It is possible that V3 access requires a different flow?
@@ -235,8 +235,8 @@ async function exchangeCodeForTokens(
           throw regError;
         } else {
           log(
-            "error",
-            `Error registering user ${userId} with Polar AccessLink: ${regError.message} - ${JSON.stringify(regError.response?.data)}`,
+            'error',
+            `Error registering user ${userId} with Polar AccessLink: ${regError.message} - ${JSON.stringify(regError.response?.data)}`
           );
           throw regError;
         }
@@ -245,7 +245,7 @@ async function exchangeCodeForTokens(
 
     return { success: true, externalUserId: x_user_id };
   } catch (error) {
-    log("error", `Error exchanging Polar code for tokens: ${error.message}`);
+    log('error', `Error exchanging Polar code for tokens: ${error.message}`);
     throw error;
   } finally {
     client.release();
@@ -277,8 +277,8 @@ async function checkNotifications(userId, providerId) {
 
     if (result.rows.length === 0) {
       log(
-        "warn",
-        `[Polar] Credentials not found for user ${userId} when checking notifications.`,
+        'warn',
+        `[Polar] Credentials not found for user ${userId} when checking notifications.`
       );
       return null;
     }
@@ -296,57 +296,57 @@ async function checkNotifications(userId, providerId) {
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
     const clientSecret = await decrypt(
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString(
-      "base64",
+      'base64'
     );
 
     log(
-      "info",
-      `Checking Polar notifications for user ${userId} (Polar ID: ${external_user_id})...`,
+      'info',
+      `Checking Polar notifications for user ${userId} (Polar ID: ${external_user_id})...`
     );
     const response = await axios.get(`${POLAR_API_BASE_URL}/notifications`, {
       headers: {
         Authorization: `Basic ${authHeader}`,
-        Accept: "application/json",
+        Accept: 'application/json',
       },
     });
 
     // Response: { "available-user-data": [ { "user-id": 123, "data-type": "EXERCISE", ... } ] }
-    const availableData = response.data["available-user-data"] || [];
-    log("info", `[Polar] Notifications found: ${availableData.length}.`);
+    const availableData = response.data['available-user-data'] || [];
+    log('info', `[Polar] Notifications found: ${availableData.length}.`);
 
     // Filter for our user
     // external_user_id is stored as string in DB but might be number in API response?
     const userNotifications = availableData.filter(
-      (n) => String(n["user-id"]) === String(external_user_id),
+      (n) => String(n['user-id']) === String(external_user_id)
     );
 
     if (userNotifications.length > 0) {
       log(
-        "info",
-        `[Polar] Found ${userNotifications.length} pending notifications for this user: ${JSON.stringify(userNotifications)}`,
+        'info',
+        `[Polar] Found ${userNotifications.length} pending notifications for this user: ${JSON.stringify(userNotifications)}`
       );
     } else {
       log(
-        "info",
-        `[Polar] No pending notifications found specifically for this user.`,
+        'info',
+        '[Polar] No pending notifications found specifically for this user.'
       );
     }
 
     return userNotifications;
   } catch (error) {
     log(
-      "error",
-      `Error checking Polar notifications for user ${userId}: ${error.message}`,
+      'error',
+      `Error checking Polar notifications for user ${userId}: ${error.message}`
     );
     return null; // Don't throw, just log
   } finally {
@@ -377,7 +377,7 @@ async function getValidAccessToken(userId, providerId) {
     const providerResult = await client.query(query.text, query.values);
 
     if (providerResult.rows.length === 0) {
-      throw new Error("Polar provider not configured for user.");
+      throw new Error('Polar provider not configured for user.');
     }
 
     const {
@@ -390,7 +390,7 @@ async function getValidAccessToken(userId, providerId) {
       encrypted_access_token,
       access_token_iv,
       access_token_tag,
-      ENCRYPTION_KEY,
+      ENCRYPTION_KEY
     );
 
     // Note: Polar AccessLink access tokens are valid for life unless revoked.
@@ -412,20 +412,20 @@ async function createTransaction(userId, externalUserId, accessToken, type) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
+          Accept: 'application/json',
         },
-      },
+      }
     );
     return response.data; // Contains resource url list (e.g. "exercises": [...]) and "resource-uri" etc.
   } catch (error) {
     if (error.response && error.response.status === 204) {
       // No content = no new data
-      log("info", `No new Polar ${type} data available for user ${userId}.`);
+      log('info', `No new Polar ${type} data available for user ${userId}.`);
       return null;
     }
     log(
-      "error",
-      `Error creating Polar transaction (${type}) for user ${userId}: ${error.message}`,
+      'error',
+      `Error creating Polar transaction (${type}) for user ${userId}: ${error.message}`
     );
     throw error;
   }
@@ -439,7 +439,7 @@ async function commitTransaction(
   externalUserId,
   accessToken,
   transactionId,
-  type,
+  type
 ) {
   try {
     await axios.put(
@@ -447,13 +447,13 @@ async function commitTransaction(
       {},
       {
         headers: { Authorization: `Bearer ${accessToken}` },
-      },
+      }
     );
     return true;
   } catch (error) {
     log(
-      "error",
-      `Error committing Polar transaction (${type}:${transactionId}) for user ${userId}: ${error.message}`,
+      'error',
+      `Error committing Polar transaction (${type}:${transactionId}) for user ${userId}: ${error.message}`
     );
     return false;
   }
@@ -469,12 +469,12 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
       userId,
       externalUserId,
       accessToken,
-      "physical_information",
+      'physical_information'
     );
     if (!transaction) return [];
 
-    const transactionId = transaction["transaction-id"];
-    const resourceUrls = transaction["physical-informations"] || [];
+    const transactionId = transaction['transaction-id'];
+    const resourceUrls = transaction['physical-informations'] || [];
 
     const results = [];
 
@@ -484,22 +484,22 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
         const response = await axios.get(url, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
+            Accept: 'application/json',
           },
         });
-        const { logRawResponse } = require("../../utils/diagnosticLogger");
+        const { logRawResponse } = require('../../utils/diagnosticLogger');
         // Use a unique key based on the resource URL or a timestamp to avoid overwriting
-        const resourceId = url.split("/").pop();
+        const resourceId = url.split('/').pop();
         logRawResponse(
-          "polar",
+          'polar',
           `raw_physical_info_item_${resourceId}`,
-          response.data,
+          response.data
         );
         results.push(response.data);
       } catch (err) {
         log(
-          "error",
-          `Error fetching physical info resource ${url}: ${err.message}`,
+          'error',
+          `Error fetching physical info resource ${url}: ${err.message}`
         );
       }
     }
@@ -510,16 +510,16 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
         userId,
         externalUserId,
         accessToken,
-        "physical_information",
-        transactionId,
+        'physical_information',
+        transactionId
       );
     }
 
     return results;
   } catch (error) {
     log(
-      "error",
-      `Error fetching Polar physical info for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching Polar physical info for user ${userId}: ${error.message}`
     );
     return [];
   }
@@ -531,32 +531,32 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
 async function fetchRecentPhysicalInfo(userId, accessToken) {
   try {
     log(
-      "info",
-      `Fetching recent Polar physical info (List API) for user ${userId}...`,
+      'info',
+      `Fetching recent Polar physical info (List API) for user ${userId}...`
     );
     const response = await axios.get(
       `${POLAR_API_BASE_URL}/users/physical-information`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
+          Accept: 'application/json',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("polar", "raw_physical_info_list", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('polar', 'raw_physical_info_list', response.data);
 
-    const physicalInfo = response.data["physical-informations"] || [];
+    const physicalInfo = response.data['physical-informations'] || [];
     log(
-      "info",
-      `Fetched ${physicalInfo.length} recent physical info entries (List API) for user ${userId}.`,
+      'info',
+      `Fetched ${physicalInfo.length} recent physical info entries (List API) for user ${userId}.`
     );
     return physicalInfo;
   } catch (error) {
     log(
-      "error",
-      `Error fetching recent Polar physical info (List API) for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching recent Polar physical info (List API) for user ${userId}: ${error.message}`
     );
     return [];
   }
@@ -572,12 +572,12 @@ async function fetchExercises(userId, externalUserId, accessToken) {
       userId,
       externalUserId,
       accessToken,
-      "exercise",
+      'exercise'
     );
     if (!transaction) return [];
 
-    const transactionId = transaction["transaction-id"];
-    const resourceUrls = transaction["exercises"] || [];
+    const transactionId = transaction['transaction-id'];
+    const resourceUrls = transaction['exercises'] || [];
     const results = [];
 
     // 2. Fetch Data
@@ -586,15 +586,15 @@ async function fetchExercises(userId, externalUserId, accessToken) {
         const response = await axios.get(url, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
+            Accept: 'application/json',
           },
         });
-        const { logRawResponse } = require("../../utils/diagnosticLogger");
-        const exerciseId = response.data.id || url.split("/").pop();
+        const { logRawResponse } = require('../../utils/diagnosticLogger');
+        const exerciseId = response.data.id || url.split('/').pop();
         logRawResponse(
-          "polar",
+          'polar',
           `raw_exercise_item_${exerciseId}`,
-          response.data,
+          response.data
         );
         // Note: Can also fetch samples/zones here if needed, usually passed as query params?
         // The URL from transaction is the direct resource link.
@@ -605,7 +605,7 @@ async function fetchExercises(userId, externalUserId, accessToken) {
         // But let's start basic.
         results.push(response.data);
       } catch (err) {
-        log("error", `Error fetching exercise resource ${url}: ${err.message}`);
+        log('error', `Error fetching exercise resource ${url}: ${err.message}`);
       }
     }
 
@@ -616,15 +616,15 @@ async function fetchExercises(userId, externalUserId, accessToken) {
         externalUserId,
         accessToken,
         transactionId,
-        "exercise",
+        'exercise'
       );
     }
 
     return results;
   } catch (error) {
     log(
-      "error",
-      `Error fetching Polar exercises for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching Polar exercises for user ${userId}: ${error.message}`
     );
     return [];
   }
@@ -637,8 +637,8 @@ async function fetchExercises(userId, externalUserId, accessToken) {
 async function fetchRecentExercises(userId, accessToken) {
   try {
     log(
-      "info",
-      `Fetching recent Polar exercises (List API) for user ${userId}...`,
+      'info',
+      `Fetching recent Polar exercises (List API) for user ${userId}...`
     );
     // Use samples=true and zones=true to get full details
     const response = await axios.get(
@@ -646,24 +646,24 @@ async function fetchRecentExercises(userId, accessToken) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
+          Accept: 'application/json',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("polar", "raw_exercises_recent", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('polar', 'raw_exercises_recent', response.data);
 
     const exercises = response.data || [];
     log(
-      "info",
-      `Fetched ${exercises.length} recent exercises (List API) for user ${userId}.`,
+      'info',
+      `Fetched ${exercises.length} recent exercises (List API) for user ${userId}.`
     );
     return exercises;
   } catch (error) {
     log(
-      "error",
-      `Error fetching recent Polar exercises (List API) for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching recent Polar exercises (List API) for user ${userId}: ${error.message}`
     );
     return [];
   }
@@ -679,12 +679,12 @@ async function fetchDailyActivity(userId, externalUserId, accessToken) {
       userId,
       externalUserId,
       accessToken,
-      "activity",
+      'activity'
     );
     if (!transaction) return [];
 
-    const transactionId = transaction["transaction-id"];
-    const resourceUrls = transaction["activity-log"] || []; // Check key in docs: 'activity-log' usually?
+    const transactionId = transaction['transaction-id'];
+    const resourceUrls = transaction['activity-log'] || []; // Check key in docs: 'activity-log' usually?
     // Docs for 'activity-transactions' response say:
     // "resource-uri": "...", "user-id": ..., "transaction-id": ..., "activity-log": ["url1", "url2"]
 
@@ -696,21 +696,21 @@ async function fetchDailyActivity(userId, externalUserId, accessToken) {
         const response = await axios.get(url, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
+            Accept: 'application/json',
           },
         });
-        const { logRawResponse } = require("../../utils/diagnosticLogger");
-        const activityId = url.split("/").pop();
+        const { logRawResponse } = require('../../utils/diagnosticLogger');
+        const activityId = url.split('/').pop();
         logRawResponse(
-          "polar",
+          'polar',
           `raw_activity_item_${activityId}`,
-          response.data,
+          response.data
         );
         results.push(response.data);
       } catch (err) {
         log(
-          "error",
-          `Error fetching daily activity resource ${url}: ${err.message}`,
+          'error',
+          `Error fetching daily activity resource ${url}: ${err.message}`
         );
       }
     }
@@ -721,16 +721,16 @@ async function fetchDailyActivity(userId, externalUserId, accessToken) {
         userId,
         externalUserId,
         accessToken,
-        "activity",
-        transactionId,
+        'activity',
+        transactionId
       );
     }
 
     return results;
   } catch (error) {
     log(
-      "error",
-      `Error fetching Polar daily activity for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching Polar daily activity for user ${userId}: ${error.message}`
     );
     return [];
   }
@@ -742,8 +742,8 @@ async function fetchDailyActivity(userId, externalUserId, accessToken) {
 async function fetchRecentDailyActivity(userId, accessToken) {
   try {
     log(
-      "info",
-      `Fetching recent Polar daily activity (List API) for user ${userId}...`,
+      'info',
+      `Fetching recent Polar daily activity (List API) for user ${userId}...`
     );
 
     // Calculate date range: Last 28 days (max allowed by API)
@@ -751,34 +751,34 @@ async function fetchRecentDailyActivity(userId, accessToken) {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 28);
 
-    const to = endDate.toISOString().split("T")[0];
-    const from = startDate.toISOString().split("T")[0];
+    const to = endDate.toISOString().split('T')[0];
+    const from = startDate.toISOString().split('T')[0];
 
-    log("debug", `Requesting Polar activity from ${from} to ${to}`);
+    log('debug', `Requesting Polar activity from ${from} to ${to}`);
 
     const response = await axios.get(
       `${POLAR_API_BASE_URL}/users/activities/?from=${from}&to=${to}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
+          Accept: 'application/json',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("polar", "raw_activity_list", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('polar', 'raw_activity_list', response.data);
 
     const activities = response.data || [];
     log(
-      "info",
-      `Fetched ${activities.length} days of recent daily activity (List API) for user ${userId}.`,
+      'info',
+      `Fetched ${activities.length} days of recent daily activity (List API) for user ${userId}.`
     );
     return activities;
   } catch (error) {
     log(
-      "error",
-      `Error fetching recent Polar daily activity (List API) for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching recent Polar daily activity (List API) for user ${userId}: ${error.message}`
     );
     return [];
   }
@@ -790,25 +790,25 @@ async function fetchRecentDailyActivity(userId, accessToken) {
 async function fetchUserProfile(userId, externalUserId, accessToken) {
   try {
     log(
-      "info",
-      `Fetching Polar user profile for user ${userId} (Polar ID: ${externalUserId})...`,
+      'info',
+      `Fetching Polar user profile for user ${userId} (Polar ID: ${externalUserId})...`
     );
     const response = await axios.get(
       `${POLAR_API_BASE_URL}/users/${externalUserId}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
+          Accept: 'application/json',
         },
-      },
+      }
     );
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("polar", "raw_user_profile", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('polar', 'raw_user_profile', response.data);
     return response.data;
   } catch (error) {
     log(
-      "error",
-      `Error fetching Polar user profile for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching Polar user profile for user ${userId}: ${error.message}`
     );
     return null;
   }
@@ -820,29 +820,29 @@ async function fetchUserProfile(userId, externalUserId, accessToken) {
 async function fetchRecentSleepData(userId, accessToken) {
   try {
     log(
-      "info",
-      `Fetching recent Polar sleep data (List API) for user ${userId}...`,
+      'info',
+      `Fetching recent Polar sleep data (List API) for user ${userId}...`
     );
     const response = await axios.get(`${POLAR_API_BASE_URL}/users/sleep`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
+        Accept: 'application/json',
       },
     });
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("polar", "raw_sleep", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('polar', 'raw_sleep', response.data);
 
     const sleepData = response.data.nights || [];
     log(
-      "info",
-      `Fetched ${sleepData.length} nights of recent sleep data (List API) for user ${userId}.`,
+      'info',
+      `Fetched ${sleepData.length} nights of recent sleep data (List API) for user ${userId}.`
     );
     return sleepData;
   } catch (error) {
     log(
-      "error",
-      `Error fetching recent Polar sleep data (List API) for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching recent Polar sleep data (List API) for user ${userId}: ${error.message}`
     );
     return [];
   }
@@ -854,32 +854,32 @@ async function fetchRecentSleepData(userId, accessToken) {
 async function fetchRecentNightlyRecharge(userId, accessToken) {
   try {
     log(
-      "info",
-      `Fetching recent Polar nightly recharge data (List API) for user ${userId}...`,
+      'info',
+      `Fetching recent Polar nightly recharge data (List API) for user ${userId}...`
     );
     const response = await axios.get(
       `${POLAR_API_BASE_URL}/users/nightly-recharge`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
+          Accept: 'application/json',
         },
-      },
+      }
     );
 
-    const { logRawResponse } = require("../../utils/diagnosticLogger");
-    logRawResponse("polar", "raw_nightly_recharge", response.data);
+    const { logRawResponse } = require('../../utils/diagnosticLogger');
+    logRawResponse('polar', 'raw_nightly_recharge', response.data);
 
     const rechargeData = response.data.recharges || [];
     log(
-      "info",
-      `Fetched ${rechargeData.length} records of recent nightly recharge data (List API) for user ${userId}.`,
+      'info',
+      `Fetched ${rechargeData.length} records of recent nightly recharge data (List API) for user ${userId}.`
     );
     return rechargeData;
   } catch (error) {
     log(
-      "error",
-      `Error fetching recent Polar nightly recharge data (List API) for user ${userId}: ${error.message}`,
+      'error',
+      `Error fetching recent Polar nightly recharge data (List API) for user ${userId}: ${error.message}`
     );
     return [];
   }
@@ -891,8 +891,8 @@ async function fetchRecentNightlyRecharge(userId, accessToken) {
  */
 async function fetchAndProcessPolarData(userId, createdByUserId) {
   log(
-    "warn",
-    "[polarIntegrationService] fetchAndProcessPolarData is deprecated. Use services/polarService.js instead.",
+    'warn',
+    '[polarIntegrationService] fetchAndProcessPolarData is deprecated. Use services/polarService.js instead.'
   );
   const accessToken = await getValidAccessToken(userId);
 
@@ -901,7 +901,7 @@ async function fetchAndProcessPolarData(userId, createdByUserId) {
     await polarDataProcessor.processPolarPhysicalInfo(
       userId,
       createdByUserId,
-      physicalInfo,
+      physicalInfo
     );
   }
 
@@ -910,7 +910,7 @@ async function fetchAndProcessPolarData(userId, createdByUserId) {
     await polarDataProcessor.processPolarExercises(
       userId,
       createdByUserId,
-      exercises,
+      exercises
     );
   }
 
@@ -942,14 +942,14 @@ async function disconnectPolar(userId, providerId) {
     await client.query(query.text, query.values);
 
     log(
-      "info",
-      `Polar account disconnected for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ""}`,
+      'info',
+      `Polar account disconnected for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ''}`
     );
     return { success: true };
   } catch (error) {
     log(
-      "error",
-      `Error disconnecting Polar account for user ${userId}: ${error.message}`,
+      'error',
+      `Error disconnecting Polar account for user ${userId}: ${error.message}`
     );
     throw error;
   } finally {

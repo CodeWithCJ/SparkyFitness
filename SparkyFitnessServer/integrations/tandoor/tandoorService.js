@@ -1,15 +1,15 @@
-const { log } = require("../../config/logging");
+const { log } = require('../../config/logging');
 // Using native fetch (standard in Node 22+)
 
 class TandoorService {
   constructor(baseUrl, apiKey) {
     if (!baseUrl) {
-      throw new Error("Tandoor baseUrl not provided.");
+      throw new Error('Tandoor baseUrl not provided.');
     }
-    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
       this.baseUrl = `https://${baseUrl}`;
     } else {
-      this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+      this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     }
     this.accessToken = apiKey; // Tandoor API uses token for authentication
   }
@@ -17,58 +17,58 @@ class TandoorService {
   // Placeholder for searchRecipes
   async searchRecipes(query, options = {}) {
     if (!this.accessToken) {
-      throw new Error("Tandoor API key not provided.");
+      throw new Error('Tandoor API key not provided.');
     }
 
     const url = new URL(`${this.baseUrl}/api/recipe/`);
-    url.searchParams.append("query", query);
-    url.searchParams.append("page_size", 10); // Limit results to 10
+    url.searchParams.append('query', query);
+    url.searchParams.append('page_size', 10); // Limit results to 10
 
     try {
       const authHeader =
-        typeof this.accessToken === "string" &&
-        (this.accessToken.startsWith("Bearer ") ||
-          this.accessToken.startsWith("Token "))
+        typeof this.accessToken === 'string' &&
+        (this.accessToken.startsWith('Bearer ') ||
+          this.accessToken.startsWith('Token '))
           ? this.accessToken
           : `Bearer ${this.accessToken}`;
 
       const response = await fetch(url.toString(), {
-        method: "GET",
+        method: 'GET',
         headers: {
           Authorization: authHeader,
-          Accept: "application/json",
-          "Content-Type": "application/json",
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
           ...options.headers,
         },
       });
       log(
-        "debug",
-        `Tandoor search HTTP status: ${response.status} ${response.statusText}`,
+        'debug',
+        `Tandoor search HTTP status: ${response.status} ${response.statusText}`
       );
-      const contentType = response.headers.get("content-type") || "";
-      log("debug", `Tandoor search response content-type: ${contentType}`);
+      const contentType = response.headers.get('content-type') || '';
+      log('debug', `Tandoor search response content-type: ${contentType}`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        log("error", `Tandoor API Error Response (Raw): ${errorText}`);
+        log('error', `Tandoor API Error Response (Raw): ${errorText}`);
         try {
           const errorData = JSON.parse(errorText);
           throw new Error(
-            `Search failed: ${response.status} ${response.statusText} - ${errorData.detail}`,
+            `Search failed: ${response.status} ${response.statusText} - ${errorData.detail}`
           );
         } catch (jsonError) {
           throw new Error(
-            `Search failed: ${response.status} ${response.statusText} - ${errorText}`,
+            `Search failed: ${response.status} ${response.statusText} - ${errorText}`
           );
         }
       }
 
       // If the server returned HTML (browsable API or login page), log the raw text for diagnosis
-      if (!contentType.includes("application/json")) {
+      if (!contentType.includes('application/json')) {
         const raw = await response.text();
         log(
-          "error",
-          `Tandoor search returned non-JSON response. Raw body: ${raw.substring(0, 2000)}`,
+          'error',
+          `Tandoor search returned non-JSON response. Raw body: ${raw.substring(0, 2000)}`
         );
         return [];
       }
@@ -76,17 +76,17 @@ class TandoorService {
       const data = await response.json();
       // Log the top-level keys / type to help debugging different API shapes
       try {
-        const topType = Array.isArray(data) ? "array" : typeof data;
+        const topType = Array.isArray(data) ? 'array' : typeof data;
         const keys =
-          data && typeof data === "object" && !Array.isArray(data)
+          data && typeof data === 'object' && !Array.isArray(data)
             ? Object.keys(data)
             : [];
         log(
-          "debug",
-          `Tandoor search response type: ${topType}, keys: ${JSON.stringify(keys)}`,
+          'debug',
+          `Tandoor search response type: ${topType}, keys: ${JSON.stringify(keys)}`
         );
       } catch (e) {
-        log("debug", "Tandoor search response could not be inspected");
+        log('debug', 'Tandoor search response could not be inspected');
       }
 
       // Support multiple response shapes:
@@ -104,7 +104,7 @@ class TandoorService {
         results = data.objects;
       } else {
         // As a last resort, try to find the first array-valued property
-        if (data && typeof data === "object") {
+        if (data && typeof data === 'object') {
           for (const k of Object.keys(data)) {
             if (Array.isArray(data[k])) {
               results = data[k];
@@ -114,34 +114,34 @@ class TandoorService {
         }
       }
 
-      log("debug", `Found ${results.length} recipes for query: ${query}`);
+      log('debug', `Found ${results.length} recipes for query: ${query}`);
       return results;
     } catch (error) {
-      log("error", "Error during Tandoor recipe search:", error.message);
+      log('error', 'Error during Tandoor recipe search:', error.message);
       return [];
     }
   }
 
   async getRecipeDetails(id, options = {}) {
     if (!this.accessToken) {
-      throw new Error("Tandoor API key not provided.");
+      throw new Error('Tandoor API key not provided.');
     }
 
     const url = `${this.baseUrl}/api/recipe/${encodeURIComponent(id)}/`;
 
     try {
       const authHeader =
-        typeof this.accessToken === "string" &&
-        (this.accessToken.startsWith("Bearer ") ||
-          this.accessToken.startsWith("Token "))
+        typeof this.accessToken === 'string' &&
+        (this.accessToken.startsWith('Bearer ') ||
+          this.accessToken.startsWith('Token '))
           ? this.accessToken
           : `Bearer ${this.accessToken}`;
 
       const response = await fetch(url, {
-        method: "GET",
+        method: 'GET',
         headers: {
           Authorization: authHeader,
-          Accept: "application/json",
+          Accept: 'application/json',
           ...options.headers,
         },
       });
@@ -149,18 +149,18 @@ class TandoorService {
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(
-          `Get recipe details failed: ${response.status} ${response.statusText} - ${errorData}`,
+          `Get recipe details failed: ${response.status} ${response.statusText} - ${errorData}`
         );
       }
 
       const data = await response.json();
-      log("debug", `Successfully retrieved details for recipe: ${id}`);
+      log('debug', `Successfully retrieved details for recipe: ${id}`);
       return data;
     } catch (error) {
       log(
-        "error",
-        "Error during Tandoor recipe details retrieval:",
-        error.message,
+        'error',
+        'Error during Tandoor recipe details retrieval:',
+        error.message
       );
       return null;
     }
@@ -168,26 +168,26 @@ class TandoorService {
 
   mapTandoorRecipeToSparkyFood(tandoorRecipe, userId) {
     log(
-      "debug",
-      `[Tandoor Mapping] Starting mapping for recipe ID: ${tandoorRecipe.id} ("${tandoorRecipe.name}")`,
+      'debug',
+      `[Tandoor Mapping] Starting mapping for recipe ID: ${tandoorRecipe.id} ("${tandoorRecipe.name}")`
     );
 
     const extractFromProperties = (props, candidates) => {
       if (!Array.isArray(props)) return null;
 
       for (const cand of candidates) {
-        const candNorm = cand.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const candNorm = cand.toLowerCase().replace(/[^a-z0-9]/g, '');
 
         const found = props.find((p) => {
           const pt = p.property_type;
           if (!pt) return false;
 
-          const nameNorm = (pt.name || "")
+          const nameNorm = (pt.name || '')
             .toLowerCase()
-            .replace(/[^a-z0-9]/g, "");
-          const slugNorm = (pt.open_data_slug || "")
+            .replace(/[^a-z0-9]/g, '');
+          const slugNorm = (pt.open_data_slug || '')
             .toLowerCase()
-            .replace(/[^a-z0-9]/g, "");
+            .replace(/[^a-z0-9]/g, '');
 
           // Match against name OR strict slug (e.g., "property-calories" or "calories")
           return (
@@ -205,8 +205,8 @@ class TandoorService {
           const num = Number(found.property_amount);
           if (!Number.isNaN(num)) {
             log(
-              "debug",
-              `[Tandoor Mapping] Found property match: ${cand} = ${num}`,
+              'debug',
+              `[Tandoor Mapping] Found property match: ${cand} = ${num}`
             );
             return num;
           }
@@ -225,8 +225,8 @@ class TandoorService {
     // 3. properties (generic attributes)
     const getNutritionValue = (candidates, label) => {
       log(
-        "debug",
-        `[Tandoor Mapping] Searching for "${label}" (Candidates: ${candidates.join(", ")})`,
+        'debug',
+        `[Tandoor Mapping] Searching for "${label}" (Candidates: ${candidates.join(', ')})`
       );
 
       let bestValue = null;
@@ -234,14 +234,14 @@ class TandoorService {
       // 1. Check nutrition (Explicit structured data)
       if (nutritionData) {
         const nutritionKeys = {
-          calories: ["calories", "cal", "kcal"],
-          protein: ["proteins", "protein"],
-          carbs: ["carbohydrates", "carbohydrate", "carbs"],
-          fat: ["fats", "fat"],
+          calories: ['calories', 'cal', 'kcal'],
+          protein: ['proteins', 'protein'],
+          carbs: ['carbohydrates', 'carbohydrate', 'carbs'],
+          fat: ['fats', 'fat'],
         };
 
         if (
-          typeof nutritionData === "object" &&
+          typeof nutritionData === 'object' &&
           !Array.isArray(nutritionData)
         ) {
           const lookupKeys = nutritionKeys[label] || [label];
@@ -250,8 +250,8 @@ class TandoorService {
               const num = Number(nutritionData[k]);
               if (!Number.isNaN(num)) {
                 log(
-                  "debug",
-                  `[Tandoor Mapping] Nutrition Object Match: Found "${label}" via key "${k}" = ${num}`,
+                  'debug',
+                  `[Tandoor Mapping] Nutrition Object Match: Found "${label}" via key "${k}" = ${num}`
                 );
                 if (num > 0) return num;
                 bestValue = num;
@@ -263,15 +263,15 @@ class TandoorService {
         if (Array.isArray(nutritionData)) {
           for (const item of nutritionData) {
             if (item.name && item.value !== undefined) {
-              const keyNorm = item.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+              const keyNorm = item.name.toLowerCase().replace(/[^a-z0-9]/g, '');
               for (const c of candidates) {
-                const candNorm = c.toLowerCase().replace(/[^a-z0-9]/g, "");
+                const candNorm = c.toLowerCase().replace(/[^a-z0-9]/g, '');
                 if (keyNorm === candNorm) {
                   const num = Number(item.value);
                   if (!Number.isNaN(num)) {
                     log(
-                      "debug",
-                      `[Tandoor Mapping] Nutrition Array Match: Found "${label}" via Tandoor key "${item.name}" = ${num}`,
+                      'debug',
+                      `[Tandoor Mapping] Nutrition Array Match: Found "${label}" via Tandoor key "${item.name}" = ${num}`
                     );
                     if (num > 0) return num;
                     bestValue = num;
@@ -284,19 +284,19 @@ class TandoorService {
       }
 
       // 2. Check food_properties (Automatic calculations - Dictionary shape)
-      if (foodProperties && typeof foodProperties === "object") {
+      if (foodProperties && typeof foodProperties === 'object') {
         for (const key of Object.keys(foodProperties)) {
           const prop = foodProperties[key];
           if (prop && prop.total_value !== undefined) {
-            const nameNorm = (prop.name || "")
+            const nameNorm = (prop.name || '')
               .toLowerCase()
-              .replace(/[^a-z0-9]/g, "");
-            const slugNorm = (prop.open_data_slug || "")
+              .replace(/[^a-z0-9]/g, '');
+            const slugNorm = (prop.open_data_slug || '')
               .toLowerCase()
-              .replace(/[^a-z0-9]/g, "");
+              .replace(/[^a-z0-9]/g, '');
 
             for (const cand of candidates) {
-              const candNorm = cand.toLowerCase().replace(/[^a-z0-9]/g, "");
+              const candNorm = cand.toLowerCase().replace(/[^a-z0-9]/g, '');
               // Stricter check for slugs
               if (
                 nameNorm === candNorm ||
@@ -306,8 +306,8 @@ class TandoorService {
                 const num = Number(prop.total_value);
                 if (!Number.isNaN(num)) {
                   log(
-                    "debug",
-                    `[Tandoor Mapping] Food Property Match: Found "${label}" via "${prop.name}" (slug: ${prop.open_data_slug}) = ${num}`,
+                    'debug',
+                    `[Tandoor Mapping] Food Property Match: Found "${label}" via "${prop.name}" (slug: ${prop.open_data_slug}) = ${num}`
                   );
                   if (num > 0) return num;
                   if (bestValue === null) bestValue = num;
@@ -330,8 +330,8 @@ class TandoorService {
       }
 
       log(
-        "debug",
-        `[Tandoor Mapping] No Match: Could not find value for "${label}"`,
+        'debug',
+        `[Tandoor Mapping] No Match: Could not find value for "${label}"`
       );
       return null;
     };
@@ -339,131 +339,131 @@ class TandoorService {
     // Candidate name lists for common nutrients (covering common variants/case)
     const nutrientsMap = {
       calories: [
-        "calories",
-        "cal",
-        "kcal",
-        "energy",
-        "kcalories",
-        "property-calories",
-        "property-energy",
-        "calorias",
+        'calories',
+        'cal',
+        'kcal',
+        'energy',
+        'kcalories',
+        'property-calories',
+        'property-energy',
+        'calorias',
       ],
       protein: [
-        "protein",
-        "proteins",
-        "protein_g",
-        "proteins_g",
-        "property-proteins",
-        "proteinas",
+        'protein',
+        'proteins',
+        'protein_g',
+        'proteins_g',
+        'property-proteins',
+        'proteinas',
       ],
       carbs: [
-        "carbohydrates",
-        "carbohydrate",
-        "carbs",
-        "carb",
-        "property-carbohydrates",
-        "carbohidratos",
+        'carbohydrates',
+        'carbohydrate',
+        'carbs',
+        'carb',
+        'property-carbohydrates',
+        'carbohidratos',
       ],
       fat: [
-        "fat",
-        "fats",
-        "totalfat",
-        "total_fat",
-        "total fat",
-        "property-fats",
-        "grasas",
+        'fat',
+        'fats',
+        'totalfat',
+        'total_fat',
+        'total fat',
+        'property-fats',
+        'grasas',
       ],
       saturated_fat: [
-        "saturated fat",
-        "saturated_fat",
-        "saturatedfat",
-        "sat fat",
-        "sat_fat",
-        "property-fatty-acids-total-saturated",
-        "grasas saturadas",
+        'saturated fat',
+        'saturated_fat',
+        'saturatedfat',
+        'sat fat',
+        'sat_fat',
+        'property-fatty-acids-total-saturated',
+        'grasas saturadas',
       ],
       polyunsaturated_fat: [
-        "polyunsaturated fat",
-        "polyunsaturated_fat",
-        "polyunsaturatedfat",
-        "pufa",
-        "property-fatty-acids-total-polyunsaturated",
+        'polyunsaturated fat',
+        'polyunsaturated_fat',
+        'polyunsaturatedfat',
+        'pufa',
+        'property-fatty-acids-total-polyunsaturated',
       ],
       monounsaturated_fat: [
-        "monounsaturated fat",
-        "monounsaturated_fat",
-        "monounsaturatedfat",
-        "mufa",
-        "property-fatty-acids-total-monounsaturated",
+        'monounsaturated fat',
+        'monounsaturated_fat',
+        'monounsaturatedfat',
+        'mufa',
+        'property-fatty-acids-total-monounsaturated',
       ],
       trans_fat: [
-        "trans fat",
-        "trans_fat",
-        "transfat",
-        "property-fatty-acids-total-trans",
+        'trans fat',
+        'trans_fat',
+        'transfat',
+        'property-fatty-acids-total-trans',
       ],
-      cholesterol: ["cholesterol", "property-cholesterol", "colesterol"],
-      sodium: ["sodium", "na", "salt (na)", "property-sodium", "sodio"],
-      potassium: ["potassium", "k", "property-potassium-k", "potasio"],
+      cholesterol: ['cholesterol', 'property-cholesterol', 'colesterol'],
+      sodium: ['sodium', 'na', 'salt (na)', 'property-sodium', 'sodio'],
+      potassium: ['potassium', 'k', 'property-potassium-k', 'potasio'],
       dietary_fiber: [
-        "fiber",
-        "dietary fiber",
-        "dietary_fiber",
-        "fibre",
-        "property-fiber",
-        "fibra",
+        'fiber',
+        'dietary fiber',
+        'dietary_fiber',
+        'fibre',
+        'property-fiber',
+        'fibra',
       ],
-      sugars: ["sugars", "sugar", "property-sugar", "azucares"],
+      sugars: ['sugars', 'sugar', 'property-sugar', 'azucares'],
       vitamin_a: [
-        "vitamin a",
-        "vit a",
-        "vitamin_a",
-        "vitamina",
-        "property-vitamin-a-rae",
+        'vitamin a',
+        'vit a',
+        'vitamin_a',
+        'vitamina',
+        'property-vitamin-a-rae',
       ],
       vitamin_c: [
-        "vitamin c",
-        "vit c",
-        "vitamin_c",
-        "vitaminc",
-        "property-vitamin-c-total-ascorbic-acid",
+        'vitamin c',
+        'vit c',
+        'vitamin_c',
+        'vitaminc',
+        'property-vitamin-c-total-ascorbic-acid',
       ],
-      calcium: ["calcium", "ca", "property-calcium-ca", "calcio"],
-      iron: ["iron", "fe", "property-iron-fe", "hierro"],
+      calcium: ['calcium', 'ca', 'property-calcium-ca', 'calcio'],
+      iron: ['iron', 'fe', 'property-iron-fe', 'hierro'],
     };
 
-    const calories = getNutritionValue(nutrientsMap.calories, "calories");
-    const protein = getNutritionValue(nutrientsMap.protein, "protein");
-    const carbs = getNutritionValue(nutrientsMap.carbs, "carbs");
-    const fat = getNutritionValue(nutrientsMap.fat, "fat");
+    const calories = getNutritionValue(nutrientsMap.calories, 'calories');
+    const protein = getNutritionValue(nutrientsMap.protein, 'protein');
+    const carbs = getNutritionValue(nutrientsMap.carbs, 'carbs');
+    const fat = getNutritionValue(nutrientsMap.fat, 'fat');
     const saturated_fat = getNutritionValue(
       nutrientsMap.saturated_fat,
-      "saturated_fat",
+      'saturated_fat'
     );
     const polyunsaturated_fat = getNutritionValue(
       nutrientsMap.polyunsaturated_fat,
-      "polyunsaturated_fat",
+      'polyunsaturated_fat'
     );
     const monounsaturated_fat = getNutritionValue(
       nutrientsMap.monounsaturated_fat,
-      "monounsaturated_fat",
+      'monounsaturated_fat'
     );
-    const trans_fat = getNutritionValue(nutrientsMap.trans_fat, "trans_fat");
+    const trans_fat = getNutritionValue(nutrientsMap.trans_fat, 'trans_fat');
     const cholesterol = getNutritionValue(
       nutrientsMap.cholesterol,
-      "cholesterol",
+      'cholesterol'
     );
-    const sodium = getNutritionValue(nutrientsMap.sodium, "sodium");
-    const potassium = getNutritionValue(nutrientsMap.potassium, "potassium");
+    const sodium = getNutritionValue(nutrientsMap.sodium, 'sodium');
+    const potassium = getNutritionValue(nutrientsMap.potassium, 'potassium');
     const dietary_fiber = getNutritionValue(
       nutrientsMap.dietary_fiber,
-      "dietary_fiber",
+      'dietary_fiber'
     );
-    const sugars = getNutritionValue(nutrientsMap.sugars, "sugars");
-    const vitamin_a = getNutritionValue(nutrientsMap.vitamin_a, "vitamin_a");
-    const vitamin_c = getNutritionValue(nutrientsMap.vitamin_c, "vitamin_c");
-    const calcium = getNutritionValue(nutrientsMap.calcium, "calcium");
-    const iron = getNutritionValue(nutrientsMap.iron, "iron");
+    const sugars = getNutritionValue(nutrientsMap.sugars, 'sugars');
+    const vitamin_a = getNutritionValue(nutrientsMap.vitamin_a, 'vitamin_a');
+    const vitamin_c = getNutritionValue(nutrientsMap.vitamin_c, 'vitamin_c');
+    const calcium = getNutritionValue(nutrientsMap.calcium, 'calcium');
+    const iron = getNutritionValue(nutrientsMap.iron, 'iron');
 
     if (
       (!nutritionData || Object.keys(nutritionData).length === 0) &&
@@ -471,8 +471,8 @@ class TandoorService {
       properties.length
     ) {
       log(
-        "debug",
-        `Derived nutrition from properties for recipe ${tandoorRecipe.id}: calories=${calories}, protein=${protein}, carbs=${carbs}, fat=${fat}`,
+        'debug',
+        `Derived nutrition from properties for recipe ${tandoorRecipe.id}: calories=${calories}, protein=${protein}, carbs=${carbs}, fat=${fat}`
       );
     }
 
@@ -492,8 +492,8 @@ class TandoorService {
     }
 
     log(
-      "debug",
-      `[Tandoor Mapping] Recipe makes ${recipeYield} servings. Data is per-serving.`,
+      'debug',
+      `[Tandoor Mapping] Recipe makes ${recipeYield} servings. Data is per-serving.`
     );
 
     return {
@@ -508,13 +508,13 @@ class TandoorService {
         user_id: userId,
         shared_with_public: false, // Default to private, can be changed later
         provider_external_id: tandoorRecipe.id.toString(), // Use Tandoor's ID as external ID
-        provider_type: "tandoor",
+        provider_type: 'tandoor',
         is_quick_food: false,
       },
       variant: {
         // Tandoor nutrition values are alway for 1 serving
         serving_size: 1,
-        serving_unit: "serving",
+        serving_unit: 'serving',
         // Map nutrition values (fallbacks may be null -> coerce to 0)
         calories: Number(calories) || 0,
         protein: Number(protein) || 0,

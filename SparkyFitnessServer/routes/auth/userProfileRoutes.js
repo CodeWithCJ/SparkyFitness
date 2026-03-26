@@ -19,10 +19,10 @@ const storage = multer.diskStorage({
     cb(null, UPLOADS_DIR);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     const fileExtension = path.extname(file.originalname);
     cb(null, req.userId + '-' + uniqueSuffix + fileExtension);
-  }
+  },
 });
 
 const upload = multer({
@@ -30,7 +30,9 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const extname = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
     const mimetype = allowedTypes.test(file.mimetype);
 
     if (mimetype && extname) {
@@ -38,7 +40,7 @@ const upload = multer({
     } else {
       cb(new Error('Only images (jpeg, jpg, png, gif) are allowed.'));
     }
-  }
+  },
 });
 
 /**
@@ -59,7 +61,7 @@ router.get('/user', authenticate, async (req, res, next) => {
     // Fetch both the logged-in user and the active context user
     const [authenticatedUser, activeUser] = await Promise.all([
       authService.getUser(req.authenticatedUserId),
-      authService.getUser(req.userId)
+      authService.getUser(req.userId),
     ]);
 
     res.status(200).json({
@@ -71,7 +73,7 @@ router.get('/user', authenticate, async (req, res, next) => {
       // The user context we are currently operating in
       activeUserId: activeUser.id,
       activeUserEmail: activeUser.email,
-      activeUserFullName: activeUser.full_name
+      activeUserFullName: activeUser.full_name,
     });
   } catch (error) {
     // Use a more specific error check if available from the service layer
@@ -116,17 +118,22 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
   }
 
   try {
-    const { activeUserId } = await authService.switchUserContext(req.authenticatedUserId, targetUserId);
+    const { activeUserId } = await authService.switchUserContext(
+      req.authenticatedUserId,
+      targetUserId
+    );
 
     // Set the new active user ID in the cookie
     res.cookie('sparky_active_user_id', activeUserId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      path: '/'
+      path: '/',
     });
 
-    res.status(200).json({ message: 'Context switched successfully.', activeUserId });
+    res
+      .status(200)
+      .json({ message: 'Context switched successfully.', activeUserId });
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
@@ -134,7 +141,6 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 
 /**
  * @swagger
@@ -252,7 +258,10 @@ router.put('/profiles', authenticate, async (req, res, next) => {
       req.userId,
       req.body
     );
-    res.status(200).json({ message: 'Profile updated successfully.', profile: updatedProfile });
+    res.status(200).json({
+      message: 'Profile updated successfully.',
+      profile: updatedProfile,
+    });
   } catch (error) {
     // Example of improved error handling
     if (error.constructor.name === 'ForbiddenError') {
@@ -364,7 +373,9 @@ router.post('/update-email', authenticate, async (req, res, next) => {
   try {
     // Security: Email updates must always apply to the authenticated user
     await authService.updateUserEmail(req.authenticatedUserId, newEmail);
-    res.status(200).json({ message: 'Email update initiated. User will need to verify new email.' });
+    res.status(200).json({
+      message: 'Email update initiated. User will need to verify new email.',
+    });
   } catch (error) {
     if (error.constructor.name === 'ConflictError') {
       return res.status(409).json({ error: error.message });
@@ -415,24 +426,36 @@ router.post('/update-email', authenticate, async (req, res, next) => {
  *       500:
  *         description: Internal server error.
  */
-router.post('/profiles/avatar', authenticate, upload.single('avatar'), async (req, res, next) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded or invalid file type.' });
+router.post(
+  '/profiles/avatar',
+  authenticate,
+  upload.single('avatar'),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ error: 'No file uploaded or invalid file type.' });
+      }
+      // The avatar URL should be a relative path that the frontend can use.
+      // The logic for serving the file will handle the rest.
+      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+      // Update the profile of the active user context
+      await authService.updateUserProfile(req.userId, {
+        avatar_url: avatarUrl,
+      });
+
+      res.status(200).json({
+        message: 'Avatar uploaded successfully.',
+        avatar_url: avatarUrl,
+      });
+    } catch (error) {
+      log('error', 'Error in avatar upload route:', error);
+      next(error);
     }
-    // The avatar URL should be a relative path that the frontend can use.
-    // The logic for serving the file will handle the rest.
-    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-
-    // Update the profile of the active user context
-    await authService.updateUserProfile(req.userId, { avatar_url: avatarUrl });
-
-    res.status(200).json({ message: 'Avatar uploaded successfully.', avatar_url: avatarUrl });
-  } catch (error) {
-    log('error', 'Error in avatar upload route:', error);
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -515,20 +538,24 @@ router.post('/mfa/email-toggle', authenticate, async (req, res, next) => {
 
     await authService.updateUserMfaSettings(
       req.authenticatedUserId,
-      undefined,      // mfaSecret
-      totpEnabled,    // mfa_totp_enabled (specifically TOTP)
-      enabled,        // mfaEmailEnabled
-      undefined,      // mfaRecoveryCodes
-      undefined       // mfaEnforced
+      undefined, // mfaSecret
+      totpEnabled, // mfa_totp_enabled (specifically TOTP)
+      enabled, // mfaEmailEnabled
+      undefined, // mfaRecoveryCodes
+      undefined // mfaEnforced
     );
 
     res.status(200).json({
       message: `Email MFA ${enabled ? 'enabled' : 'disabled'} successfully.`,
       mfaEmailEnabled: enabled,
-      twoFactorEnabled: globalMfaState
+      twoFactorEnabled: globalMfaState,
     });
   } catch (error) {
-    log('error', `Error toggling email MFA for user ${req.authenticatedUserId}:`, error);
+    log(
+      'error',
+      `Error toggling email MFA for user ${req.authenticatedUserId}:`,
+      error
+    );
     next(error);
   }
 });

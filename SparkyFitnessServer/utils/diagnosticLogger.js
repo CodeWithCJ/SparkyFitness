@@ -1,12 +1,12 @@
 // SparkyFitnessServer/utils/diagnosticLogger.js
 
-const fs = require("fs");
-const path = require("path");
-const { log } = require("../config/logging");
+const fs = require('fs');
+const path = require('path');
+const { log } = require('../config/logging');
 
 const DIAGNOSTIC_LOGGING_ENABLED =
-  process.env.SPARKY_FITNESS_SAVE_MOCK_DATA === "true";
-const DIAGNOSTICS_DIR = path.join(__dirname, "..", "mock_data");
+  process.env.SPARKY_FITNESS_SAVE_MOCK_DATA === 'true';
+const DIAGNOSTICS_DIR = path.join(__dirname, '..', 'mock_data');
 
 /**
  * Logs a raw JSON response from an external provider to a consolidated raw bundle in the mock_data directory.
@@ -24,7 +24,7 @@ function logRawResponse(provider, dataType, data) {
     }
 
     const filePath = path.join(DIAGNOSTICS_DIR, `${provider}_raw.json`);
-    
+
     // Start with a fresh bundle every time to prevent stale/incorrectly formatted data
     let bundle = {
       provider,
@@ -44,7 +44,7 @@ function logRawResponse(provider, dataType, data) {
 
         // If updated within the last 60 seconds, it's likely the same sync process
         if (diffInSeconds < 60) {
-          const existingData = JSON.parse(fs.readFileSync(filePath, "utf8"));
+          const existingData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
           bundle = { ...bundle, ...existingData };
         }
       } catch (err) {
@@ -60,15 +60,15 @@ function logRawResponse(provider, dataType, data) {
       data: data,
     };
 
-    fs.writeFileSync(filePath, JSON.stringify(bundle, null, 2), "utf8");
+    fs.writeFileSync(filePath, JSON.stringify(bundle, null, 2), 'utf8');
     log(
-      "info",
-      `[diagnosticLogger] Raw ${dataType} data for ${provider} updated in ${filePath}`,
+      'info',
+      `[diagnosticLogger] Raw ${dataType} data for ${provider} updated in ${filePath}`
     );
   } catch (error) {
     log(
-      "error",
-      `[diagnosticLogger] Failed to save raw ${dataType} data for ${provider}: ${error.message}`,
+      'error',
+      `[diagnosticLogger] Failed to save raw ${dataType} data for ${provider}: ${error.message}`
     );
   }
 }
@@ -84,11 +84,11 @@ function loadRawBundle(provider) {
   if (!fs.existsSync(filePath)) return null;
 
   try {
-    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (error) {
     log(
-      "error",
-      `[diagnosticLogger] Failed to load raw bundle for ${provider}: ${error.message}`,
+      'error',
+      `[diagnosticLogger] Failed to load raw bundle for ${provider}: ${error.message}`
     );
     return null;
   }

@@ -1,13 +1,13 @@
-const express = require("express");
-const { z } = require("zod");
+const express = require('express');
+const { z } = require('zod');
 const {
   createPresetSessionRequestSchema,
   updatePresetSessionRequestSchema,
   presetSessionResponseSchema,
-} = require("@workspace/shared");
-const exercisePresetEntryRepository = require("../models/exercisePresetEntryRepository");
-const exerciseService = require("../services/exerciseService");
-const { log } = require("../config/logging");
+} = require('@workspace/shared');
+const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepository');
+const exerciseService = require('../services/exerciseService');
+const { log } = require('../config/logging');
 
 const router = express.Router();
 const presetEntryIdParamSchema = z.object({
@@ -16,7 +16,7 @@ const presetEntryIdParamSchema = z.object({
 
 const isAuthenticated = (req, res, next) => {
   if (!req.userId) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(401).json({ message: 'Unauthorized' });
   }
   next();
 };
@@ -34,11 +34,11 @@ function handleRouteError(error, res, next) {
   }
 
   if (error instanceof z.ZodError) {
-    log("error", "Grouped workout response validation failed:", error);
+    log('error', 'Grouped workout response validation failed:', error);
     return next(
-      Object.assign(new Error("Internal response validation failed"), {
+      Object.assign(new Error('Internal response validation failed'), {
         status: 500,
-      }),
+      })
     );
   }
 
@@ -71,27 +71,27 @@ function handleRouteError(error, res, next) {
  *       404:
  *         description: Workout preset not found.
  */
-router.post("/", isAuthenticated, async (req, res, next) => {
+router.post('/', isAuthenticated, async (req, res, next) => {
   try {
     const parsedBody = createPresetSessionRequestSchema.safeParse(req.body);
     if (!parsedBody.success) {
       return sendValidationError(
         res,
-        "Invalid grouped workout payload.",
-        parsedBody.error,
+        'Invalid grouped workout payload.',
+        parsedBody.error
       );
     }
 
     const groupedWorkout = await exerciseService.createGroupedWorkoutSession(
       req.userId,
       req.originalUserId || req.userId,
-      parsedBody.data,
+      parsedBody.data
     );
 
     const response = presetSessionResponseSchema.parse(groupedWorkout);
     res.status(201).json(response);
   } catch (error) {
-    log("error", "Error creating grouped workout session:", error);
+    log('error', 'Error creating grouped workout session:', error);
     handleRouteError(error, res, next);
   }
 });
@@ -115,32 +115,36 @@ router.post("/", isAuthenticated, async (req, res, next) => {
  *       404:
  *         description: Grouped workout session not found.
  */
-router.get("/:id", isAuthenticated, async (req, res, next) => {
+router.get('/:id', isAuthenticated, async (req, res, next) => {
   try {
     const parsedParams = presetEntryIdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
       return sendValidationError(
         res,
-        "Invalid grouped workout id.",
-        parsedParams.error,
+        'Invalid grouped workout id.',
+        parsedParams.error
       );
     }
 
     const groupedWorkout = await exerciseService.getGroupedWorkoutSessionById(
       req.userId,
-      parsedParams.data.id,
+      parsedParams.data.id
     );
 
     if (!groupedWorkout) {
       return res
         .status(404)
-        .json({ message: "Exercise preset entry not found." });
+        .json({ message: 'Exercise preset entry not found.' });
     }
 
     const response = presetSessionResponseSchema.parse(groupedWorkout);
     res.status(200).json(response);
   } catch (error) {
-    log("error", `Error getting grouped workout session ${req.params.id}:`, error);
+    log(
+      'error',
+      `Error getting grouped workout session ${req.params.id}:`,
+      error
+    );
     handleRouteError(error, res, next);
   }
 });
@@ -166,14 +170,14 @@ router.get("/:id", isAuthenticated, async (req, res, next) => {
  *       409:
  *         description: Nested exercise edits are not supported for synced/imported grouped workouts.
  */
-router.put("/:id", isAuthenticated, async (req, res, next) => {
+router.put('/:id', isAuthenticated, async (req, res, next) => {
   try {
     const parsedParams = presetEntryIdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
       return sendValidationError(
         res,
-        "Invalid grouped workout id.",
-        parsedParams.error,
+        'Invalid grouped workout id.',
+        parsedParams.error
       );
     }
 
@@ -181,8 +185,8 @@ router.put("/:id", isAuthenticated, async (req, res, next) => {
     if (!parsedBody.success) {
       return sendValidationError(
         res,
-        "Invalid grouped workout update payload.",
-        parsedBody.error,
+        'Invalid grouped workout update payload.',
+        parsedBody.error
       );
     }
 
@@ -190,13 +194,17 @@ router.put("/:id", isAuthenticated, async (req, res, next) => {
       req.userId,
       req.originalUserId || req.userId,
       parsedParams.data.id,
-      parsedBody.data,
+      parsedBody.data
     );
 
     const response = presetSessionResponseSchema.parse(groupedWorkout);
     res.status(200).json(response);
   } catch (error) {
-    log("error", `Error updating grouped workout session ${req.params.id}:`, error);
+    log(
+      'error',
+      `Error updating grouped workout session ${req.params.id}:`,
+      error
+    );
     handleRouteError(error, res, next);
   }
 });
@@ -220,30 +228,35 @@ router.put("/:id", isAuthenticated, async (req, res, next) => {
  *       404:
  *         description: Grouped workout session not found.
  */
-router.delete("/:id", isAuthenticated, async (req, res, next) => {
+router.delete('/:id', isAuthenticated, async (req, res, next) => {
   try {
     const parsedParams = presetEntryIdParamSchema.safeParse(req.params);
     if (!parsedParams.success) {
       return sendValidationError(
         res,
-        "Invalid grouped workout id.",
-        parsedParams.error,
+        'Invalid grouped workout id.',
+        parsedParams.error
       );
     }
 
-    const deleted = await exercisePresetEntryRepository.deleteExercisePresetEntry(
-      parsedParams.data.id,
-      req.userId,
-    );
+    const deleted =
+      await exercisePresetEntryRepository.deleteExercisePresetEntry(
+        parsedParams.data.id,
+        req.userId
+      );
     if (!deleted) {
-      return res
-        .status(404)
-        .json({ message: "Exercise preset entry not found or not authorized." });
+      return res.status(404).json({
+        message: 'Exercise preset entry not found or not authorized.',
+      });
     }
 
     res.status(204).send();
   } catch (error) {
-    log("error", `Error deleting grouped workout session ${req.params.id}:`, error);
+    log(
+      'error',
+      `Error deleting grouped workout session ${req.params.id}:`,
+      error
+    );
     next(error);
   }
 });

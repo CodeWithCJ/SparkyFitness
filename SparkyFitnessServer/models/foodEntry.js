@@ -1,7 +1,7 @@
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
-const format = require("pg-format");
-const { sanitizeCustomNutrients } = require("../utils/foodUtils");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
+const format = require('pg-format');
+const { sanitizeCustomNutrients } = require('../utils/foodUtils');
 
 /**
  * @swagger
@@ -111,7 +111,7 @@ const { sanitizeCustomNutrients } = require("../utils/foodUtils");
  */
 async function createFoodEntry(entryData, createdByUserId) {
   log(
-    "info",
+    'info',
     `createFoodEntry in foodEntry.js: entryData: ${JSON.stringify(
       entryData
     )}, createdByUserId: ${createdByUserId}`
@@ -119,13 +119,13 @@ async function createFoodEntry(entryData, createdByUserId) {
   const client = await getClient(createdByUserId); // User-specific operation
 
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     let mealTypeId = entryData.meal_type_id;
 
     if (!mealTypeId && entryData.meal_type) {
       const typeRes = await client.query(
-        "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)",
+        'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
         [entryData.meal_type]
       );
       if (typeRes.rows.length > 0) {
@@ -155,28 +155,47 @@ async function createFoodEntry(entryData, createdByUserId) {
       }
 
       if (foodSnapshotQuery.rows.length === 0) {
-        throw new Error("Food or variant not found for snapshotting.");
+        throw new Error('Food or variant not found for snapshotting.');
       }
       snapshot = foodSnapshotQuery.rows[0];
 
       // Apply inline nutrition overrides if provided by the client.
       // The DB snapshot uses 'name'/'brand' keys while entryData uses 'food_name'/'brand_name'.
       const nutritionOverrideFields = [
-        'calories', 'protein', 'carbs', 'fat', 'saturated_fat',
-        'polyunsaturated_fat', 'monounsaturated_fat', 'trans_fat',
-        'cholesterol', 'sodium', 'potassium', 'dietary_fiber',
-        'sugars', 'vitamin_a', 'vitamin_c', 'calcium', 'iron',
-        'glycemic_index', 'serving_size', 'serving_unit',
+        'calories',
+        'protein',
+        'carbs',
+        'fat',
+        'saturated_fat',
+        'polyunsaturated_fat',
+        'monounsaturated_fat',
+        'trans_fat',
+        'cholesterol',
+        'sodium',
+        'potassium',
+        'dietary_fiber',
+        'sugars',
+        'vitamin_a',
+        'vitamin_c',
+        'calcium',
+        'iron',
+        'glycemic_index',
+        'serving_size',
+        'serving_unit',
       ];
       for (const field of nutritionOverrideFields) {
         if (entryData[field] !== undefined) {
           snapshot[field] = entryData[field];
         }
       }
-      if (entryData.food_name !== undefined) snapshot.name = entryData.food_name;
-      if (entryData.brand_name !== undefined) snapshot.brand = entryData.brand_name;
+      if (entryData.food_name !== undefined)
+        snapshot.name = entryData.food_name;
+      if (entryData.brand_name !== undefined)
+        snapshot.brand = entryData.brand_name;
       if (entryData.custom_nutrients !== undefined) {
-        snapshot.custom_nutrients = sanitizeCustomNutrients(entryData.custom_nutrients);
+        snapshot.custom_nutrients = sanitizeCustomNutrients(
+          entryData.custom_nutrients
+        );
       }
     } else {
       // This means it's an entry where snapshot data is already prepared (e.g., from migration or meal components)
@@ -259,11 +278,11 @@ async function createFoodEntry(entryData, createdByUserId) {
       ]
     );
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return result.rows[0];
   } catch (error) {
-    await client.query("ROLLBACK");
-    log("error", "Error creating food entry with snapshot:", error);
+    await client.query('ROLLBACK');
+    log('error', 'Error creating food entry with snapshot:', error);
     throw error;
   } finally {
     client.release();
@@ -323,7 +342,7 @@ async function getFoodEntryOwnerId(entryId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      "SELECT user_id FROM food_entries WHERE id = $1",
+      'SELECT user_id FROM food_entries WHERE id = $1',
       [entryId]
     );
     return result.rows[0]?.user_id;
@@ -336,7 +355,7 @@ async function deleteFoodEntry(entryId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      "DELETE FROM food_entries WHERE id = $1 RETURNING id",
+      'DELETE FROM food_entries WHERE id = $1 RETURNING id',
       [entryId]
     );
     return result.rowCount > 0;
@@ -353,17 +372,15 @@ async function updateFoodEntry(
 ) {
   const client = await getClient(actingUserId); // User-specific operation
 
-
-    let mealTypeId = entryData.meal_type_id;
+  let mealTypeId = entryData.meal_type_id;
   if (!mealTypeId && entryData.meal_type) {
-      // If we are updating the meal type and only have the name
-      const typeRes = await client.query(
-          "SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)", 
-          [entryData.meal_type]
-      );
-      if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
+    // If we are updating the meal type and only have the name
+    const typeRes = await client.query(
+      'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
+      [entryData.meal_type]
+    );
+    if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
   }
-
 
   try {
     const result = await client.query(
@@ -431,7 +448,7 @@ async function updateFoodEntry(
         snapshotData.glycemic_index,
         snapshotData.custom_nutrients || {},
         entryId,
-        mealTypeId
+        mealTypeId,
       ]
     );
     return result.rows[0];
@@ -539,7 +556,7 @@ async function getFoodEntriesByDateAndMealType(userId, date, mealType) {
       [userId, date, mealType]
     );
     log(
-      "debug",
+      'debug',
       `getFoodEntriesByDateAndMealType: Fetched entries for user ${userId}, date ${date}, mealType ${mealType}: ${JSON.stringify(
         result.rows
       )}`
@@ -612,7 +629,7 @@ async function getFoodEntryByDetails(
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-       `SELECT fe.id 
+      `SELECT fe.id 
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        WHERE fe.user_id = $1
@@ -634,7 +651,7 @@ async function getFoodEntryByDetails(
 
 async function bulkCreateFoodEntries(entriesData, authenticatedUserId) {
   log(
-    "info",
+    'info',
     `bulkCreateFoodEntries in foodEntry.js: entriesData: ${JSON.stringify(
       entriesData
     )}, authenticatedUserId: ${authenticatedUserId}`
@@ -733,7 +750,7 @@ async function getFoodEntryComponentsByFoodEntryMealId(
   userId
 ) {
   log(
-    "info",
+    'info',
     `getFoodEntryComponentsByFoodEntryMealId in foodEntry.js: foodEntryMealId: ${foodEntryMealId}, userId: ${userId}`
   );
   const client = await getClient(userId);
@@ -787,13 +804,13 @@ async function deleteFoodEntryComponentsByFoodEntryMealId(
   userId
 ) {
   log(
-    "info",
+    'info',
     `deleteFoodEntryComponentsByFoodEntryMealId in foodEntry.js: foodEntryMealId: ${foodEntryMealId}, userId: ${userId}`
   );
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      "DELETE FROM food_entries WHERE food_entry_meal_id = $1 RETURNING id",
+      'DELETE FROM food_entries WHERE food_entry_meal_id = $1 RETURNING id',
       [foodEntryMealId]
     );
     return result.rowCount > 0;

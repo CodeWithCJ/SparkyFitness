@@ -19,7 +19,6 @@ const {
   CustomMeasurementsRangeParamSchema,
 } = require('../schemas/measurementSchemas');
 
-
 /**
  * @swagger
  * /measurements/health-data:
@@ -48,48 +47,61 @@ const {
  *       403:
  *         description: Forbidden (API key lacks write permission).
  */
-router.post('/health-data', express.text({ type: '*/*' }), async (req, res, next) => {
-  const rawBody = req.body;
-  let healthDataArray = [];
+router.post(
+  '/health-data',
+  express.text({ type: '*/*' }),
+  async (req, res, next) => {
+    const rawBody = req.body;
+    let healthDataArray = [];
 
-  if (rawBody.startsWith('[') && rawBody.endsWith(']')) {
-    try {
-      healthDataArray = JSON.parse(rawBody);
-    } catch (e) {
-      return res.status(400).json({ error: "Invalid JSON array format." });
-    }
-  } else if (rawBody.includes('}{')) {
-    const jsonStrings = rawBody.split('}{').map((part, index, arr) => {
-      if (index === 0) return part + '}';
-      if (index === arr.length - 1) return '{' + part;
-      return '{' + part + '}';
-    });
-    for (const jsonStr of jsonStrings) {
+    if (rawBody.startsWith('[') && rawBody.endsWith(']')) {
       try {
-        healthDataArray.push(JSON.parse(jsonStr));
-      } catch (parseError) {
-        log('error', "Error parsing individual concatenated JSON string:", jsonStr, parseError);
+        healthDataArray = JSON.parse(rawBody);
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid JSON array format.' });
+      }
+    } else if (rawBody.includes('}{')) {
+      const jsonStrings = rawBody.split('}{').map((part, index, arr) => {
+        if (index === 0) return part + '}';
+        if (index === arr.length - 1) return '{' + part;
+        return '{' + part + '}';
+      });
+      for (const jsonStr of jsonStrings) {
+        try {
+          healthDataArray.push(JSON.parse(jsonStr));
+        } catch (parseError) {
+          log(
+            'error',
+            'Error parsing individual concatenated JSON string:',
+            jsonStr,
+            parseError
+          );
+        }
+      }
+    } else {
+      try {
+        healthDataArray.push(JSON.parse(rawBody));
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid single JSON format.' });
       }
     }
-  } else {
-    try {
-      healthDataArray.push(JSON.parse(rawBody));
-    } catch (e) {
-      return res.status(400).json({ error: "Invalid single JSON format." });
-    }
-  }
 
-  try {
-    const result = await measurementService.processHealthData(healthDataArray, req.userId, req.originalUserId || req.userId);
-    res.status(200).json(result);
-  } catch (error) {
-    if (error.message.startsWith('{') && error.message.endsWith('}')) {
-      const parsedError = JSON.parse(error.message);
-      return res.status(400).json(parsedError);
+    try {
+      const result = await measurementService.processHealthData(
+        healthDataArray,
+        req.userId,
+        req.originalUserId || req.userId
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (error.message.startsWith('{') && error.message.endsWith('}')) {
+        const parsedError = JSON.parse(error.message);
+        return res.status(400).json(parsedError);
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -129,31 +141,47 @@ router.post('/health-data', express.text({ type: '*/*' }), async (req, res, next
  *       403:
  *         description: Forbidden.
  */
-router.get('/water-intake/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = DateParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { date } = paramResult.data;
-  const { userId } = req.query;
-  const targetUserId = userId || req.userId;
-
-  // Permission check if explicit userId is provided
-  if (userId && userId !== req.userId) {
-    const hasPermission = await require('../utils/permissionUtils').canAccessUserData(userId, 'diary', req.authenticatedUserId || req.userId); // Assuming diary permission covers water log
-    if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  try {
-    const waterData = await measurementService.getWaterIntake(req.userId, targetUserId, date);
-    res.status(200).json(waterData);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/water-intake/:date',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = DateParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    const { date } = paramResult.data;
+    const { userId } = req.query;
+    const targetUserId = userId || req.userId;
+
+    // Permission check if explicit userId is provided
+    if (userId && userId !== req.userId) {
+      const hasPermission =
+        await require('../utils/permissionUtils').canAccessUserData(
+          userId,
+          'diary',
+          req.authenticatedUserId || req.userId
+        ); // Assuming diary permission covers water log
+      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+      const waterData = await measurementService.getWaterIntake(
+        req.userId,
+        targetUserId,
+        date
+      );
+      res.status(200).json(waterData);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -194,31 +222,49 @@ router.get('/water-intake/:date', authenticate, checkPermissionMiddleware('check
  *       403:
  *         description: Forbidden.
  */
-router.post('/water-intake', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const bodyResult = UpsertWaterIntakeBodySchema.safeParse(req.body);
-  if (!bodyResult.success) {
-    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { entry_date, change_drinks, container_id, user_id } = bodyResult.data;
-
-  const targetUserId = user_id || req.userId;
-
-  // Check permission if explicitly management for another user
-  if (user_id && user_id !== req.userId) {
-    const hasPermission = await canAccessUserData(user_id, 'checkin', req.authenticatedUserId || req.userId); // Corrected to 'checkin'
-    if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  try {
-    const result = await measurementService.upsertWaterIntake(targetUserId, req.originalUserId || req.userId, entry_date, change_drinks, container_id);
-    res.status(200).json(result);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.post(
+  '/water-intake',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const bodyResult = UpsertWaterIntakeBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        error: bodyResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    const { entry_date, change_drinks, container_id, user_id } =
+      bodyResult.data;
+
+    const targetUserId = user_id || req.userId;
+
+    // Check permission if explicitly management for another user
+    if (user_id && user_id !== req.userId) {
+      const hasPermission = await canAccessUserData(
+        user_id,
+        'checkin',
+        req.authenticatedUserId || req.userId
+      ); // Corrected to 'checkin'
+      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+      const result = await measurementService.upsertWaterIntake(
+        targetUserId,
+        req.originalUserId || req.userId,
+        entry_date,
+        change_drinks,
+        container_id
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -239,25 +285,35 @@ router.post('/water-intake', authenticate, checkPermissionMiddleware('checkin'),
  *       200:
  *         description: The water intake entry.
  */
-router.get('/water-intake/entry/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = UuidParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { id } = paramResult.data;
-  try {
-    const entry = await measurementService.getWaterIntakeEntryById(req.userId, id);
-    res.status(200).json(entry);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/water-intake/entry/:id',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = UuidParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    if (error.message === 'Water intake entry not found.') {
-      return res.status(404).json({ error: error.message });
+    const { id } = paramResult.data;
+    try {
+      const entry = await measurementService.getWaterIntakeEntryById(
+        req.userId,
+        id
+      );
+      res.status(200).json(entry);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (error.message === 'Water intake entry not found.') {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -300,30 +356,46 @@ router.get('/water-intake/entry/:id', authenticate, checkPermissionMiddleware('c
  *       404:
  *         description: Water intake entry not found.
  */
-router.put('/water-intake/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = UuidParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { id } = paramResult.data;
-  const bodyResult = UpdateWaterIntakeBodySchema.safeParse(req.body);
-  if (!bodyResult.success) {
-    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const updateData = bodyResult.data;
-  try {
-    const updatedEntry = await measurementService.updateWaterIntake(req.userId, id, updateData);
-    res.status(200).json(updatedEntry);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.put(
+  '/water-intake/:id',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = UuidParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    if (error.message === 'Water intake entry not found or not authorized to update.') {
-      return res.status(404).json({ error: error.message });
+    const { id } = paramResult.data;
+    const bodyResult = UpdateWaterIntakeBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        error: bodyResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    const updateData = bodyResult.data;
+    try {
+      const updatedEntry = await measurementService.updateWaterIntake(
+        req.userId,
+        id,
+        updateData
+      );
+      res.status(200).json(updatedEntry);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        error.message ===
+        'Water intake entry not found or not authorized to update.'
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -344,26 +416,35 @@ router.put('/water-intake/:id', authenticate, checkPermissionMiddleware('checkin
  *       200:
  *         description: Water intake entry deleted successfully.
  */
-router.delete('/water-intake/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = UuidParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { id } = paramResult.data;
-  try {
-    const result = await measurementService.deleteWaterIntake(req.userId, id);
-    res.status(200).json(result);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.delete(
+  '/water-intake/:id',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = UuidParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    if (error.message === 'Water intake entry not found or not authorized to delete.') {
-      return res.status(404).json({ error: error.message });
+    const { id } = paramResult.data;
+    try {
+      const result = await measurementService.deleteWaterIntake(req.userId, id);
+      res.status(200).json(result);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        error.message ===
+        'Water intake entry not found or not authorized to delete.'
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
-
+);
 
 /**
  * @swagger
@@ -412,22 +493,34 @@ router.delete('/water-intake/:id', authenticate, checkPermissionMiddleware('chec
  *       400:
  *         description: Validation error.
  */
-router.post('/check-in', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const bodyResult = UpsertCheckInBodySchema.safeParse(req.body);
-  if (!bodyResult.success) {
-    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { entry_date, ...measurements } = bodyResult.data;
-  try {
-    const result = await measurementService.upsertCheckInMeasurements(req.userId, req.originalUserId || req.userId, entry_date, measurements);
-    res.status(200).json(result);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.post(
+  '/check-in',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const bodyResult = UpsertCheckInBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        error: bodyResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    const { entry_date, ...measurements } = bodyResult.data;
+    try {
+      const result = await measurementService.upsertCheckInMeasurements(
+        req.userId,
+        req.originalUserId || req.userId,
+        entry_date,
+        measurements
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -448,22 +541,34 @@ router.post('/check-in', authenticate, checkPermissionMiddleware('checkin'), asy
  *       200:
  *         description: The latest check-in measurements.
  */
-router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const queryResult = DateParamSchema.safeParse(req.query);
-  if (!queryResult.success) {
-    return res.status(400).json({ error: queryResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { date } = queryResult.data;
-  try {
-    const measurement = await measurementService.getLatestCheckInMeasurementsOnOrBeforeDate(req.originalUserId || req.userId, req.userId, date);
-    res.status(200).json(measurement);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/check-in/latest-on-or-before-date',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const queryResult = DateParamSchema.safeParse(req.query);
+    if (!queryResult.success) {
+      return res.status(400).json({
+        error: queryResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    const { date } = queryResult.data;
+    try {
+      const measurement =
+        await measurementService.getLatestCheckInMeasurementsOnOrBeforeDate(
+          req.originalUserId || req.userId,
+          req.userId,
+          date
+        );
+      res.status(200).json(measurement);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -495,32 +600,47 @@ router.get('/check-in/latest-on-or-before-date', authenticate, checkPermissionMi
  *       403:
  *         description: Forbidden.
  */
-router.get('/check-in/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = DateParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { date } = paramResult.data;
-  const { userId } = req.query; // Check query param
-
-  const targetUserId = userId || req.userId;
-
-  // Permission check if explicit userId is provided
-  if (userId && userId !== req.userId) {
-    const hasPermission = await canAccessUserData(userId, 'checkin', req.authenticatedUserId || req.userId); // Corrected to 'checkin'
-    if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  try {
-    const measurement = await measurementService.getCheckInMeasurements(req.originalUserId || req.userId, targetUserId, date);
-    res.status(200).json(measurement);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/check-in/:date',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = DateParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    const { date } = paramResult.data;
+    const { userId } = req.query; // Check query param
+
+    const targetUserId = userId || req.userId;
+
+    // Permission check if explicit userId is provided
+    if (userId && userId !== req.userId) {
+      const hasPermission = await canAccessUserData(
+        userId,
+        'checkin',
+        req.authenticatedUserId || req.userId
+      ); // Corrected to 'checkin'
+      if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+      const measurement = await measurementService.getCheckInMeasurements(
+        req.originalUserId || req.userId,
+        targetUserId,
+        date
+      );
+      res.status(200).json(measurement);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -571,40 +691,65 @@ router.get('/check-in/:date', authenticate, checkPermissionMiddleware('checkin')
  *       404:
  *         description: Check-in measurement not found.
  */
-router.put('/check-in/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = UuidParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { id } = paramResult.data;
-  const bodyResult = UpdateCheckInBodySchema.safeParse(req.body);
-  if (!bodyResult.success) {
-    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { entry_date, ...updateData } = bodyResult.data;
-  if (!entry_date) {
-    return res.status(400).json({ error: 'Entry date is required.' });
-  }
-
-  try {
-    const existingMeasurement = await measurementService.getCheckInMeasurements(req.userId, req.userId, entry_date);
-
-    if (!existingMeasurement || existingMeasurement.id !== id) {
-      return res.status(404).json({ error: 'Check-in measurement not found or not authorized to update.' });
+router.put(
+  '/check-in/:id',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = UuidParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
+    }
+    const { id } = paramResult.data;
+    const bodyResult = UpdateCheckInBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        error: bodyResult.error.issues.map((i) => i.message).join(', '),
+      });
+    }
+    const { entry_date, ...updateData } = bodyResult.data;
+    if (!entry_date) {
+      return res.status(400).json({ error: 'Entry date is required.' });
     }
 
-    const updatedMeasurement = await measurementService.updateCheckInMeasurements(req.userId, req.originalUserId || req.userId, entry_date, updateData);
-    res.status(200).json(updatedMeasurement);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+    try {
+      const existingMeasurement =
+        await measurementService.getCheckInMeasurements(
+          req.userId,
+          req.userId,
+          entry_date
+        );
+
+      if (!existingMeasurement || existingMeasurement.id !== id) {
+        return res.status(404).json({
+          error: 'Check-in measurement not found or not authorized to update.',
+        });
+      }
+
+      const updatedMeasurement =
+        await measurementService.updateCheckInMeasurements(
+          req.userId,
+          req.originalUserId || req.userId,
+          entry_date,
+          updateData
+        );
+      res.status(200).json(updatedMeasurement);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        error.message ===
+        'Check-in measurement not found or not authorized to update.'
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    if (error.message === 'Check-in measurement not found or not authorized to update.') {
-      return res.status(404).json({ error: error.message });
-    }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -625,25 +770,38 @@ router.put('/check-in/:id', authenticate, checkPermissionMiddleware('checkin'), 
  *       200:
  *         description: Measurement deleted successfully.
  */
-router.delete('/check-in/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = UuidParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { id } = paramResult.data;
-  try {
-    const result = await measurementService.deleteCheckInMeasurements(req.userId, id);
-    res.status(200).json(result);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.delete(
+  '/check-in/:id',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = UuidParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    if (error.message === 'Check-in measurement not found or not authorized to delete.') {
-      return res.status(404).json({ error: error.message });
+    const { id } = paramResult.data;
+    try {
+      const result = await measurementService.deleteCheckInMeasurements(
+        req.userId,
+        id
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        error.message ===
+        'Check-in measurement not found or not authorized to delete.'
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -663,17 +821,25 @@ router.delete('/check-in/:id', authenticate, checkPermissionMiddleware('checkin'
  *               items:
  *                 $ref: '#/components/schemas/CustomMeasurementCategory'
  */
-router.get('/custom-categories', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  try {
-    const categories = await measurementService.getCustomCategories(req.userId, req.userId);
-    res.status(200).json(categories);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/custom-categories',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    try {
+      const categories = await measurementService.getCustomCategories(
+        req.userId,
+        req.userId
+      );
+      res.status(200).json(categories);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -711,21 +877,32 @@ router.get('/custom-categories', authenticate, checkPermissionMiddleware('checki
  *       400:
  *         description: Validation error.
  */
-router.post('/custom-categories', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const bodyResult = CreateCustomCategoryBodySchema.safeParse(req.body);
-  if (!bodyResult.success) {
-    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
-  }
-  try {
-    const newCategory = await measurementService.createCustomCategory(req.userId, req.originalUserId || req.userId, { ...bodyResult.data, user_id: req.userId });
-    res.status(201).json(newCategory);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.post(
+  '/custom-categories',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const bodyResult = CreateCustomCategoryBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        error: bodyResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    try {
+      const newCategory = await measurementService.createCustomCategory(
+        req.userId,
+        req.originalUserId || req.userId,
+        { ...bodyResult.data, user_id: req.userId }
+      );
+      res.status(201).json(newCategory);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -774,21 +951,32 @@ router.post('/custom-categories', authenticate, checkPermissionMiddleware('check
  *       400:
  *         description: Validation error.
  */
-router.post('/custom-entries', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const bodyResult = UpsertCustomEntryBodySchema.safeParse(req.body);
-  if (!bodyResult.success) {
-    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
-  }
-  try {
-    const newEntry = await measurementService.upsertCustomMeasurementEntry(req.userId, req.originalUserId || req.userId, bodyResult.data);
-    res.status(201).json(newEntry);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.post(
+  '/custom-entries',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const bodyResult = UpsertCustomEntryBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        error: bodyResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    try {
+      const newEntry = await measurementService.upsertCustomMeasurementEntry(
+        req.userId,
+        req.originalUserId || req.userId,
+        bodyResult.data
+      );
+      res.status(201).json(newEntry);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -809,25 +997,38 @@ router.post('/custom-entries', authenticate, checkPermissionMiddleware('checkin'
  *       200:
  *         description: Entry deleted successfully.
  */
-router.delete('/custom-entries/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = UuidParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { id } = paramResult.data;
-  try {
-    const result = await measurementService.deleteCustomMeasurementEntry(req.userId, id);
-    res.status(200).json(result);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.delete(
+  '/custom-entries/:id',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = UuidParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    if (error.message === 'Custom measurement entry not found or not authorized to delete.') {
-      return res.status(404).json({ error: error.message });
+    const { id } = paramResult.data;
+    try {
+      const result = await measurementService.deleteCustomMeasurementEntry(
+        req.userId,
+        id
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        error.message ===
+        'Custom measurement entry not found or not authorized to delete.'
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -870,30 +1071,46 @@ router.delete('/custom-entries/:id', authenticate, checkPermissionMiddleware('ch
  *       404:
  *         description: Custom category not found.
  */
-router.put('/custom-categories/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = UuidParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { id } = paramResult.data;
-  const bodyResult = UpdateCustomCategoryBodySchema.safeParse(req.body);
-  if (!bodyResult.success) {
-    return res.status(400).json({ error: bodyResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const updateData = bodyResult.data;
-  try {
-    const updatedCategory = await measurementService.updateCustomCategory(req.userId, id, updateData);
-    res.status(200).json(updatedCategory);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.put(
+  '/custom-categories/:id',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = UuidParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    if (error.message === 'Custom category not found or not authorized to update.') {
-      return res.status(404).json({ error: error.message });
+    const { id } = paramResult.data;
+    const bodyResult = UpdateCustomCategoryBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        error: bodyResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    const updateData = bodyResult.data;
+    try {
+      const updatedCategory = await measurementService.updateCustomCategory(
+        req.userId,
+        id,
+        updateData
+      );
+      res.status(200).json(updatedCategory);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        error.message ===
+        'Custom category not found or not authorized to update.'
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -914,25 +1131,38 @@ router.put('/custom-categories/:id', authenticate, checkPermissionMiddleware('ch
  *       200:
  *         description: Category deleted successfully.
  */
-router.delete('/custom-categories/:id', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = UuidParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { id } = paramResult.data;
-  try {
-    const result = await measurementService.deleteCustomCategory(req.userId, id);
-    res.status(200).json(result);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.delete(
+  '/custom-categories/:id',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = UuidParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    if (error.message === 'Custom category not found or not authorized to delete.') {
-      return res.status(404).json({ error: error.message });
+    const { id } = paramResult.data;
+    try {
+      const result = await measurementService.deleteCustomCategory(
+        req.userId,
+        id
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        error.message ===
+        'Custom category not found or not authorized to delete.'
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -956,22 +1186,34 @@ router.delete('/custom-categories/:id', authenticate, checkPermissionMiddleware(
  *       400:
  *         description: Invalid date format.
  */
-router.get('/custom-entries/:date', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = DateParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { date } = paramResult.data;
-  try {
-    const entries = await measurementService.getCustomMeasurementEntriesByDate(req.userId, req.userId, date);
-    res.status(200).json(entries);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/custom-entries/:date',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = DateParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    const { date } = paramResult.data;
+    try {
+      const entries =
+        await measurementService.getCustomMeasurementEntriesByDate(
+          req.userId,
+          req.userId,
+          date
+        );
+      res.status(200).json(entries);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -999,18 +1241,28 @@ router.get('/custom-entries/:date', authenticate, checkPermissionMiddleware('che
  *       200:
  *         description: List of custom measurement entries.
  */
-router.get('/custom-entries', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { limit, orderBy, filter, category_id } = req.query; // Extract category_id
-  try {
-    const entries = await measurementService.getCustomMeasurementEntries(req.userId, limit, orderBy, { ...filter, category_id }); // Pass category_id in filter object
-    res.status(200).json(entries);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/custom-entries',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const { limit, orderBy, filter, category_id } = req.query; // Extract category_id
+    try {
+      const entries = await measurementService.getCustomMeasurementEntries(
+        req.userId,
+        limit,
+        orderBy,
+        { ...filter, category_id }
+      ); // Pass category_id in filter object
+      res.status(200).json(entries);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -1037,22 +1289,35 @@ router.get('/custom-entries', authenticate, checkPermissionMiddleware('checkin')
  *       200:
  *         description: List of check-in measurements.
  */
-router.get('/check-in-measurements-range/:startDate/:endDate', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = DateRangeParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { startDate, endDate } = paramResult.data;
-  try {
-    const measurements = await measurementService.getCheckInMeasurementsByDateRange(req.userId, req.userId, startDate, endDate);
-    res.status(200).json(measurements);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/check-in-measurements-range/:startDate/:endDate',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = DateRangeParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    const { startDate, endDate } = paramResult.data;
+    try {
+      const measurements =
+        await measurementService.getCheckInMeasurementsByDateRange(
+          req.userId,
+          req.userId,
+          startDate,
+          endDate
+        );
+      res.status(200).json(measurements);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -1085,22 +1350,38 @@ router.get('/check-in-measurements-range/:startDate/:endDate', authenticate, che
  *       200:
  *         description: List of custom measurements.
  */
-router.get('/custom-measurements-range/:categoryId/:startDate/:endDate', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const paramResult = CustomMeasurementsRangeParamSchema.safeParse(req.params);
-  if (!paramResult.success) {
-    return res.status(400).json({ error: paramResult.error.issues.map(i => i.message).join(', ') });
-  }
-  const { categoryId, startDate, endDate } = paramResult.data;
-  try {
-    const measurements = await measurementService.getCustomMeasurementsByDateRange(req.userId, req.userId, categoryId, startDate, endDate);
-    res.status(200).json(measurements);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/custom-measurements-range/:categoryId/:startDate/:endDate',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = CustomMeasurementsRangeParamSchema.safeParse(
+      req.params
+    );
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
     }
-    next(error);
+    const { categoryId, startDate, endDate } = paramResult.data;
+    try {
+      const measurements =
+        await measurementService.getCustomMeasurementsByDateRange(
+          req.userId,
+          req.userId,
+          categoryId,
+          startDate,
+          endDate
+        );
+      res.status(200).json(measurements);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 
 /**
  * @swagger
@@ -1121,17 +1402,25 @@ router.get('/custom-measurements-range/:categoryId/:startDate/:endDate', authent
  *       200:
  *         description: The most recent measurement.
  */
-router.get('/most-recent/:measurementType', authenticate, checkPermissionMiddleware('checkin'), async (req, res, next) => {
-  const { measurementType } = req.params;
-  try {
-    const measurement = await measurementService.getMostRecentMeasurement(req.userId, measurementType);
-    res.status(200).json(measurement);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/most-recent/:measurementType',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const { measurementType } = req.params;
+    try {
+      const measurement = await measurementService.getMostRecentMeasurement(
+        req.userId,
+        measurementType
+      );
+      res.status(200).json(measurement);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 module.exports = router;

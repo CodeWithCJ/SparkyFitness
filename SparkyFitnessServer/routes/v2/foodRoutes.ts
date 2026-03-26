@@ -1,29 +1,29 @@
-import express, { RequestHandler } from "express";
+import express, { RequestHandler } from 'express';
 import {
   BarcodeResponseSchema,
   NormalizedFoodSchema,
   SearchResponseSchema,
-} from "../../schemas/foodSchemas";
+} from '../../schemas/foodSchemas';
 
-const { log } = require("../../config/logging");
-const checkPermissionMiddleware = require("../../middleware/checkPermissionMiddleware");
-const foodCoreService = require("../../services/foodCoreService");
-const externalProviderService = require("../../services/externalProviderService");
-const preferenceService = require("../../services/preferenceService");
+const { log } = require('../../config/logging');
+const checkPermissionMiddleware = require('../../middleware/checkPermissionMiddleware');
+const foodCoreService = require('../../services/foodCoreService');
+const externalProviderService = require('../../services/externalProviderService');
+const preferenceService = require('../../services/preferenceService');
 const {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
   mapOpenFoodFactsProduct,
-} = require("../../integrations/openfoodfacts/openFoodFactsService");
+} = require('../../integrations/openfoodfacts/openFoodFactsService');
 const {
   searchUsdaFoods,
   getUsdaFoodDetails,
   mapUsdaBarcodeProduct,
-} = require("../../integrations/usda/usdaService");
+} = require('../../integrations/usda/usdaService');
 const {
   mapFatSecretFood,
   mapFatSecretSearchItem,
-} = require("../../integrations/fatsecret/fatsecretService");
+} = require('../../integrations/fatsecret/fatsecretService');
 const {
   searchFatSecretFoods,
   getFatSecretNutrients,
@@ -31,18 +31,18 @@ const {
   getMealieFoodDetails,
   searchTandoorFoods,
   getTandoorFoodDetails,
-} = require("../../services/foodIntegrationService");
+} = require('../../services/foodIntegrationService');
 
 const router = express.Router();
 
-router.use(checkPermissionMiddleware("diary"));
+router.use(checkPermissionMiddleware('diary'));
 
 const VALID_PROVIDER_TYPES = [
-  "openfoodfacts",
-  "usda",
-  "fatsecret",
-  "mealie",
-  "tandoor",
+  'openfoodfacts',
+  'usda',
+  'fatsecret',
+  'mealie',
+  'tandoor',
 ] as const;
 
 type ProviderType = (typeof VALID_PROVIDER_TYPES)[number];
@@ -61,46 +61,44 @@ interface ProviderCredentials {
 async function resolveProviderCredentials(
   userId: string,
   providerId: string | undefined,
-  providerType: ProviderType,
+  providerType: ProviderType
 ): Promise<ProviderCredentials> {
-  if (providerType === "openfoodfacts") {
+  if (providerType === 'openfoodfacts') {
     return {};
   }
 
   if (!providerId) {
-    throw Object.assign(
-      new Error("Missing providerId query parameter"),
-      { status: 400 },
-    );
+    throw Object.assign(new Error('Missing providerId query parameter'), {
+      status: 400,
+    });
   }
 
   const details = await externalProviderService.getExternalDataProviderDetails(
     userId,
-    providerId,
+    providerId
   );
 
   if (!details || !details.is_active) {
-    throw Object.assign(
-      new Error("Provider not found or is inactive"),
-      { status: 400 },
-    );
+    throw Object.assign(new Error('Provider not found or is inactive'), {
+      status: 400,
+    });
   }
 
   // Guard against Tandoor misconfiguration where app_key contains a URL
-  if (providerType === "tandoor" && typeof details.app_key === "string") {
+  if (providerType === 'tandoor' && typeof details.app_key === 'string') {
     const key = details.app_key;
     if (
-      key.startsWith("http://") ||
-      key.startsWith("https://") ||
-      key.includes("/settings") ||
-      key.includes("/api/")
+      key.startsWith('http://') ||
+      key.startsWith('https://') ||
+      key.includes('/settings') ||
+      key.includes('/api/')
     ) {
       throw Object.assign(
         new Error(
-          "Tandoor provider configuration appears to have a URL in the app_key field. " +
-          "Please set the actual Tandoor API token (e.g. tda_...) as the provider app_key.",
+          'Tandoor provider configuration appears to have a URL in the app_key field. ' +
+            'Please set the actual Tandoor API token (e.g. tda_...) as the provider app_key.'
         ),
-        { status: 400 },
+        { status: 400 }
       );
     }
   }
@@ -117,11 +115,17 @@ const EMPTY_PAGINATION = (page: number, pageSize: number) => ({
 
 // --- Barcode endpoint ---
 
-const barcodeHandler: RequestHandler<{ barcode: string }> = async (req, res, next) => {
+const barcodeHandler: RequestHandler<{ barcode: string }> = async (
+  req,
+  res,
+  next
+) => {
   const barcode = req.params.barcode;
 
   if (!/^\d{8,14}$/.test(barcode)) {
-    res.status(400).json({ error: "Invalid barcode format. Must be 8-14 digits." });
+    res
+      .status(400)
+      .json({ error: 'Invalid barcode format. Must be 8-14 digits.' });
     return;
   }
 
@@ -130,7 +134,7 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (req, res, nex
     const result = await foodCoreService.lookupBarcode(
       barcode,
       req.userId,
-      providerId,
+      providerId
     );
 
     // Ensure barcode is preserved on the food when present
@@ -142,12 +146,12 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (req, res, nex
     const response = BarcodeResponseSchema.parse(result);
     res.status(200).json(response);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "ZodError") {
-      log("error", "v2 barcode response validation failed:", error);
+    if (error instanceof Error && error.name === 'ZodError') {
+      log('error', 'v2 barcode response validation failed:', error);
       next(
-        Object.assign(new Error("Internal response validation failed"), {
+        Object.assign(new Error('Internal response validation failed'), {
           status: 500,
-        }),
+        })
       );
       return;
     }
@@ -157,7 +161,11 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (req, res, nex
 
 // --- Search endpoint ---
 
-const searchHandler: RequestHandler<{ providerType: string }> = async (req, res, next) => {
+const searchHandler: RequestHandler<{ providerType: string }> = async (
+  req,
+  res,
+  next
+) => {
   const { providerType } = req.params;
 
   if (!isValidProviderType(providerType)) {
@@ -167,7 +175,7 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (req, res,
 
   const query = req.query.query as string | undefined;
   if (!query) {
-    res.status(400).json({ error: "Missing query parameter" });
+    res.status(400).json({ error: 'Missing query parameter' });
     return;
   }
 
@@ -176,71 +184,90 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (req, res,
   const providerId = req.query.providerId as string | undefined;
 
   try {
-    const credentials = await resolveProviderCredentials(req.userId, providerId, providerType);
-    const userPrefs = await preferenceService.getUserPreferences(req.userId, req.userId);
-    const language = userPrefs?.language || "en";
+    const credentials = await resolveProviderCredentials(
+      req.userId,
+      providerId,
+      providerType
+    );
+    const userPrefs = await preferenceService.getUserPreferences(
+      req.userId,
+      req.userId
+    );
+    const language = userPrefs?.language || 'en';
 
     let foods: unknown[] = [];
     let pagination = EMPTY_PAGINATION(page, pageSize);
 
     switch (providerType) {
-      case "openfoodfacts": {
-        const autoScale = (req.query.autoScale as string ?? 'true') !== 'false';
+      case 'openfoodfacts': {
+        const autoScale =
+          ((req.query.autoScale as string) ?? 'true') !== 'false';
         const result = await searchOpenFoodFacts(query, page, language);
         const products = (result.products || []).filter(
-          (p: Record<string, any>) => 
-            p.product_name || 
-            p[`product_name_${language}`] || 
-            p.product_name_en,
+          (p: Record<string, any>) =>
+            p.product_name || p[`product_name_${language}`] || p.product_name_en
         );
-        foods = products.map((p: Record<string, unknown>) => mapOpenFoodFactsProduct(p, { autoScale, language })).filter(Boolean);
+        foods = products
+          .map((p: Record<string, unknown>) =>
+            mapOpenFoodFactsProduct(p, { autoScale, language })
+          )
+          .filter(Boolean);
         pagination = result.pagination;
         break;
       }
 
-      case "usda": {
-        const result = await searchUsdaFoods(query, credentials.app_key, page, pageSize);
+      case 'usda': {
+        const result = await searchUsdaFoods(
+          query,
+          credentials.app_key,
+          page,
+          pageSize
+        );
         const items = result.foods || [];
         foods = items.map(mapUsdaBarcodeProduct).filter(Boolean);
         pagination = result.pagination;
         break;
       }
 
-      case "fatsecret": {
+      case 'fatsecret': {
         const result = await searchFatSecretFoods(
           query,
           credentials.app_id,
           credentials.app_key,
-          page,
+          page
         );
         const rawFoods = result.foods?.food;
-        const items = Array.isArray(rawFoods) ? rawFoods : rawFoods ? [rawFoods] : [];
+        const items = Array.isArray(rawFoods)
+          ? rawFoods
+          : rawFoods
+            ? [rawFoods]
+            : [];
         foods = items.map(mapFatSecretSearchItem).filter(Boolean);
         pagination = result.pagination;
         break;
       }
 
-      case "mealie": {
+      case 'mealie': {
         const result = await searchMealieFoods(
           query,
           credentials.base_url,
           credentials.app_key,
           req.userId,
           providerId,
-          page,
+          page
         );
         foods = result.items || [];
         pagination = result.pagination;
         break;
       }
 
-      case "tandoor": {
+      case 'tandoor': {
         const results = await searchTandoorFoods(
           query,
           credentials.base_url,
           credentials.app_key,
           req.userId,
-          providerId,
+          providerId
         );
         foods = results || [];
         pagination = {
@@ -256,12 +283,12 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (req, res,
     const response = SearchResponseSchema.parse({ foods, pagination });
     res.status(200).json(response);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "ZodError") {
-      log("error", "v2 search response validation failed:", error);
+    if (error instanceof Error && error.name === 'ZodError') {
+      log('error', 'v2 search response validation failed:', error);
       next(
-        Object.assign(new Error("Internal response validation failed"), {
+        Object.assign(new Error('Internal response validation failed'), {
           status: 500,
-        }),
+        })
       );
       return;
     }
@@ -289,22 +316,33 @@ const detailHandler: RequestHandler<{
   const providerId = req.query.providerId as string | undefined;
 
   try {
-    const credentials = await resolveProviderCredentials(req.userId, providerId, providerType);
-    const userPrefs = await preferenceService.getUserPreferences(req.userId, req.userId);
-    const language = userPrefs?.language || "en";
+    const credentials = await resolveProviderCredentials(
+      req.userId,
+      providerId,
+      providerType
+    );
+    const userPrefs = await preferenceService.getUserPreferences(
+      req.userId,
+      req.userId
+    );
+    const language = userPrefs?.language || 'en';
 
     let food: unknown = null;
 
     switch (providerType) {
-      case "openfoodfacts": {
-        const data = await searchOpenFoodFactsByBarcodeFields(externalId, undefined, language);
+      case 'openfoodfacts': {
+        const data = await searchOpenFoodFactsByBarcodeFields(
+          externalId,
+          undefined,
+          language
+        );
         if (data.status === 1 && data.product) {
           food = mapOpenFoodFactsProduct(data.product, { language });
         }
         break;
       }
 
-      case "usda": {
+      case 'usda': {
         const data = await getUsdaFoodDetails(externalId, credentials.app_key);
         if (data) {
           food = mapUsdaBarcodeProduct(data);
@@ -312,11 +350,11 @@ const detailHandler: RequestHandler<{
         break;
       }
 
-      case "fatsecret": {
+      case 'fatsecret': {
         const data = await getFatSecretNutrients(
           externalId,
           credentials.app_id,
-          credentials.app_key,
+          credentials.app_key
         );
         if (data) {
           food = mapFatSecretFood(data);
@@ -324,13 +362,13 @@ const detailHandler: RequestHandler<{
         break;
       }
 
-      case "mealie": {
+      case 'mealie': {
         const result = await getMealieFoodDetails(
           externalId,
           credentials.base_url,
           credentials.app_key,
           req.userId,
-          providerId,
+          providerId
         );
         if (result) {
           const { food: mealieFood, variant } = result;
@@ -343,13 +381,13 @@ const detailHandler: RequestHandler<{
         break;
       }
 
-      case "tandoor": {
+      case 'tandoor': {
         const result = await getTandoorFoodDetails(
           externalId,
           credentials.base_url,
           credentials.app_key,
           req.userId,
-          providerId,
+          providerId
         );
         if (result) {
           const { food: tandoorFood, variant } = result;
@@ -364,19 +402,19 @@ const detailHandler: RequestHandler<{
     }
 
     if (!food) {
-      res.status(404).json({ error: "Food not found" });
+      res.status(404).json({ error: 'Food not found' });
       return;
     }
 
     const response = NormalizedFoodSchema.parse(food);
     res.status(200).json(response);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "ZodError") {
-      log("error", "v2 detail response validation failed:", error);
+    if (error instanceof Error && error.name === 'ZodError') {
+      log('error', 'v2 detail response validation failed:', error);
       next(
-        Object.assign(new Error("Internal response validation failed"), {
+        Object.assign(new Error('Internal response validation failed'), {
           status: 500,
-        }),
+        })
       );
       return;
     }
@@ -388,8 +426,8 @@ const detailHandler: RequestHandler<{
   }
 };
 
-router.get("/barcode/:barcode", barcodeHandler);
-router.get("/search/:providerType", searchHandler);
-router.get("/details/:providerType/:externalId", detailHandler);
+router.get('/barcode/:barcode', barcodeHandler);
+router.get('/search/:providerType', searchHandler);
+router.get('/details/:providerType/:externalId', detailHandler);
 
 module.exports = router;

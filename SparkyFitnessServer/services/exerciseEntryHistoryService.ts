@@ -1,17 +1,15 @@
 import {
   presetSessionResponseSchema,
-  CALORIE_CALCULATION_CONSTANTS,
   type PresetSessionResponse,
   type ActivityDetailResponse,
   type ExerciseEntryResponse,
   type ExerciseEntrySetResponse,
   type ExerciseHistoryResponse,
   type ExerciseSessionResponse,
-  type ExerciseEntriesByDateResponse,
-} from "@workspace/shared";
+} from '@workspace/shared';
 
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
 
 /** Convert a pg date value to a YYYY-MM-DD string, or return null. */
 function _dateToString(value: unknown): string | null {
@@ -25,11 +23,11 @@ function _dateToString(value: unknown): string | null {
 function _parseJsonArray(value: unknown): string[] | null {
   if (value == null) return null;
   if (Array.isArray(value)) return value as string[];
-  if (typeof value !== "string") return null;
+  if (typeof value !== 'string') return null;
   try {
     let parsed: unknown = JSON.parse(value);
     // Handle double-stringified JSON (legacy Free Exercise DB imports)
-    while (typeof parsed === "string") {
+    while (typeof parsed === 'string') {
       parsed = JSON.parse(parsed);
     }
     return Array.isArray(parsed) ? parsed : null;
@@ -41,7 +39,7 @@ function _parseJsonArray(value: unknown): string[] | null {
 /** Parse detail_data recursively like activityDetailsRepository does. */
 function _parseDetailData(detailData: unknown): unknown {
   let data = detailData;
-  while (typeof data === "string") {
+  while (typeof data === 'string') {
     try {
       data = JSON.parse(data);
     } catch {
@@ -76,7 +74,7 @@ const SETS_SUBQUERY = `COALESCE(
  * into the shape expected by exerciseEntryResponseSchema.
  */
 function _buildExerciseEntryWithSnapshot(
-  row: Record<string, unknown>,
+  row: Record<string, unknown>
 ): ExerciseEntryResponse {
   const {
     exercise_name,
@@ -133,7 +131,7 @@ function _buildExerciseEntryWithSnapshot(
 /** Count the total number of "sessions" (preset entries + standalone exercise entries). */
 async function countExerciseEntrySessions(
   client: { query: Function },
-  userId: string,
+  userId: string
 ): Promise<number> {
   const result = await client.query(
     `WITH sessions AS (
@@ -142,7 +140,7 @@ async function countExerciseEntrySessions(
        SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_preset_entry_id IS NULL
      )
      SELECT COUNT(*)::int AS count FROM sessions`,
-    [userId],
+    [userId]
   );
   return result.rows[0].count;
 }
@@ -152,7 +150,7 @@ async function getExerciseEntryHistorySessions(
   client: { query: Function },
   userId: string,
   limit: number,
-  offset: number,
+  offset: number
 ): Promise<ExerciseSessionResponse[]> {
   // Phase 1: Get paginated session stubs
   const stubsResult = await client.query(
@@ -166,13 +164,13 @@ async function getExerciseEntryHistorySessions(
      SELECT id, entry_date, created_at, session_type
      FROM sessions ORDER BY entry_date DESC, created_at DESC
      LIMIT $2 OFFSET $3`,
-    [userId, limit, offset],
+    [userId, limit, offset]
   );
   const stubs = stubsResult.rows as Array<{
     id: string;
     entry_date: string;
     created_at: string;
-    session_type: "preset" | "individual";
+    session_type: 'preset' | 'individual';
   }>;
 
   if (stubs.length === 0) return [];
@@ -181,7 +179,7 @@ async function getExerciseEntryHistorySessions(
   const presetIds: string[] = [];
   const individualIds: string[] = [];
   for (const stub of stubs) {
-    if (stub.session_type === "preset") {
+    if (stub.session_type === 'preset') {
       presetIds.push(stub.id);
     } else {
       individualIds.push(stub.id);
@@ -211,15 +209,15 @@ async function getExerciseEntryHistorySessions(
     batchQueries.push(
       client
         .query(
-          `SELECT id, workout_preset_id, name, description, notes, source, steps
+          `SELECT id, workout_preset_id, name, description, notes, source
            FROM exercise_preset_entries WHERE id = ANY($1::uuid[])`,
-          [presetIds],
+          [presetIds]
         )
         .then((r: { rows: Record<string, unknown>[] }) => {
           for (const row of r.rows) {
             presetMetaMap.set(row.id as string, row);
           }
-        }),
+        })
     );
 
     // Child exercise entries for presets
@@ -230,7 +228,7 @@ async function getExerciseEntryHistorySessions(
            FROM exercise_entries ee
            WHERE ee.exercise_preset_entry_id = ANY($1::uuid[])
            ORDER BY ee.sort_order ASC, ee.created_at ASC`,
-          [presetIds],
+          [presetIds]
         )
         .then((r: { rows: Record<string, unknown>[] }) => {
           for (const row of r.rows) {
@@ -242,7 +240,7 @@ async function getExerciseEntryHistorySessions(
               children.push(entry);
             }
           }
-        }),
+        })
     );
 
     // Preset-level activity details
@@ -251,7 +249,7 @@ async function getExerciseEntryHistorySessions(
         .query(
           `SELECT * FROM exercise_entry_activity_details
            WHERE exercise_preset_entry_id = ANY($1::uuid[])`,
-          [presetIds],
+          [presetIds]
         )
         .then((r: { rows: ActivityDetailRow[] }) => {
           for (const row of r.rows) {
@@ -261,7 +259,7 @@ async function getExerciseEntryHistorySessions(
             }
             presetActivityMap.get(presetId)!.push(row);
           }
-        }),
+        })
     );
   }
 
@@ -273,7 +271,7 @@ async function getExerciseEntryHistorySessions(
           `SELECT ee.*, ${SETS_SUBQUERY}
            FROM exercise_entries ee
            WHERE ee.id = ANY($1::uuid[])`,
-          [individualIds],
+          [individualIds]
         )
         .then((r: { rows: Record<string, unknown>[] }) => {
           for (const row of r.rows) {
@@ -284,7 +282,7 @@ async function getExerciseEntryHistorySessions(
               name: (row.exercise_name as string) ?? null,
             });
           }
-        }),
+        })
     );
   }
 
@@ -295,7 +293,7 @@ async function getExerciseEntryHistorySessions(
     const adResult = await client.query(
       `SELECT * FROM exercise_entry_activity_details
        WHERE exercise_entry_id = ANY($1::uuid[])`,
-      [allExerciseEntryIds],
+      [allExerciseEntryIds]
     );
     const entryActivityMap = new Map<string, ActivityDetailRow[]>();
     for (const row of adResult.rows as ActivityDetailRow[]) {
@@ -334,7 +332,7 @@ async function getExerciseEntryHistorySessions(
   // Phase 3: Assemble sessions in stub order
   const sessions: ExerciseSessionResponse[] = [];
   for (const stub of stubs) {
-    if (stub.session_type === "preset") {
+    if (stub.session_type === 'preset') {
       const meta = presetMetaMap.get(stub.id);
       if (!meta) continue;
       const children = presetChildrenMap.get(stub.id) ?? [];
@@ -346,19 +344,18 @@ async function getExerciseEntryHistorySessions(
       }));
       const totalDuration = children.reduce(
         (sum, c) => sum + (c.duration_minutes ?? 0),
-        0,
+        0
       );
       sessions.push({
-        type: "preset" as const,
+        type: 'preset' as const,
         id: meta.id as string,
         entry_date: _dateToString(stub.entry_date),
         workout_preset_id: (meta.workout_preset_id as number) ?? null,
-        name: (meta.name as string) ?? "Workout",
+        name: (meta.name as string) ?? 'Workout',
         description: (meta.description as string) ?? null,
         notes: (meta.notes as string) ?? null,
         source: meta.source as string,
         total_duration_minutes: totalDuration,
-        steps: (meta.steps as number) ?? null,
         exercises: children,
         activity_details: presetDetails,
       });
@@ -366,7 +363,7 @@ async function getExerciseEntryHistorySessions(
       const entry = individualMap.get(stub.id);
       if (!entry) continue;
       sessions.push({
-        type: "individual" as const,
+        type: 'individual' as const,
         ...entry,
       });
     }
@@ -382,7 +379,7 @@ async function getExerciseEntryHistorySessions(
 export async function getExerciseEntryHistory(
   targetUserId: string,
   page: number,
-  pageSize: number,
+  pageSize: number
 ): Promise<ExerciseHistoryResponse> {
   const offset = (page - 1) * pageSize;
   const client = await getClient(targetUserId);
@@ -402,7 +399,7 @@ export async function getExerciseEntryHistory(
       },
     };
   } catch (error) {
-    log("error", "Error fetching exercise entry history:", error);
+    log('error', 'Error fetching exercise entry history:', error);
     throw error;
   } finally {
     client.release();
@@ -415,13 +412,17 @@ export async function getExerciseEntryHistory(
  */
 export async function getExerciseEntriesByDateV2(
   targetUserId: string,
-  selectedDate: string,
-): Promise<ExerciseEntriesByDateResponse> {
+  selectedDate: string
+): Promise<ExerciseSessionResponse[]> {
   const client = await getClient(targetUserId);
   try {
-    return await _getExerciseEntriesByDateWithClient(client, targetUserId, selectedDate);
+    return await _getExerciseEntriesByDateWithClient(
+      client,
+      targetUserId,
+      selectedDate
+    );
   } catch (error) {
-    log("error", "Error fetching v2 exercise entries by date:", error);
+    log('error', 'Error fetching v2 exercise entries by date:', error);
     throw error;
   } finally {
     client.release();
@@ -431,23 +432,23 @@ export async function getExerciseEntriesByDateV2(
 async function _getExerciseEntriesByDateWithClient(
   client: { query: Function },
   userId: string,
-  selectedDate: string,
-): Promise<ExerciseEntriesByDateResponse> {
+  selectedDate: string
+): Promise<ExerciseSessionResponse[]> {
   // Fetch preset entries and all exercise entries for the date in parallel
   const [presetResult, entriesResult] = await Promise.all([
     client.query(
-      `SELECT id, workout_preset_id, name, description, notes, source, created_at, steps
+      `SELECT id, workout_preset_id, name, description, notes, source, created_at
        FROM exercise_preset_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY created_at ASC`,
-      [userId, selectedDate],
+      [userId, selectedDate]
     ),
     client.query(
       `SELECT ee.*, ${SETS_SUBQUERY}
        FROM exercise_entries ee
        WHERE ee.user_id = $1 AND ee.entry_date = $2
        ORDER BY ee.sort_order ASC, ee.created_at ASC`,
-      [userId, selectedDate],
+      [userId, selectedDate]
     ),
   ]);
 
@@ -498,7 +499,7 @@ async function _getExerciseEntriesByDateWithClient(
         .query(
           `SELECT * FROM exercise_entry_activity_details
            WHERE exercise_entry_id = ANY($1::uuid[])`,
-          [allEntryIds],
+          [allEntryIds]
         )
         .then((r: { rows: ActivityDetailRow[] }) => {
           for (const row of r.rows) {
@@ -508,7 +509,7 @@ async function _getExerciseEntriesByDateWithClient(
             }
             entryActivityMap.get(eid)!.push(row);
           }
-        }),
+        })
     );
   }
 
@@ -518,7 +519,7 @@ async function _getExerciseEntriesByDateWithClient(
         .query(
           `SELECT * FROM exercise_entry_activity_details
            WHERE exercise_preset_entry_id = ANY($1::uuid[])`,
-          [presetIds],
+          [presetIds]
         )
         .then((r: { rows: ActivityDetailRow[] }) => {
           for (const row of r.rows) {
@@ -528,14 +529,16 @@ async function _getExerciseEntriesByDateWithClient(
             }
             presetActivityMap.get(pid)!.push(row);
           }
-        }),
+        })
     );
   }
 
   await Promise.all(activityQueries);
 
   // Attach activity details to entries
-  const mapActivityDetails = (details: ActivityDetailRow[]): ActivityDetailResponse[] =>
+  const mapActivityDetails = (
+    details: ActivityDetailRow[]
+  ): ActivityDetailResponse[] =>
     details.map((d) => ({
       id: d.id,
       provider_name: d.provider_name,
@@ -546,34 +549,34 @@ async function _getExerciseEntriesByDateWithClient(
   for (const children of presetChildrenMap.values()) {
     for (const child of children) {
       child.activity_details = mapActivityDetails(
-        entryActivityMap.get(child.id) ?? [],
+        entryActivityMap.get(child.id) ?? []
       );
     }
   }
 
   for (const entry of individualMap.values()) {
     entry.activity_details = mapActivityDetails(
-      entryActivityMap.get(entry.id) ?? [],
+      entryActivityMap.get(entry.id) ?? []
     );
   }
 
   // Build a unified stub list for chronological ordering
   const stubs: Array<{
-    sessionType: "preset" | "individual";
+    sessionType: 'preset' | 'individual';
     id: string;
     createdAt: Date;
   }> = [];
 
   for (const presetRow of presetRows) {
     stubs.push({
-      sessionType: "preset",
+      sessionType: 'preset',
       id: presetRow.id as string,
       createdAt: new Date(presetRow.created_at as string),
     });
   }
 
   for (const [id, createdAt] of individualCreatedAt) {
-    stubs.push({ sessionType: "individual", id, createdAt });
+    stubs.push({ sessionType: 'individual', id, createdAt });
   }
 
   stubs.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
@@ -582,29 +585,28 @@ async function _getExerciseEntriesByDateWithClient(
   const sessions: ExerciseSessionResponse[] = [];
 
   for (const stub of stubs) {
-    if (stub.sessionType === "preset") {
+    if (stub.sessionType === 'preset') {
       const presetRow = presetRows.find((r) => r.id === stub.id);
       if (!presetRow) continue;
       const children = presetChildrenMap.get(stub.id) ?? [];
       const presetDetails = mapActivityDetails(
-        presetActivityMap.get(stub.id) ?? [],
+        presetActivityMap.get(stub.id) ?? []
       );
       const totalDuration = children.reduce(
         (sum, c) => sum + (c.duration_minutes ?? 0),
-        0,
+        0
       );
 
       sessions.push({
-        type: "preset" as const,
+        type: 'preset' as const,
         id: stub.id,
         entry_date: selectedDate,
         workout_preset_id: (presetRow.workout_preset_id as number) ?? null,
-        name: (presetRow.name as string) ?? "Workout",
+        name: (presetRow.name as string) ?? 'Workout',
         description: (presetRow.description as string) ?? null,
         notes: (presetRow.notes as string) ?? null,
         source: presetRow.source as string,
         total_duration_minutes: totalDuration,
-        steps: (presetRow.steps as number) ?? null,
         exercises: children,
         activity_details: presetDetails,
       });
@@ -612,72 +614,28 @@ async function _getExerciseEntriesByDateWithClient(
       const entry = individualMap.get(stub.id);
       if (!entry) continue;
       sessions.push({
-        type: "individual" as const,
+        type: 'individual' as const,
         ...entry,
       });
     }
   }
 
-  // Compute step calories: fetch check-in steps and latest weight in parallel
-  const [checkInResult, weightResult, heightResult] = await Promise.all([
-    client.query(
-      "SELECT steps FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2",
-      [userId, selectedDate],
-    ),
-    client.query(
-      `SELECT weight
-       FROM check_in_measurements
-       WHERE user_id = $1 AND weight IS NOT NULL
-       ORDER BY entry_date DESC, updated_at DESC
-       LIMIT 1`,
-      [userId],
-    ),
-    client.query(
-      `SELECT height
-       FROM check_in_measurements
-       WHERE user_id = $1 AND height IS NOT NULL
-       ORDER BY entry_date DESC, updated_at DESC
-       LIMIT 1`,
-      [userId],
-    ),
-  ]);
-
-  const totalSteps = parseInt(checkInResult.rows[0]?.steps ?? "0", 10) || 0;
-  const weightKg =
-    parseFloat(weightResult.rows[0]?.weight) ||
-    CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
-  const heightCm =
-    parseFloat(heightResult.rows[0]?.height) ||
-    CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
-
-  const activitySteps = sessions.reduce(
-    (sum, s) => sum + (parseInt(String(s.steps ?? "0"), 10) || 0),
-    0,
-  );
-  const backgroundSteps = Math.max(0, totalSteps - activitySteps);
-  const strideLengthM =
-    (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
-  const distanceKm = (backgroundSteps * strideLengthM) / 1000;
-  const stepCalories = Math.round(
-    distanceKm * weightKg * CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM,
-  );
-
-  return { sessions, stepCalories };
+  return sessions;
 }
 
 export async function getGroupedExerciseSessionById(
   targetUserId: string,
-  presetEntryId: string,
+  presetEntryId: string
 ): Promise<PresetSessionResponse | null> {
   const client = await getClient(targetUserId);
   try {
     return getGroupedExerciseSessionByIdWithClient(
       client,
       targetUserId,
-      presetEntryId,
+      presetEntryId
     );
   } catch (error) {
-    log("error", "Error fetching grouped exercise session:", error);
+    log('error', 'Error fetching grouped exercise session:', error);
     throw error;
   } finally {
     client.release();
@@ -687,13 +645,13 @@ export async function getGroupedExerciseSessionById(
 export async function getGroupedExerciseSessionByIdWithClient(
   client: { query: Function },
   targetUserId: string,
-  presetEntryId: string,
+  presetEntryId: string
 ): Promise<PresetSessionResponse | null> {
   const metaResult = await client.query(
-    `SELECT id, workout_preset_id, name, description, notes, source, entry_date, steps
+    `SELECT id, workout_preset_id, name, description, notes, source, entry_date
      FROM exercise_preset_entries
      WHERE user_id = $1 AND id = $2`,
-    [targetUserId, presetEntryId],
+    [targetUserId, presetEntryId]
   );
 
   if (metaResult.rows.length === 0) {
@@ -706,12 +664,12 @@ export async function getGroupedExerciseSessionByIdWithClient(
        FROM exercise_entries ee
        WHERE ee.user_id = $1 AND ee.exercise_preset_entry_id = $2
        ORDER BY ee.sort_order ASC, ee.created_at ASC`,
-      [targetUserId, presetEntryId],
+      [targetUserId, presetEntryId]
     ),
     client.query(
       `SELECT * FROM exercise_entry_activity_details
        WHERE exercise_preset_entry_id = $1`,
-      [presetEntryId],
+      [presetEntryId]
     ),
   ]);
 
@@ -723,7 +681,7 @@ export async function getGroupedExerciseSessionByIdWithClient(
     const childActivityResult = await client.query(
       `SELECT * FROM exercise_entry_activity_details
        WHERE exercise_entry_id = ANY($1::uuid[])`,
-      [childEntryIds],
+      [childEntryIds]
     );
 
     for (const row of childActivityResult.rows as ActivityDetailRow[]) {
@@ -759,7 +717,7 @@ export async function getGroupedExerciseSessionByIdWithClient(
   const meta = metaResult.rows[0] as Record<string, unknown>;
 
   return presetSessionResponseSchema.parse({
-    type: "preset",
+    type: 'preset',
     id: meta.id as string,
     entry_date: _dateToString(meta.entry_date),
     workout_preset_id: (meta.workout_preset_id as number) ?? null,
@@ -767,10 +725,9 @@ export async function getGroupedExerciseSessionByIdWithClient(
     description: (meta.description as string) ?? null,
     notes: (meta.notes as string) ?? null,
     source: meta.source as string,
-    steps: (meta.steps as number) ?? null,
     total_duration_minutes: exercises.reduce(
       (sum, exercise) => sum + (exercise.duration_minutes ?? 0),
-      0,
+      0
     ),
     exercises,
     activity_details: presetActivityDetails,

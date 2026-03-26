@@ -1,8 +1,8 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const dashboardService = require("../services/DashboardService");
-const { authenticate } = require("../middleware/authMiddleware");
-const { log } = require("../config/logging");
+const dashboardService = require('../services/DashboardService');
+const { authenticate } = require('../middleware/authMiddleware');
+const { log } = require('../config/logging');
 
 /**
  * @swagger
@@ -24,12 +24,12 @@ const { log } = require("../config/logging");
  *       401:
  *         description: Authentication required.
  */
-router.get("/stats", authenticate, async (req, res, next) => {
+router.get('/stats', authenticate, async (req, res, next) => {
   try {
     const userId = req.activeUserId || req.authenticatedUserId;
-    const date = req.query.date || new Date().toISOString().split("T")[0];
+    const date = req.query.date || new Date().toISOString().split('T')[0];
 
-    log("info", `Dashboard stats requested for user ${userId} on date ${date}`);
+    log('info', `Dashboard stats requested for user ${userId} on date ${date}`);
 
     const stats = await dashboardService.getDashboardStats(userId, date);
     res.json(stats);

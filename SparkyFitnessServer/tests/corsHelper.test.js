@@ -1,4 +1,7 @@
-const { isPrivateNetworkAddress, createCorsOriginChecker } = require('../utils/corsHelper');
+const {
+  isPrivateNetworkAddress,
+  createCorsOriginChecker,
+} = require('../utils/corsHelper');
 
 describe('corsHelper', () => {
   describe('isPrivateNetworkAddress', () => {
@@ -31,8 +34,12 @@ describe('corsHelper', () => {
 
     it('should recognize expanded IPv6 private addresses', () => {
       // Full IPv6 without :: compression
-      expect(isPrivateNetworkAddress('fc00:0000:0000:0000:0000:0000:0000:0001')).toBe(true);
-      expect(isPrivateNetworkAddress('fe80:0000:0000:0000:0000:0000:0000:0001')).toBe(true);
+      expect(
+        isPrivateNetworkAddress('fc00:0000:0000:0000:0000:0000:0000:0001')
+      ).toBe(true);
+      expect(
+        isPrivateNetworkAddress('fe80:0000:0000:0000:0000:0000:0000:0001')
+      ).toBe(true);
     });
 
     it('should recognize bracketed IPv6 with ports', () => {

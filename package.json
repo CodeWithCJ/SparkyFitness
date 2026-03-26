@@ -11,6 +11,9 @@
   "lint-staged": {
     "SparkyFitnessFrontend/**/*.{ts,tsx}": [
       "npx prettier --write"
+    ],
+    "SparkyFitnessServer/**/*.{js,ts}": [
+      "npx prettier --write"
     ]
   },
   "pnpm": {

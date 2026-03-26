@@ -58,10 +58,13 @@ router.use(express.json());
  */
 router.post('/plan', authenticate, async (req, res, next) => {
   try {
-    const newMealPlanEntry = await mealService.createMealPlanEntry(req.userId, req.body);
+    const newMealPlanEntry = await mealService.createMealPlanEntry(
+      req.userId,
+      req.body
+    );
     res.status(201).json(newMealPlanEntry);
   } catch (error) {
-    log('error', `Error creating meal plan entry:`, error);
+    log('error', 'Error creating meal plan entry:', error);
     next(error);
   }
 });
@@ -100,12 +103,18 @@ router.get('/plan', authenticate, async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
     if (!startDate || !endDate) {
-      return res.status(400).json({ error: 'startDate and endDate are required for meal plan retrieval.' });
+      return res.status(400).json({
+        error: 'startDate and endDate are required for meal plan retrieval.',
+      });
     }
-    const mealPlanEntries = await mealService.getMealPlanEntries(req.userId, startDate, endDate);
+    const mealPlanEntries = await mealService.getMealPlanEntries(
+      req.userId,
+      startDate,
+      endDate
+    );
     res.status(200).json(mealPlanEntries);
   } catch (error) {
-    log('error', `Error getting meal plan entries:`, error);
+    log('error', 'Error getting meal plan entries:', error);
     next(error);
   }
 });
@@ -168,7 +177,11 @@ router.get('/plan', authenticate, async (req, res, next) => {
  */
 router.put('/plan/:id', authenticate, async (req, res, next) => {
   try {
-    const updatedMealPlanEntry = await mealService.updateMealPlanEntry(req.userId, req.params.id, req.body);
+    const updatedMealPlanEntry = await mealService.updateMealPlanEntry(
+      req.userId,
+      req.params.id,
+      req.body
+    );
     res.status(200).json(updatedMealPlanEntry);
   } catch (error) {
     log('error', `Error updating meal plan entry ${req.params.id}:`, error);
@@ -270,7 +283,7 @@ router.post('/', authenticate, async (req, res, next) => {
     const newMeal = await mealService.createMeal(req.userId, req.body);
     res.status(201).json(newMeal);
   } catch (error) {
-    log('error', `Error creating meal:`, error);
+    log('error', 'Error creating meal:', error);
     next(error);
   }
 });
@@ -305,7 +318,7 @@ router.get('/', authenticate, async (req, res, next) => {
     const meals = await mealService.getMeals(req.userId, filter, search);
     res.status(200).json(meals);
   } catch (error) {
-    log('error', `Error getting meals:`, error);
+    log('error', 'Error getting meals:', error);
     next(error);
   }
 });
@@ -339,7 +352,7 @@ router.get('/search', authenticate, async (req, res, next) => {
     const meals = await mealService.searchMeals(req.userId, searchTerm);
     res.status(200).json(meals);
   } catch (error) {
-    log('error', `Error searching meals:`, error);
+    log('error', 'Error searching meals:', error);
     next(error);
   }
 });
@@ -443,7 +456,8 @@ router.get('/:id', authenticate, async (req, res, next) => {
  */
 router.put('/:id', authenticate, async (req, res, next) => {
   try {
-    const { confirmationMessage, ...updatedMeal } = await mealService.updateMeal(req.userId, req.params.id, req.body);
+    const { confirmationMessage, ...updatedMeal } =
+      await mealService.updateMeal(req.userId, req.params.id, req.body);
     res.status(200).json({ ...updatedMeal, confirmationMessage });
   } catch (error) {
     log('error', `Error updating meal ${req.params.id}:`, error);
@@ -521,10 +535,17 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  */
 router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
   try {
-    const deletionImpact = await mealService.getMealDeletionImpact(req.userId, req.params.id);
+    const deletionImpact = await mealService.getMealDeletionImpact(
+      req.userId,
+      req.params.id
+    );
     res.status(200).json(deletionImpact);
   } catch (error) {
-    log('error', `Error getting meal deletion impact for meal ${req.params.id}:`, error);
+    log(
+      'error',
+      `Error getting meal deletion impact for meal ${req.params.id}:`,
+      error
+    );
     if (error.message === 'Meal not found.') {
       return res.status(404).json({ error: error.message });
     }
@@ -576,11 +597,22 @@ router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
 router.post('/plan/:id/log-to-diary', authenticate, async (req, res, next) => {
   try {
     const { target_date } = req.body;
-    const createdFoodEntries = await mealService.logMealPlanEntryToDiary(req.userId, req.params.id, target_date);
+    const createdFoodEntries = await mealService.logMealPlanEntryToDiary(
+      req.userId,
+      req.params.id,
+      target_date
+    );
     res.status(201).json(createdFoodEntries);
   } catch (error) {
-    log('error', `Error logging meal plan entry ${req.params.id} to diary:`, error);
-    if (error.message === 'Meal plan entry not found or not authorized.' || error.message === 'Associated meal template not found.') {
+    log(
+      'error',
+      `Error logging meal plan entry ${req.params.id} to diary:`,
+      error
+    );
+    if (
+      error.message === 'Meal plan entry not found or not authorized.' ||
+      error.message === 'Associated meal template not found.'
+    ) {
       return res.status(404).json({ error: error.message });
     }
     next(error);
@@ -626,10 +658,18 @@ router.post('/plan/log-day-to-diary', authenticate, async (req, res, next) => {
     if (!plan_date) {
       return res.status(400).json({ error: 'plan_date is required.' });
     }
-    const createdFoodEntries = await mealService.logDayMealPlanToDiary(req.userId, plan_date, target_date);
+    const createdFoodEntries = await mealService.logDayMealPlanToDiary(
+      req.userId,
+      plan_date,
+      target_date
+    );
     res.status(201).json(createdFoodEntries);
   } catch (error) {
-    log('error', `Error logging day meal plan to diary for date ${req.body.plan_date}:`, error);
+    log(
+      'error',
+      `Error logging day meal plan to diary for date ${req.body.plan_date}:`,
+      error
+    );
     next(error);
   }
 });
@@ -647,18 +687,16 @@ router.post('/plan/log-day-to-diary', authenticate, async (req, res, next) => {
  *       403:
  *         description: User does not have permission to access this resource.
  */
-router.get(
-  "/needs-review",
-  authenticate,
-  async (req, res, next) => {
-    try {
-      const mealsNeedingReview = await mealService.getMealsNeedingReview(req.userId);
-      res.status(200).json(mealsNeedingReview);
-    } catch (error) {
-      next(error);
-    }
+router.get('/needs-review', authenticate, async (req, res, next) => {
+  try {
+    const mealsNeedingReview = await mealService.getMealsNeedingReview(
+      req.userId
+    );
+    res.status(200).json(mealsNeedingReview);
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -688,22 +726,21 @@ router.get(
  *       403:
  *         description: User does not have permission to perform this action.
  */
-router.post(
-  "/update-snapshot",
-  authenticate,
-  async (req, res, next) => {
-    const { mealId } = req.body;
-    if (!mealId) {
-      return res.status(400).json({ error: "mealId is required." });
-    }
-    try {
-      const result = await mealService.updateMealEntriesSnapshot(req.userId, mealId);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
+router.post('/update-snapshot', authenticate, async (req, res, next) => {
+  const { mealId } = req.body;
+  if (!mealId) {
+    return res.status(400).json({ error: 'mealId is required.' });
   }
-);
+  try {
+    const result = await mealService.updateMealEntriesSnapshot(
+      req.userId,
+      mealId
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -750,13 +787,26 @@ router.post('/create-meal-from-diary', authenticate, async (req, res, next) => {
   try {
     const { date, mealType, mealName, description, isPublic } = req.body;
     if (!date || !mealType) {
-      return res.status(400).json({ error: 'Date and mealType are required to create a meal from diary entries.' });
+      return res.status(400).json({
+        error:
+          'Date and mealType are required to create a meal from diary entries.',
+      });
     }
-    const newMeal = await mealService.createMealFromDiaryEntries(req.userId, date, mealType, mealName, description, isPublic);
+    const newMeal = await mealService.createMealFromDiaryEntries(
+      req.userId,
+      date,
+      mealType,
+      mealName,
+      description,
+      isPublic
+    );
     res.status(201).json(newMeal);
   } catch (error) {
-    log('error', `Error creating meal from diary entries:`, error);
-    if (error.message.startsWith('No food entries found') || error.message.startsWith('Cannot create meal')) {
+    log('error', 'Error creating meal from diary entries:', error);
+    if (
+      error.message.startsWith('No food entries found') ||
+      error.message.startsWith('Cannot create meal')
+    ) {
       return res.status(400).json({ error: error.message });
     }
     next(error);
