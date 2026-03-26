@@ -1,5 +1,6 @@
 export * from "./schemas/api/AiServiceSettings.api.zod";
 export * from "./schemas/api/CustomCategories.api.zod";
+export * from "./schemas/api/DashboardStats.api.zod";
 export * from "./schemas/api/CustomMeasurements.api.zod";
 export * from "./schemas/api/CheckInMeasurements.api.zod";
 export * from "./schemas/api/ExerciseEntries.api.zod";

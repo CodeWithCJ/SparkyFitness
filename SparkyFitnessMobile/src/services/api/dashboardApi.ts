@@ -1,21 +1,11 @@
 import { apiFetch } from './apiClient';
+import type { DashboardStatsResponse } from '@workspace/shared';
 
-export interface DashboardStats {
-  eaten: number;
-  burned: number;
-  remaining: number;
-  goal: number;
-  net: number;
-  progress: number;
-  steps: number;
-  stepCalories: number;
-  bmr: number;
-  unit: string;
-}
+export type { DashboardStatsResponse as DashboardStats };
 
-export const fetchDashboardStats = async (date: string): Promise<DashboardStats> => {
-  return apiFetch<DashboardStats>({
-    endpoint: `/api/dashboard/stats?date=${date}`,
+export const fetchDashboardStats = async (date: string): Promise<DashboardStatsResponse> => {
+  return apiFetch<DashboardStatsResponse>({
+    endpoint: `/api/dashboard/stats?date=${encodeURIComponent(date)}`,
     serviceName: 'Dashboard API',
     operation: 'fetch dashboard stats',
   });

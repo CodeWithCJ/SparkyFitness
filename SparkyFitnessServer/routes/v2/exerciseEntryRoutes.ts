@@ -2,10 +2,9 @@ import express, { RequestHandler } from "express";
 import {
   exerciseHistoryQuerySchema,
   exerciseHistoryResponseSchema,
-  exerciseSessionResponseSchema,
+  exerciseEntriesByDateResponseSchema,
 } from "@workspace/shared";
 import { getExerciseEntryHistory, getExerciseEntriesByDateV2 } from "../../services/exerciseEntryHistoryService";
-import { z } from "zod";
 
 const { log } = require("../../config/logging");
 const checkPermissionMiddleware = require("../../middleware/checkPermissionMiddleware");
@@ -170,8 +169,8 @@ const byDateHandler: RequestHandler = async (req, res, next) => {
       }
     }
 
-    const sessions = await getExerciseEntriesByDateV2(targetUserId, selectedDate);
-    const response = z.array(exerciseSessionResponseSchema).parse(sessions);
+    const result = await getExerciseEntriesByDateV2(targetUserId, selectedDate);
+    const response = exerciseEntriesByDateResponseSchema.parse(result);
     res.status(200).json(response);
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "ZodError") {
