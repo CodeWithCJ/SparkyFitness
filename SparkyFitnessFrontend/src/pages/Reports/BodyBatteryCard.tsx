@@ -118,7 +118,7 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
       ? transformedData[transformedData.length - 1]
       : null;
 
-  // Use at_wake if available, otherwise highest
+  // Use current value if available, otherwise fall back to at_wake, then highest
   const gaugeValue =
     latestData?.current ?? latestData?.at_wake ?? latestData?.highest ?? 0;
   const chargedValue = latestData?.charged ?? 0;
