@@ -486,6 +486,11 @@ const auth = betterAuth({
           ? 'SparkyFitness'
           : 'SparkyFitnessDev',
       schema: {
+        user: {
+          fields: {
+            twoFactorEnabled: 'two_factor_enabled',
+          },
+        },
         twoFactor: {
           modelName: 'two_factor',
           fields: {
