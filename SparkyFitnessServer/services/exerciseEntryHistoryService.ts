@@ -1,11 +1,13 @@
 import {
   presetSessionResponseSchema,
+  CALORIE_CALCULATION_CONSTANTS,
   type PresetSessionResponse,
   type ActivityDetailResponse,
   type ExerciseEntryResponse,
   type ExerciseEntrySetResponse,
   type ExerciseHistoryResponse,
   type ExerciseSessionResponse,
+  type ExerciseEntriesByDateResponse,
 } from "@workspace/shared";
 
 const { getClient } = require("../db/poolManager");
@@ -414,7 +416,7 @@ export async function getExerciseEntryHistory(
 export async function getExerciseEntriesByDateV2(
   targetUserId: string,
   selectedDate: string,
-): Promise<ExerciseSessionResponse[]> {
+): Promise<ExerciseEntriesByDateResponse> {
   const client = await getClient(targetUserId);
   try {
     return await _getExerciseEntriesByDateWithClient(client, targetUserId, selectedDate);
@@ -430,7 +432,7 @@ async function _getExerciseEntriesByDateWithClient(
   client: { query: Function },
   userId: string,
   selectedDate: string,
-): Promise<ExerciseSessionResponse[]> {
+): Promise<ExerciseEntriesByDateResponse> {
   // Fetch preset entries and all exercise entries for the date in parallel
   const [presetResult, entriesResult] = await Promise.all([
     client.query(
@@ -616,7 +618,51 @@ async function _getExerciseEntriesByDateWithClient(
     }
   }
 
-  return sessions;
+  // Compute step calories: fetch check-in steps and latest weight in parallel
+  const [checkInResult, weightResult, heightResult] = await Promise.all([
+    client.query(
+      "SELECT steps FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2",
+      [userId, selectedDate],
+    ),
+    client.query(
+      `SELECT weight
+       FROM check_in_measurements
+       WHERE user_id = $1 AND weight IS NOT NULL
+       ORDER BY entry_date DESC, updated_at DESC
+       LIMIT 1`,
+      [userId],
+    ),
+    client.query(
+      `SELECT height
+       FROM check_in_measurements
+       WHERE user_id = $1 AND height IS NOT NULL
+       ORDER BY entry_date DESC, updated_at DESC
+       LIMIT 1`,
+      [userId],
+    ),
+  ]);
+
+  const totalSteps = parseInt(checkInResult.rows[0]?.steps ?? "0", 10) || 0;
+  const weightKg =
+    parseFloat(weightResult.rows[0]?.weight) ||
+    CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
+  const heightCm =
+    parseFloat(heightResult.rows[0]?.height) ||
+    CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
+
+  const activitySteps = sessions.reduce(
+    (sum, s) => sum + (parseInt(String(s.steps ?? "0"), 10) || 0),
+    0,
+  );
+  const backgroundSteps = Math.max(0, totalSteps - activitySteps);
+  const strideLengthM =
+    (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
+  const distanceKm = (backgroundSteps * strideLengthM) / 1000;
+  const stepCalories = Math.round(
+    distanceKm * weightKg * CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM,
+  );
+
+  return { sessions, stepCalories };
 }
 
 export async function getGroupedExerciseSessionById(

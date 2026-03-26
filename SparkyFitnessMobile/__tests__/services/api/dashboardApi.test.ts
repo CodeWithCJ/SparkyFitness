@@ -1,40 +1,19 @@
-import { fetchDashboardStats, type DashboardStats } from '../../../src/services/api/dashboardApi';
-import { getActiveServerConfig, ServerConfig } from '../../../src/services/storage';
+import { fetchDashboardStats } from '../../../src/services/api/dashboardApi';
+import { apiFetch } from '../../../src/services/api/apiClient';
+import type { DashboardStatsResponse } from '@workspace/shared';
 
-jest.mock('../../../src/services/storage', () => ({
-  getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage').proxyHeadersToRecord,
+jest.mock('../../../src/services/api/apiClient', () => ({
+  apiFetch: jest.fn(),
 }));
 
-jest.mock('../../../src/services/LogService', () => ({
-  addLog: jest.fn(),
-}));
-
-const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
-  typeof getActiveServerConfig
->;
+const mockApiFetch = apiFetch as jest.MockedFunction<typeof apiFetch>;
 
 describe('dashboardApi', () => {
-  const mockFetch = jest.fn();
-
   beforeEach(() => {
     jest.resetAllMocks();
-    (globalThis as any).fetch = mockFetch;
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  const testConfig: ServerConfig = {
-    id: 'test-id',
-    url: 'https://example.com',
-    apiKey: 'test-api-key-12345',
-  };
-
-  const mockStats: DashboardStats = {
+  const mockStats: DashboardStatsResponse = {
     eaten: 1200,
     burned: 350,
     remaining: 1450,
@@ -48,32 +27,30 @@ describe('dashboardApi', () => {
   };
 
   describe('fetchDashboardStats', () => {
-    test('sends GET request to /api/dashboard/stats with date', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockStats),
-      });
+    test('calls apiFetch with encoded date in endpoint', async () => {
+      mockApiFetch.mockResolvedValue(mockStats);
 
       await fetchDashboardStats('2026-03-24');
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/dashboard/stats?date=2026-03-24',
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            Authorization: 'Bearer test-api-key-12345',
-          }),
-        }),
-      );
+      expect(mockApiFetch).toHaveBeenCalledWith({
+        endpoint: '/api/dashboard/stats?date=2026-03-24',
+        serviceName: 'Dashboard API',
+        operation: 'fetch dashboard stats',
+      });
+    });
+
+    test('encodes special characters in date parameter', async () => {
+      mockApiFetch.mockResolvedValue(mockStats);
+
+      await fetchDashboardStats('2026/03/24');
+
+      const call = mockApiFetch.mock.calls[0][0];
+      expect(call.endpoint).toContain('2026%2F03%2F24');
+      expect(call.endpoint).not.toContain('2026/03/24');
     });
 
     test('returns parsed stats including stepCalories', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockStats),
-      });
+      mockApiFetch.mockResolvedValue(mockStats);
 
       const result = await fetchDashboardStats('2026-03-24');
 
@@ -83,13 +60,8 @@ describe('dashboardApi', () => {
       expect(result.unit).toBe('kcal');
     });
 
-    test('throws error on non-OK response', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 401,
-        text: () => Promise.resolve('Unauthorized'),
-      });
+    test('throws when apiFetch rejects', async () => {
+      mockApiFetch.mockRejectedValue(new Error('Server error: 401 - Unauthorized'));
 
       await expect(fetchDashboardStats('2026-03-24')).rejects.toThrow(
         'Server error: 401 - Unauthorized',

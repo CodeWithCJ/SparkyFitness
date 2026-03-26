@@ -5,8 +5,9 @@ import type { ActivityDetailsResponse } from '@/types/exercises';
 import {
   ExerciseHistoryResponse,
   exerciseHistoryResponseSchema,
+  ExerciseEntriesByDateResponse,
+  exerciseEntriesByDateResponseSchema,
   ExerciseSessionResponse,
-  exerciseSessionResponseSchema,
   ExerciseEntryResponse,
   exerciseEntryResponseSchema,
   CreateExerciseEntryRequest,
@@ -32,7 +33,9 @@ export const fetchExerciseEntries = async (
       method: 'GET',
     }
   );
-  return z.array(exerciseSessionResponseSchema).parse(response);
+  const parsedResponse: ExerciseEntriesByDateResponse =
+    exerciseEntriesByDateResponseSchema.parse(response);
+  return parsedResponse.sessions;
 };
 
 export const fetchExerciseEntryHistoryV2 = async (
