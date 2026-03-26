@@ -54,7 +54,12 @@ router.post('/', authenticate, async (req, res, next) => {
       return res.status(400).json({ message: 'Mood value is required.' });
     }
 
-    const newMoodEntry = await moodRepository.createOrUpdateMoodEntry(userId, mood_value, notes, entry_date);
+    const newMoodEntry = await moodRepository.createOrUpdateMoodEntry(
+      userId,
+      mood_value,
+      notes,
+      entry_date
+    );
     res.status(201).json(newMoodEntry);
   } catch (error) {
     next(error);
@@ -114,18 +119,31 @@ router.get('/', authenticate, async (req, res, next) => {
     const targetUserId = userId || req.userId;
 
     if (!startDate || !endDate) {
-      return res.status(400).json({ message: 'Start date and end date are required.' });
+      return res
+        .status(400)
+        .json({ message: 'Start date and end date are required.' });
     }
 
     // Check permission if accessing another user's data
     if (userId && userId !== req.userId) {
-      const hasPermission = await canAccessUserData(userId, 'diary', req.authenticatedUserId || req.userId);
+      const hasPermission = await canAccessUserData(
+        userId,
+        'diary',
+        req.authenticatedUserId || req.userId
+      );
       if (!hasPermission) {
-        return res.status(403).json({ error: 'Forbidden: You do not have permission to access this user\'s mood data.' });
+        return res.status(403).json({
+          error:
+            "Forbidden: You do not have permission to access this user's mood data.",
+        });
       }
     }
 
-    const moodEntries = await moodRepository.getMoodEntriesByUserId(targetUserId, startDate, endDate);
+    const moodEntries = await moodRepository.getMoodEntriesByUserId(
+      targetUserId,
+      startDate,
+      endDate
+    );
     res.json(moodEntries);
   } catch (error) {
     next(error);
@@ -197,13 +215,23 @@ router.get('/date/:entryDate', authenticate, async (req, res, next) => {
 
     // Check permission if accessing another user's data
     if (userId && userId !== req.userId) {
-      const hasPermission = await canAccessUserData(userId, 'diary', req.authenticatedUserId || req.userId);
+      const hasPermission = await canAccessUserData(
+        userId,
+        'diary',
+        req.authenticatedUserId || req.userId
+      );
       if (!hasPermission) {
-        return res.status(403).json({ error: 'Forbidden: You do not have permission to access this user\'s mood data.' });
+        return res.status(403).json({
+          error:
+            "Forbidden: You do not have permission to access this user's mood data.",
+        });
       }
     }
 
-    const moodEntry = await moodRepository.getMoodEntryByDate(targetUserId, entryDate);
+    const moodEntry = await moodRepository.getMoodEntryByDate(
+      targetUserId,
+      entryDate
+    );
     if (!moodEntry) {
       return res.status(200).json({});
     }
@@ -246,7 +274,12 @@ router.put('/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { mood_value, notes } = req.body;
-    const updatedMoodEntry = await moodRepository.updateMoodEntry(id, req.userId, mood_value, notes);
+    const updatedMoodEntry = await moodRepository.updateMoodEntry(
+      id,
+      req.userId,
+      mood_value,
+      notes
+    );
     res.json(updatedMoodEntry);
   } catch (error) {
     next(error);
@@ -281,7 +314,9 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     if (deleted) {
       res.status(204).send();
     } else {
-      res.status(404).json({ message: 'Mood entry not found or not authorized to delete.' });
+      res
+        .status(404)
+        .json({ message: 'Mood entry not found or not authorized to delete.' });
     }
   } catch (error) {
     next(error);

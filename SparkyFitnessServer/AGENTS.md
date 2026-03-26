@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-03-13*
+_Last updated: 2026-03-13_
 
 SparkyFitness Server is the Node.js + Express 5 backend API for the SparkyFitness monorepo. This file is the package guide for `SparkyFitnessServer/`.
 
@@ -21,6 +21,7 @@ If a task also changes the frontend, mobile app, or `shared/`, read the relevant
 - The codebase is mostly JavaScript. Current TypeScript islands are intentionally small and include `routes/v2/`, `schemas/`, and `types/`
 
 Startup behavior matters in this package:
+
 - `.env` is loaded from `../.env`
 - file-based secrets are loaded through `utils/secretLoader.js`
 - preflight env validation runs before the app boots
@@ -66,6 +67,7 @@ NODE_OPTIONS='--experimental-vm-modules' pnpm exec jest tests/mealRoutes.test.js
 - `tests/`, `__mocks__/` - Jest tests and mocks
 
 When searching, ignore noisy/generated directories unless you explicitly need them:
+
 - `node_modules/`
 - `coverage/`
 - `uploads/`

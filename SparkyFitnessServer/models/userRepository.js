@@ -86,7 +86,6 @@ async function findUserIdByEmail(email) {
   }
 }
 
-
 async function getAccessibleUsers(userId) {
   const client = await getSystemClient(); // System client for bypassing RLS
   try {
@@ -115,7 +114,7 @@ async function getUserProfile(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT id, full_name, phone_number, TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth, bio, avatar_url, gender FROM profiles WHERE id = $1`,
+      "SELECT id, full_name, phone_number, TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth, bio, avatar_url, gender FROM profiles WHERE id = $1",
       [userId]
     );
     return result.rows[0];
@@ -124,7 +123,15 @@ async function getUserProfile(userId) {
   }
 }
 
-async function updateUserProfile(userId, full_name, phone_number, date_of_birth, bio, avatar_url, gender) {
+async function updateUserProfile(
+  userId,
+  full_name,
+  phone_number,
+  date_of_birth,
+  bio,
+  avatar_url,
+  gender
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -145,7 +152,6 @@ async function updateUserProfile(userId, full_name, phone_number, date_of_birth,
     client.release();
   }
 }
-
 
 async function updateUserPassword(userId, hashedPassword) {
   const client = await getClient(userId); // User-specific operation
@@ -185,10 +191,9 @@ async function updateUserEmail(userId, newEmail) {
 async function getUserRole(userId) {
   const client = await getSystemClient(); // System client for getting user role (admin check)
   try {
-    const result = await client.query(
-      'SELECT role FROM "user" WHERE id = $1',
-      [userId]
-    );
+    const result = await client.query('SELECT role FROM "user" WHERE id = $1', [
+      userId,
+    ]);
     return result.rows[0] ? result.rows[0].role : null;
   } finally {
     client.release();
@@ -253,7 +258,6 @@ async function findUserOidcLink(userId, providerId) {
   }
 }
 
-
 async function createUserOidcLink(userId, providerId, oidcSub) {
   const client = await getSystemClient(); // System client for creating OIDC link
   try {
@@ -297,7 +301,7 @@ async function updateUserOidcLink(linkId, newOidcSub) {
 async function updatePasswordResetToken(userId, token, expires) {
   const client = await getSystemClient();
   try {
-    // Legacy support: Better Auth uses its own system. 
+    // Legacy support: Better Auth uses its own system.
     // We return true to avoid breaking callers during transition.
     return true;
   } finally {
@@ -367,7 +371,10 @@ async function deleteUser(userId) {
   const client = await getSystemClient(); // System client for deleting user (admin operation)
   try {
     // Delete from "user" (this should trigger cascades for session, account, etc.)
-    const result = await client.query('DELETE FROM "user" WHERE id = $1 RETURNING id', [userId]);
+    const result = await client.query(
+      'DELETE FROM "user" WHERE id = $1 RETURNING id',
+      [userId]
+    );
 
     await client.query('COMMIT');
     return result.rowCount > 0;
@@ -405,7 +412,14 @@ async function updateUserFullName(userId, fullName) {
   }
 }
 
-async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmailEnabled, mfaRecoveryCodes, mfaEnforced) {
+async function updateUserMfaSettings(
+  userId,
+  mfaSecret,
+  mfaTotpEnabled,
+  mfaEmailEnabled,
+  mfaRecoveryCodes,
+  mfaEnforced
+) {
   const client = await getSystemClient();
   try {
     const query = `
@@ -422,7 +436,7 @@ async function updateUserMfaSettings(userId, mfaSecret, mfaTotpEnabled, mfaEmail
       userId,
       mfaTotpEnabled,
       mfaEmailEnabled,
-      mfaEnforced
+      mfaEnforced,
     ]);
 
     // Handle two_factor table updates
@@ -455,7 +469,7 @@ async function getMfaSettings(userId) {
     return {
       totp_enabled: settings?.mfa_totp_enabled || false,
       email_mfa_enabled: settings?.mfa_email_enabled || false,
-      mfa_enforced: settings?.mfa_enforced || false
+      mfa_enforced: settings?.mfa_enforced || false,
     };
   } finally {
     client.release();
@@ -475,28 +489,33 @@ async function isOidcUser(userId) {
   }
 }
 
-async function ensureUserInitialization(userId, fullName, avatarUrl = null, existingClient = null) {
-  const client = existingClient || await getSystemClient();
+async function ensureUserInitialization(
+  userId,
+  fullName,
+  avatarUrl = null,
+  existingClient = null
+) {
+  const client = existingClient || (await getSystemClient());
   try {
     if (!existingClient) await client.query('BEGIN');
 
     await client.query(
       'INSERT INTO profiles (id, full_name, avatar_url, created_at, updated_at) ' +
-      'SELECT $1, $2, $3, now(), now() WHERE NOT EXISTS (SELECT 1 FROM profiles WHERE id = $1)',
+        'SELECT $1, $2, $3, now(), now() WHERE NOT EXISTS (SELECT 1 FROM profiles WHERE id = $1)',
       [userId, fullName, avatarUrl]
     );
 
     // Ensure user_goals exists (the base goal with NULL date)
     await client.query(
       'INSERT INTO user_goals (user_id, created_at, updated_at) ' +
-      'SELECT $1, now(), now() WHERE NOT EXISTS (SELECT 1 FROM user_goals WHERE user_id = $1 AND goal_date IS NULL)',
+        'SELECT $1, now(), now() WHERE NOT EXISTS (SELECT 1 FROM user_goals WHERE user_id = $1 AND goal_date IS NULL)',
       [userId]
     );
 
     // Ensure onboarding_status exists
     await client.query(
       'INSERT INTO onboarding_status (user_id, onboarding_complete, created_at, updated_at) ' +
-      'SELECT $1, FALSE, now(), now() WHERE NOT EXISTS (SELECT 1 FROM onboarding_status WHERE user_id = $1)',
+        'SELECT $1, FALSE, now(), now() WHERE NOT EXISTS (SELECT 1 FROM onboarding_status WHERE user_id = $1)',
       [userId]
     );
 

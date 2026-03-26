@@ -3,10 +3,7 @@ module.exports = {
   testEnvironment: 'node',
 
   // Test file patterns
-  testMatch: [
-    '**/tests/**/*.test.js',
-    '**/__tests__/**/*.js'
-  ],
+  testMatch: ['**/tests/**/*.test.js', '**/__tests__/**/*.js'],
 
   // Coverage configuration
   collectCoverage: false, // Enable via --coverage flag
@@ -18,7 +15,7 @@ module.exports = {
     'utils/**/*.js',
     '!**/node_modules/**',
     '!**/tests/**',
-    '!**/__tests__/**'
+    '!**/__tests__/**',
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
@@ -29,13 +26,11 @@ module.exports = {
   // Module name mapping for workspace packages
   moduleNameMapper: {
     '^@workspace/shared$': '<rootDir>/../shared/src/index.ts',
-    '^@workspace/shared/(.*)$': '<rootDir>/../shared/src/$1'
+    '^@workspace/shared/(.*)$': '<rootDir>/../shared/src/$1',
   },
 
   // Transform ES modules from node_modules
-  transformIgnorePatterns: [
-    'node_modules/(?!(uuid|@workspace/shared)/)'
-  ],
+  transformIgnorePatterns: ['node_modules/(?!(uuid|@workspace/shared)/)'],
 
   // Setup file
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
@@ -44,5 +39,5 @@ module.exports = {
   clearMocks: true,
 
   // Verbose output
-  verbose: true
+  verbose: true,
 };

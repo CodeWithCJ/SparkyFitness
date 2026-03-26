@@ -23,13 +23,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-
 async function sendPasswordResetEmail(toEmail, resetUrl) {
-  log('info', `Attempting to send password reset email to ${toEmail} with URL: ${resetUrl}`);
-  log('debug', `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`);
+  log(
+    'info',
+    `Attempting to send password reset email to ${toEmail} with URL: ${resetUrl}`
+  );
+  log(
+    'debug',
+    `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`
+  );
 
   if (!transporter.options.host || !transporter.options.auth.user) {
-    log('warn', 'Email transporter is not fully configured (missing SMTP_HOST or SMTP_USER). Logging email content instead of sending.');
+    log(
+      'warn',
+      'Email transporter is not fully configured (missing SMTP_HOST or SMTP_USER). Logging email content instead of sending.'
+    );
     console.log(`
       ------------------------------------
       PASSWORD RESET EMAIL (NOT SENT - EMAIL SERVICE NOT CONFIGURED)
@@ -50,7 +58,8 @@ async function sendPasswordResetEmail(toEmail, resetUrl) {
 
   try {
     await transporter.sendMail({
-      from: process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com', // Your sender email address
+      from:
+        process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com', // Your sender email address
       to: toEmail,
       subject: 'SparkyFitness Password Reset',
       html: `
@@ -64,7 +73,11 @@ async function sendPasswordResetEmail(toEmail, resetUrl) {
     log('info', `Password reset email successfully sent to ${toEmail}.`);
     return true;
   } catch (error) {
-    log('error', `Failed to send password reset email to ${toEmail}. Error details:`, error);
+    log(
+      'error',
+      `Failed to send password reset email to ${toEmail}. Error details:`,
+      error
+    );
     // Log more specific Nodemailer error properties if available
     if (error.response) {
       log('error', `SMTP Response: ${error.response}`);
@@ -84,10 +97,16 @@ module.exports = {
 
 async function sendEmailMfaCode(toEmail, code) {
   log('info', `Attempting to send email MFA code to ${toEmail}`);
-  log('debug', `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`);
+  log(
+    'debug',
+    `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`
+  );
 
   if (!transporter.options.host || !transporter.options.auth.user) {
-    log('warn', 'Email transporter is not fully configured (missing SMTP_HOST or SMTP_USER). Logging email content instead of sending.');
+    log(
+      'warn',
+      'Email transporter is not fully configured (missing SMTP_HOST or SMTP_USER). Logging email content instead of sending.'
+    );
     console.log(`
       ------------------------------------
       EMAIL MFA CODE (NOT SENT - EMAIL SERVICE NOT CONFIGURED)
@@ -106,7 +125,8 @@ async function sendEmailMfaCode(toEmail, code) {
 
   try {
     await transporter.sendMail({
-      from: process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com',
+      from:
+        process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com',
       to: toEmail,
       subject: 'Your SparkyFitness MFA Code',
       html: `
@@ -119,7 +139,11 @@ async function sendEmailMfaCode(toEmail, code) {
     log('info', `Email MFA code successfully sent to ${toEmail}.`);
     return true;
   } catch (error) {
-    log('error', `Failed to send email MFA code to ${toEmail}. Error details:`, error);
+    log(
+      'error',
+      `Failed to send email MFA code to ${toEmail}. Error details:`,
+      error
+    );
     if (error.response) {
       log('error', `SMTP Response: ${error.response}`);
     }
@@ -131,11 +155,20 @@ async function sendEmailMfaCode(toEmail, code) {
 }
 
 async function sendMagicLinkEmail(toEmail, magicLinkUrl) {
-  log('info', `Attempting to send magic link email to ${toEmail} with URL: ${magicLinkUrl}`);
-  log('debug', `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`);
+  log(
+    'info',
+    `Attempting to send magic link email to ${toEmail} with URL: ${magicLinkUrl}`
+  );
+  log(
+    'debug',
+    `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`
+  );
 
   if (!transporter.options.host || !transporter.options.auth.user) {
-    log('warn', 'Email transporter is not fully configured (missing SMTP_HOST or SMTP_USER). Logging email content instead of sending.');
+    log(
+      'warn',
+      'Email transporter is not fully configured (missing SMTP_HOST or SMTP_USER). Logging email content instead of sending.'
+    );
     console.log(`
       ------------------------------------
       MAGIC LINK EMAIL (NOT SENT - EMAIL SERVICE NOT CONFIGURED)
@@ -156,7 +189,8 @@ async function sendMagicLinkEmail(toEmail, magicLinkUrl) {
 
   try {
     await transporter.sendMail({
-      from: process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com',
+      from:
+        process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com',
       to: toEmail,
       subject: 'Your SparkyFitness Login Link',
       html: `
@@ -170,7 +204,11 @@ async function sendMagicLinkEmail(toEmail, magicLinkUrl) {
     log('info', `Magic link email successfully sent to ${toEmail}.`);
     return true;
   } catch (error) {
-    log('error', `Failed to send magic link email to ${toEmail}. Error details:`, error);
+    log(
+      'error',
+      `Failed to send magic link email to ${toEmail}. Error details:`,
+      error
+    );
     if (error.response) {
       log('error', `SMTP Response: ${error.response}`);
     }

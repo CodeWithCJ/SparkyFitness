@@ -1,7 +1,7 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { authenticate } = require("../middleware/authMiddleware");
-const onboardingService = require("../services/onboardingService");
+const { authenticate } = require('../middleware/authMiddleware');
+const onboardingService = require('../services/onboardingService');
 
 router.use(express.json());
 
@@ -37,7 +37,7 @@ router.use(express.json());
  *       201:
  *         description: Onboarding completed successfully.
  */
-router.post("/", authenticate, async (req, res, next) => {
+router.post('/', authenticate, async (req, res, next) => {
   try {
     const userId = req.userId;
     const onboardingData = req.body;
@@ -62,15 +62,15 @@ router.post("/", authenticate, async (req, res, next) => {
       !targetWeight
     ) {
       return res.status(400).json({
-        error: "Missing one or more required onboarding fields.",
+        error: 'Missing one or more required onboarding fields.',
         details:
-          "Ensure sex, primaryGoal, currentWeight, height, birthDate, activityLevel, and targetWeight are provided.",
+          'Ensure sex, primaryGoal, currentWeight, height, birthDate, activityLevel, and targetWeight are provided.',
       });
     }
 
     await onboardingService.processOnboardingData(userId, onboardingData);
 
-    res.status(201).json({ message: "Onboarding completed successfully." });
+    res.status(201).json({ message: 'Onboarding completed successfully.' });
   } catch (error) {
     next(error);
   }
@@ -97,7 +97,7 @@ router.post("/", authenticate, async (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/OnboardingStatus'
  */
-router.get("/status", authenticate, async (req, res, next) => {
+router.get('/status', authenticate, async (req, res, next) => {
   try {
     const userId = req.userId;
 
@@ -121,14 +121,14 @@ router.get("/status", authenticate, async (req, res, next) => {
  *       200:
  *         description: Onboarding status reset successfully.
  */
-router.post("/reset", authenticate, async (req, res) => {
+router.post('/reset', authenticate, async (req, res) => {
   try {
     const userId = req.userId;
     await onboardingService.resetOnboardingStatus(userId);
-    res.status(200).json({ message: "Onboarding status reset successfully." });
+    res.status(200).json({ message: 'Onboarding status reset successfully.' });
   } catch (error) {
-    console.error("Error resetting onboarding status:", error);
-    res.status(500).json({ error: "Failed to reset onboarding status." });
+    console.error('Error resetting onboarding status:', error);
+    res.status(500).json({ error: 'Failed to reset onboarding status.' });
   }
 });
 

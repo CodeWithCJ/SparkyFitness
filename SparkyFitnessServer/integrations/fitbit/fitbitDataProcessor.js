@@ -1,11 +1,11 @@
 // SparkyFitnessServer/integrations/fitbit/fitbitDataProcessor.js
 
-const measurementRepository = require("../../models/measurementRepository");
-const exerciseEntryRepository = require("../../models/exerciseEntry");
-const exerciseRepository = require("../../models/exercise");
-const activityDetailsRepository = require("../../models/activityDetailsRepository");
-const sleepRepository = require("../../models/sleepRepository");
-const { log } = require("../../config/logging");
+const measurementRepository = require('../../models/measurementRepository');
+const exerciseEntryRepository = require('../../models/exerciseEntry');
+const exerciseRepository = require('../../models/exercise');
+const activityDetailsRepository = require('../../models/activityDetailsRepository');
+const sleepRepository = require('../../models/sleepRepository');
+const { log } = require('../../config/logging');
 
 // Conversion factors for en-US to Metric
 const LBS_TO_KG = 0.453592;
@@ -23,23 +23,23 @@ const FAHRENHEIT_TO_CELSIUS_FACTOR = 5 / 9;
 function parseFitbitTime(localTimeStr, offsetMs = 0) {
   if (!localTimeStr) return null;
   // If it already has an offset or 'Z', return as is
-  if (localTimeStr.includes("Z") || /[+-]\d{2}:?\d{2}$/.test(localTimeStr)) {
+  if (localTimeStr.includes('Z') || /[+-]\d{2}:?\d{2}$/.test(localTimeStr)) {
     return new Date(localTimeStr).toISOString();
   }
 
   // Append the offset to the string if it's a simple ISO-like string.
-  const sign = offsetMs >= 0 ? "+" : "-";
+  const sign = offsetMs >= 0 ? '+' : '-';
   const absOffset = Math.abs(offsetMs);
   const hours = Math.floor(absOffset / 3600000)
     .toString()
-    .padStart(2, "0");
+    .padStart(2, '0');
   const minutes = Math.floor((absOffset % 3600000) / 60000)
     .toString()
-    .padStart(2, "0");
+    .padStart(2, '0');
   const offsetStr = `${sign}${hours}:${minutes}`;
 
   // Fitbit format is sometimes "2023-10-27 10:00:00" or "2023-10-27T10:00:00"
-  const normalizedStr = localTimeStr.replace(" ", "T");
+  const normalizedStr = localTimeStr.replace(' ', 'T');
   return new Date(`${normalizedStr}${offsetStr}`).toISOString();
 }
 
@@ -50,24 +50,24 @@ async function processFitbitProfile(
   userId,
   createdByUserId,
   data,
-  date = null,
+  date = null
 ) {
   if (!data || !data.user) return;
-  let height = data.user.height;
+  const height = data.user.height;
   const heightUnit = data.user.heightUnit;
 
   // Fitbit Profile API height is typically returned in Centimeters by default.
   // We will treat it as CM to avoid double-conversion issues.
-  const syncDate = date || new Date().toISOString().split("T")[0];
+  const syncDate = date || new Date().toISOString().split('T')[0];
   await measurementRepository.upsertCheckInMeasurements(
     userId,
     createdByUserId,
     syncDate,
-    { height },
+    { height }
   );
   log(
-    "info",
-    `Upserted Fitbit height for user ${userId}: ${height} cm on ${syncDate}.`,
+    'info',
+    `Upserted Fitbit height for user ${userId}: ${height} cm on ${syncDate}.`
   );
 }
 
@@ -77,30 +77,30 @@ async function processFitbitProfile(
 async function processFitbitHeartRate(userId, createdByUserId, data) {
   if (
     !data ||
-    !data["activities-heart"] ||
-    data["activities-heart"].length === 0
+    !data['activities-heart'] ||
+    data['activities-heart'].length === 0
   ) {
-    log("info", `No Fitbit heart rate data to process for user ${userId}.`);
+    log('info', `No Fitbit heart rate data to process for user ${userId}.`);
     return;
   }
 
-  for (const entry of data["activities-heart"]) {
+  for (const entry of data['activities-heart']) {
     const entryDate = entry.dateTime;
     const restingHeartRate = entry.value.restingHeartRate;
 
     if (restingHeartRate) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
-        categoryName: "Resting Heart Rate",
+        categoryName: 'Resting Heart Rate',
         value: restingHeartRate,
-        unit: "bpm",
+        unit: 'bpm',
         entryDate: entryDate,
         entryHour: 0,
         entryTimestamp: new Date(entryDate).toISOString(),
-        frequency: "Daily",
+        frequency: 'Daily',
       });
       log(
-        "info",
-        `Upserted Fitbit resting heart rate for user ${userId} on ${entryDate}.`,
+        'info',
+        `Upserted Fitbit resting heart rate for user ${userId} on ${entryDate}.`
       );
     }
   }
@@ -112,14 +112,14 @@ async function processFitbitHeartRate(userId, createdByUserId, data) {
 async function processFitbitSteps(userId, createdByUserId, data) {
   if (
     !data ||
-    !data["activities-steps"] ||
-    data["activities-steps"].length === 0
+    !data['activities-steps'] ||
+    data['activities-steps'].length === 0
   ) {
-    log("info", `No Fitbit steps data to process for user ${userId}.`);
+    log('info', `No Fitbit steps data to process for user ${userId}.`);
     return;
   }
 
-  for (const entry of data["activities-steps"]) {
+  for (const entry of data['activities-steps']) {
     const entryDate = entry.dateTime;
     const steps = parseInt(entry.value, 10);
 
@@ -128,9 +128,9 @@ async function processFitbitSteps(userId, createdByUserId, data) {
         userId,
         createdByUserId,
         steps,
-        entryDate,
+        entryDate
       );
-      log("info", `Upserted Fitbit steps for user ${userId} on ${entryDate}.`);
+      log('info', `Upserted Fitbit steps for user ${userId} on ${entryDate}.`);
     }
   }
 }
@@ -142,10 +142,10 @@ async function processFitbitWeight(
   userId,
   createdByUserId,
   data,
-  weightUnit = "METRIC",
+  weightUnit = 'METRIC'
 ) {
   if (!data || !data.weight || data.weight.length === 0) {
-    log("info", `No Fitbit weight data to process for user ${userId}.`);
+    log('info', `No Fitbit weight data to process for user ${userId}.`);
     return;
   }
 
@@ -154,7 +154,7 @@ async function processFitbitWeight(
     let weight = entry.weight;
 
     // weightUnit can be 'en_US' (pounds), 'METRIC' (kilograms), or 'UK' (stone).
-    if (weightUnit === "en_US") {
+    if (weightUnit === 'en_US') {
       weight = parseFloat((weight * LBS_TO_KG).toFixed(2));
     }
 
@@ -162,11 +162,11 @@ async function processFitbitWeight(
       userId,
       createdByUserId,
       entryDate,
-      { weight },
+      { weight }
     );
     log(
-      "info",
-      `Upserted Fitbit weight for user ${userId} on ${entryDate}: ${weight} kg.`,
+      'info',
+      `Upserted Fitbit weight for user ${userId} on ${entryDate}: ${weight} kg.`
     );
   }
 }
@@ -184,11 +184,11 @@ async function processFitbitBodyFat(userId, createdByUserId, data) {
         userId,
         createdByUserId,
         entryDate,
-        { body_fat_percentage: fat },
+        { body_fat_percentage: fat }
       );
       log(
-        "info",
-        `Upserted Fitbit body fat for user ${userId} on ${entryDate}: ${fat}%.`,
+        'info',
+        `Upserted Fitbit body fat for user ${userId} on ${entryDate}: ${fat}%.`
       );
     }
   }
@@ -207,15 +207,15 @@ async function processFitbitSpO2(userId, createdByUserId, data) {
 
     if (spo2) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
-        categoryName: "SpO2",
+        categoryName: 'SpO2',
         value: spo2,
-        unit: "%",
+        unit: '%',
         entryDate: entryDate,
         entryHour: 0,
         entryTimestamp: new Date(entryDate).toISOString(),
-        frequency: "Daily",
+        frequency: 'Daily',
       });
-      log("info", `Upserted Fitbit SpO2 for user ${userId} on ${entryDate}.`);
+      log('info', `Upserted Fitbit SpO2 for user ${userId} on ${entryDate}.`);
     }
   }
 }
@@ -227,10 +227,10 @@ async function processFitbitTemperature(
   userId,
   createdByUserId,
   data,
-  temperatureUnit = "METRIC",
+  temperatureUnit = 'METRIC'
 ) {
   if (!data || !data.tempSkin || data.tempSkin.length === 0) {
-    log("info", `No Fitbit temperature data to process for user ${userId}.`);
+    log('info', `No Fitbit temperature data to process for user ${userId}.`);
     return;
   }
 
@@ -241,23 +241,23 @@ async function processFitbitTemperature(
     if (tempVariation !== undefined) {
       // If unit is en_US, convert variation from Fahrenheit to Celsius scale.
       // Note: For relative temperature changes, we only multiply by 5/9, don't subtract 32!
-      if (temperatureUnit === "en_US") {
+      if (temperatureUnit === 'en_US') {
         tempVariation = parseFloat(
-          (tempVariation * FAHRENHEIT_TO_CELSIUS_FACTOR).toFixed(2),
+          (tempVariation * FAHRENHEIT_TO_CELSIUS_FACTOR).toFixed(2)
         );
       }
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
-        categoryName: "Skin Temperature Variation",
+        categoryName: 'Skin Temperature Variation',
         value: tempVariation,
-        unit: "C",
+        unit: 'C',
         entryDate: entryDate,
         entryHour: 0,
         entryTimestamp: new Date(entryDate).toISOString(),
-        frequency: "Daily",
+        frequency: 'Daily',
       });
       log(
-        "info",
-        `Upserted Fitbit skin temperature variation for user ${userId} on ${entryDate}: ${tempVariation} C.`,
+        'info',
+        `Upserted Fitbit skin temperature variation for user ${userId} on ${entryDate}: ${tempVariation} C.`
       );
     }
   }
@@ -279,15 +279,15 @@ async function processFitbitHRV(userId, createdByUserId, data) {
     const dailyRmssd = entry.value.dailyRmssd;
     if (dailyRmssd) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
-        categoryName: "HRV",
+        categoryName: 'HRV',
         value: dailyRmssd,
-        unit: "ms",
+        unit: 'ms',
         entryDate: entryDate,
         entryHour: 0,
         entryTimestamp: new Date(entryDate).toISOString(),
-        frequency: "Daily",
+        frequency: 'Daily',
       });
-      log("info", `Upserted Fitbit HRV for user ${userId} on ${entryDate}.`);
+      log('info', `Upserted Fitbit HRV for user ${userId} on ${entryDate}.`);
     }
   }
 }
@@ -311,17 +311,17 @@ async function processFitbitRespiratoryRate(userId, createdByUserId, data) {
       entry.value?.fullSleepSummary?.breathingRate;
     if (br) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
-        categoryName: "Respiratory Rate",
+        categoryName: 'Respiratory Rate',
         value: br,
-        unit: "brpm",
+        unit: 'brpm',
         entryDate: entryDate,
         entryHour: 0,
         entryTimestamp: new Date(entryDate).toISOString(),
-        frequency: "Daily",
+        frequency: 'Daily',
       });
       log(
-        "info",
-        `Upserted Fitbit Respiratory Rate for user ${userId} on ${entryDate}.`,
+        'info',
+        `Upserted Fitbit Respiratory Rate for user ${userId} on ${entryDate}.`
       );
     }
   }
@@ -334,7 +334,7 @@ async function processFitbitActiveZoneMinutes(userId, createdByUserId, data) {
   if (!data) return;
 
   // Range responses return data in "activities-active-zone-minutes" array
-  const entries = data["activities-active-zone-minutes"] || [];
+  const entries = data['activities-active-zone-minutes'] || [];
   if (entries.length === 0) return;
 
   for (const entry of entries) {
@@ -343,17 +343,17 @@ async function processFitbitActiveZoneMinutes(userId, createdByUserId, data) {
     const azm = entry.value.activeZoneMinutes;
     if (azm) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
-        categoryName: "Active Zone Minutes",
+        categoryName: 'Active Zone Minutes',
         value: azm,
-        unit: "min",
+        unit: 'min',
         entryDate: entryDate,
         entryHour: 0,
         entryTimestamp: new Date(entryDate).toISOString(),
-        frequency: "Daily",
+        frequency: 'Daily',
       });
       log(
-        "info",
-        `Upserted Fitbit Active Zone Minutes for user ${userId} on ${entryDate}.`,
+        'info',
+        `Upserted Fitbit Active Zone Minutes for user ${userId} on ${entryDate}.`
       );
     }
   }
@@ -366,7 +366,7 @@ async function processFitbitCardioFitness(userId, createdByUserId, data) {
   if (!data) return;
 
   // Range responses return data in "cardioFitnessScore" array
-  const entries = data["cardioFitnessScore"] || [];
+  const entries = data['cardioFitnessScore'] || [];
   if (entries.length === 0) return;
 
   for (const entry of entries) {
@@ -375,13 +375,13 @@ async function processFitbitCardioFitness(userId, createdByUserId, data) {
     const score = entry.value.vo2Max;
     if (score) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
-        categoryName: "VO2 Max",
+        categoryName: 'VO2 Max',
         value: score,
-        unit: "ml/kg/min",
+        unit: 'ml/kg/min',
         entryDate: entryDate,
         entryHour: 0,
         entryTimestamp: new Date(entryDate).toISOString(),
-        frequency: "Daily",
+        frequency: 'Daily',
       });
     }
   }
@@ -394,7 +394,7 @@ async function processFitbitCoreTemperature(
   userId,
   createdByUserId,
   data,
-  temperatureUnit = "METRIC",
+  temperatureUnit = 'METRIC'
 ) {
   if (!data || !data.tempCore || data.tempCore.length === 0) return;
   for (const entry of data.tempCore) {
@@ -402,22 +402,22 @@ async function processFitbitCoreTemperature(
     let temp = entry.value;
 
     if (temp !== undefined) {
-      if (temperatureUnit === "en_US") {
+      if (temperatureUnit === 'en_US') {
         temp = parseFloat(
           (
             (temp - FAHRENHEIT_TO_CELSIUS_OFFSET) *
             FAHRENHEIT_TO_CELSIUS_FACTOR
-          ).toFixed(2),
+          ).toFixed(2)
         );
       }
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
-        categoryName: "Core Temperature",
+        categoryName: 'Core Temperature',
         value: temp,
-        unit: "C",
+        unit: 'C',
         entryDate: entryDate,
         entryHour: 0,
         entryTimestamp: new Date(entryDate).toISOString(),
-        frequency: "Daily",
+        frequency: 'Daily',
       });
     }
   }
@@ -437,14 +437,14 @@ async function processFitbitActivityMinutes(userId, createdByUserId, data) {
       if (!isNaN(value)) {
         await upsertCustomMeasurementLogic(userId, createdByUserId, {
           categoryName: metric
-            .replace(/([A-Z])/g, " $1")
+            .replace(/([A-Z])/g, ' $1')
             .replace(/^./, (str) => str.toUpperCase()),
           value: value,
-          unit: "minutes",
+          unit: 'minutes',
           entryDate: entryDate,
           entryHour: 0,
           entryTimestamp: new Date(entryDate).toISOString(),
-          frequency: "Daily",
+          frequency: 'Daily',
         });
       }
     }
@@ -458,7 +458,7 @@ async function processFitbitSleep(
   userId,
   createdByUserId,
   data,
-  timezoneOffset = 0,
+  timezoneOffset = 0
 ) {
   if (!data || !data.sleep || data.sleep.length === 0) return;
   for (const entry of data.sleep) {
@@ -470,7 +470,7 @@ async function processFitbitSleep(
       // Fitbit's minutesAsleep is often the most accurate representation of "Time Asleep"
       time_asleep_in_seconds: entry.minutesAsleep * 60,
       sleep_score: entry.efficiency, // Fitbit's efficiency (0-100) as a proxy
-      source: "Fitbit",
+      source: 'Fitbit',
       deep_sleep_seconds: entry.levels.summary?.deep?.minutes * 60 || 0,
       light_sleep_seconds:
         (entry.levels.summary?.light?.minutes ||
@@ -488,7 +488,7 @@ async function processFitbitSleep(
     const result = await sleepRepository.upsertSleepEntry(
       userId,
       createdByUserId,
-      sleepEntryData,
+      sleepEntryData
     );
     if (result && result.id && entry.levels) {
       // First, delete existing sleep stages for this entry to prevent duplication
@@ -502,9 +502,9 @@ async function processFitbitSleep(
         const endTime = new Date(startTime.getTime() + stage.seconds * 1000);
 
         let stageType = stage.level;
-        if (stageType === "wake" || stageType === "restless")
-          stageType = "awake";
-        if (stageType === "asleep") stageType = "light";
+        if (stageType === 'wake' || stageType === 'restless')
+          stageType = 'awake';
+        if (stageType === 'asleep') stageType = 'light';
 
         await sleepRepository.upsertSleepStageEvent(userId, result.id, {
           stage_type: stageType,
@@ -524,12 +524,12 @@ async function processFitbitWater(
   userId,
   createdByUserId,
   data,
-  waterUnit = "METRIC",
+  waterUnit = 'METRIC'
 ) {
   if (!data) return;
 
   // Range responses return data in "foods-log-water" array
-  const entries = data["foods-log-water"] || [];
+  const entries = data['foods-log-water'] || [];
 
   // Fallback to single day summary if range array is empty but summary exists
   if (
@@ -540,7 +540,7 @@ async function processFitbitWater(
     const entryDate =
       data.water && data.water.length > 0
         ? data.water[0].date
-        : new Date().toISOString().split("T")[0];
+        : new Date().toISOString().split('T')[0];
 
     entries.push({
       dateTime: entryDate,
@@ -553,7 +553,7 @@ async function processFitbitWater(
     const entryDate = entry.dateTime;
 
     // waterUnit: 'en_US' (fluid ounces), 'METRIC' (milliliters)
-    if (waterUnit === "en_US") {
+    if (waterUnit === 'en_US') {
       water = Math.round(water * 29.5735); // fl oz to ml
     }
 
@@ -562,11 +562,11 @@ async function processFitbitWater(
       createdByUserId,
       Math.round(water),
       entryDate,
-      'fitbit',
+      'fitbit'
     );
     log(
-      "info",
-      `Upserted Fitbit water for user ${userId} on ${entryDate}: ${water} ml.`,
+      'info',
+      `Upserted Fitbit water for user ${userId} on ${entryDate}: ${water} ml.`
     );
   }
 }
@@ -579,8 +579,8 @@ async function processFitbitActivities(
   createdByUserId,
   data,
   timezoneOffset = 0,
-  distanceUnit = "METRIC",
-  startDate = null,
+  distanceUnit = 'METRIC',
+  startDate = null
 ) {
   if (!data || !data.activities || data.activities.length === 0) return;
 
@@ -592,8 +592,8 @@ async function processFitbitActivities(
     // Safety filter to prevent processing very old data
     if (startDate && entryDate < startDate) {
       log(
-        "debug",
-        `[fitbitDataProcessor] Skipping activity ${activity.activityName} from ${entryDate} (before sync range ${startDate})`,
+        'debug',
+        `[fitbitDataProcessor] Skipping activity ${activity.activityName} from ${entryDate} (before sync range ${startDate})`
       );
       continue;
     }
@@ -604,18 +604,18 @@ async function processFitbitActivities(
       stepsPerDay[entryDate] = (stepsPerDay[entryDate] || 0) + activitySteps;
     }
 
-    const exerciseName = activity.activityName || "Fitbit Activity";
+    const exerciseName = activity.activityName || 'Fitbit Activity';
 
     let exercise = await exerciseRepository.findExerciseByNameAndUserId(
       exerciseName,
-      userId,
+      userId
     );
     if (!exercise) {
       exercise = await exerciseRepository.createExercise({
         user_id: userId,
         name: exerciseName,
-        category: activity.activityParentName || "Other",
-        source: "Fitbit",
+        category: activity.activityParentName || 'Other',
+        source: 'Fitbit',
         is_custom: true,
         shared_with_public: false,
       });
@@ -623,7 +623,7 @@ async function processFitbitActivities(
 
     let distanceKm = activity.distance;
     // SparkyFitness expects KM.
-    if (distanceKm && distanceUnit === "en_US") {
+    if (distanceKm && distanceUnit === 'en_US') {
       distanceKm = parseFloat((distanceKm * MILES_TO_KM).toFixed(2));
     }
 
@@ -634,15 +634,15 @@ async function processFitbitActivities(
       calories_burned: activity.calories || 0,
       distance: distanceKm,
       avg_heart_rate: activity.averageHeartRate || null,
-      notes: `Synced from Fitbit. Steps: ${activitySteps}${activity.duration ? `. Original duration: ${activity.duration}ms` : ""}`,
-      entry_source: "Fitbit",
+      notes: `Synced from Fitbit. Steps: ${activitySteps}${activity.duration ? `. Original duration: ${activity.duration}ms` : ''}`,
+      entry_source: 'Fitbit',
       source_id: activity.logId ? activity.logId.toString() : null,
       sets: [
         {
           set_number: 1,
-          set_type: "Working Set",
+          set_type: 'Working Set',
           duration: Math.round(activity.duration / 60000),
-          notes: "Automatically created from Fitbit sync summary",
+          notes: 'Automatically created from Fitbit sync summary',
         },
       ],
     };
@@ -651,14 +651,14 @@ async function processFitbitActivities(
       userId,
       entryData,
       createdByUserId,
-      "Fitbit",
+      'Fitbit'
     );
 
     if (newEntry && newEntry.id) {
       await activityDetailsRepository.createActivityDetail(userId, {
         exercise_entry_id: newEntry.id,
-        provider_name: "Fitbit",
-        detail_type: "full_activity_data",
+        provider_name: 'Fitbit',
+        detail_type: 'full_activity_data',
         detail_data: activity,
         created_by_user_id: createdByUserId,
       });
@@ -677,7 +677,7 @@ async function processFitbitActivities(
       await measurementRepository.getCheckInMeasurementsByDateRange(
         userId,
         startDateRange,
-        endDateRange,
+        endDateRange
       );
 
     // Map existing measurements by date for O(1) lookups
@@ -687,9 +687,9 @@ async function processFitbitActivities(
         let dateKey = m.entry_date;
         // Handle different possible types for entry_date (Date object or string)
         if (dateKey instanceof Date) {
-          dateKey = dateKey.toISOString().split("T")[0];
-        } else if (typeof dateKey === "string" && dateKey.includes("T")) {
-          dateKey = dateKey.split("T")[0];
+          dateKey = dateKey.toISOString().split('T')[0];
+        } else if (typeof dateKey === 'string' && dateKey.includes('T')) {
+          dateKey = dateKey.split('T')[0];
         }
         measurementsByDate[dateKey] = m;
       });
@@ -701,28 +701,28 @@ async function processFitbitActivities(
         existing && existing.steps ? parseInt(existing.steps, 10) : 0;
 
       log(
-        "debug",
-        `[fitbitDataProcessor] Date: ${date}, Activity Steps: ${totalActivitySteps}, Current Steps: ${currentSteps}`,
+        'debug',
+        `[fitbitDataProcessor] Date: ${date}, Activity Steps: ${totalActivitySteps}, Current Steps: ${currentSteps}`
       );
 
       // Only upsert if our activity total is higher
       if (totalActivitySteps > currentSteps) {
         log(
-          "info",
-          `[fitbitDataProcessor] Fallback: Activity log sum (${totalActivitySteps}) > recorded daily total (${currentSteps}) for ${date}. Prioritizing granular activity data.`,
+          'info',
+          `[fitbitDataProcessor] Fallback: Activity log sum (${totalActivitySteps}) > recorded daily total (${currentSteps}) for ${date}. Prioritizing granular activity data.`
         );
         await measurementRepository.upsertStepData(
           userId,
           createdByUserId,
           totalActivitySteps,
-          date,
+          date
         );
       }
     }
   } catch (err) {
     log(
-      "error",
-      `[fitbitDataProcessor] Error in optimized step fallback: ${err.message}`,
+      'error',
+      `[fitbitDataProcessor] Error in optimized step fallback: ${err.message}`
     );
   }
 }
@@ -733,7 +733,7 @@ async function processFitbitActivities(
 async function upsertCustomMeasurementLogic(
   userId,
   createdByUserId,
-  customMeasurement,
+  customMeasurement
 ) {
   const {
     categoryName,
@@ -745,8 +745,8 @@ async function upsertCustomMeasurementLogic(
     frequency,
   } = customMeasurement;
 
-  let categories = await measurementRepository.getCustomCategories(userId);
-  let category = categories.find((cat) => cat.name === categoryName);
+  const categories = await measurementRepository.getCustomCategories(userId);
+  const category = categories.find((cat) => cat.name === categoryName);
 
   let categoryId;
   if (!category) {
@@ -755,8 +755,8 @@ async function upsertCustomMeasurementLogic(
       name: categoryName,
       display_name: categoryName,
       frequency: frequency,
-      measurement_type: "health",
-      data_type: typeof value === "number" ? "numeric" : "text",
+      measurement_type: 'health',
+      data_type: typeof value === 'number' ? 'numeric' : 'text',
       created_by_user_id: createdByUserId,
     };
     const newCategory =
@@ -776,7 +776,7 @@ async function upsertCustomMeasurementLogic(
     entryTimestamp,
     `Synced from Fitbit. Unit: ${unit}`,
     frequency,
-    "Fitbit",
+    'Fitbit'
   );
 }
 

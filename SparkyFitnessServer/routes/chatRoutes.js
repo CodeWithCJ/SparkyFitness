@@ -55,40 +55,63 @@ router.post('/', authenticate, async (req, res, next) => {
       // Check if user AI config is allowed
       const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
       if (!isAllowed) {
-        return res.status(403).json({ 
-          error: 'Per-user AI service configuration is disabled. Please use the global AI service settings configured by your administrator.' 
+        return res.status(403).json({
+          error:
+            'Per-user AI service configuration is disabled. Please use the global AI service settings configured by your administrator.',
         });
       }
-      
+
       // Only allow user-specific settings (not public)
       if (service_data && service_data.is_public) {
-        return res.status(403).json({ 
-          error: 'Only administrators can create or modify global AI service settings.' 
+        return res.status(403).json({
+          error:
+            'Only administrators can create or modify global AI service settings.',
         });
       }
-      
-      const result = await chatService.handleAiServiceSettings(action, service_data, req.userId);
+
+      const result = await chatService.handleAiServiceSettings(
+        action,
+        service_data,
+        req.userId
+      );
       return res.status(200).json(result);
     }
 
-    const { content } = await chatService.processChatMessage(messages, service_config_id, req.userId);
+    const { content } = await chatService.processChatMessage(
+      messages,
+      service_config_id,
+      req.userId
+    );
     return res.status(200).json({ content });
   } catch (error) {
-    if (error.message.startsWith('Invalid messages format') || error.message.startsWith('No valid content')) {
+    if (
+      error.message.startsWith('Invalid messages format') ||
+      error.message.startsWith('No valid content')
+    ) {
       return res.status(400).json({ error: error.message });
     }
     if (error.message.startsWith('AI service configuration ID is missing')) {
       return res.status(404).json({ error: error.message });
     }
-    if (error.message.startsWith('AI service setting not found') || error.message.startsWith('API key missing')) {
+    if (
+      error.message.startsWith('AI service setting not found') ||
+      error.message.startsWith('API key missing')
+    ) {
       return res.status(404).json({ error: error.message });
     }
-    if (error.message.startsWith('Image analysis is not supported') || error.message.startsWith('Unsupported service type')) {
+    if (
+      error.message.startsWith('Image analysis is not supported') ||
+      error.message.startsWith('Unsupported service type')
+    ) {
       return res.status(400).json({ error: error.message });
     }
     if (error.message.startsWith('AI service API call error')) {
-      const statusCodeMatch = error.message.match(/AI service API call error: (\d+) -/);
-      const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1], 10) : 500;
+      const statusCodeMatch = error.message.match(
+        /AI service API call error: (\d+) -/
+      );
+      const statusCode = statusCodeMatch
+        ? parseInt(statusCodeMatch[1], 10)
+        : 500;
       return res.status(statusCode).json({ error: error.message });
     }
     next(error);
@@ -136,15 +159,18 @@ router.post('/clear-old-history', authenticate, async (req, res, next) => {
  */
 router.get('/ai-service-settings', authenticate, async (req, res, next) => {
   try {
-    const settings = await chatService.getAiServiceSettings(req.userId, req.userId);
-    
+    const settings = await chatService.getAiServiceSettings(
+      req.userId,
+      req.userId
+    );
+
     // If user AI config is disabled, only return global settings
     const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
     if (!isAllowed) {
-      const publicOnly = settings.filter(s => s.is_public);
+      const publicOnly = settings.filter((s) => s.is_public);
       return res.status(200).json(publicOnly);
     }
-    
+
     res.status(200).json(settings);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -172,20 +198,29 @@ router.get('/ai-service-settings', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.get('/ai-service-settings/active', authenticate, async (req, res, next) => {
-  try {
-    const setting = await chatService.getActiveAiServiceSetting(req.userId, req.userId);
-    res.status(200).json(setting);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/ai-service-settings/active',
+  authenticate,
+  async (req, res, next) => {
+    try {
+      const setting = await chatService.getActiveAiServiceSetting(
+        req.userId,
+        req.userId
+      );
+      res.status(200).json(setting);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        error.message === 'No active AI service setting found for this user.'
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    if (error.message === 'No active AI service setting found for this user.') {
-      return res.status(404).json({ error: error.message });
-    }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -214,41 +249,49 @@ router.get('/ai-service-settings/active', authenticate, async (req, res, next) =
  *       500:
  *         description: Server error.
  */
-router.delete('/ai-service-settings/:id', authenticate, async (req, res, next) => {
-  const { id } = req.params;
-  if (!id) {
-    return res.status(400).json({ error: 'AI Service ID is required.' });
+router.delete(
+  '/ai-service-settings/:id',
+  authenticate,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: 'AI Service ID is required.' });
+    }
+    try {
+      // Check if user AI config is allowed
+      const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
+      if (!isAllowed) {
+        return res.status(403).json({
+          error:
+            'Per-user AI service configuration is disabled. Please use the global AI service settings configured by your administrator.',
+        });
+      }
+
+      // Verify the setting is user-specific (not global) before deletion
+      const settings = await chatService.getAiServiceSettings(
+        req.userId,
+        req.userId
+      );
+      const setting = settings.find((s) => s.id === id);
+      if (setting && setting.is_public) {
+        return res.status(403).json({
+          error: 'Only administrators can delete global AI service settings.',
+        });
+      }
+
+      const result = await chatService.deleteAiServiceSetting(req.userId, id);
+      res.status(200).json(result);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (error.message === 'AI service setting not found.') {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-  try {
-    // Check if user AI config is allowed
-    const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
-    if (!isAllowed) {
-      return res.status(403).json({ 
-        error: 'Per-user AI service configuration is disabled. Please use the global AI service settings configured by your administrator.' 
-      });
-    }
-    
-    // Verify the setting is user-specific (not global) before deletion
-    const settings = await chatService.getAiServiceSettings(req.userId, req.userId);
-    const setting = settings.find(s => s.id === id);
-    if (setting && setting.is_public) {
-      return res.status(403).json({ 
-        error: 'Only administrators can delete global AI service settings.' 
-      });
-    }
-    
-    const result = await chatService.deleteAiServiceSetting(req.userId, id);
-    res.status(200).json(result);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
-    }
-    if (error.message === 'AI service setting not found.') {
-      return res.status(404).json({ error: error.message });
-    }
-    next(error);
-  }
-});
+);
 
 /**
  * @swagger
@@ -268,7 +311,10 @@ router.delete('/ai-service-settings/:id', authenticate, async (req, res, next) =
  */
 router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
   try {
-    const history = await chatService.getSparkyChatHistory(req.userId, req.userId);
+    const history = await chatService.getSparkyChatHistory(
+      req.userId,
+      req.userId
+    );
     res.status(200).json(history);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -305,24 +351,30 @@ router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.get('/sparky-chat-history/entry/:id', authenticate, async (req, res, next) => {
-  const { id } = req.params;
-  if (!id) {
-    return res.status(400).json({ error: 'Chat History Entry ID is required.' });
-  }
-  try {
-    const entry = await chatService.getSparkyChatHistoryEntry(req.userId, id);
-    res.status(200).json(entry);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/sparky-chat-history/entry/:id',
+  authenticate,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id) {
+      return res
+        .status(400)
+        .json({ error: 'Chat History Entry ID is required.' });
     }
-    if (error.message === 'Chat history entry not found.') {
-      return res.status(404).json({ error: error.message });
+    try {
+      const entry = await chatService.getSparkyChatHistoryEntry(req.userId, id);
+      res.status(200).json(entry);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (error.message === 'Chat history entry not found.') {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -361,16 +413,25 @@ router.put('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
   if (!id) {
-    return res.status(400).json({ error: 'Chat History Entry ID is required.' });
+    return res
+      .status(400)
+      .json({ error: 'Chat History Entry ID is required.' });
   }
   try {
-    const updatedEntry = await chatService.updateSparkyChatHistoryEntry(req.userId, id, updateData);
+    const updatedEntry = await chatService.updateSparkyChatHistoryEntry(
+      req.userId,
+      id,
+      updateData
+    );
     res.status(200).json(updatedEntry);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
-    if (error.message === 'Chat history entry not found or not authorized to update.') {
+    if (
+      error.message ===
+      'Chat history entry not found or not authorized to update.'
+    ) {
       return res.status(404).json({ error: error.message });
     }
     next(error);
@@ -404,24 +465,36 @@ router.put('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.delete('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
-  const { id } = req.params;
-  if (!id) {
-    return res.status(400).json({ error: 'Chat History Entry ID is required.' });
-  }
-  try {
-    const result = await chatService.deleteSparkyChatHistoryEntry(req.userId, id);
-    res.status(200).json(result);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
+router.delete(
+  '/sparky-chat-history/:id',
+  authenticate,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id) {
+      return res
+        .status(400)
+        .json({ error: 'Chat History Entry ID is required.' });
     }
-    if (error.message === 'Chat history entry not found or not authorized to delete.') {
-      return res.status(404).json({ error: error.message });
+    try {
+      const result = await chatService.deleteSparkyChatHistoryEntry(
+        req.userId,
+        id
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        error.message ===
+        'Chat history entry not found or not authorized to delete.'
+      ) {
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 
 /**
  * @swagger
@@ -485,10 +558,17 @@ router.post('/clear-all-history', authenticate, async (req, res, next) => {
 router.post('/save-history', authenticate, async (req, res, next) => {
   const { content, messageType, metadata } = req.body;
   if (!content || !messageType) {
-    return res.status(400).json({ error: 'Content and message type are required.' });
+    return res
+      .status(400)
+      .json({ error: 'Content and message type are required.' });
   }
   try {
-    const result = await chatService.saveSparkyChatHistory(req.userId, { user_id: req.userId, content, messageType, metadata });
+    const result = await chatService.saveSparkyChatHistory(req.userId, {
+      user_id: req.userId,
+      content,
+      messageType,
+      metadata,
+    });
     res.status(201).json(result);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -533,21 +613,35 @@ router.post('/save-history', authenticate, async (req, res, next) => {
 router.post('/food-options', authenticate, async (req, res, next) => {
   const { foodName, unit, service_config_id } = req.body;
   if (!service_config_id) {
-    return res.status(400).json({ error: 'AI service configuration ID is required.' });
+    return res
+      .status(400)
+      .json({ error: 'AI service configuration ID is required.' });
   }
   try {
-    const { content } = await chatService.processFoodOptionsRequest(foodName, unit, req.userId, service_config_id);
+    const { content } = await chatService.processFoodOptionsRequest(
+      foodName,
+      unit,
+      req.userId,
+      service_config_id
+    );
     return res.status(200).json({ content });
   } catch (error) {
     if (error.message.startsWith('AI service configuration ID is missing')) {
       return res.status(400).json({ error: error.message });
     }
-    if (error.message.startsWith('AI service setting not found') || error.message.startsWith('API key missing')) {
+    if (
+      error.message.startsWith('AI service setting not found') ||
+      error.message.startsWith('API key missing')
+    ) {
       return res.status(404).json({ error: error.message });
     }
     if (error.message.startsWith('AI service API call error')) {
-      const statusCodeMatch = error.message.match(/AI service API call error: (\d+) -/);
-      const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1], 10) : 500;
+      const statusCodeMatch = error.message.match(
+        /AI service API call error: (\d+) -/
+      );
+      const statusCode = statusCodeMatch
+        ? parseInt(statusCodeMatch[1], 10)
+        : 500;
       return res.status(statusCode).json({ error: error.message });
     }
     next(error);

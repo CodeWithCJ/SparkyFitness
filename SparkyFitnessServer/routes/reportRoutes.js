@@ -34,19 +34,35 @@ router.get('/', authenticate, async (req, res, next) => {
   const targetUserId = userId || req.userId;
 
   if (!targetUserId || !startDate || !endDate) {
-    return res.status(400).json({ error: 'Target User ID (explicit or context), start date, and end date are required.' });
+    return res.status(400).json({
+      error:
+        'Target User ID (explicit or context), start date, and end date are required.',
+    });
   }
 
   // Permission check only if explicit userId is provided that is different from req.userId
   if (userId && userId !== req.userId) {
-    const hasPermission = await require('../utils/permissionUtils').canAccessUserData(userId, 'reports', req.authenticatedUserId || req.userId);
+    const hasPermission =
+      await require('../utils/permissionUtils').canAccessUserData(
+        userId,
+        'reports',
+        req.authenticatedUserId || req.userId
+      );
     if (!hasPermission) {
-      return res.status(403).json({ error: 'Forbidden: You do not have permission to view reports for this user.' });
+      return res.status(403).json({
+        error:
+          'Forbidden: You do not have permission to view reports for this user.',
+      });
     }
   }
 
   try {
-    const reportData = await reportService.getReportsData(req.userId, targetUserId, startDate, endDate);
+    const reportData = await reportService.getReportsData(
+      req.userId,
+      targetUserId,
+      startDate,
+      endDate
+    );
     res.status(200).json(reportData);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -86,19 +102,34 @@ router.get('/mini-nutrition-trends', authenticate, async (req, res, next) => {
   const targetUserId = userId || req.userId;
 
   if (!targetUserId || !startDate || !endDate) {
-    return res.status(400).json({ error: 'Target User ID, start date, and end date are required.' });
+    return res.status(400).json({
+      error: 'Target User ID, start date, and end date are required.',
+    });
   }
 
   // Permission check if explicit userId provided
   if (userId && userId !== req.userId) {
-    const hasPermission = await require('../utils/permissionUtils').canAccessUserData(userId, 'reports', req.authenticatedUserId || req.userId);
+    const hasPermission =
+      await require('../utils/permissionUtils').canAccessUserData(
+        userId,
+        'reports',
+        req.authenticatedUserId || req.userId
+      );
     if (!hasPermission) {
-      return res.status(403).json({ error: 'Forbidden: You do not have permission to view reports for this user.' });
+      return res.status(403).json({
+        error:
+          'Forbidden: You do not have permission to view reports for this user.',
+      });
     }
   }
 
   try {
-    const formattedResults = await reportService.getMiniNutritionTrends(req.userId, targetUserId, startDate, endDate);
+    const formattedResults = await reportService.getMiniNutritionTrends(
+      req.userId,
+      targetUserId,
+      startDate,
+      endDate
+    );
     res.status(200).json(formattedResults);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -133,32 +164,51 @@ router.get('/mini-nutrition-trends', authenticate, async (req, res, next) => {
  *       200:
  *         description: Nutrition trends with goals.
  */
-router.get('/nutrition-trends-with-goals', authenticate, async (req, res, next) => {
-  const { userId, startDate, endDate } = req.query;
-  const targetUserId = userId || req.userId;
+router.get(
+  '/nutrition-trends-with-goals',
+  authenticate,
+  async (req, res, next) => {
+    const { userId, startDate, endDate } = req.query;
+    const targetUserId = userId || req.userId;
 
-  if (!targetUserId || !startDate || !endDate) {
-    return res.status(400).json({ error: 'Target User ID, start date, and end date are required.' });
-  }
+    if (!targetUserId || !startDate || !endDate) {
+      return res.status(400).json({
+        error: 'Target User ID, start date, and end date are required.',
+      });
+    }
 
-  // Permission check if explicit userId provided
-  if (userId && userId !== req.userId) {
-    const hasPermission = await require('../utils/permissionUtils').canAccessUserData(userId, 'reports', req.authenticatedUserId || req.userId);
-    if (!hasPermission) {
-      return res.status(403).json({ error: 'Forbidden: You do not have permission to view reports for this user.' });
+    // Permission check if explicit userId provided
+    if (userId && userId !== req.userId) {
+      const hasPermission =
+        await require('../utils/permissionUtils').canAccessUserData(
+          userId,
+          'reports',
+          req.authenticatedUserId || req.userId
+        );
+      if (!hasPermission) {
+        return res.status(403).json({
+          error:
+            'Forbidden: You do not have permission to view reports for this user.',
+        });
+      }
+    }
+
+    try {
+      const formattedResults = await reportService.getNutritionTrendsWithGoals(
+        req.userId,
+        targetUserId,
+        startDate,
+        endDate
+      );
+      res.status(200).json(formattedResults);
+    } catch (error) {
+      if (error.message.startsWith('Forbidden')) {
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
     }
   }
-
-  try {
-    const formattedResults = await reportService.getNutritionTrendsWithGoals(req.userId, targetUserId, startDate, endDate);
-    res.status(200).json(formattedResults);
-  } catch (error) {
-    if (error.message.startsWith('Forbidden')) {
-      return res.status(403).json({ error: error.message });
-    }
-    next(error);
-  }
-});
+);
 
 /**
  * @swagger
@@ -199,19 +249,37 @@ router.get('/exercise-dashboard', authenticate, async (req, res, next) => {
   const targetUserId = userId || req.userId;
 
   if (!targetUserId || !startDate || !endDate) {
-    return res.status(400).json({ error: 'Target User ID, start date, and end date are required.' });
+    return res.status(400).json({
+      error: 'Target User ID, start date, and end date are required.',
+    });
   }
 
   // Permission check if explicit userId provided
   if (userId && userId !== req.userId) {
-    const hasPermission = await require('../utils/permissionUtils').canAccessUserData(userId, 'reports', req.authenticatedUserId || req.userId);
+    const hasPermission =
+      await require('../utils/permissionUtils').canAccessUserData(
+        userId,
+        'reports',
+        req.authenticatedUserId || req.userId
+      );
     if (!hasPermission) {
-      return res.status(403).json({ error: 'Forbidden: You do not have permission to view reports for this user.' });
+      return res.status(403).json({
+        error:
+          'Forbidden: You do not have permission to view reports for this user.',
+      });
     }
   }
 
   try {
-    const dashboardData = await reportService.getExerciseDashboardData(req.userId, targetUserId, startDate, endDate, equipment, muscle, exercise);
+    const dashboardData = await reportService.getExerciseDashboardData(
+      req.userId,
+      targetUserId,
+      startDate,
+      endDate,
+      equipment,
+      muscle,
+      exercise
+    );
     res.status(200).json(dashboardData);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {

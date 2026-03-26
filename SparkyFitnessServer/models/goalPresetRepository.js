@@ -1,10 +1,10 @@
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
 
 async function createGoalPreset(presetData) {
   const client = await getClient(presetData.user_id); // User-specific operation
   try {
-    log("debug", "createGoalPreset: Received presetData:", {
+    log('debug', 'createGoalPreset: Received presetData:', {
       protein: presetData.protein,
       carbs: presetData.carbs,
       fat: presetData.fat,
@@ -56,7 +56,7 @@ async function createGoalPreset(presetData) {
         presetData.dinner_percentage,
         presetData.snacks_percentage,
         presetData.custom_nutrients || {},
-      ],
+      ]
     );
     return result.rows[0];
   } finally {
@@ -68,8 +68,8 @@ async function getGoalPresetsByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT * FROM goal_presets WHERE user_id = $1 ORDER BY preset_name`,
-      [userId],
+      'SELECT * FROM goal_presets WHERE user_id = $1 ORDER BY preset_name',
+      [userId]
     );
     return result.rows;
   } finally {
@@ -81,8 +81,8 @@ async function getGoalPresetById(presetId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT * FROM goal_presets WHERE id = $1 AND user_id = $2`,
-      [presetId, userId],
+      'SELECT * FROM goal_presets WHERE id = $1 AND user_id = $2',
+      [presetId, userId]
     );
     return result.rows[0];
   } finally {
@@ -93,7 +93,7 @@ async function getGoalPresetById(presetId, userId) {
 async function updateGoalPreset(presetId, presetData) {
   const client = await getClient(presetData.user_id); // User-specific operation
   try {
-    log("debug", "updateGoalPreset: Received presetData:", {
+    log('debug', 'updateGoalPreset: Received presetData:', {
       protein: presetData.protein,
       carbs: presetData.carbs,
       fat: presetData.fat,
@@ -146,7 +146,7 @@ async function updateGoalPreset(presetId, presetData) {
         presetData.custom_nutrients || {},
         presetId,
         presetData.user_id,
-      ],
+      ]
     );
     return result.rows[0];
   } finally {
@@ -158,8 +158,8 @@ async function deleteGoalPreset(presetId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `DELETE FROM goal_presets WHERE id = $1 AND user_id = $2 RETURNING *`,
-      [presetId, userId],
+      'DELETE FROM goal_presets WHERE id = $1 AND user_id = $2 RETURNING *',
+      [presetId, userId]
     );
     return result.rows[0];
   } finally {

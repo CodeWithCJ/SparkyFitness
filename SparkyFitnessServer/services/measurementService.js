@@ -1,154 +1,154 @@
 //console.log('DEBUG: Loading measurementService.js');
-const { log } = require("../config/logging"); // Import the logger utility
-const measurementRepository = require("../models/measurementRepository");
+const { log } = require('../config/logging'); // Import the logger utility
+const measurementRepository = require('../models/measurementRepository');
 
 /**
  * Default units for health metric types when not provided by client (e.g. HealthConnect sync).
  * Ensures graphs and UI show a unit instead of "N/A". Aligned with mobile HealthMetrics and API usage.
  */
 const DEFAULT_UNITS_BY_HEALTH_TYPE = {
-  step: "steps",
-  steps: "steps",
-  heart_rate: "bpm",
-  HeartRate: "bpm",
-  "Active Calories": "kcal",
-  ActiveCaloriesBurned: "kcal",
-  total_calories: "kcal",
-  TotalCaloriesBurned: "kcal",
-  distance: "m",
-  Distance: "m",
-  floors_climbed: "count",
-  FloorsClimbed: "count",
-  weight: "kg",
-  Weight: "kg",
-  sleep_session: "min",
-  SleepSession: "min",
-  stress: "level",
-  Stress: "level",
-  blood_pressure: "mmHg",
-  BloodPressure: "mmHg",
-  basal_metabolic_rate: "kcal",
-  BasalMetabolicRate: "kcal",
-  blood_glucose: "mmol/L",
-  BloodGlucose: "mmol/L",
-  body_fat: "%",
-  BodyFat: "%",
-  body_temperature: "celsius",
-  BodyTemperature: "celsius",
-  resting_heart_rate: "bpm",
-  RestingHeartRate: "bpm",
-  respiratory_rate: "breaths/min",
-  RespiratoryRate: "breaths/min",
-  oxygen_saturation: "%",
-  OxygenSaturation: "%",
-  BloodOxygenSaturation: "%",
-  vo2_max: "ml/min/kg",
-  Vo2Max: "ml/min/kg",
-  height: "m",
-  Height: "m",
-  hydration: "L",
-  Hydration: "L",
-  lean_body_mass: "kg",
-  LeanBodyMass: "kg",
-  basal_body_temperature: "celsius",
-  BasalBodyTemperature: "celsius",
-  elevation_gained: "m",
-  ElevationGained: "m",
-  bone_mass: "kg",
-  BoneMass: "kg",
-  speed: "m/s",
-  Speed: "m/s",
-  power: "watts",
-  Power: "watts",
-  steps_cadence: "steps/min",
-  StepsCadence: "steps/min",
-  cycling_pedaling_cadence: "rpm",
-  CyclingPedalingCadence: "rpm",
-  blood_alcohol_content: "%",
-  BloodAlcoholContent: "%",
-  nutrition: "kcal",
-  Nutrition: "kcal",
+  step: 'steps',
+  steps: 'steps',
+  heart_rate: 'bpm',
+  HeartRate: 'bpm',
+  'Active Calories': 'kcal',
+  ActiveCaloriesBurned: 'kcal',
+  total_calories: 'kcal',
+  TotalCaloriesBurned: 'kcal',
+  distance: 'm',
+  Distance: 'm',
+  floors_climbed: 'count',
+  FloorsClimbed: 'count',
+  weight: 'kg',
+  Weight: 'kg',
+  sleep_session: 'min',
+  SleepSession: 'min',
+  stress: 'level',
+  Stress: 'level',
+  blood_pressure: 'mmHg',
+  BloodPressure: 'mmHg',
+  basal_metabolic_rate: 'kcal',
+  BasalMetabolicRate: 'kcal',
+  blood_glucose: 'mmol/L',
+  BloodGlucose: 'mmol/L',
+  body_fat: '%',
+  BodyFat: '%',
+  body_temperature: 'celsius',
+  BodyTemperature: 'celsius',
+  resting_heart_rate: 'bpm',
+  RestingHeartRate: 'bpm',
+  respiratory_rate: 'breaths/min',
+  RespiratoryRate: 'breaths/min',
+  oxygen_saturation: '%',
+  OxygenSaturation: '%',
+  BloodOxygenSaturation: '%',
+  vo2_max: 'ml/min/kg',
+  Vo2Max: 'ml/min/kg',
+  height: 'm',
+  Height: 'm',
+  hydration: 'L',
+  Hydration: 'L',
+  lean_body_mass: 'kg',
+  LeanBodyMass: 'kg',
+  basal_body_temperature: 'celsius',
+  BasalBodyTemperature: 'celsius',
+  elevation_gained: 'm',
+  ElevationGained: 'm',
+  bone_mass: 'kg',
+  BoneMass: 'kg',
+  speed: 'm/s',
+  Speed: 'm/s',
+  power: 'watts',
+  Power: 'watts',
+  steps_cadence: 'steps/min',
+  StepsCadence: 'steps/min',
+  cycling_pedaling_cadence: 'rpm',
+  CyclingPedalingCadence: 'rpm',
+  blood_alcohol_content: '%',
+  BloodAlcoholContent: '%',
+  nutrition: 'kcal',
+  Nutrition: 'kcal',
   // Aggregated min/max/avg types from mobile health data
   // Chunk 1: Heart rate + vitals
-  heart_rate_min: "bpm",
-  heart_rate_max: "bpm",
-  heart_rate_avg: "bpm",
-  blood_glucose_min: "mmol/L",
-  blood_glucose_max: "mmol/L",
-  blood_glucose_avg: "mmol/L",
-  blood_oxygen_saturation_min: "percent",
-  blood_oxygen_saturation_max: "percent",
-  blood_oxygen_saturation_avg: "percent",
-  respiratory_rate_min: "breaths/min",
-  respiratory_rate_max: "breaths/min",
-  respiratory_rate_avg: "breaths/min",
+  heart_rate_min: 'bpm',
+  heart_rate_max: 'bpm',
+  heart_rate_avg: 'bpm',
+  blood_glucose_min: 'mmol/L',
+  blood_glucose_max: 'mmol/L',
+  blood_glucose_avg: 'mmol/L',
+  blood_oxygen_saturation_min: 'percent',
+  blood_oxygen_saturation_max: 'percent',
+  blood_oxygen_saturation_avg: 'percent',
+  respiratory_rate_min: 'breaths/min',
+  respiratory_rate_max: 'breaths/min',
+  respiratory_rate_avg: 'breaths/min',
   // Chunk 2: Running metrics
-  running_speed_min: "m/s",
-  running_speed_max: "m/s",
-  running_speed_avg: "m/s",
-  running_power_min: "W",
-  running_power_max: "W",
-  running_power_avg: "W",
-  running_stride_length_min: "cm",
-  running_stride_length_max: "cm",
-  running_stride_length_avg: "cm",
-  running_ground_contact_min: "ms",
-  running_ground_contact_max: "ms",
-  running_ground_contact_avg: "ms",
-  running_vertical_oscillation_min: "cm",
-  running_vertical_oscillation_max: "cm",
-  running_vertical_oscillation_avg: "cm",
+  running_speed_min: 'm/s',
+  running_speed_max: 'm/s',
+  running_speed_avg: 'm/s',
+  running_power_min: 'W',
+  running_power_max: 'W',
+  running_power_avg: 'W',
+  running_stride_length_min: 'cm',
+  running_stride_length_max: 'cm',
+  running_stride_length_avg: 'cm',
+  running_ground_contact_min: 'ms',
+  running_ground_contact_max: 'ms',
+  running_ground_contact_avg: 'ms',
+  running_vertical_oscillation_min: 'cm',
+  running_vertical_oscillation_max: 'cm',
+  running_vertical_oscillation_avg: 'cm',
   // Chunk 3: Cycling metrics
-  cycling_speed_min: "m/s",
-  cycling_speed_max: "m/s",
-  cycling_speed_avg: "m/s",
-  cycling_power_min: "W",
-  cycling_power_max: "W",
-  cycling_power_avg: "W",
-  cycling_cadence_min: "rpm",
-  cycling_cadence_max: "rpm",
-  cycling_cadence_avg: "rpm",
+  cycling_speed_min: 'm/s',
+  cycling_speed_max: 'm/s',
+  cycling_speed_avg: 'm/s',
+  cycling_power_min: 'W',
+  cycling_power_max: 'W',
+  cycling_power_avg: 'W',
+  cycling_cadence_min: 'rpm',
+  cycling_cadence_max: 'rpm',
+  cycling_cadence_avg: 'rpm',
   // Chunk 4: Walking / mobility metrics
-  walking_speed_min: "m/s",
-  walking_speed_max: "m/s",
-  walking_speed_avg: "m/s",
-  walking_step_length_min: "cm",
-  walking_step_length_max: "cm",
-  walking_step_length_avg: "cm",
-  walking_asymmetry_min: "percent",
-  walking_asymmetry_max: "percent",
-  walking_asymmetry_avg: "percent",
-  walking_double_support_min: "percent",
-  walking_double_support_max: "percent",
-  walking_double_support_avg: "percent",
-  steps_cadence_min: "steps/min",
-  steps_cadence_max: "steps/min",
-  steps_cadence_avg: "steps/min",
+  walking_speed_min: 'm/s',
+  walking_speed_max: 'm/s',
+  walking_speed_avg: 'm/s',
+  walking_step_length_min: 'cm',
+  walking_step_length_max: 'cm',
+  walking_step_length_avg: 'cm',
+  walking_asymmetry_min: 'percent',
+  walking_asymmetry_max: 'percent',
+  walking_asymmetry_avg: 'percent',
+  walking_double_support_min: 'percent',
+  walking_double_support_max: 'percent',
+  walking_double_support_avg: 'percent',
+  steps_cadence_min: 'steps/min',
+  steps_cadence_max: 'steps/min',
+  steps_cadence_avg: 'steps/min',
   // Chunk 5: Apple ring times + dietary (sum types)
-  apple_move_time: "seconds",
-  apple_exercise_time: "seconds",
-  apple_stand_time: "seconds",
-  dietary_fat_total: "g",
-  dietary_protein: "g",
-  dietary_sodium: "mg",
+  apple_move_time: 'seconds',
+  apple_exercise_time: 'seconds',
+  apple_stand_time: 'seconds',
+  dietary_fat_total: 'g',
+  dietary_protein: 'g',
+  dietary_sodium: 'mg',
   // Chunk 6: Audio exposure
-  environmental_audio_exposure_min: "dB",
-  environmental_audio_exposure_max: "dB",
-  environmental_audio_exposure_avg: "dB",
-  headphone_audio_exposure_min: "dB",
-  headphone_audio_exposure_max: "dB",
-  headphone_audio_exposure_avg: "dB",
+  environmental_audio_exposure_min: 'dB',
+  environmental_audio_exposure_max: 'dB',
+  environmental_audio_exposure_avg: 'dB',
+  headphone_audio_exposure_min: 'dB',
+  headphone_audio_exposure_max: 'dB',
+  headphone_audio_exposure_avg: 'dB',
   // Last types
-  cycling_ftp: "W",
+  cycling_ftp: 'W',
 };
-const userRepository = require("../models/userRepository");
-const exerciseRepository = require("../models/exerciseRepository"); // For active calories
-const sleepRepository = require("../models/sleepRepository"); // Import sleepRepository
+const userRepository = require('../models/userRepository');
+const exerciseRepository = require('../models/exerciseRepository'); // For active calories
+const sleepRepository = require('../models/sleepRepository'); // Import sleepRepository
 // require concrete modules to avoid circular export issues for exercise functions used at runtime
-const exerciseDb = require("../models/exercise");
-const exerciseEntryDb = require("../models/exerciseEntry");
-const waterContainerRepository = require("../models/waterContainerRepository"); // Import waterContainerRepository
-const activityDetailsRepository = require("../models/activityDetailsRepository"); // Import activityDetailsRepository
+const exerciseDb = require('../models/exercise');
+const exerciseEntryDb = require('../models/exerciseEntry');
+const waterContainerRepository = require('../models/waterContainerRepository'); // Import waterContainerRepository
+const activityDetailsRepository = require('../models/activityDetailsRepository'); // Import activityDetailsRepository
 
 async function processHealthData(healthDataArray, userId, actingUserId) {
   const processedResults = [];
@@ -158,22 +158,22 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
   // This implements a "delete-then-insert" strategy for idempotent sync
   const entriesToClean = healthDataArray.filter(
     (d) =>
-      d.type === "SleepSession" ||
-      d.type === "ExerciseSession" ||
-      d.type === "Workout",
+      d.type === 'SleepSession' ||
+      d.type === 'ExerciseSession' ||
+      d.type === 'Workout'
   );
 
   if (entriesToClean.length > 0) {
     const datesBySource = {};
 
     for (const entry of entriesToClean) {
-      const source = entry.source || "manual";
+      const source = entry.source || 'manual';
       // Replicate date parsing logic from main loop to ensure consistency
       const dateToParse = entry.date || entry.entry_date || entry.timestamp;
       if (dateToParse) {
         const dateObj = new Date(dateToParse);
         if (!isNaN(dateObj.getTime())) {
-          const parsedDate = dateObj.toISOString().split("T")[0];
+          const parsedDate = dateObj.toISOString().split('T')[0];
           if (!datesBySource[source]) {
             datesBySource[source] = {};
           }
@@ -194,8 +194,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
         // Let's assume inclusive range which is standard for these helpers.
 
         log(
-          "info",
-          `[processHealthData] Pre-cleanup: Deleting existing entries for source '${source}' from ${startDate} to ${endDate}.`,
+          'info',
+          `[processHealthData] Pre-cleanup: Deleting existing entries for source '${source}' from ${startDate} to ${endDate}.`
         );
 
         // Clean Sleep
@@ -203,7 +203,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           userId,
           source,
           startDate,
-          endDate,
+          endDate
         );
 
         // Clean Exercises
@@ -216,7 +216,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           userId,
           startDate,
           endDate,
-          source,
+          source
         );
       }
     }
@@ -228,17 +228,17 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       type,
       date,
       timestamp,
-      source = "manual",
+      source = 'manual',
       dataType,
       measurementType,
     } = dataEntry; // Added source and dataType with default
 
     // Check for required fields. Note: 'value' is not required for complex types like SleepSession, Stress, Workout.
     const complexTypes = [
-      "SleepSession",
-      "Stress",
-      "ExerciseSession",
-      "Workout",
+      'SleepSession',
+      'Stress',
+      'ExerciseSession',
+      'Workout',
     ];
     const isComplexType = complexTypes.includes(type);
 
@@ -250,7 +250,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       // Check for undefined/null value only for non-complex types
       errors.push({
         error:
-          "Missing required fields: value (for scalar types), type, or date/timestamp in one of the entries",
+          'Missing required fields: value (for scalar types), type, or date/timestamp in one of the entries',
         entry: dataEntry,
       });
       continue;
@@ -266,18 +266,18 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       const dateObj = new Date(dateToParse);
       if (isNaN(dateObj.getTime())) {
         throw new Error(
-          `Invalid date received from shortcut: '${dateToParse}'.`,
+          `Invalid date received from shortcut: '${dateToParse}'.`
         );
       }
-      parsedDate = dateObj.toISOString().split("T")[0];
+      parsedDate = dateObj.toISOString().split('T')[0];
 
       // If timestamp is not provided, default to the beginning of the day from the 'date' field.
       if (timestamp) {
         const timestampObj = new Date(timestamp);
         if (isNaN(timestampObj.getTime())) {
           log(
-            "warn",
-            `Invalid timestamp received for entry: ${JSON.stringify(dataEntry)}. Defaulting to start of day from parsed date.`,
+            'warn',
+            `Invalid timestamp received for entry: ${JSON.stringify(dataEntry)}. Defaulting to start of day from parsed date.`
           );
           entryTimestamp = dateObj.toISOString(); // Use start of day from parsed 'date'
           entryHour = 0; // Default to hour 0
@@ -291,7 +291,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
         entryHour = 0; // Default to hour 0
       }
     } catch (e) {
-      log("error", "Date/Timestamp parsing error:", e);
+      log('error', 'Date/Timestamp parsing error:', e);
       errors.push({
         error: `Invalid date/timestamp format for entry: ${JSON.stringify(dataEntry)}. Error: ${e.message}`,
         entry: dataEntry,
@@ -305,12 +305,12 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
 
       // Handle specific types first, then fall back to custom measurements
       switch (type) {
-        case "step":
-        case "steps":
+        case 'step':
+        case 'steps':
           const stepValue = parseInt(value, 10);
           if (isNaN(stepValue) || !Number.isInteger(stepValue)) {
             errors.push({
-              error: "Invalid value for step. Must be an integer.",
+              error: 'Invalid value for step. Must be an integer.',
               entry: dataEntry,
             });
             break;
@@ -319,15 +319,15 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             userId,
             actingUserId,
             stepValue,
-            parsedDate,
+            parsedDate
           );
-          processedResults.push({ type, status: "success", data: result });
+          processedResults.push({ type, status: 'success', data: result });
           break;
-        case "water":
+        case 'water':
           const waterValue = parseInt(value, 10);
           if (isNaN(waterValue) || !Number.isInteger(waterValue)) {
             errors.push({
-              error: "Invalid value for water. Must be an integer.",
+              error: 'Invalid value for water. Must be an integer.',
               entry: dataEntry,
             });
             break;
@@ -337,38 +337,38 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             actingUserId,
             waterValue,
             parsedDate,
-            source, // Use the provided source (e.g., 'fitbit', 'garmin', 'apple_health')
+            source // Use the provided source (e.g., 'fitbit', 'garmin', 'apple_health')
           );
-          processedResults.push({ type, status: "success", data: result });
+          processedResults.push({ type, status: 'success', data: result });
           break;
-        case "Active Calories":
-        case "active_calories":
-        case "ActiveCaloriesBurned":
+        case 'Active Calories':
+        case 'active_calories':
+        case 'ActiveCaloriesBurned':
           const activeCaloriesValue = parseFloat(value);
           if (isNaN(activeCaloriesValue) || activeCaloriesValue < 0) {
             errors.push({
               error:
-                "Invalid value for active_calories. Must be a non-negative number.",
+                'Invalid value for active_calories. Must be a non-negative number.',
               entry: dataEntry,
             });
             break;
           }
-          const exerciseSource = source || "Health Data";
+          const exerciseSource = source || 'Health Data';
           const exerciseId = await exerciseDb.getOrCreateActiveCaloriesExercise(
             userId,
-            exerciseSource,
+            exerciseSource
           );
           result = await exerciseEntryDb.upsertExerciseEntryData(
             userId,
             actingUserId,
             exerciseId,
             activeCaloriesValue,
-            parsedDate,
+            parsedDate
           );
-          processedResults.push({ type, status: "success", data: result });
+          processedResults.push({ type, status: 'success', data: result });
           break;
-        case "weight":
-        case "body_fat_percentage":
+        case 'weight':
+        case 'body_fat_percentage':
           const numericValue = parseFloat(value);
           if (isNaN(numericValue) || numericValue <= 0) {
             errors.push({
@@ -382,11 +382,11 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             userId,
             actingUserId,
             parsedDate,
-            checkInMeasurements,
+            checkInMeasurements
           );
-          processedResults.push({ type, status: "success", data: result });
+          processedResults.push({ type, status: 'success', data: result });
           break;
-        case "SleepSession":
+        case 'SleepSession':
           try {
             // Map the dataEntry fields to what processSleepEntry expects
             const sleepEntryData = {
@@ -399,7 +399,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
                 : dataEntry.duration_in_seconds
                   ? new Date(
                       new Date(timestamp).getTime() +
-                        dataEntry.duration_in_seconds * 1000,
+                        dataEntry.duration_in_seconds * 1000
                     )
                   : new Date(timestamp),
               duration_in_seconds: Number(dataEntry.duration_in_seconds) || 0,
@@ -416,18 +416,18 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             const sleepEntryResult = await processSleepEntry(
               userId,
               actingUserId,
-              sleepEntryData,
+              sleepEntryData
             );
             processedResults.push({
               type,
-              status: "success",
+              status: 'success',
               data: sleepEntryResult,
             });
           } catch (sleepError) {
             log(
-              "error",
+              'error',
               `Error processing sleep entry: ${sleepError.message}`,
-              dataEntry,
+              dataEntry
             );
             errors.push({
               error: `Failed to process sleep entry: ${sleepError.message}`,
@@ -435,19 +435,19 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             });
           }
           break;
-        case "Stress":
+        case 'Stress':
           // Map incoming stress data to the existing custom measurement system
           try {
             const stressCategory = await getOrCreateCustomCategory(
               userId,
               actingUserId,
-              "Stress",
-              "numeric",
-              "Daily",
+              'Stress',
+              'numeric',
+              'Daily'
             );
             if (!stressCategory || !stressCategory.id) {
               errors.push({
-                error: `Failed to get or create custom category for Stress`,
+                error: 'Failed to get or create custom category for Stress',
                 entry: dataEntry,
               });
               break;
@@ -467,9 +467,9 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
               entryTimestamp,
               `Source: ${source}`,
               stressCategory.frequency,
-              source,
+              source
             );
-            processedResults.push({ type, status: "success", data: result });
+            processedResults.push({ type, status: 'success', data: result });
           } catch (stressError) {
             errors.push({
               error: `Failed to process Stress entry: ${stressError.message}`,
@@ -477,8 +477,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             });
           }
           break;
-        case "ExerciseSession":
-        case "Workout":
+        case 'ExerciseSession':
+        case 'Workout':
           // Redirect to processMobileHealthData logic or duplicate it here?
           // Since processMobileHealthData has the logic, let's just use the same logic here
           // OR call processMobileHealthData for a single entry?
@@ -496,7 +496,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             const exerciseName = activityType || `${source} Exercise`;
             let exercise = await exerciseDb.findExerciseByNameAndUserId(
               exerciseName,
-              userId,
+              userId
             );
             if (!exercise) {
               exercise = await exerciseDb.createExercise({
@@ -505,7 +505,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
                 is_custom: true,
                 shared_with_public: false,
                 source: source,
-                category: "Cardio",
+                category: 'Cardio',
                 calories_per_hour: caloriesBurned
                   ? caloriesBurned / (duration / 3600)
                   : 0,
@@ -525,7 +525,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
                 source_id: source_id || null,
               },
               actingUserId,
-              source,
+              source
             );
 
             if (raw_data) {
@@ -540,7 +540,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             }
             processedResults.push({
               type,
-              status: "success",
+              status: 'success',
               data: exerciseEntry,
             });
           } catch (workoutError) {
@@ -550,23 +550,23 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             });
           }
           break;
-        case "sleep_entry": // Handle structured sleep entry data (legacy/web)
+        case 'sleep_entry': // Handle structured sleep entry data (legacy/web)
           try {
             const sleepEntryResult = await processSleepEntry(
               userId,
               actingUserId,
-              dataEntry,
+              dataEntry
             );
             processedResults.push({
               type,
-              status: "success",
+              status: 'success',
               data: sleepEntryResult,
             });
           } catch (sleepError) {
             log(
-              "error",
+              'error',
               `Error processing sleep entry: ${sleepError.message}`,
-              dataEntry,
+              dataEntry
             );
             errors.push({
               error: `Failed to process sleep entry: ${sleepError.message}`,
@@ -581,20 +581,20 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           let resolvedMeasurementType;
           if (
             unitFromPayload &&
-            typeof unitFromPayload === "string" &&
+            typeof unitFromPayload === 'string' &&
             unitFromPayload.trim()
           ) {
             resolvedMeasurementType = unitFromPayload.trim();
           } else {
             resolvedMeasurementType =
-              DEFAULT_UNITS_BY_HEALTH_TYPE[type] || "N/A";
+              DEFAULT_UNITS_BY_HEALTH_TYPE[type] || 'N/A';
           }
           const category = await getOrCreateCustomCategory(
             userId,
             actingUserId,
             type,
             dataType,
-            resolvedMeasurementType,
+            resolvedMeasurementType
           );
           if (!category || !category.id) {
             errors.push({
@@ -606,7 +606,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           categoryId = category.id;
 
           let processedValue = value;
-          if (category.data_type === "numeric") {
+          if (category.data_type === 'numeric') {
             const numericValue = parseFloat(value);
             if (isNaN(numericValue)) {
               errors.push({
@@ -629,16 +629,16 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             entryTimestamp,
             dataEntry.notes, // Pass notes if available
             category.frequency, // Pass the frequency from the category
-            source, // Pass the source
+            source // Pass the source
           );
-          processedResults.push({ type, status: "success", data: result });
+          processedResults.push({ type, status: 'success', data: result });
           break;
       }
     } catch (error) {
       log(
-        "error",
+        'error',
         `Error processing health data entry ${JSON.stringify(dataEntry)}:`,
-        error,
+        error
       );
       errors.push({
         error: `Failed to process entry: ${error.message}`,
@@ -650,14 +650,14 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
   if (errors.length > 0) {
     throw new Error(
       JSON.stringify({
-        message: "Some health data entries could not be processed.",
+        message: 'Some health data entries could not be processed.',
         processed: processedResults,
         errors: errors,
-      }),
+      })
     );
   } else {
     return {
-      message: "All health data successfully processed.",
+      message: 'All health data successfully processed.',
       processed: processedResults,
     };
   }
@@ -666,7 +666,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
 async function processMobileHealthData(
   mobileHealthDataArray,
   userId,
-  actingUserId,
+  actingUserId
 ) {
   const processedResults = [];
   const errors = [];
@@ -691,14 +691,14 @@ async function processMobileHealthData(
       raw_data,
     } = dataEntry;
     log(
-      "debug",
-      `[processMobileHealthData] Processing dataEntry with type: ${type}`,
+      'debug',
+      `[processMobileHealthData] Processing dataEntry with type: ${type}`
     );
 
     if (!type || !source || !timestamp) {
       errors.push({
         error:
-          "Missing required fields: type, source, or timestamp in one of the entries",
+          'Missing required fields: type, source, or timestamp in one of the entries',
         entry: dataEntry,
       });
       continue;
@@ -713,11 +713,11 @@ async function processMobileHealthData(
       if (isNaN(dateObj.getTime())) {
         throw new Error(`Invalid timestamp received: '${timestamp}'.`);
       }
-      parsedDate = dateObj.toISOString().split("T")[0];
+      parsedDate = dateObj.toISOString().split('T')[0];
       entryTimestamp = dateObj.toISOString();
       entryHour = dateObj.getHours();
     } catch (e) {
-      log("error", "Timestamp parsing error:", e);
+      log('error', 'Timestamp parsing error:', e);
       errors.push({
         error: `Invalid timestamp format for entry: ${JSON.stringify(dataEntry)}. Error: ${e.message}`,
         entry: dataEntry,
@@ -728,11 +728,11 @@ async function processMobileHealthData(
     try {
       let result;
       switch (type) {
-        case "water":
+        case 'water':
           const waterValue = parseInt(value, 10);
           if (isNaN(waterValue) || !Number.isInteger(waterValue)) {
             errors.push({
-              error: "Invalid value for water. Must be an integer.",
+              error: 'Invalid value for water. Must be an integer.',
               entry: dataEntry,
             });
             break;
@@ -742,22 +742,22 @@ async function processMobileHealthData(
             actingUserId,
             waterValue,
             parsedDate,
-            source,
+            source
           );
-          processedResults.push({ type, status: "success", data: result });
+          processedResults.push({ type, status: 'success', data: result });
           break;
-        case "Stress":
+        case 'Stress':
           // Map incoming stress data to the existing custom measurement system
           const stressCategory = await getOrCreateCustomCategory(
             userId,
             actingUserId,
-            "Stress",
-            "numeric",
-            "Daily",
+            'Stress',
+            'numeric',
+            'Daily'
           );
           if (!stressCategory || !stressCategory.id) {
             errors.push({
-              error: `Failed to get or create custom category for Stress`,
+              error: 'Failed to get or create custom category for Stress',
               entry: dataEntry,
             });
             break;
@@ -772,11 +772,11 @@ async function processMobileHealthData(
             entryTimestamp,
             `Source: ${source}`,
             stressCategory.frequency,
-            source,
+            source
           );
-          processedResults.push({ type, status: "success", data: result });
+          processedResults.push({ type, status: 'success', data: result });
           break;
-        case "SleepSession":
+        case 'SleepSession':
           const sleepEntryData = {
             entry_date: parsedDate,
             bedtime: bedtime ? new Date(bedtime) : new Date(timestamp),
@@ -784,7 +784,7 @@ async function processMobileHealthData(
               ? new Date(wake_time)
               : new Date(
                   new Date(timestamp).getTime() +
-                    (duration_in_seconds || 0) * 1000,
+                    (duration_in_seconds || 0) * 1000
                 ),
             duration_in_seconds: duration_in_seconds,
             time_asleep_in_seconds: time_asleep_in_seconds,
@@ -796,17 +796,17 @@ async function processMobileHealthData(
           result = await processSleepEntry(
             userId,
             actingUserId,
-            sleepEntryData,
+            sleepEntryData
           );
-          processedResults.push({ type, status: "success", data: result });
+          processedResults.push({ type, status: 'success', data: result });
           break;
-        case "ExerciseSession":
-        case "Workout":
+        case 'ExerciseSession':
+        case 'Workout':
           // Create/update exercises and exercise entries
           const exerciseName = activityType || `${source} Exercise`;
           let exercise = await exerciseDb.findExerciseByNameAndUserId(
             exerciseName,
-            userId,
+            userId
           );
           if (!exercise) {
             exercise = await exerciseDb.createExercise({
@@ -815,7 +815,7 @@ async function processMobileHealthData(
               is_custom: true,
               shared_with_public: false,
               source: source,
-              category: "Cardio", // Default category, can be refined
+              category: 'Cardio', // Default category, can be refined
               calories_per_hour: caloriesBurned
                 ? caloriesBurned / (duration / 3600)
                 : 0, // Convert to per hour
@@ -835,7 +835,7 @@ async function processMobileHealthData(
               // Add other exercise-related fields from mobileHealthData if available
             },
             actingUserId,
-            source,
+            source
           );
 
           // Store raw data in activity details
@@ -851,7 +851,7 @@ async function processMobileHealthData(
           }
           processedResults.push({
             type,
-            status: "success",
+            status: 'success',
             data: exerciseEntry,
           });
           break;
@@ -859,18 +859,18 @@ async function processMobileHealthData(
           // Route unknown types through the custom measurement system
           // (mirrors processHealthData default case)
           const unitFromPayload =
-            unit && typeof unit === "string" && unit.trim()
+            unit && typeof unit === 'string' && unit.trim()
               ? unit.trim()
               : undefined;
           const resolvedUnit =
-            unitFromPayload || DEFAULT_UNITS_BY_HEALTH_TYPE[type] || "N/A";
+            unitFromPayload || DEFAULT_UNITS_BY_HEALTH_TYPE[type] || 'N/A';
 
           const category = await getOrCreateCustomCategory(
             userId,
             actingUserId,
             type,
-            "numeric",
-            resolvedUnit,
+            'numeric',
+            resolvedUnit
           );
           if (!category || !category.id) {
             errors.push({
@@ -899,16 +899,16 @@ async function processMobileHealthData(
             entryTimestamp,
             dataEntry.notes,
             category.frequency,
-            source,
+            source
           );
-          processedResults.push({ type, status: "success", data: result });
+          processedResults.push({ type, status: 'success', data: result });
           break;
       }
     } catch (error) {
       log(
-        "error",
+        'error',
         `Error processing mobile health data entry ${JSON.stringify(dataEntry)}:`,
-        error,
+        error
       );
       errors.push({
         error: `Failed to process entry: ${error.message}`,
@@ -920,14 +920,14 @@ async function processMobileHealthData(
   if (errors.length > 0) {
     throw new Error(
       JSON.stringify({
-        message: "Some mobile health data entries could not be processed.",
+        message: 'Some mobile health data entries could not be processed.',
         processed: processedResults,
         errors: errors,
-      }),
+      })
     );
   } else {
     return {
-      message: "All mobile health data successfully processed.",
+      message: 'All mobile health data successfully processed.',
       processed: processedResults,
     };
   }
@@ -938,13 +938,13 @@ async function getOrCreateCustomCategory(
   userId,
   actingUserId,
   categoryName,
-  dataType = "numeric",
-  measurementType = "N/A",
+  dataType = 'numeric',
+  measurementType = 'N/A'
 ) {
   // Try to get existing category
   const existingCategories =
     await measurementRepository.getCustomCategories(userId);
-  let category = existingCategories.find((cat) => cat.name === categoryName);
+  const category = existingCategories.find((cat) => cat.name === categoryName);
 
   if (category) {
     return category;
@@ -955,7 +955,7 @@ async function getOrCreateCustomCategory(
       created_by_user_id: actingUserId, // Use actingUserId for audit
       name: categoryName,
       measurement_type: measurementType, // Default to numeric for Health Connect data
-      frequency: "Daily", // Default frequency, can be refined later if needed
+      frequency: 'Daily', // Default frequency, can be refined later if needed
       data_type: dataType, // Default to numeric for new categories from health data
     };
     const newCategory =
@@ -969,15 +969,15 @@ async function getWaterIntake(authenticatedUserId, targetUserId, date) {
   try {
     const waterData = await measurementRepository.getWaterIntakeByDate(
       targetUserId,
-      date,
+      date
     );
     // waterData will be { water_ml: SUM(...) } from the new repository logic
     return waterData || { water_ml: 0 };
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching water intake for user ${targetUserId} on ${date} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -988,15 +988,16 @@ async function upsertWaterIntake(
   actingUserId,
   entryDate,
   changeDrinks,
-  containerId,
+  containerId
 ) {
   try {
     // 1. Get current MANUAL water intake for the day to avoid mixing with syncs
-    const currentManualRecord = await measurementRepository.getWaterIntakeByDate(
-      authenticatedUserId,
-      entryDate,
-      'manual'
-    );
+    const currentManualRecord =
+      await measurementRepository.getWaterIntakeByDate(
+        authenticatedUserId,
+        entryDate,
+        'manual'
+      );
     const currentManualMl = currentManualRecord
       ? Number(currentManualRecord.water_ml)
       : 0;
@@ -1006,7 +1007,7 @@ async function upsertWaterIntake(
     if (containerId) {
       const container = await waterContainerRepository.getWaterContainerById(
         containerId,
-        authenticatedUserId,
+        authenticatedUserId
       );
       if (container) {
         amountPerDrink =
@@ -1014,8 +1015,8 @@ async function upsertWaterIntake(
       } else {
         // Fallback to default if container not found
         log(
-          "warn",
-          `Container with ID ${containerId} not found for user ${authenticatedUserId}. Using default amount per drink.`,
+          'warn',
+          `Container with ID ${containerId} not found for user ${authenticatedUserId}. Using default amount per drink.`
         );
         amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
       }
@@ -1027,7 +1028,7 @@ async function upsertWaterIntake(
     // 3. Calculate new total water intake for the MANUAL bucket
     const newManualTotalWaterMl = Math.max(
       0,
-      currentManualMl + changeDrinks * amountPerDrink,
+      currentManualMl + changeDrinks * amountPerDrink
     );
 
     // 4. Upsert the new manual water intake
@@ -1041,9 +1042,9 @@ async function upsertWaterIntake(
     return result;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error upserting water intake for user ${authenticatedUserId} by ${actingUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1054,15 +1055,15 @@ async function getWaterIntakeEntryById(authenticatedUserId, id) {
     const entryOwnerId =
       await measurementRepository.getWaterIntakeEntryOwnerId(id);
     if (!entryOwnerId) {
-      throw new Error("Water intake entry not found.");
+      throw new Error('Water intake entry not found.');
     }
     const entry = await measurementRepository.getWaterIntakeEntryById(id);
     return entry;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching water intake entry ${id} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1073,29 +1074,29 @@ async function updateWaterIntake(authenticatedUserId, id, updateData) {
     const entryOwnerId =
       await measurementRepository.getWaterIntakeEntryOwnerId(id);
     if (!entryOwnerId) {
-      throw new Error("Water intake entry not found.");
+      throw new Error('Water intake entry not found.');
     }
     if (entryOwnerId !== authenticatedUserId) {
       throw new Error(
-        "Forbidden: You do not have permission to update this water intake entry.",
+        'Forbidden: You do not have permission to update this water intake entry.'
       );
     }
     const updatedEntry = await measurementRepository.updateWaterIntake(
       id,
       authenticatedUserId,
-      updateData,
+      updateData
     );
     if (!updatedEntry) {
       throw new Error(
-        "Water intake entry not found or not authorized to update.",
+        'Water intake entry not found or not authorized to update.'
       );
     }
     return updatedEntry;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating water intake entry ${id} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1106,26 +1107,26 @@ async function deleteWaterIntake(authenticatedUserId, id) {
     const entryOwnerId =
       await measurementRepository.getWaterIntakeEntryOwnerId(id);
     if (!entryOwnerId) {
-      throw new Error("Water intake entry not found.");
+      throw new Error('Water intake entry not found.');
     }
     if (entryOwnerId !== authenticatedUserId) {
       throw new Error(
-        "Forbidden: You do not have permission to delete this water intake entry.",
+        'Forbidden: You do not have permission to delete this water intake entry.'
       );
     }
     const success = await measurementRepository.deleteWaterIntake(
       id,
-      authenticatedUserId,
+      authenticatedUserId
     );
     if (!success) {
-      throw new Error("Water intake entry not found.");
+      throw new Error('Water intake entry not found.');
     }
-    return { message: "Water intake entry deleted successfully." };
+    return { message: 'Water intake entry deleted successfully.' };
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting water intake entry ${id} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1135,21 +1136,21 @@ async function upsertCheckInMeasurements(
   authenticatedUserId,
   actingUserId,
   entryDate,
-  measurements,
+  measurements
 ) {
   try {
     const result = await measurementRepository.upsertCheckInMeasurements(
       authenticatedUserId,
       actingUserId,
       entryDate,
-      measurements,
+      measurements
     );
     return result;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error upserting check-in measurements for user ${authenticatedUserId} by ${actingUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1160,14 +1161,14 @@ async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
     const measurement =
       await measurementRepository.getCheckInMeasurementsByDate(
         targetUserId,
-        date,
+        date
       );
     return measurement || {};
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching check-in measurements for user ${targetUserId} on ${date} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1176,20 +1177,20 @@ async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
 async function getLatestCheckInMeasurementsOnOrBeforeDate(
   authenticatedUserId,
   targetUserId,
-  date,
+  date
 ) {
   try {
     const measurement =
       await measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
         targetUserId,
-        date,
+        date
       );
     return measurement || null;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching latest check-in measurements on or before ${date} for user ${targetUserId} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1199,27 +1200,27 @@ async function updateCheckInMeasurements(
   authenticatedUserId,
   actingUserId,
   entryDate,
-  updateData,
+  updateData
 ) {
   log(
-    "info",
+    'info',
     `[measurementService] updateCheckInMeasurements called with: authenticatedUserId=${authenticatedUserId}, actingUserId=${actingUserId}, entryDate=${entryDate}, updateData=`,
-    updateData,
+    updateData
   );
   try {
     // Verify ownership using entry_date and user_id
     const existingMeasurement =
       await measurementRepository.getCheckInMeasurementsByDate(
         authenticatedUserId,
-        entryDate,
+        entryDate
       );
 
     if (!existingMeasurement) {
       log(
-        "warn",
-        `[measurementService] Check-in measurement not found for user ${authenticatedUserId} on date: ${entryDate}`,
+        'warn',
+        `[measurementService] Check-in measurement not found for user ${authenticatedUserId} on date: ${entryDate}`
       );
-      throw new Error("Check-in measurement not found.");
+      throw new Error('Check-in measurement not found.');
     }
 
     const updatedMeasurement =
@@ -1227,27 +1228,27 @@ async function updateCheckInMeasurements(
         authenticatedUserId,
         actingUserId,
         entryDate,
-        updateData,
+        updateData
       );
     if (!updatedMeasurement) {
       log(
-        "warn",
-        `[measurementService] Check-in measurement not found or not authorized to update after repository call for user ${authenticatedUserId} on date: ${entryDate}`,
+        'warn',
+        `[measurementService] Check-in measurement not found or not authorized to update after repository call for user ${authenticatedUserId} on date: ${entryDate}`
       );
       throw new Error(
-        "Check-in measurement not found or not authorized to update.",
+        'Check-in measurement not found or not authorized to update.'
       );
     }
     log(
-      "info",
-      `[measurementService] Successfully updated check-in measurement for user ${authenticatedUserId} on date: ${entryDate}`,
+      'info',
+      `[measurementService] Successfully updated check-in measurement for user ${authenticatedUserId} on date: ${entryDate}`
     );
     return updatedMeasurement;
   } catch (error) {
     log(
-      "error",
+      'error',
       `[measurementService] Error updating check-in measurements for user ${authenticatedUserId} on date ${entryDate}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1258,26 +1259,26 @@ async function deleteCheckInMeasurements(authenticatedUserId, id) {
     const entryOwnerId =
       await measurementRepository.getCheckInMeasurementOwnerId(id);
     if (!entryOwnerId) {
-      throw new Error("Check-in measurement not found.");
+      throw new Error('Check-in measurement not found.');
     }
     if (entryOwnerId !== authenticatedUserId) {
       throw new Error(
-        "Forbidden: You do not have permission to delete this check-in measurement.",
+        'Forbidden: You do not have permission to delete this check-in measurement.'
       );
     }
     const success = await measurementRepository.deleteCheckInMeasurements(
       id,
-      authenticatedUserId,
+      authenticatedUserId
     );
     if (!success) {
-      throw new Error("Check-in measurement not found.");
+      throw new Error('Check-in measurement not found.');
     }
-    return { message: "Check-in measurement deleted successfully." };
+    return { message: 'Check-in measurement deleted successfully.' };
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting check-in measurements ${id} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1294,9 +1295,9 @@ async function getCustomCategories(authenticatedUserId, targetUserId) {
     return categories;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching custom categories for user ${targetUserId} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1305,7 +1306,7 @@ async function getCustomCategories(authenticatedUserId, targetUserId) {
 async function createCustomCategory(
   authenticatedUserId,
   actingUserId,
-  categoryData,
+  categoryData
 ) {
   try {
     categoryData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
@@ -1315,9 +1316,9 @@ async function createCustomCategory(
     return newCategory;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error creating custom category for user ${authenticatedUserId} by ${actingUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1328,14 +1329,14 @@ async function updateCustomCategory(authenticatedUserId, id, updateData) {
     const categoryOwnerId =
       await measurementRepository.getCustomCategoryOwnerId(
         id,
-        authenticatedUserId,
+        authenticatedUserId
       );
     if (!categoryOwnerId) {
-      throw new Error("Custom category not found.");
+      throw new Error('Custom category not found.');
     }
     if (categoryOwnerId !== authenticatedUserId) {
       throw new Error(
-        "Forbidden: You do not have permission to update this custom category.",
+        'Forbidden: You do not have permission to update this custom category.'
       );
     }
     // Ensure `authenticatedUserId` is passed as `updatedByUserId` to the repository
@@ -1343,17 +1344,17 @@ async function updateCustomCategory(authenticatedUserId, id, updateData) {
       id,
       authenticatedUserId,
       authenticatedUserId,
-      updateData,
+      updateData
     );
     if (!updatedCategory) {
-      throw new Error("Custom category not found or not authorized to update.");
+      throw new Error('Custom category not found or not authorized to update.');
     }
     return updatedCategory;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error updating custom category ${id} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1364,29 +1365,29 @@ async function deleteCustomCategory(authenticatedUserId, id) {
     const categoryOwnerId =
       await measurementRepository.getCustomCategoryOwnerId(
         id,
-        authenticatedUserId,
+        authenticatedUserId
       ); // Pass authenticatedUserId
     if (!categoryOwnerId) {
-      throw new Error("Custom category not found.");
+      throw new Error('Custom category not found.');
     }
     if (categoryOwnerId !== authenticatedUserId) {
       throw new Error(
-        "Forbidden: You do not have permission to delete this custom category.",
+        'Forbidden: You do not have permission to delete this custom category.'
       );
     }
     const success = await measurementRepository.deleteCustomCategory(
       id,
-      authenticatedUserId,
+      authenticatedUserId
     );
     if (!success) {
-      throw new Error("Custom category not found.");
+      throw new Error('Custom category not found.');
     }
-    return { message: "Custom category deleted successfully." };
+    return { message: 'Custom category deleted successfully.' };
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting custom category ${id} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1396,7 +1397,7 @@ async function getCustomMeasurementEntries(
   authenticatedUserId,
   limit,
   orderBy,
-  filterObj,
+  filterObj
 ) {
   // Renamed 'filter' to 'filterObj' for clarity
   try {
@@ -1405,14 +1406,14 @@ async function getCustomMeasurementEntries(
       authenticatedUserId,
       limit,
       orderBy,
-      filterObj,
+      filterObj
     ); // Pass filterObj
     return entries;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching custom measurement entries for user ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1421,20 +1422,20 @@ async function getCustomMeasurementEntries(
 async function getCustomMeasurementEntriesByDate(
   authenticatedUserId,
   targetUserId,
-  date,
+  date
 ) {
   try {
     const entries =
       await measurementRepository.getCustomMeasurementEntriesByDate(
         targetUserId,
-        date,
+        date
       );
     return entries;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching custom measurement entries for user ${targetUserId} on ${date} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1444,21 +1445,21 @@ async function getCheckInMeasurementsByDateRange(
   authenticatedUserId,
   userId,
   startDate,
-  endDate,
+  endDate
 ) {
   try {
     const measurements =
       await measurementRepository.getCheckInMeasurementsByDateRange(
         userId,
         startDate,
-        endDate,
+        endDate
       );
     return measurements;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching check-in measurements for user ${userId} from ${startDate} to ${endDate} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1469,7 +1470,7 @@ async function getCustomMeasurementsByDateRange(
   userId,
   categoryId,
   startDate,
-  endDate,
+  endDate
 ) {
   try {
     const measurements =
@@ -1477,14 +1478,14 @@ async function getCustomMeasurementsByDateRange(
         userId,
         categoryId,
         startDate,
-        endDate,
+        endDate
       );
     return measurements;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching custom measurements for user ${userId}, category ${categoryId} from ${startDate} to ${endDate} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1494,7 +1495,7 @@ async function calculateSleepScore(
   sleepEntryData,
   stageEvents,
   age = null,
-  gender = null,
+  gender = null
 ) {
   const { duration_in_seconds, time_asleep_in_seconds } = sleepEntryData;
 
@@ -1508,8 +1509,8 @@ async function calculateSleepScore(
   let optimalMaxDuration = 9 * 3600; // Default 9 hours
   let optimalDeepMin = 15; // Default 15%
   let optimalDeepMax = 25; // Default 25%
-  let optimalRemMin = 20; // Default 20%
-  let optimalRemMax = 25; // Default 25%
+  const optimalRemMin = 20; // Default 20%
+  const optimalRemMax = 25; // Default 25%
 
   // Adjust optimal sleep duration based on age
   if (age !== null) {
@@ -1541,7 +1542,7 @@ async function calculateSleepScore(
     // Deduct points for being outside optimal range
     const deviation = Math.min(
       Math.abs(duration_in_seconds - optimalMinDuration),
-      Math.abs(duration_in_seconds - optimalMaxDuration),
+      Math.abs(duration_in_seconds - optimalMaxDuration)
     );
     score += Math.max(0, tstWeight - (deviation / 3600) * 5); // 5 points deduction per hour deviation
   }
@@ -1556,7 +1557,7 @@ async function calculateSleepScore(
   } else {
     score += Math.max(
       0,
-      efficiencyWeight - (optimalEfficiency - sleepEfficiency) * 1,
+      efficiencyWeight - (optimalEfficiency - sleepEfficiency) * 1
     ); // 1 point deduction per % below optimal
   }
 
@@ -1569,11 +1570,11 @@ async function calculateSleepScore(
   if (stageEvents && stageEvents.length > 0) {
     let inAwakePeriod = false;
     for (const event of stageEvents) {
-      if (event.stage_type === "deep") {
+      if (event.stage_type === 'deep') {
         deepSleepDuration += event.duration_in_seconds;
-      } else if (event.stage_type === "rem") {
+      } else if (event.stage_type === 'rem') {
         remSleepDuration += event.duration_in_seconds;
-      } else if (event.stage_type === "awake") {
+      } else if (event.stage_type === 'awake') {
         awakeDuration += event.duration_in_seconds;
         if (!inAwakePeriod) {
           numAwakePeriods++;
@@ -1616,7 +1617,7 @@ async function calculateSleepScore(
     } else {
       const deviation = Math.min(
         Math.abs(deepSleepPercentage - optimalDeepMin),
-        Math.abs(deepSleepPercentage - optimalDeepMax),
+        Math.abs(deepSleepPercentage - optimalDeepMax)
       );
       score += Math.max(0, deepWeight - deviation * 0.5); // 0.5 point deduction per % deviation
     }
@@ -1631,7 +1632,7 @@ async function calculateSleepScore(
     } else {
       const deviation = Math.min(
         Math.abs(remSleepPercentage - optimalRemMin),
-        Math.abs(remSleepPercentage - optimalRemMax),
+        Math.abs(remSleepPercentage - optimalRemMax)
       );
       score += Math.max(0, remWeight - deviation * 0.5); // 0.5 point deduction per % deviation
     }
@@ -1655,8 +1656,8 @@ async function calculateSleepScore(
 
 async function processSleepEntry(userId, actingUserId, sleepEntryData) {
   log(
-    "debug",
-    `[processSleepEntry] Received sleepEntryData: ${JSON.stringify(sleepEntryData)}`,
+    'debug',
+    `[processSleepEntry] Received sleepEntryData: ${JSON.stringify(sleepEntryData)}`
   );
   try {
     let {
@@ -1678,12 +1679,12 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
     // If no stage events are provided, create a default "light sleep" stage
     if (!stage_events || stage_events.length === 0) {
       log(
-        "info",
-        `No sleep stage events provided for entry on ${entry_date}. Creating default 'light' sleep stage.`,
+        'info',
+        `No sleep stage events provided for entry on ${entry_date}. Creating default 'light' sleep stage.`
       );
       stage_events = [
         {
-          stage_type: "light",
+          stage_type: 'light',
           start_time: bedtime,
           end_time: wake_time,
           duration_in_seconds: duration_in_seconds,
@@ -1695,7 +1696,7 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
     // This check is now redundant but harmless as stage_events will always have at least one entry
     if (stage_events && stage_events.length > 0) {
       timeAsleepInSeconds = stage_events
-        .filter((event) => event.stage_type !== "awake")
+        .filter((event) => event.stage_type !== 'awake')
         .reduce((sum, event) => sum + event.duration_in_seconds, 0);
     }
 
@@ -1721,7 +1722,7 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
       { duration_in_seconds, time_asleep_in_seconds: timeAsleepInSeconds },
       stage_events,
       age,
-      gender,
+      gender
     );
 
     const entryToUpsert = {
@@ -1739,16 +1740,16 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
       ...rest, // Include any other properties
     };
     log(
-      "debug",
-      `[processSleepEntry] entryToUpsert before upsert:`,
-      entryToUpsert,
+      'debug',
+      '[processSleepEntry] entryToUpsert before upsert:',
+      entryToUpsert
     );
 
     // Pass actingUserId to upsertSleepEntry
     const newSleepEntry = await sleepRepository.upsertSleepEntry(
       userId,
       actingUserId,
-      entryToUpsert,
+      entryToUpsert
     );
 
     if (stage_events && stage_events.length > 0) {
@@ -1769,13 +1770,13 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
             ...stageEvent,
             duration_in_seconds: duration,
           },
-          actingUserId,
+          actingUserId
         );
       }
     }
     return newSleepEntry;
   } catch (error) {
-    log("error", `Error in processSleepEntry for user ${userId}:`, error);
+    log('error', `Error in processSleepEntry for user ${userId}:`, error);
     throw error;
   }
 }
@@ -1795,7 +1796,7 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
     let timeAsleepInSeconds = 0;
     if (stage_events && stage_events.length > 0) {
       timeAsleepInSeconds = stage_events
-        .filter((event) => event.stage_type !== "awake")
+        .filter((event) => event.stage_type !== 'awake')
         .reduce((sum, event) => sum + event.duration_in_seconds, 0);
     }
 
@@ -1821,7 +1822,7 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
       { duration_in_seconds, time_asleep_in_seconds: timeAsleepInSeconds },
       stage_events,
       age,
-      gender,
+      gender
     );
 
     const updatedEntryDetails = {
@@ -1834,9 +1835,9 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
       sleep_score: sleepScore, // Always use the calculated sleepScore
     };
     log(
-      "debug",
-      `[updateSleepEntry] updatedEntryDetails before update:`,
-      updatedEntryDetails,
+      'debug',
+      '[updateSleepEntry] updatedEntryDetails before update:',
+      updatedEntryDetails
     );
 
     // Update the main sleep entry details
@@ -1845,7 +1846,7 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
       userId,
       entryId,
       actingUserId,
-      updatedEntryDetails,
+      updatedEntryDetails
     );
 
     // Handle stage events if provided
@@ -1861,7 +1862,7 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
             userId,
             entryId,
             stageEvent,
-            actingUserId,
+            actingUserId
           );
         }
       }
@@ -1869,9 +1870,9 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
     return updatedEntry;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error in updateSleepEntry for user ${userId}, entry ${entryId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1913,7 +1914,7 @@ module.exports = {
 async function upsertCustomMeasurementEntry(
   authenticatedUserId,
   actingUserId,
-  payload,
+  payload
 ) {
   try {
     const {
@@ -1923,7 +1924,7 @@ async function upsertCustomMeasurementEntry(
       entry_hour,
       entry_timestamp,
       notes,
-      source = "manual",
+      source = 'manual',
     } = payload;
 
     // Fetch category details to get the frequency
@@ -1945,14 +1946,14 @@ async function upsertCustomMeasurementEntry(
       entry_timestamp,
       notes,
       category.frequency, // Pass the frequency to the repository
-      source, // Pass the source to the repository
+      source // Pass the source to the repository
     );
     return result;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error upserting custom measurement entry for user ${authenticatedUserId} by ${actingUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1963,29 +1964,29 @@ async function deleteCustomMeasurementEntry(authenticatedUserId, id) {
     const entryOwnerId =
       await measurementRepository.getCustomMeasurementOwnerId(
         id,
-        authenticatedUserId,
+        authenticatedUserId
       );
     if (!entryOwnerId) {
-      throw new Error("Custom measurement entry not found.");
+      throw new Error('Custom measurement entry not found.');
     }
     if (entryOwnerId !== authenticatedUserId) {
       throw new Error(
-        "Forbidden: You do not have permission to delete this custom measurement entry.",
+        'Forbidden: You do not have permission to delete this custom measurement entry.'
       );
     }
     const success = await measurementRepository.deleteCustomMeasurement(
       id,
-      authenticatedUserId,
+      authenticatedUserId
     );
     if (!success) {
-      throw new Error("Custom measurement entry not found.");
+      throw new Error('Custom measurement entry not found.');
     }
-    return { message: "Custom measurement entry deleted successfully." };
+    return { message: 'Custom measurement entry deleted successfully.' };
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error deleting custom measurement entry ${id} by ${authenticatedUserId}:`,
-      error,
+      error
     );
     throw error;
   }
@@ -1995,14 +1996,14 @@ async function getMostRecentMeasurement(userId, measurementType) {
   try {
     const measurement = await measurementRepository.getMostRecentMeasurement(
       userId,
-      measurementType,
+      measurementType
     );
     return measurement;
   } catch (error) {
     log(
-      "error",
+      'error',
       `Error fetching most recent ${measurementType} for user ${userId}:`,
-      error,
+      error
     );
     throw error;
   }

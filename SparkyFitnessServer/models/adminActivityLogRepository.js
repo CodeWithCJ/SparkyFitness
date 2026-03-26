@@ -1,6 +1,11 @@
 const { getSystemClient } = require('../db/poolManager');
 
-async function createAdminActivityLog(adminUserId, targetUserId, actionType, details) {
+async function createAdminActivityLog(
+  adminUserId,
+  targetUserId,
+  actionType,
+  details
+) {
   const client = await getSystemClient(); // System-level operation
   try {
     const result = await client.query(

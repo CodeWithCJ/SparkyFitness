@@ -57,11 +57,11 @@ module.exports = [
       'no-console': 'off', // Custom logging utility used
       'prefer-const': 'warn',
       'no-var': 'warn',
-      'eqeqeq': ['warn', 'always'],
+      eqeqeq: ['warn', 'always'],
 
       // Code style (warnings for gradual improvement)
-      'quotes': ['warn', 'single', { avoidEscape: true }],
-      'semi': ['warn', 'always'],
+      quotes: ['warn', 'single', { avoidEscape: true }],
+      semi: ['warn', 'always'],
     },
   },
 

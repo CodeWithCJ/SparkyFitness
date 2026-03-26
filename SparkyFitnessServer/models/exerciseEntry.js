@@ -1,54 +1,54 @@
-const { getClient, getSystemClient } = require("../db/poolManager");
-const format = require("pg-format");
-const { log } = require("../config/logging");
-const exerciseRepository = require("./exercise");
-const activityDetailsRepository = require("./activityDetailsRepository");
-const exercisePresetEntryRepository = require("./exercisePresetEntryRepository");
+const { getClient, getSystemClient } = require('../db/poolManager');
+const format = require('pg-format');
+const { log } = require('../config/logging');
+const exerciseRepository = require('./exercise');
+const activityDetailsRepository = require('./activityDetailsRepository');
+const exercisePresetEntryRepository = require('./exercisePresetEntryRepository');
 
 async function upsertExerciseEntryData(
   userId,
   createdByUserId,
   exerciseId,
   caloriesBurned,
-  date,
+  date
 ) {
-  log("info", "upsertExerciseEntryData received date parameter:", date);
+  log('info', 'upsertExerciseEntryData received date parameter:', date);
   const client = await getClient(userId);
   let existingEntry = null;
-  let exerciseName = "Unknown Exercise"; // Default value
+  let exerciseName = 'Unknown Exercise'; // Default value
 
   try {
     // Fetch exercise name
     const exercise = await exerciseRepository.getExerciseById(
       exerciseId,
-      userId,
+      userId
     );
     if (exercise) {
       exerciseName = exercise.name;
       log(
-        "info",
-        `Fetched exercise name: ${exerciseName} for exerciseId: ${exerciseId}`,
+        'info',
+        `Fetched exercise name: ${exerciseName} for exerciseId: ${exerciseId}`
       );
     } else {
       log(
-        "warn",
-        `Exercise with ID ${exerciseId} not found for user ${userId}. Using default name.`,
+        'warn',
+        `Exercise with ID ${exerciseId} not found for user ${userId}. Using default name.`
       );
     }
 
     const result = await client.query(
-      "SELECT id, calories_burned FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3",
-      [userId, exerciseId, date],
+      'SELECT id, calories_burned FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3',
+      [userId, exerciseId, date]
     );
     existingEntry = result.rows[0];
   } catch (error) {
     log(
-      "error",
-      "Error checking for existing active calories exercise entry or fetching exercise name:",
-      error,
+      'error',
+      'Error checking for existing active calories exercise entry or fetching exercise name:',
+      error
     );
     throw new Error(
-      `Failed to check existing active calories exercise entry or fetch exercise name: ${error.message}`,
+      `Failed to check existing active calories exercise entry or fetch exercise name: ${error.message}`
     );
   } finally {
     client.release();
@@ -57,34 +57,34 @@ async function upsertExerciseEntryData(
   let result;
   if (existingEntry) {
     log(
-      "info",
-      `Existing active calories entry found for ${date}, updating calories from ${existingEntry.calories_burned} to ${caloriesBurned}.`,
+      'info',
+      `Existing active calories entry found for ${date}, updating calories from ${existingEntry.calories_burned} to ${caloriesBurned}.`
     );
     const updateClient = await getClient(userId);
     try {
       const updateResult = await updateClient.query(
-        "UPDATE exercise_entries SET calories_burned = $1, notes = $2, updated_by_user_id = $3, exercise_name = $4 WHERE id = $5 RETURNING *",
+        'UPDATE exercise_entries SET calories_burned = $1, notes = $2, updated_by_user_id = $3, exercise_name = $4 WHERE id = $5 RETURNING *',
         [
           caloriesBurned,
-          "Active calories logged from Apple Health (updated).",
+          'Active calories logged from Apple Health (updated).',
           createdByUserId,
           exerciseName,
           existingEntry.id,
-        ],
+        ]
       );
       result = updateResult.rows[0];
     } catch (error) {
-      log("error", "Error updating active calories exercise entry:", error);
+      log('error', 'Error updating active calories exercise entry:', error);
       throw new Error(
-        `Failed to update active calories exercise entry: ${error.message}`,
+        `Failed to update active calories exercise entry: ${error.message}`
       );
     } finally {
       updateClient.release();
     }
   } else {
     log(
-      "info",
-      `No existing active calories entry found for ${date}, inserting new entry.`,
+      'info',
+      `No existing active calories entry found for ${date}, inserting new entry.`
     );
     const insertClient = await getClient(userId);
     try {
@@ -97,16 +97,16 @@ async function upsertExerciseEntryData(
           date,
           caloriesBurned,
           0,
-          "Active calories logged from Apple Health.",
+          'Active calories logged from Apple Health.',
           createdByUserId,
           exerciseName,
-        ],
+        ]
       );
       result = insertResult.rows[0];
     } catch (error) {
-      log("error", "Error inserting active calories exercise entry:", error);
+      log('error', 'Error inserting active calories exercise entry:', error);
       throw new Error(
-        `Failed to insert active calories exercise entry: ${error.message}`,
+        `Failed to insert active calories exercise entry: ${error.message}`
       );
     } finally {
       insertClient.release();
@@ -131,7 +131,7 @@ async function _getExerciseEntryByIdWithClient(client, id) {
              ee.avg_heart_rate
       FROM exercise_entries ee
       WHERE ee.id = $1`,
-    [id],
+    [id]
   );
 
   const exerciseEntry = result.rows[0];
@@ -140,23 +140,21 @@ async function _getExerciseEntryByIdWithClient(client, id) {
       exerciseEntry.equipment = JSON.parse(exerciseEntry.equipment);
     } catch (e) {
       log(
-        "error",
+        'error',
         `Error parsing equipment for exercise entry ${exerciseEntry.id}:`,
-        e,
+        e
       );
       exerciseEntry.equipment = [];
     }
   }
   if (exerciseEntry && exerciseEntry.primary_muscles) {
     try {
-      exerciseEntry.primary_muscles = JSON.parse(
-        exerciseEntry.primary_muscles,
-      );
+      exerciseEntry.primary_muscles = JSON.parse(exerciseEntry.primary_muscles);
     } catch (e) {
       log(
-        "error",
+        'error',
         `Error parsing primary_muscles for exercise entry ${exerciseEntry.id}:`,
-        e,
+        e
       );
       exerciseEntry.primary_muscles = [];
     }
@@ -164,13 +162,13 @@ async function _getExerciseEntryByIdWithClient(client, id) {
   if (exerciseEntry && exerciseEntry.secondary_muscles) {
     try {
       exerciseEntry.secondary_muscles = JSON.parse(
-        exerciseEntry.secondary_muscles,
+        exerciseEntry.secondary_muscles
       );
     } catch (e) {
       log(
-        "error",
+        'error',
         `Error parsing secondary_muscles for exercise entry ${exerciseEntry.id}:`,
-        e,
+        e
       );
       exerciseEntry.secondary_muscles = [];
     }
@@ -180,9 +178,9 @@ async function _getExerciseEntryByIdWithClient(client, id) {
       exerciseEntry.instructions = JSON.parse(exerciseEntry.instructions);
     } catch (e) {
       log(
-        "error",
+        'error',
         `Error parsing instructions for exercise entry ${exerciseEntry.id}:`,
-        e,
+        e
       );
       exerciseEntry.instructions = [];
     }
@@ -192,9 +190,9 @@ async function _getExerciseEntryByIdWithClient(client, id) {
       exerciseEntry.images = JSON.parse(exerciseEntry.images);
     } catch (e) {
       log(
-        "error",
+        'error',
         `Error parsing images for exercise entry ${exerciseEntry.id}:`,
-        e,
+        e
       );
       exerciseEntry.images = [];
     }
@@ -209,15 +207,15 @@ async function _updateExerciseEntryWithClient(
   userId,
   updateData,
   updatedByUserId,
-  entrySource,
+  entrySource
 ) {
   // Fetch existing entry to get current snapshot values if not provided in updateData
   const existingEntryResult = await client.query(
-    `SELECT * FROM exercise_entries WHERE id = $1 AND user_id = $2`,
-    [id, userId],
+    'SELECT * FROM exercise_entries WHERE id = $1 AND user_id = $2',
+    [id, userId]
   );
   if (existingEntryResult.rows.length === 0) {
-    throw new Error("Exercise entry not found for update.");
+    throw new Error('Exercise entry not found for update.');
   }
   const currentEntry = existingEntryResult.rows[0];
 
@@ -291,10 +289,10 @@ async function _updateExerciseEntryWithClient(
   ) {
     const exercise = await exerciseRepository.getExerciseById(
       updateData.exercise_id,
-      userId,
+      userId
     );
     if (!exercise) {
-      throw new Error("Exercise not found for snapshot update.");
+      throw new Error('Exercise not found for snapshot update.');
     }
     mergedData.exercise_name = exercise.name;
     mergedData.calories_per_hour = exercise.calories_per_hour;
@@ -372,15 +370,15 @@ async function _updateExerciseEntryWithClient(
       mergedData.steps || null,
       id,
       userId,
-    ],
+    ]
   );
 
   // Handle sets update
   if (updateData.sets !== undefined) {
     // Only modify sets if they are explicitly provided
     await client.query(
-      "DELETE FROM exercise_entry_sets WHERE exercise_entry_id = $1",
-      [id],
+      'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = $1',
+      [id]
     );
     if (Array.isArray(updateData.sets) && updateData.sets.length > 0) {
       const setsValues = updateData.sets.map((set) => [
@@ -395,10 +393,10 @@ async function _updateExerciseEntryWithClient(
         set.rpe,
       ]);
       const setsQuery = format(
-        `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L`,
-        setsValues,
+        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L',
+        setsValues
       );
-        await client.query(setsQuery);
+      await client.query(setsQuery);
     }
   }
   return _getExerciseEntryByIdWithClient(client, id);
@@ -409,8 +407,8 @@ async function _createExerciseEntryWithClient(
   userId,
   entryData,
   createdByUserId,
-  entrySource = "Manual",
-  exercisePresetEntryId = null,
+  entrySource = 'Manual',
+  exercisePresetEntryId = null
 ) {
   try {
     // Check for existing entry
@@ -418,10 +416,10 @@ async function _createExerciseEntryWithClient(
     // For entries within a preset, we always allow duplicates (no uniqueness check).
     const syncDuplicateCheck = entryData.source_id ? true : false;
     const skipManualDuplicateCheck = [
-      "HealthKit",
-      "Health Connect",
-      "Fitbit",
-      "Strava",
+      'HealthKit',
+      'Health Connect',
+      'Fitbit',
+      'Strava',
     ].includes(entrySource);
 
     let existingEntryResult;
@@ -429,8 +427,8 @@ async function _createExerciseEntryWithClient(
     // 1. Attempt precise sync deduplication via source_id if available
     if (syncDuplicateCheck) {
       existingEntryResult = await client.query(
-        "SELECT id FROM exercise_entries WHERE user_id = $1 AND source = $2 AND source_id = $3",
-        [userId, entrySource, entryData.source_id],
+        'SELECT id FROM exercise_entries WHERE user_id = $1 AND source = $2 AND source_id = $3',
+        [userId, entrySource, entryData.source_id]
       );
     }
 
@@ -446,15 +444,15 @@ async function _createExerciseEntryWithClient(
       if (entryData.workout_plan_assignment_id) {
         // If it's linked to a workout plan assignment, it's unique by that assignment ID and date.
         existingEntryResult = await client.query(
-          "SELECT id FROM exercise_entries WHERE user_id = $1 AND workout_plan_assignment_id = $2 AND entry_date = $3",
-          [userId, entryData.workout_plan_assignment_id, entryData.entry_date],
+          'SELECT id FROM exercise_entries WHERE user_id = $1 AND workout_plan_assignment_id = $2 AND entry_date = $3',
+          [userId, entryData.workout_plan_assignment_id, entryData.entry_date]
         );
       } else {
         // For manual entries (no assignment), keep traditional uniqueness check by exercise_id and date.
         // We explicitly ensure workout_plan_assignment_id is NULL to avoid matching template-generated entries.
         existingEntryResult = await client.query(
-          "SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL AND workout_plan_assignment_id IS NULL",
-          [userId, entryData.exercise_id, entryData.entry_date, entrySource],
+          'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL AND workout_plan_assignment_id IS NULL',
+          [userId, entryData.exercise_id, entryData.entry_date, entrySource]
         );
       }
     }
@@ -464,8 +462,8 @@ async function _createExerciseEntryWithClient(
       // Entry exists, update it
       const existingEntryId = existingEntryResult.rows[0].id;
       log(
-        "info",
-        `Existing exercise entry found for user ${userId}, exercise ${entryData.exercise_id}, date ${entryData.entry_date}, source ${entrySource}. Updating entry ${existingEntryId}.`,
+        'info',
+        `Existing exercise entry found for user ${userId}, exercise ${entryData.exercise_id}, date ${entryData.entry_date}, source ${entrySource}. Updating entry ${existingEntryId}.`
       );
       const updatedEntry = await _updateExerciseEntryWithClient(
         client,
@@ -473,7 +471,7 @@ async function _createExerciseEntryWithClient(
         userId,
         entryData,
         createdByUserId,
-        entrySource,
+        entrySource
       );
       newEntryId = updatedEntry.id;
     } else {
@@ -482,11 +480,11 @@ async function _createExerciseEntryWithClient(
       const exerciseSnapshotQuery = await client.query(
         `SELECT name, calories_per_hour, category, source, source_id, force, level, mechanic, equipment, primary_muscles, secondary_muscles, instructions, images
          FROM exercises WHERE id = $1`,
-        [entryData.exercise_id],
+        [entryData.exercise_id]
       );
 
       if (exerciseSnapshotQuery.rows.length === 0) {
-        throw new Error("Exercise not found for snapshotting.");
+        throw new Error('Exercise not found for snapshotting.');
       }
       const snapshot = exerciseSnapshotQuery.rows[0];
 
@@ -527,7 +525,7 @@ async function _createExerciseEntryWithClient(
           exercisePresetEntryId, // New parameter
           entryData.sort_order || 0,
           entryData.steps || null,
-        ],
+        ]
       );
       newEntryId = entryResult.rows[0].id;
 
@@ -544,8 +542,8 @@ async function _createExerciseEntryWithClient(
           set.rpe,
         ]);
         const setsQuery = format(
-          `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L`,
-          setsValues,
+          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L',
+          setsValues
         );
         await client.query(setsQuery);
       }
@@ -554,9 +552,9 @@ async function _createExerciseEntryWithClient(
     return _getExerciseEntryByIdWithClient(client, newEntryId);
   } catch (error) {
     log(
-      "error",
-      `Error creating/updating exercise entry with snapshot:`,
-      error,
+      'error',
+      'Error creating/updating exercise entry with snapshot:',
+      error
     );
     throw error;
   }
@@ -566,28 +564,28 @@ async function createExerciseEntry(
   userId,
   entryData,
   createdByUserId,
-  entrySource = "Manual",
-  exercisePresetEntryId = null,
+  entrySource = 'Manual',
+  exercisePresetEntryId = null
 ) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
     const entry = await _createExerciseEntryWithClient(
       client,
       userId,
       entryData,
       createdByUserId,
       entrySource,
-      exercisePresetEntryId,
+      exercisePresetEntryId
     );
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return entry;
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     log(
-      "error",
-      `Error creating/updating exercise entry with snapshot:`,
-      error,
+      'error',
+      'Error creating/updating exercise entry with snapshot:',
+      error
     );
     throw error;
   } finally {
@@ -608,8 +606,8 @@ async function getExerciseEntryOwnerId(id, userId) {
   const client = await getClient(userId);
   try {
     const entryResult = await client.query(
-      "SELECT user_id FROM exercise_entries WHERE id = $1",
-      [id],
+      'SELECT user_id FROM exercise_entries WHERE id = $1',
+      [id]
     );
     return entryResult.rows[0]?.user_id;
   } finally {
@@ -620,7 +618,7 @@ async function getExerciseEntryOwnerId(id, userId) {
 async function updateExerciseEntry(id, userId, actingUserId, updateData) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     const result = await client.query(
       `UPDATE exercise_entries SET
@@ -654,15 +652,15 @@ async function updateExerciseEntry(id, userId, actingUserId, updateData) {
         actingUserId,
         id,
         userId,
-      ],
+      ]
     );
 
     // Only modify sets if they are explicitly provided in the update
     if (updateData.sets !== undefined) {
       // Delete old sets for the entry
       await client.query(
-        "DELETE FROM exercise_entry_sets WHERE exercise_entry_id = $1",
-        [id],
+        'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = $1',
+        [id]
       );
 
       // Insert new sets if provided and not empty
@@ -679,14 +677,14 @@ async function updateExerciseEntry(id, userId, actingUserId, updateData) {
           set.rpe,
         ]);
         const setsQuery = format(
-          `INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L`,
-          setsValues,
+          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L',
+          setsValues
         );
         await client.query(setsQuery);
       }
     }
 
-    await client.query("COMMIT");
+    await client.query('COMMIT');
     return getExerciseEntryById(id, userId); // Refetch to get full data
   } finally {
     client.release();
@@ -698,7 +696,7 @@ async function updateExerciseEntriesDateByPresetEntryIdWithClient(
   userId,
   presetEntryId,
   entryDate,
-  updatedByUserId,
+  updatedByUserId
 ) {
   await client.query(
     `UPDATE exercise_entries
@@ -706,19 +704,19 @@ async function updateExerciseEntriesDateByPresetEntryIdWithClient(
          updated_by_user_id = $2,
          updated_at = now()
      WHERE user_id = $3 AND exercise_preset_entry_id = $4`,
-    [entryDate, updatedByUserId, userId, presetEntryId],
+    [entryDate, updatedByUserId, userId, presetEntryId]
   );
 }
 
 async function deleteExerciseEntriesByPresetEntryIdWithClient(
   client,
   userId,
-  presetEntryId,
+  presetEntryId
 ) {
   await client.query(
     `DELETE FROM exercise_entries
      WHERE user_id = $1 AND exercise_preset_entry_id = $2`,
-    [userId, presetEntryId],
+    [userId, presetEntryId]
   );
 }
 
@@ -726,8 +724,8 @@ async function deleteExerciseEntry(id, userId) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      "DELETE FROM exercise_entries WHERE id = $1 AND user_id = $2 RETURNING id",
-      [id, userId],
+      'DELETE FROM exercise_entries WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, userId]
     );
     return result.rowCount > 0;
   } finally {
@@ -744,7 +742,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
        FROM exercise_preset_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY created_at ASC`,
-      [userId, selectedDate],
+      [userId, selectedDate]
     );
     const presetEntries = presetEntriesResult.rows;
 
@@ -770,7 +768,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
         FROM exercise_entries ee
         WHERE ee.user_id = $1 AND ee.entry_date = $2
         ORDER BY ee.sort_order ASC, ee.created_at ASC`,
-      [userId, selectedDate],
+      [userId, selectedDate]
     );
     const allExerciseEntries = individualEntriesResult.rows;
 
@@ -780,7 +778,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
     // Initialize grouped entries with preset entries
     presetEntries.forEach((preset) => {
       groupedEntries.set(preset.id, {
-        type: "preset",
+        type: 'preset',
         id: preset.id,
         workout_preset_id: preset.workout_preset_id,
         name: preset.name,
@@ -800,7 +798,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
           await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(
             userId,
             row.id,
-            null,
+            null
           );
         const {
           exercise_name,
@@ -841,7 +839,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
           },
           activity_details: activityDetails,
         };
-      }),
+      })
     );
 
     // Group exercises under their respective preset entries or as individual entries
@@ -858,13 +856,13 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
         preset.exercises.sort(
           (a, b) =>
             (a.sort_order || 0) - (b.sort_order || 0) ||
-            new Date(a.created_at) - new Date(b.created_at),
+            new Date(a.created_at) - new Date(b.created_at)
         ); // Ensure sub-exercises are sorted
         preset.total_duration_minutes += entry.duration_minutes || 0; // Sum duration for the preset
       } else {
         // Add individual exercises that are not part of any preset
         finalEntriesMap.set(entry.id, {
-          type: "individual",
+          type: 'individual',
           ...entry,
         });
       }
@@ -877,7 +875,7 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
         await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(
           userId,
           null,
-          preset.id,
+          preset.id
         );
       preset.activity_details = presetActivityDetails;
       finalEntriesMap.set(preset.id, preset); // Add preset to map, overwriting if already present (shouldn't happen for presets)
@@ -889,13 +887,13 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
     finalEntries.sort(
       (a, b) =>
         (a.sort_order || 0) - (b.sort_order || 0) ||
-        new Date(a.created_at) - new Date(b.created_at),
+        new Date(a.created_at) - new Date(b.created_at)
     );
 
     log(
-      "debug",
+      'debug',
       `getExerciseEntriesByDate: Returning grouped entries for user ${userId} on ${selectedDate}:`,
-      finalEntries,
+      finalEntries
     );
     return finalEntries;
   } finally {
@@ -931,7 +929,7 @@ async function getExerciseProgressData(userId, exerciseId, startDate, endDate) {
          AND ee.exercise_id = $2
          AND ee.entry_date BETWEEN $3 AND $4
        ORDER BY ee.entry_date ASC`,
-      [userId, exerciseId, startDate, endDate],
+      [userId, exerciseId, startDate, endDate]
     );
     return result.rows;
   } finally {
@@ -965,7 +963,7 @@ async function getExerciseHistory(userId, exerciseId, limit = 5) {
          AND ee.exercise_id = $2
        ORDER BY ee.entry_date DESC, ee.created_at DESC
        LIMIT $3`,
-      [userId, exerciseId, limit],
+      [userId, exerciseId, limit]
     );
     return result.rows;
   } finally {
@@ -977,11 +975,11 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
   userId,
   startDate,
   endDate,
-  entrySource,
+  entrySource
 ) {
   const client = await getClient(userId);
   try {
-    await client.query("BEGIN");
+    await client.query('BEGIN');
 
     // Get IDs of exercise entries to be deleted
     const entryIdsResult = await client.query(
@@ -989,56 +987,56 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
        WHERE user_id = $1
          AND entry_date BETWEEN $2 AND $3
          AND source = $4`,
-      [userId, startDate, endDate, entrySource],
+      [userId, startDate, endDate, entrySource]
     );
     const entryIds = entryIdsResult.rows.map((row) => row.id);
 
     if (entryIds.length > 0) {
       // Delete associated activity details
       await client.query(
-        `DELETE FROM exercise_entry_activity_details WHERE exercise_entry_id = ANY($1::uuid[])`,
-        [entryIds],
+        'DELETE FROM exercise_entry_activity_details WHERE exercise_entry_id = ANY($1::uuid[])',
+        [entryIds]
       );
       log(
-        "info",
-        `[exerciseEntry] Deleted activity details for ${entryIds.length} exercise entries.`,
+        'info',
+        `[exerciseEntry] Deleted activity details for ${entryIds.length} exercise entries.`
       );
 
       // Delete associated sets
       await client.query(
-        `DELETE FROM exercise_entry_sets WHERE exercise_entry_id = ANY($1::uuid[])`,
-        [entryIds],
+        'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = ANY($1::uuid[])',
+        [entryIds]
       );
       log(
-        "info",
-        `[exerciseEntry] Deleted sets for ${entryIds.length} exercise entries.`,
+        'info',
+        `[exerciseEntry] Deleted sets for ${entryIds.length} exercise entries.`
       );
 
       // Delete the exercise entries themselves
       const result = await client.query(
-        `DELETE FROM exercise_entries WHERE id = ANY($1::uuid[])`,
-        [entryIds],
+        'DELETE FROM exercise_entries WHERE id = ANY($1::uuid[])',
+        [entryIds]
       );
       log(
-        "info",
-        `[exerciseEntry] Deleted ${result.rowCount} exercise entries with source '${entrySource}' for user ${userId} from ${startDate} to ${endDate}.`,
+        'info',
+        `[exerciseEntry] Deleted ${result.rowCount} exercise entries with source '${entrySource}' for user ${userId} from ${startDate} to ${endDate}.`
       );
-      await client.query("COMMIT");
+      await client.query('COMMIT');
       return result.rowCount;
     } else {
       log(
-        "info",
-        `[exerciseEntry] No exercise entries with source '${entrySource}' found for user ${userId} from ${startDate} to ${endDate}.`,
+        'info',
+        `[exerciseEntry] No exercise entries with source '${entrySource}' found for user ${userId} from ${startDate} to ${endDate}.`
       );
-      await client.query("COMMIT");
+      await client.query('COMMIT');
       return 0;
     }
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query('ROLLBACK');
     log(
-      "error",
+      'error',
       `Error deleting exercise entries by source and date: ${error.message}`,
-      { userId, startDate, endDate, entrySource, error },
+      { userId, startDate, endDate, entrySource, error }
     );
     throw error;
   } finally {

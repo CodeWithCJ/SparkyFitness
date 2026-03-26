@@ -1,10 +1,10 @@
 // SparkyFitnessServer/routes/hevyRoutes.js
 
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const hevyService = require("../integrations/hevy/hevyService");
-const { log } = require("../config/logging");
-const authMiddleware = require("../middleware/authMiddleware");
+const hevyService = require('../integrations/hevy/hevyService');
+const { log } = require('../config/logging');
+const authMiddleware = require('../middleware/authMiddleware');
 
 /**
  * @swagger
@@ -13,16 +13,17 @@ const authMiddleware = require("../middleware/authMiddleware");
  *     summary: Manually trigger a Hevy data sync
  *     tags: [External Integrations]
  */
-router.post("/sync", authMiddleware.authenticate, async (req, res) => {
+router.post('/sync', authMiddleware.authenticate, async (req, res) => {
   try {
     const userId = req.userId;
     const createdByUserId = req.userId;
     const { providerId, startDate, endDate } = req.body;
-    const fullSync = req.query.fullSync === "true" || req.body.fullSync === true;
-    
+    const fullSync =
+      req.query.fullSync === 'true' || req.body.fullSync === true;
+
     log(
-      "info",
-      `[hevyRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ""}${endDate ? ` to ${endDate}` : ""}`,
+      'info',
+      `[hevyRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
     );
 
     const result = await hevyService.syncHevyData(
@@ -31,22 +32,22 @@ router.post("/sync", authMiddleware.authenticate, async (req, res) => {
       fullSync,
       providerId,
       startDate,
-      endDate,
+      endDate
     );
     res.status(200).json(result);
   } catch (error) {
-    log("error", `Error initiating manual Hevy sync: ${error.message}`);
+    log('error', `Error initiating manual Hevy sync: ${error.message}`);
 
     // Check for 401 Unauthorized from Hevy API
-    if (error.message.includes("401")) {
+    if (error.message.includes('401')) {
       return res.status(401).json({
-        message: "Invalid Hevy API Key. Please check your key and try again.",
+        message: 'Invalid Hevy API Key. Please check your key and try again.',
         error: error.message,
       });
     }
 
     res.status(500).json({
-      message: "Error initiating manual Hevy sync",
+      message: 'Error initiating manual Hevy sync',
       error: error.message,
     });
   }
@@ -59,16 +60,16 @@ router.post("/sync", authMiddleware.authenticate, async (req, res) => {
  *     summary: Get Hevy connection status
  *     tags: [External Integrations]
  */
-router.get("/status", authMiddleware.authenticate, async (req, res) => {
+router.get('/status', authMiddleware.authenticate, async (req, res) => {
   try {
     const userId = req.userId;
     const status = await hevyService.getStatus(userId);
     res.status(200).json(status);
   } catch (error) {
-    log("error", `Error getting Hevy status: ${error.message}`);
+    log('error', `Error getting Hevy status: ${error.message}`);
     res
       .status(500)
-      .json({ message: "Error getting Hevy status", error: error.message });
+      .json({ message: 'Error getting Hevy status', error: error.message });
   }
 });
 

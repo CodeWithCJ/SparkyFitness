@@ -2,7 +2,7 @@ const { Pool, types } = require('pg');
 const { log } = require('../config/logging');
 
 // Parse numeric types
-types.setTypeParser(types.builtins.NUMERIC, value => parseFloat(value));
+types.setTypeParser(types.builtins.NUMERIC, (value) => parseFloat(value));
 
 let ownerPoolInstance = null;
 let appPoolInstance = null;
@@ -63,13 +63,18 @@ function _getRawAppPool() {
 
 async function getClient(userId, authenticatedUserId = null) {
   if (!userId) {
-    throw new Error("userId is required for getClient to ensure RLS is applied.");
+    throw new Error(
+      'userId is required for getClient to ensure RLS is applied.'
+    );
   }
   const client = await _getRawAppPool().connect();
   // If authenticatedUserId is not provided, it means the user is acting as themselves.
   // In this case, the authenticated actor IS the target user.
   const actualAuthUserId = authenticatedUserId || userId;
-  await client.query(`SELECT public.set_app_context($1, $2)`, [userId, actualAuthUserId]);
+  await client.query('SELECT public.set_app_context($1, $2)', [
+    userId,
+    actualAuthUserId,
+  ]);
   return client;
 }
 

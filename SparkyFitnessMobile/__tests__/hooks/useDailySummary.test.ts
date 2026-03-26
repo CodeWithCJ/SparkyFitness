@@ -1,34 +1,11 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useDailySummary } from '../../src/hooks/useDailySummary';
 import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
-import { fetchDailyGoals } from '../../src/services/api/goalsApi';
-import { fetchFoodEntries } from '../../src/services/api/foodEntriesApi';
-import { fetchExerciseEntries } from '../../src/services/api/exerciseApi';
-import { fetchWaterIntake } from '../../src/services/api/measurementsApi';
+import { fetchDailySummary } from '../../src/services/api/dailySummaryApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
-jest.mock('../../src/services/api/goalsApi', () => ({
-  fetchDailyGoals: jest.fn(),
-}));
-
-jest.mock('../../src/services/api/foodEntriesApi', () => {
-  const actual = jest.requireActual('../../src/services/api/foodEntriesApi');
-  return {
-    ...actual,
-    fetchFoodEntries: jest.fn(),
-  };
-});
-
-jest.mock('../../src/services/api/exerciseApi', () => {
-  const actual = jest.requireActual('../../src/services/api/exerciseApi');
-  return {
-    ...actual,
-    fetchExerciseEntries: jest.fn(),
-  };
-});
-
-jest.mock('../../src/services/api/measurementsApi', () => ({
-  fetchWaterIntake: jest.fn(),
+jest.mock('../../src/services/api/dailySummaryApi', () => ({
+  fetchDailySummary: jest.fn(),
 }));
 
 jest.mock('@react-navigation/native', () => ({
@@ -37,20 +14,52 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-const mockFetchDailyGoals = fetchDailyGoals as jest.MockedFunction<typeof fetchDailyGoals>;
-const mockFetchFoodEntries = fetchFoodEntries as jest.MockedFunction<typeof fetchFoodEntries>;
-const mockFetchExerciseEntries = fetchExerciseEntries as jest.MockedFunction<typeof fetchExerciseEntries>;
-const mockFetchWaterIntake = fetchWaterIntake as jest.MockedFunction<typeof fetchWaterIntake>;
+const mockFetchDailySummary = fetchDailySummary as jest.MockedFunction<typeof fetchDailySummary>;
 
-const emptyExerciseResponse = { sessions: [], stepCalories: 0 };
+const makeGoals = (overrides = {}) => ({
+  calories: 2000,
+  protein: 150,
+  carbs: 200,
+  fat: 65,
+  water_goal_ml: 2500,
+  saturated_fat: 20,
+  polyunsaturated_fat: 10,
+  monounsaturated_fat: 15,
+  trans_fat: 0,
+  cholesterol: 300,
+  sodium: 2300,
+  potassium: 3500,
+  dietary_fiber: 30,
+  sugars: 50,
+  vitamin_a: 900,
+  vitamin_c: 90,
+  calcium: 1000,
+  iron: 18,
+  target_exercise_calories_burned: 300,
+  target_exercise_duration_minutes: 30,
+  protein_percentage: null,
+  carbs_percentage: null,
+  fat_percentage: null,
+  breakfast_percentage: 25,
+  lunch_percentage: 35,
+  dinner_percentage: 30,
+  snacks_percentage: 10,
+  ...overrides,
+});
+
+const makeSummaryResponse = (overrides: Record<string, unknown> = {}) => ({
+  goals: makeGoals(overrides.goals as Record<string, unknown>),
+  foodEntries: (overrides.foodEntries ?? []) as any[],
+  exerciseSessions: (overrides.exerciseSessions ?? []) as any[],
+  waterIntake: (overrides.waterIntake ?? 0) as number,
+  stepCalories: (overrides.stepCalories ?? 0) as number,
+});
 
 describe('useDailySummary', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockFetchWaterIntake.mockResolvedValue({ water_ml: 0 });
-    mockFetchExerciseEntries.mockResolvedValue(emptyExerciseResponse);
     queryClient = createTestQueryClient();
   });
 
@@ -61,46 +70,27 @@ describe('useDailySummary', () => {
   const testDate = '2024-06-15';
 
   describe('query behavior', () => {
-    test('fetches goals, food entries, and exercise entries', async () => {
-      mockFetchDailyGoals.mockResolvedValue({
-        calories: 2000,
-        protein: 150,
-        carbs: 200,
-        fat: 65,
-        dietary_fiber: 30,
-      });
-      mockFetchFoodEntries.mockResolvedValue([]);
+    test('calls fetchDailySummary with the date', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse());
 
       renderHook(() => useDailySummary({ date: testDate }), {
         wrapper: createQueryWrapper(queryClient),
       });
 
       await waitFor(() => {
-        expect(mockFetchDailyGoals).toHaveBeenCalledWith(testDate);
-        expect(mockFetchFoodEntries).toHaveBeenCalledWith(testDate);
-        expect(mockFetchExerciseEntries).toHaveBeenCalledWith(testDate);
+        expect(mockFetchDailySummary).toHaveBeenCalledWith(testDate);
       });
     });
 
     test('returns summary with calculated values', async () => {
-      mockFetchDailyGoals.mockResolvedValue({
-        calories: 2000,
-        protein: 150,
-        carbs: 200,
-        fat: 65,
-        dietary_fiber: 30,
-      });
-      // Real formula: (nutrient * quantity) / serving_size
-      // e.g. calories: (500 * 2) / 1 = 1000
-      mockFetchFoodEntries.mockResolvedValue([
-        { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 2, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
-      ]);
-      mockFetchExerciseEntries.mockResolvedValue({
-        sessions: [
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        foodEntries: [
+          { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 2, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        ],
+        exerciseSessions: [
           { type: 'individual', id: '1', calories_burned: 200, exercise_snapshot: { name: 'Running' }, duration_minutes: 30 },
         ],
-        stepCalories: 0,
-      });
+      }));
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
         wrapper: createQueryWrapper(queryClient),
@@ -124,16 +114,10 @@ describe('useDailySummary', () => {
     });
 
     test('includes water intake from API', async () => {
-      mockFetchDailyGoals.mockResolvedValue({
-        calories: 2000,
-        protein: 150,
-        carbs: 200,
-        fat: 65,
-        dietary_fiber: 30,
-        water_goal_ml: 3000,
-      });
-      mockFetchFoodEntries.mockResolvedValue([]);
-      mockFetchWaterIntake.mockResolvedValue({ water_ml: 1500 });
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        goals: { water_goal_ml: 3000 },
+        waterIntake: 1500,
+      }));
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
         wrapper: createQueryWrapper(queryClient),
@@ -148,15 +132,10 @@ describe('useDailySummary', () => {
     });
 
     test('defaults water goal to 2500 when not set in goals', async () => {
-      mockFetchDailyGoals.mockResolvedValue({
-        calories: 2000,
-        protein: 150,
-        carbs: 200,
-        fat: 65,
-        dietary_fiber: 30,
-      });
-      mockFetchFoodEntries.mockResolvedValue([]);
-      mockFetchWaterIntake.mockResolvedValue({ water_ml: 750 });
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        goals: { water_goal_ml: null },
+        waterIntake: 750,
+      }));
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
         wrapper: createQueryWrapper(queryClient),
@@ -170,33 +149,8 @@ describe('useDailySummary', () => {
       expect(result.current.summary?.waterGoal).toBe(2500);
     });
 
-    test('gracefully handles water intake API failure', async () => {
-      mockFetchDailyGoals.mockResolvedValue({
-        calories: 2000,
-        protein: 150,
-        carbs: 200,
-        fat: 65,
-        dietary_fiber: 30,
-      });
-      mockFetchFoodEntries.mockResolvedValue([]);
-      mockFetchWaterIntake.mockRejectedValue(new Error('Not Found'));
-
-      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
-        wrapper: createQueryWrapper(queryClient),
-      });
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
-
-      expect(result.current.summary?.waterConsumed).toBe(0);
-      expect(result.current.summary?.waterGoal).toBe(2500);
-    });
-
-    test('includes server-computed stepCalories from exercise entries response', async () => {
-      mockFetchDailyGoals.mockResolvedValue({ calories: 2000, protein: 150, carbs: 200, fat: 65, dietary_fiber: 30 });
-      mockFetchFoodEntries.mockResolvedValue([]);
-      mockFetchExerciseEntries.mockResolvedValue({ sessions: [], stepCalories: 105 });
+    test('includes server-computed stepCalories from daily summary response', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({ stepCalories: 105 }));
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
         wrapper: createQueryWrapper(queryClient),
@@ -210,22 +164,14 @@ describe('useDailySummary', () => {
     });
 
     test('calculates net and remaining calories correctly', async () => {
-      mockFetchDailyGoals.mockResolvedValue({
-        calories: 2000,
-        protein: 150,
-        carbs: 200,
-        fat: 65,
-        dietary_fiber: 30,
-      });
-      mockFetchFoodEntries.mockResolvedValue([
-        { id: '1', calories: 800, protein: 40, carbs: 80, fat: 20, dietary_fiber: 10, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
-      ]);
-      mockFetchExerciseEntries.mockResolvedValue({
-        sessions: [
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        foodEntries: [
+          { id: '1', calories: 800, protein: 40, carbs: 80, fat: 20, dietary_fiber: 10, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        ],
+        exerciseSessions: [
           { type: 'individual', id: '1', calories_burned: 300, exercise_snapshot: { name: 'Running' }, duration_minutes: 45 },
         ],
-        stepCalories: 0,
-      });
+      }));
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
         wrapper: createQueryWrapper(queryClient),
@@ -245,18 +191,19 @@ describe('useDailySummary', () => {
 
   describe('goal fallback defaults', () => {
     test('defaults falsy goal values to 0 and water_goal_ml to 2500', async () => {
-      mockFetchDailyGoals.mockResolvedValue({
-        calories: 0,
-        protein: undefined,
-        carbs: null,
-        fat: 0,
-        dietary_fiber: undefined,
-        target_exercise_duration_minutes: 0,
-        target_exercise_calories_burned: undefined,
-        water_goal_ml: null,
-      } as any);
-      mockFetchFoodEntries.mockResolvedValue([]);
-      mockFetchWaterIntake.mockResolvedValue({ water_ml: 0 });
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        goals: {
+          calories: 0,
+          protein: undefined,
+          carbs: null,
+          fat: 0,
+          dietary_fiber: undefined,
+          target_exercise_duration_minutes: 0,
+          target_exercise_calories_burned: undefined,
+          water_goal_ml: null,
+        },
+        waterIntake: 0,
+      }));
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
         wrapper: createQueryWrapper(queryClient),
@@ -284,22 +231,17 @@ describe('useDailySummary', () => {
         wrapper: createQueryWrapper(queryClient),
       });
 
-      expect(mockFetchDailyGoals).not.toHaveBeenCalled();
+      expect(mockFetchDailySummary).not.toHaveBeenCalled();
     });
   });
 
   describe('refetch', () => {
     test('refetch updates data', async () => {
-      mockFetchDailyGoals.mockResolvedValue({
-        calories: 2000,
-        protein: 150,
-        carbs: 200,
-        fat: 65,
-        dietary_fiber: 30,
-      });
-      mockFetchFoodEntries.mockResolvedValue([
-        { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
-      ]);
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        foodEntries: [
+          { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        ],
+      }));
 
       const { result } = renderHook(() => useDailySummary({ date: testDate }), {
         wrapper: createQueryWrapper(queryClient),
@@ -309,17 +251,13 @@ describe('useDailySummary', () => {
         expect(result.current.summary?.calorieGoal).toBe(2000);
       });
 
-      // Update mocks to return different data
-      mockFetchDailyGoals.mockResolvedValue({
-        calories: 2500,
-        protein: 180,
-        carbs: 250,
-        fat: 80,
-        dietary_fiber: 35,
-      });
-      mockFetchFoodEntries.mockResolvedValue([
-        { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
-      ]);
+      // Update mock to return different data
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        goals: { calories: 2500 },
+        foodEntries: [
+          { id: '1', calories: 500, protein: 30, carbs: 50, fat: 15, dietary_fiber: 5, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        ],
+      }));
 
       await act(async () => {
         await result.current.refetch();

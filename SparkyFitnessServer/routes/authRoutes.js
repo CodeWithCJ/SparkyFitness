@@ -5,8 +5,8 @@ const router = express.Router();
  * LEGACY AUTH ROUTES
  * Most routes have been migrated to the /api/identity namespace
  * or offloaded to native Better Auth handlers.
- * 
- * This router remains primarily for any legacy fallbacks or 
+ *
+ * This router remains primarily for any legacy fallbacks or
  * authentication-specific logic that doesn't fit in the core engine.
  */
 

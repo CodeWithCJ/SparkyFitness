@@ -1,4 +1,4 @@
-const fs = require("fs");
+const fs = require('fs');
 
 /**
  * Iterates through environment variables ending in _FILE,
@@ -11,13 +11,13 @@ const fs = require("fs");
 function loadSecrets() {
   // We use console.log here to avoid dependency on the logging module
   // which might rely on env vars we haven't loaded yet.
-  console.log("[Secrets] Checking for secret files to load...");
+  console.log('[Secrets] Checking for secret files to load...');
 
   const envVars = Object.keys(process.env);
   let loadedCount = 0;
 
   envVars.forEach((key) => {
-    if (key.endsWith("_FILE")) {
+    if (key.endsWith('_FILE')) {
       const targetVar = key.slice(0, -5); // Remove '_FILE' suffix
       const filePath = process.env[key];
 
@@ -33,20 +33,20 @@ function loadSecrets() {
 
       try {
         if (fs.existsSync(filePath)) {
-          const fileContent = fs.readFileSync(filePath, "utf8").trim();
+          const fileContent = fs.readFileSync(filePath, 'utf8').trim();
           process.env[targetVar] = fileContent;
           console.log(
-            `[Secrets] Loaded secret for ${targetVar} from file defined in ${key}`,
+            `[Secrets] Loaded secret for ${targetVar} from file defined in ${key}`
           );
           loadedCount++;
         } else {
           console.warn(
-            `[Secrets] WARNING: File specified in ${key} (${filePath}) not found.`,
+            `[Secrets] WARNING: File specified in ${key} (${filePath}) not found.`
           );
         }
       } catch (err) {
         console.error(
-          `[Secrets] ERROR: Error reading file for ${key} (${filePath}): ${err.message}`,
+          `[Secrets] ERROR: Error reading file for ${key} (${filePath}): ${err.message}`
         );
       }
     }
@@ -54,10 +54,10 @@ function loadSecrets() {
 
   if (loadedCount > 0) {
     console.log(
-      `[Secrets] Successfully loaded ${loadedCount} secrets from files.`,
+      `[Secrets] Successfully loaded ${loadedCount} secrets from files.`
     );
   } else {
-    console.log("[Secrets] No secrets loaded from files.");
+    console.log('[Secrets] No secrets loaded from files.');
   }
 }
 

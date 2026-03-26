@@ -1,5 +1,5 @@
-const { getClient } = require("../db/poolManager");
-const { log } = require("../config/logging");
+const { getClient } = require('../db/poolManager');
+const { log } = require('../config/logging');
 
 async function getGoalByDate(userId, selectedDate) {
   const client = await getClient(userId); // User-specific operation
@@ -17,7 +17,7 @@ async function getGoalByDate(userId, selectedDate) {
         WHERE goal_date = $1
         ORDER BY updated_at DESC, created_at DESC -- Prioritize most recently updated/created
         LIMIT 1`,
-      [selectedDate],
+      [selectedDate]
     );
     return result.rows[0];
   } finally {
@@ -41,7 +41,7 @@ async function getMostRecentGoalBeforeDate(userId, selectedDate) {
        WHERE (goal_date < $1 OR goal_date IS NULL)
        ORDER BY goal_date DESC NULLS LAST
        LIMIT 1`,
-      [selectedDate],
+      [selectedDate]
     );
     return result.rows[0];
   } finally {
@@ -129,7 +129,7 @@ async function upsertGoal(goalData) {
         goalData.custom_nutrients || {},
         new Date(), // for created_at
         new Date(), // for updated_at
-      ],
+      ]
     );
     return result.rows[0];
   } finally {
@@ -145,7 +145,7 @@ async function deleteGoalsInRange(userId, startDate, endDate) {
        WHERE goal_date >= $1
          AND goal_date < $2
          AND goal_date IS NOT NULL`,
-      [startDate, endDate],
+      [startDate, endDate]
     );
     return true;
   } finally {
@@ -159,7 +159,7 @@ async function deleteDefaultGoal(userId) {
     await client.query(
       `DELETE FROM user_goals
        WHERE goal_date IS NULL`,
-      [],
+      []
     );
     return true;
   } finally {

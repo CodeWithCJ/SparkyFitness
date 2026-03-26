@@ -13,9 +13,18 @@ async function createWeeklyGoalPlan(planData) {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
-        planData.user_id, planData.plan_name, planData.start_date, planData.end_date, planData.is_active,
-        planData.monday_preset_id, planData.tuesday_preset_id, planData.wednesday_preset_id,
-        planData.thursday_preset_id, planData.friday_preset_id, planData.saturday_preset_id, planData.sunday_preset_id
+        planData.user_id,
+        planData.plan_name,
+        planData.start_date,
+        planData.end_date,
+        planData.is_active,
+        planData.monday_preset_id,
+        planData.tuesday_preset_id,
+        planData.wednesday_preset_id,
+        planData.thursday_preset_id,
+        planData.friday_preset_id,
+        planData.saturday_preset_id,
+        planData.sunday_preset_id,
       ]
     );
     return result.rows[0];
@@ -28,7 +37,7 @@ async function getWeeklyGoalPlansByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `SELECT * FROM weekly_goal_plans WHERE user_id = $1 ORDER BY start_date DESC`,
+      'SELECT * FROM weekly_goal_plans WHERE user_id = $1 ORDER BY start_date DESC',
       [userId]
     );
     return result.rows;
@@ -67,10 +76,19 @@ async function updateWeeklyGoalPlan(planId, planData) {
       WHERE id = $12 AND user_id = $13
       RETURNING *`,
       [
-        planData.plan_name, planData.start_date, planData.end_date, planData.is_active,
-        planData.monday_preset_id, planData.tuesday_preset_id, planData.wednesday_preset_id,
-        planData.thursday_preset_id, planData.friday_preset_id, planData.saturday_preset_id, planData.sunday_preset_id,
-        planId, planData.user_id
+        planData.plan_name,
+        planData.start_date,
+        planData.end_date,
+        planData.is_active,
+        planData.monday_preset_id,
+        planData.tuesday_preset_id,
+        planData.wednesday_preset_id,
+        planData.thursday_preset_id,
+        planData.friday_preset_id,
+        planData.saturday_preset_id,
+        planData.sunday_preset_id,
+        planId,
+        planData.user_id,
       ]
     );
     return result.rows[0];
@@ -83,7 +101,7 @@ async function deactivateAllWeeklyGoalPlans(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
-      `UPDATE weekly_goal_plans SET is_active = FALSE WHERE user_id = $1`,
+      'UPDATE weekly_goal_plans SET is_active = FALSE WHERE user_id = $1',
       [userId]
     );
     return true;
@@ -96,7 +114,7 @@ async function deleteWeeklyGoalPlan(planId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      `DELETE FROM weekly_goal_plans WHERE id = $1 AND user_id = $2 RETURNING *`,
+      'DELETE FROM weekly_goal_plans WHERE id = $1 AND user_id = $2 RETURNING *',
       [planId, userId]
     );
     return result.rows[0];

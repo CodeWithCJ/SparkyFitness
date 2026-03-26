@@ -1,7 +1,8 @@
 const { getClient } = require('../db/poolManager');
 
 async function createWaterContainer(userId, containerData) {
-  const { name, volume, unit, is_primary, servings_per_container } = containerData;
+  const { name, volume, unit, is_primary, servings_per_container } =
+    containerData;
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -64,27 +65,27 @@ async function deleteWaterContainer(id, userId) {
 }
 
 async function setPrimaryWaterContainer(id, userId) {
-    const client = await getClient(userId); // User-specific operation
-    try {
-        await client.query('BEGIN');
-        // First, set all containers for this user to not be primary
-        await client.query(
-            'UPDATE user_water_containers SET is_primary = false WHERE user_id = $1',
-            [userId]
-        );
-        // Then, set the specified container to be primary
-        const result = await client.query(
-            'UPDATE user_water_containers SET is_primary = true, updated_at = now() WHERE id = $1 AND user_id = $2 RETURNING *',
-            [id, userId]
-        );
-        await client.query('COMMIT');
-        return result.rows[0];
-    } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-    } finally {
-        client.release();
-    }
+  const client = await getClient(userId); // User-specific operation
+  try {
+    await client.query('BEGIN');
+    // First, set all containers for this user to not be primary
+    await client.query(
+      'UPDATE user_water_containers SET is_primary = false WHERE user_id = $1',
+      [userId]
+    );
+    // Then, set the specified container to be primary
+    const result = await client.query(
+      'UPDATE user_water_containers SET is_primary = true, updated_at = now() WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, userId]
+    );
+    await client.query('COMMIT');
+    return result.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 async function getPrimaryWaterContainerByUserId(userId) {
@@ -99,7 +100,7 @@ async function getPrimaryWaterContainerByUserId(userId) {
     client.release();
   }
 }
- 
+
 async function getWaterContainerById(id, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -112,7 +113,7 @@ async function getWaterContainerById(id, userId) {
     client.release();
   }
 }
- 
+
 module.exports = {
   createWaterContainer,
   getWaterContainersByUserId,

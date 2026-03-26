@@ -1,18 +1,22 @@
-import express, { RequestHandler } from "express";
+import express, { RequestHandler } from 'express';
 import {
   exerciseHistoryQuerySchema,
   exerciseHistoryResponseSchema,
-  exerciseEntriesByDateResponseSchema,
-} from "@workspace/shared";
-import { getExerciseEntryHistory, getExerciseEntriesByDateV2 } from "../../services/exerciseEntryHistoryService";
+  exerciseSessionResponseSchema,
+} from '@workspace/shared';
+import {
+  getExerciseEntryHistory,
+  getExerciseEntriesByDateV2,
+} from '../../services/exerciseEntryHistoryService';
+import { z } from 'zod';
 
-const { log } = require("../../config/logging");
-const checkPermissionMiddleware = require("../../middleware/checkPermissionMiddleware");
-const { canAccessUserData } = require("../../utils/permissionUtils");
+const { log } = require('../../config/logging');
+const checkPermissionMiddleware = require('../../middleware/checkPermissionMiddleware');
+const { canAccessUserData } = require('../../utils/permissionUtils');
 
 const router = express.Router();
 
-router.use(checkPermissionMiddleware("diary"));
+router.use(checkPermissionMiddleware('diary'));
 
 /**
  * @swagger
@@ -54,7 +58,7 @@ const historyHandler: RequestHandler = async (req, res, next) => {
     const parsedQuery = exerciseHistoryQuerySchema.safeParse(req.query);
     if (!parsedQuery.success) {
       res.status(400).json({
-        error: "Invalid query parameters",
+        error: 'Invalid query parameters',
         details: parsedQuery.error.flatten().fieldErrors,
       });
       return;
@@ -70,11 +74,11 @@ const historyHandler: RequestHandler = async (req, res, next) => {
     if (queryUserId && queryUserId !== actorUserId) {
       const hasPermission = await canAccessUserData(
         queryUserId,
-        "diary",
-        actorUserId,
+        'diary',
+        actorUserId
       );
       if (!hasPermission) {
-        res.status(403).json({ error: "Forbidden" });
+        res.status(403).json({ error: 'Forbidden' });
         return;
       }
     }
@@ -83,12 +87,12 @@ const historyHandler: RequestHandler = async (req, res, next) => {
     const response = exerciseHistoryResponseSchema.parse(result);
     res.status(200).json(response);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "ZodError") {
-      log("error", "v2 exercise history response validation failed:", error);
+    if (error instanceof Error && error.name === 'ZodError') {
+      log('error', 'v2 exercise history response validation failed:', error);
       next(
-        Object.assign(new Error("Internal response validation failed"), {
+        Object.assign(new Error('Internal response validation failed'), {
           status: 500,
-        }),
+        })
       );
       return;
     }
@@ -96,7 +100,7 @@ const historyHandler: RequestHandler = async (req, res, next) => {
   }
 };
 
-router.get("/history", historyHandler);
+router.get('/history', historyHandler);
 
 /**
  * @swagger
@@ -134,22 +138,25 @@ const byDateHandler: RequestHandler = async (req, res, next) => {
   try {
     const { selectedDate, userId: queryUserId } = req.query;
 
-    if (!selectedDate || typeof selectedDate !== "string") {
-      res.status(400).json({ error: "Selected date is required." });
+    if (!selectedDate || typeof selectedDate !== 'string') {
+      res.status(400).json({ error: 'Selected date is required.' });
       return;
     }
 
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(selectedDate)) {
-      res.status(400).json({ error: "Selected date must be in YYYY-MM-DD format." });
+      res
+        .status(400)
+        .json({ error: 'Selected date must be in YYYY-MM-DD format.' });
       return;
     }
 
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
     if (queryUserId != null) {
-      if (typeof queryUserId !== "string" || !uuidRegex.test(queryUserId)) {
-        res.status(400).json({ error: "userId must be a valid UUID." });
+      if (typeof queryUserId !== 'string' || !uuidRegex.test(queryUserId)) {
+        res.status(400).json({ error: 'userId must be a valid UUID.' });
         return;
       }
     }
@@ -160,25 +167,28 @@ const byDateHandler: RequestHandler = async (req, res, next) => {
     if (queryUserId && queryUserId !== actorUserId) {
       const hasPermission = await canAccessUserData(
         queryUserId,
-        "diary",
-        actorUserId,
+        'diary',
+        actorUserId
       );
       if (!hasPermission) {
-        res.status(403).json({ error: "Forbidden" });
+        res.status(403).json({ error: 'Forbidden' });
         return;
       }
     }
 
-    const result = await getExerciseEntriesByDateV2(targetUserId, selectedDate);
-    const response = exerciseEntriesByDateResponseSchema.parse(result);
+    const sessions = await getExerciseEntriesByDateV2(
+      targetUserId,
+      selectedDate
+    );
+    const response = z.array(exerciseSessionResponseSchema).parse(sessions);
     res.status(200).json(response);
   } catch (error: unknown) {
-    if (error instanceof Error && error.name === "ZodError") {
-      log("error", "v2 exercise by-date response validation failed:", error);
+    if (error instanceof Error && error.name === 'ZodError') {
+      log('error', 'v2 exercise by-date response validation failed:', error);
       next(
-        Object.assign(new Error("Internal response validation failed"), {
+        Object.assign(new Error('Internal response validation failed'), {
           status: 500,
-        }),
+        })
       );
       return;
     }
@@ -186,6 +196,6 @@ const byDateHandler: RequestHandler = async (req, res, next) => {
   }
 };
 
-router.get("/by-date", byDateHandler);
+router.get('/by-date', byDateHandler);
 
 module.exports = router;

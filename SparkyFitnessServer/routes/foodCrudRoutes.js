@@ -1,10 +1,10 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { authenticate } = require("../middleware/authMiddleware");
+const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
-const foodService = require("../services/foodService");
-const labelScanService = require("../services/labelScanService");
-const { log } = require("../config/logging");
+const foodService = require('../services/foodService');
+const labelScanService = require('../services/labelScanService');
+const { log } = require('../config/logging');
 
 router.use(express.json());
 
@@ -53,37 +53,33 @@ router.use(checkPermissionMiddleware('diary'));
  *       400:
  *         description: Invalid request parameters.
  */
-router.get(
-  "/search",
-  authenticate,
-  async (req, res, next) => {
-    const { name, exactMatch, broadMatch, checkCustom } = req.query;
+router.get('/search', authenticate, async (req, res, next) => {
+  const { name, exactMatch, broadMatch, checkCustom } = req.query;
 
-    if (!name) {
-      return res.status(400).json({ error: "Food name is required." });
-    }
-
-    try {
-      const foods = await foodService.searchFoods(
-        req.userId,
-        name,
-        req.userId,
-        exactMatch === "true",
-        broadMatch === "true",
-        checkCustom === "true"
-      );
-      res.status(200).json(foods);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (error.message === "Invalid search parameters.") {
-        return res.status(400).json({ error: error.message });
-      }
-      next(error);
-    }
+  if (!name) {
+    return res.status(400).json({ error: 'Food name is required.' });
   }
-);
+
+  try {
+    const foods = await foodService.searchFoods(
+      req.userId,
+      name,
+      req.userId,
+      exactMatch === 'true',
+      broadMatch === 'true',
+      checkCustom === 'true'
+    );
+    res.status(200).json(foods);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (error.message === 'Invalid search parameters.') {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 
 // General food search route (should come before specific ID routes)
 /**
@@ -136,35 +132,32 @@ router.get(
  *       400:
  *         description: Invalid request parameters.
  */
-router.get(
-  "/",
-  authenticate,
-  async (req, res, next) => {
-    const { name, exactMatch, broadMatch, checkCustom, limit, mealType } = req.query;
+router.get('/', authenticate, async (req, res, next) => {
+  const { name, exactMatch, broadMatch, checkCustom, limit, mealType } =
+    req.query;
 
-    try {
-      const result = await foodService.searchFoods(
-        req.userId,
-        name,
-        req.userId,
-        exactMatch === "true",
-        broadMatch === "true",
-        checkCustom === "true",
-        parseInt(limit, 10),
-        mealType
-      );
-      res.status(200).json(result);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (error.message === "Invalid search parameters.") {
-        return res.status(400).json({ error: error.message });
-      }
-      next(error);
+  try {
+    const result = await foodService.searchFoods(
+      req.userId,
+      name,
+      req.userId,
+      exactMatch === 'true',
+      broadMatch === 'true',
+      checkCustom === 'true',
+      parseInt(limit, 10),
+      mealType
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
     }
+    if (error.message === 'Invalid search parameters.') {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -189,22 +182,18 @@ router.get(
  *       403:
  *         description: User does not have permission to create a food.
  */
-router.post(
-  "/",
-  authenticate,
-  async (req, res, next) => {
-    try {
-      const foodData = { ...req.body, user_id: req.userId }; // Ensure user_id is set for the food
-      const newFood = await foodService.createFood(req.userId, foodData);
-      res.status(201).json(newFood);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      next(error);
+router.post('/', authenticate, async (req, res, next) => {
+  try {
+    const foodData = { ...req.body, user_id: req.userId }; // Ensure user_id is set for the food
+    const newFood = await foodService.createFood(req.userId, foodData);
+    res.status(201).json(newFood);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
     }
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -254,7 +243,7 @@ router.post(
  *                 totalCount:
  *                   type: integer
  */
-router.get("/foods-paginated", authenticate, async (req, res, next) => {
+router.get('/foods-paginated', authenticate, async (req, res, next) => {
   const { searchTerm, foodFilter, currentPage, itemsPerPage, sortBy } =
     req.query;
   try {
@@ -297,27 +286,23 @@ router.get("/foods-paginated", authenticate, async (req, res, next) => {
  *       404:
  *         description: Food not found.
  */
-router.post(
-  "/food-variants",
-  authenticate,
-  async (req, res, next) => {
-    try {
-      const newVariant = await foodService.createFoodVariant(
-        req.userId,
-        req.body
-      );
-      res.status(201).json(newVariant);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (error.message === "Food not found.") {
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
+router.post('/food-variants', authenticate, async (req, res, next) => {
+  try {
+    const newVariant = await foodService.createFoodVariant(
+      req.userId,
+      req.body
+    );
+    res.status(201).json(newVariant);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
     }
+    if (error.message === 'Food not found.') {
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -346,26 +331,22 @@ router.post(
  *       400:
  *         description: Food ID is required.
  */
-router.get(
-  "/food-variants",
-  authenticate,
-  async (req, res, next) => {
-    const { food_id } = req.query;
-    if (!food_id) {
-      return res.status(400).json({ error: "Food ID is required." });
-    }
-    try {
-      const variants = await foodService.getFoodVariantsByFoodId(
-        req.userId,
-        food_id
-      );
-      res.status(200).json(variants);
-    } catch (error) {
-      // Let the centralized error handler manage the status codes and messages
-      next(error);
-    }
+router.get('/food-variants', authenticate, async (req, res, next) => {
+  const { food_id } = req.query;
+  if (!food_id) {
+    return res.status(400).json({ error: 'Food ID is required.' });
   }
-);
+  try {
+    const variants = await foodService.getFoodVariantsByFoodId(
+      req.userId,
+      food_id
+    );
+    res.status(200).json(variants);
+  } catch (error) {
+    // Let the centralized error handler manage the status codes and messages
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -394,25 +375,21 @@ router.get(
  *       403:
  *         description: User does not have permission to create food variants.
  */
-router.post(
-  "/food-variants/bulk",
-  authenticate,
-  async (req, res, next) => {
-    try {
-      const variantsData = req.body;
-      const createdVariants = await foodService.bulkCreateFoodVariants(
-        req.userId,
-        variantsData
-      );
-      res.status(201).json(createdVariants);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      next(error);
+router.post('/food-variants/bulk', authenticate, async (req, res, next) => {
+  try {
+    const variantsData = req.body;
+    const createdVariants = await foodService.bulkCreateFoodVariants(
+      req.userId,
+      variantsData
+    );
+    res.status(201).json(createdVariants);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
     }
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -443,31 +420,27 @@ router.post(
  *       404:
  *         description: Food variant not found.
  */
-router.get(
-  "/food-variants/:id",
-  authenticate,
-  async (req, res, next) => {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ error: "Food Variant ID is required." });
-    }
-    try {
-      const variant = await foodService.getFoodVariantById(req.userId, id);
-      res.status(200).json(variant);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (
-        error.message === "Food variant not found." ||
-        error.message === "Associated food not found."
-      ) {
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
-    }
+router.get('/food-variants/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Food Variant ID is required.' });
   }
-);
+  try {
+    const variant = await foodService.getFoodVariantById(req.userId, id);
+    res.status(200).json(variant);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (
+      error.message === 'Food variant not found.' ||
+      error.message === 'Associated food not found.'
+    ) {
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -504,38 +477,34 @@ router.get(
  *       404:
  *         description: Food variant not found.
  */
-router.put(
-  "/food-variants/:id",
-  authenticate,
-  async (req, res, next) => {
-    const { id } = req.params;
-    const { food_id } = req.body; // food_id is needed for authorization in service layer
-    if (!id || !food_id) {
-      return res
-        .status(400)
-        .json({ error: "Food Variant ID and Food ID are required." });
-    }
-    try {
-      const updatedVariant = await foodService.updateFoodVariant(
-        req.userId,
-        id,
-        req.body
-      );
-      res.status(200).json(updatedVariant);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (
-        error.message === "Food variant not found." ||
-        error.message === "Associated food not found."
-      ) {
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
-    }
+router.put('/food-variants/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  const { food_id } = req.body; // food_id is needed for authorization in service layer
+  if (!id || !food_id) {
+    return res
+      .status(400)
+      .json({ error: 'Food Variant ID and Food ID are required.' });
   }
-);
+  try {
+    const updatedVariant = await foodService.updateFoodVariant(
+      req.userId,
+      id,
+      req.body
+    );
+    res.status(200).json(updatedVariant);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (
+      error.message === 'Food variant not found.' ||
+      error.message === 'Associated food not found.'
+    ) {
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -562,31 +531,27 @@ router.put(
  *       404:
  *         description: Food variant not found.
  */
-router.delete(
-  "/food-variants/:id",
-  authenticate,
-  async (req, res, next) => {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ error: "Food Variant ID is required." });
-    }
-    try {
-      await foodService.deleteFoodVariant(req.userId, id);
-      res.status(200).json({ message: "Food variant deleted successfully." });
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (
-        error.message === "Food variant not found." ||
-        error.message === "Associated food not found."
-      ) {
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
-    }
+router.delete('/food-variants/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Food Variant ID is required.' });
   }
-);
+  try {
+    await foodService.deleteFoodVariant(req.userId, id);
+    res.status(200).json({ message: 'Food variant deleted successfully.' });
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (
+      error.message === 'Food variant not found.' ||
+      error.message === 'Associated food not found.'
+    ) {
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -624,46 +589,44 @@ router.delete(
  *       400:
  *         description: Invalid barcode format.
  */
-router.get(
-  "/barcode/:barcode",
-  authenticate,
-  async (req, res, next) => {
-    const { barcode } = req.params;
-    if (!/^\d{8,14}$/.test(barcode)) {
-      return res.status(400).json({ error: "Invalid barcode format. Must be 8-14 digits." });
-    }
-    try {
-      const result = await foodService.lookupBarcode(barcode, req.userId, req.query.providerId);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
+router.get('/barcode/:barcode', authenticate, async (req, res, next) => {
+  const { barcode } = req.params;
+  if (!/^\d{8,14}$/.test(barcode)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid barcode format. Must be 8-14 digits.' });
   }
-);
+  try {
+    const result = await foodService.lookupBarcode(
+      barcode,
+      req.userId,
+      req.query.providerId
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
-router.post(
-  "/scan-label",
-  authenticate,
-  async (req, res, next) => {
-    const { image, mime_type } = req.body;
-    if (!image || !mime_type) {
-      return res.status(400).json({ error: "image and mime_type are required." });
-    }
-    try {
-      const result = await labelScanService.extractNutritionFromLabel(
-        image,
-        mime_type,
-        req.userId,
-      );
-      if (!result.success) {
-        return res.status(422).json({ error: result.error });
-      }
-      res.status(200).json(result.nutrition);
-    } catch (error) {
-      next(error);
-    }
+router.post('/scan-label', authenticate, async (req, res, next) => {
+  const { image, mime_type } = req.body;
+  if (!image || !mime_type) {
+    return res.status(400).json({ error: 'image and mime_type are required.' });
   }
-);
+  try {
+    const result = await labelScanService.extractNutritionFromLabel(
+      image,
+      mime_type,
+      req.userId
+    );
+    if (!result.success) {
+      return res.status(422).json({ error: result.error });
+    }
+    res.status(200).json(result.nutrition);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -694,28 +657,24 @@ router.post(
  *       404:
  *         description: Food not found.
  */
-router.get(
-  "/:foodId",
-  authenticate,
-  async (req, res, next) => {
-    const { foodId } = req.params;
-    if (!foodId) {
-      return res.status(400).json({ error: "Food ID is required." });
-    }
-    try {
-      const food = await foodService.getFoodById(req.userId, foodId);
-      res.status(200).json(food);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (error.message === "Food not found.") {
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
-    }
+router.get('/:foodId', authenticate, async (req, res, next) => {
+  const { foodId } = req.params;
+  if (!foodId) {
+    return res.status(400).json({ error: 'Food ID is required.' });
   }
-);
+  try {
+    const food = await foodService.getFoodById(req.userId, foodId);
+    res.status(200).json(food);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (error.message === 'Food not found.') {
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -752,32 +711,24 @@ router.get(
  *       404:
  *         description: Food not found or not authorized to update.
  */
-router.put(
-  "/:id",
-  authenticate,
-  async (req, res, next) => {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ error: "Food ID is required." });
-    }
-    try {
-      const updatedFood = await foodService.updateFood(
-        req.userId,
-        id,
-        req.body
-      );
-      res.status(200).json(updatedFood);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (error.message === "Food not found or not authorized to update.") {
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
-    }
+router.put('/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Food ID is required.' });
   }
-);
+  try {
+    const updatedFood = await foodService.updateFood(req.userId, id, req.body);
+    res.status(200).json(updatedFood);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (error.message === 'Food not found or not authorized to update.') {
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -804,28 +755,24 @@ router.put(
  *       404:
  *         description: Food not found.
  */
-router.get(
-  "/:id/deletion-impact",
-  authenticate,
-  async (req, res, next) => {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ error: "Food ID is required." });
-    }
-    try {
-      const impact = await foodService.getFoodDeletionImpact(req.userId, id);
-      res.status(200).json(impact);
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (error.message === "Food not found.") {
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
-    }
+router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Food ID is required.' });
   }
-);
+  try {
+    const impact = await foodService.getFoodDeletionImpact(req.userId, id);
+    res.status(200).json(impact);
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (error.message === 'Food not found.') {
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -857,39 +804,44 @@ router.get(
  *       404:
  *         description: Food not found.
  */
-router.delete(
-  "/:id",
-  authenticate,
-  async (req, res, next) => {
-    const { id } = req.params;
-    const { forceDelete } = req.query; // Get forceDelete from query parameters
-    if (!id) {
-      return res.status(400).json({ error: "Food ID is required." });
-    }
-    try {
-      const result = await foodService.deleteFood(req.userId, id, forceDelete === "true");
-      // Based on the result status, return appropriate messages and status codes
-      if (result.status === "deleted") {
-        res.status(200).json({ message: result.message });
-      } else if (result.status === "force_deleted") {
-        res.status(200).json({ message: result.message });
-      } else if (result.status === "hidden") {
-        res.status(200).json({ message: result.message });
-      } else {
-        // Fallback for unexpected status
-        res.status(500).json({ error: "An unexpected error occurred during deletion." });
-      }
-    } catch (error) {
-      if (error.message.startsWith("Forbidden")) {
-        return res.status(403).json({ error: error.message });
-      }
-      if (error.message === "Food not found." || error.message === "Food not found or not authorized to delete.") {
-        return res.status(404).json({ error: error.message });
-      }
-      next(error);
-    }
+router.delete('/:id', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  const { forceDelete } = req.query; // Get forceDelete from query parameters
+  if (!id) {
+    return res.status(400).json({ error: 'Food ID is required.' });
   }
-);
+  try {
+    const result = await foodService.deleteFood(
+      req.userId,
+      id,
+      forceDelete === 'true'
+    );
+    // Based on the result status, return appropriate messages and status codes
+    if (result.status === 'deleted') {
+      res.status(200).json({ message: result.message });
+    } else if (result.status === 'force_deleted') {
+      res.status(200).json({ message: result.message });
+    } else if (result.status === 'hidden') {
+      res.status(200).json({ message: result.message });
+    } else {
+      // Fallback for unexpected status
+      res
+        .status(500)
+        .json({ error: 'An unexpected error occurred during deletion.' });
+    }
+  } catch (error) {
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (
+      error.message === 'Food not found.' ||
+      error.message === 'Food not found or not authorized to delete.'
+    ) {
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -915,22 +867,18 @@ router.delete(
  *       400:
  *         description: Food data is required.
  */
-router.post(
-  "/import-from-csv",
-  authenticate,
-  async (req, res, next) => {
-    const { foods } = req.body;
-    if (!foods) {
-      return res.status(400).json({ error: "Food data is required." });
-    }
-    try {
-      await foodService.importFoodsInBulk(req.userId, foods);
-      res.status(200).json({ message: "Food data imported successfully." });
-    } catch (error) {
-      next(error);
-    }
+router.post('/import-from-csv', authenticate, async (req, res, next) => {
+  const { foods } = req.body;
+  if (!foods) {
+    return res.status(400).json({ error: 'Food data is required.' });
   }
-);
+  try {
+    await foodService.importFoodsInBulk(req.userId, foods);
+    res.status(200).json({ message: 'Food data imported successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * @swagger
@@ -949,18 +897,16 @@ router.post(
  *               items:
  *                 $ref: '#/components/schemas/Food'
  */
-router.get(
-  "/needs-review",
-  authenticate,
-  async (req, res, next) => {
-    try {
-      const foodsNeedingReview = await foodService.getFoodsNeedingReview(req.userId);
-      res.status(200).json(foodsNeedingReview);
-    } catch (error) {
-      next(error);
-    }
+router.get('/needs-review', authenticate, async (req, res, next) => {
+  try {
+    const foodsNeedingReview = await foodService.getFoodsNeedingReview(
+      req.userId
+    );
+    res.status(200).json(foodsNeedingReview);
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 /**
  * @swagger
@@ -988,21 +934,21 @@ router.get(
  *       400:
  *         description: foodId is required.
  */
-router.post(
-  "/update-snapshot",
-  authenticate,
-  async (req, res, next) => {
-    const { foodId, variantId } = req.body;
-    if (!foodId) {
-      return res.status(400).json({ error: "foodId is required." });
-    }
-    try {
-      const result = await foodService.updateFoodEntriesSnapshot(req.userId, foodId, variantId);
-      res.status(200).json(result);
-    } catch (error) {
-      next(error);
-    }
+router.post('/update-snapshot', authenticate, async (req, res, next) => {
+  const { foodId, variantId } = req.body;
+  if (!foodId) {
+    return res.status(400).json({ error: 'foodId is required.' });
   }
-);
+  try {
+    const result = await foodService.updateFoodEntriesSnapshot(
+      req.userId,
+      foodId,
+      variantId
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
 
 module.exports = router;
