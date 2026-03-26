@@ -1,13 +1,13 @@
-import express, { RequestHandler } from "express";
-import { getDailySummary } from "../services/dailySummaryService";
+import express, { RequestHandler } from 'express';
+import { getDailySummary } from '../services/dailySummaryService';
 
-const { log } = require("../config/logging");
-const checkPermissionMiddleware = require("../middleware/checkPermissionMiddleware");
-const { canAccessUserData } = require("../utils/permissionUtils");
+const { log } = require('../config/logging');
+const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
+const { canAccessUserData } = require('../utils/permissionUtils');
 
 const router = express.Router();
 
-router.use(checkPermissionMiddleware("diary"));
+router.use(checkPermissionMiddleware('diary'));
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -49,7 +49,9 @@ const handler: RequestHandler = async (req, res, next) => {
   try {
     const date = req.query.date as string | undefined;
     if (!date || !DATE_REGEX.test(date)) {
-      res.status(400).json({ error: "Missing or invalid date query parameter (expected YYYY-MM-DD)" });
+      res.status(400).json({
+        error: 'Missing or invalid date query parameter (expected YYYY-MM-DD)',
+      });
       return;
     }
 
@@ -62,9 +64,13 @@ const handler: RequestHandler = async (req, res, next) => {
     const isFamilyAccess = targetUserId !== actorUserId;
 
     if (isFamilyAccess) {
-      const hasPermission = await canAccessUserData(targetUserId, "diary", actorUserId);
+      const hasPermission = await canAccessUserData(
+        targetUserId,
+        'diary',
+        actorUserId
+      );
       if (!hasPermission) {
-        res.status(403).json({ error: "Forbidden" });
+        res.status(403).json({ error: 'Forbidden' });
         return;
       }
     }
@@ -73,16 +79,25 @@ const handler: RequestHandler = async (req, res, next) => {
     // another user's data, only include water if the actor also has checkin access.
     let includeWater = true;
     if (isFamilyAccess) {
-      includeWater = await canAccessUserData(targetUserId, "checkin", actorUserId);
+      includeWater = await canAccessUserData(
+        targetUserId,
+        'checkin',
+        actorUserId
+      );
     }
 
-    const result = await getDailySummary({ actorUserId, targetUserId, date, includeWater });
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeWater,
+    });
     res.status(200).json(result);
   } catch (error: unknown) {
     next(error);
   }
 };
 
-router.get("/", handler);
+router.get('/', handler);
 
 module.exports = router;
