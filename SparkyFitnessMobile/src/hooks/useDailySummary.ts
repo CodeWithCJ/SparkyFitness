@@ -1,7 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchDailyGoals } from '../services/api/goalsApi';
 import {
-  fetchFoodEntries,
   calculateCaloriesConsumed,
   calculateProtein,
   calculateCarbs,
@@ -9,18 +7,18 @@ import {
   calculateFiber,
 } from '../services/api/foodEntriesApi';
 import {
-  fetchExerciseEntries,
   calculateCaloriesBurned,
   calculateActiveCalories,
   calculateOtherExerciseCalories,
   calculateExerciseDuration,
 } from '../services/api/exerciseApi';
-import { fetchWaterIntake } from '../services/api/measurementsApi';
+import { fetchDailySummary } from '../services/api/dailySummaryApi';
 import type { DailySummary } from '../types/dailySummary';
 import type { DailyGoals } from '../types/goals';
 import type { FoodEntry } from '../types/foodEntries';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { WaterIntake } from '../types/measurements';
+
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { dailySummaryQueryKey } from './queryKeys';
 
@@ -40,14 +38,13 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
   const query = useQuery({
     queryKey: dailySummaryQueryKey(date),
     queryFn: async () => {
-      const [goals, foodEntries, exerciseEntries, waterIntake] = await Promise.all([
-        fetchDailyGoals(date),
-        fetchFoodEntries(date),
-        fetchExerciseEntries(date),
-        fetchWaterIntake(date).catch(() => ({ water_ml: 0 })),
-      ]);
-
-      return { goals, foodEntries, exerciseEntries, waterIntake };
+      const data = await fetchDailySummary(date);
+      return {
+        goals: data.goals,
+        foodEntries: data.foodEntries,
+        exerciseEntries: data.exerciseSessions,
+        waterIntake: { water_ml: data.waterIntake },
+      };
     },
     select: (raw): DailySummary => {
       const { goals, foodEntries, exerciseEntries, waterIntake } = raw;
