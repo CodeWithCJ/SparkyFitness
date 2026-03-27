@@ -699,4 +699,5 @@ describe('storage', () => {
       expect(retryResult).toEqual(configA);
     });
   });
+
 });

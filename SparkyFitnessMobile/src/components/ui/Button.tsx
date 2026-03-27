@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, type PressableProps, type ViewStyle } from 'react-native';
 import { preview } from 'radon-ide';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'header';
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'header' | 'link';
 
 interface ButtonProps extends Omit<PressableProps, 'children'> {
   variant?: ButtonVariant;
@@ -37,6 +37,11 @@ const variantClasses: Record<ButtonVariant, { container: string; text: string; p
     text: 'text-accent-primary font-semibold',
     pressed: 'opacity-70',
   },
+  link: {
+    container: 'bg-transparent',
+    text: 'text-text-link font-semibold',
+    pressed: 'opacity-70',
+  }
 };
 
 const Button: React.FC<ButtonProps> = ({
@@ -78,5 +83,7 @@ preview(<Button variant="secondary">Secondary Button</Button>);
 preview(<Button variant="outline">Outline Button</Button>);
 
 preview(<Button variant="ghost">Ghost Button</Button>);
+
+preview(<Button variant="link">Link Button</Button>);
 
 export default Button;

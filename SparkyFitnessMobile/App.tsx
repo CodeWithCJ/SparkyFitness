@@ -1,6 +1,7 @@
 import './global.css'
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, Alert } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import {
   NavigationContainer,
   type NavigationProp,
@@ -30,10 +31,11 @@ import WorkoutFormScreen from './src/screens/WorkoutFormScreen';
 import ActivityFormScreen from './src/screens/ActivityFormScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
-import { loadBackgroundSyncEnabled, loadTimeRange } from './src/services/storage';
+import { loadBackgroundSyncEnabled, loadTimeRange, getActiveServerConfig } from './src/services/storage';
 import type { TimeRange } from './src/services/storage';
 import { initHealthConnect, loadHealthPreference } from './src/services/healthConnectService';
 import { HEALTH_METRICS } from './src/HealthMetrics';
@@ -51,6 +53,8 @@ import AddSheet, { type AddSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
 import CustomTabBar from './src/components/CustomTabBar';
 
+SplashScreen.preventAutoHideAsync();
+
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 const EmptyScreen = () => null;
@@ -62,6 +66,22 @@ function AppContent() {
     expiredConfigId, switchToApiKeyConfig,
     dismissModal, handleLoginSuccess, handleSwitchToApiKey, handleSwitchToApiKeyDone,
   } = useAuth();
+
+  const [initialRoute, setInitialRoute] = useState<'Tabs' | 'Onboarding' | null>(null);
+
+  useEffect(() => {
+    const determine = async () => {
+      try {
+        const config = await getActiveServerConfig();
+        setInitialRoute(config ? 'Tabs' : 'Onboarding');
+      } catch {
+        setInitialRoute('Onboarding');
+      } finally {
+        await SplashScreen.hideAsync();
+      }
+    };
+    determine();
+  }, []);
 
   const addSheetRef = useRef<AddSheetRef>(null);
   const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
@@ -192,11 +212,18 @@ function AppContent() {
     }
   }, []);
 
+  if (!initialRoute) return null;
+
   return (
     <NavigationContainer theme={navigationTheme}>
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+          <Stack.Screen
+            name="Onboarding"
+            component={OnboardingScreen}
+            options={{ gestureEnabled: false }}
+          />
           <Stack.Screen name="Tabs" options={{ gestureEnabled: false }}>
             {() => (
               <Tab.Navigator

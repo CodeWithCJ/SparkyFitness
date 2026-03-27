@@ -174,7 +174,7 @@ describe('ServerConfigModal', () => {
         pressConnectButton(result);
       });
 
-      expect(result.getByText('Please enter a server URL.')).toBeTruthy();
+      expect(result.getByText('Enter a valid SparkyFitness URL')).toBeTruthy();
       expect(mockLogin).not.toHaveBeenCalled();
     });
 
@@ -838,7 +838,7 @@ describe('ServerConfigModal', () => {
         fireEvent.press(result.getByText('Save Without Connecting'));
       });
 
-      expect(result.getByText('Please enter a server URL.')).toBeTruthy();
+      expect(result.getByText('Enter a valid SparkyFitness URL')).toBeTruthy();
       expect(mockSaveServerConfig).not.toHaveBeenCalled();
     });
 

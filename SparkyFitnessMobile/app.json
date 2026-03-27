@@ -7,11 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icons/appstore.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
     "jsEngine": "hermes",
     "newArchEnabled": true,
     "plugins": [
@@ -44,6 +39,19 @@
         {
           "cameraPermission": "SparkyFitness needs access to your camera to scan food barcodes and labels.",
           "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#e2e2e2",
+          "imageWidth": 200,
+          "image": "./assets/images/splash.png",
+          "dark": {
+            "backgroundColor": "#232323",
+            "image": "./assets/images/splash.png"
+          }
+          
         }
       ]
     ],

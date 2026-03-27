@@ -132,7 +132,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleSignIn = async () => {
     const url = normalizeUrl(serverUrl);
-    if (!url) { setError('Please enter a server URL.'); return; }
+    if (!url) { setError('Enter a valid SparkyFitness URL'); return; }
     if (!email.trim()) { setError('Please enter your email.'); return; }
     if (!password) { setError('Please enter your password.'); return; }
     if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
@@ -265,7 +265,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleConnectApiKey = async () => {
     const url = normalizeUrl(serverUrl);
-    if (!url) { setError('Please enter a server URL.'); return; }
+    if (!url) { setError('Enter a valid SparkyFitness URL'); return; }
     if (!apiKey.trim()) { setError('Please enter an API key.'); return; }
     if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
       setError('HTTPS is required for server connections.');
@@ -313,7 +313,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleSaveWithoutAuth = async () => {
     const url = normalizeUrl(serverUrl);
-    if (!url) { setError('Please enter a server URL.'); return; }
+    if (!url) { setError('Enter a valid SparkyFitness URL'); return; }
     if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
       setError('HTTPS is required for server connections.');
       return;

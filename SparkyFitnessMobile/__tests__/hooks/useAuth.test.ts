@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useAuth } from '../../src/hooks/useAuth';
 import { setOnSessionExpired, setOnNoConfigs, suppressSessionExpired } from '../../src/services/api/authService';
-import { getActiveServerConfig, clearServerConfigCache } from '../../src/services/storage';
+import { clearServerConfigCache } from '../../src/services/storage';
 import type { ServerConfig } from '../../src/services/storage';
 
 jest.mock('../../src/services/api/authService', () => ({
@@ -11,41 +11,20 @@ jest.mock('../../src/services/api/authService', () => ({
 }));
 
 jest.mock('../../src/services/storage', () => ({
-  getActiveServerConfig: jest.fn(),
   clearServerConfigCache: jest.fn(),
 }));
 
 const mockSetOnSessionExpired = setOnSessionExpired as jest.MockedFunction<typeof setOnSessionExpired>;
 const mockSetOnNoConfigs = setOnNoConfigs as jest.MockedFunction<typeof setOnNoConfigs>;
-const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<typeof getActiveServerConfig>;
 const mockClearServerConfigCache = clearServerConfigCache as jest.MockedFunction<typeof clearServerConfigCache>;
 const mockSuppressSessionExpired = suppressSessionExpired as jest.MockedFunction<typeof suppressSessionExpired>;
 
 describe('useAuth', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetActiveServerConfig.mockResolvedValue(null);
   });
 
-  test('shows setup modal when no active config on mount', async () => {
-    mockGetActiveServerConfig.mockResolvedValue(null);
-
-    const { result } = renderHook(() => useAuth());
-
-    await act(async () => {});
-
-    expect(result.current.showSetupModal).toBe(true);
-    expect(result.current.showReauthModal).toBe(false);
-    expect(result.current.authModalReason).toBe('no_configs');
-  });
-
-  test('does not show any modal when config exists', async () => {
-    mockGetActiveServerConfig.mockResolvedValue({
-      id: '1',
-      url: 'https://example.com',
-      apiKey: 'key',
-    });
-
+  test('does not auto-show any modal on mount', async () => {
     const { result } = renderHook(() => useAuth());
 
     await act(async () => {});
@@ -67,12 +46,6 @@ describe('useAuth', () => {
   });
 
   test('session expired callback shows reauth modal with config ID', async () => {
-    mockGetActiveServerConfig.mockResolvedValue({
-      id: '1',
-      url: 'https://example.com',
-      apiKey: 'key',
-    });
-
     const { result } = renderHook(() => useAuth());
     await act(async () => {});
 
@@ -88,12 +61,6 @@ describe('useAuth', () => {
   });
 
   test('session expired clears config cache on first trigger', async () => {
-    mockGetActiveServerConfig.mockResolvedValue({
-      id: '1',
-      url: 'https://example.com',
-      apiKey: 'key',
-    });
-
     const { result } = renderHook(() => useAuth());
     await act(async () => {});
 
@@ -109,12 +76,6 @@ describe('useAuth', () => {
   });
 
   test('no-configs callback shows setup modal', async () => {
-    mockGetActiveServerConfig.mockResolvedValue({
-      id: '1',
-      url: 'https://example.com',
-      apiKey: 'key',
-    });
-
     const { result } = renderHook(() => useAuth());
     await act(async () => {});
     expect(result.current.showSetupModal).toBe(false);
@@ -129,12 +90,6 @@ describe('useAuth', () => {
   });
 
   test('dismissModal resets state', async () => {
-    mockGetActiveServerConfig.mockResolvedValue({
-      id: '1',
-      url: 'https://example.com',
-      apiKey: 'key',
-    });
-
     const { result } = renderHook(() => useAuth());
     await act(async () => {});
 
@@ -156,12 +111,6 @@ describe('useAuth', () => {
   });
 
   test('handleLoginSuccess resets state', async () => {
-    mockGetActiveServerConfig.mockResolvedValue({
-      id: '1',
-      url: 'https://example.com',
-      apiKey: 'key',
-    });
-
     const { result } = renderHook(() => useAuth());
     await act(async () => {});
 
@@ -191,7 +140,6 @@ describe('useAuth', () => {
     };
 
     test('handleSwitchToApiKey hides reauth modal and exposes config', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(expiredConfig);
       const { result } = renderHook(() => useAuth());
       await act(async () => {});
 
@@ -214,7 +162,6 @@ describe('useAuth', () => {
     });
 
     test('handleSwitchToApiKey keeps suppression active', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(expiredConfig);
       const { result } = renderHook(() => useAuth());
       await act(async () => {});
 
@@ -233,7 +180,6 @@ describe('useAuth', () => {
     });
 
     test('handleSwitchToApiKeyDone clears state and unsuppresses', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(expiredConfig);
       const { result } = renderHook(() => useAuth());
       await act(async () => {});
 
@@ -257,7 +203,6 @@ describe('useAuth', () => {
     });
 
     test('session expired callback clears switchToApiKeyConfig', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(expiredConfig);
       const { result } = renderHook(() => useAuth());
       await act(async () => {});
 
@@ -277,7 +222,6 @@ describe('useAuth', () => {
     });
 
     test('no-configs callback clears switchToApiKeyConfig', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(expiredConfig);
       const { result } = renderHook(() => useAuth());
       await act(async () => {});
 

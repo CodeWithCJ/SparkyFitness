@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { setOnSessionExpired, setOnNoConfigs, suppressSessionExpired } from '../services/api/authService';
-import { getActiveServerConfig, clearServerConfigCache } from '../services/storage';
+import { clearServerConfigCache } from '../services/storage';
 import type { ServerConfig } from '../services/storage';
 
 export type AuthModalReason = 'session_expired' | 'no_configs' | null;
@@ -26,17 +26,6 @@ export function useAuth() {
       setSwitchToApiKeyConfig(null);
       setAuthModalReason('no_configs');
     });
-  }, []);
-
-  // Show setup modal if no config exists at all
-  useEffect(() => {
-    const check = async () => {
-      const config = await getActiveServerConfig();
-      if (!config) {
-        setAuthModalReason('no_configs');
-      }
-    };
-    check();
   }, []);
 
   const dismissModal = useCallback(() => {

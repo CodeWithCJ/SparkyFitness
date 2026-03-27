@@ -18,6 +18,7 @@ import HydrationGauge from '../components/HydrationGauge';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import HealthTrendsPager from '../components/HealthTrendsPager';
 import ExerciseProgressCard from '../components/ExerciseProgressCard';
+import StatusView from '../components/StatusView';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -114,21 +115,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     // No server configured
     if (!isConnectionLoading && !isConnected) {
       return (
-        <View className="flex-1 items-center justify-center p-8 shadow-sm">
-          <Icon name="cloud-offline" size={64} color="#9CA3AF" />
-          <Text className="text-text-muted text-lg text-center mt-4">
-            No server configured
-          </Text>
-          <Text className="text-text-muted text-sm text-center mt-2">
-            Configure your server connection in Settings to view your daily summary.
-          </Text>
-          <Button
-            variant="primary"
-            className="px-6 mt-6"
-            onPress={() => navigation.navigate('Settings')}
-          >
-            Go to Settings
-          </Button>
+        <View className="flex-1">
+          <View className="px-4 pt-4 pb-5">
+            <Text className="text-2xl font-bold text-text-primary">Dashboard</Text>
+          </View>
+          <StatusView
+            icon="cloud-offline"
+            iconColor="#9CA3AF"
+            iconSize={64}
+            title="No server configured"
+            subtitle="Configure your server connection in Settings to view your daily summary."
+            action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
+          />
         </View>
       );
     }
