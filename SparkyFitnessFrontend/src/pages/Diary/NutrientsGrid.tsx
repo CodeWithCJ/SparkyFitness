@@ -6,6 +6,7 @@ import {
 import type { FoodVariant } from '@/types/food';
 import { CalculatedNutrition } from '@/utils/nutritionCalculations';
 import { UserCustomNutrient } from '@/types/customNutrient';
+import { useTranslation } from 'react-i18next';
 
 interface NutrientGridProps {
   nutrition: CalculatedNutrition;
@@ -29,6 +30,7 @@ export const NutrientGrid = ({
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal' ? 'kcal' : 'kJ';
   };
+  const { t } = useTranslation();
 
   const renderNutrientBlock = (
     keys: Array<keyof CalculatedNutrition>,
@@ -43,7 +45,7 @@ export const NutrientGrid = ({
       return (
         <div key={key}>
           <Label className="text-sm">
-            {meta.label} ({meta.unit})
+            {t(meta.label, { defaultValue: meta.defaultLabel })} ({meta.unit})
           </Label>
           <div className="text-lg font-medium">
             {formatNutrientValue(key as string, value, customNutrientList)}
