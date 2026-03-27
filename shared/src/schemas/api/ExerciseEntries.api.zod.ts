@@ -260,15 +260,6 @@ export const exerciseHistoryResponseSchema = z
   })
   .strict();
 
-// --- By-date endpoint ---
-
-export const exerciseEntriesByDateResponseSchema = z
-  .object({
-    sessions: z.array(exerciseSessionResponseSchema),
-    stepCalories: z.number(),
-  })
-  .strict();
-
 // --- Types ---
 
 export type ExerciseHistoryQuery = z.infer<typeof exerciseHistoryQuerySchema>;
@@ -309,9 +300,6 @@ export type ExerciseSessionResponse = z.infer<
 >;
 export type ExerciseHistoryResponse = z.infer<
   typeof exerciseHistoryResponseSchema
->;
-export type ExerciseEntriesByDateResponse = z.infer<
-  typeof exerciseEntriesByDateResponseSchema
 >;
 export type ExerciseProgressResponse = z.infer<
   typeof exerciseProgressResponseSchema
