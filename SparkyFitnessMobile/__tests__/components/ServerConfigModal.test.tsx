@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
-import LoginModal from '../../src/components/LoginModal';
+import ServerConfigModal from '../../src/components/ServerConfigModal';
 import {
   login,
   LoginError,
@@ -11,10 +11,7 @@ import {
   verifyEmailOtp,
 } from '../../src/services/api/authService';
 import {
-  getAllServerConfigs,
-  getActiveServerConfig,
   saveServerConfig,
-  type ServerConfig,
 } from '../../src/services/storage';
 
 jest.mock('../../src/services/api/authService', () => ({
@@ -30,10 +27,12 @@ jest.mock('../../src/services/api/authService', () => ({
 }));
 
 jest.mock('../../src/services/storage', () => ({
-  getAllServerConfigs: jest.fn(),
-  getActiveServerConfig: jest.fn(),
   saveServerConfig: jest.fn().mockResolvedValue(undefined),
   proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
+}));
+
+jest.mock('../../src/services/LogService', () => ({
+  addLog: jest.fn(),
 }));
 
 jest.mock('../../src/components/Icon', () => {
@@ -50,139 +49,138 @@ const mockFetchMfaFactors = fetchMfaFactors as jest.MockedFunction<typeof fetchM
 const mockVerifyTotp = verifyTotp as jest.MockedFunction<typeof verifyTotp>;
 const mockSendEmailOtp = sendEmailOtp as jest.MockedFunction<typeof sendEmailOtp>;
 const mockVerifyEmailOtp = verifyEmailOtp as jest.MockedFunction<typeof verifyEmailOtp>;
-const mockGetAllServerConfigs = getAllServerConfigs as jest.MockedFunction<typeof getAllServerConfigs>;
-const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<typeof getActiveServerConfig>;
 const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<typeof saveServerConfig>;
 
 const defaultProps = {
   visible: true,
-  onLoginSuccess: jest.fn(),
-  onUseApiKey: jest.fn(),
+  editingConfig: null,
+  onSuccess: jest.fn(),
   onDismiss: jest.fn(),
 };
 
-const existingConfig: ServerConfig = {
-  id: 'cfg-1',
-  url: 'https://existing-server.com',
-  apiKey: 'key-1',
-  authType: 'session' as const,
-  sessionToken: 'old-token',
-};
-
-function renderModal(props: Partial<React.ComponentProps<typeof LoginModal>> = {}) {
-  return render(<LoginModal {...defaultProps} {...props} />);
+function renderModal(props: Partial<React.ComponentProps<typeof ServerConfigModal>> = {}) {
+  return render(<ServerConfigModal {...defaultProps} {...props} />);
 }
 
-/** Wait for the credentials form to be ready, then return a press helper for the Sign In button. */
-async function waitForCredentialsForm(result: ReturnType<typeof renderModal>) {
+async function waitForForm(result: ReturnType<typeof renderModal>) {
   await waitFor(() =>
-    expect(result.getByPlaceholderText('email@example.com')).toBeTruthy(),
+    expect(result.getByPlaceholderText('https://your-server-url.com')).toBeTruthy(),
   );
 }
 
-/** Press the "Sign In" button (the second element — the first is the heading). */
-function pressSignInButton(result: ReturnType<typeof renderModal>) {
-  const buttons = result.getAllByText('Sign In');
-  fireEvent.press(buttons[buttons.length - 1]);
+function pressConnectButton(result: ReturnType<typeof renderModal>) {
+  fireEvent.press(result.getByText('Connect'));
 }
 
-describe('LoginModal', () => {
+describe('ServerConfigModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetAllServerConfigs.mockResolvedValue([]);
-    mockGetActiveServerConfig.mockResolvedValue(null);
     mockClearAuthCookies.mockResolvedValue(undefined);
     mockSaveServerConfig.mockResolvedValue(undefined);
   });
 
-  describe('credentials form', () => {
-    it('renders the sign-in form with server URL input when no existing configs', async () => {
+  describe('form rendering', () => {
+    it('renders the form with URL input and Sign In tab by default', async () => {
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       expect(result.getByPlaceholderText('https://your-server-url.com')).toBeTruthy();
+      expect(result.getByPlaceholderText('email@example.com')).toBeTruthy();
       expect(result.getByPlaceholderText('Password')).toBeTruthy();
-      expect(result.getByText('Use API Key Instead')).toBeTruthy();
+      expect(result.getByText('Sign In')).toBeTruthy();
+      expect(result.getByText('API Key')).toBeTruthy();
+      expect(result.getByText('Connect')).toBeTruthy();
+      expect(result.getByText('Cancel')).toBeTruthy();
     });
 
-    it('shows server selection when existing configs are present', async () => {
-      mockGetAllServerConfigs.mockResolvedValue([existingConfig]);
-      mockGetActiveServerConfig.mockResolvedValue(existingConfig);
-
-      const { getByText, queryByPlaceholderText } = renderModal();
-
-      await waitFor(() => {
-        expect(getByText('https://existing-server.com')).toBeTruthy();
-      });
-      expect(queryByPlaceholderText('https://your-server-url.com')).toBeNull();
-      expect(getByText('Later')).toBeTruthy();
-    });
-
-    it('selects config matching defaultConfigId', async () => {
-      const config2: ServerConfig = {
-        id: 'cfg-2',
-        url: 'https://second-server.com',
-        apiKey: 'key-2',
-      };
-      mockGetAllServerConfigs.mockResolvedValue([existingConfig, config2]);
-      mockLogin.mockResolvedValue({
-        type: 'success',
-        sessionToken: 'tok',
-        user: { email: 'a@b.com' },
-      });
-
-      const result = renderModal({ defaultConfigId: 'cfg-2' });
-
-      await waitFor(() => {
-        expect(result.getByText('https://second-server.com')).toBeTruthy();
-      });
-
-      // The radio-button-on icon should appear for the selected config (cfg-2),
-      // while cfg-1 should show radio-button-off
-      const radioOn = result.getAllByTestId('icon-radio-button-on');
-      const radioOff = result.getAllByTestId('icon-radio-button-off');
-      expect(radioOn).toHaveLength(1);
-      expect(radioOff).toHaveLength(1);
-
-      // Submitting should use the selected config's URL
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'a@b.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
-
-      await act(async () => {
-        pressSignInButton(result);
-      });
-
-      expect(mockLogin).toHaveBeenCalledWith(
-        'https://second-server.com',
-        'a@b.com',
-        'pass',
-      );
-    });
-
-    it('does not show Later button when there are no existing configs', async () => {
+    it('shows API key field when API Key tab is selected', async () => {
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
-      expect(result.queryByText('Later')).toBeNull();
+      fireEvent.press(result.getByText('API Key'));
+
+      expect(result.getByPlaceholderText('Uds3d8i...')).toBeTruthy();
+      expect(result.queryByPlaceholderText('email@example.com')).toBeNull();
+      expect(result.queryByPlaceholderText('Password')).toBeNull();
+    });
+
+    it('shows Add Server title when no editing config', async () => {
+      const result = renderModal();
+      await waitForForm(result);
+
+      expect(result.getByText('Add Server')).toBeTruthy();
+    });
+
+    it('shows Edit Server title when editing config', async () => {
+      const result = renderModal({
+        editingConfig: {
+          id: 'cfg-1',
+          url: 'https://example.com',
+          apiKey: 'key-1',
+          authType: 'apiKey',
+        },
+      });
+      await waitForForm(result);
+
+      expect(result.getByText('Edit Server')).toBeTruthy();
+    });
+
+    it('pre-fills URL and defaults to API Key tab when editing an API key config', async () => {
+      const result = renderModal({
+        editingConfig: {
+          id: 'cfg-1',
+          url: 'https://example.com',
+          apiKey: 'my-key',
+          authType: 'apiKey',
+        },
+      });
+      await waitForForm(result);
+
+      expect(result.getByDisplayValue('https://example.com')).toBeTruthy();
+      // API Key tab should be active, so API key field is shown
+      expect(result.getByPlaceholderText('Uds3d8i...')).toBeTruthy();
+    });
+
+    it('pre-fills URL and defaults to Sign In tab when editing a session config', async () => {
+      const result = renderModal({
+        editingConfig: {
+          id: 'cfg-1',
+          url: 'https://example.com',
+          apiKey: '',
+          authType: 'session',
+          sessionToken: 'tok',
+        },
+      });
+      await waitForForm(result);
+
+      expect(result.getByDisplayValue('https://example.com')).toBeTruthy();
+      expect(result.getByPlaceholderText('email@example.com')).toBeTruthy();
+    });
+
+    it('respects defaultAuthTab prop', async () => {
+      const result = renderModal({ defaultAuthTab: 'apiKey' });
+      await waitForForm(result);
+
+      expect(result.getByPlaceholderText('Uds3d8i...')).toBeTruthy();
     });
   });
 
-  describe('validation', () => {
+  describe('sign in validation', () => {
     it('shows error when server URL is empty', async () => {
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
-      expect(result.getByText('Please enter a server URL.')).toBeTruthy();
+      expect(result.getByText('Enter a valid SparkyFitness URL')).toBeTruthy();
       expect(mockLogin).not.toHaveBeenCalled();
     });
 
     it('shows error when email is empty', async () => {
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -190,7 +188,7 @@ describe('LoginModal', () => {
       );
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
       expect(result.getByText('Please enter your email.')).toBeTruthy();
@@ -199,7 +197,7 @@ describe('LoginModal', () => {
 
     it('shows error when password is empty', async () => {
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -211,7 +209,7 @@ describe('LoginModal', () => {
       );
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
       expect(result.getByText('Please enter your password.')).toBeTruthy();
@@ -219,17 +217,17 @@ describe('LoginModal', () => {
     });
   });
 
-  describe('successful login', () => {
-    it('calls login, saves config, and calls onLoginSuccess', async () => {
+  describe('successful sign in', () => {
+    it('calls login, saves config, and calls onSuccess', async () => {
       mockLogin.mockResolvedValue({
         type: 'success',
         sessionToken: 'new-session-token',
         user: { email: 'user@example.com' },
       });
 
-      const onLoginSuccess = jest.fn();
-      const result = renderModal({ onLoginSuccess });
-      await waitForCredentialsForm(result);
+      const onSuccess = jest.fn();
+      const result = renderModal({ onSuccess });
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -242,7 +240,7 @@ describe('LoginModal', () => {
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'password123');
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
       expect(mockLogin).toHaveBeenCalledWith(
@@ -257,10 +255,10 @@ describe('LoginModal', () => {
           sessionToken: 'new-session-token',
         }),
       );
-      expect(onLoginSuccess).toHaveBeenCalled();
+      expect(onSuccess).toHaveBeenCalled();
     });
 
-    it('strips trailing slash from server URL when saving new config', async () => {
+    it('strips trailing slash from server URL', async () => {
       mockLogin.mockResolvedValue({
         type: 'success',
         sessionToken: 'tok',
@@ -268,7 +266,7 @@ describe('LoginModal', () => {
       });
 
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -278,7 +276,7 @@ describe('LoginModal', () => {
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
       expect(mockSaveServerConfig).toHaveBeenCalledWith(
@@ -286,27 +284,31 @@ describe('LoginModal', () => {
       );
     });
 
-    it('updates existing config when a server is selected', async () => {
-      mockGetAllServerConfigs.mockResolvedValue([existingConfig]);
-      mockGetActiveServerConfig.mockResolvedValue(existingConfig);
+    it('uses existing config ID when editing', async () => {
       mockLogin.mockResolvedValue({
         type: 'success',
         sessionToken: 'new-token',
         user: { email: 'user@example.com' },
       });
 
-      const onLoginSuccess = jest.fn();
-      const result = renderModal({ onLoginSuccess });
-
-      await waitFor(() =>
-        expect(result.getByText('https://existing-server.com')).toBeTruthy(),
-      );
+      const onSuccess = jest.fn();
+      const result = renderModal({
+        onSuccess,
+        editingConfig: {
+          id: 'cfg-1',
+          url: 'https://existing-server.com',
+          apiKey: '',
+          authType: 'session',
+          sessionToken: 'old-token',
+        },
+      });
+      await waitForForm(result);
 
       fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'user@example.com');
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
       expect(mockSaveServerConfig).toHaveBeenCalledWith(
@@ -317,7 +319,7 @@ describe('LoginModal', () => {
           sessionToken: 'new-token',
         }),
       );
-      expect(onLoginSuccess).toHaveBeenCalled();
+      expect(onSuccess).toHaveBeenCalled();
     });
   });
 
@@ -326,7 +328,7 @@ describe('LoginModal', () => {
       mockLogin.mockRejectedValue(new LoginError('Invalid credentials', 401));
 
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -336,7 +338,7 @@ describe('LoginModal', () => {
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'wrong');
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
       expect(result.getByText('Invalid credentials')).toBeTruthy();
@@ -346,7 +348,7 @@ describe('LoginModal', () => {
       mockLogin.mockRejectedValue(new Error('Network error'));
 
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -356,12 +358,118 @@ describe('LoginModal', () => {
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
       expect(
         result.getByText('Could not connect to server. Check the URL and try again.'),
       ).toBeTruthy();
+    });
+  });
+
+  describe('API key flow', () => {
+    it('validates API key is required', async () => {
+      const result = renderModal();
+      await waitForForm(result);
+
+      fireEvent.press(result.getByText('API Key'));
+      fireEvent.changeText(
+        result.getByPlaceholderText('https://your-server-url.com'),
+        'https://my-server.com',
+      );
+
+      await act(async () => {
+        pressConnectButton(result);
+      });
+
+      expect(result.getByText('Please enter an API key.')).toBeTruthy();
+    });
+
+    it('tests connection and saves on success', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+      }) as jest.Mock;
+
+      const onSuccess = jest.fn();
+      const result = renderModal({ onSuccess });
+      await waitForForm(result);
+
+      fireEvent.press(result.getByText('API Key'));
+      fireEvent.changeText(
+        result.getByPlaceholderText('https://your-server-url.com'),
+        'https://my-server.com',
+      );
+      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'my-api-key');
+
+      await act(async () => {
+        pressConnectButton(result);
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://my-server.com/api/identity/user',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer my-api-key',
+          }),
+        }),
+      );
+      expect(mockSaveServerConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://my-server.com',
+          apiKey: 'my-api-key',
+          authType: 'apiKey',
+        }),
+      );
+      expect(onSuccess).toHaveBeenCalled();
+    });
+
+    it('shows error on invalid API key (401)', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        text: jest.fn().mockResolvedValue('Unauthorized'),
+      }) as jest.Mock;
+
+      const result = renderModal();
+      await waitForForm(result);
+
+      fireEvent.press(result.getByText('API Key'));
+      fireEvent.changeText(
+        result.getByPlaceholderText('https://your-server-url.com'),
+        'https://my-server.com',
+      );
+      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'bad-key');
+
+      await act(async () => {
+        pressConnectButton(result);
+      });
+
+      expect(result.getByText('Invalid API key. Please check and try again.')).toBeTruthy();
+      expect(mockSaveServerConfig).not.toHaveBeenCalled();
+    });
+
+    it('shows error on connection failure', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error')) as jest.Mock;
+
+      const result = renderModal();
+      await waitForForm(result);
+
+      fireEvent.press(result.getByText('API Key'));
+      fireEvent.changeText(
+        result.getByPlaceholderText('https://your-server-url.com'),
+        'https://my-server.com',
+      );
+      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'my-key');
+
+      await act(async () => {
+        pressConnectButton(result);
+      });
+
+      expect(
+        result.getByText('Could not connect to server: Network error'),
+      ).toBeTruthy();
+      expect(mockSaveServerConfig).not.toHaveBeenCalled();
     });
   });
 
@@ -373,7 +481,7 @@ describe('LoginModal', () => {
       mockLogin.mockResolvedValue({ type: 'mfa_required' });
       mockFetchMfaFactors.mockResolvedValue(factors);
 
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -383,7 +491,7 @@ describe('LoginModal', () => {
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
     }
 
@@ -403,8 +511,8 @@ describe('LoginModal', () => {
         user: { email: 'user@test.com' },
       });
 
-      const onLoginSuccess = jest.fn();
-      const result = renderModal({ onLoginSuccess });
+      const onSuccess = jest.fn();
+      const result = renderModal({ onSuccess });
       await navigateToMfa(result);
 
       fireEvent.changeText(result.getByPlaceholderText('000000'), '123456');
@@ -420,7 +528,7 @@ describe('LoginModal', () => {
           sessionToken: 'mfa-token',
         }),
       );
-      expect(onLoginSuccess).toHaveBeenCalled();
+      expect(onSuccess).toHaveBeenCalled();
     });
 
     it('shows method toggle when both TOTP and email are enabled', async () => {
@@ -441,14 +549,13 @@ describe('LoginModal', () => {
         user: { email: 'user@test.com' },
       });
 
-      const onLoginSuccess = jest.fn();
-      const result = renderModal({ onLoginSuccess });
+      const onSuccess = jest.fn();
+      const result = renderModal({ onSuccess });
       await navigateToMfa(result, {
         mfaTotpEnabled: true,
         mfaEmailEnabled: true,
       });
 
-      // Switch to email method
       await act(async () => {
         fireEvent.press(result.getByText('Email Code'));
       });
@@ -459,7 +566,6 @@ describe('LoginModal', () => {
         ),
       ).toBeTruthy();
 
-      // Send code
       await act(async () => {
         fireEvent.press(result.getByText('Send Code'));
       });
@@ -468,7 +574,6 @@ describe('LoginModal', () => {
       expect(result.getByText('Enter the code sent to your email.')).toBeTruthy();
       expect(result.getByText('Resend Code')).toBeTruthy();
 
-      // Enter and verify code
       fireEvent.changeText(result.getByPlaceholderText('000000'), '654321');
 
       await act(async () => {
@@ -479,10 +584,10 @@ describe('LoginModal', () => {
         'https://my-server.com',
         '654321',
       );
-      expect(onLoginSuccess).toHaveBeenCalled();
+      expect(onSuccess).toHaveBeenCalled();
     });
 
-    it('navigates back to credentials from MFA and clears cookies', async () => {
+    it('navigates back to form from MFA and clears cookies', async () => {
       const result = renderModal();
       await navigateToMfa(result);
 
@@ -493,8 +598,7 @@ describe('LoginModal', () => {
       });
 
       expect(mockClearAuthCookies).toHaveBeenCalled();
-      // After going back, the heading should revert to "Sign In"
-      expect(result.getAllByText('Sign In').length).toBeGreaterThan(0);
+      expect(result.getByText('Add Server')).toBeTruthy();
     });
   });
 
@@ -506,7 +610,7 @@ describe('LoginModal', () => {
         mfaEmailEnabled: false,
       });
 
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -516,7 +620,7 @@ describe('LoginModal', () => {
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
     }
 
@@ -556,7 +660,7 @@ describe('LoginModal', () => {
       ).toBeTruthy();
     });
 
-    it('returns to credentials on expired session', async () => {
+    it('returns to form on expired session', async () => {
       mockVerifyTotp.mockRejectedValue(
         new LoginError('INVALID_TWO_FACTOR_COOKIE', 401),
       );
@@ -570,7 +674,6 @@ describe('LoginModal', () => {
         fireEvent.press(result.getByText('Verify'));
       });
 
-      // Should navigate back to credentials form
       await waitFor(() => {
         expect(result.getByPlaceholderText('email@example.com')).toBeTruthy();
       });
@@ -604,7 +707,7 @@ describe('LoginModal', () => {
       );
 
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -614,10 +717,9 @@ describe('LoginModal', () => {
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
-      // Should default to email since totp is disabled
       await act(async () => {
         fireEvent.press(result.getByText('Send Code'));
       });
@@ -627,87 +729,15 @@ describe('LoginModal', () => {
   });
 
   describe('callbacks', () => {
-    it('calls onUseApiKey with current URL from credentials form', async () => {
-      const onUseApiKey = jest.fn();
-      const result = renderModal({ onUseApiKey });
-      await waitForCredentialsForm(result);
-
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
-
-      fireEvent.press(result.getAllByText('Use API Key Instead')[0]);
-
-      expect(onUseApiKey).toHaveBeenCalledWith('https://my-server.com', [], null);
-    });
-
-    it('calls onDismiss when Later is pressed', async () => {
-      mockGetAllServerConfigs.mockResolvedValue([existingConfig]);
-      mockGetActiveServerConfig.mockResolvedValue(existingConfig);
-
+    it('calls onDismiss when Cancel is pressed', async () => {
       const onDismiss = jest.fn();
-      const { getByText } = renderModal({ onDismiss });
+      const result = renderModal({ onDismiss });
+      await waitForForm(result);
 
-      await waitFor(() =>
-        expect(getByText('https://existing-server.com')).toBeTruthy(),
-      );
-
-      fireEvent.press(getByText('Later'));
+      fireEvent.press(result.getByText('Cancel'));
 
       expect(onDismiss).toHaveBeenCalled();
     });
-
-    it('calls onUseApiKey from MFA form', async () => {
-      mockLogin.mockResolvedValue({ type: 'mfa_required' });
-      mockFetchMfaFactors.mockResolvedValue({
-        mfaTotpEnabled: true,
-        mfaEmailEnabled: false,
-      });
-
-      const onUseApiKey = jest.fn();
-      const result = renderModal({ onUseApiKey });
-      await waitForCredentialsForm(result);
-
-      fireEvent.changeText(
-        result.getByPlaceholderText('https://your-server-url.com'),
-        'https://my-server.com',
-      );
-      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'a@b.com');
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
-
-      await act(async () => {
-        pressSignInButton(result);
-      });
-
-      // Verify we're on the MFA screen before tapping Use API Key
-      expect(result.getByText('Two-Factor Authentication')).toBeTruthy();
-
-      fireEvent.press(result.getAllByText('Use API Key Instead')[0]);
-
-      expect(onUseApiKey).toHaveBeenCalledWith('https://my-server.com', [], null);
-    });
-
-    it('passes the selected config ID when using API key for a saved config', async () => {
-      mockGetAllServerConfigs.mockResolvedValue([existingConfig]);
-      mockGetActiveServerConfig.mockResolvedValue(existingConfig);
-
-      const onUseApiKey = jest.fn();
-      const result = renderModal({ onUseApiKey });
-
-      await waitFor(() =>
-        expect(result.getByText('https://existing-server.com')).toBeTruthy(),
-      );
-
-      fireEvent.press(result.getAllByText('Use API Key Instead')[0]);
-
-      expect(onUseApiKey).toHaveBeenCalledWith(
-        'https://existing-server.com',
-        existingConfig.proxyHeaders ?? [],
-        existingConfig.id,
-      );
-    });
-
   });
 
   describe('state reset', () => {
@@ -715,7 +745,7 @@ describe('LoginModal', () => {
       mockLogin.mockRejectedValueOnce(new LoginError('Bad', 401));
 
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -725,19 +755,175 @@ describe('LoginModal', () => {
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'wrong');
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
       expect(result.getByText('Bad')).toBeTruthy();
 
       // Hide and re-show modal
-      result.rerender(<LoginModal {...defaultProps} visible={false} />);
-      result.rerender(<LoginModal {...defaultProps} visible={true} />);
+      result.rerender(<ServerConfigModal {...defaultProps} visible={false} />);
+      result.rerender(<ServerConfigModal {...defaultProps} visible={true} />);
 
       await waitFor(() => {
         expect(result.getByPlaceholderText('email@example.com').props.value).toBe('');
         expect(result.getByPlaceholderText('Password').props.value).toBe('');
       });
+    });
+  });
+
+  describe('save without auth (editing)', () => {
+    const editingConfig = {
+      id: 'cfg-1',
+      url: 'https://old-server.com',
+      apiKey: '',
+      authType: 'session' as const,
+      sessionToken: 'old-token',
+      proxyHeaders: [{ name: 'X-Auth', value: 'abc' }],
+    };
+
+    it('shows Save button when editing an existing config', async () => {
+      const result = renderModal({ editingConfig });
+      await waitForForm(result);
+
+      expect(result.getByText('Save')).toBeTruthy();
+      expect(result.getByText('Connect')).toBeTruthy();
+    });
+
+    it('does not show Save button when adding a new config', async () => {
+      const result = renderModal({ editingConfig: null });
+      await waitForForm(result);
+
+      expect(result.queryByText('Save')).toBeNull();
+      expect(result.getByText('Connect')).toBeTruthy();
+    });
+
+    it('saves URL and proxy header changes without auth validation', async () => {
+      const onSuccess = jest.fn();
+      const result = renderModal({ editingConfig, onSuccess });
+      await waitForForm(result);
+
+      // Change the URL
+      fireEvent.changeText(
+        result.getByDisplayValue('https://old-server.com'),
+        'https://new-server.com',
+      );
+
+      await act(async () => {
+        fireEvent.press(result.getByText('Save'));
+      });
+
+      expect(mockLogin).not.toHaveBeenCalled();
+      expect(mockSaveServerConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'cfg-1',
+          url: 'https://new-server.com',
+          authType: 'session',
+          sessionToken: 'old-token',
+          proxyHeaders: [{ name: 'X-Auth', value: 'abc' }],
+        }),
+      );
+      expect(onSuccess).toHaveBeenCalled();
+    });
+
+    it('validates URL is required for Save', async () => {
+      const result = renderModal({ editingConfig });
+      await waitForForm(result);
+
+      fireEvent.changeText(
+        result.getByDisplayValue('https://old-server.com'),
+        '',
+      );
+
+      await act(async () => {
+        fireEvent.press(result.getByText('Save'));
+      });
+
+      expect(result.getByText('Enter a valid SparkyFitness URL')).toBeTruthy();
+      expect(mockSaveServerConfig).not.toHaveBeenCalled();
+    });
+
+    it('saves entered API key when user switches to API Key tab', async () => {
+      const onSuccess = jest.fn();
+      const result = renderModal({ editingConfig, onSuccess });
+      await waitForForm(result);
+
+      // Switch to API Key tab and enter a key
+      fireEvent.press(result.getByText('API Key'));
+      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'new-api-key');
+
+      await act(async () => {
+        fireEvent.press(result.getByText('Save'));
+      });
+
+      expect(mockSaveServerConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'cfg-1',
+          authType: 'apiKey',
+          apiKey: 'new-api-key',
+          sessionToken: '',
+        }),
+      );
+      expect(onSuccess).toHaveBeenCalled();
+    });
+
+    it('preserves existing auth when API Key tab is active but key is empty', async () => {
+      const onSuccess = jest.fn();
+      const result = renderModal({ editingConfig, onSuccess });
+      await waitForForm(result);
+
+      // Switch to API Key tab but leave key empty
+      fireEvent.press(result.getByText('API Key'));
+
+      await act(async () => {
+        fireEvent.press(result.getByText('Save'));
+      });
+
+      expect(mockSaveServerConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'cfg-1',
+          authType: 'session',
+          sessionToken: 'old-token',
+        }),
+      );
+    });
+  });
+
+  describe('session sign-in preserves existing API key', () => {
+    it('preserves saved API key when completing session sign-in on existing config', async () => {
+      mockLogin.mockResolvedValue({
+        type: 'success',
+        sessionToken: 'new-session-token',
+        user: { email: 'user@example.com' },
+      });
+
+      const onSuccess = jest.fn();
+      const result = renderModal({
+        onSuccess,
+        editingConfig: {
+          id: 'cfg-1',
+          url: 'https://example.com',
+          apiKey: 'saved-fallback-key',
+          authType: 'session',
+          sessionToken: 'expired-token',
+        },
+      });
+      await waitForForm(result);
+
+      fireEvent.changeText(result.getByPlaceholderText('email@example.com'), 'user@example.com');
+      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+
+      await act(async () => {
+        pressConnectButton(result);
+      });
+
+      expect(mockSaveServerConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'cfg-1',
+          apiKey: 'saved-fallback-key',
+          authType: 'session',
+          sessionToken: 'new-session-token',
+        }),
+      );
     });
   });
 
@@ -747,7 +933,7 @@ describe('LoginModal', () => {
       mockFetchMfaFactors.mockRejectedValue(new Error('Failed'));
 
       const result = renderModal();
-      await waitForCredentialsForm(result);
+      await waitForForm(result);
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-server-url.com'),
@@ -757,10 +943,9 @@ describe('LoginModal', () => {
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
-        pressSignInButton(result);
+        pressConnectButton(result);
       });
 
-      // Should show TOTP instructions (fallback)
       expect(
         result.getByText('Enter the code from your authenticator app.'),
       ).toBeTruthy();

@@ -4,53 +4,30 @@ import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
 import { ServerConfig as ServerConfigType } from '../services/storage';
 import ConnectionStatus from './ConnectionStatus';
-import ServerConfigModal from './ServerConfigModal';
 import Icon from './Icon';
 
 interface ServerConfigProps {
-  url: string;
-  setUrl: React.Dispatch<React.SetStateAction<string>>;
-  apiKey: string;
-  setApiKey: React.Dispatch<React.SetStateAction<string>>;
-  proxyHeaders: import('../services/storage').ProxyHeader[];
-  setProxyHeaders: React.Dispatch<React.SetStateAction<import('../services/storage').ProxyHeader[]>>;
-  handleSaveConfig: () => void;
   serverConfigs: ServerConfigType[];
   activeConfigId: string | null;
   handleSetActiveConfig: (id: string) => void;
   handleDeleteConfig: (id: string) => void;
-  handleEditConfig: (config: ServerConfigType) => void;
-  handleSignIn: (config: ServerConfigType) => void;
+  handleConfigureServer: (config: ServerConfigType) => void;
   handleAddNewConfig: () => void;
   onOpenWebDashboard: () => void;
   isConnected: boolean;
   checkServerConnection: () => Promise<boolean>;
-  showConfigModal: boolean;
-  onCloseModal: () => void;
-  isEditing: boolean;
 }
 
 const ServerConfig: React.FC<ServerConfigProps> = ({
-  url,
-  setUrl,
-  apiKey,
-  setApiKey,
-  proxyHeaders,
-  setProxyHeaders,
-  handleSaveConfig,
   serverConfigs,
   activeConfigId,
   handleSetActiveConfig,
   handleDeleteConfig,
-  handleEditConfig,
-  handleSignIn,
+  handleConfigureServer,
   handleAddNewConfig,
   onOpenWebDashboard,
   isConnected,
   checkServerConnection,
-  showConfigModal,
-  onCloseModal,
-  isEditing,
 }) => {
   const [success, successBackground, textSecondary, textLink] = useCSSVariable([
     '--color-text-success',
@@ -58,18 +35,6 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
     '--color-text-secondary',
     '--color-text-link'
   ]) as [string, string, string, string];
-
-  const showAndroidConfigDetailsMenu = (item: ServerConfigType) => {
-    Alert.alert(
-      item.url,
-      'More actions',
-      [
-        { text: 'Edit', onPress: () => handleEditConfig(item) },
-        { text: 'Delete', style: 'destructive', onPress: () => handleDeleteConfig(item.id) },
-      ],
-      { cancelable: true },
-    );
-  };
 
   const showConfigMenu = (item: ServerConfigType) => {
     const isActive = item.id === activeConfigId;
@@ -80,8 +45,8 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
         'Select an action',
         [
           { text: 'Set Active', onPress: () => handleSetActiveConfig(item.id) },
-          { text: 'Sign In', onPress: () => handleSignIn(item) },
-          { text: 'More', onPress: () => showAndroidConfigDetailsMenu(item) },
+          { text: 'Configure', onPress: () => handleConfigureServer(item) },
+          { text: 'Delete', style: 'destructive', onPress: () => handleDeleteConfig(item.id) },
         ],
         { cancelable: true },
       );
@@ -90,10 +55,8 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
 
     const buttons = [
       ...(!isActive ? [{ text: 'Set Active', onPress: () => handleSetActiveConfig(item.id) }] : []),
-      { text: 'Sign In', onPress: () => handleSignIn(item) },
-      { text: 'Edit', onPress: () => handleEditConfig(item) },
+      { text: 'Configure', onPress: () => handleConfigureServer(item) },
       { text: 'Delete', style: 'destructive' as const, onPress: () => handleDeleteConfig(item.id) },
-      // Android supports max 3 alert buttons; the dialog is dismissable via back/outside tap
       ...(Platform.OS === 'ios' ? [{ text: 'Cancel', style: 'cancel' as const }] : []),
     ];
     Alert.alert(
@@ -173,19 +136,6 @@ const ServerConfig: React.FC<ServerConfigProps> = ({
           )}
         </View>
       </View>
-
-      <ServerConfigModal
-        visible={showConfigModal}
-        onClose={onCloseModal}
-        url={url}
-        setUrl={setUrl}
-        apiKey={apiKey}
-        setApiKey={setApiKey}
-        proxyHeaders={proxyHeaders}
-        setProxyHeaders={setProxyHeaders}
-        onSave={handleSaveConfig}
-        isEditing={isEditing}
-      />
     </View>
   );
 };

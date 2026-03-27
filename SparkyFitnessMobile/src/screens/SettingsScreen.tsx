@@ -3,8 +3,8 @@ import { View, Alert, Text, ScrollView, TouchableOpacity, Linking, ActivityIndic
 import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getActiveServerConfig, saveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig } from '../services/storage';
-import type { ServerConfig, ProxyHeader } from '../services/storage';
+import { getActiveServerConfig, deleteServerConfig, getAllServerConfigs, setActiveServerConfig } from '../services/storage';
+import type { ServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { notifyNoConfigs } from '../services/api/authService';
 import { useServerConnection, usePreferences, queryClient } from '../hooks';
@@ -12,7 +12,7 @@ import ServerConfigComponent from '../components/ServerConfig';
 import AppearanceSettings from '../components/AppearanceSettings';
 import DevTools from '../components/DevTools';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
-import LoginModal from '../components/LoginModal';
+import ServerConfigModal from '../components/ServerConfigModal';
 import * as Application from 'expo-application';
 import Icon from '../components/Icon';
 import { shareDiagnosticReport, sanitizeQueryKey } from '../services/diagnosticReportService';
@@ -31,18 +31,15 @@ type SettingsScreenProps = CompositeScreenProps<
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const [url, setUrl] = useState<string>('');
-  const [apiKey, setApiKey] = useState<string>('');
-  const [proxyHeaders, setProxyHeaders] = useState<ProxyHeader[]>([]);
 
   const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
-  const [currentConfigId, setCurrentConfigId] = useState<string | null>(null);
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
-  const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginDefaultConfigId, setLoginDefaultConfigId] = useState<string | null>(null);
-  const [loginMode, setLoginMode] = useState<'add-new' | undefined>(undefined);
+
+  // Unified server config modal state
+  const [unifiedModalVisible, setUnifiedModalVisible] = useState(false);
+  const [unifiedModalConfig, setUnifiedModalConfig] = useState<ServerConfig | null>(null);
+  const [unifiedModalTab, setUnifiedModalTab] = useState<'signIn' | 'apiKey'>('signIn');
 
   const { isConnected, refetch: refetchConnection } = useServerConnection();
   const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
@@ -54,23 +51,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
     const activeConfig = await getActiveServerConfig();
     if (activeConfig) {
-      setUrl(activeConfig.url);
-      setApiKey(activeConfig.apiKey);
       setActiveConfigId(activeConfig.id);
-      setCurrentConfigId(activeConfig.id);
     } else if (allConfigs.length > 0 && !activeConfig) {
       await setActiveServerConfig(allConfigs[0].id);
-      setUrl(allConfigs[0].url);
-      setApiKey(allConfigs[0].apiKey);
       setActiveConfigId(allConfigs[0].id);
-      setCurrentConfigId(allConfigs[0].id);
     } else if (allConfigs.length === 0) {
-      setUrl('');
-      setApiKey('');
       setActiveConfigId(null);
-      setCurrentConfigId(null);
     }
-
   };
 
   useEffect(() => {
@@ -108,45 +95,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleSaveConfig = async (): Promise<void> => {
-    const existingConfig = serverConfigs.find((c) => c.id === currentConfigId);
-    const isSessionAuth = existingConfig?.authType === 'session';
-
-    if (!url || (!apiKey && !isSessionAuth)) {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Please enter both a server URL and an API key.' });
-      return;
-    }
-    if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'HTTPS is required for server connections.' });
-      return;
-    }
-    try {
-      const normalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
-      const hasNewApiKey = !!apiKey.trim();
-      const configToSave: ServerConfig = {
-        id: currentConfigId || Date.now().toString(),
-        url: normalizedUrl,
-        apiKey: apiKey || existingConfig?.apiKey || '',
-        ...(hasNewApiKey
-          ? { authType: 'apiKey' as const, sessionToken: '' }
-          : {}),
-        proxyHeaders,
-      };
-      await saveServerConfig(configToSave);
-
-      setShowConfigModal(false);
-      await loadConfig();
-      refetchConnection();
-      Toast.show({ type: 'success', text1: 'Settings saved' });
-      addLog('Settings saved successfully.', 'SUCCESS');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Failed to save settings:', error);
-      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to save settings: ${errorMessage}` });
-      addLog(`Failed to save settings: ${errorMessage}`, 'ERROR');
-    }
-  };
-
   const handleSetActiveConfig = async (configId: string): Promise<void> => {
     if (!__DEV__) {
       const config = serverConfigs.find((c) => c.id === configId);
@@ -175,10 +123,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       await deleteServerConfig(configId);
       const remainingConfigs = await getAllServerConfigs();
       if (activeConfigId === configId) {
-        setUrl('');
-        setApiKey('');
         setActiveConfigId(null);
-        setCurrentConfigId(null);
       }
       await loadConfig();
       refetchConnection();
@@ -198,26 +143,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
   };
 
-  const handleEditConfig = (config: ServerConfig): void => {
-    setUrl(config.url);
-    // Session-backed configs may still retain an old API key for fallback,
-    // but opening the editor should not implicitly treat that as an auth-mode switch.
-    setApiKey(config.authType === 'session' ? '' : config.apiKey);
-    setProxyHeaders(config.proxyHeaders ?? []);
-    setCurrentConfigId(config.id);
-    setShowConfigModal(true);
+  const handleConfigureServer = (config: ServerConfig): void => {
+    setUnifiedModalConfig(config);
+    setUnifiedModalTab(config.authType === 'apiKey' ? 'apiKey' : 'signIn');
+    setUnifiedModalVisible(true);
   };
 
   const handleAddNewConfig = (): void => {
-    setLoginDefaultConfigId(null);
-    setLoginMode('add-new');
-    setShowLoginModal(true);
-  };
-
-  const handleSignIn = (config: ServerConfig): void => {
-    setLoginDefaultConfigId(config.id);
-    setLoginMode(undefined);
-    setShowLoginModal(true);
+    setUnifiedModalConfig(null);
+    setUnifiedModalTab('signIn');
+    setUnifiedModalVisible(true);
   };
 
   const handleShareDiagnosticReport = async (): Promise<void> => {
@@ -256,26 +191,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       <ScrollView contentContainerStyle={{ paddingBottom: 130 }} contentInsetAdjustmentBehavior="never">
         <View className="flex-1 p-4 pb-20">
           <ServerConfigComponent
-            url={url}
-            setUrl={setUrl}
-            apiKey={apiKey}
-            setApiKey={setApiKey}
-            proxyHeaders={proxyHeaders}
-            setProxyHeaders={setProxyHeaders}
-            handleSaveConfig={handleSaveConfig}
             serverConfigs={serverConfigs}
             activeConfigId={activeConfigId}
             handleSetActiveConfig={handleSetActiveConfig}
             handleDeleteConfig={handleDeleteConfig}
-            handleEditConfig={handleEditConfig}
-            handleSignIn={handleSignIn}
+            handleConfigureServer={handleConfigureServer}
             handleAddNewConfig={handleAddNewConfig}
             onOpenWebDashboard={openWebDashboard}
             isConnected={isConnected}
             checkServerConnection={() => refetchConnection().then((result) => !!result.data)}
-            showConfigModal={showConfigModal}
-            onCloseModal={() => setShowConfigModal(false)}
-            isEditing={!!currentConfigId}
           />
 
           <TouchableOpacity
@@ -335,24 +259,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         onClose={() => setShowPrivacyModal(false)}
       />
 
-      <LoginModal
-        visible={showLoginModal}
-        defaultConfigId={loginDefaultConfigId}
-        mode={loginMode}
-        onLoginSuccess={() => {
-          setShowLoginModal(false);
+      <ServerConfigModal
+        visible={unifiedModalVisible}
+        editingConfig={unifiedModalConfig}
+        defaultAuthTab={unifiedModalTab}
+        onSuccess={() => {
+          setUnifiedModalVisible(false);
           loadConfig();
           refetchConnection();
         }}
-        onUseApiKey={(serverUrl, loginProxyHeaders, selectedConfigId) => {
-          setShowLoginModal(false);
-          setUrl(serverUrl);
-          setApiKey('');
-          setProxyHeaders(loginProxyHeaders);
-          setCurrentConfigId(selectedConfigId);
-          setShowConfigModal(true);
-        }}
-        onDismiss={() => setShowLoginModal(false)}
+        onDismiss={() => setUnifiedModalVisible(false)}
       />
     </View>
   );

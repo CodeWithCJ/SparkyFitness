@@ -4,6 +4,8 @@ import Toast from 'react-native-toast-message';
 import Button from './ui/Button';
 import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
+import { notifySessionExpired } from '../services/api/authService';
+import { getActiveServerConfig } from '../services/storage';
 import { openHealthConnectSettings, openHealthConnectDataManagement, getGrantedPermissions } from 'react-native-health-connect';
 
 const DevTools: React.FC = () => {
@@ -170,6 +172,25 @@ const DevTools: React.FC = () => {
               <Text className="text-white text-base font-bold">Check BG Permission</Text>
             </Button>
           )}
+        </View>
+      </View>
+
+      <View className="mt-5">
+        <Text className="text-sm text-text-primary">Auth</Text>
+        <Text className="text-text-muted mb-3 text-[13px]">
+          Trigger auth modals for testing.
+        </Text>
+        <View className="flex-row gap-2 flex-wrap">
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
+            onPress={async () => {
+              const config = await getActiveServerConfig();
+              notifySessionExpired(config?.id ?? 'dev-test');
+            }}
+          >
+            <Text className="text-white text-base font-bold">Show ReauthModal</Text>
+          </Button>
         </View>
       </View>
 

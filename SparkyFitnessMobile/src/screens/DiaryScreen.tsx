@@ -12,6 +12,7 @@ import ExerciseSummary from '../components/ExerciseSummary';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
+import StatusView from '../components/StatusView';
 import { useServerConnection, useDailySummary } from '../hooks';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -76,22 +77,14 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
       return (
-        <View className="flex-1 items-center justify-center p-8 shadow-sm">
-          <Icon name="cloud-offline" size={64} color="#9CA3AF" />
-          <Text className="text-text-muted text-lg text-center mt-4">
-            No server configured
-          </Text>
-          <Text className="text-text-muted text-sm text-center mt-2">
-            Configure your server connection in Settings to view your diary.
-          </Text>
-          <Button
-            variant="primary"
-            className="px-6 mt-6"
-            onPress={() => navigation.navigate('Settings')}
-          >
-            Go to Settings
-          </Button>
-        </View>
+        <StatusView
+          icon="cloud-offline"
+          iconColor="#9CA3AF"
+          iconSize={64}
+          title="No server configured"
+          subtitle="Configure your server connection in Settings to view your diary."
+          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
+        />
       );
     }
 
@@ -162,7 +155,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   return (
     <GestureDetector gesture={swipeGesture}>
       <View className="flex-1 bg-background" style={topSafeAreaStyle}>
-        {!isConnectionLoading && isConnected && (
+        {!isConnectionLoading && isConnected ? (
           <DateNavigator
             title="Diary"
             selectedDate={selectedDate}
@@ -174,6 +167,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             showDateAlways
             skipSafeAreaTop
           />
+        ) : !isConnectionLoading && (
+          <View className="px-4 pt-4 pb-5">
+            <Text className="text-2xl font-bold text-text-primary">Diary</Text>
+          </View>
         )}
         {renderContent()}
         <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
