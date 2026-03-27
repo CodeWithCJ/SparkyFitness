@@ -75,11 +75,12 @@ const handler: RequestHandler = async (req, res, next) => {
       }
     }
 
-    // Water intake requires checkin permission, not diary. When accessing
-    // another user's data, only include water if the actor also has checkin access.
-    let includeWater = true;
+    // Water intake and step calories both derive from check_in_measurements and
+    // require checkin permission, not diary. When accessing another user's data,
+    // only include them if the actor also has checkin access.
+    let includeCheckin = true;
     if (isFamilyAccess) {
-      includeWater = await canAccessUserData(
+      includeCheckin = await canAccessUserData(
         targetUserId,
         'checkin',
         actorUserId
@@ -90,7 +91,7 @@ const handler: RequestHandler = async (req, res, next) => {
       actorUserId,
       targetUserId,
       date,
-      includeWater,
+      includeCheckin,
     });
     res.status(200).json(result);
   } catch (error: unknown) {
