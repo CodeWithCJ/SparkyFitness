@@ -137,7 +137,8 @@ describe('mealRepository', () => {
       ];
       mockClient.query
         .mockResolvedValueOnce({ rows: mockMeals }) // For meals query
-        .mockResolvedValueOnce({ rows: [] }); // For batched meal_foods query
+        .mockResolvedValueOnce({ rows: [] }) // For meal 1 foods
+        .mockResolvedValueOnce({ rows: [] }); // For meal 2 foods
 
       const result = await mealRepository.getMeals(userId, 'all');
       expect(mockClient.query).toHaveBeenCalledWith(
@@ -145,8 +146,12 @@ describe('mealRepository', () => {
         [userId]
       );
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
-        [[mealId1, mealId2]]
+        expect.stringContaining('WHERE mf.meal_id = $1'),
+        [mealId1]
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = $1'),
+        [mealId2]
       );
       expect(result).toEqual([
         { ...mockMeals[0], foods: [] },
@@ -169,7 +174,8 @@ describe('mealRepository', () => {
       ];
       mockClient.query
         .mockResolvedValueOnce({ rows: mockMeals }) // For meals query
-        .mockResolvedValueOnce({ rows: [] }); // For batched meal_foods query
+        .mockResolvedValueOnce({ rows: [] }) // For meal 1 foods
+        .mockResolvedValueOnce({ rows: [] }); // For meal 2 foods
 
       const result = await mealRepository.getMeals(userId, 'all');
       expect(mockClient.query).toHaveBeenCalledWith(
@@ -177,8 +183,12 @@ describe('mealRepository', () => {
         [userId]
       );
       expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE mf.meal_id = ANY($1::uuid[])'),
-        [[mealId1, mealId2]]
+        expect.stringContaining('WHERE mf.meal_id = $1'),
+        [mealId1]
+      );
+      expect(mockClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE mf.meal_id = $1'),
+        [mealId2]
       );
       expect(result).toEqual([
         { ...mockMeals[0], foods: [] },

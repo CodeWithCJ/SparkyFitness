@@ -2,6 +2,39 @@ const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 const format = require('pg-format');
 
+// --- Helpers ---
+
+async function attachFoodsToMeals(client, meals) {
+  if (meals.length === 0) return meals;
+
+  const mealIds = meals.map((m) => m.id);
+  const mealFoodsResult = await client.query(
+    `SELECT mf.id, mf.meal_id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
+            f.name AS food_name, f.brand,
+            fv.serving_size, fv.serving_unit, fv.calories, fv.protein, fv.carbs, fv.fat,
+            fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat, fv.trans_fat,
+            fv.cholesterol, fv.sodium, fv.potassium, fv.dietary_fiber, fv.sugars,
+            fv.vitamin_a, fv.vitamin_c, fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
+     FROM meal_foods mf
+     JOIN foods f ON mf.food_id = f.id
+     LEFT JOIN food_variants fv ON mf.variant_id = fv.id
+     WHERE mf.meal_id = ANY($1::uuid[])`,
+    [mealIds]
+  );
+
+  const foodsByMealId = {};
+  for (const food of mealFoodsResult.rows) {
+    if (!foodsByMealId[food.meal_id]) foodsByMealId[food.meal_id] = [];
+    foodsByMealId[food.meal_id].push(food);
+  }
+
+  for (const meal of meals) {
+    meal.foods = foodsByMealId[meal.id] || [];
+  }
+
+  return meals;
+}
+
 // --- Meal Template CRUD Operations ---
 
 async function createMeal(mealData) {
