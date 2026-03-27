@@ -2,21 +2,21 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Modal,
   TouchableOpacity,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  Image,
+  LayoutAnimation,
+  Alert,
 } from 'react-native';
 import Button from './ui/Button';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useCSSVariable } from 'uniwind';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Icon from './Icon';
 import FormInput from './FormInput';
 import SegmentedControl from './SegmentedControl';
-import ProxyHeadersModal from './ProxyHeadersModal';
 import MfaForm, { ErrorBanner, PrimaryButton } from './auth/MfaForm';
 import {
   login,
@@ -62,10 +62,16 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   onSuccess,
   onDismiss,
 }) => {
-  const [textMuted, textSecondary] = useCSSVariable([
+  const [textMuted, textSecondary, accentPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-text-secondary',
-  ]) as [string, string];
+    '--color-accent-primary',
+  ]) as [string, string, string];
+
+  const chevronRotation = useSharedValue(-90);
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${chevronRotation.value}deg` }],
+  }));
 
   // Form state
   const [serverUrl, setServerUrl] = useState('');
@@ -77,7 +83,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [showProxyHeaders, setShowProxyHeaders] = useState(false);
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
 
   // MFA state
   const [step, setStep] = useState<'form' | 'mfa'>('form');
@@ -98,6 +104,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setEmail('');
     setPassword('');
 
+    setAdvancedExpanded(false);
+    chevronRotation.value = -90;
+
     if (editingConfig) {
       setServerUrl(editingConfig.url);
       setApiKey(editingConfig.authType === 'apiKey' ? editingConfig.apiKey : '');
@@ -112,9 +121,31 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     }
 
     clearPendingProxyHeaders();
-  }, [visible, editingConfig, defaultAuthTab]);
+  }, [visible, editingConfig, defaultAuthTab, chevronRotation]);
+
+  const toggleAdvanced = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const next = !advancedExpanded;
+    setAdvancedExpanded(next);
+    chevronRotation.value = withTiming(next ? 0 : -90, { duration: 200 });
+  };
+
+  const handleAddHeader = () => {
+    setProxyHeaders([...proxyHeaders, { name: '', value: '' }]);
+  };
+
+  const handleRemoveHeader = (index: number) => {
+    setProxyHeaders(proxyHeaders.filter((_, i) => i !== index));
+  };
+
+  const handleChangeHeader = (index: number, field: 'name' | 'value', text: string) => {
+    setProxyHeaders(proxyHeaders.map((h, i) => (i === index ? { ...h, [field]: text } : h)));
+  };
 
   const normalizeUrl = (url: string) => url.trim().replace(/\/+$/, '');
+
+  /** Strip empty rows so we only persist real headers. */
+  const cleanedHeaders = () => proxyHeaders.filter(h => h.name.trim() && h.value.trim());
 
   const getConfigId = () => editingConfig?.id ?? Date.now().toString();
 
@@ -123,7 +154,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       id: getConfigId(),
       url,
       apiKey: editingConfig?.apiKey ?? '',
-      proxyHeaders,
+      proxyHeaders: cleanedHeaders(),
       ...overrides,
     });
   };
@@ -142,7 +173,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
     setLoading(true);
     setError('');
-    setPendingProxyHeaders(proxyHeadersToRecord(proxyHeaders));
+    setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
 
     try {
       const result = await login(url, email.trim(), password);
@@ -279,7 +310,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       const response = await fetch(`${url}/api/identity/user`, {
         method: 'GET',
         headers: {
-          ...proxyHeadersToRecord(proxyHeaders),
+          ...proxyHeadersToRecord(cleanedHeaders()),
           Authorization: `Bearer ${apiKey.trim()}`,
         },
       });
@@ -338,7 +369,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         id: editingConfig!.id,
         url,
         ...authFields,
-        proxyHeaders,
+        proxyHeaders: cleanedHeaders(),
       });
       addLog('Server configuration updated.', 'SUCCESS');
       onSuccess();
@@ -350,14 +381,36 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     }
   };
 
+  // --- Reserved header guard ---
+
+  const withReservedHeaderCheck = (action: () => void) => {
+    const conflicting = cleanedHeaders().find(
+      h => h.name.toLowerCase() === 'authorization' || h.name.toLowerCase() === 'content-type'
+    );
+    if (conflicting) {
+      Alert.alert(
+        'Reserved Header',
+        `"${conflicting.name}" may conflict with headers set by the app. Continue anyway?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Continue', onPress: action },
+        ]
+      );
+      return;
+    }
+    action();
+  };
+
   // --- Connect handler (dispatches based on tab) ---
 
   const handleConnect = () => {
-    if (authTab === 'signIn') {
-      handleSignIn();
-    } else {
-      handleConnectApiKey();
-    }
+    withReservedHeaderCheck(() => {
+      if (authTab === 'signIn') {
+        handleSignIn();
+      } else {
+        handleConnectApiKey();
+      }
+    });
   };
 
   const handleDismiss = () => {
@@ -388,12 +441,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm">
             {/* Header */}
             <View className="items-center mb-5">
-              <Image
-                source={require('../../assets/images/logo.png')}
-                className="w-16 h-16"
-                resizeMode="contain"
-              />
-              <Text className="text-[22px] font-bold mt-3 text-center text-text-primary">
+              <Text className="text-[22px] font-bold text-center text-text-primary">
                 {step === 'mfa'
                   ? 'Two-Factor Authentication'
                   : isEditing
@@ -407,22 +455,21 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 {/* Server URL */}
                 <View className="mb-3">
                   <Text className="text-sm mb-2 text-text-secondary">Server URL</Text>
-                  <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
-                    <TextInput
-                      className="flex-1 p-2.5 text-base text-text-primary"
-                      style={{ lineHeight: 20 }}
+                  <View className="flex-row items-center">
+                    <FormInput
+                      className="flex-1 rounded-lg"
                       placeholder="https://your-server-url.com"
-                      placeholderTextColor={textMuted}
                       value={serverUrl}
                       onChangeText={setServerUrl}
                       autoCapitalize="none"
                       keyboardType="url"
+                      style={{ paddingRight: 40 }}
                     />
                     <Button
                       variant="ghost"
                       onPress={async () => setServerUrl(await Clipboard.getString())}
                       accessibilityLabel="Paste URL from clipboard"
-                      className="p-2 py-2 px-2 rounded-lg"
+                      className="absolute right-1 p-2 py-2 px-2 rounded-lg"
                     >
                       <Icon name="paste" size={20} color={textSecondary} />
                     </Button>
@@ -469,21 +516,20 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 {authTab === 'apiKey' && (
                   <View className="mb-4">
                     <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
-                    <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
-                      <TextInput
-                        className="flex-1 p-2.5 text-base text-text-primary"
-                        style={{ lineHeight: 20 }}
+                    <View className="flex-row items-center">
+                      <FormInput
+                        className="flex-1 rounded-lg"
                         placeholder="Uds3d8i..."
-                        placeholderTextColor={textMuted}
                         value={apiKey}
                         onChangeText={setApiKey}
                         secureTextEntry
+                        style={{ paddingRight: 40 }}
                       />
                       <Button
                         variant="ghost"
                         onPress={async () => setApiKey(await Clipboard.getString())}
                         accessibilityLabel="Paste API key from clipboard"
-                        className="p-2 py-2 px-2 rounded-lg"
+                        className="absolute right-1 p-2 py-2 px-2 rounded-lg"
                       >
                         <Icon name="paste" size={20} color={textSecondary} />
                       </Button>
@@ -491,17 +537,76 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   </View>
                 )}
 
-                {/* Proxy Headers */}
+                {/* Advanced — Proxy Headers */}
                 <TouchableOpacity
                   className="flex-row items-center gap-1 self-start"
-                  onPress={() => setShowProxyHeaders(true)}
+                  onPress={toggleAdvanced}
                   activeOpacity={0.7}
                 >
+                  <Animated.View style={chevronStyle}>
+                    <Icon name="chevron-down" size={14} color={textMuted} />
+                  </Animated.View>
                   <Text className="text-sm text-text-muted">
-                    Proxy Headers{proxyHeaders.length > 0 ? ` (${proxyHeaders.length})` : ''}
+                    Advanced options{proxyHeaders.filter(h => h.name.trim() && h.value.trim()).length > 0
+                      ? ` (${proxyHeaders.filter(h => h.name.trim() && h.value.trim()).length})`
+                      : ''}
                   </Text>
-                  <Icon name="chevron-forward" size={14} color={textMuted} />
                 </TouchableOpacity>
+
+                {advancedExpanded && (
+                  <View className="mt-3">
+                    <View className="flex-row justify-start items-center mb-2">
+                      <Text className="text-sm font-medium text-text-secondary mr-1">Proxy Headers</Text>
+                      <Button
+                        variant="ghost"
+                        onPress={handleAddHeader}
+                        accessibilityLabel="Add header"
+                        className="py-0 px-0"
+                      >
+                        <Icon name="add-circle" size={22} color={accentPrimary} />
+                      </Button>
+                    </View>
+
+                    {proxyHeaders.length === 0 && (
+                      <Text className="text-xs text-text-muted mb-2">
+                        Used when running behind certain reverse proxies
+                      </Text>
+                    )}
+
+                    {proxyHeaders.map((header, index) => (
+                      <View key={index} className="mb-3">
+                        <View className="flex-row items-center mb-1.5">
+                          <FormInput
+                            className="flex-1 rounded-lg"
+                            placeholder="Name (e.g. X-Access-Token)"
+                            value={header.name}
+                            onChangeText={(text) => handleChangeHeader(index, 'name', text)}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            style={{ fontSize: 14, paddingRight: 36 }}
+                          />
+                          <Button
+                            variant="ghost"
+                            onPress={() => handleRemoveHeader(index)}
+                            accessibilityLabel={`Remove header ${index + 1}`}
+                            className="absolute right-1 py-0 px-1.5"
+                          >
+                            <Icon name="remove-circle" size={18} color="#ef4444" />
+                          </Button>
+                        </View>
+                        <FormInput
+                          placeholder="Value"
+                          value={header.value}
+                          onChangeText={(text) => handleChangeHeader(index, 'value', text)}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          secureTextEntry
+                          style={{ fontSize: 14 }}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                )}
 
                 <ErrorBanner message={error} />
 
@@ -514,12 +619,12 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   />
                   {isEditing && (
                     <Button
-                      variant="outline"
-                      onPress={handleSaveWithoutAuth}
+                      variant="ghost"
+                      onPress={() => withReservedHeaderCheck(handleSaveWithoutAuth)}
                       disabled={loading}
                       className="py-2.5"
                     >
-                      Save Without Connecting
+                      Save
                     </Button>
                   )}
                   <Button
@@ -552,12 +657,6 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <ProxyHeadersModal
-        visible={showProxyHeaders}
-        onClose={() => setShowProxyHeaders(false)}
-        headers={proxyHeaders}
-        onSave={setProxyHeaders}
-      />
     </Modal>
   );
 };

@@ -778,14 +778,14 @@ describe('ServerConfigModal', () => {
       apiKey: '',
       authType: 'session' as const,
       sessionToken: 'old-token',
-      proxyHeaders: [{ key: 'X-Auth', value: 'abc' }],
+      proxyHeaders: [{ name: 'X-Auth', value: 'abc' }],
     };
 
     it('shows Save button when editing an existing config', async () => {
       const result = renderModal({ editingConfig });
       await waitForForm(result);
 
-      expect(result.getByText('Save Without Connecting')).toBeTruthy();
+      expect(result.getByText('Save')).toBeTruthy();
       expect(result.getByText('Connect')).toBeTruthy();
     });
 
@@ -793,7 +793,7 @@ describe('ServerConfigModal', () => {
       const result = renderModal({ editingConfig: null });
       await waitForForm(result);
 
-      expect(result.queryByText('Save Without Connecting')).toBeNull();
+      expect(result.queryByText('Save')).toBeNull();
       expect(result.getByText('Connect')).toBeTruthy();
     });
 
@@ -809,7 +809,7 @@ describe('ServerConfigModal', () => {
       );
 
       await act(async () => {
-        fireEvent.press(result.getByText('Save Without Connecting'));
+        fireEvent.press(result.getByText('Save'));
       });
 
       expect(mockLogin).not.toHaveBeenCalled();
@@ -819,7 +819,7 @@ describe('ServerConfigModal', () => {
           url: 'https://new-server.com',
           authType: 'session',
           sessionToken: 'old-token',
-          proxyHeaders: [{ key: 'X-Auth', value: 'abc' }],
+          proxyHeaders: [{ name: 'X-Auth', value: 'abc' }],
         }),
       );
       expect(onSuccess).toHaveBeenCalled();
@@ -835,7 +835,7 @@ describe('ServerConfigModal', () => {
       );
 
       await act(async () => {
-        fireEvent.press(result.getByText('Save Without Connecting'));
+        fireEvent.press(result.getByText('Save'));
       });
 
       expect(result.getByText('Enter a valid SparkyFitness URL')).toBeTruthy();
@@ -852,7 +852,7 @@ describe('ServerConfigModal', () => {
       fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'new-api-key');
 
       await act(async () => {
-        fireEvent.press(result.getByText('Save Without Connecting'));
+        fireEvent.press(result.getByText('Save'));
       });
 
       expect(mockSaveServerConfig).toHaveBeenCalledWith(
@@ -875,7 +875,7 @@ describe('ServerConfigModal', () => {
       fireEvent.press(result.getByText('API Key'));
 
       await act(async () => {
-        fireEvent.press(result.getByText('Save Without Connecting'));
+        fireEvent.press(result.getByText('Save'));
       });
 
       expect(mockSaveServerConfig).toHaveBeenCalledWith(

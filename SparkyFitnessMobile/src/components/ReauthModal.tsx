@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  Image,
 } from 'react-native';
 import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
@@ -274,12 +273,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
           <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm">
             {/* Header */}
             <View className="items-center mb-5">
-              <Image
-                source={require('../../assets/images/logo.png')}
-                className="w-16 h-16"
-                resizeMode="contain"
-              />
-              <Text className="text-[22px] font-bold mt-3 text-center text-text-primary">
+              <Text className="text-[22px] font-bold text-center text-text-primary">
                 {step === 'credentials' ? 'Session Expired' : 'Two-Factor Authentication'}
               </Text>
             </View>
