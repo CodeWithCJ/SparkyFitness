@@ -9,14 +9,14 @@ interface DailySummaryOptions {
   actorUserId: string;
   targetUserId: string;
   date: string;
-  includeWater: boolean;
+  includeCheckin: boolean;
 }
 
 export async function getDailySummary({
   actorUserId,
   targetUserId,
   date,
-  includeWater,
+  includeCheckin,
 }: DailySummaryOptions) {
   // Each function acquires its own pool client, allowing true parallel execution.
   const [goals, foodEntries, exerciseSessions, waterResult] = await Promise.all(
@@ -24,7 +24,7 @@ export async function getDailySummary({
       goalService.getUserGoals(targetUserId, date),
       foodEntryService.getFoodEntriesByDate(actorUserId, targetUserId, date),
       getExerciseEntriesByDateV2(targetUserId, date),
-      includeWater
+      includeCheckin
         ? measurementRepository
             .getWaterIntakeByDate(targetUserId, date)
             .catch((error: unknown) => {
@@ -39,7 +39,7 @@ export async function getDailySummary({
     ]
   );
 
-  const stepCalories = includeWater
+  const stepCalories = includeCheckin
     ? await measurementRepository.getStepCaloriesForDate(
         targetUserId,
         date,
