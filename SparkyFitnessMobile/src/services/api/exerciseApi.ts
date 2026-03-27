@@ -4,15 +4,14 @@ import type { Exercise, SuggestedExercisesResponse } from '../../types/exercise'
 import type {
   ExerciseHistoryResponse,
   ExerciseSessionResponse,
-  ExerciseEntriesByDateResponse,
   CreatePresetSessionRequest,
   UpdatePresetSessionRequest,
   PresetSessionResponse,
   ExerciseEntryResponse,
 } from '@workspace/shared';
 
-export const fetchExerciseEntries = async (date: string): Promise<ExerciseEntriesByDateResponse> => {
-  return apiFetch<ExerciseEntriesByDateResponse>({
+export const fetchExerciseEntries = async (date: string): Promise<ExerciseSessionResponse[]> => {
+  return apiFetch<ExerciseSessionResponse[]>({
     endpoint: `/api/v2/exercise-entries/by-date?selectedDate=${encodeURIComponent(date)}`,
     serviceName: 'Exercise API',
     operation: 'fetch exercise entries',
