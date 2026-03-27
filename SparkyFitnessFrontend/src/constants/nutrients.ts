@@ -99,7 +99,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     unit: 'mg',
     color: 'text-indigo-500',
     chartColor: '#6366f1', // indigo-500
-    decimals: 0,
+    decimals: 1,
     group: 'minerals',
   },
   sodium: {
@@ -109,7 +109,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     unit: 'mg',
     color: 'text-purple-500',
     chartColor: '#a855f7', // purple-500
-    decimals: 0,
+    decimals: 1,
     group: 'minerals',
   },
   potassium: {
@@ -119,7 +119,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     unit: 'mg',
     color: 'text-teal-500',
     chartColor: '#14b8a6', // teal-500
-    decimals: 0,
+    decimals: 1,
     group: 'minerals',
   },
   dietary_fiber: {
@@ -149,7 +149,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     unit: 'µg',
     color: 'text-yellow-400',
     chartColor: '#facc15', // yellow-400
-    decimals: 0,
+    decimals: 1,
     group: 'minerals',
   },
   vitamin_c: {
@@ -169,7 +169,7 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     unit: 'mg',
     color: 'text-blue-400',
     chartColor: '#60a5fa', // blue-400
-    decimals: 0,
+    decimals: 1,
     group: 'minerals',
   },
   iron: {
