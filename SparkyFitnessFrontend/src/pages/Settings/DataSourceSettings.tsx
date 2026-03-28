@@ -115,7 +115,7 @@ export const DataSourceSettings = () => {
         description="Choose which integration to use as the primary source per data category"
       >
         <Database className="h-5 w-5" />
-        Data Source Priority
+        Integration Priority
       </AccordionTrigger>
       <AccordionContent className="p-4 pt-0">
         <div className="space-y-6">
