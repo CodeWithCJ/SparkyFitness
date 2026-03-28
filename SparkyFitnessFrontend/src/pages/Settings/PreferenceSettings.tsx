@@ -28,6 +28,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { DayOfWeek } from '@/types/settings';
+import { TimezoneSelect } from './TimezoneSelect';
 
 export const PreferenceSettings = () => {
   const { t } = useTranslation();
@@ -54,6 +55,8 @@ export const PreferenceSettings = () => {
     loggingLevel,
     firstDayOfWeek,
     setFirstDayOfWeek,
+    timezone,
+    setTimezone,
     saveAllPreferences,
   } = usePreferences();
 
@@ -79,6 +82,7 @@ export const PreferenceSettings = () => {
         autoScaleOnlineImports,
         language,
         firstDayOfWeek,
+        timezone,
         loggingLevel: localLoggingLevel,
       });
       toast({
@@ -290,6 +294,12 @@ export const PreferenceSettings = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label htmlFor="timezone">
+              {t('settings.preferences.timezone', 'Timezone')}
+            </Label>
+            <TimezoneSelect value={timezone} onValueChange={setTimezone} />
           </div>
           <div>
             <Label htmlFor="logging_level">

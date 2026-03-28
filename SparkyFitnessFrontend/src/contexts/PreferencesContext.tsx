@@ -377,30 +377,79 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // --- Date Utilities ---
 
+  // Project a UTC instant into the user's preferred timezone, returning a
+  // local Date whose year/month/day/h/m/s match the wall clock in that zone.
+  // This lets date-fns format() produce output in the user's timezone.
+  const toUserTimezone = useCallback(
+    (date: Date): Date => {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }).formatToParts(date);
+
+      const get = (type: Intl.DateTimeFormatPartTypes) =>
+        parseInt(parts.find((p) => p.type === type)?.value ?? '0');
+
+      const hour = get('hour');
+      return new Date(
+        get('year'),
+        get('month') - 1,
+        get('day'),
+        hour === 24 ? 0 : hour,
+        get('minute'),
+        get('second')
+      );
+    },
+    [timezone]
+  );
+
+  const isLiteralDateString = (s: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(s) ||
+    s.includes('T00:00:00') ||
+    (s.endsWith('Z') && s.includes('T00:00'));
+
+  const parseLiteralDate = (s: string): Date | null => {
+    const datePart = s.split('T')[0];
+    if (datePart) {
+      const [year, month, day] = datePart.split('-').map(Number);
+      if (year && month && day) {
+        return new Date(year, month - 1, day);
+      }
+    }
+    return null;
+  };
+
+  const isLocalCalendarDate = (date: Date) =>
+    date.getHours() === 0 &&
+    date.getMinutes() === 0 &&
+    date.getSeconds() === 0 &&
+    date.getMilliseconds() === 0;
+
   const formatDateInUserTimezone = useCallback(
     (date: string | Date, formatStr?: string) => {
-      let dateToFormat: Date = new Date();
+      let dateToFormat: Date;
 
       if (typeof date === 'string') {
-        // If it's a full ISO string with time (e.g. 2026-02-16T...), keep it as is for parseISO
-        if (
-          date.match(/^\d{4}-\d{2}-\d{2}$/) ||
-          date.includes('T00:00:00') ||
-          (date.endsWith('Z') && date.includes('T00:00'))
-        ) {
-          // IMPORTANT: Treat YYYY-MM-DD as a literal local date to avoid UTC-to-Local shifting.
-          const datePart = date.split('T')[0];
-          if (datePart) {
-            const [year, month, day] = datePart.split('-').map(Number);
-            if (year && month && day) {
-              dateToFormat = new Date(year, month - 1, day);
-            }
-          }
+        if (isLiteralDateString(date)) {
+          // Literal date string — treat as a calendar date, no TZ projection
+          dateToFormat = parseLiteralDate(date) ?? new Date();
         } else {
-          dateToFormat = parseISO(date);
+          // Full datetime — parse then project into user timezone
+          dateToFormat = toUserTimezone(parseISO(date));
         }
-      } else {
+      } else if (isLocalCalendarDate(date)) {
+        // Calendar widgets hand us local-midnight Dates that represent a
+        // literal day selection, not an instant that should be shifted.
         dateToFormat = date;
+      } else {
+        // Date object — project into user timezone
+        dateToFormat = toUserTimezone(date);
       }
 
       if (isNaN(dateToFormat.getTime())) {
@@ -415,7 +464,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       const formatString = formatStr || 'yyyy-MM-dd';
       return format(dateToFormat, formatString);
     },
-    [loggingLevel]
+    [loggingLevel, toUserTimezone]
   );
 
   const formatDate = useCallback(
@@ -432,25 +481,17 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         `PreferencesProvider: Parsing date string "${dateString}".`
       );
 
-      // Handle literal date strings (YYYY-MM-DD or DB DATE format) to prevent shifting
-      if (
-        dateString.match(/^\d{4}-\d{2}-\d{2}$/) ||
-        dateString.includes('T00:00:00') ||
-        (dateString.endsWith('Z') && dateString.includes('T00:00'))
-      ) {
-        const datePart = dateString.split('T')[0];
-        if (datePart) {
-          const [year, month, day] = datePart.split('-').map(Number);
-          if (year && month && day) {
-            return new Date(year, month - 1, day);
-          }
-        }
+      // Literal date strings — treat as calendar dates, no TZ projection
+      if (isLiteralDateString(dateString)) {
+        const literal = parseLiteralDate(dateString);
+        if (literal) return literal;
       }
 
-      const parsedDate = parseISO(dateString);
-      return startOfDay(parsedDate);
+      // Full datetime — project into user timezone, then start of day
+      const projected = toUserTimezone(parseISO(dateString));
+      return startOfDay(projected);
     },
-    [loggingLevel]
+    [loggingLevel, toUserTimezone]
   );
 
   // --- Creation and Loading ---
