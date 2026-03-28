@@ -1,25 +1,38 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import { preferencesQueryKey } from '../../src/hooks/queryKeys';
-import { fetchPreferences } from '../../src/services/api/preferencesApi';
+import { fetchPreferences, updatePreferences } from '../../src/services/api/preferencesApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/preferencesApi', () => ({
   fetchPreferences: jest.fn(),
+  updatePreferences: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../src/services/LogService', () => ({
+  addLog: jest.fn(),
 }));
 
 const mockFetchPreferences = fetchPreferences as jest.MockedFunction<typeof fetchPreferences>;
+const mockUpdatePreferences = updatePreferences as jest.MockedFunction<typeof updatePreferences>;
+
+function getMismatchedTimezone(): string {
+  const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return deviceTz === 'UTC' ? 'America/Chicago' : 'UTC';
+}
 
 describe('usePreferences', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    jest.useRealTimers();
     jest.clearAllMocks();
     queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
     queryClient.clear();
+    jest.useRealTimers();
   });
 
   describe('query behavior', () => {
@@ -44,6 +57,7 @@ describe('usePreferences', () => {
         default_distance_unit: 'km' as const,
         energy_unit: 'kcal' as const,
         include_bmr_in_net_calories: true,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
       mockFetchPreferences.mockResolvedValue(preferencesData);
 
@@ -114,6 +128,62 @@ describe('usePreferences', () => {
       await waitFor(() => {
         expect(result.current.preferences?.default_weight_unit).toBe('lbs');
       });
+    });
+  });
+
+  describe('timezone sync', () => {
+    test('does not sync timezone when disabled', async () => {
+      queryClient.setQueryData(preferencesQueryKey, {
+        timezone: getMismatchedTimezone(),
+      });
+
+      renderHook(() => usePreferences({ enabled: false }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mockFetchPreferences).not.toHaveBeenCalled();
+      expect(mockUpdatePreferences).not.toHaveBeenCalled();
+    });
+
+    test('retries timezone sync after a failed update', async () => {
+      jest.useFakeTimers();
+
+      const mismatchedTimezone = getMismatchedTimezone();
+      queryClient.setQueryData(preferencesQueryKey, {
+        timezone: mismatchedTimezone,
+      });
+      mockFetchPreferences.mockResolvedValue({
+        timezone: mismatchedTimezone,
+      });
+      mockUpdatePreferences
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        });
+
+      renderHook(() => usePreferences(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mockUpdatePreferences).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1000);
+      });
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mockUpdatePreferences).toHaveBeenCalledTimes(2);
     });
   });
 
