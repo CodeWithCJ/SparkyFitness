@@ -636,7 +636,9 @@ async function processFitbitActivities(
       avg_heart_rate: activity.averageHeartRate || null,
       notes: `Synced from Fitbit. Steps: ${activitySteps}${activity.duration ? `. Original duration: ${activity.duration}ms` : ''}`,
       entry_source: 'Fitbit',
-      start_time: activity.startTime ? new Date(activity.startTime) : null,
+      start_time: activity.startTime
+        ? new Date(parseFitbitTime(activity.startTime, timezoneOffset))
+        : null,
       source_id: activity.logId ? activity.logId.toString() : null,
       sets: [
         {

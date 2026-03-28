@@ -145,11 +145,7 @@ async function processStravaActivities(
         avg_heart_rate: activity.average_heartrate || null,
         notes: `Synced from Strava. Type: ${sportType}${activity.moving_time ? `. Moving time: ${Math.round(activity.moving_time / 60)}min` : ''}${activity.total_elevation_gain ? `. Elevation: ${activity.total_elevation_gain}m` : ''}`,
         entry_source: 'Strava',
-        start_time: activity.start_date_local
-          ? new Date(activity.start_date_local)
-          : activity.start_date
-            ? new Date(activity.start_date)
-            : null,
+        start_time: activity.start_date ? new Date(activity.start_date) : null,
         source_id: activity.id ? activity.id.toString() : null,
         sets: [
           {

@@ -143,7 +143,7 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
         duration_minutes: durationMinutes,
         calories_burned: calories,
         entry_date: entryDate,
-        start_time: new Date(startTime),
+        start_time: startTime ? new Date(parsePolarToUTC(startTime)) : null,
         source_id: exerciseId ? String(exerciseId) : null,
         notes: `Logged from Polar Flow: ${sport}. ID: ${exerciseId}.${distance > 0 ? ` Distance: ${(distance / 1000).toFixed(2)}km.` : ''}`,
         sets: [
