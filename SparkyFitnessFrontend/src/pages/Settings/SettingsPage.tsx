@@ -31,6 +31,7 @@ import { ApiSettings } from './ApiSettings';
 import { WaterTrackingSettings } from './WaterTrackingSettings';
 import { PreferenceSettings } from './PreferenceSettings';
 import { ProfileInformation } from './ProfileInformation';
+import { DataSourceSettings } from './DataSourceSettings';
 
 export interface PasswordFormState {
   current_password: string;
@@ -60,6 +61,8 @@ const Settings = () => {
         <ProfileInformation />
 
         <PreferenceSettings />
+
+        <DataSourceSettings />
 
         <WaterTrackingSettings />
 

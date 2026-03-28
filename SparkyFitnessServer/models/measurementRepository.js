@@ -293,6 +293,20 @@ async function getCheckInMeasurementsByDate(userId, date) {
   }
 }
 
+async function getAllCheckInMeasurementsByDate(userId, date) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2
+       ORDER BY array_position(ARRAY['garmin','Garmin','withings','Withings','fitbit','Fitbit','polar','Polar','healthkit','health_connect','manual'], source) NULLS LAST`,
+      [userId, date]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 async function getLatestCheckInMeasurementsOnOrBeforeDate(userId, date) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -839,6 +853,7 @@ module.exports = {
   deleteWaterIntake,
   upsertCheckInMeasurements,
   getCheckInMeasurementsByDate,
+  getAllCheckInMeasurementsByDate,
   updateCheckInMeasurements,
   deleteCheckInMeasurements,
   getCustomCategories,

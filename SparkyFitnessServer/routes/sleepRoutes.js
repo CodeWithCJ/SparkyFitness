@@ -4,6 +4,7 @@ const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 const measurementService = require('../services/measurementService');
 const sleepAnalyticsService = require('../services/sleepAnalyticsService'); // Import sleepAnalyticsService
+const preferenceRepository = require('../models/preferenceRepository');
 const { log } = require('../config/logging');
 
 /**
@@ -61,10 +62,20 @@ router.get(
 
       const targetUserId = userId || req.userId;
 
+      let preferredSource = 'auto';
+      try {
+        const prefs =
+          await preferenceRepository.getUserPreferences(targetUserId);
+        preferredSource = prefs?.sleep_source_preference || 'auto';
+      } catch {
+        // If preferences can't be loaded, fall back to automatic selection
+      }
+
       const analyticsData = await sleepAnalyticsService.getSleepAnalytics(
         targetUserId,
         startDate,
-        endDate
+        endDate,
+        preferredSource
       );
       res.status(200).json(analyticsData);
     } catch (error) {
