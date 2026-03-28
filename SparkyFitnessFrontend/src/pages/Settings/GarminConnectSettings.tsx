@@ -74,9 +74,10 @@ const GarminConnectSettings = ({
       toast({
         title: 'Garmin Login Failed',
         description:
-          error instanceof Error
+          (error as any)?.response?.data?.detail ||
+          (error instanceof Error
             ? error.message
-            : 'Failed to connect to Garmin. Please try again.',
+            : 'Failed to connect to Garmin. Please try again.'),
         variant: 'destructive',
       });
     }
@@ -110,9 +111,10 @@ const GarminConnectSettings = ({
       toast({
         title: 'MFA Verification Failed',
         description:
-          error instanceof Error
+          (error as any)?.response?.data?.detail ||
+          (error instanceof Error
             ? error.message
-            : 'Failed to verify MFA code. Please try again.',
+            : 'Failed to verify MFA code. Please try again.'),
         variant: 'destructive',
       });
     }
