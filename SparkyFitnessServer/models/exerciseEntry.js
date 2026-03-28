@@ -503,7 +503,7 @@ async function _createExerciseEntryWithClient(
     }
 
     let newEntryId;
-    if (crossSourceDuplicate && existingEntryResult?.rows?.length > 0) {
+    if (crossSourceDuplicate) {
       // Cross-source duplicate: keep the existing entry untouched, return it as-is.
       newEntryId = existingEntryResult.rows[0].id;
     } else if (existingEntryResult && existingEntryResult.rows.length > 0) {
