@@ -86,17 +86,11 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
   // Newer Apple Watch models send both a generic 'asleep' record (covering the full sleep
   // period) AND detailed stage records (Core/Deep/REM/Awake). Including both would double-count
   // time_asleep. When detailed stages are present, drop the generic 'asleep' records.
-  const DETAILED_SLEEP_STAGES: (string | number)[] = [
-    'HKCategoryValueSleepAnalysisAsleepREM',
-    'HKCategoryValueSleepAnalysisAsleepDeep',
-    'HKCategoryValueSleepAnalysisAsleepCore',
-    'HKCategoryValueSleepAnalysisAwake',
-    2, // awake
-    3, // light
-    4, // deep
-    5, // rem
-  ];
-  const hasDetailedStages = sortedRecords.some(r => DETAILED_SLEEP_STAGES.includes(r.value));
+  // REM and Deep only appear in detailed records, so their presence is a reliable signal.
+  const hasDetailedStages = sortedRecords.some(r => {
+    const stage = mapHealthKitSleepStage(r.value);
+    return stage === 'rem' || stage === 'deep';
+  });
   const recordsToProcess = hasDetailedStages
     ? sortedRecords.filter(r => r.value !== 'HKCategoryValueSleepAnalysisAsleep' && r.value !== 1)
     : sortedRecords;
