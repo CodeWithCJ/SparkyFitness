@@ -31,9 +31,11 @@ async function garminLogin(userId, email, password) {
       `Error during Garmin login for user ${userId}:`,
       error.response ? error.response.data : error.message
     );
-    throw new Error(
+    const err = new Error(
       `Failed to login to Garmin: ${error.response ? error.response.data.detail : error.message}`
     );
+    err.statusCode = error.response?.status;
+    throw err;
   }
 }
 
@@ -77,15 +79,15 @@ async function handleGarminTokens(userId, tokensB64) {
       !parsedGarthDump[1]
     ) {
       throw new Error(
-        'Unexpected garth dump structure: expected a 2-element array [OAuth1Token, OAuth2Token], ' +
+        `Unexpected garth dump structure: expected a 2-element array [OAuth1Token, OAuth2Token], ` +
           `received ${Array.isArray(parsedGarthDump) ? `array of length ${parsedGarthDump.length}` : typeof parsedGarthDump}`
       );
     }
     const tokens = parsedGarthDump[1];
-    log('debug', 'handleGarminTokens: Parsed Garth Dump:', parsedGarthDump);
-    log('debug', 'handleGarminTokens: Extracted Tokens:', tokens);
+    log('debug', `handleGarminTokens: Parsed Garth Dump:`, parsedGarthDump);
+    log('debug', `handleGarminTokens: Extracted Tokens:`, tokens);
 
-    log('debug', 'handleGarminTokens: Received Garth dump (masked):', {
+    log('debug', `handleGarminTokens: Received Garth dump (masked):`, {
       garth_dump_masked: garthDump ? `${garthDump.substring(0, 30)}...` : 'N/A',
       access_token_masked: tokens.access_token
         ? `${tokens.access_token.substring(0, 8)}...`
@@ -115,7 +117,7 @@ async function handleGarminTokens(userId, tokensB64) {
     );
 
     // Check if a Garmin provider entry already exists for this user
-    const provider =
+    let provider =
       await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
         userId,
         'garmin'
@@ -145,7 +147,7 @@ async function handleGarminTokens(userId, tokensB64) {
       })(),
       external_user_id: tokens.external_user_id || externalUserId, // Use external_user_id from tokens if available
     };
-    log('debug', 'handleGarminTokens: Update data for provider (masked):', {
+    log('debug', `handleGarminTokens: Update data for provider (masked):`, {
       provider_name: updateData.provider_name,
       provider_type: updateData.provider_type,
       user_id: updateData.user_id,
@@ -184,8 +186,7 @@ async function handleGarminTokens(userId, tokensB64) {
     );
     let errorMessage = `Failed to handle Garmin tokens: ${error.message}`;
     if (error.message.includes('Invalid key length')) {
-      errorMessage =
-        'Failed to handle Garmin tokens: Encryption key (SPARKY_FITNESS_API_ENCRYPTION_KEY) has an invalid length. Expected 64 hex characters or 44 Base64 characters. Update your environment variable and try again.';
+      errorMessage = `Failed to handle Garmin tokens: Encryption key (SPARKY_FITNESS_API_ENCRYPTION_KEY) has an invalid length. Expected 64 hex characters or 44 Base64 characters. Update your environment variable and try again.`;
     }
     throw new Error(errorMessage);
   }

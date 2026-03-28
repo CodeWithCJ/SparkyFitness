@@ -1100,6 +1100,9 @@ async def garmin_login(request_data: GarminLoginRequest):
         logger.error(f"Error during Garmin login: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to login to Garmin: {e}")
     except Exception as e:
+        if "429" in str(e):
+            logger.error(f"Garmin rate limited during login: {e}")
+            raise HTTPException(status_code=429, detail="Garmin is rate limiting login attempts. Please wait a few minutes before trying again.")
         logger.error(f"Unexpected error during Garmin login: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
