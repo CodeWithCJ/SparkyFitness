@@ -418,7 +418,7 @@ async function _findDuplicateEntry(
 ) {
   const syncDuplicateCheck =
     Boolean(entryData.source_id) ||
-    (entrySource !== 'manual' && Boolean(entryData.start_time));
+    (entrySource.toLowerCase() !== 'manual' && Boolean(entryData.start_time));
   const skipManualDuplicateCheck = [
     'HealthKit',
     'Health Connect',
@@ -471,7 +471,7 @@ async function _findDuplicateEntry(
        WHERE user_id = $1
          AND entry_date = $2
          AND source <> $3
-         AND source <> 'manual'
+         AND LOWER(source) <> 'manual'
          AND start_time IS NOT NULL
          AND start_time BETWEEN $4::timestamptz - ($5::numeric * INTERVAL '1 second')
                             AND $4::timestamptz + ($5::numeric * INTERVAL '1 second')
