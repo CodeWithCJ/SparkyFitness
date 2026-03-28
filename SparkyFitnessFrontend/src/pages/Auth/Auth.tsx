@@ -12,7 +12,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Zap, Loader2, Fingerprint } from 'lucide-react';
+import { Zap, Loader2, Fingerprint, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
 import { authClient } from '@/lib/auth-client';
@@ -54,6 +55,7 @@ const Auth = () => {
   // State for Magic Link Request Dialog
   const [isMagicLinkRequestDialogOpen, setIsMagicLinkRequestDialogOpen] =
     useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
   const { data: loginSettings } = useAuthSettings();
@@ -308,6 +310,7 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      setFormError(null);
       const data: AuthResponse = await loginUser({ email, password });
 
       if (data.status === 'MFA_REQUIRED' || data.twoFactorRedirect) {
@@ -340,6 +343,7 @@ const Auth = () => {
       );
     } catch (err: unknown) {
       error(loggingLevel, 'Auth: Sign in failed:', err);
+      setFormError(getErrorMessage(err));
     }
 
     setLoading(false);
@@ -411,22 +415,31 @@ const Auth = () => {
                   <p>{loginSettings.warning}</p>
                 </div>
               )}
+              {formError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Authentication Failed</AlertTitle>
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              )}
               {loginSettings?.email.enabled ? (
                 <Tabs defaultValue="signin" className="w-full">
                   <TabsList className="h-10 grid w-full grid-cols-2">
                     <TabsTrigger
                       value="signin"
-                      onClick={() =>
-                        debug(loggingLevel, 'Auth: Switched to Sign In tab.')
-                      }
+                      onClick={() => {
+                        setFormError(null);
+                        debug(loggingLevel, 'Auth: Switched to Sign In tab.');
+                      }}
                     >
                       Sign In
                     </TabsTrigger>
                     <TabsTrigger
                       value="signup"
-                      onClick={() =>
-                        debug(loggingLevel, 'Auth: Switched to Sign Up tab.')
-                      }
+                      onClick={() => {
+                        setFormError(null);
+                        debug(loggingLevel, 'Auth: Switched to Sign Up tab.');
+                      }}
                     >
                       Sign Up
                     </TabsTrigger>

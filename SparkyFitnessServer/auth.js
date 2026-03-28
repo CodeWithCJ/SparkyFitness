@@ -1,4 +1,5 @@
 const { betterAuth } = require('better-auth');
+const os = require('os');
 
 const { APIError } = require('better-auth/api');
 const { Pool } = require('pg');
@@ -16,6 +17,7 @@ const {
 const {
   createDefaultNutrientPreferencesForUser,
 } = require('./services/nutrientDisplayPreferenceService');
+const { isPrivateNetworkAddress } = require('./utils/corsHelper');
 
 // Create a dedicated pool for Better Auth
 /*
@@ -272,20 +274,69 @@ const auth = betterAuth({
   },
 
   // Trust proxy (for Docker/Nginx deployments)
-  trustedOrigins: (() => {
+  // NOTE: Better Auth calls this with the raw Request object directly (not a context wrapper)
+  trustedOrigins: (request) => {
     const origins = [process.env.SPARKY_FITNESS_FRONTEND_URL];
+    const isPrivateEnabled = process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true';
 
-    // If private network CORS is allowed, we automatically trust localhost
-    if (process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true') {
-      origins.push('http://localhost:8080');
-      origins.push('http://127.0.0.1:8080');
+    // Always include extra trusted origins regardless of private network flag
+    if (process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS) {
+      const extras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS.split(
+        ','
+      ).map((o) => o.trim());
+      origins.push(...extras);
+    }
 
-      // Add any extra origins manually configured (comma-separated list)
-      if (process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS) {
-        const extras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS.split(
-          ','
-        ).map((o) => o.trim());
-        origins.push(...extras);
+    if (!isPrivateEnabled) {
+      return [...new Set(origins)]
+        .filter(Boolean)
+        .map((url) => url.replace(/\/$/, ''));
+    }
+
+    // --- Dynamic Private Network Logic ---
+    // request IS the raw Fetch Request object here (not a context wrapper)
+    const originHeader =
+      typeof request?.headers?.get === 'function'
+        ? request.headers.get('origin')
+        : request?.headers?.origin;
+
+    const refererHeader =
+      typeof request?.headers?.get === 'function'
+        ? request.headers.get('referer')
+        : request?.headers?.referer;
+
+    let detectedOrigin = originHeader;
+
+    console.log(`[AUTH DEBUG] Request Headers:`, {
+      origin: originHeader,
+      referer: refererHeader,
+      host:
+        typeof request?.headers?.get === 'function'
+          ? request.headers.get('host')
+          : request?.headers?.host,
+    });
+
+    // Fallback: extract origin from referer if no origin header
+    if (!detectedOrigin && refererHeader) {
+      try {
+        const refUrl = new URL(refererHeader);
+        detectedOrigin = refUrl.origin;
+      } catch (e) {
+        // Ignore invalid referer
+      }
+    }
+
+    if (detectedOrigin) {
+      try {
+        const { hostname } = new URL(detectedOrigin);
+        if (isPrivateNetworkAddress(hostname)) {
+          console.log(
+            `[AUTH DEBUG] Trusting private network origin: ${detectedOrigin}`
+          );
+          origins.push(detectedOrigin);
+        }
+      } catch (err) {
+        // Ignore invalid URL
       }
     }
 
@@ -293,9 +344,16 @@ const auth = betterAuth({
       .filter(Boolean)
       .map((url) => url.replace(/\/$/, ''));
 
-    log('info', '[AUTH] Trusted origins:', finalOrigins);
+    if (
+      detectedOrigin &&
+      (detectedOrigin.includes('192.168.') ||
+        detectedOrigin.includes('localhost'))
+    ) {
+      console.log(`[AUTH DEBUG] Resulting Trusted Origins:`, finalOrigins);
+    }
+
     return finalOrigins;
-  })(),
+  },
 
   databaseHooks: {
     user: {
