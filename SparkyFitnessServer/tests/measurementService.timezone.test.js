@@ -21,12 +21,19 @@ jest.mock('../models/exerciseEntry');
 jest.mock('../models/sleepRepository');
 jest.mock('../models/waterContainerRepository');
 jest.mock('../models/activityDetailsRepository');
+jest.mock('../config/logging', () => ({
+  log: jest.fn(),
+}));
 
 // ---------------------------------------------------------------------------
 // resolveHealthEntryDate — unit tests
 // ---------------------------------------------------------------------------
 describe('resolveHealthEntryDate', () => {
   const { resolveHealthEntryDate } = measurementService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   it('uses record_timezone over fallback account timezone', () => {
     // 2024-06-14 23:30 UTC → June 15 in Tokyo (UTC+9), June 14 in UTC
@@ -74,6 +81,20 @@ describe('resolveHealthEntryDate', () => {
     };
     const result = resolveHealthEntryDate(entry, 'America/Los_Angeles');
     expect(result.parsedDate).toBe('2024-06-14');
+  });
+
+  it('logs DEBUG when falling back to account timezone', () => {
+    const log = require('../config/logging').log;
+    const entry = {
+      type: 'heart_rate',
+      value: 72,
+      timestamp: '2024-06-15T00:30:00Z',
+    };
+    resolveHealthEntryDate(entry, 'America/Los_Angeles');
+    expect(log).toHaveBeenCalledWith(
+      'DEBUG',
+      expect.stringContaining('falling back to account timezone')
+    );
   });
 
   it('ignores invalid record_timezone and falls back', () => {
@@ -236,6 +257,47 @@ describe('resolveHealthEntryDate', () => {
     expect(result.parsedDate).toBe('2024-06-15');
   });
 
+  // -- Date-only bypass (client-aggregated daily records) --
+
+  it('preserves date-only aggregate with negative-offset timezone metadata', () => {
+    // Client aggregated steps into 2024-01-15 using America/New_York.
+    // Without the bypass, parsing '2024-01-15' as UTC midnight then applying
+    // America/New_York (UTC-5) would shift to 2024-01-14 — wrong.
+    const entry = {
+      type: 'step',
+      value: 5000,
+      date: '2024-01-15',
+      record_timezone: 'America/New_York',
+    };
+    const result = resolveHealthEntryDate(entry, 'UTC');
+    expect(result.parsedDate).toBe('2024-01-15');
+  });
+
+  it('preserves date-only aggregate with offset metadata', () => {
+    const entry = {
+      type: 'Active Calories',
+      value: 300,
+      date: '2024-01-15',
+      record_utc_offset_minutes: -300,
+    };
+    const result = resolveHealthEntryDate(entry, 'UTC');
+    expect(result.parsedDate).toBe('2024-01-15');
+  });
+
+  it('still applies timezone when entry has both date and timestamp', () => {
+    // When a timestamp is present, timezone conversion should apply even if
+    // the date field is a YYYY-MM-DD string.
+    const entry = {
+      type: 'ExerciseSession',
+      date: '2024-06-14',
+      timestamp: '2024-06-14T23:00:00Z',
+      record_timezone: 'Asia/Tokyo',
+    };
+    const result = resolveHealthEntryDate(entry, 'UTC');
+    // timestamp 23:00 UTC in Tokyo (+9) → June 15 08:00 → June 15
+    expect(result.parsedDate).toBe('2024-06-15');
+  });
+
   it('sleep ending in one timezone, synced from another: lands on original wake day', () => {
     // User sleeps in London (UTC+1 BST). Goes to bed June 14 23:00 BST (22:00 UTC).
     // Wakes up June 15 07:00 BST (06:00 UTC).
@@ -371,6 +433,43 @@ describe('processHealthData timezone resolution', () => {
       undefined,
       'Daily',
       'HealthConnect'
+    );
+  });
+
+  it('logs timezone fallback by type', async () => {
+    const log = require('../config/logging').log;
+    const healthData = [
+      {
+        type: 'heart_rate',
+        value: 72,
+        timestamp: '2024-06-14T23:30:00Z',
+        source: 'HealthConnect',
+        record_timezone: 'Asia/Tokyo',
+      },
+      {
+        type: 'heart_rate',
+        value: 65,
+        timestamp: '2024-06-14T22:00:00Z',
+        source: 'HealthConnect',
+        // no timezone metadata — will fall back
+      },
+    ];
+
+    await measurementService.processHealthData(
+      healthData,
+      userId,
+      actingUserId
+    );
+
+    // Fallback log includes the type that fell back
+    expect(log).toHaveBeenCalledWith(
+      'INFO',
+      expect.stringContaining('heart_rate=1')
+    );
+    // Metadata log includes the type that had metadata
+    expect(log).toHaveBeenCalledWith(
+      'DEBUG',
+      expect.stringContaining('heart_rate=1')
     );
   });
 });

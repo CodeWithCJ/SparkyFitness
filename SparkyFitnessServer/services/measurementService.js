@@ -8,6 +8,7 @@ const {
   instantToDayWithOffset,
   instantHourMinuteWithOffset,
   isValidTimeZone,
+  isDayString,
 } = require('@workspace/shared');
 const { userAge } = require('../utils/dateHelpers');
 
@@ -185,12 +186,29 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
     basisField = entry.date || entry.entry_date || entry.timestamp;
   }
 
+  // 2. If the basis is a date-only string (YYYY-MM-DD) with no timestamp,
+  // the record was already bucketed client-side. Trust the date as-is —
+  // applying timezone conversion to a UTC-midnight-parsed day string would
+  // shift negative-offset zones to the previous day.
+  const basisIsDayOnly =
+    typeof basisField === 'string' &&
+    isDayString(basisField) &&
+    !entry.timestamp;
+
   const basisDate = new Date(basisField);
   if (isNaN(basisDate.getTime())) {
     return null;
   }
 
-  // 2. Determine the timestamp for entryTimestamp (prefer explicit timestamp)
+  if (basisIsDayOnly) {
+    return {
+      parsedDate: basisField,
+      entryTimestamp: basisDate.toISOString(),
+      entryHour: 0,
+    };
+  }
+
+  // 3. Determine the timestamp for entryTimestamp (prefer explicit timestamp)
   let entryTimestamp;
   if (entry.timestamp) {
     const tsObj = new Date(entry.timestamp);
@@ -206,7 +224,7 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
   const validHourBasis =
     hourBasis && !isNaN(hourBasis.getTime()) ? hourBasis : null;
 
-  // 3. Resolve timezone (fallback chain)
+  // 4. Resolve timezone (fallback chain)
   if (entry.record_timezone && isValidTimeZone(entry.record_timezone)) {
     return {
       parsedDate: instantToDay(basisDate, entry.record_timezone),
@@ -236,7 +254,11 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
     };
   }
 
-  // Fallback to account timezone
+  // Fallback to account timezone — log for observability (Phase 4 tracking)
+  log(
+    'DEBUG',
+    `[resolveHealthEntryDate] No per-record timezone metadata for type=${entry.type}, falling back to account timezone (${fallbackTimezone})`
+  );
   return {
     parsedDate: instantToDay(basisDate, fallbackTimezone),
     entryTimestamp,
@@ -250,6 +272,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
   const tz = await loadUserTimezone(userId);
   const processedResults = [];
   const errors = [];
+  const tzMetadataByType = {};
+  const tzFallbackByType = {};
 
   // 0. Pre-Cleanup: Delete existing Sleep/Exercise entries for the date range to prevent duplicates
   // This implements a "delete-then-insert" strategy for idempotent sync
@@ -363,6 +387,16 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
         entry: dataEntry,
       });
       continue;
+    }
+    // Track timezone metadata presence per type for observability
+    const entryType = dataEntry.type || 'unknown';
+    if (
+      dataEntry.record_timezone ||
+      dataEntry.record_utc_offset_minutes != null
+    ) {
+      tzMetadataByType[entryType] = (tzMetadataByType[entryType] || 0) + 1;
+    } else {
+      tzFallbackByType[entryType] = (tzFallbackByType[entryType] || 0) + 1;
     }
     parsedDate = resolved.parsedDate;
     entryTimestamp = resolved.entryTimestamp;
@@ -714,6 +748,28 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
         entry: dataEntry,
       });
     }
+  }
+
+  // Log timezone metadata coverage per type for observability
+  const fallbackTypes = Object.keys(tzFallbackByType);
+  if (fallbackTypes.length > 0) {
+    const details = fallbackTypes
+      .map((t) => `${t}=${tzFallbackByType[t]}`)
+      .join(', ');
+    log(
+      'INFO',
+      `[processHealthData] Timezone fallback to account tz (${tz}) by type: ${details}`
+    );
+  }
+  const metadataTypes = Object.keys(tzMetadataByType);
+  if (metadataTypes.length > 0) {
+    const details = metadataTypes
+      .map((t) => `${t}=${tzMetadataByType[t]}`)
+      .join(', ');
+    log(
+      'DEBUG',
+      `[processHealthData] Timezone metadata present by type: ${details}`
+    );
   }
 
   if (errors.length > 0) {

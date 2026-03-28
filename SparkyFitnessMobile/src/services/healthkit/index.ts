@@ -13,6 +13,7 @@ import {
   PermissionRequest,
 } from '../../types/healthRecords';
 import { getSyncStartDate } from '../../utils/syncUtils';
+import { getDeviceTimezone } from '../../utils/dateUtils';
 import { toLocalDateString } from './dataAggregation';
 
 // Re-export for backward compatibility with callers importing from this module
@@ -395,6 +396,7 @@ const getAggregatedDataByDate = async (
   }
 
   const results: AggregatedHealthRecord[] = [];
+  const deviceTz = getDeviceTimezone();
   const currentDate = new Date(startDate);
   // let daysQueried = 0;
   // let daysWithData = 0;
@@ -441,6 +443,7 @@ const getAggregatedDataByDate = async (
           date: dateStr,
           value: queryResult.value,
           type: config.type,
+          record_timezone: deviceTz,
         });
       }
     } catch (error) {

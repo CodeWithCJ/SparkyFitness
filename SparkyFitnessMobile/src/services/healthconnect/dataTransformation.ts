@@ -747,13 +747,21 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
         const outputType = (rec.type as string) || type;
 
         if (value !== null && !isNaN(value)) {
-          transformedData.push({
+          const transformed: TransformedRecord = {
             value: parseFloat(value.toFixed(2)),
             type: outputType,
             date: recordDate,
             unit,
             source: HEALTH_CONNECT_SOURCE,
-          });
+          };
+          // Forward timezone metadata from aggregation layer
+          if (rec.record_timezone != null) {
+            transformed.record_timezone = rec.record_timezone as string;
+          }
+          if (rec.record_utc_offset_minutes != null) {
+            transformed.record_utc_offset_minutes = rec.record_utc_offset_minutes as number;
+          }
+          transformedData.push(transformed);
           successCount++;
         } else {
           skipCount++;

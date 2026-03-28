@@ -416,6 +416,13 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             unit,
             source: HEALTHKIT_SOURCE,
           };
+          // Forward timezone metadata from aggregation layer
+          if (rec.record_timezone != null) {
+            transformedRecord.record_timezone = rec.record_timezone as string;
+          }
+          if (rec.record_utc_offset_minutes != null) {
+            transformedRecord.record_utc_offset_minutes = rec.record_utc_offset_minutes as number;
+          }
           transformedData.push(transformedRecord);
           successCount++;
         } else {

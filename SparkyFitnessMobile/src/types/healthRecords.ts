@@ -8,10 +8,17 @@ import { SleepStageEvent } from './mobileHealthData';
 export const HEALTH_CONNECT_SOURCE = 'Health Connect' as const;
 export const HEALTHKIT_SOURCE = 'HealthKit' as const;
 
+/** Zone offset from Health Connect (e.g. { totalSeconds: 32400 } for UTC+9) */
+export interface HCZoneOffset {
+  totalSeconds: number;
+}
+
 /** Heart rate record from Health Connect */
 export interface HCHeartRateRecord {
   startTime: string;
   samples: { beatsPerMinute: number }[];
+  startZoneOffset?: HCZoneOffset;
+  endZoneOffset?: HCZoneOffset;
 }
 
 /** Heart rate record from HealthKit */
@@ -25,6 +32,8 @@ export interface HCStepsRecord {
   startTime: string;
   endTime?: string;
   count: number;
+  startZoneOffset?: HCZoneOffset;
+  endZoneOffset?: HCZoneOffset;
 }
 
 /** Energy record (calories) from Health Connect */
@@ -35,6 +44,8 @@ export interface HCEnergyRecord {
     inCalories?: number;
     inKilocalories?: number;
   };
+  startZoneOffset?: HCZoneOffset;
+  endZoneOffset?: HCZoneOffset;
 }
 
 /** Sleep record from HealthKit - used as input to aggregateSleepSessions */
@@ -91,7 +102,7 @@ export interface RecordTimezoneMetadata {
 }
 
 /** Standard aggregated health data entry */
-export interface AggregatedHealthRecord {
+export interface AggregatedHealthRecord extends RecordTimezoneMetadata {
   date: string;
   value: number;
   type: string;

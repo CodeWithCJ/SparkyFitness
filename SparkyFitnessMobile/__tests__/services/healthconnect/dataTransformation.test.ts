@@ -1199,15 +1199,32 @@ describe('transformHealthRecords', () => {
       expect(result[0].record_utc_offset_minutes).toBe(0);
     });
 
-    test('pre-aggregated records do not include timezone metadata', () => {
+    test('pre-aggregated records do not extract timezone from platform fields', () => {
       const records = [
         { date: '2024-01-15', value: 5000, type: 'step', startZoneOffset: { totalSeconds: 32400 } },
       ];
       const result = transformHealthRecords(records, { recordType: 'Steps', unit: 'count', type: 'step' }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
-      // Pre-aggregated records bypass value transformers, no timezone metadata attached
+      // Pre-aggregated records bypass value transformers, platform zone offset fields are not extracted
       expect(result[0].record_utc_offset_minutes).toBeUndefined();
+    });
+
+    test('pre-aggregated records forward record_timezone when present', () => {
+      const records = [
+        { value: 5000, date: '2024-01-15', type: 'step', record_timezone: 'America/New_York' },
+        { value: 2500, date: '2024-01-16', type: 'step', record_utc_offset_minutes: 540 },
+        { value: 1000, date: '2024-01-17', type: 'step' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Steps', unit: 'count', type: 'step' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(3);
+      expect(result[0].record_timezone).toBe('America/New_York');
+      expect(result[0].record_utc_offset_minutes).toBeUndefined();
+      expect(result[1].record_utc_offset_minutes).toBe(540);
+      expect(result[1].record_timezone).toBeUndefined();
+      expect(result[2].record_timezone).toBeUndefined();
+      expect(result[2].record_utc_offset_minutes).toBeUndefined();
     });
 
     test('ExerciseSession includes record_utc_offset_minutes from startZoneOffset', () => {

@@ -21,8 +21,10 @@ import {
   SyncResult,
   HealthMetricStates,
   type TransformedRecord,
+  type HCZoneOffset,
 } from '../../types/healthRecords';
 import { SyncDuration, getSyncStartDate } from '../../utils/syncUtils';
+import { toDateStringWithOffset } from '../../utils/dateUtils';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
@@ -171,6 +173,22 @@ export const readHealthRecords = async (
   }
 };
 
+/** Derives date from a HC record using per-record zone offset when available. */
+const dateFromRecordOffset = (
+  timestamp: string,
+  startOffset?: HCZoneOffset,
+  endOffset?: HCZoneOffset,
+  preferEnd = false,
+): string => {
+  const preferred = preferEnd ? endOffset : startOffset;
+  const fallback = preferEnd ? startOffset : endOffset;
+  const offset = preferred ?? fallback;
+  if (offset?.totalSeconds != null) {
+    return toDateStringWithOffset(timestamp, Math.round(offset.totalSeconds / 60));
+  }
+  return toLocalDateString(timestamp);
+};
+
 // Get daily aggregated steps for a date range
 // Uses readRecords + JS-side deduplication via metadata.dataOrigin
 export const getAggregatedStepsByDate = async (
@@ -185,20 +203,36 @@ export const getAggregatedStepsByDate = async (
       return [];
     }
 
+    type StepRecord = { metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; count?: number; startZoneOffset?: HCZoneOffset; endZoneOffset?: HCZoneOffset };
+    const typedRecords = rawRecords as StepRecord[];
+
+    // Track first-seen offset per date for output metadata
+    const offsetByDate: Record<string, number> = {};
+
     const byDate = deduplicateByOrigin(
-      rawRecords as { metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; count?: number }[],
-      (record) => {
+      typedRecords,
+      (record: StepRecord) => {
         const timestamp = record.endTime || record.startTime;
-        return timestamp ? toLocalDateString(timestamp) : '';
+        if (!timestamp) return '';
+        const date = dateFromRecordOffset(timestamp, record.startZoneOffset, record.endZoneOffset, true);
+        if (!(date in offsetByDate)) {
+          const offset = (record.endZoneOffset ?? record.startZoneOffset);
+          if (offset?.totalSeconds != null) {
+            offsetByDate[date] = Math.round(offset.totalSeconds / 60);
+          }
+        }
+        return date;
       },
-      (record) => record.count || 0,
+      (record: StepRecord) => record.count || 0,
     );
 
-    const results: AggregatedHealthRecord[] = Object.entries(byDate).map(([date, value]) => ({
-      date,
-      value,
-      type: 'step',
-    }));
+    const results: AggregatedHealthRecord[] = Object.entries(byDate).map(([date, value]) => {
+      const rec: AggregatedHealthRecord = { date, value, type: 'step' };
+      if (date in offsetByDate) {
+        rec.record_utc_offset_minutes = offsetByDate[date];
+      }
+      return rec;
+    });
 
     addLog(`[HealthConnectService] Steps aggregation: ${results.length} days`, 'DEBUG');
 
@@ -224,20 +258,35 @@ export const getAggregatedActiveCaloriesByDate = async (
       return [];
     }
 
+    type CalorieRecord = { metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; energy?: { inKilocalories?: number }; startZoneOffset?: HCZoneOffset; endZoneOffset?: HCZoneOffset };
+    const typedRecords = rawRecords as CalorieRecord[];
+
+    const offsetByDate: Record<string, number> = {};
+
     const byDate = deduplicateByOrigin(
-      rawRecords as { metadata?: { dataOrigin?: string }; endTime?: string; startTime?: string; energy?: { inKilocalories?: number } }[],
-      (record) => {
+      typedRecords,
+      (record: CalorieRecord) => {
         const timestamp = record.endTime || record.startTime;
-        return timestamp ? toLocalDateString(timestamp) : '';
+        if (!timestamp) return '';
+        const date = dateFromRecordOffset(timestamp, record.startZoneOffset, record.endZoneOffset, true);
+        if (!(date in offsetByDate)) {
+          const offset = (record.endZoneOffset ?? record.startZoneOffset);
+          if (offset?.totalSeconds != null) {
+            offsetByDate[date] = Math.round(offset.totalSeconds / 60);
+          }
+        }
+        return date;
       },
-      (record) => record.energy?.inKilocalories || 0,
+      (record: CalorieRecord) => record.energy?.inKilocalories || 0,
     );
 
-    const results: AggregatedHealthRecord[] = Object.entries(byDate).map(([date, value]) => ({
-      date,
-      value: Math.round(value),
-      type: 'active_calories',
-    }));
+    const results: AggregatedHealthRecord[] = Object.entries(byDate).map(([date, value]) => {
+      const rec: AggregatedHealthRecord = { date, value: Math.round(value), type: 'active_calories' };
+      if (date in offsetByDate) {
+        rec.record_utc_offset_minutes = offsetByDate[date];
+      }
+      return rec;
+    });
 
     addLog(`[HealthConnectService] Active calories aggregation: ${results.length} days`, 'DEBUG');
 

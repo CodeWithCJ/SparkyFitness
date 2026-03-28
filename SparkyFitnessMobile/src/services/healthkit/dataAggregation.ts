@@ -10,7 +10,7 @@ import {
   type TransformedRecord,
 } from '../../types/healthRecords';
 import { SleepStageEvent } from '../../types/mobileHealthData';
-import { toLocalDateString } from '../../utils/dateUtils';
+import { toLocalDateString, getDeviceTimezone } from '../../utils/dateUtils';
 
 // Re-export for backward compatibility
 export { toLocalDateString };
@@ -29,10 +29,12 @@ export const aggregateHeartRateByDate = (records: HKHeartRateRecord[]): Aggregat
     return acc;
   }, {});
 
+  const deviceTz = getDeviceTimezone();
   const result: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({
     date,
     value: Math.round(aggregatedData[date].total / aggregatedData[date].count),
     type: 'heart_rate',
+    record_timezone: deviceTz,
   }));
   return result;
 };
@@ -189,6 +191,13 @@ export const aggregateByDay = (
   const result: TransformedRecord[] = [];
 
   for (const [date, dayRecords] of groups) {
+    // Propagate timezone metadata from the first record of the day group
+    const { record_timezone, record_utc_offset_minutes } = dayRecords[0];
+    const tz = {
+      ...(record_timezone != null ? { record_timezone } : {}),
+      ...(record_utc_offset_minutes != null ? { record_utc_offset_minutes } : {}),
+    };
+
     if (strategy === 'min-max-avg') {
       let min = dayRecords[0].value;
       let max = dayRecords[0].value;
@@ -200,19 +209,19 @@ export const aggregateByDay = (
       }
       const avg = total / dayRecords.length;
       result.push(
-        { value: parseFloat(min.toFixed(2)), type: `${baseType}_min`, date, unit, source: dayRecords[0].source },
-        { value: parseFloat(max.toFixed(2)), type: `${baseType}_max`, date, unit, source: dayRecords[0].source },
-        { value: parseFloat(avg.toFixed(2)), type: `${baseType}_avg`, date, unit, source: dayRecords[0].source },
+        { value: parseFloat(min.toFixed(2)), type: `${baseType}_min`, date, unit, source: dayRecords[0].source, ...tz },
+        { value: parseFloat(max.toFixed(2)), type: `${baseType}_max`, date, unit, source: dayRecords[0].source, ...tz },
+        { value: parseFloat(avg.toFixed(2)), type: `${baseType}_avg`, date, unit, source: dayRecords[0].source, ...tz },
       );
     } else if (strategy === 'sum') {
       let total = 0;
       for (const rec of dayRecords) {
         total += rec.value;
       }
-      result.push({ value: parseFloat(total.toFixed(2)), type: baseType, date, unit, source: dayRecords[0].source });
+      result.push({ value: parseFloat(total.toFixed(2)), type: baseType, date, unit, source: dayRecords[0].source, ...tz });
     } else if (strategy === 'last') {
       // Take first record: HealthKit queries use ascending: false (newest-first)
-      result.push({ value: dayRecords[0].value, type: baseType, date, unit, source: dayRecords[0].source });
+      result.push({ value: dayRecords[0].value, type: baseType, date, unit, source: dayRecords[0].source, ...tz });
     }
   }
 

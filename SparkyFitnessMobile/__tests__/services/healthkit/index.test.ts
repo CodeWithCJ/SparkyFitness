@@ -531,6 +531,31 @@ describe('readHealthRecords', () => {
     expect((result[0] as { weight: { inKilograms: number } }).weight).toEqual({ inKilograms: 75.5 });
   });
 
+  test('normalizes flattened metadataTimeZone into metadata.HKTimeZone for quantity records', async () => {
+    await initHealthConnect();
+
+    mockQueryQuantitySamples.mockResolvedValue([
+      {
+        startDate: '2024-01-15T08:00:00Z',
+        endDate: '2024-01-15T08:00:00Z',
+        quantity: 75.5,
+        metadataTimeZone: 'America/Chicago',
+      },
+    ]);
+
+    const result = await readHealthRecords(
+      'Weight',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      weight: { inKilograms: 75.5 },
+      metadata: { HKTimeZone: 'America/Chicago' },
+    });
+  });
+
   test('transforms BloodOxygenSaturation records to percent objects', async () => {
     await initHealthConnect();
 
