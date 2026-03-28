@@ -33,6 +33,9 @@ router.put('/', authenticate, async (req, res, next) => {
     );
     res.status(200).json(updatedPreferences);
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
@@ -141,6 +144,9 @@ router.post('/', authenticate, async (req, res, next) => {
     );
     res.status(200).json(newPreferences);
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }

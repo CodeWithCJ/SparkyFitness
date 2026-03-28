@@ -1,6 +1,19 @@
 const preferenceRepository = require('../models/preferenceRepository');
 const userRepository = require('../models/userRepository');
 const { log } = require('../config/logging');
+const { isValidTimeZone } = require('@workspace/shared');
+
+async function validateTimezone(preferenceData) {
+  if (
+    preferenceData.timezone != null &&
+    !isValidTimeZone(preferenceData.timezone)
+  ) {
+    throw Object.assign(
+      new Error(`Invalid timezone: '${preferenceData.timezone}'`),
+      { status: 400 }
+    );
+  }
+}
 
 async function updateUserPreferences(
   authenticatedUserId,
@@ -8,6 +21,7 @@ async function updateUserPreferences(
   preferenceData
 ) {
   try {
+    await validateTimezone(preferenceData);
     const updatedPreferences = await preferenceRepository.updateUserPreferences(
       targetUserId,
       preferenceData
@@ -67,6 +81,7 @@ async function getUserPreferences(authenticatedUserId, targetUserId) {
 
 async function upsertUserPreferences(authenticatedUserId, preferenceData) {
   try {
+    await validateTimezone(preferenceData);
     preferenceData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
     // Provide a default for calorie_goal_adjustment_mode if it's not present
     if (!preferenceData.calorie_goal_adjustment_mode) {
