@@ -1200,7 +1200,9 @@ async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
     // body fields (weight, body composition) come from bodyRow.
     // This allows e.g. Garmin steps + Withings weight on the same day.
     return {
-      ...activityRow,
+      user_id: activityRow.user_id,
+      entry_date: activityRow.entry_date,
+      steps: activityRow.steps,
       weight: bodyRow?.weight ?? activityRow?.weight,
       neck: bodyRow?.neck ?? activityRow?.neck,
       waist: bodyRow?.waist ?? activityRow?.waist,
@@ -1208,6 +1210,8 @@ async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
       height: bodyRow?.height ?? activityRow?.height,
       body_fat_percentage:
         bodyRow?.body_fat_percentage ?? activityRow?.body_fat_percentage,
+      source:
+        activityRow.source === bodyRow?.source ? activityRow.source : 'auto',
     };
   } catch (error) {
     log(
