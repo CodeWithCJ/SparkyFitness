@@ -14,25 +14,6 @@ async function processActivitiesAndWorkouts(userId, data, startDate, endDate) {
   const { activities, workouts } = data;
   let processedCount = 0;
 
-  // Comprehensive cleanup for Garmin-sourced data for the date range
-  // This ensures a clean slate for the current sync, preventing duplicates and stale data.
-  log(
-    'info',
-    `[garminService] Performing comprehensive cleanup for Garmin data for user ${userId} from ${startDate} to ${endDate}.`
-  );
-  await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(
-    userId,
-    startDate,
-    endDate,
-    'garmin'
-  );
-  await exercisePresetEntryRepository.deleteExercisePresetEntriesByEntrySourceAndDate(
-    userId,
-    startDate,
-    endDate,
-    'garmin'
-  );
-
   // Process Activities and Workouts
   if (activities && Array.isArray(activities)) {
     for (const activityData of activities) {

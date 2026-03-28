@@ -113,7 +113,9 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
         workout.description ||
         `Synced from Hevy: ${workout.title}`,
       start_time: startTime,
-      source_id: workout.id != null ? `${workout.id}_${exerciseIndex}` : null,
+      source_id: workout.id
+        ? `${workout.id}_${exerciseIndex}`
+        : `${startTime.getTime()}_${exerciseIndex}`,
       entry_source: 'Hevy',
       sets: hevyExercise.sets.map((set) => ({
         set_number: set.index + 1,

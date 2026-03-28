@@ -58,24 +58,6 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
     return;
   }
 
-  // First, delete existing Polar exercise entries for the dates covered to avoid duplicates
-  const processedDates = new Set();
-  for (const exercise of exerciseList) {
-    const startTime = getVal(exercise, 'start-time');
-    if (!startTime) continue;
-
-    const entryDate = startTime.split('T')[0]; // Literal Calendar Date
-    if (!processedDates.has(entryDate)) {
-      await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(
-        userId,
-        entryDate,
-        entryDate,
-        'Polar'
-      );
-      processedDates.add(entryDate);
-    }
-  }
-
   for (const exercise of exerciseList) {
     try {
       const exerciseId = getVal(exercise, 'id');
