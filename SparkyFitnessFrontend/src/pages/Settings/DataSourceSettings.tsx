@@ -207,6 +207,11 @@ export const DataSourceSettings = () => {
               <div className="flex h-10 items-center rounded-md border bg-muted px-3 text-sm text-muted-foreground">
                 All sources merged automatically
               </div>
+              <p className="text-xs text-muted-foreground">
+                If two sources report the same session (matching start time
+                &amp; duration), the first entry synced is kept and the
+                duplicate is discarded.
+              </p>
             </div>
           </div>
 
