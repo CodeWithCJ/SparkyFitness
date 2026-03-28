@@ -463,7 +463,7 @@ async function _createExerciseEntryWithClient(
     // We keep the existing entry and skip the incoming one to avoid double-counting.
     if (
       !existingEntryResult?.rows?.length &&
-      skipManualDuplicateCheck &&
+      syncDuplicateCheck &&
       entryData.start_time &&
       entryData.duration_minutes > 0
     ) {
@@ -475,7 +475,7 @@ async function _createExerciseEntryWithClient(
            AND source_id IS NOT NULL
            AND start_time IS NOT NULL
            AND ABS(EXTRACT(EPOCH FROM (start_time - $4::timestamptz))) <= 600
-           AND duration_minutes BETWEEN $5 * 0.8 AND $5 * 1.2
+           AND LEAST(duration_minutes, $5) >= GREATEST(duration_minutes, $5) * 0.8
            AND exercise_preset_entry_id IS NULL
          LIMIT 1`,
         [
