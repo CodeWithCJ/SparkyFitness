@@ -457,6 +457,44 @@ async function _createExerciseEntryWithClient(
       }
     }
 
+    // 3. Cross-source deduplication for synced workouts with a known start_time.
+    // If two entries from DIFFERENT sources overlap in time (start within 10 min of each other)
+    // and have a similar duration (within 20%), treat them as the same session.
+    // We keep the existing entry and skip the incoming one to avoid double-counting.
+    if (
+      !existingEntryResult?.rows?.length &&
+      skipManualDuplicateCheck &&
+      entryData.start_time &&
+      entryData.duration_minutes > 0
+    ) {
+      existingEntryResult = await client.query(
+        `SELECT id FROM exercise_entries
+         WHERE user_id = $1
+           AND entry_date = $2
+           AND source <> $3
+           AND source_id IS NOT NULL
+           AND start_time IS NOT NULL
+           AND ABS(EXTRACT(EPOCH FROM (start_time - $4::timestamptz))) <= 600
+           AND duration_minutes BETWEEN $5 * 0.8 AND $5 * 1.2
+           AND exercise_preset_entry_id IS NULL
+         LIMIT 1`,
+        [
+          userId,
+          entryData.entry_date,
+          entrySource,
+          entryData.start_time,
+          entryData.duration_minutes,
+        ]
+      );
+      if (existingEntryResult.rows.length > 0) {
+        log(
+          'info',
+          `Cross-source duplicate detected for user ${userId} on ${entryData.entry_date}: ` +
+            `incoming ${entrySource} workout overlaps with existing entry ${existingEntryResult.rows[0].id}. Skipping.`
+        );
+      }
+    }
+
     let newEntryId;
     if (existingEntryResult && existingEntryResult.rows.length > 0) {
       // Entry exists, update it
@@ -491,27 +529,28 @@ async function _createExerciseEntryWithClient(
       // 2. Insert the exercise entry with the snapshot data
       const entryResult = await client.query(
         `INSERT INTO exercise_entries (
-           user_id, exercise_id, duration_minutes, calories_burned, entry_date, notes,
+           user_id, exercise_id, duration_minutes, calories_burned, entry_date, start_time, notes,
            workout_plan_assignment_id, image_url, created_by_user_id,
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
            distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) RETURNING id`,
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28) RETURNING id`,
         [
           userId,
           entryData.exercise_id,
-          entryData.duration_minutes || 0, // Ensure duration_minutes is not null
+          entryData.duration_minutes || 0,
           entryData.calories_burned || 0,
           entryData.entry_date,
+          entryData.start_time || null,
           entryData.notes,
           entryData.workout_plan_assignment_id || null,
           entryData.image_url || null,
           createdByUserId,
-          entryData.exercise_name || snapshot.name, // exercise_name
+          entryData.exercise_name || snapshot.name,
           snapshot.calories_per_hour,
           snapshot.category,
           entrySource,
-          entryData.source_id || snapshot.source_id, // Use entryData.source_id if available (instance ID), fallback to snapshot (def ID)
+          entryData.source_id || snapshot.source_id,
           snapshot.force,
           snapshot.level,
           snapshot.mechanic,
@@ -520,9 +559,9 @@ async function _createExerciseEntryWithClient(
           snapshot.secondary_muscles,
           snapshot.instructions,
           snapshot.images,
-          entryData.distance || null, // Ensure distance is not undefined
-          entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
-          exercisePresetEntryId, // New parameter
+          entryData.distance || null,
+          entryData.avg_heart_rate || null,
+          exercisePresetEntryId,
           entryData.sort_order || 0,
           entryData.steps || null,
         ]

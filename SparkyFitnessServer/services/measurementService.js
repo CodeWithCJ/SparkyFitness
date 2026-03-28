@@ -520,6 +520,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
                 duration_minutes: duration ? duration / 60 : 0,
                 calories_burned: caloriesBurned,
                 entry_date: parsedDate,
+                start_time: timestamp ? new Date(timestamp) : null,
                 notes: `Source: ${source}, Activity Type: ${activityType}`,
                 distance: distance,
                 sets: dataEntry.sets || null, // Pass sets if present for mobile workout sync
@@ -690,6 +691,7 @@ async function processMobileHealthData(
       distance,
       duration,
       raw_data,
+      source_id,
     } = dataEntry;
     log(
       'debug',
@@ -830,10 +832,11 @@ async function processMobileHealthData(
               duration_minutes: duration ? duration / 60 : 0,
               calories_burned: caloriesBurned,
               entry_date: parsedDate,
+              start_time: timestamp ? new Date(timestamp) : null,
               notes: `Source: ${source}, Activity Type: ${activityType}`,
               distance: distance,
-              sets: dataEntry.sets || null, // Pass sets if present for mobile workout sync
-              // Add other exercise-related fields from mobileHealthData if available
+              sets: dataEntry.sets || null,
+              source_id: source_id || null,
             },
             actingUserId,
             source
