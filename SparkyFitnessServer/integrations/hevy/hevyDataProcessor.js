@@ -76,10 +76,10 @@ async function processHevyWorkouts(userId, createdByUserId, workouts) {
 async function processSingleWorkout(userId, createdByUserId, workout) {
   const startTime = new Date(workout.start_time);
   const endTime = new Date(workout.end_time);
-  const totalDurationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+  const totalDurationMs = endTime - startTime;
   const exerciseCount = workout.exercises.length || 1;
   const perExerciseDurationMinutes = Math.round(
-    totalDurationMinutes / exerciseCount
+    totalDurationMs / exerciseCount / (1000 * 60)
   );
 
   log(
