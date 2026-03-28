@@ -3,6 +3,69 @@ const userRepository = require('../models/userRepository');
 const { log } = require('../config/logging');
 const { calculateSleepScore } = require('./measurementService'); // Re-use existing sleep score calculation
 
+// Source quality ranking: higher index = higher priority when no sleep_score is available.
+// Garmin and Withings provide the most complete data (HRV, SpO2, respiration, stress).
+// This list is used only as a tiebreaker; sleep_score from the source itself always wins.
+const SOURCE_QUALITY_RANK = [
+  'manual',
+  'health_connect',
+  'healthkit',
+  'fitbit',
+  'polar',
+  'withings',
+  'garmin',
+];
+
+/**
+ * Scores a single sleep entry for quality comparison.
+ * Higher score = better entry to use as the primary source for a given night.
+ *
+ * Criteria (descending priority):
+ *  1. sleep_score from the device (0–100, scaled to 0–1000 to dominate tiebreakers)
+ *  2. Field completeness bonus (HRV, SpO2, stage data, respiration)
+ *  3. Source quality rank (garmin > withings > fitbit > healthkit > manual)
+ */
+function scoreEntry(entry) {
+  let score = 0;
+
+  // 1. Device sleep score (primary signal)
+  if (entry.sleep_score != null) {
+    score += parseFloat(entry.sleep_score) * 10; // scale 0-100 → 0-1000
+  }
+
+  // 2. Field completeness bonus
+  if (entry.avg_overnight_hrv != null) score += 50;
+  if (entry.average_spo2_value != null) score += 40;
+  if (entry.avg_sleep_stress != null) score += 30;
+  if (entry.average_respiration_value != null) score += 20;
+  if (entry.resting_heart_rate != null) score += 10;
+  if (entry.deep_sleep_seconds != null && entry.deep_sleep_seconds > 0)
+    score += 20;
+  if (entry.rem_sleep_seconds != null && entry.rem_sleep_seconds > 0)
+    score += 20;
+  if (entry.stage_events && entry.stage_events.length > 0) score += 30;
+
+  // 3. Source quality rank tiebreaker
+  const rankIdx = SOURCE_QUALITY_RANK.indexOf(
+    (entry.source || '').toLowerCase()
+  );
+  score += rankIdx >= 0 ? rankIdx * 2 : 0;
+
+  return score;
+}
+
+/**
+ * Given an array of sleep entries for a single date (potentially from multiple sources),
+ * returns the single best entry to use for analytics.
+ * All entries are also returned with an is_primary flag for the frontend.
+ */
+function pickBestEntry(entries) {
+  if (entries.length === 1) return entries[0];
+  return entries.reduce((best, current) =>
+    scoreEntry(current) > scoreEntry(best) ? current : best
+  );
+}
+
 async function getSleepAnalytics(userId, startDate, endDate) {
   log(
     'info',
@@ -33,52 +96,46 @@ async function getSleepAnalytics(userId, startDate, endDate) {
       gender = userProfile.gender;
     }
 
-    const dailyAnalytics = {};
-
+    // Group all entries by date first
+    const entriesByDate = {};
     for (const entry of sleepEntries) {
-      const entryDate = entry.entry_date;
-      if (!dailyAnalytics[entryDate]) {
-        dailyAnalytics[entryDate] = {
-          date: entryDate,
-          totalSleepDuration: 0,
-          timeAsleep: 0,
-          sleepScore: 0,
-          bedtimes: [],
-          wakeTimes: [],
-          stageDurations: {
-            deep: 0,
-            rem: 0,
-            light: 0,
-            awake: 0,
-            unspecified: 0,
-          },
-          awakePeriods: 0,
-          totalAwakeDuration: 0,
-          sleepEfficiency: 0,
-        };
-      }
+      const d = entry.entry_date;
+      if (!entriesByDate[d]) entriesByDate[d] = [];
+      entriesByDate[d].push(entry);
+    }
 
-      dailyAnalytics[entryDate].totalSleepDuration +=
-        entry.duration_in_seconds || 0;
-      dailyAnalytics[entryDate].timeAsleep += entry.time_asleep_in_seconds || 0;
-      dailyAnalytics[entryDate].bedtimes.push(new Date(entry.bedtime));
-      dailyAnalytics[entryDate].wakeTimes.push(new Date(entry.wake_time));
+    // For each date, pick the single best entry and compute analytics from it only.
+    // This prevents double-counting when multiple sources (e.g. Garmin + HealthKit)
+    // both report the same night's sleep.
+    const analyticsResult = [];
 
-      if (entry.stage_events && entry.stage_events.length > 0) {
-        let inAwakePeriod = false;
-        for (const stage of entry.stage_events) {
+    for (const [entryDate, entries] of Object.entries(entriesByDate)) {
+      const primary = pickBestEntry(entries);
+
+      // Compute stage aggregates from the primary entry's stage events
+      const stageDurations = {
+        deep: 0,
+        rem: 0,
+        light: 0,
+        awake: 0,
+        unspecified: 0,
+      };
+      let totalAwakeDuration = 0;
+      let awakePeriods = 0;
+      let inAwakePeriod = false;
+
+      if (primary.stage_events && primary.stage_events.length > 0) {
+        for (const stage of primary.stage_events) {
           const duration = stage.duration_in_seconds || 0;
-          if (dailyAnalytics[entryDate].stageDurations[stage.stage_type]) {
-            dailyAnalytics[entryDate].stageDurations[stage.stage_type] +=
-              duration;
+          if (stageDurations[stage.stage_type] !== undefined) {
+            stageDurations[stage.stage_type] += duration;
           } else {
-            dailyAnalytics[entryDate].stageDurations.unspecified += duration;
+            stageDurations.unspecified += duration;
           }
-
           if (stage.stage_type === 'awake') {
-            dailyAnalytics[entryDate].totalAwakeDuration += duration;
+            totalAwakeDuration += duration;
             if (!inAwakePeriod) {
-              dailyAnalytics[entryDate].awakePeriods++;
+              awakePeriods++;
               inAwakePeriod = true;
             }
           } else {
@@ -86,73 +143,61 @@ async function getSleepAnalytics(userId, startDate, endDate) {
           }
         }
       }
-      // Recalculate sleep score for each entry to ensure consistency with current logic
-      const calculatedScore = await calculateSleepScore(
-        {
-          duration_in_seconds: entry.duration_in_seconds,
-          time_asleep_in_seconds: entry.time_asleep_in_seconds,
-        },
-        entry.stage_events,
-        age,
-        gender
-      );
-      // For simplicity, if multiple entries for a day, take the average or latest score.
-      // Here, we'll just overwrite, assuming the last entry for the day is the most comprehensive.
-      // A more robust solution might average or sum scores.
-      dailyAnalytics[entryDate].sleepScore = calculatedScore;
-    }
 
-    const analyticsResult = Object.values(dailyAnalytics).map((day) => {
-      // Calculate sleep consistency (bedtime/wake time variability)
-      // This is a simplified approach; more advanced methods might use standard deviation
-      const earliestBedtime = day.bedtimes.reduce(
-        (min, current) => (current < min ? current : min),
-        day.bedtimes[0]
-      );
-      const latestWakeTime = day.wakeTimes.reduce(
-        (max, current) => (current > max ? current : max),
-        day.wakeTimes[0]
-      );
+      const totalSleepDuration = primary.duration_in_seconds || 0;
+      const timeAsleep = primary.time_asleep_in_seconds || 0;
 
-      // Sleep efficiency
-      day.sleepEfficiency =
-        day.totalSleepDuration > 0
-          ? (day.timeAsleep / day.totalSleepDuration) * 100
-          : 0;
+      const sleepEfficiency =
+        totalSleepDuration > 0 ? (timeAsleep / totalSleepDuration) * 100 : 0;
 
-      // Sleep stage percentages
-      const totalStagesDuration =
-        day.stageDurations.deep +
-        day.stageDurations.rem +
-        day.stageDurations.light +
-        day.stageDurations.awake +
-        day.stageDurations.unspecified;
+      const totalStagesDuration = Object.values(stageDurations).reduce(
+        (a, b) => a + b,
+        0
+      );
       const stagePercentages = {};
       if (totalStagesDuration > 0) {
-        for (const stageType in day.stageDurations) {
+        for (const stageType in stageDurations) {
           stagePercentages[stageType] =
-            (day.stageDurations[stageType] / totalStagesDuration) * 100;
+            (stageDurations[stageType] / totalStagesDuration) * 100;
         }
       }
 
-      // Sleep debt (example: assuming 8 hours optimal)
       const optimalSleepSeconds = 8 * 3600;
-      const sleepDebt = (optimalSleepSeconds - day.totalSleepDuration) / 3600; // in hours
+      const sleepDebt = (optimalSleepSeconds - totalSleepDuration) / 3600;
 
-      return {
-        date: day.date,
-        totalSleepDuration: day.totalSleepDuration,
-        timeAsleep: day.timeAsleep,
-        sleepScore: day.sleepScore,
-        earliestBedtime: earliestBedtime ? earliestBedtime.toISOString() : null,
-        latestWakeTime: latestWakeTime ? latestWakeTime.toISOString() : null,
-        sleepEfficiency: day.sleepEfficiency,
-        sleepDebt: sleepDebt,
-        stagePercentages: stagePercentages,
-        awakePeriods: day.awakePeriods,
-        totalAwakeDuration: day.totalAwakeDuration,
-      };
-    });
+      const calculatedScore = await calculateSleepScore(
+        {
+          duration_in_seconds: primary.duration_in_seconds,
+          time_asleep_in_seconds: primary.time_asleep_in_seconds,
+        },
+        primary.stage_events,
+        age,
+        gender
+      );
+
+      analyticsResult.push({
+        date: entryDate,
+        totalSleepDuration,
+        timeAsleep,
+        sleepScore: calculatedScore,
+        earliestBedtime: primary.bedtime
+          ? new Date(primary.bedtime).toISOString()
+          : null,
+        latestWakeTime: primary.wake_time
+          ? new Date(primary.wake_time).toISOString()
+          : null,
+        sleepEfficiency,
+        sleepDebt,
+        stagePercentages,
+        awakePeriods,
+        totalAwakeDuration,
+        primarySource: primary.source,
+        availableSources: entries.map((e) => e.source),
+      });
+    }
+
+    // Sort by date ascending
+    analyticsResult.sort((a, b) => (a.date < b.date ? -1 : 1));
 
     return analyticsResult;
   } catch (error) {

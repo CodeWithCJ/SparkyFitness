@@ -368,7 +368,8 @@ async function processWithingsMeasures(userId, createdByUserId, measuregrps) {
         userId,
         createdByUserId,
         entryDate,
-        measurementsToUpsert
+        measurementsToUpsert,
+        'Withings'
       );
       log(
         'info',
@@ -774,7 +775,8 @@ async function processWithingsActivity(
         userId,
         createdByUserId,
         activity.steps,
-        entryDate
+        entryDate,
+        'Withings'
       );
       log(
         'info',
