@@ -3,13 +3,9 @@ const format = require('pg-format');
 const { log } = require('../config/logging');
 const workoutPresetRepository = require('./workoutPresetRepository');
 const { getExerciseById } = require('./exercise');
-const { dayOfWeek } = require('@workspace/shared');
+const { addDays, compareDays, dayOfWeek } = require('@workspace/shared');
 
-async function createExerciseEntriesFromTemplate(
-  templateId,
-  userId,
-  currentClientDate = null
-) {
+async function createExerciseEntriesFromTemplate(templateId, userId, today) {
   log(
     'info',
     `createExerciseEntriesFromTemplate called for templateId: ${templateId}, userId: ${userId}`
@@ -66,42 +62,29 @@ async function createExerciseEntriesFromTemplate(
       return;
     }
 
-    // Use the provided client date to ensure timezone consistency
-    const clientDate = currentClientDate
-      ? new Date(currentClientDate)
-      : new Date();
-    clientDate.setHours(0, 0, 0, 0); // Normalize to the beginning of the day in the client's timezone
-
-    const startDate = new Date(template.start_date);
-    const clientTimezoneOffset = currentClientDate
-      ? new Date(currentClientDate).getTimezoneOffset()
-      : new Date().getTimezoneOffset();
-    const serverTimezoneOffset = startDate.getTimezoneOffset();
-    const timezoneDifference =
-      (clientTimezoneOffset - serverTimezoneOffset) * 60 * 1000;
-
-    startDate.setTime(startDate.getTime() + timezoneDifference);
+    // start_date/end_date come from pg as Date objects; extract the YYYY-MM-DD string
+    const startDay =
+      typeof template.start_date === 'string'
+        ? template.start_date.slice(0, 10)
+        : template.start_date.toISOString().slice(0, 10);
     // If end_date is not provided, default to one year from start_date
-    const endDate = template.end_date
-      ? new Date(template.end_date)
-      : new Date(
-          startDate.getFullYear() + 1,
-          startDate.getMonth(),
-          startDate.getDate()
-        );
+    const endDay = template.end_date
+      ? typeof template.end_date === 'string'
+        ? template.end_date.slice(0, 10)
+        : template.end_date.toISOString().slice(0, 10)
+      : addDays(startDay, 365);
 
     log(
       'info',
-      `createExerciseEntriesFromTemplate - Plan start_date: ${startDate.toISOString().split('T')[0]}, end_date: ${endDate.toISOString().split('T')[0]}`
+      `createExerciseEntriesFromTemplate - Plan start_date: ${startDay}, end_date: ${endDay}`
     );
 
-    for (
-      let d = new Date(startDate);
-      d <= endDate;
-      d.setDate(d.getDate() + 1)
-    ) {
-      const entryDate = d.toISOString().split('T')[0];
-      const currentDayOfWeek = dayOfWeek(entryDate); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+    // Start from today if template start_date is in the past
+    let currentDay = compareDays(startDay, today) < 0 ? today : startDay;
+
+    while (compareDays(currentDay, endDay) <= 0) {
+      const entryDate = currentDay;
+      const currentDayOfWeek = dayOfWeek(entryDate);
 
       for (const assignment of template.assignments) {
         if (assignment.day_of_week === currentDayOfWeek) {
@@ -162,6 +145,7 @@ async function createExerciseEntriesFromTemplate(
         }
       }
       log('info', `Finished processing assignments for date ${entryDate}.`);
+      currentDay = addDays(currentDay, 1);
     }
   } catch (error) {
     log(
@@ -175,18 +159,18 @@ async function createExerciseEntriesFromTemplate(
   }
 }
 
-async function deleteExerciseEntriesByTemplateId(templateId, userId) {
+async function deleteExerciseEntriesByTemplateId(templateId, userId, today) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
       `DELETE FROM exercise_entries
        WHERE user_id = $1
-         AND entry_date >= CURRENT_DATE::date -- Only delete entries for today or future dates
+         AND entry_date >= $3
          AND workout_plan_assignment_id IN (
              SELECT id FROM workout_plan_template_assignments
              WHERE template_id = $2
          ) RETURNING id`,
-      [userId, templateId]
+      [userId, templateId, today]
     );
     log(
       'info',

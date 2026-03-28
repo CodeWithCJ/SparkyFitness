@@ -91,6 +91,7 @@ function getTST(entry) {
 
 async function calculateSleepDebt(userId) {
   log('info', `Calculating sleep debt for user ${userId}`);
+  const tz = await loadUserTimezone(userId);
 
   const profile = await sleepScienceRepository.getSleepProfile(userId);
   const sleepNeed = profile?.baseline_sleep_need
@@ -99,7 +100,8 @@ async function calculateSleepDebt(userId) {
 
   const history = await sleepScienceRepository.getSleepHistory(
     userId,
-    DEBT_WINDOW_DAYS
+    DEBT_WINDOW_DAYS,
+    tz
   );
 
   if (history.length === 0) {
@@ -225,7 +227,8 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
 
   const history = await sleepScienceRepository.getSleepHistory(
     userId,
-    windowDays
+    windowDays,
+    timezone
   );
 
   if (history.length < 14) {
@@ -579,7 +582,7 @@ async function getEnergyCurve(userId) {
   log('info', `Generating energy curve for user ${userId}`);
   const tz = await loadUserTimezone(userId);
 
-  const history = await sleepScienceRepository.getSleepHistory(userId, 14);
+  const history = await sleepScienceRepository.getSleepHistory(userId, 14, tz);
 
   if (history.length < 3) {
     return {
@@ -761,7 +764,7 @@ async function getChronotype(userId) {
   log('info', `Getting chronotype for user ${userId}`);
   const tz = await loadUserTimezone(userId);
 
-  const history = await sleepScienceRepository.getSleepHistory(userId, 30);
+  const history = await sleepScienceRepository.getSleepHistory(userId, 30, tz);
 
   if (history.length < 7) {
     return {
@@ -846,8 +849,9 @@ async function getChronotype(userId) {
 
 async function checkDataSufficiency(userId) {
   log('info', `Checking data sufficiency for user ${userId}`);
+  const tz = await loadUserTimezone(userId);
 
-  const history = await sleepScienceRepository.getSleepHistory(userId, 90);
+  const history = await sleepScienceRepository.getSleepHistory(userId, 90, tz);
 
   const entriesWithTimestamps = history.filter(
     (e) => e.sleepStartTimestampGMT && e.sleepEndTimestampGMT

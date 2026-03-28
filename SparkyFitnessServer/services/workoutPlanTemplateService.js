@@ -2,12 +2,16 @@ const workoutPlanTemplateRepository = require('../models/workoutPlanTemplateRepo
 const workoutPresetRepository = require('../models/workoutPresetRepository');
 const exerciseRepository = require('../models/exerciseRepository');
 const { log } = require('../config/logging');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone } = require('@workspace/shared');
 
-async function createWorkoutPlanTemplate(
-  userId,
-  planData,
-  currentClientDate = null
-) {
+async function resolveToday(userId, clientDate) {
+  if (clientDate) return clientDate;
+  const tz = await loadUserTimezone(userId);
+  return todayInZone(tz);
+}
+
+async function createWorkoutPlanTemplate(userId, planData) {
   log(
     'info',
     'createWorkoutPlanTemplate service - received planData:',
@@ -56,10 +60,11 @@ async function createWorkoutPlanTemplate(
         'info',
         `createWorkoutPlanTemplate service - New plan is active, creating exercise entries from template ${newPlan.id}`
       );
+      const today = await resolveToday(userId, planData.currentClientDate);
       await exerciseRepository.createExerciseEntriesFromTemplate(
         newPlan.id,
         userId,
-        currentClientDate
+        today
       );
     } else {
       log(
@@ -103,12 +108,7 @@ async function getWorkoutPlanTemplateById(userId, templateId) {
   return template;
 }
 
-async function updateWorkoutPlanTemplate(
-  userId,
-  templateId,
-  updateData,
-  currentClientDate = null
-) {
+async function updateWorkoutPlanTemplate(userId, templateId, updateData) {
   log(
     'info',
     `updateWorkoutPlanTemplate service - received updateData for template ${templateId}:`,
@@ -152,6 +152,7 @@ async function updateWorkoutPlanTemplate(
     }
   }
   try {
+    const today = await resolveToday(userId, updateData.currentClientDate);
     // When a plan is updated, remove the old exercise entries that were created from it.
     log(
       'info',
@@ -159,7 +160,8 @@ async function updateWorkoutPlanTemplate(
     );
     await exerciseRepository.deleteExerciseEntriesByTemplateId(
       templateId,
-      userId
+      userId,
+      today
     );
 
     const updatedPlan =
@@ -181,7 +183,7 @@ async function updateWorkoutPlanTemplate(
       await exerciseRepository.createExerciseEntriesFromTemplate(
         updatedPlan.id,
         userId,
-        currentClientDate
+        today
       );
     } else {
       log(
@@ -221,9 +223,11 @@ async function deleteWorkoutPlanTemplate(userId, templateId) {
       'info',
       `deleteWorkoutPlanTemplate service - Deleting future associated exercise entries for template ${templateId}`
     );
+    const today = await resolveToday(userId);
     await exerciseRepository.deleteExerciseEntriesByTemplateId(
       templateId,
-      userId
+      userId,
+      today
     );
 
     const deleted =

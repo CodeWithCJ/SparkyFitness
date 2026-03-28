@@ -1,4 +1,5 @@
 const { getClient } = require('../db/poolManager');
+const { dayRangeToUtcRange } = require('@workspace/shared');
 
 async function createFastingLog(userId, startTime, targetEndTime, fastingType) {
   const client = await getClient(userId);
@@ -172,22 +173,24 @@ async function getFastingStats(userId) {
 }
 
 // Get fasting logs within a date range (inclusive). Returns completed fasts only.
-async function getFastingLogsByDateRange(userId, startDate, endDate) {
+async function getFastingLogsByDateRange(
+  userId,
+  startDate,
+  endDate,
+  timezone = 'UTC'
+) {
   const client = await getClient(userId);
   try {
-    // Interpret startDate/endDate as dates (YYYY-MM-DD) and include any fast
-    // that started or ended on those dates, or that overlaps the range.
+    // Convert day-string range to UTC timestamp range in the user's timezone,
+    // then use a standard overlap check instead of ::date casts.
+    const { start, end } = dayRangeToUtcRange(startDate, endDate, timezone);
     const result = await client.query(
       `SELECT * FROM fasting_logs
              WHERE user_id = $1
                AND status = 'COMPLETED'
-               AND (
-                    (start_time::date BETWEEN $2::date AND $3::date)
-                    OR (end_time::date BETWEEN $2::date AND $3::date)
-                    OR (start_time < ($3::date + INTERVAL '1 day') AND end_time >= $2::date)
-               )
+               AND start_time < $3 AND end_time >= $2
              ORDER BY start_time DESC`,
-      [userId, startDate, endDate]
+      [userId, start, end]
     );
     return result.rows;
   } finally {

@@ -2,12 +2,16 @@ const mealPlanTemplateRepository = require('../models/mealPlanTemplateRepository
 const mealRepository = require('../models/mealRepository');
 const foodRepository = require('../models/foodRepository');
 const { log } = require('../config/logging');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone } = require('@workspace/shared');
 
-async function createMealPlanTemplate(
-  userId,
-  planData,
-  currentClientDate = null
-) {
+async function resolveToday(userId, clientDate) {
+  if (clientDate) return clientDate;
+  const tz = await loadUserTimezone(userId);
+  return todayInZone(tz);
+}
+
+async function createMealPlanTemplate(userId, planData) {
   log('info', 'createMealPlanTemplate service - received planData:', planData);
   try {
     if (planData.is_active) {
@@ -27,10 +31,11 @@ async function createMealPlanTemplate(
         'info',
         `createMealPlanTemplate service - New plan is active, creating food entries from template ${newPlan.id}`
       );
+      const today = await resolveToday(userId, planData.currentClientDate);
       await foodRepository.createFoodEntriesFromTemplate(
         newPlan.id,
         userId,
-        planData.currentClientDate || currentClientDate
+        today
       );
     } else {
       log(
@@ -74,29 +79,21 @@ async function getMealPlanTemplates(userId) {
   }
 }
 
-async function updateMealPlanTemplate(
-  planId,
-  userId,
-  planData,
-  currentClientDate = null
-) {
+async function updateMealPlanTemplate(planId, userId, planData) {
   log(
     'info',
     `updateMealPlanTemplate service - received planData for plan ${planId}:`,
     planData
   );
   try {
+    const today = await resolveToday(userId, planData.currentClientDate);
     // When a plan is updated, remove the old food entries that were created from it.
     // The new entries will be generated on-the-fly when the diary is viewed.
     log(
       'info',
       `updateMealPlanTemplate service - Deleting old food entries for template ${planId}`
     );
-    await foodRepository.deleteFoodEntriesByTemplateId(
-      planId,
-      userId,
-      currentClientDate
-    );
+    await foodRepository.deleteFoodEntriesByTemplateId(planId, userId, today);
 
     if (planData.is_active) {
       log(
@@ -119,7 +116,7 @@ async function updateMealPlanTemplate(
       await foodRepository.createFoodEntriesFromTemplate(
         updatedPlan.id,
         userId,
-        planData.currentClientDate || currentClientDate
+        today
       );
     } else {
       log(
@@ -139,21 +136,14 @@ async function updateMealPlanTemplate(
   }
 }
 
-async function deleteMealPlanTemplate(
-  planId,
-  userId,
-  currentClientDate = null
-) {
+async function deleteMealPlanTemplate(planId, userId, currentClientDate) {
   try {
+    const today = await resolveToday(userId, currentClientDate);
     log(
       'info',
-      `deleteMealPlanTemplate service - Deleting food entries for template ${planId} starting from ${currentClientDate || 'today'}`
+      `deleteMealPlanTemplate service - Deleting food entries for template ${planId} starting from ${today}`
     );
-    await foodRepository.deleteFoodEntriesByTemplateId(
-      planId,
-      userId,
-      currentClientDate
-    );
+    await foodRepository.deleteFoodEntriesByTemplateId(planId, userId, today);
 
     return await mealPlanTemplateRepository.deleteMealPlanTemplate(
       planId,

@@ -1,5 +1,6 @@
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
+const { todayInZone, addDays } = require('@workspace/shared');
 
 /**
  * Get sleep history for calculations
@@ -7,9 +8,10 @@ const { log } = require('../config/logging');
  * @param {number} days - Number of days to look back
  * @returns {Promise<Array>} Sleep entries with timestamps and durations
  */
-async function getSleepHistory(userId, days = 90) {
+async function getSleepHistory(userId, days = 90, timezone = 'UTC') {
   const client = await getClient(userId);
   try {
+    const cutoffDate = addDays(todayInZone(timezone), -days);
     const result = await client.query(
       `SELECT
         se.entry_date AS date,
@@ -35,10 +37,10 @@ async function getSleepHistory(userId, days = 90) {
         se.sleep_score AS "sleepScore"
       FROM sleep_entries se
       WHERE se.user_id = $1
-        AND se.entry_date >= CURRENT_DATE - INTERVAL '1 day' * $2
+        AND se.entry_date >= $2
         AND se.duration_in_seconds > 0
       ORDER BY se.entry_date DESC`,
-      [userId, days]
+      [userId, cutoffDate]
     );
     return result.rows;
   } finally {
