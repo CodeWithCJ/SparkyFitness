@@ -66,6 +66,7 @@ import { generateClientId } from '@/utils/generateClientId';
 import { useWorkoutPresets } from '@/hooks/Exercises/useWorkoutPresets';
 import { Exercise } from '@/types/exercises';
 import { TFunction } from 'i18next';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 
 interface AddWorkoutPlanDialogProps {
   isOpen: boolean;
@@ -503,18 +504,18 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
 
   const [startDate, setStartDate] = useState(() => {
     if (initialData?.start_date) {
-      return new Date(initialData.start_date).toISOString().split('T')[0];
+      return String(initialData.start_date).split('T')[0];
     }
-    return new Date().toISOString().split('T')[0];
+    return formatDateToYYYYMMDD(new Date());
   });
 
   const [endDate, setEndDate] = useState(() => {
     if (initialData?.end_date) {
-      return new Date(initialData.end_date).toISOString().split('T')[0];
+      return String(initialData.end_date).split('T')[0];
     }
     const date = new Date();
     date.setDate(date.getDate() + 7);
-    return date.toISOString().split('T')[0];
+    return formatDateToYYYYMMDD(date);
   });
 
   const [isActive, setIsActive] = useState(

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -46,9 +47,9 @@ const SparkyChatInterface = () => {
     !!userPreferences
   );
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = formatDateToYYYYMMDD(new Date());
   const { data: nutritionData } = useTodaysNutritionQuery(
-    todayStr ?? '',
+    todayStr,
     !!userPreferences
   );
 

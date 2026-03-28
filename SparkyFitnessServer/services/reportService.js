@@ -10,6 +10,7 @@ const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceSer
 const { log } = require('../config/logging');
 const { addDays, compareDays, todayInZone } = require('@workspace/shared');
 const { userAge } = require('../utils/dateHelpers');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
 
 async function getReportsData(
   authenticatedUserId,
@@ -651,11 +652,12 @@ async function getExerciseDashboardData(
       }
     });
 
+    const timezone = await loadUserTimezone(targetUserId);
     const consistencyData = calculateWorkoutConsistency(
       exerciseEntries,
       startDate,
       endDate,
-      userPreferences?.timezone || 'UTC'
+      timezone
     );
     const recoveryData = calculateMuscleGroupRecovery(exerciseEntries);
     const prProgressionData = calculatePrProgression(exerciseEntries);

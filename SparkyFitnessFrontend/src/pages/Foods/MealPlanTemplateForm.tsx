@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -58,16 +59,15 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
   const [description, setDescription] = useState(template?.description || '');
   const [startDate, setStartDate] = useState(
     template?.start_date
-      ? new Date(template.start_date).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0]
+      ? String(template.start_date).split('T')[0]
+      : formatDateToYYYYMMDD(new Date())
   );
-  const [endDate, setEndDate] = useState(
-    template?.end_date
-      ? new Date(template.end_date).toISOString().split('T')[0]
-      : new Date(new Date().setDate(new Date().getDate() + 7))
-          .toISOString()
-          .split('T')[0]
-  );
+  const [endDate, setEndDate] = useState(() => {
+    if (template?.end_date) return String(template.end_date).split('T')[0];
+    const date = new Date();
+    date.setDate(date.getDate() + 7);
+    return formatDateToYYYYMMDD(date);
+  });
   const [isActive, setIsActive] = useState(template?.is_active || false);
   const [assignments, setAssignments] = useState<MealPlanTemplateAssignment[]>(
     template?.assignments || []

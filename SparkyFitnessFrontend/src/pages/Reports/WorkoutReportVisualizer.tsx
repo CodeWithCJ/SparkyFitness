@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import SetPerformanceAnalysisChart from './SetPerformanceAnalysisChart';
 import { usePreferences, type WeightUnit } from '@/contexts/PreferencesContext';
@@ -127,7 +128,7 @@ const WorkoutReportVisualizer = ({
   });
 
   const prProgressionData: Record<string, PrProgressionData[]> = {};
-  const today = new Date().toISOString().split('T')[0];
+  const today = formatDateToYYYYMMDD(new Date());
 
   allExecutableSteps.forEach((step) => {
     if (step.exerciseName) {

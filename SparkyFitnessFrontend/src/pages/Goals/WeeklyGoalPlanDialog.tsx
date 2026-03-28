@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { cn, formatDateToYYYYMMDD } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -76,7 +76,7 @@ export const WeeklyGoalPlanDialog = ({
       } else {
         setCurrentWeeklyPlan({
           ...DEFAULT_PLAN,
-          start_date: new Date().toISOString().split('T')[0],
+          start_date: formatDateToYYYYMMDD(new Date()),
         } as WeeklyGoalPlan);
       }
     }

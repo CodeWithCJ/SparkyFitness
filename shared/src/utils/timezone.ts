@@ -34,7 +34,7 @@ export function dayOfWeek(day: string): number {
   const d = Number(m[3]);
   const t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
   if (month < 3) y -= 1;
-  return (y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) + t[month - 1] + d) % 7;
+  return (y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) + t[month - 1]! + d) % 7;
 }
 
 /** Add (or subtract) `n` days to a YYYY-MM-DD string. Returns a new YYYY-MM-DD string. */
