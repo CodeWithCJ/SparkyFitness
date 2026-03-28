@@ -906,7 +906,7 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
     }
   }
 
-  for (const workout of workouts) {
+  for (const [workoutIndex, workout] of workouts.entries()) {
     try {
       const workoutCategory = workout.category;
       const exerciseName =
@@ -987,7 +987,7 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
         calories_burned: caloriesBurned,
         entry_date: entryDate,
         start_time: new Date(workout.startdate * 1000),
-        source_id: String(workout.id ?? workout.startdate),
+        source_id: String(workout.id ?? `${workout.startdate}_${workoutIndex}`),
         notes: `Logged from Withings workout: ${exercise.name}. Distance: ${workout.data.distance || 0}m, Steps: ${workout.data.steps || 0}. Intensity: ${workout.data.intensity || 0}/100.`,
         avg_heart_rate: workout.data.hr_average || null,
         sets: [
