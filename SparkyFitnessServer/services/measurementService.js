@@ -1157,18 +1157,6 @@ async function upsertCheckInMeasurements(
   }
 }
 
-// Source quality rank used when no preference is set (or preference = 'auto').
-// Higher index = higher priority.
-const CHECK_IN_SOURCE_QUALITY_RANK = [
-  'manual',
-  'health_connect',
-  'healthkit',
-  'fitbit',
-  'polar',
-  'withings',
-  'garmin',
-];
-
 function findPreferredCheckInRow(rows, preference) {
   if (preference && preference !== 'auto') {
     const match = rows.find(

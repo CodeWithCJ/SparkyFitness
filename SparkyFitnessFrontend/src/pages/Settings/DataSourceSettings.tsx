@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import {
@@ -21,35 +21,46 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
+const DATA_SOURCES = {
+  auto: { value: 'auto', label: 'Auto (recommended)' },
+  garmin: { value: 'garmin', label: 'Garmin' },
+  withings: { value: 'withings', label: 'Withings' },
+  fitbit: { value: 'fitbit', label: 'Fitbit' },
+  polar: { value: 'polar', label: 'Polar' },
+  healthkit: { value: 'healthkit', label: 'Apple Health' },
+  health_connect: { value: 'health_connect', label: 'Health Connect' },
+  manual: { value: 'manual', label: 'Manual' },
+};
+
 const SLEEP_SOURCES = [
-  { value: 'auto', label: 'Auto (recommended)' },
-  { value: 'garmin', label: 'Garmin' },
-  { value: 'withings', label: 'Withings' },
-  { value: 'fitbit', label: 'Fitbit' },
-  { value: 'polar', label: 'Polar' },
-  { value: 'healthkit', label: 'Apple Health' },
-  { value: 'health_connect', label: 'Health Connect' },
-  { value: 'manual', label: 'Manual' },
+  DATA_SOURCES.auto,
+  DATA_SOURCES.garmin,
+  DATA_SOURCES.withings,
+  DATA_SOURCES.fitbit,
+  DATA_SOURCES.polar,
+  DATA_SOURCES.healthkit,
+  DATA_SOURCES.health_connect,
+  DATA_SOURCES.manual,
 ];
 
 const BODY_SOURCES = [
-  { value: 'auto', label: 'Auto (recommended)' },
-  { value: 'withings', label: 'Withings' },
-  { value: 'garmin', label: 'Garmin' },
-  { value: 'fitbit', label: 'Fitbit' },
-  { value: 'healthkit', label: 'Apple Health' },
-  { value: 'health_connect', label: 'Health Connect' },
-  { value: 'manual', label: 'Manual' },
+  DATA_SOURCES.auto,
+  DATA_SOURCES.withings,
+  DATA_SOURCES.garmin,
+  DATA_SOURCES.fitbit,
+  DATA_SOURCES.healthkit,
+  DATA_SOURCES.health_connect,
+  DATA_SOURCES.manual,
 ];
 
 const ACTIVITY_SOURCES = [
-  { value: 'auto', label: 'Auto (recommended)' },
-  { value: 'garmin', label: 'Garmin' },
-  { value: 'fitbit', label: 'Fitbit' },
-  { value: 'polar', label: 'Polar' },
-  { value: 'healthkit', label: 'Apple Health' },
-  { value: 'health_connect', label: 'Health Connect' },
-  { value: 'manual', label: 'Manual' },
+  DATA_SOURCES.auto,
+  DATA_SOURCES.garmin,
+  DATA_SOURCES.fitbit,
+  DATA_SOURCES.polar,
+  DATA_SOURCES.healthkit,
+  DATA_SOURCES.health_connect,
+  DATA_SOURCES.manual,
 ];
 
 export const DataSourceSettings = () => {
@@ -65,6 +76,12 @@ export const DataSourceSettings = () => {
   const [localBody, setLocalBody] = useState(bodySourcePreference);
   const [localActivity, setLocalActivity] = useState(activitySourcePreference);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLocalSleep(sleepSourcePreference);
+    setLocalBody(bodySourcePreference);
+    setLocalActivity(activitySourcePreference);
+  }, [sleepSourcePreference, bodySourcePreference, activitySourcePreference]);
 
   const handleSave = async () => {
     if (!user) return;
