@@ -1,0 +1,190 @@
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Copy, Trash2, Check } from 'lucide-react';
+import type { GlycemicIndex } from '@/types/food';
+import type { FormFoodVariant } from '@/utils/foodForm';
+import { getConversionFactor } from '@/utils/servingSizeConversions';
+import { UNIT_GROUPS } from '@/constants/foodForm';
+import { UserCustomNutrient } from '@/types/customNutrient';
+import { NutrientGrid } from './NutrientFormGrid';
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface VariantCardProps {
+  index: number;
+  variant: FormFoodVariant;
+  variantError: string;
+  visibleNutrients: string[];
+  energyUnit: 'kcal' | 'kJ';
+  convertEnergy: (
+    value: number,
+    from: 'kcal' | 'kJ',
+    to: 'kcal' | 'kJ'
+  ) => number;
+  customNutrients?: UserCustomNutrient[];
+  baseServingUnit: string; // loadedVariantsRef.current[index]?.serving_unit ?? variant.serving_unit
+  onUpdate: (
+    index: number,
+    field: string,
+    value: string | number | boolean | GlycemicIndex
+  ) => void;
+  onDuplicate: (index: number) => void;
+  onRemove: (index: number) => void;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export function VariantCard({
+  index,
+  variant,
+  variantError,
+  visibleNutrients,
+  energyUnit,
+  convertEnergy,
+  customNutrients,
+  baseServingUnit,
+  onUpdate,
+  onDuplicate,
+  onRemove,
+}: VariantCardProps) {
+  return (
+    <Card key={index} className="p-4">
+      {/* ── Header row: serving size / unit / checkboxes / actions ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-wrap mb-4">
+        {/* Serving size + unit select */}
+        <div className="flex items-end gap-2">
+          <div className="flex flex-col">
+            <Label htmlFor={`serving-size-${index}`}>Serving Size</Label>
+            <Input
+              id={`serving-size-${index}`}
+              type="number"
+              step="0.1"
+              value={variant.serving_size}
+              onChange={(e) =>
+                onUpdate(index, 'serving_size', Number(e.target.value))
+              }
+              className="w-24"
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <Label htmlFor={`serving-unit-${index}`}>Unit Type</Label>
+            <Select
+              value={variant.serving_unit}
+              onValueChange={(value) => onUpdate(index, 'serving_unit', value)}
+            >
+              <SelectTrigger id={`serving-unit-${index}`} className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {UNIT_GROUPS.map((group) => (
+                  <SelectGroup key={group.label}>
+                    <SelectLabel>{group.label}</SelectLabel>
+                    {group.units.map((unit) => {
+                      const compatible =
+                        unit !== baseServingUnit &&
+                        getConversionFactor(baseServingUnit, unit) !== null;
+                      return (
+                        <SelectItem key={unit} value={unit}>
+                          <span className="flex items-center gap-1.5">
+                            {unit}
+                            {compatible && (
+                              <Check className="h-3 w-3 text-green-500" />
+                            )}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Validation error */}
+        {variantError && (
+          <p className="text-red-500 text-sm mt-1">{variantError}</p>
+        )}
+
+        {/* Default / Auto-Scale checkboxes */}
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id={`is-default-${index}`}
+              checked={variant.is_default ?? false}
+              onChange={(e) => onUpdate(index, 'is_default', e.target.checked)}
+              className="form-checkbox h-4 w-4 text-blue-600"
+            />
+            <Label htmlFor={`is-default-${index}`} className="text-sm">
+              Default
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id={`is-locked-${index}`}
+              checked={variant.is_locked ?? false}
+              onChange={(e) => onUpdate(index, 'is_locked', e.target.checked)}
+              className="form-checkbox h-4 w-4 text-blue-600"
+            />
+            <Label htmlFor={`is-locked-${index}`} className="text-sm">
+              Auto-Scale
+            </Label>
+          </div>
+        </div>
+
+        {/* Duplicate / Remove actions */}
+        <div className="flex items-center gap-2 ml-auto sm:ml-0">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onDuplicate(index)}
+            title="Duplicate Unit"
+          >
+            <Copy className="w-4 h-4" />
+          </Button>
+          {index > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onRemove(index)}
+              title="Remove Unit"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* ── Nutrition section ── */}
+      <h4 className="text-md font-medium mb-2">
+        Nutrition per {variant.serving_size} {variant.serving_unit}
+      </h4>
+      <NutrientGrid
+        variantIndex={index}
+        variant={variant}
+        visibleNutrients={visibleNutrients}
+        energyUnit={energyUnit}
+        convertEnergy={convertEnergy}
+        customNutrients={customNutrients}
+        onUpdate={onUpdate}
+      />
+    </Card>
+  );
+}

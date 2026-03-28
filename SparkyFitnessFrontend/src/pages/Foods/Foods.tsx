@@ -58,7 +58,7 @@ import {
   getNutrientMetadata,
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
-import EnhancedCustomFoodForm from '@/components/FoodSearch/CustomFoodForm';
+import CustomFoodForm from '@/components/FoodSearch/CustomFoodForm';
 import { MealFilter } from '@/types/meal';
 import type { Meal } from '@/types/meal';
 
@@ -679,10 +679,7 @@ const FoodDatabaseManager: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           {editingFood && (
-            <EnhancedCustomFoodForm
-              food={editingFood}
-              onSave={handleSaveComplete}
-            />
+            <CustomFoodForm food={editingFood} onSave={handleSaveComplete} />
           )}
         </DialogContent>
       </Dialog>
