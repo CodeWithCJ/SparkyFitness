@@ -55,7 +55,7 @@ async function getDashboardStats(userId, date) {
     });
 
     // 4. Steps Calories
-    const stepsCount = parseInt(checkInMeasurements?.steps || 0);
+    const stepsCount = parseInt(checkInMeasurements?.[0]?.steps || 0);
     const backgroundSteps = Math.max(0, stepsCount - activitySteps);
 
     const weightKg =

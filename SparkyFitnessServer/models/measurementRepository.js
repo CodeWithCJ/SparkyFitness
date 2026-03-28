@@ -274,7 +274,7 @@ async function upsertCheckInMeasurements(
       userId,
       entryDate,
       ...measurementValues,
-      source,
+      source.toLowerCase(),
       actingUserId,
     ];
 
@@ -306,16 +306,14 @@ async function getCheckInMeasurementsByDate(userId, date, source = null) {
       );
       return result.rows[0];
     }
-    // Return all sources for the date, ordered by source so callers can apply
-    // preferred-source logic (P5). Existing callers that read rows[0] will continue
-    // to work; once P5 preferences are implemented they will pass source explicitly.
+    // Return all sources for the date so callers can apply preferred-source logic.
+    // Sources are stored as lowercase since upsertCheckInMeasurements normalizes them.
     const result = await client.query(
       `SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2
-       ORDER BY array_position(ARRAY['garmin','Garmin','withings','Withings','fitbit','Fitbit','polar','Polar','healthkit','health_connect','manual'], source) NULLS LAST`,
+       ORDER BY array_position(ARRAY['garmin','withings','fitbit','polar','healthkit','health_connect','manual'], source) NULLS LAST`,
       [userId, date]
     );
-    // Backward-compatible: return first row so existing single-source callers still work
-    return result.rows[0];
+    return result.rows;
   } finally {
     client.release();
   }

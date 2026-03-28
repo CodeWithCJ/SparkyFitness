@@ -1158,12 +1158,12 @@ async function upsertCheckInMeasurements(
 
 async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
   try {
-    const measurement =
+    const measurements =
       await measurementRepository.getCheckInMeasurementsByDate(
         targetUserId,
         date
       );
-    return measurement || {};
+    return measurements[0] || {};
   } catch (error) {
     log(
       'error',
@@ -1209,13 +1209,13 @@ async function updateCheckInMeasurements(
   );
   try {
     // Verify ownership using entry_date and user_id
-    const existingMeasurement =
+    const existingMeasurements =
       await measurementRepository.getCheckInMeasurementsByDate(
         authenticatedUserId,
         entryDate
       );
 
-    if (!existingMeasurement) {
+    if (!existingMeasurements.length) {
       log(
         'warn',
         `[measurementService] Check-in measurement not found for user ${authenticatedUserId} on date: ${entryDate}`
