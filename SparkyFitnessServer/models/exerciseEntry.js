@@ -462,13 +462,14 @@ async function _createExerciseEntryWithClient(
     // If two entries from DIFFERENT sources overlap in time (start within 10 min of each other)
     // and have a similar duration (within 20%), treat them as the same session.
     // We keep the existing entry and skip the incoming one to avoid double-counting.
+    let crossSourceDuplicate = false;
     if (
       !existingEntryResult?.rows?.length &&
       syncDuplicateCheck &&
       entryData.start_time &&
       entryData.duration_minutes > 0
     ) {
-      existingEntryResult = await client.query(
+      const crossSourceResult = await client.query(
         `SELECT id FROM exercise_entries
          WHERE user_id = $1
            AND entry_date = $2
@@ -490,18 +491,23 @@ async function _createExerciseEntryWithClient(
           CROSS_SOURCE_DEDUP.MIN_DURATION_SIMILARITY_RATIO,
         ]
       );
-      if (existingEntryResult.rows.length > 0) {
+      if (crossSourceResult.rows.length > 0) {
         log(
           'info',
           `Cross-source duplicate detected for user ${userId} on ${entryData.entry_date}: ` +
-            `incoming ${entrySource} workout overlaps with existing entry ${existingEntryResult.rows[0].id}. Skipping.`
+            `incoming ${entrySource} workout overlaps with existing entry ${crossSourceResult.rows[0].id}. Skipping.`
         );
+        existingEntryResult = crossSourceResult;
+        crossSourceDuplicate = true;
       }
     }
 
     let newEntryId;
-    if (existingEntryResult && existingEntryResult.rows.length > 0) {
-      // Entry exists, update it
+    if (crossSourceDuplicate && existingEntryResult?.rows?.length > 0) {
+      // Cross-source duplicate: keep the existing entry untouched, return it as-is.
+      newEntryId = existingEntryResult.rows[0].id;
+    } else if (existingEntryResult && existingEntryResult.rows.length > 0) {
+      // Same-source duplicate: update the existing entry with the latest sync data.
       const existingEntryId = existingEntryResult.rows[0].id;
       log(
         'info',
