@@ -83,13 +83,30 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
   // Sort records by start time to process them chronologically
   const sortedRecords = [...records].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
+  // Newer Apple Watch models send both a generic 'asleep' record (covering the full sleep
+  // period) AND detailed stage records (Core/Deep/REM/Awake). Including both would double-count
+  // time_asleep. When detailed stages are present, drop the generic 'asleep' records.
+  const hasDetailedStages = sortedRecords.some(r => {
+    const v = r.value;
+    return (
+      v === 'HKCategoryValueSleepAnalysisAsleepREM' ||
+      v === 'HKCategoryValueSleepAnalysisAsleepDeep' ||
+      v === 'HKCategoryValueSleepAnalysisAsleepCore' ||
+      v === 'HKCategoryValueSleepAnalysisAwake' ||
+      v === 2 || v === 3 || v === 4 || v === 5 // numeric equivalents
+    );
+  });
+  const recordsToProcess = hasDetailedStages
+    ? sortedRecords.filter(r => r.value !== 'HKCategoryValueSleepAnalysisAsleep' && r.value !== 1)
+    : sortedRecords;
+
   const aggregatedSessions: AggregatedSleepSession[] = [];
   let currentSession: SleepSessionAccumulator | null = null;
 
   // Define a threshold for what constitutes a new sleep session (e.g., 4 hours awake)
   const SESSION_GAP_THRESHOLD_MS = 4 * 60 * 60 * 1000; // 4 hours
 
-  for (const record of sortedRecords) {
+  for (const record of recordsToProcess) {
     const recordStartTime = new Date(record.startTime);
     const recordEndTime = new Date(record.endTime);
     const duration = (recordEndTime.getTime() - recordStartTime.getTime()) / 1000;
