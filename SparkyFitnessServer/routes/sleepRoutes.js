@@ -67,8 +67,11 @@ router.get(
         const prefs =
           await preferenceRepository.getUserPreferences(targetUserId);
         preferredSource = prefs?.sleep_source_preference || 'auto';
-      } catch {
-        // If preferences can't be loaded, fall back to automatic selection
+      } catch (err) {
+        log(
+          'warn',
+          `Failed to load sleep source preference for user ${targetUserId}, falling back to auto: ${err?.message ?? err}`
+        );
       }
 
       const analyticsData = await sleepAnalyticsService.getSleepAnalytics(

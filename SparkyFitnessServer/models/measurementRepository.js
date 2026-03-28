@@ -17,29 +17,31 @@ const ALLOWED_CHECK_IN_COLUMNS = [
 // Tolerance in milliliters for matching historical manual records with incoming sync data
 const WATER_ADOPTION_TOLERANCE_ML = 5;
 
-async function upsertStepData(userId, actingUserId, value, date) {
+async function upsertStepData(
+  userId,
+  actingUserId,
+  value,
+  date,
+  source = 'manual'
+) {
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
-    const existingRecord = await client.query(
-      'SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2',
-      [userId, date]
+    // Source-aware upsert: each source keeps its own row per date.
+    // ON CONFLICT relies on the unique constraint (user_id, entry_date, source)
+    // added in migration 20260328100000.
+    const result = await client.query(
+      `INSERT INTO check_in_measurements
+         (user_id, entry_date, steps, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $5, now(), now())
+       ON CONFLICT (user_id, entry_date, source)
+       DO UPDATE SET
+         steps = $3,
+         updated_at = now(),
+         updated_by_user_id = $5
+       RETURNING *`,
+      [userId, date, value, source, actingUserId]
     );
-
-    let result;
-    if (existingRecord.rows.length > 0) {
-      const updateResult = await client.query(
-        'UPDATE check_in_measurements SET steps = $1, updated_at = now(), updated_by_user_id = $2 WHERE entry_date = $3 AND user_id = $4 RETURNING *',
-        [value, actingUserId, date, userId]
-      );
-      result = updateResult.rows[0];
-    } else {
-      const insertResult = await client.query(
-        'INSERT INTO check_in_measurements (user_id, entry_date, steps, created_by_user_id, updated_by_user_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $4, now(), now()) RETURNING *',
-        [userId, date, value, actingUserId]
-      );
-      result = insertResult.rows[0];
-    }
-    return result;
+    return result.rows[0];
   } finally {
     client.release();
   }
@@ -204,13 +206,12 @@ async function upsertCheckInMeasurements(
   userId,
   actingUserId,
   entryDate,
-  measurements
+  measurements,
+  source = 'manual'
 ) {
   console.log('Incoming measurements:', measurements);
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
-    let query;
-    let values;
     // Filter out 'id' from measurements to prevent it from being upserted into numeric columns
     const filteredMeasurements = { ...measurements };
     delete filteredMeasurements.id;
@@ -227,51 +228,65 @@ async function upsertCheckInMeasurements(
     });
 
     if (measurementKeys.length === 0) {
-      // If no measurements are provided, and no existing record, there's nothing to do.
-      // If there's an existing record, we don't update it if no new measurements are provided.
-      return null; // Return null if no measurements to update/insert
+      return null;
     }
 
-    const existingRecord = await client.query(
-      'SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2',
-      [userId, entryDate]
+    // Source-aware upsert: each source keeps its own row per date.
+    // ON CONFLICT relies on the unique constraint (user_id, entry_date, source)
+    // added in migration 20260328100000.
+    //
+    // Param layout:
+    //   $1 = userId, $2 = entryDate, $3..$N = measurement values,
+    //   $(N+1) = source, $(N+2) = actingUserId
+    const measurementValues = measurementKeys.map(
+      (key) => filteredMeasurements[key]
     );
+    const nMeasure = measurementKeys.length;
+    const sourceIdx = nMeasure + 3; // $sourceIdx
+    const actingIdx = nMeasure + 4; // $actingIdx
 
-    if (existingRecord.rows.length > 0) {
-      const id = existingRecord.rows[0].id;
-      const fields = measurementKeys
-        .map((key, index) => `${key} = $${index + 1}`)
-        .join(', ');
-      // Add updated_by_user_id to update query
-      query = `UPDATE check_in_measurements SET ${fields}, updated_at = now(), updated_by_user_id = $${measurementKeys.length + 1} WHERE id = $${measurementKeys.length + 2} RETURNING *`;
-      values = [
-        ...measurementKeys.map((key) => filteredMeasurements[key]),
-        actingUserId,
-        id,
-      ];
-    } else {
-      // Add updated_by_user_id to insert query
-      const cols = [
-        'user_id',
-        'entry_date',
-        ...measurementKeys,
-        'created_by_user_id',
-        'updated_by_user_id',
-        'created_at',
-        'updated_at',
-      ];
-      const placeholders = cols.map((_, index) => `$${index + 1}`).join(', ');
-      values = [
-        userId,
-        entryDate,
-        ...measurementKeys.map((key) => filteredMeasurements[key]),
-        actingUserId,
-        actingUserId,
-        new Date().toISOString(),
-        new Date().toISOString(),
-      ];
-      query = `INSERT INTO check_in_measurements (${cols.join(', ')}) VALUES (${placeholders}) RETURNING *`;
-    }
+    const insertCols = [
+      'user_id',
+      'entry_date',
+      ...measurementKeys,
+      'source',
+      'created_by_user_id',
+      'updated_by_user_id',
+      'created_at',
+      'updated_at',
+    ];
+    const insertPlaceholders = [
+      '$1',
+      '$2',
+      ...measurementKeys.map((_, i) => `$${i + 3}`),
+      `$${sourceIdx}`,
+      `$${actingIdx}`,
+      `$${actingIdx}`,
+      'now()',
+      'now()',
+    ];
+
+    const setClauses = measurementKeys
+      .map((key, i) => `${key} = $${i + 3}`)
+      .join(', ');
+
+    const values = [
+      userId,
+      entryDate,
+      ...measurementValues,
+      source,
+      actingUserId,
+    ];
+
+    const query = `
+      INSERT INTO check_in_measurements (${insertCols.join(', ')})
+      VALUES (${insertPlaceholders.join(', ')})
+      ON CONFLICT (user_id, entry_date, source)
+      DO UPDATE SET
+        ${setClauses},
+        updated_at = now(),
+        updated_by_user_id = $${actingIdx}
+      RETURNING *`;
 
     const result = await client.query(query, values);
     return result.rows[0];
@@ -280,13 +295,26 @@ async function upsertCheckInMeasurements(
   }
 }
 
-async function getCheckInMeasurementsByDate(userId, date) {
+async function getCheckInMeasurementsByDate(userId, date, source = null) {
   const client = await getClient(userId); // User-specific operation
   try {
+    if (source) {
+      // Return the row for a specific source
+      const result = await client.query(
+        'SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2 AND source = $3',
+        [userId, date, source]
+      );
+      return result.rows[0];
+    }
+    // Return all sources for the date, ordered by source so callers can apply
+    // preferred-source logic (P5). Existing callers that read rows[0] will continue
+    // to work; once P5 preferences are implemented they will pass source explicitly.
     const result = await client.query(
-      'SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2',
+      `SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2
+       ORDER BY array_position(ARRAY['garmin','withings','fitbit','polar','healthkit','health_connect','manual'], LOWER(source)) NULLS LAST`,
       [userId, date]
     );
+    // Backward-compatible: return first row so existing single-source callers still work
     return result.rows[0];
   } finally {
     client.release();
@@ -298,7 +326,7 @@ async function getAllCheckInMeasurementsByDate(userId, date) {
   try {
     const result = await client.query(
       `SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2
-       ORDER BY array_position(ARRAY['garmin','Garmin','withings','Withings','fitbit','Fitbit','polar','Polar','healthkit','health_connect','manual'], source) NULLS LAST`,
+       ORDER BY array_position(ARRAY['garmin','withings','fitbit','polar','healthkit','health_connect','manual'], LOWER(source)) NULLS LAST`,
       [userId, date]
     );
     return result.rows;

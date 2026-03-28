@@ -57,6 +57,15 @@ export type calorieGoalAdjustmentMode =
   | 'tdee'
   | 'adaptive';
 export type WaterDisplayUnit = 'ml' | 'oz' | 'liter';
+export type DataSourcePreference =
+  | 'auto'
+  | 'garmin'
+  | 'withings'
+  | 'fitbit'
+  | 'polar'
+  | 'healthkit'
+  | 'health_connect'
+  | 'manual';
 
 // Conversion constant
 const KCAL_TO_KJ = 4.184;
@@ -97,12 +106,12 @@ interface PreferencesContextType {
   tdeeAllowNegativeAdjustment: boolean;
   selectedDiet: string;
   firstDayOfWeek: DayOfWeek;
-  sleepSourcePreference: string;
-  bodySourcePreference: string;
-  activitySourcePreference: string;
-  setSleepSourcePreference: (source: string) => void;
-  setBodySourcePreference: (source: string) => void;
-  setActivitySourcePreference: (source: string) => void;
+  sleepSourcePreference: DataSourcePreference;
+  bodySourcePreference: DataSourcePreference;
+  activitySourcePreference: DataSourcePreference;
+  setSleepSourcePreference: (source: DataSourcePreference) => void;
+  setBodySourcePreference: (source: DataSourcePreference) => void;
+  setActivitySourcePreference: (source: DataSourcePreference) => void;
   setWeightUnit: (unit: WeightUnit) => void;
   setMeasurementUnit: (unit: MeasurementUnit) => void;
   setDistanceUnit: (unit: DistanceUnit) => void;
@@ -195,9 +204,9 @@ export interface DefaultPreferences {
   vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
   sugar_calculation_algorithm: SugarCalculationAlgorithm;
   first_day_of_week: number;
-  sleep_source_preference: string;
-  body_source_preference: string;
-  activity_source_preference: string;
+  sleep_source_preference: DataSourcePreference;
+  body_source_preference: DataSourcePreference;
+  activity_source_preference: DataSourcePreference;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -289,11 +298,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [selectedDiet, setSelectedDietState] = useState<string>('balanced');
   const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(0);
   const [sleepSourcePreference, setSleepSourcePreferenceState] =
-    useState<string>('auto');
+    useState<DataSourcePreference>('auto');
   const [bodySourcePreference, setBodySourcePreferenceState] =
-    useState<string>('auto');
+    useState<DataSourcePreference>('auto');
   const [activitySourcePreference, setActivitySourcePreferenceState] =
-    useState<string>('auto');
+    useState<DataSourcePreference>('auto');
 
   const fetchUserPreferences = useCallback(async () => {
     try {

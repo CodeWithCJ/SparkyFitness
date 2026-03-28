@@ -1195,8 +1195,11 @@ async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
       const prefs = await preferenceRepository.getUserPreferences(targetUserId);
       activityPref = prefs?.activity_source_preference || 'auto';
       bodyPref = prefs?.body_source_preference || 'auto';
-    } catch {
-      // Preferences unavailable — use automatic source selection
+    } catch (err) {
+      log(
+        'warn',
+        `Failed to load source preferences for user ${targetUserId}, falling back to auto: ${err?.message ?? err}`
+      );
     }
 
     const activityRow = findPreferredCheckInRow(allRows, activityPref);

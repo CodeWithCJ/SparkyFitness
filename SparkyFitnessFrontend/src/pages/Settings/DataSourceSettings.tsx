@@ -14,7 +14,10 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Database, Save } from 'lucide-react';
-import { usePreferences } from '@/contexts/PreferencesContext';
+import {
+  usePreferences,
+  DataSourcePreference,
+} from '@/contexts/PreferencesContext';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
@@ -113,7 +116,10 @@ export const DataSourceSettings = () => {
               <p className="text-xs text-muted-foreground">
                 Duration, stages, HRV, SpO₂
               </p>
-              <Select value={localSleep} onValueChange={setLocalSleep}>
+              <Select
+                value={localSleep}
+                onValueChange={(v) => setLocalSleep(v as DataSourcePreference)}
+              >
                 <SelectTrigger id="sleep-source">
                   <SelectValue />
                 </SelectTrigger>
@@ -133,7 +139,10 @@ export const DataSourceSettings = () => {
               <p className="text-xs text-muted-foreground">
                 Weight, BMI, body fat, muscle mass
               </p>
-              <Select value={localBody} onValueChange={setLocalBody}>
+              <Select
+                value={localBody}
+                onValueChange={(v) => setLocalBody(v as DataSourcePreference)}
+              >
                 <SelectTrigger id="body-source">
                   <SelectValue />
                 </SelectTrigger>
@@ -153,7 +162,12 @@ export const DataSourceSettings = () => {
               <p className="text-xs text-muted-foreground">
                 Steps, distance, active calories
               </p>
-              <Select value={localActivity} onValueChange={setLocalActivity}>
+              <Select
+                value={localActivity}
+                onValueChange={(v) =>
+                  setLocalActivity(v as DataSourcePreference)
+                }
+              >
                 <SelectTrigger id="activity-source">
                   <SelectValue />
                 </SelectTrigger>
