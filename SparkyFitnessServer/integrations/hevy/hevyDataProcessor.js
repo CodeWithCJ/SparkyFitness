@@ -83,7 +83,12 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
     `Processing Hevy workout: ${workout.title} (${startTime.toISOString()})`
   );
 
-  for (const hevyExercise of workout.exercises) {
+  for (
+    let exerciseIndex = 0;
+    exerciseIndex < workout.exercises.length;
+    exerciseIndex++
+  ) {
+    const hevyExercise = workout.exercises[exerciseIndex];
     // 1. Find or create exercise template
     let exercise = await exerciseRepository.findExerciseByNameAndUserId(
       hevyExercise.title,
@@ -112,6 +117,8 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
         hevyExercise.notes ||
         workout.description ||
         `Synced from Hevy: ${workout.title}`,
+      start_time: startTime,
+      source_id: `${workout.id}_${exerciseIndex}`,
       entry_source: 'Hevy',
       sets: hevyExercise.sets.map((set) => ({
         set_number: set.index + 1,
