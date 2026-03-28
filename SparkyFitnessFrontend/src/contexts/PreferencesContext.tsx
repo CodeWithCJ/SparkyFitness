@@ -57,6 +57,15 @@ export type calorieGoalAdjustmentMode =
   | 'tdee'
   | 'adaptive';
 export type WaterDisplayUnit = 'ml' | 'oz' | 'liter';
+export type DataSourcePreference =
+  | 'auto'
+  | 'garmin'
+  | 'withings'
+  | 'fitbit'
+  | 'polar'
+  | 'healthkit'
+  | 'health_connect'
+  | 'manual';
 
 // Conversion constant
 const KCAL_TO_KJ = 4.184;
@@ -97,6 +106,12 @@ interface PreferencesContextType {
   tdeeAllowNegativeAdjustment: boolean;
   selectedDiet: string;
   firstDayOfWeek: DayOfWeek;
+  sleepSourcePreference: DataSourcePreference;
+  bodySourcePreference: DataSourcePreference;
+  activitySourcePreference: DataSourcePreference;
+  setSleepSourcePreference: (source: DataSourcePreference) => void;
+  setBodySourcePreference: (source: DataSourcePreference) => void;
+  setActivitySourcePreference: (source: DataSourcePreference) => void;
   setWeightUnit: (unit: WeightUnit) => void;
   setMeasurementUnit: (unit: MeasurementUnit) => void;
   setDistanceUnit: (unit: DistanceUnit) => void;
@@ -189,6 +204,9 @@ export interface DefaultPreferences {
   vitamin_calculation_algorithm: VitaminCalculationAlgorithm;
   sugar_calculation_algorithm: SugarCalculationAlgorithm;
   first_day_of_week: number;
+  sleep_source_preference: DataSourcePreference;
+  body_source_preference: DataSourcePreference;
+  activity_source_preference: DataSourcePreference;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -279,6 +297,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   const [selectedDiet, setSelectedDietState] = useState<string>('balanced');
   const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(0);
+  const [sleepSourcePreference, setSleepSourcePreferenceState] =
+    useState<DataSourcePreference>('auto');
+  const [bodySourcePreference, setBodySourcePreferenceState] =
+    useState<DataSourcePreference>('auto');
+  const [activitySourcePreference, setActivitySourcePreferenceState] =
+    useState<DataSourcePreference>('auto');
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -582,6 +606,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         );
         setSelectedDietState(data.selected_diet || 'balanced');
         setFirstDayOfWeekState(data.first_day_of_week ?? 0);
+        setSleepSourcePreferenceState(data.sleep_source_preference || 'auto');
+        setBodySourcePreferenceState(data.body_source_preference || 'auto');
+        setActivitySourcePreferenceState(
+          data.activity_source_preference || 'auto'
+        );
       } else {
         await createDefaultPreferences();
         await createDefaultWaterContainer();
@@ -729,6 +758,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.sugarCalculationAlgorithm ?? sugarCalculationAlgorithm,
         selected_diet: newPrefs?.selectedDiet ?? selectedDiet,
         first_day_of_week: newPrefs?.firstDayOfWeek ?? firstDayOfWeek,
+        sleep_source_preference:
+          newPrefs?.sleepSourcePreference ?? sleepSourcePreference,
+        body_source_preference:
+          newPrefs?.bodySourcePreference ?? bodySourcePreference,
+        activity_source_preference:
+          newPrefs?.activitySourcePreference ?? activitySourcePreference,
       };
 
       try {
@@ -777,6 +812,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       sugarCalculationAlgorithm,
       selectedDiet,
       firstDayOfWeek,
+      sleepSourcePreference,
+      bodySourcePreference,
+      activitySourcePreference,
       updatePreferences,
       loadPreferences,
     ]
@@ -972,6 +1010,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       sugarCalculationAlgorithm,
       selectedDiet,
       firstDayOfWeek,
+      sleepSourcePreference,
+      bodySourcePreference,
+      activitySourcePreference,
+      setSleepSourcePreference: setSleepSourcePreferenceState,
+      setBodySourcePreference: setBodySourcePreferenceState,
+      setActivitySourcePreference: setActivitySourcePreferenceState,
       setWeightUnit,
       setMeasurementUnit,
       setDistanceUnit,
@@ -1043,6 +1087,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       sugarCalculationAlgorithm,
       selectedDiet,
       firstDayOfWeek,
+      sleepSourcePreference,
+      bodySourcePreference,
+      activitySourcePreference,
       setWeightUnit,
       setMeasurementUnit,
       setDistanceUnit,

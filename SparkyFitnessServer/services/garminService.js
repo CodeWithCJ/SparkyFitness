@@ -14,25 +14,6 @@ async function processActivitiesAndWorkouts(userId, data, startDate, endDate) {
   const { activities, workouts } = data;
   let processedCount = 0;
 
-  // Comprehensive cleanup for Garmin-sourced data for the date range
-  // This ensures a clean slate for the current sync, preventing duplicates and stale data.
-  log(
-    'info',
-    `[garminService] Performing comprehensive cleanup for Garmin data for user ${userId} from ${startDate} to ${endDate}.`
-  );
-  await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(
-    userId,
-    startDate,
-    endDate,
-    'garmin'
-  );
-  await exercisePresetEntryRepository.deleteExercisePresetEntriesByEntrySourceAndDate(
-    userId,
-    startDate,
-    endDate,
-    'garmin'
-  );
-
   // Process Activities and Workouts
   if (activities && Array.isArray(activities)) {
     for (const activityData of activities) {
@@ -522,6 +503,7 @@ async function processGarminWorkoutSession(
         avg_heart_rate: perExerciseAvgHeartRate
           ? Math.round(perExerciseAvgHeartRate)
           : null, // Round to nearest whole number or keep null
+        start_time: startTime ? new Date(startTime) : null,
         source_id: activity.activityId
           ? `${activity.activityId}_${exerciseSortOrder}`
           : null,
@@ -678,6 +660,9 @@ async function processGarminSimpleActivity(userId, activityData) {
     distance: activity.distance,
     avg_heart_rate:
       activity.averageHR || activity.averageHeartRateInBeatsPerMinute || null,
+    start_time: activity.startTimeLocal
+      ? new Date(activity.startTimeLocal)
+      : null,
     source_id: activity.activityId?.toString() ?? null,
     steps: activity.steps || activity.totalSteps || activity.stepCount || 0,
   };

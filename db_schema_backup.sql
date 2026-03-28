@@ -1162,7 +1162,8 @@ CREATE TABLE public.exercise_entries (
     avg_heart_rate integer,
     exercise_preset_entry_id uuid,
     sort_order integer DEFAULT 0,
-    steps integer
+    steps integer,
+    start_time timestamp with time zone
 );
 
 
@@ -3550,6 +3551,20 @@ CREATE INDEX idx_day_classification_user ON public.day_classification_cache USIN
 --
 
 CREATE INDEX idx_exercise_entries_exercise_preset_entry_id ON public.exercise_entries USING btree (exercise_preset_entry_id);
+
+
+--
+-- Name: exercise_entries_user_date_start_time_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX exercise_entries_user_date_start_time_idx ON public.exercise_entries USING btree (user_id, entry_date, start_time);
+
+
+--
+-- Name: idx_exercise_entries_lower_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercise_entries_lower_source ON public.exercise_entries USING btree (lower(source));
 
 
 --

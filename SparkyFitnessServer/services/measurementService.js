@@ -1,6 +1,7 @@
 //console.log('DEBUG: Loading measurementService.js');
 const { log } = require('../config/logging'); // Import the logger utility
 const measurementRepository = require('../models/measurementRepository');
+const preferenceRepository = require('../models/preferenceRepository');
 
 /**
  * Default units for health metric types when not provided by client (e.g. HealthConnect sync).
@@ -519,6 +520,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
                 duration_minutes: duration ? duration / 60 : 0,
                 calories_burned: caloriesBurned,
                 entry_date: parsedDate,
+                start_time: timestamp ? new Date(timestamp) : null,
                 notes: `Source: ${source}, Activity Type: ${activityType}`,
                 distance: distance,
                 sets: dataEntry.sets || null, // Pass sets if present for mobile workout sync
@@ -689,6 +691,7 @@ async function processMobileHealthData(
       distance,
       duration,
       raw_data,
+      source_id,
     } = dataEntry;
     log(
       'debug',
@@ -829,10 +832,11 @@ async function processMobileHealthData(
               duration_minutes: duration ? duration / 60 : 0,
               calories_burned: caloriesBurned,
               entry_date: parsedDate,
+              start_time: timestamp ? new Date(timestamp) : null,
               notes: `Source: ${source}, Activity Type: ${activityType}`,
               distance: distance,
-              sets: dataEntry.sets || null, // Pass sets if present for mobile workout sync
-              // Add other exercise-related fields from mobileHealthData if available
+              sets: dataEntry.sets || null,
+              source_id: source_id || null,
             },
             actingUserId,
             source
@@ -1156,14 +1160,59 @@ async function upsertCheckInMeasurements(
   }
 }
 
+function findPreferredCheckInRow(rows, preference) {
+  if (preference && preference !== 'auto') {
+    const match = rows.find(
+      (r) => r.source && r.source.toLowerCase() === preference.toLowerCase()
+    );
+    if (match) return match;
+  }
+  // Fall back to quality-ranked first row (rows are already pre-sorted by the repository)
+  return rows[0];
+}
+
 async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
   try {
-    const measurement =
-      await measurementRepository.getCheckInMeasurementsByDate(
-        targetUserId,
-        date
+    const allRows = await measurementRepository.getAllCheckInMeasurementsByDate(
+      targetUserId,
+      date
+    );
+    if (!allRows || allRows.length === 0) return {};
+
+    // Load user source preferences; fall back silently to 'auto' if unavailable.
+    let activityPref = 'auto';
+    let bodyPref = 'auto';
+    try {
+      const prefs = await preferenceRepository.getUserPreferences(targetUserId);
+      activityPref = prefs?.activity_source_preference || 'auto';
+      bodyPref = prefs?.body_source_preference || 'auto';
+    } catch (err) {
+      log(
+        'warn',
+        `Failed to load source preferences for user ${targetUserId}, falling back to auto: ${err?.message ?? err}`
       );
-    return measurement || {};
+    }
+
+    const activityRow = findPreferredCheckInRow(allRows, activityPref);
+    const bodyRow = findPreferredCheckInRow(allRows, bodyPref);
+
+    // Merge: activity fields (steps) come from activityRow,
+    // body fields (weight, body composition) come from bodyRow.
+    // This allows e.g. Garmin steps + Withings weight on the same day.
+    return {
+      user_id: activityRow.user_id,
+      entry_date: activityRow.entry_date,
+      steps: activityRow.steps,
+      weight: bodyRow?.weight ?? activityRow?.weight,
+      neck: bodyRow?.neck ?? activityRow?.neck,
+      waist: bodyRow?.waist ?? activityRow?.waist,
+      hips: bodyRow?.hips ?? activityRow?.hips,
+      height: bodyRow?.height ?? activityRow?.height,
+      body_fat_percentage:
+        bodyRow?.body_fat_percentage ?? activityRow?.body_fat_percentage,
+      source:
+        activityRow.source === bodyRow?.source ? activityRow.source : 'auto',
+    };
   } catch (error) {
     log(
       'error',

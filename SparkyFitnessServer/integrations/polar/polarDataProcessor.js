@@ -58,24 +58,6 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
     return;
   }
 
-  // First, delete existing Polar exercise entries for the dates covered to avoid duplicates
-  const processedDates = new Set();
-  for (const exercise of exerciseList) {
-    const startTime = getVal(exercise, 'start-time');
-    if (!startTime) continue;
-
-    const entryDate = startTime.split('T')[0]; // Literal Calendar Date
-    if (!processedDates.has(entryDate)) {
-      await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(
-        userId,
-        entryDate,
-        entryDate,
-        'Polar'
-      );
-      processedDates.add(entryDate);
-    }
-  }
-
   for (const exercise of exerciseList) {
     try {
       const exerciseId = getVal(exercise, 'id');
@@ -143,6 +125,8 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
         duration_minutes: durationMinutes,
         calories_burned: calories,
         entry_date: entryDate,
+        start_time: startTime ? new Date(parsePolarToUTC(startTime)) : null,
+        source_id: exerciseId ? String(exerciseId) : null,
         notes: `Logged from Polar Flow: ${sport}. ID: ${exerciseId}.${distance > 0 ? ` Distance: ${(distance / 1000).toFixed(2)}km.` : ''}`,
         sets: [
           {

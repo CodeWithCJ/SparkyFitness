@@ -6,6 +6,7 @@ const preferenceRepository = require('../models/preferenceRepository');
 const bmrService = require('./bmrService');
 const adaptiveTdeeService = require('./AdaptiveTdeeService');
 const { log } = require('../config/logging');
+const { CROSS_SOURCE_DEDUP } = require('../config/deduplicationConstants');
 const { CALORIE_CALCULATION_CONSTANTS } = require('@workspace/shared');
 
 /**
@@ -42,15 +43,67 @@ async function getDashboardStats(userId, date) {
       nutritionData.length > 0 ? parseFloat(nutritionData[0].calories) || 0 : 0;
 
     // 3. Exercise Calories
+    // Deduplicate workout entries across sources before summing: if two entries from
+    // different sources start within 10 minutes of each other and have similar durations
+    // (within 20%), they represent the same session. Keep the entry with the most calories.
     let activeCalories = 0;
     let otherCalories = 0;
     let activitySteps = 0;
-    exerciseEntries.forEach((entry) => {
+    const deduplicatedWorkouts = [];
+    for (const entry of exerciseEntries) {
       if (entry.exercise_name === 'Active Calories') {
         activeCalories += parseFloat(entry.calories_burned || 0);
-      } else {
-        otherCalories += parseFloat(entry.calories_burned || 0);
+        activitySteps += parseInt(entry.steps || 0);
+        continue;
       }
+      const entryStart = entry.start_time
+        ? new Date(entry.start_time).getTime()
+        : null;
+      const entryDuration = parseFloat(entry.duration_minutes || 0);
+      const entryCalories = parseFloat(entry.calories_burned || 0);
+      const duplicateIndex =
+        entryStart && entryDuration > 0
+          ? deduplicatedWorkouts.findIndex((existing) => {
+              const existingStart = existing.start_time
+                ? new Date(existing.start_time).getTime()
+                : null;
+              const existingDuration = parseFloat(
+                existing.duration_minutes || 0
+              );
+              if (!existingStart) return false;
+              const startDiffSec = Math.abs(entryStart - existingStart) / 1000;
+              const durationMin = Math.min(entryDuration, existingDuration);
+              const durationMax = Math.max(entryDuration, existingDuration);
+              return (
+                startDiffSec <=
+                  CROSS_SOURCE_DEDUP.MAX_START_TIME_DIFF_SECONDS &&
+                durationMin >=
+                  durationMax * CROSS_SOURCE_DEDUP.MIN_DURATION_SIMILARITY_RATIO
+              );
+            })
+          : -1;
+      if (duplicateIndex === -1) {
+        deduplicatedWorkouts.push(entry);
+      } else {
+        const existingCalories = parseFloat(
+          deduplicatedWorkouts[duplicateIndex].calories_burned || 0
+        );
+        if (entryCalories > existingCalories) {
+          log(
+            'info',
+            `DashboardService: replacing cross-source duplicate entry ${deduplicatedWorkouts[duplicateIndex].id} with higher-calorie entry ${entry.id} (${entry.source})`
+          );
+          deduplicatedWorkouts[duplicateIndex] = entry;
+        } else {
+          log(
+            'info',
+            `DashboardService: skipping cross-source duplicate workout entry ${entry.id} (${entry.source})`
+          );
+        }
+      }
+    }
+    deduplicatedWorkouts.forEach((entry) => {
+      otherCalories += parseFloat(entry.calories_burned || 0);
       activitySteps += parseInt(entry.steps || 0);
     });
 

@@ -1,6 +1,7 @@
 const { getClient, getSystemClient } = require('../db/poolManager');
 const format = require('pg-format');
 const { log } = require('../config/logging');
+const { CROSS_SOURCE_DEDUP } = require('../config/deduplicationConstants');
 const exerciseRepository = require('./exercise');
 const activityDetailsRepository = require('./activityDetailsRepository');
 const exercisePresetEntryRepository = require('./exercisePresetEntryRepository');
@@ -402,6 +403,105 @@ async function _updateExerciseEntryWithClient(
   return _getExerciseEntryByIdWithClient(client, id);
 }
 
+/**
+ * Checks whether an incoming exercise entry is a duplicate of an existing one.
+ * Returns { existingId, crossSource } where:
+ *   existingId  – the id of the matching row, or null if none found
+ *   crossSource – true when the match comes from a different source (skip/no-update)
+ */
+async function _findDuplicateEntry(
+  client,
+  userId,
+  entryData,
+  entrySource,
+  exercisePresetEntryId
+) {
+  const syncDuplicateCheck =
+    Boolean(entryData.source_id) ||
+    (entrySource.toLowerCase() !== 'manual' && Boolean(entryData.start_time));
+  const skipManualDuplicateCheck = [
+    'HealthKit',
+    'Health Connect',
+    'Fitbit',
+    'Strava',
+  ].includes(entrySource);
+
+  let existingEntryResult;
+
+  // 1. Precise sync deduplication via source_id
+  if (syncDuplicateCheck) {
+    existingEntryResult = await client.query(
+      'SELECT id FROM exercise_entries WHERE user_id = $1 AND source = $2 AND source_id = $3',
+      [userId, entrySource, entryData.source_id]
+    );
+  }
+
+  // 2. Manual deduplication by name/date (only for non-sync, non-preset entries)
+  if (
+    !existingEntryResult?.rows?.length &&
+    !exercisePresetEntryId &&
+    !skipManualDuplicateCheck &&
+    !syncDuplicateCheck
+  ) {
+    if (entryData.workout_plan_assignment_id) {
+      existingEntryResult = await client.query(
+        'SELECT id FROM exercise_entries WHERE user_id = $1 AND workout_plan_assignment_id = $2 AND entry_date = $3',
+        [userId, entryData.workout_plan_assignment_id, entryData.entry_date]
+      );
+    } else {
+      existingEntryResult = await client.query(
+        'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL AND workout_plan_assignment_id IS NULL',
+        [userId, entryData.exercise_id, entryData.entry_date, entrySource]
+      );
+    }
+  }
+
+  // 3. Cross-source deduplication for synced workouts with a known start_time.
+  // If two entries from DIFFERENT sources overlap in time (start within 10 min of each other)
+  // and have a similar duration (within 20%), treat them as the same session.
+  // We keep the existing entry and skip the incoming one to avoid double-counting.
+  if (
+    !existingEntryResult?.rows?.length &&
+    syncDuplicateCheck &&
+    entryData.start_time &&
+    entryData.duration_minutes > 0
+  ) {
+    const crossSourceResult = await client.query(
+      `SELECT id FROM exercise_entries
+       WHERE user_id = $1
+         AND entry_date = $2
+         AND source <> $3
+         AND LOWER(source) <> 'manual'
+         AND start_time IS NOT NULL
+         AND start_time BETWEEN $4::timestamptz - ($5::numeric * INTERVAL '1 second')
+                            AND $4::timestamptz + ($5::numeric * INTERVAL '1 second')
+         AND LEAST(duration_minutes, $6) >= GREATEST(duration_minutes, $6) * $7
+         AND exercise_preset_entry_id IS NULL
+       LIMIT 1`,
+      [
+        userId,
+        entryData.entry_date,
+        entrySource,
+        entryData.start_time,
+        CROSS_SOURCE_DEDUP.MAX_START_TIME_DIFF_SECONDS,
+        entryData.duration_minutes,
+        CROSS_SOURCE_DEDUP.MIN_DURATION_SIMILARITY_RATIO,
+      ]
+    );
+    if (crossSourceResult.rows.length > 0) {
+      log(
+        'info',
+        `Cross-source duplicate detected for user ${userId} on ${entryData.entry_date}: ` +
+          `incoming ${entrySource} workout overlaps with existing entry ${crossSourceResult.rows[0].id}. Skipping.`
+      );
+      return { existingId: crossSourceResult.rows[0].id, crossSource: true };
+    }
+  }
+
+  const existingId = existingEntryResult?.rows?.[0]?.id ?? null;
+  return { existingId, crossSource: false };
+}
+
 async function _createExerciseEntryWithClient(
   client,
   userId,
@@ -411,63 +511,27 @@ async function _createExerciseEntryWithClient(
   exercisePresetEntryId = null
 ) {
   try {
-    // Check for existing entry
-    // treat entries without a preset ID as unique if their exercise_id, entry_date, and source match.
-    // For entries within a preset, we always allow duplicates (no uniqueness check).
-    const syncDuplicateCheck = entryData.source_id ? true : false;
-    const skipManualDuplicateCheck = [
-      'HealthKit',
-      'Health Connect',
-      'Fitbit',
-      'Strava',
-    ].includes(entrySource);
-
-    let existingEntryResult;
-
-    // 1. Attempt precise sync deduplication via source_id if available
-    if (syncDuplicateCheck) {
-      existingEntryResult = await client.query(
-        'SELECT id FROM exercise_entries WHERE user_id = $1 AND source = $2 AND source_id = $3',
-        [userId, entrySource, entryData.source_id]
-      );
-    }
-
-    // 2. If no source_id match and NOT a sync source, fall back to "Manual" deduplication (name/date).
-    // Skip this fallback when source_id was provided: a source_id miss means it's a genuinely new
-    // activity (different activityId), so we must INSERT rather than match on exercise_id + date.
-    if (
-      !existingEntryResult?.rows?.length &&
-      !exercisePresetEntryId &&
-      !skipManualDuplicateCheck &&
-      !syncDuplicateCheck
-    ) {
-      if (entryData.workout_plan_assignment_id) {
-        // If it's linked to a workout plan assignment, it's unique by that assignment ID and date.
-        existingEntryResult = await client.query(
-          'SELECT id FROM exercise_entries WHERE user_id = $1 AND workout_plan_assignment_id = $2 AND entry_date = $3',
-          [userId, entryData.workout_plan_assignment_id, entryData.entry_date]
-        );
-      } else {
-        // For manual entries (no assignment), keep traditional uniqueness check by exercise_id and date.
-        // We explicitly ensure workout_plan_assignment_id is NULL to avoid matching template-generated entries.
-        existingEntryResult = await client.query(
-          'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL AND workout_plan_assignment_id IS NULL',
-          [userId, entryData.exercise_id, entryData.entry_date, entrySource]
-        );
-      }
-    }
+    const { existingId, crossSource } = await _findDuplicateEntry(
+      client,
+      userId,
+      entryData,
+      entrySource,
+      exercisePresetEntryId
+    );
 
     let newEntryId;
-    if (existingEntryResult && existingEntryResult.rows.length > 0) {
-      // Entry exists, update it
-      const existingEntryId = existingEntryResult.rows[0].id;
+    if (crossSource) {
+      // Cross-source duplicate: keep the existing entry untouched, return it as-is.
+      newEntryId = existingId;
+    } else if (existingId) {
+      // Same-source duplicate: update the existing entry with the latest sync data.
       log(
         'info',
-        `Existing exercise entry found for user ${userId}, exercise ${entryData.exercise_id}, date ${entryData.entry_date}, source ${entrySource}. Updating entry ${existingEntryId}.`
+        `Existing exercise entry found for user ${userId}, exercise ${entryData.exercise_id}, date ${entryData.entry_date}, source ${entrySource}. Updating entry ${existingId}.`
       );
       const updatedEntry = await _updateExerciseEntryWithClient(
         client,
-        existingEntryId,
+        existingId,
         userId,
         entryData,
         createdByUserId,
@@ -491,27 +555,28 @@ async function _createExerciseEntryWithClient(
       // 2. Insert the exercise entry with the snapshot data
       const entryResult = await client.query(
         `INSERT INTO exercise_entries (
-           user_id, exercise_id, duration_minutes, calories_burned, entry_date, notes,
+           user_id, exercise_id, duration_minutes, calories_burned, entry_date, start_time, notes,
            workout_plan_assignment_id, image_url, created_by_user_id,
            exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
            equipment, primary_muscles, secondary_muscles, instructions, images,
            distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) RETURNING id`,
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28) RETURNING id`,
         [
           userId,
           entryData.exercise_id,
-          entryData.duration_minutes || 0, // Ensure duration_minutes is not null
+          entryData.duration_minutes || 0,
           entryData.calories_burned || 0,
           entryData.entry_date,
+          entryData.start_time || null,
           entryData.notes,
           entryData.workout_plan_assignment_id || null,
           entryData.image_url || null,
           createdByUserId,
-          entryData.exercise_name || snapshot.name, // exercise_name
+          entryData.exercise_name || snapshot.name,
           snapshot.calories_per_hour,
           snapshot.category,
           entrySource,
-          entryData.source_id || snapshot.source_id, // Use entryData.source_id if available (instance ID), fallback to snapshot (def ID)
+          entryData.source_id || snapshot.source_id,
           snapshot.force,
           snapshot.level,
           snapshot.mechanic,
@@ -520,9 +585,9 @@ async function _createExerciseEntryWithClient(
           snapshot.secondary_muscles,
           snapshot.instructions,
           snapshot.images,
-          entryData.distance || null, // Ensure distance is not undefined
-          entryData.avg_heart_rate || null, // Ensure avg_heart_rate is not undefined
-          exercisePresetEntryId, // New parameter
+          entryData.distance || null,
+          entryData.avg_heart_rate || null,
+          exercisePresetEntryId,
           entryData.sort_order || 0,
           entryData.steps || null,
         ]

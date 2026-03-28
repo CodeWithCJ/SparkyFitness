@@ -880,32 +880,6 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
     308: 'Indoor Cycling',
   };
 
-  // First, delete all existing Withings exercise entries for the date range to prevent duplicates.
-  // We iterate through the dates covered by the workouts and delete entries for each day,
-  // specifically targeting entries with 'Withings' as their source.
-  const processedDates = new Set();
-  for (const workout of workouts) {
-    if (!workout.startdate || isNaN(workout.startdate)) {
-      log(
-        'warn',
-        `Invalid startdate in Withings workout: ${JSON.stringify(workout)}`
-      );
-      continue;
-    }
-    const entryDate = new Date(workout.startdate * 1000)
-      .toISOString()
-      .split('T')[0];
-    if (!processedDates.has(entryDate)) {
-      await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(
-        userId,
-        entryDate,
-        entryDate,
-        'Withings'
-      );
-      processedDates.add(entryDate);
-    }
-  }
-
   for (const workout of workouts) {
     try {
       const workoutCategory = workout.category;
@@ -986,6 +960,11 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
         duration_minutes: durationMinutes,
         calories_burned: caloriesBurned,
         entry_date: entryDate,
+        start_time: new Date(workout.startdate * 1000),
+        source_id: String(
+          workout.id ??
+            `${workout.startdate}_${workout.enddate - workout.startdate}`
+        ),
         notes: `Logged from Withings workout: ${exercise.name}. Distance: ${workout.data.distance || 0}m, Steps: ${workout.data.steps || 0}. Intensity: ${workout.data.intensity || 0}/100.`,
         avg_heart_rate: workout.data.hr_average || null,
         sets: [

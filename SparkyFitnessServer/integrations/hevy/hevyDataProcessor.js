@@ -76,14 +76,18 @@ async function processHevyWorkouts(userId, createdByUserId, workouts) {
 async function processSingleWorkout(userId, createdByUserId, workout) {
   const startTime = new Date(workout.start_time);
   const endTime = new Date(workout.end_time);
-  const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+  const totalDurationMs = endTime - startTime;
+  const exerciseCount = workout.exercises.length || 1;
+  const perExerciseDurationMinutes = Math.round(
+    totalDurationMs / exerciseCount / (1000 * 60)
+  );
 
   log(
     'debug',
     `Processing Hevy workout: ${workout.title} (${startTime.toISOString()})`
   );
 
-  for (const hevyExercise of workout.exercises) {
+  for (const [exerciseIndex, hevyExercise] of workout.exercises.entries()) {
     // 1. Find or create exercise template
     let exercise = await exerciseRepository.findExerciseByNameAndUserId(
       hevyExercise.title,
@@ -106,12 +110,16 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
     const entryData = {
       exercise_id: exercise.id,
       entry_date: startTime.toISOString().split('T')[0],
-      duration_minutes: durationMinutes, // Note: Hevy provides total workout duration, not per-exercise
+      duration_minutes: perExerciseDurationMinutes,
       calories_burned: 0, // Hevy typically doesn't provide per-exercise calories
       notes:
         hevyExercise.notes ||
         workout.description ||
         `Synced from Hevy: ${workout.title}`,
+      start_time: startTime,
+      source_id: workout.id
+        ? `${workout.id}_${exerciseIndex}`
+        : `${startTime.getTime()}_${exerciseIndex}`,
       entry_source: 'Hevy',
       sets: hevyExercise.sets.map((set) => ({
         set_number: set.index + 1,
