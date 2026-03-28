@@ -13,7 +13,7 @@ services:
       PUID: 1000
       GUID: 1000
     volumes:
-      - ${DB_PATH:-./postgresql}:/var/lib/postgresql/data
+      - ${DB_PATH:-./postgresql}:/var/lib/postgresql
     networks:
       - sparkyfitness-network # Use the new named network
 
