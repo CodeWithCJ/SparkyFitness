@@ -986,6 +986,8 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
         duration_minutes: durationMinutes,
         calories_burned: caloriesBurned,
         entry_date: entryDate,
+        start_time: new Date(workout.startdate * 1000),
+        source_id: String(workout.id ?? workout.startdate),
         notes: `Logged from Withings workout: ${exercise.name}. Distance: ${workout.data.distance || 0}m, Steps: ${workout.data.steps || 0}. Intensity: ${workout.data.intensity || 0}/100.`,
         avg_heart_rate: workout.data.hr_average || null,
         sets: [
