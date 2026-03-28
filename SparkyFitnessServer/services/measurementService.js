@@ -1,6 +1,7 @@
 //console.log('DEBUG: Loading measurementService.js');
 const { log } = require('../config/logging'); // Import the logger utility
 const measurementRepository = require('../models/measurementRepository');
+const preferenceRepository = require('../models/preferenceRepository');
 
 /**
  * Default units for health metric types when not provided by client (e.g. HealthConnect sync).
@@ -1156,14 +1157,64 @@ async function upsertCheckInMeasurements(
   }
 }
 
+// Source quality rank used when no preference is set (or preference = 'auto').
+// Higher index = higher priority.
+const CHECK_IN_SOURCE_QUALITY_RANK = [
+  'manual',
+  'health_connect',
+  'healthkit',
+  'fitbit',
+  'polar',
+  'withings',
+  'garmin',
+];
+
+function findPreferredCheckInRow(rows, preference) {
+  if (preference && preference !== 'auto') {
+    const match = rows.find(
+      (r) => r.source && r.source.toLowerCase() === preference.toLowerCase()
+    );
+    if (match) return match;
+  }
+  // Fall back to quality-ranked first row (rows are already pre-sorted by the repository)
+  return rows[0];
+}
+
 async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
   try {
-    const measurement =
-      await measurementRepository.getCheckInMeasurementsByDate(
-        targetUserId,
-        date
-      );
-    return measurement || {};
+    const allRows = await measurementRepository.getAllCheckInMeasurementsByDate(
+      targetUserId,
+      date
+    );
+    if (!allRows || allRows.length === 0) return {};
+
+    // Load user source preferences; fall back silently to 'auto' if unavailable.
+    let activityPref = 'auto';
+    let bodyPref = 'auto';
+    try {
+      const prefs = await preferenceRepository.getUserPreferences(targetUserId);
+      activityPref = prefs?.activity_source_preference || 'auto';
+      bodyPref = prefs?.body_source_preference || 'auto';
+    } catch {
+      // Preferences unavailable — use automatic source selection
+    }
+
+    const activityRow = findPreferredCheckInRow(allRows, activityPref);
+    const bodyRow = findPreferredCheckInRow(allRows, bodyPref);
+
+    // Merge: activity fields (steps) come from activityRow,
+    // body fields (weight, body composition) come from bodyRow.
+    // This allows e.g. Garmin steps + Withings weight on the same day.
+    return {
+      ...activityRow,
+      weight: bodyRow?.weight ?? activityRow?.weight,
+      neck: bodyRow?.neck ?? activityRow?.neck,
+      waist: bodyRow?.waist ?? activityRow?.waist,
+      hips: bodyRow?.hips ?? activityRow?.hips,
+      height: bodyRow?.height ?? activityRow?.height,
+      body_fat_percentage:
+        bodyRow?.body_fat_percentage ?? activityRow?.body_fat_percentage,
+    };
   } catch (error) {
     log(
       'error',

@@ -32,6 +32,9 @@ async function updateUserPreferences(userId, preferenceData) {
         tdee_allow_negative_adjustment = COALESCE($25, tdee_allow_negative_adjustment),
         auto_scale_online_imports = COALESCE($26, auto_scale_online_imports),
         first_day_of_week = COALESCE($30, first_day_of_week),
+        sleep_source_preference = COALESCE($31, sleep_source_preference),
+        body_source_preference = COALESCE($32, body_source_preference),
+        activity_source_preference = COALESCE($33, activity_source_preference),
         default_barcode_provider_id = CASE WHEN $28 THEN $27 ELSE default_barcode_provider_id END,
         updated_at = now()
       WHERE user_id = $29
@@ -67,6 +70,9 @@ async function updateUserPreferences(userId, preferenceData) {
         'default_barcode_provider_id' in preferenceData,
         userId,
         preferenceData.first_day_of_week,
+        preferenceData.sleep_source_preference,
+        preferenceData.body_source_preference,
+        preferenceData.activity_source_preference,
       ]
     );
     return result.rows[0];
@@ -115,6 +121,7 @@ async function upsertUserPreferences(preferenceData) {
        auto_scale_open_food_facts_imports, exercise_calorie_percentage, activity_level,
        tdee_allow_negative_adjustment, auto_scale_online_imports, default_barcode_provider_id,
        first_day_of_week,
+       sleep_source_preference, body_source_preference, activity_source_preference,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -128,6 +135,7 @@ async function upsertUserPreferences(preferenceData) {
        COALESCE($27, true),
        $28,
        COALESCE($30, 0),
+       COALESCE($31, 'auto'), COALESCE($32, 'auto'), COALESCE($33, 'auto'),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -158,6 +166,9 @@ async function upsertUserPreferences(preferenceData) {
        tdee_allow_negative_adjustment = COALESCE(EXCLUDED.tdee_allow_negative_adjustment, user_preferences.tdee_allow_negative_adjustment),
        auto_scale_online_imports = COALESCE(EXCLUDED.auto_scale_online_imports, user_preferences.auto_scale_online_imports),
        first_day_of_week = COALESCE(EXCLUDED.first_day_of_week, user_preferences.first_day_of_week),
+       sleep_source_preference = COALESCE(EXCLUDED.sleep_source_preference, user_preferences.sleep_source_preference),
+       body_source_preference = COALESCE(EXCLUDED.body_source_preference, user_preferences.body_source_preference),
+       activity_source_preference = COALESCE(EXCLUDED.activity_source_preference, user_preferences.activity_source_preference),
        default_barcode_provider_id = CASE WHEN $29 THEN EXCLUDED.default_barcode_provider_id ELSE user_preferences.default_barcode_provider_id END,
        updated_at = now()
      RETURNING *`,
@@ -192,6 +203,9 @@ async function upsertUserPreferences(preferenceData) {
         preferenceData.default_barcode_provider_id,
         'default_barcode_provider_id' in preferenceData,
         preferenceData.first_day_of_week,
+        preferenceData.sleep_source_preference,
+        preferenceData.body_source_preference,
+        preferenceData.activity_source_preference,
       ]
     );
     return result.rows[0];

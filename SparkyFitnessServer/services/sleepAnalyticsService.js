@@ -66,7 +66,12 @@ function pickBestEntry(entries) {
   );
 }
 
-async function getSleepAnalytics(userId, startDate, endDate) {
+async function getSleepAnalytics(
+  userId,
+  startDate,
+  endDate,
+  preferredSource = 'auto'
+) {
   log(
     'info',
     `Fetching sleep analytics for user ${userId} from ${startDate} to ${endDate}`
@@ -110,7 +115,17 @@ async function getSleepAnalytics(userId, startDate, endDate) {
     const analyticsResult = [];
 
     for (const [entryDate, entries] of Object.entries(entriesByDate)) {
-      const primary = pickBestEntry(entries);
+      // If the user has set a preferred source, try to use it first; fall back to scoring.
+      let primary;
+      if (preferredSource && preferredSource !== 'auto') {
+        const preferred = entries.find(
+          (e) =>
+            e.source && e.source.toLowerCase() === preferredSource.toLowerCase()
+        );
+        primary = preferred || pickBestEntry(entries);
+      } else {
+        primary = pickBestEntry(entries);
+      }
 
       // Compute stage aggregates from the primary entry's stage events
       const stageDurations = {
