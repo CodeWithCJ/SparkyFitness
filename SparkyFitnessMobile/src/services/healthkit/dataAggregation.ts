@@ -60,7 +60,7 @@ const mapHealthKitSleepStage = (hkStage: string | number): SleepStageType => {
 
 const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSession => {
   const totalDuration = (session.wake_time.getTime() - session.bedtime.getTime()) / 1000;
-  return {
+  const result: AggregatedSleepSession = {
     type: 'SleepSession',
     source: 'HealthKit',
     timestamp: session.bedtime.toISOString(),
@@ -75,6 +75,10 @@ const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSessi
     awake_sleep_seconds: session.awake_sleep_seconds,
     stage_events: session.stage_events,
   };
+  if (session.record_timezone) {
+    result.record_timezone = session.record_timezone;
+  }
+  return result;
 };
 
 export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSleepSession[] => {
@@ -95,6 +99,7 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
     const duration = (recordEndTime.getTime() - recordStartTime.getTime()) / 1000;
 
     const stageType = mapHealthKitSleepStage(record.value);
+    const recordTz = record.metadata?.HKTimeZone;
 
     // If no current session or a significant gap, start a new session
     if (!currentSession || (recordStartTime.getTime() - currentSession.wake_time.getTime() > SESSION_GAP_THRESHOLD_MS)) {
@@ -112,11 +117,16 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
         light_sleep_seconds: 0,
         rem_sleep_seconds: 0,
         awake_sleep_seconds: 0,
+        record_timezone: recordTz,
       };
     } else {
       // Extend current session's wake_time if this record extends it
       if (recordEndTime > currentSession.wake_time) {
         currentSession.wake_time = recordEndTime;
+        // Track timezone from the sample that defines wake time
+        if (recordTz) {
+          currentSession.record_timezone = recordTz;
+        }
       }
       // Extend current session's bedtime if this record starts earlier
       if (recordStartTime < currentSession.bedtime) {

@@ -5,6 +5,7 @@ import {
   TransformedRecord,
   TransformedExerciseSession,
   AggregatedSleepSession,
+  RecordTimezoneMetadata,
   HEALTHKIT_SOURCE,
 } from '../../types/healthRecords';
 import { toLocalDateString } from './dataAggregation';
@@ -66,6 +67,24 @@ const extractPercentAsDecimal = (rec: Record<string, unknown>): number | null =>
 
 const extractPercentValue = (rec: Record<string, unknown>): number | null =>
   extractNestedValue(rec, 'percentage', 'inPercent') ?? extractPercentAsDecimal(rec);
+
+// ============================================================================
+// Timezone Metadata Extraction
+// ============================================================================
+
+/**
+ * Extract IANA timezone from HealthKit record metadata.
+ * HealthKit records may carry metadata.HKTimeZone as an IANA timezone string.
+ * Only returns metadata when a valid timezone is found.
+ */
+export const extractTimezoneMetadata = (rec: Record<string, unknown>): RecordTimezoneMetadata => {
+  const metadata = rec.metadata as Record<string, unknown> | undefined;
+  const tz = metadata?.HKTimeZone as string | undefined;
+  if (tz) {
+    return { record_timezone: tz };
+  }
+  return {};
+};
 
 // ============================================================================
 // Value Transformers - extract value and date from raw records
@@ -292,7 +311,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
   SleepSession: (rec, _record, _metricConfig, output) => {
     const sleepRec = rec as unknown as AggregatedSleepSession;
-    output.push({
+    const session: AggregatedSleepSession = {
       type: 'SleepSession',
       source: sleepRec.source || 'HealthKit',
       timestamp: sleepRec.timestamp,
@@ -306,7 +325,14 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       rem_sleep_seconds: sleepRec.rem_sleep_seconds,
       awake_sleep_seconds: sleepRec.awake_sleep_seconds,
       stage_events: sleepRec.stage_events,
-    });
+    };
+    if (sleepRec.record_timezone) {
+      session.record_timezone = sleepRec.record_timezone;
+    }
+    if (sleepRec.record_utc_offset_minutes != null) {
+      session.record_utc_offset_minutes = sleepRec.record_utc_offset_minutes;
+    }
+    output.push(session);
   },
 
   Workout: (rec, record, _metricConfig, output) => {
@@ -326,6 +352,12 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       durationInSeconds = duration;
     }
 
+    // Prefer record-level timezone; fall back to device timezone for HealthKit workouts
+    const tzMeta = extractTimezoneMetadata(rec);
+    const timezone: RecordTimezoneMetadata = Object.keys(tzMeta).length > 0
+      ? tzMeta
+      : { record_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+
     const exerciseSession: TransformedExerciseSession = {
       type: 'ExerciseSession',
       source: HEALTHKIT_SOURCE,
@@ -343,6 +375,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       raw_data: record,
       sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }],
       source_id: rec.uuid as string | undefined,
+      ...timezone,
     };
     output.push(exerciseSession);
   },
@@ -407,6 +440,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             date: result.date,
             unit,
             source: HEALTHKIT_SOURCE,
+            ...extractTimezoneMetadata(rec),
           };
           transformedData.push(transformedRecord);
           successCount++;

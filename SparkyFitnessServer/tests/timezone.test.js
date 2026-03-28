@@ -10,6 +10,8 @@ const {
   instantToDay,
   userHourMinute,
   instantHourMinute,
+  instantToDayWithOffset,
+  instantHourMinuteWithOffset,
   dayToUtcRange,
   dayRangeToUtcRange,
 } = require('@workspace/shared');
@@ -338,5 +340,98 @@ describe('dayRangeToUtcRange', () => {
     );
     expect(start.toISOString()).toBe('2024-06-15T00:00:00.000Z');
     expect(end.toISOString()).toBe('2024-06-16T00:00:00.000Z');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// instantToDayWithOffset
+// ---------------------------------------------------------------------------
+describe('instantToDayWithOffset', () => {
+  it('returns the correct day at UTC (offset 0)', () => {
+    const ts = new Date('2024-06-15T00:00:00Z');
+    expect(instantToDayWithOffset(ts, 0)).toBe('2024-06-15');
+  });
+
+  it('shifts to the next day for positive offset', () => {
+    // 2024-06-14 23:30 UTC with +9h offset → June 15 08:30 local
+    const ts = new Date('2024-06-14T23:30:00Z');
+    expect(instantToDayWithOffset(ts, 540)).toBe('2024-06-15');
+  });
+
+  it('shifts to the previous day for negative offset', () => {
+    // 2024-06-15 00:30 UTC with -7h offset → June 14 17:30 local
+    const ts = new Date('2024-06-15T00:30:00Z');
+    expect(instantToDayWithOffset(ts, -420)).toBe('2024-06-14');
+  });
+
+  it('handles half-hour offset (UTC+5:30)', () => {
+    // 2024-06-14 19:00 UTC with +5:30 → June 15 00:30 local
+    const ts = new Date('2024-06-14T19:00:00Z');
+    expect(instantToDayWithOffset(ts, 330)).toBe('2024-06-15');
+  });
+
+  it('handles year boundaries', () => {
+    // 2024-12-31 23:30 UTC with +9h → Jan 1 2025
+    const ts = new Date('2024-12-31T23:30:00Z');
+    expect(instantToDayWithOffset(ts, 540)).toBe('2025-01-01');
+  });
+
+  it('accepts string and number timestamps', () => {
+    const isoStr = '2024-06-15T12:00:00Z';
+    const ms = new Date(isoStr).getTime();
+    expect(instantToDayWithOffset(isoStr, 0)).toBe('2024-06-15');
+    expect(instantToDayWithOffset(ms, 0)).toBe('2024-06-15');
+  });
+
+  it('agrees with instantToDay for known IANA/offset pairs', () => {
+    // Tokyo is always UTC+9 (no DST) = +540 minutes
+    const ts = new Date('2024-06-14T23:30:00Z');
+    expect(instantToDayWithOffset(ts, 540)).toBe(
+      instantToDay(ts, 'Asia/Tokyo')
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// instantHourMinuteWithOffset
+// ---------------------------------------------------------------------------
+describe('instantHourMinuteWithOffset', () => {
+  it('returns correct hour/minute at UTC (offset 0)', () => {
+    const ts = new Date('2024-06-15T15:45:00Z');
+    const { hour, minute } = instantHourMinuteWithOffset(ts, 0);
+    expect(hour).toBe(15);
+    expect(minute).toBe(45);
+  });
+
+  it('applies positive offset', () => {
+    // 15:45 UTC with +9h → 00:45 next day
+    const ts = new Date('2024-06-15T15:45:00Z');
+    const { hour, minute } = instantHourMinuteWithOffset(ts, 540);
+    expect(hour).toBe(0);
+    expect(minute).toBe(45);
+  });
+
+  it('applies negative offset', () => {
+    // 15:45 UTC with -4h → 11:45
+    const ts = new Date('2024-06-15T15:45:00Z');
+    const { hour, minute } = instantHourMinuteWithOffset(ts, -240);
+    expect(hour).toBe(11);
+    expect(minute).toBe(45);
+  });
+
+  it('handles half-hour offset (UTC+5:30)', () => {
+    // 15:45 UTC with +5:30 → 21:15
+    const ts = new Date('2024-06-15T15:45:00Z');
+    const { hour, minute } = instantHourMinuteWithOffset(ts, 330);
+    expect(hour).toBe(21);
+    expect(minute).toBe(15);
+  });
+
+  it('agrees with instantHourMinute for known IANA/offset pairs', () => {
+    // Tokyo is always UTC+9
+    const ts = new Date('2024-06-15T15:45:00Z');
+    const fromOffset = instantHourMinuteWithOffset(ts, 540);
+    const fromIana = instantHourMinute(ts, 'Asia/Tokyo');
+    expect(fromOffset).toEqual(fromIana);
   });
 });

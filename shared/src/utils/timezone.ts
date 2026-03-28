@@ -161,6 +161,28 @@ export function dayRangeToUtcRange(
 }
 
 // ---------------------------------------------------------------------------
+// Fixed-offset operations (for Health Connect UTC offsets)
+// ---------------------------------------------------------------------------
+
+/** Converts an instant to a YYYY-MM-DD string using a fixed UTC offset in minutes. */
+export function instantToDayWithOffset(ts: Date | string | number, offsetMinutes: number): string {
+  const date = ts instanceof Date ? ts : new Date(ts);
+  const localMs = date.getTime() + offsetMinutes * 60_000;
+  return formatUtcDate(new Date(localMs));
+}
+
+/** Returns the hour and minute of an instant using a fixed UTC offset in minutes. */
+export function instantHourMinuteWithOffset(
+  ts: Date | string | number,
+  offsetMinutes: number,
+): { hour: number; minute: number } {
+  const date = ts instanceof Date ? ts : new Date(ts);
+  const localMs = date.getTime() + offsetMinutes * 60_000;
+  const local = new Date(localMs);
+  return { hour: local.getUTCHours(), minute: local.getUTCMinutes() };
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 

@@ -270,6 +270,77 @@ describe('aggregateSleepSessions', () => {
     const expectedDate = toLocalDateString(wakeTime);
     expect(result[0].entry_date).toBe(expectedDate);
   });
+
+  test('preserves record_timezone from single sleep record', () => {
+    const records: HKSleepRecord[] = [
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T06:00:00Z',
+        value: 3,
+        metadata: { HKTimeZone: 'America/New_York' },
+      },
+    ];
+    const result = aggregateSleepSessions(records);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].record_timezone).toBe('America/New_York');
+  });
+
+  test('uses timezone from the sample that set wake_time when merging', () => {
+    // First sample: bedtime in Tokyo
+    // Second sample: extends wake time, recorded in New York
+    const records: HKSleepRecord[] = [
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T04:00:00Z',
+        value: 4, // deep
+        metadata: { HKTimeZone: 'Asia/Tokyo' },
+      },
+      {
+        startTime: '2024-01-16T04:00:00Z',
+        endTime: '2024-01-16T06:00:00Z', // extends wake time
+        value: 3, // light
+        metadata: { HKTimeZone: 'America/New_York' },
+      },
+    ];
+    const result = aggregateSleepSessions(records);
+
+    expect(result).toHaveLength(1);
+    // Should use timezone from the record that extended wake_time
+    expect(result[0].record_timezone).toBe('America/New_York');
+  });
+
+  test('omits record_timezone when no metadata on any sleep record', () => {
+    const records: HKSleepRecord[] = [
+      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T06:00:00Z', value: 3 },
+    ];
+    const result = aggregateSleepSessions(records);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].record_timezone).toBeUndefined();
+  });
+
+  test('keeps initial timezone when later records do not extend wake_time', () => {
+    // First sample sets both bedtime and wake_time with Tokyo timezone
+    // Second sample is within existing range, no timezone
+    const records: HKSleepRecord[] = [
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T06:00:00Z',
+        value: 4,
+        metadata: { HKTimeZone: 'Asia/Tokyo' },
+      },
+      {
+        startTime: '2024-01-16T02:00:00Z',
+        endTime: '2024-01-16T04:00:00Z', // does NOT extend wake time
+        value: 5, // rem
+      },
+    ];
+    const result = aggregateSleepSessions(records);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].record_timezone).toBe('Asia/Tokyo');
+  });
 });
 
 describe('aggregateByDay', () => {

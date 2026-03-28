@@ -2,7 +2,13 @@
 const { log } = require('../config/logging'); // Import the logger utility
 const measurementRepository = require('../models/measurementRepository');
 const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { instantToDay, instantHourMinute } = require('@workspace/shared');
+const {
+  instantToDay,
+  instantHourMinute,
+  instantToDayWithOffset,
+  instantHourMinuteWithOffset,
+  isValidTimeZone,
+} = require('@workspace/shared');
 const { userAge } = require('../utils/dateHelpers');
 
 /**
@@ -153,6 +159,93 @@ const exerciseEntryDb = require('../models/exerciseEntry');
 const waterContainerRepository = require('../models/waterContainerRepository'); // Import waterContainerRepository
 const activityDetailsRepository = require('../models/activityDetailsRepository'); // Import activityDetailsRepository
 
+/**
+ * Resolve the entry date, timestamp, and hour for a health data record using
+ * the per-record timezone fallback chain:
+ *   1. record_timezone (IANA)
+ *   2. record_utc_offset_minutes (fixed offset)
+ *   3. fallbackTimezone (account timezone)
+ *
+ * Basis instant varies by record type:
+ *   - SleepSession: wake_time (entry date = wake day)
+ *   - ExerciseSession/Workout: timestamp or date (entry date = start day)
+ *   - everything else: date / entry_date / timestamp
+ */
+function resolveHealthEntryDate(entry, fallbackTimezone) {
+  // 1. Determine the basis instant
+  let basisField;
+  if (entry.type === 'SleepSession') {
+    basisField =
+      entry.wake_time || entry.date || entry.entry_date || entry.timestamp;
+  } else if (entry.type === 'ExerciseSession' || entry.type === 'Workout') {
+    // Prefer timestamp (actual instant) over pre-bucketed date strings
+    // so timezone metadata can derive the correct day from the real instant
+    basisField = entry.timestamp || entry.date || entry.entry_date;
+  } else {
+    basisField = entry.date || entry.entry_date || entry.timestamp;
+  }
+
+  const basisDate = new Date(basisField);
+  if (isNaN(basisDate.getTime())) {
+    return null;
+  }
+
+  // 2. Determine the timestamp for entryTimestamp (prefer explicit timestamp)
+  let entryTimestamp;
+  if (entry.timestamp) {
+    const tsObj = new Date(entry.timestamp);
+    entryTimestamp = isNaN(tsObj.getTime())
+      ? basisDate.toISOString()
+      : tsObj.toISOString();
+  } else {
+    entryTimestamp = basisDate.toISOString();
+  }
+
+  // The instant used for hour derivation
+  const hourBasis = entry.timestamp ? new Date(entry.timestamp) : null;
+  const validHourBasis =
+    hourBasis && !isNaN(hourBasis.getTime()) ? hourBasis : null;
+
+  // 3. Resolve timezone (fallback chain)
+  if (entry.record_timezone && isValidTimeZone(entry.record_timezone)) {
+    return {
+      parsedDate: instantToDay(basisDate, entry.record_timezone),
+      entryTimestamp,
+      entryHour: validHourBasis
+        ? instantHourMinute(validHourBasis, entry.record_timezone).hour
+        : 0,
+    };
+  }
+
+  if (
+    entry.record_utc_offset_minutes != null &&
+    typeof entry.record_utc_offset_minutes === 'number'
+  ) {
+    return {
+      parsedDate: instantToDayWithOffset(
+        basisDate,
+        entry.record_utc_offset_minutes
+      ),
+      entryTimestamp,
+      entryHour: validHourBasis
+        ? instantHourMinuteWithOffset(
+            validHourBasis,
+            entry.record_utc_offset_minutes
+          ).hour
+        : 0,
+    };
+  }
+
+  // Fallback to account timezone
+  return {
+    parsedDate: instantToDay(basisDate, fallbackTimezone),
+    entryTimestamp,
+    entryHour: validHourBasis
+      ? instantHourMinute(validHourBasis, fallbackTimezone).hour
+      : 0,
+  };
+}
+
 async function processHealthData(healthDataArray, userId, actingUserId) {
   const tz = await loadUserTimezone(userId);
   const processedResults = [];
@@ -172,18 +265,12 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
 
     for (const entry of entriesToClean) {
       const source = entry.source || 'manual';
-      // Replicate date parsing logic from main loop to ensure consistency
-      const dateToParse = entry.date || entry.entry_date || entry.timestamp;
-      if (dateToParse) {
-        const dateObj = new Date(dateToParse);
-        if (!isNaN(dateObj.getTime())) {
-          const parsedDate = instantToDay(dateObj, tz);
-          if (!datesBySource[source]) {
-            datesBySource[source] = {};
-          }
-          // use object keys for unique dates set
-          datesBySource[source][parsedDate] = true;
+      const resolved = resolveHealthEntryDate(entry, tz);
+      if (resolved) {
+        if (!datesBySource[source]) {
+          datesBySource[source] = {};
         }
+        datesBySource[source][resolved.parsedDate] = true;
       }
     }
 
@@ -264,44 +351,22 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
     let entryTimestamp = null;
     let entryHour = null;
 
-    try {
-      // Use 'date', 'entry_date', or 'timestamp' to determine the date of the entry
+    const resolved = resolveHealthEntryDate(dataEntry, tz);
+    if (!resolved) {
       const dateToParse = date || dataEntry.entry_date || timestamp;
-      const dateObj = new Date(dateToParse);
-      if (isNaN(dateObj.getTime())) {
-        throw new Error(
-          `Invalid date received from shortcut: '${dateToParse}'.`
-        );
-      }
-      parsedDate = instantToDay(dateObj, tz);
-
-      // If timestamp is not provided, default to the beginning of the day from the 'date' field.
-      if (timestamp) {
-        const timestampObj = new Date(timestamp);
-        if (isNaN(timestampObj.getTime())) {
-          log(
-            'warn',
-            `Invalid timestamp received for entry: ${JSON.stringify(dataEntry)}. Defaulting to start of day from parsed date.`
-          );
-          entryTimestamp = dateObj.toISOString(); // Use start of day from parsed 'date'
-          entryHour = 0; // Default to hour 0
-        } else {
-          entryTimestamp = timestampObj.toISOString();
-          entryHour = instantHourMinute(timestampObj, tz).hour;
-        }
-      } else {
-        // If no timestamp is provided, use the start of the day from the 'date' field.
-        entryTimestamp = dateObj.toISOString();
-        entryHour = 0; // Default to hour 0
-      }
-    } catch (e) {
-      log('error', 'Date/Timestamp parsing error:', e);
+      log(
+        'error',
+        `Date/Timestamp parsing error: Invalid date '${dateToParse}'`
+      );
       errors.push({
-        error: `Invalid date/timestamp format for entry: ${JSON.stringify(dataEntry)}. Error: ${e.message}`,
+        error: `Invalid date/timestamp format for entry: ${JSON.stringify(dataEntry)}.`,
         entry: dataEntry,
       });
       continue;
     }
+    parsedDate = resolved.parsedDate;
+    entryTimestamp = resolved.entryTimestamp;
+    entryHour = resolved.entryHour;
 
     try {
       let result;
@@ -1894,6 +1959,7 @@ module.exports = {
     sleepRepository.getSleepEntriesByUserIdAndDateRange,
   deleteSleepEntry: sleepRepository.deleteSleepEntry, // Export the new delete function
   getOrCreateCustomCategory, // Export getOrCreateCustomCategory
+  resolveHealthEntryDate,
 };
 
 async function upsertCustomMeasurementEntry(

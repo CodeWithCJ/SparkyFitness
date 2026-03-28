@@ -8,6 +8,10 @@ export interface HealthDataPayloadItem {
   type: string;
   date: string;  // YYYY-MM-DD format
   value: number;
+  /** IANA timezone when available (best source for HealthKit) */
+  record_timezone?: string | null;
+  /** Fixed UTC offset in minutes (best fallback for Health Connect) */
+  record_utc_offset_minutes?: number | null;
 }
 
 export type HealthDataPayload = HealthDataPayloadItem[];

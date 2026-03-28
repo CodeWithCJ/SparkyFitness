@@ -1,6 +1,6 @@
-import { transformHealthRecords } from '../../../src/services/healthkit/dataTransformation';
+import { transformHealthRecords, extractTimezoneMetadata } from '../../../src/services/healthkit/dataTransformation';
 
-import type { TransformOutput, TransformedExerciseSession, AggregatedSleepSession } from '../../../src/types/healthRecords';
+import type { TransformOutput, TransformedRecord, TransformedExerciseSession, AggregatedSleepSession } from '../../../src/types/healthRecords';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -471,5 +471,204 @@ describe('transformHealthRecords', () => {
       expect(result).toHaveLength(1);
       expect((result[0] as TransformOutput & { date: string }).date).toBe('2024-01-16');
     });
+  });
+
+  describe('timezone metadata', () => {
+    test('value transformer includes record_timezone when metadata.HKTimeZone present', () => {
+      const records = [
+        {
+          time: '2024-01-15T08:00:00Z',
+          weight: { inKilograms: 75.5 },
+          metadata: { HKTimeZone: 'America/New_York' },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_timezone).toBe('America/New_York');
+      expect(result[0].record_utc_offset_minutes).toBeUndefined();
+    });
+
+    test('value transformer omits timezone metadata when metadata absent', () => {
+      const records = [
+        { time: '2024-01-15T08:00:00Z', weight: { inKilograms: 75.5 } },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_timezone).toBeUndefined();
+      expect(result[0].record_utc_offset_minutes).toBeUndefined();
+    });
+
+    test('value transformer omits timezone when metadata exists but HKTimeZone absent', () => {
+      const records = [
+        {
+          time: '2024-01-15T08:00:00Z',
+          weight: { inKilograms: 75.5 },
+          metadata: { someOtherKey: 'value' },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_timezone).toBeUndefined();
+    });
+
+    test('pre-aggregated records do not include timezone metadata', () => {
+      const records = [
+        { date: '2024-01-15', value: 5000, type: 'step', metadata: { HKTimeZone: 'Asia/Tokyo' } },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Steps', unit: 'count', type: 'step' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_timezone).toBeUndefined();
+    });
+
+    test('Workout includes record_timezone from metadata.HKTimeZone', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          activityType: 37,
+          duration: 3600,
+          totalEnergyBurned: 500,
+          totalDistance: 5000,
+          metadata: { HKTimeZone: 'Asia/Tokyo' },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Workout', unit: '', type: 'workout' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_timezone).toBe('Asia/Tokyo');
+    });
+
+    test('Workout falls back to device timezone when metadata.HKTimeZone absent', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          activityType: 37,
+          duration: 3600,
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Workout', unit: '', type: 'workout' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      // Should fall back to device timezone (an IANA string)
+      expect(result[0].record_timezone).toBeDefined();
+      expect(typeof result[0].record_timezone).toBe('string');
+    });
+
+    test('ExerciseSession includes record_timezone (uses same transformer as Workout)', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          activityType: 37,
+          duration: 3600,
+          metadata: { HKTimeZone: 'America/Chicago' },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_timezone).toBe('America/Chicago');
+    });
+
+    test('SleepSession preserves record_timezone from aggregated input', () => {
+      const records = [
+        {
+          type: 'SleepSession',
+          source: 'HealthKit',
+          timestamp: '2024-01-15T22:00:00Z',
+          entry_date: '2024-01-16',
+          bedtime: '2024-01-15T22:00:00Z',
+          wake_time: '2024-01-16T06:00:00Z',
+          duration_in_seconds: 28800,
+          time_asleep_in_seconds: 27000,
+          deep_sleep_seconds: 7200,
+          light_sleep_seconds: 14400,
+          rem_sleep_seconds: 5400,
+          awake_sleep_seconds: 1800,
+          stage_events: [],
+          record_timezone: 'America/New_York',
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_timezone).toBe('America/New_York');
+    });
+
+    test('SleepSession preserves record_utc_offset_minutes from aggregated input', () => {
+      const records = [
+        {
+          type: 'SleepSession',
+          source: 'HealthKit',
+          timestamp: '2024-01-15T22:00:00Z',
+          entry_date: '2024-01-16',
+          bedtime: '2024-01-15T22:00:00Z',
+          wake_time: '2024-01-16T06:00:00Z',
+          duration_in_seconds: 28800,
+          time_asleep_in_seconds: 27000,
+          deep_sleep_seconds: 7200,
+          light_sleep_seconds: 14400,
+          rem_sleep_seconds: 5400,
+          awake_sleep_seconds: 1800,
+          stage_events: [],
+          record_utc_offset_minutes: -300,
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_utc_offset_minutes).toBe(-300);
+    });
+
+    test('SleepSession omits timezone when not present on aggregated input', () => {
+      const records = [
+        {
+          type: 'SleepSession',
+          source: 'HealthKit',
+          timestamp: '2024-01-15T22:00:00Z',
+          entry_date: '2024-01-16',
+          bedtime: '2024-01-15T22:00:00Z',
+          wake_time: '2024-01-16T06:00:00Z',
+          duration_in_seconds: 28800,
+          time_asleep_in_seconds: 27000,
+          deep_sleep_seconds: 7200,
+          light_sleep_seconds: 14400,
+          rem_sleep_seconds: 5400,
+          awake_sleep_seconds: 1800,
+          stage_events: [],
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_timezone).toBeUndefined();
+      expect(result[0].record_utc_offset_minutes).toBeUndefined();
+    });
+  });
+});
+
+describe('extractTimezoneMetadata', () => {
+  test('extracts IANA timezone from metadata.HKTimeZone', () => {
+    const rec = { metadata: { HKTimeZone: 'America/Chicago' } };
+    expect(extractTimezoneMetadata(rec)).toEqual({ record_timezone: 'America/Chicago' });
+  });
+
+  test('returns empty object when no metadata', () => {
+    expect(extractTimezoneMetadata({})).toEqual({});
+  });
+
+  test('returns empty object when metadata has no HKTimeZone', () => {
+    const rec = { metadata: { otherKey: 'value' } };
+    expect(extractTimezoneMetadata(rec)).toEqual({});
+  });
+
+  test('returns empty object when metadata is null', () => {
+    const rec = { metadata: null };
+    expect(extractTimezoneMetadata(rec as unknown as Record<string, unknown>)).toEqual({});
   });
 });

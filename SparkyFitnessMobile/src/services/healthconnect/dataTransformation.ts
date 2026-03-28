@@ -5,6 +5,7 @@ import {
   TransformedRecord,
   TransformedExerciseSession,
   AggregatedSleepSession,
+  RecordTimezoneMetadata,
   HEALTH_CONNECT_SOURCE,
 } from '../../types/healthRecords';
 import { toLocalDateString } from '../../utils/dateUtils';
@@ -73,6 +74,36 @@ const extractDate = (rec: Record<string, unknown>, ...fields: string[]): string 
     if (date) return date;
   }
   return null;
+};
+
+// ============================================================================
+// Timezone Metadata Extraction
+// ============================================================================
+
+/**
+ * Extract UTC offset from Health Connect zone offset fields.
+ * Most Health Connect records carry startZoneOffset/endZoneOffset as { totalSeconds: number }.
+ * Defaults to startZoneOffset; direct transformers (e.g., SleepSession) can override
+ * to use endZoneOffset for wake-based day derivation.
+ */
+export const extractTimezoneMetadata = (
+  rec: Record<string, unknown>,
+  preferEnd = false,
+): RecordTimezoneMetadata => {
+  const preferred = preferEnd ? 'endZoneOffset' : 'startZoneOffset';
+  const fallback = preferEnd ? 'startZoneOffset' : 'endZoneOffset';
+
+  const offset = rec[preferred] as { totalSeconds?: number } | undefined;
+  if (offset?.totalSeconds != null) {
+    return { record_utc_offset_minutes: Math.round(offset.totalSeconds / 60) };
+  }
+
+  const fallbackOffset = rec[fallback] as { totalSeconds?: number } | undefined;
+  if (fallbackOffset?.totalSeconds != null) {
+    return { record_utc_offset_minutes: Math.round(fallbackOffset.totalSeconds / 60) };
+  }
+
+  return {};
 };
 
 // ============================================================================
@@ -501,7 +532,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       deep_sleep_seconds: 0,
       light_sleep_seconds: durationInSeconds,
       rem_sleep_seconds: 0,
-      awake_sleep_seconds: 0
+      awake_sleep_seconds: 0,
+      ...extractTimezoneMetadata(rec, true),
     };
     output.push(sleepSession);
   },
@@ -556,6 +588,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       raw_data: record,
       sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }],
       source_id: metadata?.id,
+      ...extractTimezoneMetadata(rec),
     };
     output.push(exerciseSession);
   },
@@ -748,6 +781,7 @@ export const transformHealthRecords = (records: unknown[], metricConfig: MetricC
             date: result.date,
             unit,
             source: HEALTH_CONNECT_SOURCE,
+            ...extractTimezoneMetadata(rec),
           };
           transformedData.push(transformedRecord);
           successCount++;
