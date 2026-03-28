@@ -27,6 +27,7 @@ export interface DailySummaryRawData {
   foodEntries: FoodEntry[];
   exerciseEntries: ExerciseSessionResponse[];
   waterIntake: WaterIntake;
+  stepCalories: number;
 }
 
 interface UseDailySummaryOptions {
@@ -44,10 +45,11 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         foodEntries: data.foodEntries,
         exerciseEntries: data.exerciseSessions,
         waterIntake: { water_ml: data.waterIntake },
+        stepCalories: data.stepCalories ?? 0,
       };
     },
     select: (raw): DailySummary => {
-      const { goals, foodEntries, exerciseEntries, waterIntake } = raw;
+      const { goals, foodEntries, exerciseEntries, waterIntake, stepCalories } = raw;
 
       const calorieGoal = goals.calories || 0;
       const caloriesConsumed = calculateCaloriesConsumed(foodEntries);
@@ -65,6 +67,7 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         caloriesBurned,
         activeCalories,
         otherExerciseCalories,
+        stepCalories,
         exerciseMinutes,
         exerciseMinutesGoal: goals.target_exercise_duration_minutes || 0,
         exerciseCaloriesGoal: goals.target_exercise_calories_burned || 0,

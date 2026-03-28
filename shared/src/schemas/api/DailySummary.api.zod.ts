@@ -8,6 +8,7 @@ export const dailySummaryResponseSchema = z.object({
   foodEntries: z.array(foodEntryResponseSchema),
   exerciseSessions: z.array(exerciseSessionResponseSchema),
   waterIntake: z.number(),
+  stepCalories: z.number(),
 });
 
 export type DailySummaryResponse = z.infer<typeof dailySummaryResponseSchema>;

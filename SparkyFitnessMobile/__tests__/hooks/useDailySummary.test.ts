@@ -52,6 +52,7 @@ const makeSummaryResponse = (overrides: Record<string, unknown> = {}) => ({
   foodEntries: (overrides.foodEntries ?? []) as any[],
   exerciseSessions: (overrides.exerciseSessions ?? []) as any[],
   waterIntake: (overrides.waterIntake ?? 0) as number,
+  stepCalories: (overrides.stepCalories ?? 0) as number,
 });
 
 describe('useDailySummary', () => {
@@ -146,6 +147,20 @@ describe('useDailySummary', () => {
 
       expect(result.current.summary?.waterConsumed).toBe(750);
       expect(result.current.summary?.waterGoal).toBe(2500);
+    });
+
+    test('includes server-computed stepCalories from daily summary response', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({ stepCalories: 105 }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.stepCalories).toBe(105);
     });
 
     test('calculates net and remaining calories correctly', async () => {

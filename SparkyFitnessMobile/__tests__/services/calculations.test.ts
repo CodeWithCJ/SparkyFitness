@@ -2,7 +2,6 @@ import {
   calculateAge,
   calculateBmr,
   calculateBodyFatNavy,
-  stepsToCalories,
   calculateEffectiveBurned,
   calculateCalorieBalance,
 } from '../../src/services/calculations';
@@ -128,20 +127,12 @@ describe('calculations', () => {
     });
   });
 
-  describe('stepsToCalories', () => {
-    it('converts steps to calories at 0.04 kcal per step', () => {
-      expect(stepsToCalories(10000)).toBe(400);
-      expect(stepsToCalories(5000)).toBe(200);
-      expect(stepsToCalories(0)).toBe(0);
-    });
-  });
-
   describe('calculateEffectiveBurned', () => {
-    it('prioritizes exercise calories over active calories and steps', () => {
+    it('prioritizes exercise calories over active calories and step calories', () => {
       const burned = calculateEffectiveBurned({
         activeCalories: 300,
         otherExerciseCalories: 150,
-        steps: 10000,
+        stepCalories: 203,
       });
       expect(burned).toBe(150);
     });
@@ -150,18 +141,18 @@ describe('calculations', () => {
       const burned = calculateEffectiveBurned({
         activeCalories: 300,
         otherExerciseCalories: 0,
-        steps: 10000,
+        stepCalories: 203,
       });
       expect(burned).toBe(300);
     });
 
-    it('falls back to step-derived calories when no exercise or active calories', () => {
+    it('falls back to server-computed step calories when no exercise or active calories', () => {
       const burned = calculateEffectiveBurned({
         activeCalories: 0,
         otherExerciseCalories: 0,
-        steps: 10000,
+        stepCalories: 203,
       });
-      expect(burned).toBe(400); // 10000 * 0.04
+      expect(burned).toBe(203);
     });
   });
 

@@ -19,6 +19,7 @@ export interface DailySummary {
   carbs: MacroSummary;
   fat: MacroSummary;
   fiber: MacroSummary;
+  stepCalories: number;        // Server-computed step calories using stride formula
   exerciseMinutes: number;
   exerciseMinutesGoal: number;
   exerciseCaloriesGoal: number;

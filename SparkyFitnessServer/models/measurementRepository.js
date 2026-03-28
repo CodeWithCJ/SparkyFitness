@@ -1,6 +1,7 @@
 //console.log('DEBUG: Loading measurementRepository.js');
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
+const { CALORIE_CALCULATION_CONSTANTS } = require('@workspace/shared');
 
 // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
 const ALLOWED_CHECK_IN_COLUMNS = [
@@ -764,6 +765,70 @@ async function deleteCustomMeasurement(id, userId) {
   }
 }
 
+/**
+ * Compute step calories for a user on a given date.
+ * Background steps = total check-in steps minus steps already logged in exercise sessions.
+ * @param {string} userId
+ * @param {string} date - YYYY-MM-DD
+ * @param {Array} sessions - exercise sessions for the date (ExerciseSessionResponse[])
+ * @returns {Promise<number>} step calories burned
+ */
+async function getStepCaloriesForDate(userId, date, sessions) {
+  const client = await getClient(userId);
+  try {
+    const [checkInResult, weightResult, heightResult] = await Promise.all([
+      client.query(
+        'SELECT steps FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2',
+        [userId, date]
+      ),
+      client.query(
+        `SELECT weight FROM check_in_measurements
+         WHERE user_id = $1 AND weight IS NOT NULL
+         ORDER BY entry_date DESC, updated_at DESC LIMIT 1`,
+        [userId]
+      ),
+      client.query(
+        `SELECT height FROM check_in_measurements
+         WHERE user_id = $1 AND height IS NOT NULL
+         ORDER BY entry_date DESC, updated_at DESC LIMIT 1`,
+        [userId]
+      ),
+    ]);
+
+    const totalSteps = parseInt(checkInResult.rows[0]?.steps ?? '0', 10) || 0;
+    const weightKg =
+      parseFloat(weightResult.rows[0]?.weight) ||
+      CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
+    const heightCm =
+      parseFloat(heightResult.rows[0]?.height) ||
+      CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
+
+    const activitySteps = sessions.reduce((sum, s) => {
+      if (s.type === 'preset') {
+        return (
+          sum +
+          (s.exercises ?? []).reduce(
+            (eSum, e) => eSum + (parseInt(String(e.steps ?? '0'), 10) || 0),
+            0
+          )
+        );
+      }
+      return sum + (parseInt(String(s.steps ?? '0'), 10) || 0);
+    }, 0);
+    const backgroundSteps = Math.max(0, totalSteps - activitySteps);
+    const strideLengthM =
+      (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
+    const distanceKm = (backgroundSteps * strideLengthM) / 1000;
+    return Math.round(
+      distanceKm *
+        weightKg *
+        CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM
+    );
+  } finally {
+    client.release();
+  }
+}
+
 module.exports = {
   upsertStepData,
   upsertWaterData,
@@ -791,6 +856,7 @@ module.exports = {
   getLatestMeasurement,
   getLatestCheckInMeasurementsOnOrBeforeDate,
   getMostRecentMeasurement,
+  getStepCaloriesForDate,
 };
 
 async function getLatestMeasurement(userId) {

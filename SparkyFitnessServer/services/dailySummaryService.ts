@@ -3,29 +3,28 @@ const foodEntryService = require('./foodEntryService');
 import { getExerciseEntriesByDateV2 } from './exerciseEntryHistoryService';
 const measurementRepository = require('../models/measurementRepository');
 const { log } = require('../config/logging');
+import type { ExerciseSessionResponse } from '@workspace/shared';
 
 interface DailySummaryOptions {
   actorUserId: string;
   targetUserId: string;
   date: string;
-  includeWater: boolean;
+  includeCheckin: boolean;
 }
 
 export async function getDailySummary({
   actorUserId,
   targetUserId,
   date,
-  includeWater,
+  includeCheckin,
 }: DailySummaryOptions) {
   // Each function acquires its own pool client, allowing true parallel execution.
-  // This uses ~4 connections per request. For a self-hosted server with minimal
-  // concurrent users this is fine and faster than serializing through one client.
   const [goals, foodEntries, exerciseSessions, waterResult] = await Promise.all(
     [
       goalService.getUserGoals(targetUserId, date),
       foodEntryService.getFoodEntriesByDate(actorUserId, targetUserId, date),
       getExerciseEntriesByDateV2(targetUserId, date),
-      includeWater
+      includeCheckin
         ? measurementRepository
             .getWaterIntakeByDate(targetUserId, date)
             .catch((error: unknown) => {
@@ -40,10 +39,19 @@ export async function getDailySummary({
     ]
   );
 
+  const stepCalories = includeCheckin
+    ? await measurementRepository.getStepCaloriesForDate(
+        targetUserId,
+        date,
+        exerciseSessions as ExerciseSessionResponse[]
+      )
+    : 0;
+
   return {
     goals,
     foodEntries,
     exerciseSessions,
     waterIntake: parseFloat(waterResult?.water_ml) || 0,
+    stepCalories,
   };
 }
