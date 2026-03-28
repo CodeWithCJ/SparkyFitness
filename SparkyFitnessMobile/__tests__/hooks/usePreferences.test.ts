@@ -16,11 +16,6 @@ jest.mock('../../src/services/LogService', () => ({
 const mockFetchPreferences = fetchPreferences as jest.MockedFunction<typeof fetchPreferences>;
 const mockUpdatePreferences = updatePreferences as jest.MockedFunction<typeof updatePreferences>;
 
-function getMismatchedTimezone(): string {
-  const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return deviceTz === 'UTC' ? 'America/Chicago' : 'UTC';
-}
-
 describe('usePreferences', () => {
   let queryClient: QueryClient;
 
@@ -131,59 +126,22 @@ describe('usePreferences', () => {
     });
   });
 
-  describe('timezone sync', () => {
-    test('does not sync timezone when disabled', async () => {
-      queryClient.setQueryData(preferencesQueryKey, {
-        timezone: getMismatchedTimezone(),
-      });
-
-      renderHook(() => usePreferences({ enabled: false }), {
-        wrapper: createQueryWrapper(queryClient),
-      });
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(mockFetchPreferences).not.toHaveBeenCalled();
-      expect(mockUpdatePreferences).not.toHaveBeenCalled();
-    });
-
-    test('retries timezone sync after a failed update', async () => {
-      jest.useFakeTimers();
-
-      const mismatchedTimezone = getMismatchedTimezone();
-      queryClient.setQueryData(preferencesQueryKey, {
-        timezone: mismatchedTimezone,
-      });
+  describe('timezone handling', () => {
+    test('does not overwrite a stored timezone preference', async () => {
       mockFetchPreferences.mockResolvedValue({
-        timezone: mismatchedTimezone,
+        timezone: 'America/Los_Angeles',
       });
-      mockUpdatePreferences
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce({
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        });
 
-      renderHook(() => usePreferences(), {
+      const { result } = renderHook(() => usePreferences(), {
         wrapper: createQueryWrapper(queryClient),
       });
 
-      await act(async () => {
-        await Promise.resolve();
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
       });
 
-      expect(mockUpdatePreferences).toHaveBeenCalledTimes(1);
-
-      await act(async () => {
-        await jest.advanceTimersByTimeAsync(1000);
-      });
-
-      await act(async () => {
-        await Promise.resolve();
-      });
-
-      expect(mockUpdatePreferences).toHaveBeenCalledTimes(2);
+      expect(result.current.preferences?.timezone).toBe('America/Los_Angeles');
+      expect(mockUpdatePreferences).not.toHaveBeenCalled();
     });
   });
 
