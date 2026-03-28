@@ -2,9 +2,9 @@
 -- PostgreSQL database dump
 --
 
-\restrict hmnn8vTKiwqbmCWCTgcN8xKnPFVCnYvDAyIZZpP9YBoOEbxYqNaVfbMLbgrqgcG
+\restrict G4DirQ0zC90iSaOGue74XukJ95cc6Vq4wGjrNcK3lM0nnBjsZQlAdgl73ISL7bj
 
--- Dumped from database version 15.15
+-- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.0
 
 SET statement_timeout = 0;
@@ -407,6 +407,42 @@ CREATE FUNCTION public.find_user_by_email(p_email text) RETURNS uuid
 
 
 --
+-- Name: fn_sync_mfa_totp_flag(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fn_sync_mfa_totp_flag() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        UPDATE "user" SET mfa_totp_enabled = TRUE WHERE id = NEW.user_id;
+    ELSIF (TG_OP = 'DELETE') THEN
+        UPDATE "user" SET mfa_totp_enabled = FALSE WHERE id = OLD.user_id;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: fn_sync_user_mfa_global(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fn_sync_user_mfa_global() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    -- If global 2FA is turned off, force our custom flags to false
+    IF (NEW.two_factor_enabled = FALSE AND OLD.two_factor_enabled = TRUE) THEN
+        NEW.mfa_totp_enabled := FALSE;
+        NEW.mfa_email_enabled := FALSE;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: get_accessible_users(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -720,49 +756,6 @@ $$;
 
 
 --
--- Name: sync_user_mfa_master_flag(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sync_user_mfa_master_flag() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    NEW.two_factor_enabled := (NEW.mfa_totp_enabled OR NEW.mfa_email_enabled);
-    RETURN NEW;
-END;
-$$;
-
-
---
--- Name: sync_user_totp_flag(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.sync_user_totp_flag() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    target_user_id UUID;
-    has_secret BOOLEAN;
-BEGIN
-    IF (TG_OP = 'DELETE') THEN
-        target_user_id := OLD.user_id;
-    ELSE
-        target_user_id := NEW.user_id;
-    END IF;
-
-    -- Check if a secret currently exists for this user
-    SELECT EXISTS (SELECT 1 FROM "two_factor" WHERE user_id = target_user_id AND secret IS NOT NULL) INTO has_secret;
-
-    -- Update the mfa_totp_enabled flag in the user table
-    -- This will in turn trigger sync_user_mfa_master_flag via the BEFORE UPDATE trigger on user
-    UPDATE "user" SET mfa_totp_enabled = has_secret WHERE id = target_user_id;
-
-    RETURN NULL;
-END;
-$$;
-
-
---
 -- Name: trigger_set_timestamp(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -923,7 +916,7 @@ CREATE TABLE public.api_key (
     id text NOT NULL,
     name text,
     key text NOT NULL,
-    user_id uuid NOT NULL,
+    reference_id uuid NOT NULL,
     metadata text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
@@ -941,7 +934,8 @@ CREATE TABLE public.api_key (
     request_count integer DEFAULT 0,
     remaining integer,
     last_request timestamp with time zone,
-    permissions text
+    permissions text,
+    config_id text
 );
 
 
@@ -950,6 +944,20 @@ CREATE TABLE public.api_key (
 --
 
 COMMENT ON TABLE public.api_key IS 'Better Auth API key table - replaces legacy user_api_keys';
+
+
+--
+-- Name: COLUMN api_key.reference_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.api_key.reference_id IS 'Renamed from user_id to match Better Auth 1.5 API Key plugin requirement';
+
+
+--
+-- Name: COLUMN api_key.config_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.api_key.config_id IS 'Added for Better Auth 1.5 multi-config support';
 
 
 --
@@ -1100,7 +1108,7 @@ CREATE TABLE public.day_classification_cache (
     variance_minutes numeric(6,2),
     sample_count integer,
     last_updated timestamp with time zone DEFAULT now(),
-    CONSTRAINT day_classification_cache_classified_as_check CHECK (((classified_as)::text = ANY ((ARRAY['workday'::character varying, 'freeday'::character varying])::text[]))),
+    CONSTRAINT day_classification_cache_classified_as_check CHECK (((classified_as)::text = ANY (ARRAY[('workday'::character varying)::text, ('freeday'::character varying)::text]))),
     CONSTRAINT day_classification_cache_day_of_week_check CHECK (((day_of_week >= 0) AND (day_of_week <= 6)))
 );
 
@@ -1153,8 +1161,16 @@ CREATE TABLE public.exercise_entries (
     distance numeric,
     avg_heart_rate integer,
     exercise_preset_entry_id uuid,
-    sort_order integer DEFAULT 0
+    sort_order integer DEFAULT 0,
+    steps integer
 );
+
+
+--
+-- Name: COLUMN exercise_entries.steps; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.exercise_entries.steps IS 'Number of steps recorded during this activity, sourced from Garmin or other providers.';
 
 
 --
@@ -1367,7 +1383,7 @@ CREATE TABLE public.fasting_logs (
     status character varying(20),
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT fasting_logs_status_check CHECK (((status)::text = ANY ((ARRAY['ACTIVE'::character varying, 'COMPLETED'::character varying, 'CANCELLED'::character varying])::text[])))
+    CONSTRAINT fasting_logs_status_check CHECK (((status)::text = ANY (ARRAY[('ACTIVE'::character varying)::text, ('COMPLETED'::character varying)::text, ('CANCELLED'::character varying)::text])))
 );
 
 
@@ -2073,11 +2089,10 @@ CREATE TABLE public."user" (
     role text DEFAULT 'user'::text,
     mfa_email_enabled boolean DEFAULT false,
     mfa_enforced boolean DEFAULT false,
-    email_mfa_code text,
-    email_mfa_expires_at timestamp with time zone,
     magic_link_token text,
     magic_link_expires timestamp with time zone,
-    mfa_totp_enabled boolean DEFAULT false
+    mfa_totp_enabled boolean DEFAULT false,
+    image text
 );
 
 
@@ -2086,6 +2101,13 @@ CREATE TABLE public."user" (
 --
 
 COMMENT ON TABLE public."user" IS 'Better Auth user table - migrated from auth.users';
+
+
+--
+-- Name: COLUMN "user".image; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public."user".image IS 'Profile image URL synced from Better Auth / OIDC providers';
 
 
 --
@@ -2272,7 +2294,9 @@ CREATE TABLE public.user_preferences (
     activity_level character varying(20) DEFAULT 'not_much'::character varying,
     tdee_allow_negative_adjustment boolean DEFAULT false,
     default_barcode_provider_id uuid,
-    CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
+    auto_scale_online_imports boolean DEFAULT true,
+    first_day_of_week smallint DEFAULT 0,
+    CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
 );
 
@@ -2282,6 +2306,20 @@ CREATE TABLE public.user_preferences (
 --
 
 COMMENT ON COLUMN public.user_preferences.auto_scale_open_food_facts_imports IS 'When enabled, OpenFoodFacts imports will automatically scale nutrition values from per-100g to the serving size provided by the product';
+
+
+--
+-- Name: COLUMN user_preferences.auto_scale_online_imports; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.auto_scale_online_imports IS 'When enabled, nutrition values from all online database imports will auto-scale when the serving size is changed in the Edit Food Details dialog';
+
+
+--
+-- Name: COLUMN user_preferences.first_day_of_week; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.first_day_of_week IS 'Start day of the week: 0 for Sunday (USA standard), 1 for Monday (ISO 8601).';
 
 
 --
@@ -2594,7 +2632,7 @@ ALTER SEQUENCE public.workout_plan_templates_id_seq OWNED BY public.workout_plan
 
 CREATE TABLE public.workout_preset_exercise_sets (
     id integer NOT NULL,
-    workout_preset_exercise_id integer NOT NULL,
+    workout_preset_exercise_id integer CONSTRAINT workout_preset_exercise_set_workout_preset_exercise_id_not_null NOT NULL,
     set_number integer NOT NULL,
     set_type text DEFAULT 'Working Set'::text,
     reps integer,
@@ -3455,7 +3493,7 @@ CREATE INDEX idx_api_key_prefix ON public.api_key USING btree (prefix);
 -- Name: idx_api_key_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_api_key_user_id ON public.api_key USING btree (user_id);
+CREATE INDEX idx_api_key_user_id ON public.api_key USING btree (reference_id);
 
 
 --
@@ -3781,17 +3819,17 @@ CREATE TRIGGER set_user_nutrient_display_preferences_updated_at BEFORE UPDATE ON
 
 
 --
--- Name: user trg_sync_user_mfa_master_flag; Type: TRIGGER; Schema: public; Owner: -
+-- Name: two_factor trg_sync_mfa_totp; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER trg_sync_user_mfa_master_flag BEFORE UPDATE OF mfa_totp_enabled, mfa_email_enabled ON public."user" FOR EACH ROW EXECUTE FUNCTION public.sync_user_mfa_master_flag();
+CREATE TRIGGER trg_sync_mfa_totp AFTER INSERT OR DELETE ON public.two_factor FOR EACH ROW EXECUTE FUNCTION public.fn_sync_mfa_totp_flag();
 
 
 --
--- Name: two_factor trg_sync_user_totp_flag; Type: TRIGGER; Schema: public; Owner: -
+-- Name: user trg_sync_user_mfa_global; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER trg_sync_user_totp_flag AFTER INSERT OR DELETE OR UPDATE ON public.two_factor FOR EACH ROW EXECUTE FUNCTION public.sync_user_totp_flag();
+CREATE TRIGGER trg_sync_user_mfa_global BEFORE UPDATE OF two_factor_enabled ON public."user" FOR EACH ROW EXECUTE FUNCTION public.fn_sync_user_mfa_global();
 
 
 --
@@ -3921,7 +3959,7 @@ ALTER TABLE ONLY public.admin_activity_logs
 --
 
 ALTER TABLE ONLY public.api_key
-    ADD CONSTRAINT api_key_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT api_key_user_id_fkey FOREIGN KEY (reference_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -5150,7 +5188,7 @@ ALTER TABLE public.onboarding_status ENABLE ROW LEVEL SECURITY;
 -- Name: api_key owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY owner_policy ON public.api_key USING ((user_id = public.current_user_id())) WITH CHECK ((user_id = public.current_user_id()));
+CREATE POLICY owner_policy ON public.api_key USING ((reference_id = public.current_user_id())) WITH CHECK ((reference_id = public.current_user_id()));
 
 
 --
@@ -5740,9 +5778,9 @@ GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_en
 -- Name: FUNCTION can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO sparky_uat;
-GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO "sparky uat";
+GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO sparky_uat;
 
 
 --
@@ -5926,6 +5964,31 @@ GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO "sparky uat";
 
 
 --
+-- Name: FUNCTION fips_mode(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.fips_mode() TO "sparky uat";
+
+
+--
+-- Name: FUNCTION fn_sync_mfa_totp_flag(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO "sparky uat";
+GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO sparky_uat;
+
+
+--
+-- Name: FUNCTION fn_sync_user_mfa_global(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO "sparky uat";
+GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO "sparky-uat";
+GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO sparky_uat;
+
+
+--
 -- Name: FUNCTION gen_random_bytes(integer); Type: ACL; Schema: public; Owner: -
 --
 
@@ -6061,12 +6124,12 @@ GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date d
 
 
 --
--- Name: FUNCTION pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT blk_read_time double precision, OUT blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision); Type: ACL; Schema: public; Owner: -
+-- Name: FUNCTION pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT wal_buffers_full bigint, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT parallel_workers_to_launch bigint, OUT parallel_workers_launched bigint, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT blk_read_time double precision, OUT blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT blk_read_time double precision, OUT blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT blk_read_time double precision, OUT blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision) TO "sparky uat";
+GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT wal_buffers_full bigint, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT parallel_workers_to_launch bigint, OUT parallel_workers_launched bigint, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone) TO sparky_uat;
+GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT wal_buffers_full bigint, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT parallel_workers_to_launch bigint, OUT parallel_workers_launched bigint, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone) TO "sparky-uat";
+GRANT ALL ON FUNCTION public.pg_stat_statements(showtext boolean, OUT userid oid, OUT dbid oid, OUT toplevel boolean, OUT queryid bigint, OUT query text, OUT plans bigint, OUT total_plan_time double precision, OUT min_plan_time double precision, OUT max_plan_time double precision, OUT mean_plan_time double precision, OUT stddev_plan_time double precision, OUT calls bigint, OUT total_exec_time double precision, OUT min_exec_time double precision, OUT max_exec_time double precision, OUT mean_exec_time double precision, OUT stddev_exec_time double precision, OUT rows bigint, OUT shared_blks_hit bigint, OUT shared_blks_read bigint, OUT shared_blks_dirtied bigint, OUT shared_blks_written bigint, OUT local_blks_hit bigint, OUT local_blks_read bigint, OUT local_blks_dirtied bigint, OUT local_blks_written bigint, OUT temp_blks_read bigint, OUT temp_blks_written bigint, OUT shared_blk_read_time double precision, OUT shared_blk_write_time double precision, OUT local_blk_read_time double precision, OUT local_blk_write_time double precision, OUT temp_blk_read_time double precision, OUT temp_blk_write_time double precision, OUT wal_records bigint, OUT wal_fpi bigint, OUT wal_bytes numeric, OUT wal_buffers_full bigint, OUT jit_functions bigint, OUT jit_generation_time double precision, OUT jit_inlining_count bigint, OUT jit_inlining_time double precision, OUT jit_optimization_count bigint, OUT jit_optimization_time double precision, OUT jit_emission_count bigint, OUT jit_emission_time double precision, OUT jit_deform_count bigint, OUT jit_deform_time double precision, OUT parallel_workers_to_launch bigint, OUT parallel_workers_launched bigint, OUT stats_since timestamp with time zone, OUT minmax_stats_since timestamp with time zone) TO "sparky uat";
 
 
 --
@@ -6079,12 +6142,10 @@ GRANT ALL ON FUNCTION public.pg_stat_statements_info(OUT dealloc bigint, OUT sta
 
 
 --
--- Name: FUNCTION pg_stat_statements_reset(userid oid, dbid oid, queryid bigint); Type: ACL; Schema: public; Owner: -
+-- Name: FUNCTION pg_stat_statements_reset(userid oid, dbid oid, queryid bigint, minmax_only boolean); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.pg_stat_statements_reset(userid oid, dbid oid, queryid bigint) TO sparky_uat;
-GRANT ALL ON FUNCTION public.pg_stat_statements_reset(userid oid, dbid oid, queryid bigint) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.pg_stat_statements_reset(userid oid, dbid oid, queryid bigint) TO "sparky uat";
+GRANT ALL ON FUNCTION public.pg_stat_statements_reset(userid oid, dbid oid, queryid bigint, minmax_only boolean) TO "sparky uat";
 
 
 --
@@ -6301,24 +6362,6 @@ GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO "sparky uat";
 GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO sparky_uat;
 GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO "sparky uat";
-
-
---
--- Name: FUNCTION sync_user_mfa_master_flag(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.sync_user_mfa_master_flag() TO sparky_uat;
-GRANT ALL ON FUNCTION public.sync_user_mfa_master_flag() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.sync_user_mfa_master_flag() TO "sparky uat";
-
-
---
--- Name: FUNCTION sync_user_totp_flag(); Type: ACL; Schema: public; Owner: -
---
-
-GRANT ALL ON FUNCTION public.sync_user_totp_flag() TO sparky_uat;
-GRANT ALL ON FUNCTION public.sync_user_totp_flag() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.sync_user_totp_flag() TO "sparky uat";
 
 
 --
@@ -7171,50 +7214,50 @@ GRANT SELECT ON TABLE system.schema_migrations TO "sparky uat";
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: auth; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO sparky_uat;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO "sparky-uat";
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO "sparky uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO "sparky-uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: auth; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky-uat";
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky-uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_uat;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO "sparky-uat";
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO "sparky uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO "sparky-uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO sparky_uat;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO "sparky-uat";
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO "sparky uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO "sparky-uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO sparky_uat;
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky-uat";
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky-uat";
+ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict hmnn8vTKiwqbmCWCTgcN8xKnPFVCnYvDAyIZZpP9YBoOEbxYqNaVfbMLbgrqgcG
+\unrestrict G4DirQ0zC90iSaOGue74XukJ95cc6Vq4wGjrNcK3lM0nnBjsZQlAdgl73ISL7bj
 
