@@ -8,10 +8,21 @@ SparkyFitness supports integration with external health and fitness data provide
 
 SparkyFitness supports integration with the following health and fitness data providers:
 
-- [Polar Flow Integration](./polar.md)
-- Withings (Coming Soon)
-- Fitbit (Coming Soon)
-- Garmin Connect (Coming Soon)
+- Apple Health (iOS)
+- Google Health Connect (Android)
+- Fitbit
+- Garmin Connect
+- Withings
+- Polar Flow (partially tested)
+- Hevy (not tested)
+- OpenFoodFacts
+- USDA
+- Fatsecret
+- Nutritioninx
+- Mealie
+- Tandori
+- Strava (partially tested)
+
 
 ---
 
