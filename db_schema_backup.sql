@@ -1015,7 +1015,9 @@ CREATE TABLE public.check_in_measurements (
     height numeric,
     body_fat_percentage numeric,
     created_by_user_id uuid,
-    updated_by_user_id uuid
+    updated_by_user_id uuid,
+    source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
+    CONSTRAINT check_in_measurements_user_date_source_unique UNIQUE (user_id, entry_date, source)
 );
 
 
@@ -3186,6 +3188,14 @@ ALTER TABLE ONLY public.sleep_entries
 
 
 --
+-- Name: sleep_entries sleep_entries_user_date_source_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sleep_entries
+    ADD CONSTRAINT sleep_entries_user_date_source_unique UNIQUE (user_id, entry_date, source);
+
+
+--
 -- Name: sleep_entry_stages sleep_entry_stages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3550,6 +3560,13 @@ CREATE INDEX idx_day_classification_user ON public.day_classification_cache USIN
 --
 
 CREATE INDEX idx_exercise_entries_exercise_preset_entry_id ON public.exercise_entries USING btree (exercise_preset_entry_id);
+
+
+--
+-- Name: exercise_entries_user_source_source_id_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX exercise_entries_user_source_source_id_unique ON public.exercise_entries USING btree (user_id, source, source_id) WHERE (source_id IS NOT NULL);
 
 
 --
