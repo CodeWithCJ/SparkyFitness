@@ -2296,6 +2296,9 @@ CREATE TABLE public.user_preferences (
     default_barcode_provider_id uuid,
     auto_scale_online_imports boolean DEFAULT true,
     first_day_of_week smallint DEFAULT 0,
+    sleep_source_preference character varying(50) DEFAULT 'auto'::character varying NOT NULL,
+    body_source_preference character varying(50) DEFAULT 'auto'::character varying NOT NULL,
+    activity_source_preference character varying(50) DEFAULT 'auto'::character varying NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
 );
@@ -2306,6 +2309,27 @@ CREATE TABLE public.user_preferences (
 --
 
 COMMENT ON COLUMN public.user_preferences.auto_scale_open_food_facts_imports IS 'When enabled, OpenFoodFacts imports will automatically scale nutrition values from per-100g to the serving size provided by the product';
+
+
+--
+-- Name: COLUMN user_preferences.sleep_source_preference; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.sleep_source_preference IS 'Preferred source for sleep analytics: auto | garmin | withings | fitbit | polar | healthkit | health_connect | manual';
+
+
+--
+-- Name: COLUMN user_preferences.body_source_preference; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.body_source_preference IS 'Preferred source for body & weight data: auto | withings | garmin | fitbit | healthkit | health_connect | manual';
+
+
+--
+-- Name: COLUMN user_preferences.activity_source_preference; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.activity_source_preference IS 'Preferred source for daily activity (steps, distance, calories): auto | garmin | fitbit | polar | healthkit | health_connect | manual';
 
 
 --
