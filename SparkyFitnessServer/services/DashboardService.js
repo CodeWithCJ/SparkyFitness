@@ -6,6 +6,7 @@ const preferenceRepository = require('../models/preferenceRepository');
 const bmrService = require('./bmrService');
 const adaptiveTdeeService = require('./AdaptiveTdeeService');
 const { log } = require('../config/logging');
+const { CROSS_SOURCE_DEDUP } = require('../config/deduplicationConstants');
 const { CALORIE_CALCULATION_CONSTANTS } = require('@workspace/shared');
 
 /**
@@ -73,7 +74,12 @@ async function getDashboardStats(userId, date) {
               const startDiffSec = Math.abs(entryStart - existingStart) / 1000;
               const durationMin = Math.min(entryDuration, existingDuration);
               const durationMax = Math.max(entryDuration, existingDuration);
-              return startDiffSec <= 600 && durationMin >= durationMax * 0.8;
+              return (
+                startDiffSec <=
+                  CROSS_SOURCE_DEDUP.MAX_START_TIME_DIFF_SECONDS &&
+                durationMin >=
+                  durationMax * CROSS_SOURCE_DEDUP.MIN_DURATION_SIMILARITY_RATIO
+              );
             })
           : -1;
       if (duplicateIndex === -1) {

@@ -1,6 +1,7 @@
 const { getClient, getSystemClient } = require('../db/poolManager');
 const format = require('pg-format');
 const { log } = require('../config/logging');
+const { CROSS_SOURCE_DEDUP } = require('../config/deduplicationConstants');
 const exerciseRepository = require('./exercise');
 const activityDetailsRepository = require('./activityDetailsRepository');
 const exercisePresetEntryRepository = require('./exercisePresetEntryRepository');
@@ -474,8 +475,8 @@ async function _createExerciseEntryWithClient(
            AND source <> $3
            AND source_id IS NOT NULL
            AND start_time IS NOT NULL
-           AND ABS(EXTRACT(EPOCH FROM (start_time - $4::timestamptz))) <= 600
-           AND LEAST(duration_minutes, $5) >= GREATEST(duration_minutes, $5) * 0.8
+           AND ABS(EXTRACT(EPOCH FROM (start_time - $4::timestamptz))) <= ${CROSS_SOURCE_DEDUP.MAX_START_TIME_DIFF_SECONDS}
+           AND LEAST(duration_minutes, $5) >= GREATEST(duration_minutes, $5) * ${CROSS_SOURCE_DEDUP.MIN_DURATION_SIMILARITY_RATIO}
            AND exercise_preset_entry_id IS NULL
          LIMIT 1`,
         [
