@@ -9,6 +9,7 @@ const customNutrientService = require('./customNutrientService');
 const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
 const { log } = require('../config/logging');
 const { addDays, compareDays, todayInZone } = require('@workspace/shared');
+const { userAge } = require('../utils/dateHelpers');
 
 async function getReportsData(
   authenticatedUserId,
@@ -127,10 +128,8 @@ async function getReportsData(
 
     // BMR Calculation
     if (userProfile && userPreferences) {
-      const dob = userProfile.date_of_birth;
-      const age = dob
-        ? new Date().getFullYear() - new Date(dob).getFullYear()
-        : null;
+      const tz = userPreferences?.timezone || 'UTC';
+      const age = userAge(userProfile.date_of_birth, tz);
       const gender = userProfile.gender;
       const bmrAlgorithm = userPreferences.bmr_algorithm;
 

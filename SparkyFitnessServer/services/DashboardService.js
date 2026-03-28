@@ -10,6 +10,7 @@ const {
   CALORIE_CALCULATION_CONSTANTS,
   userHourMinute,
 } = require('@workspace/shared');
+const { userAge } = require('../utils/dateHelpers');
 
 /**
  * Aggregates stats for external dashboards (like gethomepage.dev).
@@ -86,17 +87,8 @@ async function getDashboardStats(userId, date) {
     const multiplier = bmrService.ActivityMultiplier[activityLevel] || 1.2;
 
     if (userProfile && userPreferences) {
-      const dob = userProfile.date_of_birth;
-      let age = 30;
-      if (dob) {
-        const today = new Date();
-        const birthDate = new Date(dob);
-        age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
-        }
-      }
+      const tz = userPreferences?.timezone || 'UTC';
+      const age = userAge(userProfile.date_of_birth, tz) ?? 30;
       const gender = userProfile.gender || 'male';
       const bmrAlgorithm = userPreferences.bmr_algorithm || 'Mifflin-St Jeor';
       const bodyFat = latestMeasurements?.body_fat_percentage;

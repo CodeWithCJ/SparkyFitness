@@ -1,6 +1,8 @@
 const measurementRepository = require('../models/measurementRepository');
 const userRepository = require('../models/userRepository'); // Import userRepository
 const { log } = require('../config/logging');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { userAge } = require('../utils/dateHelpers');
 
 // Approximate MET values based on exercise category and level
 const MET_VALUES = {
@@ -66,7 +68,7 @@ async function estimateCaloriesBurnedPerHour(exercise, userId, sets) {
   }
 
   let userWeightKg = 70; // Default to 70kg if user weight not found
-  let userAge = 30; // Default age
+  let age = 30; // Default age
   let userGender = 'male'; // Default gender
 
   try {
@@ -79,13 +81,8 @@ async function estimateCaloriesBurnedPerHour(exercise, userId, sets) {
     const userProfile = await userRepository.getUserProfile(userId);
     if (userProfile) {
       if (userProfile.date_of_birth) {
-        const dob = new Date(userProfile.date_of_birth);
-        const today = new Date();
-        userAge = today.getFullYear() - dob.getFullYear();
-        const m = today.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-          userAge--;
-        }
+        const tz = await loadUserTimezone(userId);
+        age = userAge(userProfile.date_of_birth, tz) ?? 30;
       }
       if (userProfile.gender) {
         userGender = userProfile.gender.toLowerCase();
@@ -140,8 +137,8 @@ async function estimateCaloriesBurnedPerHour(exercise, userId, sets) {
   }
 
   // Simple age adjustment: reduce calories by 0.5% for every 5 years over 30
-  if (userAge > 30) {
-    const ageAdjustmentFactor = 1 - Math.floor((userAge - 30) / 5) * 0.005;
+  if (age > 30) {
+    const ageAdjustmentFactor = 1 - Math.floor((age - 30) / 5) * 0.005;
     caloriesPerHour *= Math.max(0.85, ageAdjustmentFactor); // Cap reduction at 15%
   }
 

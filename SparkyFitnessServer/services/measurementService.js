@@ -3,6 +3,7 @@ const { log } = require('../config/logging'); // Import the logger utility
 const measurementRepository = require('../models/measurementRepository');
 const { loadUserTimezone } = require('../utils/timezoneLoader');
 const { instantToDay, instantHourMinute } = require('@workspace/shared');
+const { userAge } = require('../utils/dateHelpers');
 
 /**
  * Default units for health metric types when not provided by client (e.g. HealthConnect sync).
@@ -1706,21 +1707,11 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
 
     // Fetch user profile to get age and gender
     const userProfile = await userRepository.getUserProfile(userId);
-    let age = null;
-    let gender = null;
-
-    if (userProfile && userProfile.date_of_birth) {
-      const dob = new Date(userProfile.date_of_birth);
-      const today = new Date();
-      age = today.getFullYear() - dob.getFullYear();
-      const m = today.getMonth() - dob.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-        age--;
-      }
-    }
-    if (userProfile && userProfile.gender) {
-      gender = userProfile.gender;
-    }
+    const tz = await loadUserTimezone(userId);
+    const age = userProfile?.date_of_birth
+      ? userAge(userProfile.date_of_birth, tz)
+      : null;
+    const gender = userProfile?.gender || null;
 
     const sleepScore = await calculateSleepScore(
       { duration_in_seconds, time_asleep_in_seconds: timeAsleepInSeconds },
@@ -1806,21 +1797,11 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
 
     // Fetch user profile to get age and gender
     const userProfile = await userRepository.getUserProfile(userId);
-    let age = null;
-    let gender = null;
-
-    if (userProfile && userProfile.date_of_birth) {
-      const dob = new Date(userProfile.date_of_birth);
-      const today = new Date();
-      age = today.getFullYear() - dob.getFullYear();
-      const m = today.getMonth() - dob.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-        age--;
-      }
-    }
-    if (userProfile && userProfile.gender) {
-      gender = userProfile.gender;
-    }
+    const tz = await loadUserTimezone(userId);
+    const age = userProfile?.date_of_birth
+      ? userAge(userProfile.date_of_birth, tz)
+      : null;
+    const gender = userProfile?.gender || null;
 
     const sleepScore = await calculateSleepScore(
       { duration_in_seconds, time_asleep_in_seconds: timeAsleepInSeconds },
