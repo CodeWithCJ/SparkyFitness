@@ -28,10 +28,12 @@ export const useMCTQStatsQuery = (targetUserId?: string) => {
 };
 
 export const useDailyNeedQuery = (date?: string, targetUserId?: string) => {
-  const today = date || new Date().toISOString().slice(0, 10);
   return useQuery({
-    queryKey: sleepScienceKeys.dailyNeed(today, targetUserId),
-    queryFn: () => getDailyNeed(today, targetUserId),
+    queryKey: sleepScienceKeys.dailyNeed(
+      date ?? 'server-default',
+      targetUserId
+    ),
+    queryFn: () => getDailyNeed(date, targetUserId),
     staleTime: 5 * 60 * 1000,
   });
 };

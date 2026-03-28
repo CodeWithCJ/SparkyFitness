@@ -632,12 +632,27 @@ async function processWithingsSleepData(
   }
 
   // 2. Process Detailed Series (Sleep Stages)
+  // Match each stage to its parent summary's entry_date so overnight sessions
+  // that cross local midnight stay grouped under one sleep entry.
+  const summaryRanges = summaryArr.map((s) => ({
+    start: s.startdate,
+    end: s.enddate,
+    entryDate:
+      typeof s.date === 'string'
+        ? s.date
+        : instantToDay(s.date * 1000, timezone),
+  }));
+
   const stagesByDate = new Map();
 
   for (const segment of seriesArr) {
     if (segment.startdate && segment.state !== undefined) {
-      const segmentStart = new Date(segment.startdate * 1000);
-      const entryDate = segmentStart.toISOString().split('T')[0];
+      const parent = summaryRanges.find(
+        (s) => segment.startdate >= s.start && segment.startdate <= s.end
+      );
+      const entryDate = parent
+        ? parent.entryDate
+        : instantToDay(segment.startdate * 1000, timezone);
 
       if (!stagesByDate.has(entryDate)) {
         stagesByDate.set(entryDate, []);

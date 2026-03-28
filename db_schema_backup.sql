@@ -2297,7 +2297,8 @@ CREATE TABLE public.user_preferences (
     auto_scale_online_imports boolean DEFAULT true,
     first_day_of_week smallint DEFAULT 0,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
-    CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text])))
+    CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
+    CONSTRAINT user_preferences_timezone_not_empty CHECK ((timezone <> ''::text))
 );
 
 
