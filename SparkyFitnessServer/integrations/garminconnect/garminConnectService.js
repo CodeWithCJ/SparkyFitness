@@ -117,7 +117,7 @@ async function handleGarminTokens(userId, tokensB64) {
     );
 
     // Check if a Garmin provider entry already exists for this user
-    let provider =
+    const provider =
       await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
         userId,
         'garmin'
