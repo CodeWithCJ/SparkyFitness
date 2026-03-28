@@ -2,6 +2,11 @@ name: Manually Publish Docker Images
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker image tag'
+        required: true
+        default: 'dev'
 
 jobs:
   push_to_registries:
@@ -16,12 +21,6 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
-
-      - name: Read version from package.json
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
-        with:
-          path: SparkyFitnessServer
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
