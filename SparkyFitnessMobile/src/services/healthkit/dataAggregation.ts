@@ -86,18 +86,19 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
   // Newer Apple Watch models send both a generic 'asleep' record (covering the full sleep
   // period) AND detailed stage records (Core/Deep/REM/Awake). Including both would double-count
   // time_asleep. When detailed stages are present, drop the generic 'asleep' records.
-  const hasDetailedStages = sortedRecords.some(r => {
-    const v = r.value;
-    return (
-      v === 'HKCategoryValueSleepAnalysisAsleepREM' ||
-      v === 'HKCategoryValueSleepAnalysisAsleepDeep' ||
-      v === 'HKCategoryValueSleepAnalysisAsleepCore' ||
-      v === 'HKCategoryValueSleepAnalysisAwake' ||
-      v === 2 || v === 3 || v === 4 || v === 5 // numeric equivalents
-    );
-  });
+  const detailedStageValues: (string | number)[] = [
+    'HKCategoryValueSleepAnalysisAsleepREM',
+    'HKCategoryValueSleepAnalysisAsleepDeep',
+    'HKCategoryValueSleepAnalysisAsleepCore',
+    'HKCategoryValueSleepAnalysisAwake',
+    2, 3, 4, 5, // numeric equivalents
+  ];
+  const genericAsleepValues: (string | number)[] = ['HKCategoryValueSleepAnalysisAsleep', 1];
+
+  const hasDetailedStages = sortedRecords.some(r => detailedStageValues.includes(r.value));
+
   const recordsToProcess = hasDetailedStages
-    ? sortedRecords.filter(r => r.value !== 'HKCategoryValueSleepAnalysisAsleep' && r.value !== 1)
+    ? sortedRecords.filter(r => !genericAsleepValues.includes(r.value))
     : sortedRecords;
 
   const aggregatedSessions: AggregatedSleepSession[] = [];
