@@ -2,6 +2,7 @@ import { getActiveServerConfig, proxyHeadersToRecord, ServerConfig } from '../st
 import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
 import { getAuthHeaders, notifySessionExpired } from './authService';
+import { ensureTimezoneBootstrapped } from './preferencesApi';
 
 export interface HealthDataPayloadItem {
   type: string;
@@ -214,6 +215,13 @@ export const syncHealthData = async (data: HealthDataPayload): Promise<unknown> 
   if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
     throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
   }
+
+  if (data.length === 0) {
+    addLog('[API] No health data to sync', 'DEBUG');
+    return undefined;
+  }
+
+  await ensureTimezoneBootstrapped({ throwOnFailure: true });
 
   console.log(`[API Service] Attempting to sync to URL: ${url}/api/health-data`);
 

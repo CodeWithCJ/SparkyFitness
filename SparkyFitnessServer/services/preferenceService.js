@@ -15,6 +15,13 @@ async function validateTimezone(preferenceData) {
   }
 }
 
+function getDefaultPreferences() {
+  return {
+    calorie_goal_adjustment_mode: 'dynamic',
+    timezone: null,
+  };
+}
+
 async function updateUserPreferences(
   authenticatedUserId,
   targetUserId,
@@ -65,8 +72,7 @@ async function getUserPreferences(authenticatedUserId, targetUserId) {
     const preferences =
       await preferenceRepository.getUserPreferences(targetUserId);
     if (!preferences) {
-      // Return default preferences if none are found, ensuring calorie_goal_adjustment_mode is set
-      return { calorie_goal_adjustment_mode: 'dynamic' };
+      return getDefaultPreferences();
     }
     return preferences;
   } catch (error) {
@@ -75,7 +81,36 @@ async function getUserPreferences(authenticatedUserId, targetUserId) {
       `Error fetching preferences for user ${targetUserId} by ${authenticatedUserId}:`,
       error
     );
-    return { calorie_goal_adjustment_mode: 'dynamic' }; // Return default on error as well
+    return getDefaultPreferences();
+  }
+}
+
+async function bootstrapUserTimezone(
+  authenticatedUserId,
+  targetUserId,
+  timezone
+) {
+  try {
+    await validateTimezone({ timezone });
+    const preferences = await preferenceRepository.bootstrapUserTimezoneIfUnset(
+      targetUserId,
+      timezone
+    );
+
+    if (!preferences) {
+      throw new Error(
+        'User preferences not found or not authorized to update.'
+      );
+    }
+
+    return preferences;
+  } catch (error) {
+    log(
+      'error',
+      `Error bootstrapping timezone for user ${targetUserId} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
   }
 }
 
@@ -104,5 +139,6 @@ module.exports = {
   updateUserPreferences,
   deleteUserPreferences,
   getUserPreferences,
+  bootstrapUserTimezone,
   upsertUserPreferences,
 };

@@ -45,6 +45,7 @@ import { startObservers, stopObservers } from './src/services/healthConnectServi
 import { initializeTheme } from './src/services/themeService';
 import { useStartExercise } from './src/hooks/useStartExercise';
 import { initLogService } from './src/services/LogService';
+import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Toast from 'react-native-toast-message';
@@ -171,6 +172,8 @@ function AppContent() {
   }, [syncMutation]);
 
   useEffect(() => {
+    let cancelled = false;
+
     // Initialize theme from storage on app start
     initializeTheme();
 
@@ -187,29 +190,48 @@ function AppContent() {
       console.error('[App] Failed to initialize log service:', error);
     });
 
-    // Configure background sync without blocking app startup
-    configureBackgroundSync().catch(error => {
-      console.error('[App] Failed to configure background sync:', error);
-    });
+    const initializeSyncServices = async () => {
+      // Bootstrap timezone before any sync path is configured so the server
+      // has a stable timezone for the very first sync.
+      const timezone = await ensureTimezoneBootstrapped();
+      if (!timezone) {
+        console.warn('[App] Timezone bootstrap did not resolve a timezone before sync setup.');
+      }
 
-    // Register HealthKit background delivery and observer subscriptions (iOS)
-    // Only if the user has background sync enabled — otherwise observers would
-    // bypass the preference and continue syncing in the background.
-    // When the user toggles the setting at runtime, SettingsScreen calls
-    // startObservers/stopObservers directly, so the lifecycle stays in sync.
-    if (Platform.OS === 'ios') {
-      loadBackgroundSyncEnabled().then(enabled => {
-        if (!enabled) return;
+      if (cancelled) return;
+
+      try {
+        await configureBackgroundSync();
+      } catch (error) {
+        console.error('[App] Failed to configure background sync:', error);
+      }
+
+      if (cancelled || Platform.OS !== 'ios') return;
+
+      try {
+        const enabled = await loadBackgroundSyncEnabled();
+        if (!enabled || cancelled) return;
 
         startObservers(() => {
           performBackgroundSync('healthkit-observer').catch(error => {
             console.error('[App] Observer-triggered sync failed:', error);
           });
         });
-      });
+      } catch (error) {
+        console.error('[App] Failed to configure HealthKit observers:', error);
+      }
+    };
 
-      return () => stopObservers();
-    }
+    initializeSyncServices().catch(error => {
+      console.error('[App] Failed to initialize sync services:', error);
+    });
+
+    return () => {
+      cancelled = true;
+      if (Platform.OS === 'ios') {
+        stopObservers();
+      }
+    };
   }, []);
 
   if (!initialRoute) return null;

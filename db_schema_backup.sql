@@ -2274,7 +2274,7 @@ CREATE TABLE public.user_preferences (
     system_prompt text DEFAULT 'You are Sparky, a helpful AI assistant for health and fitness tracking. Be friendly, encouraging, and provide accurate information about nutrition, exercise, and wellness.'::text,
     auto_clear_history text DEFAULT 'never'::text,
     logging_level text DEFAULT 'ERROR'::text,
-    timezone text DEFAULT 'UTC'::text NOT NULL,
+    timezone text DEFAULT NULL,
     default_food_data_provider_id uuid,
     item_display_limit integer DEFAULT 10 NOT NULL,
     water_display_unit character varying(50) DEFAULT 'ml'::character varying,
@@ -2298,7 +2298,7 @@ CREATE TABLE public.user_preferences (
     first_day_of_week smallint DEFAULT 0,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
-    CONSTRAINT user_preferences_timezone_not_empty CHECK ((timezone <> ''::text))
+    CONSTRAINT user_preferences_timezone_not_empty CHECK ((timezone IS NULL OR (timezone <> ''::text)))
 );
 
 

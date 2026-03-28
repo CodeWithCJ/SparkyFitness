@@ -1,12 +1,11 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import { preferencesQueryKey } from '../../src/hooks/queryKeys';
-import { fetchPreferences, updatePreferences } from '../../src/services/api/preferencesApi';
+import { fetchPreferences } from '../../src/services/api/preferencesApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/preferencesApi', () => ({
   fetchPreferences: jest.fn(),
-  updatePreferences: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -14,7 +13,6 @@ jest.mock('../../src/services/LogService', () => ({
 }));
 
 const mockFetchPreferences = fetchPreferences as jest.MockedFunction<typeof fetchPreferences>;
-const mockUpdatePreferences = updatePreferences as jest.MockedFunction<typeof updatePreferences>;
 
 describe('usePreferences', () => {
   let queryClient: QueryClient;
@@ -123,25 +121,6 @@ describe('usePreferences', () => {
       await waitFor(() => {
         expect(result.current.preferences?.default_weight_unit).toBe('lbs');
       });
-    });
-  });
-
-  describe('timezone handling', () => {
-    test('does not overwrite a stored timezone preference', async () => {
-      mockFetchPreferences.mockResolvedValue({
-        timezone: 'America/Los_Angeles',
-      });
-
-      const { result } = renderHook(() => usePreferences(), {
-        wrapper: createQueryWrapper(queryClient),
-      });
-
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
-
-      expect(result.current.preferences?.timezone).toBe('America/Los_Angeles');
-      expect(mockUpdatePreferences).not.toHaveBeenCalled();
     });
   });
 

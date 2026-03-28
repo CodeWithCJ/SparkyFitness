@@ -1,7 +1,10 @@
--- Migration: Normalize invalid timezones and add CHECK constraint
-UPDATE public.user_preferences
-SET timezone = 'UTC'
-WHERE timezone NOT IN (SELECT name FROM pg_timezone_names);
+-- Migration: Make timezone nullable with NULL as "never explicitly set" sentinel
+ALTER TABLE public.user_preferences
+  ALTER COLUMN timezone DROP NOT NULL,
+  ALTER COLUMN timezone SET DEFAULT NULL;
+
+UPDATE public.user_preferences SET timezone = NULL;
 
 ALTER TABLE public.user_preferences
-ADD CONSTRAINT user_preferences_timezone_not_empty CHECK (timezone <> '');
+  ADD CONSTRAINT user_preferences_timezone_not_empty
+  CHECK (timezone IS NULL OR timezone <> '');
