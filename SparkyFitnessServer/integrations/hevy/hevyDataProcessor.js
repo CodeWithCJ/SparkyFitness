@@ -76,7 +76,11 @@ async function processHevyWorkouts(userId, createdByUserId, workouts) {
 async function processSingleWorkout(userId, createdByUserId, workout) {
   const startTime = new Date(workout.start_time);
   const endTime = new Date(workout.end_time);
-  const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+  const totalDurationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+  const exerciseCount = workout.exercises.length || 1;
+  const perExerciseDurationMinutes = Math.round(
+    totalDurationMinutes / exerciseCount
+  );
 
   log(
     'debug',
@@ -106,7 +110,7 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
     const entryData = {
       exercise_id: exercise.id,
       entry_date: startTime.toISOString().split('T')[0],
-      duration_minutes: durationMinutes, // Note: Hevy provides total workout duration, not per-exercise
+      duration_minutes: perExerciseDurationMinutes,
       calories_burned: 0, // Hevy typically doesn't provide per-exercise calories
       notes:
         hevyExercise.notes ||
