@@ -8,6 +8,7 @@ const sleepAnalyticsService = require('./sleepAnalyticsService'); // Import slee
 const customNutrientService = require('./customNutrientService');
 const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
 const { log } = require('../config/logging');
+const { addDays, compareDays, todayInZone } = require('@workspace/shared');
 
 async function getReportsData(
   authenticatedUserId,
@@ -300,21 +301,19 @@ async function getNutritionTrendsWithGoals(
     );
 
     const trendData = [];
-    const currentDate = new Date(startDate);
-    const end = new Date(endDate);
+    let currentDay = startDate;
 
-    while (currentDate <= end) {
-      const formattedDate = currentDate.toISOString().split('T')[0];
-      const dailyNutrition = nutritionMap.get(formattedDate) || {};
+    while (compareDays(currentDay, endDate) <= 0) {
+      const dailyNutrition = nutritionMap.get(currentDay) || {};
 
       // Fetch the most recent goal for the current date
       const dailyGoal = await goalRepository.getMostRecentGoalBeforeDate(
         targetUserId,
-        formattedDate
+        currentDay
       );
 
       trendData.push({
-        date: formattedDate,
+        date: currentDay,
         calories: parseFloat(dailyNutrition.calories || 0),
         protein: parseFloat(dailyNutrition.protein || 0),
         carbs: parseFloat(dailyNutrition.carbs || 0),
@@ -324,7 +323,7 @@ async function getNutritionTrendsWithGoals(
         carbsGoal: parseFloat(dailyGoal?.carbs || 0),
         fatGoal: parseFloat(dailyGoal?.fat || 0),
       });
-      currentDate.setDate(currentDate.getDate() + 1);
+      currentDay = addDays(currentDay, 1);
     }
     return trendData;
   } catch (error) {
@@ -353,7 +352,12 @@ function getRepRangeCategory(reps) {
 }
 
 // Helper function to calculate workout consistency
-function calculateWorkoutConsistency(exerciseEntries, startDate, endDate) {
+function calculateWorkoutConsistency(
+  exerciseEntries,
+  startDate,
+  endDate,
+  timezone = 'UTC'
+) {
   if (!exerciseEntries || exerciseEntries.length === 0) {
     return {
       currentStreak: 0,
@@ -365,9 +369,10 @@ function calculateWorkoutConsistency(exerciseEntries, startDate, endDate) {
 
   const workoutDates = [
     ...new Set(
-      exerciseEntries.map(
-        (e) => new Date(e.entry_date).toISOString().split('T')[0]
-      )
+      exerciseEntries.map((e) => {
+        const d = String(e.entry_date);
+        return d.length === 10 ? d : d.slice(0, 10);
+      })
     ),
   ].sort();
 
@@ -375,15 +380,12 @@ function calculateWorkoutConsistency(exerciseEntries, startDate, endDate) {
   let longestStreak = 0;
 
   if (workoutDates.length > 0) {
-    // Calculate streaks
+    // Calculate streaks using string-based day comparison
     let streak = 1;
     for (let i = 1; i < workoutDates.length; i++) {
-      const currentDate = new Date(workoutDates[i]);
-      const prevDate = new Date(workoutDates[i - 1]);
-      const diffTime = Math.abs(currentDate - prevDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 1) {
+      const prev = workoutDates[i - 1];
+      const next = addDays(prev, 1);
+      if (workoutDates[i] === next) {
         streak++;
       } else {
         longestStreak = Math.max(longestStreak, streak);
@@ -393,17 +395,11 @@ function calculateWorkoutConsistency(exerciseEntries, startDate, endDate) {
     longestStreak = Math.max(longestStreak, streak);
 
     // Check if the most recent workout was yesterday or today to determine current streak
-    const lastWorkoutDate = new Date(workoutDates[workoutDates.length - 1]);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    const lastWorkout = workoutDates[workoutDates.length - 1];
+    const today = todayInZone(timezone);
+    const yesterday = addDays(today, -1);
 
-    const lastWorkoutTime = lastWorkoutDate.getTime();
-    if (
-      lastWorkoutTime === today.getTime() ||
-      lastWorkoutTime === yesterday.getTime()
-    ) {
+    if (lastWorkout === today || lastWorkout === yesterday) {
       currentStreak = streak;
     } else {
       currentStreak = 0;
@@ -659,7 +655,8 @@ async function getExerciseDashboardData(
     const consistencyData = calculateWorkoutConsistency(
       exerciseEntries,
       startDate,
-      endDate
+      endDate,
+      userPreferences?.timezone || 'UTC'
     );
     const recoveryData = calculateMuscleGroupRecovery(exerciseEntries);
     const prProgressionData = calculatePrProgression(exerciseEntries);

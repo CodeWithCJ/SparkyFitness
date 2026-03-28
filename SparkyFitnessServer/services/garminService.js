@@ -8,9 +8,16 @@ const measurementService = require('./measurementService'); // Import measuremen
 const moodRepository = require('../models/moodRepository'); // Import moodRepository
 const garminConnectService = require('../integrations/garminconnect/garminConnectService');
 const garminMeasurementMapping = require('../integrations/garminconnect/garminMeasurementMapping');
-const moment = require('moment');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone, instantToDay, addDays } = require('@workspace/shared');
 
-async function processActivitiesAndWorkouts(userId, data, startDate, endDate) {
+async function processActivitiesAndWorkouts(
+  userId,
+  data,
+  startDate,
+  endDate,
+  timezone = 'UTC'
+) {
   const { activities, workouts } = data;
   let processedCount = 0;
 
@@ -46,10 +53,11 @@ async function processActivitiesAndWorkouts(userId, data, startDate, endDate) {
           userId,
           activityData,
           startDate,
-          endDate
+          endDate,
+          timezone
         );
       } else if (activityData.activity) {
-        await processGarminSimpleActivity(userId, activityData);
+        await processGarminSimpleActivity(userId, activityData, timezone);
       }
       processedCount++; // Increment for each activity processed
     }
@@ -202,13 +210,14 @@ async function processGarminWorkoutSession(
   userId,
   sessionData,
   startDate,
-  endDate
+  endDate,
+  timezone = 'UTC'
 ) {
   const { activity, exercise_sets } = sessionData;
   const workoutName = activity.activityName || 'Garmin Workout Session';
   const entryDate = activity.startTimeLocal
-    ? new Date(activity.startTimeLocal).toISOString().split('T')[0]
-    : new Date().toISOString().split('T')[0];
+    ? activity.startTimeLocal.substring(0, 10)
+    : todayInZone(timezone);
 
   // Data from sessionData should already be parsed objects if coming from the microservice
   const details = sessionData.details || {};
@@ -642,7 +651,11 @@ async function processGarminWorkoutDefinition(userId, workoutData) {
 }
 
 // Helper function to process a simple Garmin activity
-async function processGarminSimpleActivity(userId, activityData) {
+async function processGarminSimpleActivity(
+  userId,
+  activityData,
+  timezone = 'UTC'
+) {
   const { activity } = activityData;
   const exerciseName = activity.activityType?.typeKey
     ? activity.activityType.typeKey
@@ -666,8 +679,8 @@ async function processGarminSimpleActivity(userId, activityData) {
   }
 
   const entryDate = activity.startTimeLocal
-    ? new Date(activity.startTimeLocal).toISOString().split('T')[0]
-    : new Date().toISOString().split('T')[0];
+    ? activity.startTimeLocal.substring(0, 10)
+    : todayInZone(timezone);
 
   const exerciseEntryData = {
     exercise_id: exercise.id,
@@ -775,17 +788,18 @@ async function syncGarminData(
   customEndDate = null
 ) {
   let startDate, endDate;
-  const today = moment();
+  const tz = await loadUserTimezone(userId);
+  const today = todayInZone(tz);
 
   if (customStartDate) {
     startDate = customStartDate;
-    endDate = customEndDate || today.format('YYYY-MM-DD');
+    endDate = customEndDate || today;
   } else if (syncType === 'manual') {
-    endDate = today.format('YYYY-MM-DD');
-    startDate = today.clone().subtract(7, 'days').format('YYYY-MM-DD');
+    endDate = today;
+    startDate = addDays(today, -7);
   } else if (syncType === 'scheduled') {
-    endDate = today.format('YYYY-MM-DD');
-    startDate = today.format('YYYY-MM-DD');
+    endDate = today;
+    startDate = today;
   } else {
     throw new Error("Invalid syncType. Must be 'manual' or 'scheduled'.");
   }
@@ -922,7 +936,8 @@ async function syncGarminData(
       userId,
       activitiesData,
       startDate,
-      endDate
+      endDate,
+      tz
     );
 
     results.activities = processedActivities;

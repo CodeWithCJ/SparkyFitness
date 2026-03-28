@@ -5,6 +5,7 @@ const exerciseRepository = require('../../models/exercise');
 const exerciseEntryRepository = require('../../models/exerciseEntry');
 const activityDetailsRepository = require('../../models/activityDetailsRepository');
 const measurementRepository = require('../../models/measurementRepository');
+const { todayInZone, instantToDay } = require('@workspace/shared');
 
 /**
  * Map Strava sport_type to a general exercise category
@@ -77,7 +78,8 @@ async function processStravaActivities(
   createdByUserId,
   activities = [],
   detailedActivities = {},
-  startDate = null
+  startDate = null,
+  timezone = 'UTC'
 ) {
   if (!activities || activities.length === 0) return;
 
@@ -86,7 +88,7 @@ async function processStravaActivities(
       // Extract entry date from start_date_local (e.g., "2024-01-15T07:30:00Z")
       const entryDate = activity.start_date_local
         ? activity.start_date_local.substring(0, 10)
-        : new Date(activity.start_date).toISOString().split('T')[0];
+        : instantToDay(activity.start_date, timezone);
 
       // Safety filter
       if (startDate && entryDate < startDate) {
@@ -197,11 +199,16 @@ async function processStravaActivities(
  * @param {number} createdByUserId - Acting user ID
  * @param {Object} athlete - Strava athlete profile object
  */
-async function processStravaAthleteWeight(userId, createdByUserId, athlete) {
+async function processStravaAthleteWeight(
+  userId,
+  createdByUserId,
+  athlete,
+  timezone = 'UTC'
+) {
   if (!athlete || !athlete.weight || athlete.weight <= 0) return;
 
   try {
-    const entryDate = new Date().toISOString().split('T')[0];
+    const entryDate = todayInZone(timezone);
     const measurementsToUpsert = { weight: athlete.weight }; // Already in kg
 
     await measurementRepository.upsertCheckInMeasurements(

@@ -1,6 +1,8 @@
 //console.log('DEBUG: Loading measurementService.js');
 const { log } = require('../config/logging'); // Import the logger utility
 const measurementRepository = require('../models/measurementRepository');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { instantToDay, instantHourMinute } = require('@workspace/shared');
 
 /**
  * Default units for health metric types when not provided by client (e.g. HealthConnect sync).
@@ -151,6 +153,7 @@ const waterContainerRepository = require('../models/waterContainerRepository'); 
 const activityDetailsRepository = require('../models/activityDetailsRepository'); // Import activityDetailsRepository
 
 async function processHealthData(healthDataArray, userId, actingUserId) {
+  const tz = await loadUserTimezone(userId);
   const processedResults = [];
   const errors = [];
 
@@ -173,7 +176,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       if (dateToParse) {
         const dateObj = new Date(dateToParse);
         if (!isNaN(dateObj.getTime())) {
-          const parsedDate = dateObj.toISOString().split('T')[0];
+          const parsedDate = instantToDay(dateObj, tz);
           if (!datesBySource[source]) {
             datesBySource[source] = {};
           }
@@ -269,7 +272,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           `Invalid date received from shortcut: '${dateToParse}'.`
         );
       }
-      parsedDate = dateObj.toISOString().split('T')[0];
+      parsedDate = instantToDay(dateObj, tz);
 
       // If timestamp is not provided, default to the beginning of the day from the 'date' field.
       if (timestamp) {
@@ -283,7 +286,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           entryHour = 0; // Default to hour 0
         } else {
           entryTimestamp = timestampObj.toISOString();
-          entryHour = timestampObj.getHours();
+          entryHour = instantHourMinute(timestampObj, tz).hour;
         }
       } else {
         // If no timestamp is provided, use the start of the day from the 'date' field.
@@ -668,6 +671,7 @@ async function processMobileHealthData(
   userId,
   actingUserId
 ) {
+  const tz = await loadUserTimezone(userId);
   const processedResults = [];
   const errors = [];
 
@@ -713,9 +717,9 @@ async function processMobileHealthData(
       if (isNaN(dateObj.getTime())) {
         throw new Error(`Invalid timestamp received: '${timestamp}'.`);
       }
-      parsedDate = dateObj.toISOString().split('T')[0];
+      parsedDate = instantToDay(dateObj, tz);
       entryTimestamp = dateObj.toISOString();
-      entryHour = dateObj.getHours();
+      entryHour = instantHourMinute(dateObj, tz).hour;
     } catch (e) {
       log('error', 'Timestamp parsing error:', e);
       errors.push({

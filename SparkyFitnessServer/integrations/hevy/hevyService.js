@@ -13,6 +13,8 @@ const {
 const { log } = require('../../config/logging');
 const { loadRawBundle } = require('../../utils/diagnosticLogger');
 const hevyDataProcessor = require('./hevyDataProcessor');
+const { loadUserTimezone } = require('../../utils/timezoneLoader');
+const { todayInZone, addDays } = require('@workspace/shared');
 
 const HEVY_API_BASE_URL = 'https://api.hevyapp.com';
 
@@ -191,6 +193,8 @@ async function syncHevyData(
   startDate = null,
   endDate = null
 ) {
+  const tz = await loadUserTimezone(userId);
+
   log(
     'info',
     `Starting Hevy ${fullSync ? 'FULL' : 'INCREMENTAL'} synchronization for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}...`
@@ -220,7 +224,8 @@ async function syncHevyData(
         await hevyDataProcessor.processHevyUserInfo(
           userId,
           createdByUserId,
-          responses['raw_user_info'].data
+          responses['raw_user_info'].data,
+          tz
         );
       }
 
@@ -239,7 +244,8 @@ async function syncHevyData(
         await hevyDataProcessor.processHevyWorkouts(
           userId,
           createdByUserId,
-          allWorkouts
+          allWorkouts,
+          tz
         );
       }
 
@@ -305,8 +311,8 @@ async function syncHevyData(
     const allWorkouts = [];
     let currentPage = 1;
     let hasMore = true;
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoStr = addDays(todayInZone(tz), -7);
+    const sevenDaysAgo = new Date(sevenDaysAgoStr + 'T00:00:00Z');
 
     while (hasMore) {
       const pageKey = `raw_workouts_page_${currentPage}`;
@@ -351,7 +357,8 @@ async function syncHevyData(
       await hevyDataProcessor.processHevyUserInfo(
         userId,
         createdByUserId,
-        userInfoData
+        userInfoData,
+        tz
       );
     }
 
@@ -359,7 +366,8 @@ async function syncHevyData(
       await hevyDataProcessor.processHevyWorkouts(
         userId,
         createdByUserId,
-        allWorkouts
+        allWorkouts,
+        tz
       );
     }
 

@@ -4,6 +4,8 @@ const measurementRepository = require('../models/measurementRepository');
 const { log } = require('../config/logging');
 const { getDefaultModel } = require('../ai/config');
 const { Agent } = require('undici'); // Import Agent from undici
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone } = require('@workspace/shared');
 
 async function handleAiServiceSettings(
   action,
@@ -291,8 +293,10 @@ async function processChatMessage(
 
     // Comprehensive system prompt from old Supabase Edge Function
     // Fetch user's custom categories to provide context to the AI
-    const customCategories =
-      await measurementRepository.getCustomCategories(authenticatedUserId);
+    const [customCategories, chatTz] = await Promise.all([
+      measurementRepository.getCustomCategories(authenticatedUserId),
+      loadUserTimezone(authenticatedUserId),
+    ]);
     const customCategoriesList =
       customCategories.length > 0
         ? customCategories
@@ -305,7 +309,7 @@ async function processChatMessage(
 
     const systemPromptContent = `You are Sparky, an AI nutrition and wellness coach. Your primary goal is to help users track their food, exercise, and measurements, and provide helpful advice and motivation based on their data and general health knowledge.
 
-The current date is ${new Date().toISOString().split('T')[0]}.
+The current date is ${todayInZone(chatTz)}.
 
 **CRITICAL INSTRUCTION:** When the user mentions "water" in any context related to consumption or intake, you MUST use the 'log_water' intent. Do NOT classify water as a 'log_food' item.
 

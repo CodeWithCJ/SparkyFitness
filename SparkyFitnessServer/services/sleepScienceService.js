@@ -1,5 +1,11 @@
 const sleepScienceRepository = require('../models/sleepScienceRepository');
 const { log } = require('../config/logging');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const {
+  instantHourMinute,
+  dayOfWeek,
+  userHourMinute,
+} = require('@workspace/shared');
 
 const {
   DECAY_LAMBDA,
@@ -53,20 +59,20 @@ function standardDeviation(values) {
   );
 }
 
-function getWakeHour(entry) {
+function getWakeHour(entry, timezone = 'UTC') {
   if (!entry.sleepEndTimestampGMT) return null;
   const ts = Number(entry.sleepEndTimestampGMT);
   if (isNaN(ts)) return null;
-  const d = new Date(ts);
-  return d.getHours() + d.getMinutes() / 60;
+  const { hour, minute } = instantHourMinute(ts, timezone);
+  return hour + minute / 60;
 }
 
-function getSleepHour(entry) {
+function getSleepHour(entry, timezone = 'UTC') {
   if (!entry.sleepStartTimestampGMT) return null;
   const ts = Number(entry.sleepStartTimestampGMT);
   if (isNaN(ts)) return null;
-  const d = new Date(ts);
-  return d.getHours() + d.getMinutes() / 60;
+  const { hour, minute } = instantHourMinute(ts, timezone);
+  return hour + minute / 60;
 }
 
 function getTST(entry) {
@@ -168,18 +174,18 @@ async function calculateSleepDebt(userId) {
 // MCTQ BASELINE CALCULATION
 // ==========================================
 
-function classifyDaysAutomatically(history) {
+function classifyDaysAutomatically(history, timezone = 'UTC') {
   const dayBuckets = new Map();
 
   for (const entry of history) {
-    const wakeHour = getWakeHour(entry);
+    const wakeHour = getWakeHour(entry, timezone);
     if (wakeHour === null) continue;
 
     const dateStr =
       typeof entry.date === 'string'
         ? entry.date
         : entry.date.toISOString().slice(0, 10);
-    const dow = new Date(dateStr).getDay();
+    const dow = dayOfWeek(dateStr);
 
     if (!dayBuckets.has(dow)) dayBuckets.set(dow, []);
     dayBuckets.get(dow).push(wakeHour);
@@ -211,7 +217,7 @@ function classifyDaysAutomatically(history) {
   return classification;
 }
 
-async function calculateBaseline(userId, windowDays = 90) {
+async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
   log(
     'info',
     `Calculating MCTQ baseline for user ${userId}, window=${windowDays} days`
@@ -231,7 +237,7 @@ async function calculateBaseline(userId, windowDays = 90) {
   }
 
   // Classify days
-  const dayClassification = classifyDaysAutomatically(history);
+  const dayClassification = classifyDaysAutomatically(history, timezone);
 
   // Split history by day type
   const workdayEntries = [];
@@ -245,7 +251,7 @@ async function calculateBaseline(userId, windowDays = 90) {
       typeof entry.date === 'string'
         ? entry.date
         : entry.date.toISOString().slice(0, 10);
-    const dow = new Date(dateStr).getDay();
+    const dow = dayOfWeek(dateStr);
     const dayType = dayClassification.get(dow) || 'workday';
 
     if (dayType === 'workday') {
@@ -328,7 +334,7 @@ async function calculateBaseline(userId, windowDays = 90) {
 
   // Mid-sleep point calculation - uses actual TST to find the true middle
   const getMidSleep = (entry) => {
-    const start = getSleepHour(entry);
+    const start = getSleepHour(entry, timezone);
     if (start === null) return null;
     const tst = getTST(entry);
     if (tst === null) return null;
@@ -397,7 +403,7 @@ async function calculateBaseline(userId, windowDays = 90) {
   });
 
   // Save day classifications
-  const dayStats = getDayOfWeekStats(history, dayClassification);
+  const dayStats = getDayOfWeekStats(history, dayClassification, timezone);
   for (const stat of dayStats) {
     await sleepScienceRepository.upsertDayClassification(
       userId,
@@ -429,18 +435,18 @@ async function calculateBaseline(userId, windowDays = 90) {
   };
 }
 
-function getDayOfWeekStats(history, classification) {
+function getDayOfWeekStats(history, classification, timezone = 'UTC') {
   const buckets = new Map();
 
   for (const entry of history) {
-    const wakeHour = getWakeHour(entry);
+    const wakeHour = getWakeHour(entry, timezone);
     if (wakeHour === null) continue;
 
     const dateStr =
       typeof entry.date === 'string'
         ? entry.date
         : entry.date.toISOString().slice(0, 10);
-    const dow = new Date(dateStr).getDay();
+    const dow = dayOfWeek(dateStr);
 
     if (!buckets.has(dow)) buckets.set(dow, []);
     buckets.get(dow).push(wakeHour);
@@ -571,6 +577,7 @@ async function getDailyNeed(userId, targetDate) {
 
 async function getEnergyCurve(userId) {
   log('info', `Generating energy curve for user ${userId}`);
+  const tz = await loadUserTimezone(userId);
 
   const history = await sleepScienceRepository.getSleepHistory(userId, 14);
 
@@ -586,8 +593,8 @@ async function getEnergyCurve(userId) {
   const wakeTimes = [];
   const sleepTimes = [];
   for (const entry of history) {
-    const wh = getWakeHour(entry);
-    const sh = getSleepHour(entry);
+    const wh = getWakeHour(entry, tz);
+    const sh = getSleepHour(entry, tz);
     if (wh !== null) wakeTimes.push(wh);
     if (sh !== null) sleepTimes.push(sh);
   }
@@ -704,7 +711,8 @@ async function getEnergyCurve(userId) {
   }
 
   // Find current energy
-  const currentHour = now.getHours() + now.getMinutes() / 60;
+  const { hour: nowHour, minute: nowMin } = userHourMinute(tz);
+  const currentHour = nowHour + nowMin / 60;
   const currentIdx = Math.min(95, Math.round(currentHour * 4));
   const currentPoint = points[currentIdx];
 
@@ -751,6 +759,7 @@ async function getEnergyCurve(userId) {
 
 async function getChronotype(userId) {
   log('info', `Getting chronotype for user ${userId}`);
+  const tz = await loadUserTimezone(userId);
 
   const history = await sleepScienceRepository.getSleepHistory(userId, 30);
 
@@ -766,8 +775,8 @@ async function getChronotype(userId) {
   const sleepTimes = [];
 
   for (const entry of history) {
-    const wh = getWakeHour(entry);
-    const sh = getSleepHour(entry);
+    const wh = getWakeHour(entry, tz);
+    const sh = getSleepHour(entry, tz);
     if (wh !== null) wakeTimes.push(wh);
     if (sh !== null) sleepTimes.push(sh);
   }
@@ -852,7 +861,7 @@ async function checkDataSufficiency(userId) {
       typeof entry.date === 'string'
         ? entry.date
         : entry.date.toISOString().slice(0, 10);
-    const dow = new Date(dateStr).getDay();
+    const dow = dayOfWeek(dateStr);
     if (dow === 0 || dow === 6) {
       freedayCount++;
     } else {

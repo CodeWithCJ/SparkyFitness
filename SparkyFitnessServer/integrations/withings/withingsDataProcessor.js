@@ -5,6 +5,7 @@ const { log } = require('../../config/logging');
 const exerciseRepository = require('../../models/exercise'); // Import exercise repository
 const exerciseEntryRepository = require('../../models/exerciseEntry'); // Import exerciseEntry repository
 const sleepRepository = require('../../models/sleepRepository'); // Import sleep repository
+const { instantToDay } = require('@workspace/shared');
 
 // Define a mapping for Withings metric types to SparkyFitness measurement types
 // This can be extended as more Withings metrics are integrated
@@ -298,7 +299,12 @@ const WITHINGS_METRIC_MAPPING = {
   },
 };
 
-async function processWithingsMeasures(userId, createdByUserId, measuregrps) {
+async function processWithingsMeasures(
+  userId,
+  createdByUserId,
+  measuregrps,
+  timezone = 'UTC'
+) {
   if (!Array.isArray(measuregrps) || measuregrps.length === 0) {
     log('info', `No Withings measures data to process for user ${userId}.`);
     return;
@@ -316,7 +322,7 @@ async function processWithingsMeasures(userId, createdByUserId, measuregrps) {
       );
       continue;
     }
-    const entryDate = new Date(timestamp * 1000).toISOString().split('T')[0]; // Convert Unix timestamp to YYYY-MM-DD
+    const entryDate = instantToDay(timestamp * 1000, timezone); // Convert Unix timestamp to YYYY-MM-DD
     const measurementsToUpsert = {};
     const customMeasurementsToUpsert = [];
 
@@ -391,7 +397,8 @@ async function processWithingsMeasures(userId, createdByUserId, measuregrps) {
 async function processWithingsHeartData(
   userId,
   createdByUserId,
-  heartSeries = []
+  heartSeries = [],
+  timezone = 'UTC'
 ) {
   if (!Array.isArray(heartSeries) || heartSeries.length === 0) {
     log('info', `No Withings heart data to process for user ${userId}.`);
@@ -408,7 +415,7 @@ async function processWithingsHeartData(
       continue;
     }
 
-    const entryDate = new Date(timestamp * 1000).toISOString().split('T')[0];
+    const entryDate = instantToDay(timestamp * 1000, timezone);
     const entryHour = new Date(timestamp * 1000).getUTCHours();
     const entryTimestamp = new Date(timestamp * 1000).toISOString();
 
@@ -508,7 +515,8 @@ async function processWithingsSleepData(
   userId,
   createdByUserId,
   sleepSeries = [],
-  sleepSummary = []
+  sleepSummary = [],
+  timezone = 'UTC'
 ) {
   // Normalize inputs to always be arrays (Withings sometimes returns a single object)
   const seriesArr = Array.isArray(sleepSeries)
@@ -547,7 +555,7 @@ async function processWithingsSleepData(
       const entryDate =
         typeof timestamp === 'string' && timestamp.includes('-')
           ? timestamp
-          : new Date(timestamp * 1000).toISOString().split('T')[0];
+          : instantToDay(timestamp * 1000, timezone);
 
       if (!minDate || entryDate < minDate) minDate = entryDate;
       if (!maxDate || entryDate > maxDate) maxDate = entryDate;
@@ -574,7 +582,7 @@ async function processWithingsSleepData(
     const entryDate =
       typeof summary.date === 'string'
         ? summary.date
-        : new Date(summary.date * 1000).toISOString().split('T')[0];
+        : instantToDay(summary.date * 1000, timezone);
 
     // Default to start/end dates
     let bedtimeTs = summary.startdate;

@@ -5,7 +5,8 @@ const stravaIntegrationService = require('../integrations/strava/stravaService')
 const stravaDataProcessor = require('../integrations/strava/stravaDataProcessor');
 const { getSystemClient } = require('../db/poolManager');
 const { loadRawBundle } = require('../utils/diagnosticLogger');
-const moment = require('moment');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone, addDays } = require('@workspace/shared');
 const fs = require('fs');
 const path = require('path');
 
@@ -31,27 +32,28 @@ async function syncStravaData(
   customEndDate = null
 ) {
   let startDate, endDate;
-  const today = moment();
+  const tz = await loadUserTimezone(userId);
+  const today = todayInZone(tz);
 
   if (customStartDate) {
     startDate = customStartDate;
-    endDate = customEndDate || today.format('YYYY-MM-DD');
+    endDate = customEndDate || today;
   } else if (syncType === 'manual') {
-    endDate = today.format('YYYY-MM-DD');
-    startDate = today.clone().subtract(7, 'days').format('YYYY-MM-DD');
+    endDate = today;
+    startDate = addDays(today, -7);
   } else if (syncType === 'scheduled') {
-    endDate = today.format('YYYY-MM-DD');
-    startDate = today.format('YYYY-MM-DD');
+    endDate = today;
+    startDate = today;
   } else {
     throw new Error("Invalid syncType. Must be 'manual' or 'scheduled'.");
   }
 
   // Convert dates to epoch for Strava API (seconds since epoch)
   const afterEpoch = Math.floor(
-    moment(startDate, 'YYYY-MM-DD').startOf('day').valueOf() / 1000
+    new Date(startDate + 'T00:00:00Z').valueOf() / 1000
   );
   const beforeEpoch = Math.floor(
-    moment(endDate, 'YYYY-MM-DD').endOf('day').valueOf() / 1000
+    new Date(addDays(endDate, 1) + 'T00:00:00Z').valueOf() / 1000
   );
 
   log(
@@ -83,7 +85,8 @@ async function syncStravaData(
         await stravaDataProcessor.processStravaAthleteWeight(
           userId,
           userId,
-          responses['raw_athlete'].data
+          responses['raw_athlete'].data,
+          tz
         );
       }
 
@@ -103,7 +106,8 @@ async function syncStravaData(
           userId,
           responses['raw_activities_list'].data,
           detailedActivities,
-          null // Pass null to skip the date safety filter during local replay
+          null, // Pass null to skip the date safety filter during local replay
+          tz
         );
       }
 
@@ -206,7 +210,8 @@ async function syncStravaData(
         userId,
         activities,
         detailedActivities,
-        startDate
+        startDate,
+        tz
       );
     }
 
@@ -214,7 +219,8 @@ async function syncStravaData(
       await stravaDataProcessor.processStravaAthleteWeight(
         userId,
         userId,
-        athleteData
+        athleteData,
+        tz
       );
     }
 

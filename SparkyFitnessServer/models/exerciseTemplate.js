@@ -3,6 +3,7 @@ const format = require('pg-format');
 const { log } = require('../config/logging');
 const workoutPresetRepository = require('./workoutPresetRepository');
 const { getExerciseById } = require('./exercise');
+const { dayOfWeek } = require('@workspace/shared');
 
 async function createExerciseEntriesFromTemplate(
   templateId,
@@ -99,8 +100,8 @@ async function createExerciseEntriesFromTemplate(
       d <= endDate;
       d.setDate(d.getDate() + 1)
     ) {
-      const currentDayOfWeek = d.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
       const entryDate = d.toISOString().split('T')[0];
+      const currentDayOfWeek = dayOfWeek(entryDate); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
 
       for (const assignment of template.assignments) {
         if (assignment.day_of_week === currentDayOfWeek) {

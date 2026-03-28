@@ -4,6 +4,7 @@ const exerciseEntryRepository = require('../../models/exerciseEntry');
 const exerciseRepository = require('../../models/exercise');
 const measurementRepository = require('../../models/measurementRepository');
 const { log } = require('../../config/logging');
+const { todayInZone, instantToDay } = require('@workspace/shared');
 
 /**
  * Process Hevy user info to sync measurements.
@@ -11,12 +12,17 @@ const { log } = require('../../config/logging');
  * @param {string} createdByUserId - The user ID who triggered the sync.
  * @param {Object} data - The Hevy user info response.
  */
-async function processHevyUserInfo(userId, createdByUserId, data) {
+async function processHevyUserInfo(
+  userId,
+  createdByUserId,
+  data,
+  timezone = 'UTC'
+) {
   if (!data || !data.user) return;
   const { weight_kg, height_cm, updated_at } = data.user;
   const entryDate = updated_at
     ? updated_at.split('T')[0]
-    : new Date().toISOString().split('T')[0];
+    : todayInZone(timezone);
 
   try {
     const measurements = {};
@@ -49,7 +55,12 @@ async function processHevyUserInfo(userId, createdByUserId, data) {
  * @param {string} createdByUserId - The user ID who triggered the sync.
  * @param {Array} workouts - The list of Hevy workouts.
  */
-async function processHevyWorkouts(userId, createdByUserId, workouts) {
+async function processHevyWorkouts(
+  userId,
+  createdByUserId,
+  workouts,
+  timezone = 'UTC'
+) {
   log(
     'info',
     `Processing ${workouts.length} Hevy workouts for user ${userId}...`
@@ -57,7 +68,7 @@ async function processHevyWorkouts(userId, createdByUserId, workouts) {
 
   for (const workout of workouts) {
     try {
-      await processSingleWorkout(userId, createdByUserId, workout);
+      await processSingleWorkout(userId, createdByUserId, workout, timezone);
     } catch (error) {
       log(
         'error',
@@ -73,7 +84,12 @@ async function processHevyWorkouts(userId, createdByUserId, workouts) {
  * @param {string} createdByUserId - The user ID who triggered the sync.
  * @param {Object} workout - The Hevy workout object.
  */
-async function processSingleWorkout(userId, createdByUserId, workout) {
+async function processSingleWorkout(
+  userId,
+  createdByUserId,
+  workout,
+  timezone = 'UTC'
+) {
   const startTime = new Date(workout.start_time);
   const endTime = new Date(workout.end_time);
   const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
@@ -105,7 +121,7 @@ async function processSingleWorkout(userId, createdByUserId, workout) {
     // 2. Prepare entry data
     const entryData = {
       exercise_id: exercise.id,
-      entry_date: startTime.toISOString().split('T')[0],
+      entry_date: instantToDay(startTime, timezone),
       duration_minutes: durationMinutes, // Note: Hevy provides total workout duration, not per-exercise
       calories_burned: 0, // Hevy typically doesn't provide per-exercise calories
       notes:

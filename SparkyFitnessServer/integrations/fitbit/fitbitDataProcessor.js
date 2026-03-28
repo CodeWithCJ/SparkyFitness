@@ -6,6 +6,7 @@ const exerciseRepository = require('../../models/exercise');
 const activityDetailsRepository = require('../../models/activityDetailsRepository');
 const sleepRepository = require('../../models/sleepRepository');
 const { log } = require('../../config/logging');
+const { todayInZone } = require('@workspace/shared');
 
 // Conversion factors for en-US to Metric
 const LBS_TO_KG = 0.453592;
@@ -50,7 +51,8 @@ async function processFitbitProfile(
   userId,
   createdByUserId,
   data,
-  date = null
+  date = null,
+  timezone = 'UTC'
 ) {
   if (!data || !data.user) return;
   const height = data.user.height;
@@ -58,7 +60,7 @@ async function processFitbitProfile(
 
   // Fitbit Profile API height is typically returned in Centimeters by default.
   // We will treat it as CM to avoid double-conversion issues.
-  const syncDate = date || new Date().toISOString().split('T')[0];
+  const syncDate = date || todayInZone(timezone);
   await measurementRepository.upsertCheckInMeasurements(
     userId,
     createdByUserId,
@@ -524,7 +526,8 @@ async function processFitbitWater(
   userId,
   createdByUserId,
   data,
-  waterUnit = 'METRIC'
+  waterUnit = 'METRIC',
+  timezone = 'UTC'
 ) {
   if (!data) return;
 
@@ -540,7 +543,7 @@ async function processFitbitWater(
     const entryDate =
       data.water && data.water.length > 0
         ? data.water[0].date
-        : new Date().toISOString().split('T')[0];
+        : todayInZone(timezone);
 
     entries.push({
       dateTime: entryDate,
