@@ -6,7 +6,11 @@ const stravaDataProcessor = require('../integrations/strava/stravaDataProcessor'
 const { getSystemClient } = require('../db/poolManager');
 const { loadRawBundle } = require('../utils/diagnosticLogger');
 const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { todayInZone, addDays } = require('@workspace/shared');
+const {
+  todayInZone,
+  addDays,
+  dayRangeToUtcRange,
+} = require('@workspace/shared');
 const fs = require('fs');
 const path = require('path');
 
@@ -49,12 +53,9 @@ async function syncStravaData(
   }
 
   // Convert dates to epoch for Strava API (seconds since epoch)
-  const afterEpoch = Math.floor(
-    new Date(startDate + 'T00:00:00Z').valueOf() / 1000
-  );
-  const beforeEpoch = Math.floor(
-    new Date(addDays(endDate, 1) + 'T00:00:00Z').valueOf() / 1000
-  );
+  const { start, end } = dayRangeToUtcRange(startDate, endDate, tz);
+  const afterEpoch = Math.floor(start.valueOf() / 1000);
+  const beforeEpoch = Math.floor(end.valueOf() / 1000);
 
   log(
     'info',

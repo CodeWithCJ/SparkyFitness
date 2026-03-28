@@ -14,7 +14,7 @@ const { log } = require('../../config/logging');
 const { loadRawBundle } = require('../../utils/diagnosticLogger');
 const hevyDataProcessor = require('./hevyDataProcessor');
 const { loadUserTimezone } = require('../../utils/timezoneLoader');
-const { todayInZone, addDays } = require('@workspace/shared');
+const { todayInZone, addDays, dayToUtcRange } = require('@workspace/shared');
 
 const HEVY_API_BASE_URL = 'https://api.hevyapp.com';
 
@@ -312,7 +312,7 @@ async function syncHevyData(
     let currentPage = 1;
     let hasMore = true;
     const sevenDaysAgoStr = addDays(todayInZone(tz), -7);
-    const sevenDaysAgo = new Date(sevenDaysAgoStr + 'T00:00:00Z');
+    const { start: sevenDaysAgo } = dayToUtcRange(sevenDaysAgoStr, tz);
 
     while (hasMore) {
       const pageKey = `raw_workouts_page_${currentPage}`;

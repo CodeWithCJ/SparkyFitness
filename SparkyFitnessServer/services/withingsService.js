@@ -6,7 +6,11 @@ const withingsDataProcessor = require('../integrations/withings/withingsDataProc
 const { getSystemClient } = require('../db/poolManager');
 const { loadRawBundle } = require('../utils/diagnosticLogger');
 const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { todayInZone, addDays } = require('@workspace/shared');
+const {
+  todayInZone,
+  addDays,
+  dayRangeToUtcRange,
+} = require('@workspace/shared');
 const fs = require('fs');
 const path = require('path');
 
@@ -30,9 +34,12 @@ async function syncWithingsData(userId, syncType = 'manual') {
   // Calculate dates for sync
   const startDateYMD = addDays(todayStr, -7);
   const endDateYMD = addDays(todayStr, 1);
-  const startDateUnix = Math.floor(
-    new Date(startDateYMD + 'T00:00:00Z').getTime() / 1000
+  const { start: startDateUtc } = dayRangeToUtcRange(
+    startDateYMD,
+    todayStr,
+    tz
   );
+  const startDateUnix = Math.floor(startDateUtc.getTime() / 1000);
   const endDateUnix = Math.floor(Date.now() / 1000);
 
   log(
@@ -175,8 +182,8 @@ async function syncWithingsData(userId, syncType = 'manual') {
       sleep_summary: await safeFetch('raw_sleep_summary', () =>
         withingsIntegrationService.fetchSleepSummaryData(
           userId,
-          startDateUnix,
-          endDateUnix
+          startDateYMD,
+          endDateYMD
         )
       ),
       workouts: await safeFetch('raw_workouts', () =>
