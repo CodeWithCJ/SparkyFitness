@@ -123,6 +123,9 @@ router.post('/login', authenticate, async (req, res, next) => {
       res.status(200).json(result);
     }
   } catch (error) {
+    if (error.statusCode === 429) {
+      return res.status(429).json({ error: error.message });
+    }
     next(error);
   }
 });
@@ -327,7 +330,7 @@ router.post(
 
       log(
         'debug',
-        'Processed health data for measurementService:',
+        `Processed health data for measurementService:`,
         processedHealthData
       );
 
@@ -558,10 +561,12 @@ router.post('/unlink', authenticate, async (req, res, next) => {
         provider.id,
         userId
       );
-      res.status(200).json({
-        success: true,
-        message: 'Garmin Connect account unlinked successfully.',
-      });
+      res
+        .status(200)
+        .json({
+          success: true,
+          message: 'Garmin Connect account unlinked successfully.',
+        });
     } else {
       res
         .status(400)

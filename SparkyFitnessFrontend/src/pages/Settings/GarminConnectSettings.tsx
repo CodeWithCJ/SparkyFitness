@@ -71,6 +71,20 @@ const GarminConnectSettings = ({
       }
     } catch (error: unknown) {
       console.error('Login Error:', error);
+      const apiDetail =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { data?: { detail?: string } } }).response
+              ?.data?.detail
+          : undefined;
+      toast({
+        title: 'Garmin Login Failed',
+        description:
+          apiDetail ||
+          (error instanceof Error
+            ? error.message
+            : 'Failed to connect to Garmin. Please try again.'),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -99,6 +113,20 @@ const GarminConnectSettings = ({
       }
     } catch (error: unknown) {
       console.error('MFA Error:', error);
+      const apiDetail =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { data?: { detail?: string } } }).response
+              ?.data?.detail
+          : undefined;
+      toast({
+        title: 'MFA Verification Failed',
+        description:
+          apiDetail ||
+          (error instanceof Error
+            ? error.message
+            : 'Failed to verify MFA code. Please try again.'),
+        variant: 'destructive',
+      });
     }
   };
 

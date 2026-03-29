@@ -1094,6 +1094,9 @@ async def garmin_login(request_data: GarminLoginRequest):
             return {"status": "success", "tokens": tokens}
 
     except GarthHTTPError as e:
+        if hasattr(e, 'response') and e.response is not None and e.response.status_code == 429:
+            logger.error(f"Garmin rate limited during login: {e}")
+            raise HTTPException(status_code=429, detail="Garmin is rate limiting login attempts. Please wait a few minutes before trying again.")
         logger.error(f"Garmin login error: {e}")
         raise HTTPException(status_code=500, detail=f"Garmin login error: {e}")
     except GarthException as e:
