@@ -315,6 +315,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           className="absolute bottom-0 left-0 right-0 items-center gap-4"
           style={{ paddingBottom: Math.max(insets.bottom + 8, 24) }}
         >
+          {scanMode === 'barcode' && !notFoundBarcode && (
+            <TouchableOpacity onPress={handleShowManualEntry}>
+              <Text className="text-white/80 text-sm underline">Manually enter barcode</Text>
+            </TouchableOpacity>
+          )}
+
           <View className="bg-black/50 rounded-lg mx-8 self-stretch">
             <SegmentedControl
               segments={SCAN_SEGMENTS}
