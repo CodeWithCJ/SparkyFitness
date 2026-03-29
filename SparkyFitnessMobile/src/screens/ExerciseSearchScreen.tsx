@@ -223,7 +223,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
         <Icon name="search" size={18} color={textMuted} />
         <View className="flex-1 ml-2">
           <TextInput
-            className="text-text-primary"
+            className="text-text-primary p-0"
             style={{ fontSize: 16, lineHeight: 20 }}
             placeholder={activeTab === 'workouts' ? 'Search workouts...' : 'Search exercises...'}
             placeholderTextColor={textMuted}
