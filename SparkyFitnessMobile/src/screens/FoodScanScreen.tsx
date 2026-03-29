@@ -261,32 +261,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       )}
 
-      {scanMode === 'barcode' && notFoundBarcode && !loading && (
-        <View className="absolute bottom-24 left-0 right-0 mx-8 bg-black/70 rounded-xl p-5 items-center gap-3">
-          <Text className="text-white text-base font-semibold">No match for barcode</Text>
-          <Text className="text-white/70 text-sm text-center">You can scan the nutrition label or enter it manually.</Text>
-          <View className="flex-row gap-3 mt-2">
-            <UIButton
-              variant="primary"
-              onPress={handleScanLabel}
-              className="flex-1 py-3 rounded-lg"
-              textClassName="text-sm"
-            >
-              Scan Nutrition Label
-            </UIButton>
-            <TouchableOpacity
-              onPress={() => navigation.replace('FoodForm', { mode: 'create-food',
-                date: route.params?.date,
-                barcode: notFoundBarcode,
-              })}
-              className="flex-1 bg-white/20 py-3 rounded-lg items-center"
-            >
-              <Text className="text-white font-semibold text-sm">Enter Manually</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
       {/* Photo preview with Retake / Use Photo */}
       {capturedPhoto && !labelProcessing && (
         <View className="absolute inset-0">
@@ -315,10 +289,32 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           className="absolute bottom-0 left-0 right-0 items-center gap-4"
           style={{ paddingBottom: Math.max(insets.bottom + 8, 24) }}
         >
-          {scanMode === 'barcode' && !notFoundBarcode && (
-            <TouchableOpacity onPress={handleShowManualEntry}>
-              <Text className="text-white/80 text-sm underline">Manually enter barcode</Text>
-            </TouchableOpacity>
+          {scanMode === 'barcode' && notFoundBarcode && (
+            <View className="mx-8 self-stretch bg-surface rounded-xl p-5 items-center gap-3">
+              <Text className="text-text-primary text-base font-semibold">No match for barcode</Text>
+              <Text className="text-text-secondary text-sm text-center">You can scan the nutrition label or enter it manually.</Text>
+              <View className="flex-row gap-3 mt-2 self-stretch">
+                <UIButton
+                  variant="primary"
+                  onPress={handleScanLabel}
+                  className="flex-1 py-3 rounded-lg"
+                  textClassName="text-sm"
+                >
+                  Scan Nutrition Label
+                </UIButton>
+                <UIButton
+                  variant="outline"
+                  onPress={() => navigation.replace('FoodForm', { mode: 'create-food',
+                    date: route.params?.date,
+                    barcode: notFoundBarcode,
+                  })}
+                  className="flex-1 py-3 rounded-lg"
+                  textClassName="text-sm"
+                >
+                  Enter Manually
+                </UIButton>
+              </View>
+            </View>
           )}
 
           <View className="bg-black/50 rounded-lg mx-8 self-stretch">
