@@ -60,7 +60,7 @@ async function processFitbitProfile(
   
   if (heightUnit === "en_US") {
       height = parseFloat((height * IN_TO_CM).toFixed(2));
-
+  }
   const syncDate = date || todayInZone(timezone);
   await measurementRepository.upsertCheckInMeasurements(
     userId,
