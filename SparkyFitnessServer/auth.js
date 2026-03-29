@@ -17,6 +17,42 @@ const {
 const {
   createDefaultNutrientPreferencesForUser,
 } = require('./services/nutrientDisplayPreferenceService');
+/**
+ * Gathers and cleans origins from environment variables.
+ * @returns {string[]} An array of cleaned origin strings.
+ */
+function getBaseTrustedOrigins() {
+  const primary = process.env.SPARKY_FITNESS_FRONTEND_URL;
+  const rawExtras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS;
+  const origins = [primary];
+
+  if (rawExtras) {
+    const extras = rawExtras.split(',').map((o) => o.trim());
+    origins.push(...extras);
+  }
+
+  return [...new Set(origins)]
+    .filter(Boolean)
+    .map((url) => url.replace(/\/$/, ''));
+}
+
+/**
+ * Extracts Origin and Referer headers consistently across different Better Auth request objects.
+ * @param {Request|Object} request - The incoming request object.
+ * @returns {{origin: string|null, referer: string|null}}
+ */
+function extractRequestHeaders(request) {
+  const getHeader = (name) =>
+    typeof request?.headers?.get === 'function'
+      ? request.headers.get(name)
+      : request?.headers?.[name];
+
+  return {
+    origin: getHeader('origin') || null,
+    referer: getHeader('referer') || null,
+  };
+}
+
 const { isPrivateNetworkAddress } = require('./utils/corsHelper');
 
 // Create a dedicated pool for Better Auth
@@ -243,8 +279,9 @@ const auth = betterAuth({
       enabled: true,
       // Use a getter to ensure Better Auth always checks the current state of our dynamic list
       get trustedProviders() {
-        console.log(
-          '[AUTH DEBUG] Better Auth is checking trustedProviders. Current list:',
+        log(
+          'debug',
+          '[AUTH] Checking trustedProviders for linkable SSO. Current list:',
           dynamicTrustedProviders
         );
         return dynamicTrustedProviders;
@@ -279,86 +316,69 @@ const auth = betterAuth({
   // Trust proxy (for Docker/Nginx deployments)
   // NOTE: Better Auth calls this with the raw Request object directly (not a context wrapper)
   trustedOrigins: (request) => {
-    // 1. Gather all explicitly configured trusted origins
-    const origins = [process.env.SPARKY_FITNESS_FRONTEND_URL];
-    if (process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS) {
-      const extras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS.split(
-        ','
-      ).map((o) => o.trim());
-      origins.push(...extras);
-    }
-    const cleanOrigins = [...new Set(origins)]
-      .filter(Boolean)
-      .map((url) => url.replace(/\/$/, ''));
+    const cleanOrigins = getBaseTrustedOrigins();
+    const { origin: originHeader, referer: refererHeader } =
+      extractRequestHeaders(request);
 
-    // 2. Identify the dynamic origin and referer
-    const originHeader =
-      typeof request?.headers?.get === 'function'
-        ? request.headers.get('origin')
-        : request?.headers?.origin;
-
-    const refererHeader =
-      typeof request?.headers?.get === 'function'
-        ? request.headers.get('referer')
-        : request?.headers?.referer;
-
-    // --- DEBUG LOGGING (Sparingly for development) ---
-    // Trigger logs for anything that isn't your primary frontend domain (e.g., local IPs, extra origins)
+    // Identify if this is a non-primary origin (IP, extra domain, etc.) or null
+    const primaryUrl = process.env.SPARKY_FITNESS_FRONTEND_URL;
     const isExtraOrigin =
-      (originHeader &&
-        !originHeader.includes(process.env.SPARKY_FITNESS_FRONTEND_URL)) ||
-      (refererHeader &&
-        !refererHeader.includes(process.env.SPARKY_FITNESS_FRONTEND_URL));
+      (originHeader && !originHeader.includes(primaryUrl)) ||
+      (refererHeader && !refererHeader.includes(primaryUrl)) ||
+      originHeader === 'null';
 
-    if (isExtraOrigin || originHeader === 'null') {
-      console.log(`[AUTH DEBUG] Verifying Trusted Origin:`, {
-        origin: originHeader,
-        referer: refererHeader,
-        cleanOrigins,
-      });
+    if (isExtraOrigin) {
+      log(
+        'debug',
+        `[AUTH] Verifying Origin: ${originHeader}, Referer: ${refererHeader}`
+      );
     }
 
-    // 3. Fallback: If Origin is null/missing (HTTPS -> HTTP call), trust based on Referer
+    // 1. Primary Check: If Origin is missing/null (HTTPS -> HTTP call), trust based on Referer
     if (!originHeader || originHeader === 'null') {
       if (refererHeader) {
         try {
-          const refUrl = new URL(refererHeader);
-          if (cleanOrigins.includes(refUrl.origin)) {
-            if (isExtraOrigin || originHeader === 'null') {
-              console.log(
-                `[AUTH DEBUG] Allowing request based on Trusted Referer: ${refUrl.origin}`
+          const refOrigin = new URL(refererHeader).origin;
+          if (cleanOrigins.includes(refOrigin)) {
+            if (isExtraOrigin) {
+              log(
+                'debug',
+                `[AUTH] Allowing request via Trusted Referer: ${refOrigin}`
               );
             }
-            // Include both to ensure Better Auth has a string it can match
-            return [...cleanOrigins, originHeader, refUrl.origin].filter(
-              Boolean
-            );
+            return [...cleanOrigins, originHeader, refOrigin].filter(Boolean);
           }
-        } catch (e) {}
+        } catch (e) {
+          /* invalid referer */
+        }
       }
     }
 
-    // 4. Handle Private Network switch (Allows ANY private IP)
+    // 2. Private Network Check (if enabled)
     const isPrivateEnabled = process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true';
-    if (isPrivateEnabled && (originHeader || refererHeader)) {
-      const detected = originHeader || refererHeader;
-      try {
-        const { hostname } = new URL(detected);
-        if (isPrivateNetworkAddress(hostname)) {
-          if (isExtraOrigin) {
-            console.log(
-              `[AUTH DEBUG] Allowing request based on Private Network mode: ${detected}`
-            );
+    if (isPrivateEnabled) {
+      const target =
+        originHeader && originHeader !== 'null' ? originHeader : refererHeader;
+      if (target) {
+        try {
+          const url = new URL(target);
+          if (isPrivateNetworkAddress(url.hostname)) {
+            if (isExtraOrigin) {
+              log(
+                'debug',
+                `[AUTH] Allowing Private Network Origin: ${url.origin}`
+              );
+            }
+            return [...cleanOrigins, originHeader, url.origin].filter(Boolean);
           }
-          return [...cleanOrigins, detected];
+        } catch (e) {
+          /* invalid url */
         }
-      } catch (e) {}
+      }
     }
 
-    if (isExtraOrigin && !cleanOrigins.includes(originHeader)) {
-      console.warn(
-        `[AUTH DEBUG] Rejecting request. Not in EXTRA_TRUSTED_ORIGINS and Private Mode is OFF.`
-      );
+    if (isExtraOrigin && originHeader && !cleanOrigins.includes(originHeader)) {
+      log('warn', `[AUTH] Rejecting Untrusted Origin: ${originHeader}`);
     }
 
     return cleanOrigins;
@@ -368,13 +388,15 @@ const auth = betterAuth({
     user: {
       create: {
         before: async (user, ctx) => {
-          console.log(
-            `[AUTH DEBUG] user.create.before hook triggered. Path: ${ctx.path}`
+          log(
+            'debug',
+            `[AUTH] user.create.before hook triggered. Path: ${ctx.path}`
           );
 
           // 1. MASTER TOGGLE: Global signup blockade
           if (process.env.SPARKY_FITNESS_DISABLE_SIGNUP === 'true') {
-            console.log(
+            log(
+              'info',
               '[AUTH] Blocking signup: SPARKY_FITNESS_DISABLE_SIGNUP is true'
             );
             throw new APIError('BAD_REQUEST', {
@@ -395,7 +417,8 @@ const auth = betterAuth({
               providerId = pathParts[pathParts.length - 1];
             }
 
-            console.log(
+            log(
+              'info',
               `[AUTH] Verifying auto-register for SSO provider: ${providerId} (Original Path: ${ctx.path})`
             );
 
@@ -405,17 +428,20 @@ const auth = betterAuth({
                 await oidcProviderRepository.getOidcProviderById(providerId);
 
               if (provider) {
-                console.log(
-                  `[AUTH DEBUG] Provider found: ${provider.provider_id}. auto_register: ${provider.auto_register} (Type: ${typeof provider.auto_register})`
+                log(
+                  'debug',
+                  `[AUTH] Provider found: ${provider.provider_id}. auto_register: ${provider.auto_register} (Type: ${typeof provider.auto_register})`
                 );
               } else {
-                console.log(
-                  `[AUTH DEBUG] No provider found in DB for ID: ${providerId}`
+                log(
+                  'debug',
+                  `[AUTH] No provider found in DB for ID: ${providerId}`
                 );
               }
 
               if (provider && provider.auto_register === false) {
-                console.log(
+                log(
+                  'info',
                   `[AUTH] Blocking SSO registration: auto_register is disabled for ${providerId}`
                 );
                 throw new APIError('BAD_REQUEST', {
@@ -426,14 +452,15 @@ const auth = betterAuth({
             } catch (error) {
               // Re-throw APIErrors, log others
               if (error instanceof APIError) throw error;
-              console.error('[AUTH] Error during auto_register check:', error);
+              log('error', '[AUTH] Error during auto_register check:', error);
             }
           }
 
           return { data: user };
         },
         after: async (user) => {
-          console.log(
+          log(
+            'info',
             `[AUTH] Hook: User created, initializing Sparky data for ${user.id}`
           );
           try {
@@ -447,9 +474,10 @@ const auth = betterAuth({
             // Also initialize default nutrient preferences
             await createDefaultNutrientPreferencesForUser(user.id);
 
-            console.log(`[AUTH] Hook: Initialization complete for ${user.id}`);
+            log('info', `[AUTH] Hook: Initialization complete for ${user.id}`);
           } catch (error) {
-            console.error(
+            log(
+              'error',
               `[AUTH] Hook Error: Failed to initialize user ${user.id}:`,
               error
             );
@@ -480,9 +508,10 @@ const auth = betterAuth({
     account: {
       create: {
         before: async (account, ctx) => {
-          console.log('[AUTH DEBUG] account.create.before hook triggered');
-          console.log(
-            '[AUTH DEBUG] Account data:',
+          log('debug', '[AUTH] account.create.before hook triggered');
+          log(
+            'debug',
+            '[AUTH] Account data:',
             JSON.stringify({
               providerId: account.providerId,
               accountId: account.accountId,
@@ -493,11 +522,13 @@ const auth = betterAuth({
           return { data: account };
         },
         after: async (account) => {
-          console.log(
-            '[AUTH DEBUG] account.create.after hook - Account link created successfully'
+          log(
+            'debug',
+            '[AUTH] account.create.after hook - Account link created successfully'
           );
-          console.log(
-            '[AUTH DEBUG] Created account:',
+          log(
+            'debug',
+            '[AUTH] Created account:',
             JSON.stringify({
               id: account.id,
               providerId: account.providerId,
@@ -510,7 +541,8 @@ const auth = betterAuth({
     session: {
       create: {
         after: async (session) => {
-          console.log(
+          log(
+            'info',
             `[AUTH] Hook: Session created for user ${session.userId}. Checking group sync.`
           );
           try {
@@ -530,7 +562,8 @@ const auth = betterAuth({
                   await oidcProviderRepository.getOidcProviderById(providerId);
 
                 if (provider && provider.admin_group) {
-                  console.log(
+                  log(
+                    'info',
                     `[AUTH] Syncing groups for user ${session.userId} using provider ${providerId} (Admin Group: ${provider.admin_group})`
                   );
                   await syncUserGroups(
@@ -544,7 +577,8 @@ const auth = betterAuth({
               client.release();
             }
           } catch (error) {
-            console.error(
+            log(
+              'error',
               `[AUTH] Hook Error: Group sync failed for session ${session.id}:`,
               error
             );
@@ -643,18 +677,19 @@ const auth = betterAuth({
  * Better Auth doesn't do this automatically on every request for performance reasons.
  */
 async function cleanupSessions() {
-  console.log('[AUTH] Running proactive session cleanup...');
+  log('info', '[AUTH] Running proactive session cleanup...');
   const client = await authPool.connect();
   try {
     const result = await client.query(
       'DELETE FROM "session" WHERE expires_at < NOW()'
     );
-    console.log(
+    log(
+      'info',
       `[AUTH] Cleanup complete. Removed ${result.rowCount} expired sessions.`
     );
     return result.rowCount;
   } catch (error) {
-    console.error('[AUTH] Session cleanup failed:', error);
+    log('error', '[AUTH] Session cleanup failed:', error);
     throw error;
   } finally {
     client.release();
