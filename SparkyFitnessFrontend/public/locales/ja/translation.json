@@ -1,0 +1,36 @@
+{
+    "nav": {
+        "diary": "日記",
+        "checkin": "チェックイン",
+        "reports": "レポート",
+        "foods": "食品",
+        "goals": "目標",
+        "settings": "設定",
+        "admin": "管理者"
+    },
+    "aboutDialog": {
+        "description1": "SparkyFitness: 家族のために。AI搭載。食事、フィットネス、水、健康を一緒に記録。",
+        "title": "SparkyFitnessについて",
+        "applicationVersion": "アプリケーションバージョン： ",
+        "joinDiscord": "Discordのコミュニティに参加しよう： ",
+        "discordLink": "discord.gg/vcnMT5cPEA",
+        "moreInfoVisit": "詳しくは ",
+        "githubRepo": "GitHubリポジトリ",
+        "technologiesUsed": "使用されている技術：",
+        "frontend": "フロントエンド：",
+        "backend": "バックエンド：",
+        "externalApis": "外部API：",
+        "wgerApi": "Wger API（エクササイズデータ）",
+        "foodDataApis": "食品データ API：",
+        "openFoodFactsApi": "オープン・フード・ファクトAPI",
+        "gotIt": "了解",
+        "close": "閉じる"
+    },
+    "exercise": {
+        "title": "エクササイズ",
+        "addExerciseDialog": {
+            "description": "カスタムのエクササイズを作成するか、外部ソースからインポートして、新しいエクササイズをデータベースに追加します。",
+            "myExercisesTab": "私のエクササイズ"
+        }
+    }
+}

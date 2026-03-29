@@ -1,0 +1,26 @@
+{
+    "nav": {
+        "diary": "日记",
+        "reports": "报告",
+        "foods": "饮食",
+        "goals": "目标",
+        "settings": "设置",
+        "admin": "管理员页面",
+        "checkin": "打卡"
+    },
+    "aboutDialog": {
+        "title": "关于SparkyFitness",
+        "description1": "SparkyFitness：专为您的家庭成员构建，由AI驱动。全面记录您的饮食，锻炼与健康。",
+        "applicationVersion": "软件版本： ",
+        "joinDiscord": "加入我们Discord上的社区： ",
+        "discordLink": "discord.gg/vcnMT5cPEA",
+        "moreInfoVisit": "要想获取更多信息，请访问 ",
+        "githubRepo": "Github仓库",
+        "technologiesUsed": "使用的技术：",
+        "frontend": "前端：",
+        "backend": "后端：",
+        "externalApis": "对外API：",
+        "wgerApi": "Wger API （锻炼记录数据）",
+        "foodDataApis": "饮食数据API："
+    }
+}
