@@ -55,11 +55,12 @@ async function processFitbitProfile(
   timezone = 'UTC'
 ) {
   if (!data || !data.user) return;
-  const height = data.user.height;
+  let height = data.user.height;
   const heightUnit = data.user.heightUnit;
+  
+  if (heightUnit === "en_US") {
+      height = parseFloat((height * IN_TO_CM).toFixed(2));
 
-  // Fitbit Profile API height is typically returned in Centimeters by default.
-  // We will treat it as CM to avoid double-conversion issues.
   const syncDate = date || todayInZone(timezone);
   await measurementRepository.upsertCheckInMeasurements(
     userId,
@@ -153,13 +154,9 @@ async function processFitbitWeight(
 
   for (const entry of data.weight) {
     const entryDate = entry.date;
-    let weight = entry.weight;
-
-    // weightUnit can be 'en_US' (pounds), 'METRIC' (kilograms), or 'UK' (stone).
-    if (weightUnit === 'en_US') {
-      weight = parseFloat((weight * LBS_TO_KG).toFixed(2));
-    }
-
+    //weight from raw_data is already in metric, no need to convert.
+	let weight = entry.weight;
+    
     await measurementRepository.upsertCheckInMeasurements(
       userId,
       createdByUserId,
