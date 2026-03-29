@@ -343,7 +343,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           style={{ paddingBottom: Math.max(insets.bottom + 8, 24) }}
         >
           {scanMode === 'barcode' && !notFoundBarcode && (
-            <TouchableOpacity onPress={() => { scanLock.current = true; setManualEntryVisible(true); setScanned(true); }}>
+            <TouchableOpacity onPress={handleShowManualEntry}>
               <Text className="text-white/80 text-sm underline">Manually enter barcode</Text>
             </TouchableOpacity>
           )}
