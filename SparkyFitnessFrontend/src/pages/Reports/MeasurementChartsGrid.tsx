@@ -86,6 +86,8 @@ const MeasurementChartsGrid = ({
             measurementUnit === 'ft_in' ? 'inches' : measurementUnit
           )
         : 0,
+      rawBodyFat: d.body_fat_percentage,
+      body_fat_percentage: d.body_fat_percentage || 0,
     }));
   }, [
     measurementData,
@@ -499,6 +501,175 @@ const MeasurementChartsGrid = ({
                         type="monotone"
                         dataKey="hips"
                         stroke="#f39c12"
+                        strokeWidth={2}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </ZoomableChart>
+
+        {/* Height Chart */}
+        <ZoomableChart
+          title={`${t('reports.height', 'Height')} (${measurementUnit})`}
+        >
+          {(isMaximized, zoomLevel) => (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">
+                  {t('reports.height', 'Height')} ({measurementUnit})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className={
+                    (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') + ' min-w-0'
+                  }
+                >
+                  <ResponsiveContainer
+                    width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                    minWidth={0}
+                    minHeight={0}
+                    debounce={100}
+                  >
+                    <LineChart data={chartData.filter((d) => d.height)}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="entry_date"
+                        fontSize={10}
+                        tickFormatter={formatDateForChart}
+                        tickCount={
+                          isMaximized
+                            ? Math.max(chartData.length, 10)
+                            : undefined
+                        }
+                      />
+                      <YAxis
+                        fontSize={10}
+                        domain={
+                          getYAxisDomain(
+                            chartData.filter((d) => d.height),
+                            'height'
+                          ) || undefined
+                        }
+                        tickFormatter={(value: number) =>
+                          value.toFixed(
+                            getPrecision('measurement', measurementUnit)
+                          )
+                        }
+                      />
+                      <Tooltip
+                        labelFormatter={(value) =>
+                          formatDateForChart(value as string)
+                        }
+                        formatter={(
+                          _value: unknown,
+                          _name: unknown,
+                          props: { payload?: { rawHeight?: number } }
+                        ) => [
+                          props.payload?.rawHeight
+                            ? formatMeasurement(
+                                props.payload.rawHeight,
+                                measurementUnit
+                              )
+                            : '-',
+                          t('reports.height', 'Height'),
+                        ]}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="height"
+                        stroke="#9b59b6"
+                        strokeWidth={2}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </ZoomableChart>
+
+        {/* Body Fat % Chart */}
+        <ZoomableChart
+          title={`${t('reports.bodyFatPercentage', 'Body Fat %')} (%)`}
+        >
+          {(isMaximized, zoomLevel) => (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">
+                  {t('reports.bodyFatPercentage', 'Body Fat %')} (%)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className={
+                    (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') + ' min-w-0'
+                  }
+                >
+                  <ResponsiveContainer
+                    width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                    minWidth={0}
+                    minHeight={0}
+                    debounce={100}
+                  >
+                    <LineChart
+                      data={chartData.filter((d) => d.body_fat_percentage)}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="entry_date"
+                        fontSize={10}
+                        tickFormatter={formatDateForChart}
+                        tickCount={
+                          isMaximized
+                            ? Math.max(chartData.length, 10)
+                            : undefined
+                        }
+                      />
+                      <YAxis
+                        fontSize={10}
+                        domain={
+                          getYAxisDomain(
+                            chartData.filter((d) => d.body_fat_percentage),
+                            'body_fat_percentage'
+                          ) || undefined
+                        }
+                        tickFormatter={(value: number) => value.toFixed(1)}
+                      />
+                      <Tooltip
+                        labelFormatter={(value) =>
+                          formatDateForChart(value as string)
+                        }
+                        formatter={(
+                          _value: unknown,
+                          _name: unknown,
+                          props: { payload?: { rawBodyFat?: number } }
+                        ) => [
+                          props.payload?.rawBodyFat
+                            ? `${props.payload.rawBodyFat.toFixed(1)}%`
+                            : '-',
+                          t('reports.bodyFatPercentage', 'Body Fat %'),
+                        ]}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="body_fat_percentage"
+                        stroke="#1abc9c"
                         strokeWidth={2}
                         dot={false}
                         isAnimationActive={false}
