@@ -263,6 +263,9 @@ frontend:
     capabilities:
       drop: [ALL]
       add: [CHOWN, NET_BIND_SERVICE, SETGID, SETUID]
+  service:
+    type: ClusterIP
+    annotations: {}
   # -- Extra environment variables injected into the frontend container (key: value)
   extraEnv: {}
   # -- Extra envFrom sources (configMapRef, secretRef) for the frontend container
