@@ -290,6 +290,7 @@ function AppContent() {
             name="FoodScan"
             component={FoodScanScreen}
             options={{
+              presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
               gestureDirection: 'horizontal',
