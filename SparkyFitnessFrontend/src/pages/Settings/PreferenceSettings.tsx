@@ -86,7 +86,7 @@ export const PreferenceSettings = () => {
         loggingLevel: localLoggingLevel,
       });
       toast({
-        title: t('settings.preferences.successTitle', 'Erfolg'),
+        title: t('settings.preferences.successTitle', 'Success'),
         description: t(
           'settings.preferences.successDescription',
           'Preferences saved.'

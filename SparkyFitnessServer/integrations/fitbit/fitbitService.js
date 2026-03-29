@@ -381,7 +381,7 @@ async function fetchHeartRate(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -407,7 +407,7 @@ async function fetchSteps(userId, startDate, endDate, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -433,7 +433,7 @@ async function fetchWeight(userId, startDate, endDate, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -459,7 +459,7 @@ async function fetchSpO2(userId, startDate, endDate, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -490,7 +490,7 @@ async function fetchTemperature(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -516,7 +516,7 @@ async function fetchProfile(userId, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -541,7 +541,7 @@ async function fetchBodyFat(userId, startDate, endDate, providedToken = null) {
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Accept-Language': 'en-US',
+        'Accept-Language': 'metric',
       },
     }
   );
@@ -561,7 +561,7 @@ async function fetchActivities(userId, date = 'today', providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -587,7 +587,7 @@ async function fetchSleep(userId, startDate, endDate, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -617,7 +617,7 @@ async function fetchRespiratoryRate(
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Accept-Language': 'en-US',
+        'Accept-Language': 'metric',
       },
     }
   );
@@ -635,7 +635,7 @@ async function fetchHRV(userId, startDate, endDate, providedToken = null) {
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Accept-Language': 'en-US',
+        'Accept-Language': 'metric',
       },
     }
   );
@@ -658,7 +658,7 @@ async function fetchActiveZoneMinutes(
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'Accept-Language': 'en-US',
+        'Accept-Language': 'metric',
       },
     }
   );
@@ -677,7 +677,7 @@ async function fetchWater(userId, startDate, endDate, providedToken = null) {
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -717,7 +717,7 @@ async function fetchActivityMinutes(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -741,7 +741,7 @@ async function fetchCardioFitnessScore(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );
@@ -772,7 +772,7 @@ async function fetchCoreTemperature(
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Accept-Language': 'en-US',
+          'Accept-Language': 'metric',
         },
       }
     );

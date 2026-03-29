@@ -333,7 +333,7 @@ async function getMeasurementData(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      "SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, weight, neck, waist, hips, steps FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date",
+      "SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, weight, neck, waist, hips, steps, height, body_fat_percentage FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date",
       [userId, startDate, endDate]
     );
     return result.rows;

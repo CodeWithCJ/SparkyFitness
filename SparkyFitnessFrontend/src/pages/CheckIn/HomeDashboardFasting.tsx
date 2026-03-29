@@ -7,8 +7,8 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import FastingTimerRing from '../Fasting/FastingTimerRing';
-import { useNavigate } from 'react-router-dom';
 import { Play, Timer, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -39,12 +39,17 @@ import {
 } from '@/hooks/Fasting/useFasting';
 
 const HomeDashboardFasting = () => {
-  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const [showStartDialog, setShowStartDialog] = useState(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('16-8');
   const [showEndDialog, setShowEndDialog] = useState(false);
+  const [startLocal, setStartLocal] = useState<string>('');
+
+  const formatForLocalInput = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   const { data: activeFast, isLoading } = useCurrentFast();
   const { mutateAsync: startFast } = useStartFastMutation();
@@ -58,7 +63,7 @@ const HomeDashboardFasting = () => {
     const preset = FASTING_PRESETS.find((p) => p.id === selectedPresetId);
     if (!preset) return;
 
-    const start = new Date();
+    const start = startLocal ? new Date(startLocal) : new Date();
     const end = addHours(start, preset.fastingHours);
 
     await startFast({
@@ -116,10 +121,7 @@ const HomeDashboardFasting = () => {
       <CardContent className="flex-1 flex flex-col gap-6">
         <div className="flex flex-col items-center justify-center">
           {activeFast ? (
-            <div
-              className="cursor-pointer hover:scale-105 transition-transform"
-              onClick={() => navigate('/fasting')}
-            >
+            <div className="flex justify-center">
               <FastingTimerRing
                 startTime={parseISO(activeFast.start_time)}
                 targetEndTime={parseISO(activeFast.target_end_time!)}
@@ -132,7 +134,10 @@ const HomeDashboardFasting = () => {
                 <span className="text-4xl">🍽️</span>
               </div>
               <Button
-                onClick={() => setShowStartDialog(true)}
+                onClick={() => {
+                  setStartLocal(formatForLocalInput(new Date()));
+                  setShowStartDialog(true);
+                }}
                 className="w-full gap-2 font-semibold"
               >
                 <Play className="w-4 h-4" /> Start Fast
@@ -191,6 +196,14 @@ const HomeDashboardFasting = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Start Time</Label>
+              <Input
+                type="datetime-local"
+                value={startLocal}
+                onChange={(e) => setStartLocal(e.target.value)}
+              />
+            </div>
             <div className="space-y-2">
               <Label>Fasting Protocol</Label>
               <Select
