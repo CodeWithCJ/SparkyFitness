@@ -169,518 +169,170 @@ const MeasurementChartsGrid = ({
     <>
       {/* Body Measurements Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0">
-        {/* Weight Chart */}
-        <ZoomableChart
-          title={`${t('reports.weight', 'Weight')} (${weightUnit})`}
-        >
-          {(isMaximized, zoomLevel) => (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center">
-                  <Scale className="w-4 h-4 mr-2" />
-                  {t('reports.weight', 'Weight')} ({weightUnit})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={
-                    (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') + ' min-w-0'
-                  }
-                >
-                  <ResponsiveContainer
-                    width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    minWidth={0}
-                    minHeight={0}
-                    debounce={100}
+        {/* Generate Measurement Charts */}
+        {[
+          {
+            titleKey: 'reports.weight',
+            defaultTitle: 'Weight',
+            dataKey: 'weight',
+            rawKey: 'rawWeight',
+            unit: weightUnit,
+            stroke: '#e74c3c',
+            icon: <Scale className="w-4 h-4 mr-2" />,
+            formatValue: (val: number) => formatWeight(val, weightUnit),
+            axisTickFormat: (value: number) =>
+              value.toFixed(getPrecision('weight', weightUnit)),
+          },
+          {
+            titleKey: 'reports.neck',
+            defaultTitle: 'Neck',
+            dataKey: 'neck',
+            rawKey: 'rawNeck',
+            unit: measurementUnit,
+            stroke: '#3498db',
+            formatValue: (val: number) =>
+              formatMeasurement(val, measurementUnit),
+            axisTickFormat: (value: number) =>
+              value.toFixed(getPrecision('measurement', measurementUnit)),
+          },
+          {
+            titleKey: 'reports.waist',
+            defaultTitle: 'Waist',
+            dataKey: 'waist',
+            rawKey: 'rawWaist',
+            unit: measurementUnit,
+            stroke: '#e74c3c',
+            formatValue: (val: number) =>
+              formatMeasurement(val, measurementUnit),
+            axisTickFormat: (value: number) =>
+              value.toFixed(getPrecision('measurement', measurementUnit)),
+          },
+          {
+            titleKey: 'reports.hips',
+            defaultTitle: 'Hips',
+            dataKey: 'hips',
+            rawKey: 'rawHips',
+            unit: measurementUnit,
+            stroke: '#f39c12',
+            formatValue: (val: number) =>
+              formatMeasurement(val, measurementUnit),
+            axisTickFormat: (value: number) =>
+              value.toFixed(getPrecision('measurement', measurementUnit)),
+          },
+          {
+            titleKey: 'reports.height',
+            defaultTitle: 'Height',
+            dataKey: 'height',
+            rawKey: 'rawHeight',
+            unit: measurementUnit,
+            stroke: '#9b59b6',
+            formatValue: (val: number) =>
+              formatMeasurement(val, measurementUnit),
+            axisTickFormat: (value: number) =>
+              value.toFixed(getPrecision('measurement', measurementUnit)),
+          },
+          {
+            titleKey: 'reports.bodyFatPercentage',
+            defaultTitle: 'Body Fat %',
+            dataKey: 'body_fat_percentage',
+            rawKey: 'rawBodyFat',
+            unit: '%',
+            stroke: '#1abc9c',
+            formatValue: (val: number) => `${val.toFixed(1)}%`,
+            axisTickFormat: (value: number) => value.toFixed(1),
+          },
+        ].map((metric) => (
+          <ZoomableChart
+            key={metric.dataKey}
+            title={`${t(metric.titleKey, metric.defaultTitle)} (${metric.unit})`}
+          >
+            {(isMaximized, zoomLevel) => (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center">
+                    {metric.icon && metric.icon}
+                    {t(metric.titleKey, metric.defaultTitle)} ({metric.unit})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div
+                    className={
+                      (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') +
+                      ' min-w-0'
+                    }
                   >
-                    <LineChart data={chartData.filter((d) => d.weight)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="entry_date"
-                        fontSize={10}
-                        tickFormatter={formatDateForChart}
-                        tickCount={
-                          isMaximized
-                            ? Math.max(chartData.length, 10)
-                            : undefined
-                        }
-                      />
-                      <YAxis
-                        fontSize={10}
-                        domain={
-                          getYAxisDomain(
-                            chartData.filter((d) => d.weight),
-                            'weight'
-                          ) || undefined
-                        }
-                        tickFormatter={(value: number) =>
-                          value.toFixed(getPrecision('weight', weightUnit))
-                        }
-                      />
-                      <Tooltip
-                        labelFormatter={(value) =>
-                          formatDateForChart(value as string)
-                        }
-                        formatter={(
-                          _value: unknown,
-                          _name: unknown,
-                          props: { payload?: { rawWeight?: number } }
-                        ) => [
-                          props.payload?.rawWeight
-                            ? formatWeight(props.payload.rawWeight, weightUnit)
-                            : '-',
-                          t('reports.weight', 'Weight'),
-                        ]}
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="weight"
-                        stroke="#e74c3c"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </ZoomableChart>
-
-        {/* Neck Chart */}
-        <ZoomableChart
-          title={`${t('reports.neck', 'Neck')} (${measurementUnit})`}
-        >
-          {(isMaximized, zoomLevel) => (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">
-                  {t('reports.neck', 'Neck')} ({measurementUnit})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={
-                    (isMaximized ? 'h-[calc(80vh-150px)]' : 'h-48') + ' min-w-0'
-                  }
-                >
-                  <ResponsiveContainer
-                    width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    minWidth={0}
-                    minHeight={0}
-                    debounce={100}
-                  >
-                    <LineChart data={chartData.filter((d) => d.neck)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="entry_date"
-                        fontSize={10}
-                        tickFormatter={formatDateForChart}
-                        tickCount={
-                          isMaximized
-                            ? Math.max(chartData.length, 10)
-                            : undefined
-                        }
-                      />
-                      <YAxis
-                        fontSize={10}
-                        domain={
-                          getYAxisDomain(
-                            chartData.filter((d) => d.neck),
-                            'neck'
-                          ) || undefined
-                        }
-                        tickFormatter={(value: number) =>
-                          value.toFixed(
-                            getPrecision('measurement', measurementUnit)
-                          )
-                        }
-                      />
-                      <Tooltip
-                        labelFormatter={(value) =>
-                          formatDateForChart(value as string)
-                        }
-                        formatter={(
-                          _value: unknown,
-                          _name: unknown,
-                          props: { payload?: { rawNeck?: number } }
-                        ) => [
-                          props.payload?.rawNeck
-                            ? formatMeasurement(
-                                props.payload.rawNeck,
-                                measurementUnit
-                              )
-                            : '-',
-                          t('reports.neck', 'Neck'),
-                        ]}
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="neck"
-                        stroke="#3498db"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </ZoomableChart>
-
-        {/* Waist Chart */}
-        <ZoomableChart
-          title={`${t('reports.waist', 'Waist')} (${measurementUnit})`}
-        >
-          {(isMaximized, zoomLevel) => (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">
-                  {t('reports.waist', 'Waist')} ({measurementUnit})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={
-                    (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') + ' min-w-0'
-                  }
-                >
-                  <ResponsiveContainer
-                    width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    minWidth={0}
-                    minHeight={0}
-                    debounce={100}
-                  >
-                    <LineChart data={chartData.filter((d) => d.waist)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="entry_date"
-                        fontSize={10}
-                        tickFormatter={formatDateForChart}
-                        tickCount={
-                          isMaximized
-                            ? Math.max(chartData.length, 10)
-                            : undefined
-                        }
-                      />
-                      <YAxis
-                        fontSize={10}
-                        domain={
-                          getYAxisDomain(
-                            chartData.filter((d) => d.waist),
-                            'waist'
-                          ) || undefined
-                        }
-                        tickFormatter={(value: number) =>
-                          value.toFixed(
-                            getPrecision('measurement', measurementUnit)
-                          )
-                        }
-                      />
-                      <Tooltip
-                        labelFormatter={(value) =>
-                          formatDateForChart(value as string)
-                        }
-                        formatter={(
-                          _value: unknown,
-                          _name: unknown,
-                          props: { payload?: { rawWaist?: number } }
-                        ) => [
-                          props.payload?.rawWaist
-                            ? formatMeasurement(
-                                props.payload.rawWaist,
-                                measurementUnit
-                              )
-                            : '-',
-                          t('reports.waist', 'Waist'),
-                        ]}
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="waist"
-                        stroke="#e74c3c"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </ZoomableChart>
-
-        {/* Hips Chart */}
-        <ZoomableChart
-          title={`${t('reports.hips', 'Hips')} (${measurementUnit})`}
-        >
-          {(isMaximized, zoomLevel) => (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">
-                  {t('reports.hips', 'Hips')} ({measurementUnit})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={
-                    (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') + ' min-w-0'
-                  }
-                >
-                  <ResponsiveContainer
-                    width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    minWidth={0}
-                    minHeight={0}
-                    debounce={100}
-                  >
-                    <LineChart data={chartData.filter((d) => d.hips)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="entry_date"
-                        fontSize={10}
-                        tickFormatter={formatDateForChart}
-                        tickCount={
-                          isMaximized
-                            ? Math.max(chartData.length, 10)
-                            : undefined
-                        }
-                      />
-                      <YAxis
-                        fontSize={10}
-                        domain={
-                          getYAxisDomain(
-                            chartData.filter((d) => d.hips),
-                            'hips'
-                          ) || undefined
-                        }
-                        tickFormatter={(value: number) =>
-                          value.toFixed(
-                            getPrecision('measurement', measurementUnit)
-                          )
-                        }
-                      />
-                      <Tooltip
-                        labelFormatter={(value) =>
-                          formatDateForChart(value as string)
-                        }
-                        formatter={(
-                          _value: unknown,
-                          _name: unknown,
-                          props: { payload?: { rawHips?: number } }
-                        ) => [
-                          props.payload?.rawHips
-                            ? formatMeasurement(
-                                props.payload.rawHips,
-                                measurementUnit
-                              )
-                            : '-',
-                          t('reports.hips', 'Hips'),
-                        ]}
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="hips"
-                        stroke="#f39c12"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </ZoomableChart>
-
-        {/* Height Chart */}
-        <ZoomableChart
-          title={`${t('reports.height', 'Height')} (${measurementUnit})`}
-        >
-          {(isMaximized, zoomLevel) => (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">
-                  {t('reports.height', 'Height')} ({measurementUnit})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={
-                    (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') + ' min-w-0'
-                  }
-                >
-                  <ResponsiveContainer
-                    width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    minWidth={0}
-                    minHeight={0}
-                    debounce={100}
-                  >
-                    <LineChart data={chartData.filter((d) => d.height)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="entry_date"
-                        fontSize={10}
-                        tickFormatter={formatDateForChart}
-                        tickCount={
-                          isMaximized
-                            ? Math.max(chartData.length, 10)
-                            : undefined
-                        }
-                      />
-                      <YAxis
-                        fontSize={10}
-                        domain={
-                          getYAxisDomain(
-                            chartData.filter((d) => d.height),
-                            'height'
-                          ) || undefined
-                        }
-                        tickFormatter={(value: number) =>
-                          value.toFixed(
-                            getPrecision('measurement', measurementUnit)
-                          )
-                        }
-                      />
-                      <Tooltip
-                        labelFormatter={(value) =>
-                          formatDateForChart(value as string)
-                        }
-                        formatter={(
-                          _value: unknown,
-                          _name: unknown,
-                          props: { payload?: { rawHeight?: number } }
-                        ) => [
-                          props.payload?.rawHeight
-                            ? formatMeasurement(
-                                props.payload.rawHeight,
-                                measurementUnit
-                              )
-                            : '-',
-                          t('reports.height', 'Height'),
-                        ]}
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="height"
-                        stroke="#9b59b6"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </ZoomableChart>
-
-        {/* Body Fat % Chart */}
-        <ZoomableChart
-          title={`${t('reports.bodyFatPercentage', 'Body Fat %')} (%)`}
-        >
-          {(isMaximized, zoomLevel) => (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">
-                  {t('reports.bodyFatPercentage', 'Body Fat %')} (%)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className={
-                    (isMaximized ? 'h-[calc(95vh-150px)]' : 'h-48') + ' min-w-0'
-                  }
-                >
-                  <ResponsiveContainer
-                    width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
-                    minWidth={0}
-                    minHeight={0}
-                    debounce={100}
-                  >
-                    <LineChart
-                      data={chartData.filter((d) => d.body_fat_percentage)}
+                    <ResponsiveContainer
+                      width={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      height={isMaximized ? `${100 * zoomLevel}%` : '100%'}
+                      minWidth={0}
+                      minHeight={0}
+                      debounce={100}
                     >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="entry_date"
-                        fontSize={10}
-                        tickFormatter={formatDateForChart}
-                        tickCount={
-                          isMaximized
-                            ? Math.max(chartData.length, 10)
-                            : undefined
-                        }
-                      />
-                      <YAxis
-                        fontSize={10}
-                        domain={
-                          getYAxisDomain(
-                            chartData.filter((d) => d.body_fat_percentage),
-                            'body_fat_percentage'
-                          ) || undefined
-                        }
-                        tickFormatter={(value: number) => value.toFixed(1)}
-                      />
-                      <Tooltip
-                        labelFormatter={(value) =>
-                          formatDateForChart(value as string)
-                        }
-                        formatter={(
-                          _value: unknown,
-                          _name: unknown,
-                          props: { payload?: { rawBodyFat?: number } }
-                        ) => [
-                          props.payload?.rawBodyFat
-                            ? `${props.payload.rawBodyFat.toFixed(1)}%`
-                            : '-',
-                          t('reports.bodyFatPercentage', 'Body Fat %'),
-                        ]}
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="body_fat_percentage"
-                        stroke="#1abc9c"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </ZoomableChart>
+                      <LineChart
+                        data={chartData.filter(
+                          (d) => d[metric.dataKey as keyof typeof d]
+                        )}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="entry_date"
+                          fontSize={10}
+                          tickFormatter={formatDateForChart}
+                          tickCount={
+                            isMaximized
+                              ? Math.max(chartData.length, 10)
+                              : undefined
+                          }
+                        />
+                        <YAxis
+                          fontSize={10}
+                          domain={
+                            getYAxisDomain(
+                              chartData.filter(
+                                (d) => d[metric.dataKey as keyof typeof d]
+                              ),
+                              metric.dataKey
+                            ) || undefined
+                          }
+                          tickFormatter={metric.axisTickFormat}
+                        />
+                        <Tooltip
+                          labelFormatter={(value) =>
+                            formatDateForChart(value as string)
+                          }
+                          formatter={(
+                            _value: unknown,
+                            _name: unknown,
+                            props: { payload?: Record<string, number> }
+                          ) => [
+                            props.payload &&
+                            props.payload[metric.rawKey] !== undefined
+                              ? metric.formatValue(
+                                  props.payload[metric.rawKey] as number
+                                )
+                              : '-',
+                            t(metric.titleKey, metric.defaultTitle),
+                          ]}
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey={metric.dataKey}
+                          stroke={metric.stroke}
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </ZoomableChart>
+        ))}
       </div>
 
       {/* Steps Chart */}
