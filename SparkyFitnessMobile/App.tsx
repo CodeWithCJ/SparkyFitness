@@ -294,6 +294,7 @@ function AppContent() {
             name="FoodEntryAdd"
             component={FoodEntryAddScreen}
             options={{
+              presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
               gestureDirection: 'horizontal',
@@ -303,6 +304,7 @@ function AppContent() {
             name="FoodForm"
             component={FoodFormScreen}
             options={{
+              presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
               gestureDirection: 'horizontal',
