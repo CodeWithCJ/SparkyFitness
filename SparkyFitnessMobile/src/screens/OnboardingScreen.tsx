@@ -382,8 +382,8 @@ export default function OnboardingScreen({ navigation }: Props) {
                 if (error) setError('');
               }}
               autoCapitalize="none"
-            keyboardType="url"
-            autoCorrect={false}
+              keyboardType="url"
+              autoCorrect={false}
             />
           </View>
           <Button
