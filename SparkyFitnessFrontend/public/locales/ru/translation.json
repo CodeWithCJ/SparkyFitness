@@ -1,1 +1,113 @@
-{}
+{
+  "nav": {
+    "diary": "Дневник",
+    "checkin": "Контроль",
+    "reports": "Отчеты",
+    "foods": "Еда",
+    "goals": "Цели",
+    "settings": "Настройки",
+    "admin": "Администратор"
+  },
+  "aboutDialog": {
+    "title": "О SparkyFitness",
+    "description1": "SparkyFitness: Построен для семей. Powered by AI. Отслеживать еду, фитнес, воду и здоровье вместе.",
+    "applicationVersion": "Версия приложения: ",
+    "joinDiscord": "Присоединяйтесь к нашему сообществу в Discord: ",
+    "discordLink": "discord.gg/vcnMT5cPEA",
+    "moreInfoVisit": "Для получения дополнительной информации посетите ",
+    "githubRepo": "Репозиторий GitHub",
+    "technologiesUsed": "Использованные технологии:",
+    "frontend": "Фронтенд:",
+    "backend": "Бекенд:",
+    "externalApis": "Внешние API:",
+    "fatsecretApi": "FatSecret API",
+    "openFoodFactsApi": "Open Food Facts API",
+    "gotIt": "Понятно",
+    "close": "Закрыть",
+    "wgerApi": "Wger API (Данные об упражнениях)",
+    "foodDataApis": "API данные о продуктах:",
+    "nutritionixApi": "Nutritionix API"
+  },
+  "exercise": {
+    "title": "Упражнения",
+    "addExerciseDialog": {
+      "title": "Добавить упражнение",
+      "description": "Добавить новое упражнение в вашу базу данных, либо путем создания пользовательского или импорта из внешнего источника.",
+      "myExercisesTab": "Мои упражнения",
+      "onlineTab": "Онлайн",
+      "importCSVTab": "Импорт CSV",
+      "nameLabel": "Имя",
+      "categoryLabel": "Категория",
+      "selectCategoryPlaceholder": "Выберите категорию",
+      "categoryStrength": "Сила",
+      "categoryCardio": "Кардио",
+      "categoryYoga": "Йога",
+      "caloriesPerHourLabel": "Калории/Час",
+      "caloriesPerHourHint": "Оставьте пустой для использования системы расчета калорий в час ({{newExerciseCalories}} кал/час).",
+      "descriptionLabel": "Описание",
+      "sourceLabel": "Источник",
+      "addError": "Не удалось добавить упражнения",
+      "importSuccess": "Данные по упражнениям импортированы успешно",
+      "addButton": "Добавить упражнение",
+      "addSuccess": "Упражнение успешно добавлено",
+      "importDuplicateTitle": "Импорт неуспешный: Найден дубликат",
+      "importDuplicateDescription": "Уже существуют следующие пункты: {{duplicateList}}. Пожалуйста, уберите их из вашего файла и попробуйте еще раз.",
+      "importError": "Не удалось импортировать данные упражнений. Попробуй еще раз.",
+      "workoutPresetTab": "Пресет Тренировки",
+      "categoryGeneral": "Общее",
+      "forcePull": "Тяга",
+      "forcePush": "Толкать",
+      "forceStatic": "В статике",
+      "levelLabel": "Уровень",
+      "selectLevelPlaceholder": "Выбрать уровень",
+      "levelBeginner": "Новичок",
+      "levelIntermediate": "Промежуточный",
+      "levelExpert": "Эксперт",
+      "mechanicLabel": "Механика",
+      "selectMechanicPlaceholder": "Выберите механику",
+      "mechanicIsolation": "Изоляция",
+      "equipmentLabel": "Оборудование (через запятую)",
+      "primaryMusclesLabel": "Основные группы мышц (через запятую)",
+      "secondaryMusclesLabel": "Второстепенные мышцы (через запятую)",
+      "instructionsLabel": "Инструкции (по одной в строке)",
+      "imagesLabel": "Изображения"
+    },
+    "editExerciseEntryDialog": {
+      "distanceLabel": "Расстояние",
+      "distancePlaceholder": "Введите расстояние в {{distanceUnit}}",
+      "avgHeartRateLabel": "Средняя частота сердечных сокращений (bpm)",
+      "avgHeartRatePlaceholder": "Введите среднюю частоту сердечных сокращений",
+      "notesPlaceholder": "Добавьте любые заметки об этом упражнении...",
+      "weightLabel": "Вес",
+      "durationLabel": "Продолжительность (мин)",
+      "restLabel": "Отдых (сек)",
+      "notesLabel": "Заметки",
+      "caloriesWarning": "Сожженные калории будут перерассчитаны после сохранения. Введите значение для переопределения.",
+      "exerciseLabel": "Упражнения",
+      "unknownExercise": "Неизвестное упражнение"
+    },
+    "databaseManager": {
+      "failedToEditExercise": "Не удалось редактировать упражнение",
+      "editSuccess": "Упражнения успешно отредактированы"
+    },
+    "addWorkoutPresetDialog": {
+      "searchPlaceholder": "Найдите свои планы тренировок...",
+      "recentPresetsTitle": "Последние пресеты",
+      "noRecentPresets": "Последних пресетов нет.",
+      "topPresetsTitle": "Лучшие пресеты",
+      "noTopPresets": "Нет лучших пресетов.",
+      "searchResultsTitle": "Результаты поиска",
+      "noMatchingPresets": "Не найдено пресетов, соответствующих вашему запросу."
+    },
+    "dailyProgress": {
+      "burned": "сожжено"
+    },
+    "workoutPresetSelector": {
+      "searchPlaceholder": "Найдите свои пресеты для тренировок...",
+      "recentPresetsTitle": "Последние пресеты"
+    }
+  },
+  "documentationViewer": {
+    "loadingFeaturesInventory": "Загрузка..."
+  }
+}

@@ -20,7 +20,13 @@
     "githubRepo": "GitHub repository",
     "wgerApi": "Wger API (Øvelses Data)",
     "foodDataApis": "Fødevare API'er:",
-    "nutritionixApi": "Nutritionix API"
+    "nutritionixApi": "Nutritionix API",
+    "technologiesUsed": "Anvendte teknologier:",
+    "frontend": "Brugerflade:",
+    "externalApis": "Eksterne API'er:",
+    "backend": "Backend:",
+    "fatsecretApi": "FatSecret API",
+    "openFoodFactsApi": "Open Food Facts API"
   },
   "exercise": {
     "title": "Øvelser",
@@ -56,7 +62,32 @@
       "mechanicLabel": "Teknik",
       "selectMechanicPlaceholder": "Vælg teknik",
       "mechanicIsolation": "Isolering",
-      "workoutPresetTab": "Træningsskabelon"
+      "workoutPresetTab": "Træningsskabelon",
+      "instructionsLabel": "Instruktioner (en pr. linje)",
+      "addButton": "Tilføj øvelse",
+      "importDuplicateDescription": "Følgende elementer findes allerede: {{duplicateList}}. Fjern dem fra din fil og prøv igen.",
+      "equipmentLabel": "Udstyr (komma separeret)",
+      "primaryMusclesLabel": "Primære Muskler (komma separeret)",
+      "secondaryMusclesLabel": "Sekundære Muskler (komma separeret)",
+      "addSuccess": "Øvelse tilføjet",
+      "addError": "Tilføjelse af øvelse fejlede",
+      "importSuccess": "Øvelse data importeret",
+      "importDuplicateTitle": "Import fejlede: Duplikerede enheder fundet",
+      "importError": "Import af trænings data fejlede. Prøv igen.",
+      "mechanicCompound": "Flerleds"
+    },
+    "addWorkoutPresetDialog": {
+      "searchPlaceholder": "søg i dine træningsprogrammer...",
+      "recentPresetsTitle": "nylige træningsprogrammer",
+      "noRecentPresets": "Ingen nylige træningsprogrammmer.",
+      "topPresetsTitle": "favorit programmer",
+      "noTopPresets": "Ingen favorit programmer.",
+      "searchResultsTitle": "Resultater",
+      "noMatchingPresets": "Ingen træningsprogrammer matcher din søgning."
+    },
+    "workoutPresetSelector": {
+      "searchPlaceholder": "søg i dine træningsprogrammer...",
+      "recentPresetsTitle": "nylige træningsprogrammer"
     }
   }
 }

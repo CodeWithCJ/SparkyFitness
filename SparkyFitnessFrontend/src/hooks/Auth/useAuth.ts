@@ -12,6 +12,7 @@ import {
   getAccessibleUsers,
 } from '@/api/Auth/auth';
 import { authKeys } from '@/api/keys/auth';
+import { getErrorMessage } from '@/utils/api';
 
 export const useLoginUserMutation = () => {
   const { t } = useTranslation();
@@ -20,10 +21,23 @@ export const useLoginUserMutation = () => {
       loginUser(email, password),
     meta: {
       successMessage: t('auth.loginSuccess', 'Login successful!'),
-      errorMessage: t(
-        'auth.loginError',
-        'Login failed. Please check your credentials.'
-      ),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      errorMessage: (error: any) => {
+        const msg = getErrorMessage(error);
+        if (msg === 'Invalid credentials.') {
+          return t(
+            'auth.loginError',
+            'Login failed. Please check your credentials.'
+          );
+        }
+        if (msg === 'Invalid origin') {
+          return t(
+            'auth.invalidOrigin',
+            "Access denied: This connection's origin is not recognized. If you are accessing from a local network (LAN), this address must be explicitly trusted."
+          );
+        }
+        return msg;
+      },
     },
   });
 };

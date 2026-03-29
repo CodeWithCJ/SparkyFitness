@@ -97,7 +97,7 @@
     "dailyProgress": {
       "dailyCalorieGoal": "Denní kalorický cíl",
       "remaining": "zbývá",
-      "eaten": "snědeno",
+      "eaten": "sněženo",
       "burned": "spáleno",
       "burnedCaloriesBreakdown": "Rozklad spálených kalorií:",
       "otherExerciseCalories": "Jiné cvičení: {{exerciseCalories}} kal",
@@ -196,7 +196,14 @@
       "shareWithPublicTooltip": "Zveřejnit",
       "notEditableTooltip": "Nelze upravit",
       "editExerciseTooltip": "Upravit cvik",
-      "deleteExerciseTooltip": "Smazat cvik"
+      "deleteExerciseTooltip": "Smazat cvik",
+      "editExerciseDialogTitle": "Upravit Cvik",
+      "editExerciseDialogDescription": "Upravit detaily vybraného cviku.",
+      "deleteConfirmationTitle": "Smazat {{exerciseName}}?",
+      "deleteUsedByOthersDescription": "Tento cvik je používaný ostatními uživateli. Jeho smazání ovlivní jejich data a není povoleno; bude skryt.",
+      "deleteUsedByOthersEntries": "{{exerciseEntriesCount}} záznamů v deníku (všemi uživateli)",
+      "deletePermanentDescription": "Tohle permanentně smaže cvik a všechna spojená data pro tento účet.",
+      "deletePermanentEntries": "{{exerciseEntriesCount}} záznamů v deníku"
     }
   }
 }

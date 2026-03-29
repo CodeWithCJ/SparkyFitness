@@ -406,7 +406,7 @@
     "deleteSuccess": "Plan d'entrainement supprimé.",
     "deleteError": "Échec de suppression du plan d'entrainement.",
     "updateStatusError": "Impossible de trouver le plan d'entrainement à mettre à jour.",
-    "toggleStatusSuccess": "Plan d'entrainement {{status}}.",
+    "toggleStatusSuccess": "Plan d'entrainement {{status}} avec succès.",
     "toggleStatusError": "Échec de la modification du statut du plan d'entraînement."
   },
   "exerciseCard": {
