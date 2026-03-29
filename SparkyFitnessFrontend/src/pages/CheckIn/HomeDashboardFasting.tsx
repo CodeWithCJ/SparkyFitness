@@ -7,6 +7,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import FastingTimerRing from '../Fasting/FastingTimerRing';
 import { Play, Timer, Square } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -197,11 +198,10 @@ const HomeDashboardFasting = () => {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Start Time</Label>
-              <input
+              <Input
                 type="datetime-local"
                 value={startLocal}
                 onChange={(e) => setStartLocal(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
             <div className="space-y-2">
