@@ -6,7 +6,7 @@ const exerciseRepository = require('../../models/exercise');
 const activityDetailsRepository = require('../../models/activityDetailsRepository');
 const sleepRepository = require('../../models/sleepRepository');
 const { log } = require('../../config/logging');
-const { todayInZone } = require('@workspace/shared');
+//const { todayInZone } = require('@workspace/shared');
 
 // Conversion factors for en-US to Metric
 const LBS_TO_KG = 0.453592;
@@ -155,11 +155,6 @@ async function processFitbitWeight(
     const entryDate = entry.date;
     let weight = entry.weight;
 
-    // weightUnit can be 'en_US' (pounds), 'METRIC' (kilograms), or 'UK' (stone).
-    if (weightUnit === 'en_US') {
-      weight = parseFloat((weight * LBS_TO_KG).toFixed(2));
-    }
-
     await measurementRepository.upsertCheckInMeasurements(
       userId,
       createdByUserId,
@@ -241,13 +236,7 @@ async function processFitbitTemperature(
     let tempVariation = entry.value.nightlyRelative;
 
     if (tempVariation !== undefined) {
-      // If unit is en_US, convert variation from Fahrenheit to Celsius scale.
-      // Note: For relative temperature changes, we only multiply by 5/9, don't subtract 32!
-      if (temperatureUnit === 'en_US') {
-        tempVariation = parseFloat(
-          (tempVariation * FAHRENHEIT_TO_CELSIUS_FACTOR).toFixed(2)
-        );
-      }
+      
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
         categoryName: 'Skin Temperature Variation',
         value: tempVariation,
@@ -404,14 +393,7 @@ async function processFitbitCoreTemperature(
     let temp = entry.value;
 
     if (temp !== undefined) {
-      if (temperatureUnit === 'en_US') {
-        temp = parseFloat(
-          (
-            (temp - FAHRENHEIT_TO_CELSIUS_OFFSET) *
-            FAHRENHEIT_TO_CELSIUS_FACTOR
-          ).toFixed(2)
-        );
-      }
+      
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
         categoryName: 'Core Temperature',
         value: temp,
@@ -555,11 +537,6 @@ async function processFitbitWater(
     let water = parseFloat(entry.value || 0);
     const entryDate = entry.dateTime;
 
-    // waterUnit: 'en_US' (fluid ounces), 'METRIC' (milliliters)
-    if (waterUnit === 'en_US') {
-      water = Math.round(water * 29.5735); // fl oz to ml
-    }
-
     await measurementRepository.upsertWaterData(
       userId,
       createdByUserId,
@@ -625,11 +602,7 @@ async function processFitbitActivities(
     }
 
     let distanceKm = activity.distance;
-    // SparkyFitness expects KM.
-    if (distanceKm && distanceUnit === 'en_US') {
-      distanceKm = parseFloat((distanceKm * MILES_TO_KM).toFixed(2));
-    }
-
+    
     const entryData = {
       exercise_id: exercise.id,
       entry_date: entryDate,
