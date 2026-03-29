@@ -15,6 +15,7 @@ import {
 } from '@/api/CheckIn/checkInService';
 import { checkInKeys } from '@/api/keys/checkin';
 import { dailyProgressKeys } from '@/api/keys/diary';
+import { reportKeys } from '@/api/keys/reports';
 
 export const useCustomCategories = (userId?: string | null) => {
   return useQuery({
@@ -128,6 +129,7 @@ export const useUpdateCheckInMeasurementFieldMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: checkInKeys.all });
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+      queryClient.invalidateQueries({ queryKey: reportKeys.all });
     },
     meta: {
       errorMessage: t(
@@ -150,6 +152,7 @@ export const useSaveCheckInMeasurementsMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: checkInKeys.all });
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+      queryClient.invalidateQueries({ queryKey: reportKeys.all });
     },
     meta: {
       errorMessage: t(
