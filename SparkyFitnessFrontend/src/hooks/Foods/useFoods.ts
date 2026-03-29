@@ -26,6 +26,7 @@ import i18n from '@/i18n';
 import { diaryReportKeys } from '@/api/keys/diary';
 import { MealFilter } from '@/types/meal';
 import { FoodDataForBackend } from '@/types/food';
+import { useFoodEntryInvalidation } from '../useInvalidateKeys';
 
 export const useFoods = (
   searchTerm: string,
@@ -172,13 +173,15 @@ export const useCreateFoodMutation = () => {
 
 export const useUpdateFoodEntriesSnapshotMutation = () => {
   const queryClient = useQueryClient();
+  const invalidate = useFoodEntryInvalidation();
   const { t } = useTranslation();
   return useMutation({
     mutationFn: (syncFoodId: string) => updateFoodEntriesSnapshot(syncFoodId),
     onSuccess: () => {
-      return queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: foodKeys.all,
       });
+      invalidate();
     },
     meta: {
       errorMessage: t(

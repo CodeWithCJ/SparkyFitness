@@ -171,3 +171,13 @@ export interface NutritionixItem {
 }
 
 export type FoodDataForBackend = Omit<CSVData, 'id'>;
+
+export type NumericFoodVariantKeys = Exclude<
+  keyof FoodVariant,
+  | 'id'
+  | 'serving_unit'
+  | 'is_default'
+  | 'is_locked'
+  | 'glycemic_index'
+  | 'custom_nutrients'
+>;

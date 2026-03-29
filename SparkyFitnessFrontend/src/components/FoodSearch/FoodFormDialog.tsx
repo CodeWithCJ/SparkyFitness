@@ -6,7 +6,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import type { Food } from '@/types/food';
-import EnhancedCustomFoodForm from './CustomFoodForm';
+import CustomFoodForm from './CustomFoodForm';
 import { useTranslation } from 'react-i18next';
 
 interface FoodFormDialogProps {
@@ -64,7 +64,7 @@ export const FoodFormDialog = ({
                 )}
           </DialogDescription>
         </DialogHeader>
-        <EnhancedCustomFoodForm
+        <CustomFoodForm
           food={foodData}
           initialVariants={foodData?.variants}
           onSave={onSave}
