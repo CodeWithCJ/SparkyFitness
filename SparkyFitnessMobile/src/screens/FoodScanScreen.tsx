@@ -323,25 +323,27 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             />
           </View>
 
-          {scanMode === 'barcode' && !notFoundBarcode && (
-            <TouchableOpacity
-              onPress={handleShowManualEntry}
-              className="bg-white/20 py-3 px-6 rounded-lg"
-              activeOpacity={0.7}
-            >
-              <Text className="text-white font-semibold text-sm">Manually enter barcode</Text>
-            </TouchableOpacity>
-          )}
+          <View className="h-20 items-center justify-center">
+            {scanMode === 'barcode' && !notFoundBarcode && (
+              <TouchableOpacity
+                onPress={handleShowManualEntry}
+                className="bg-black/60 py-3 px-6 rounded-lg"
+                activeOpacity={0.7}
+              >
+                <Text className="text-white font-semibold text-sm">Manually enter barcode</Text>
+              </TouchableOpacity>
+            )}
 
-          {scanMode === 'label' && (
-            <TouchableOpacity
-              onPress={handleLabelCapture}
-              className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
-              activeOpacity={0.7}
-            >
-              <View className="w-16 h-16 rounded-full bg-white" />
-            </TouchableOpacity>
-          )}
+            {scanMode === 'label' && (
+              <TouchableOpacity
+                onPress={handleLabelCapture}
+                className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
+                activeOpacity={0.7}
+              >
+                <View className="w-16 h-16 rounded-full bg-white" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       )}
 
