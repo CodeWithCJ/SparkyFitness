@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Platform, Button, StyleSheet, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, Button, StyleSheet, ActivityIndicator, Image, TextInput, KeyboardAvoidingView } from 'react-native';
 import Toast from 'react-native-toast-message';
 import UIButton from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +18,13 @@ const SCAN_SEGMENTS: Segment<'barcode' | 'label'>[] = [
   { key: 'label', label: 'Nutrition Label' },
 ];
 
+const GUIDE_WIDTH = 280;
+const GUIDE_HEIGHT = 160;
+
+const CORNER_SIZE = 24;
+const CORNER_BORDER = 3;
+const CORNER_STYLE = { position: 'absolute' as const, width: CORNER_SIZE, height: CORNER_SIZE, borderColor: '#fff' };
+
 const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const accentPrimary = String(useCSSVariable('--color-accent-primary'));
@@ -30,19 +37,16 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
   const [labelProcessing, setLabelProcessing] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<{ base64: string; uri: string } | null>(null);
+  const [manualEntryVisible, setManualEntryVisible] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState('');
   const cameraRef = useRef<CameraView>(null);
 
-  const handleBarcodeScanned = async ({ data }: BarcodeScanningResult) => {
-    if (scanLock.current) return;
-    scanLock.current = true;
-    setScanned(true);
-    setLoading(true);
-
+  const performBarcodeLookup = async (barcode: string) => {
     try {
-      const result = await lookupBarcode(data);
+      const result = await lookupBarcode(barcode);
 
       if (!result.food) {
-        setNotFoundBarcode(data);
+        setNotFoundBarcode(barcode);
       } else if (result.food.id) {
         const dv = result.food.default_variant;
         const item: FoodInfoItem = {
@@ -68,7 +72,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         const dv = result.food.default_variant;
         navigation.replace('FoodForm', { mode: 'create-food',
           date: route.params?.date,
-          barcode: data,
+          barcode,
           providerType: result.source,
           initialFood: {
             name: result.food.name,
@@ -88,9 +92,31 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       }
     } catch {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Something went wrong looking up this barcode.' });
+      setScanned(false);
+      scanLock.current = false;
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBarcodeScanned = async ({ data }: BarcodeScanningResult) => {
+    if (scanLock.current) return;
+    scanLock.current = true;
+    setScanned(true);
+    setLoading(true);
+    await performBarcodeLookup(data);
+  };
+
+  const handleManualSubmit = async () => {
+    if (scanLock.current) return;
+    const barcode = manualBarcode.trim();
+    if (!barcode) return;
+    setManualEntryVisible(false);
+    setManualBarcode('');
+    scanLock.current = true;
+    setScanned(true);
+    setLoading(true);
+    await performBarcodeLookup(barcode);
   };
 
   const handleLabelCapture = async () => {
@@ -148,6 +174,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     setCapturedPhoto(null);
     setScanned(false);
     scanLock.current = false;
+    setManualEntryVisible(false);
+    setManualBarcode('');
   };
 
   const handleScanLabel = () => {
@@ -180,6 +208,18 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         style={StyleSheet.absoluteFillObject}
         enableTorch={flashlight}
       />
+
+      {/* Barcode guide corner brackets */}
+      {scanMode === 'barcode' && !notFoundBarcode && !loading && !manualEntryVisible && (
+        <View pointerEvents="none" style={StyleSheet.absoluteFillObject} className="justify-center items-center">
+          <View style={{ width: GUIDE_WIDTH, height: GUIDE_HEIGHT, marginBottom: 80 }}>
+            <View style={{ ...CORNER_STYLE, top: 0, left: 0, borderTopWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderTopLeftRadius: 4 }} />
+            <View style={{ ...CORNER_STYLE, top: 0, right: 0, borderTopWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderTopRightRadius: 4 }} />
+            <View style={{ ...CORNER_STYLE, bottom: 0, left: 0, borderBottomWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderBottomLeftRadius: 4 }} />
+            <View style={{ ...CORNER_STYLE, bottom: 0, right: 0, borderBottomWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderBottomRightRadius: 4 }} />
+          </View>
+        </View>
+      )}
 
       {/* Top bar: back button + flashlight */}
       <View className="absolute left-4 right-4 flex-row justify-between items-center" style={{ top: Platform.OS === 'android' ? insets.top + 8 : 16 }}>
@@ -256,9 +296,59 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       )}
 
-      {/* Bottom controls: flashlight, segmented control, shutter */}
-      {!capturedPhoto && !labelProcessing && !loading && (
-        <View className="absolute bottom-0 left-0 right-0 items-center gap-4 pb-4" style={{ paddingBottom: Math.max(insets.bottom, 16) }}>
+      {/* Manual barcode entry dialog - centered on screen */}
+      {scanMode === 'barcode' && manualEntryVisible && !capturedPhoto && !labelProcessing && !loading && (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={StyleSheet.absoluteFillObject}
+          className="justify-center items-center"
+        >
+          <View className="bg-black/70 rounded-xl mx-8 p-4 self-stretch gap-3">
+            <Text className="text-white text-base font-semibold text-center">Enter Barcode</Text>
+            <TextInput
+              className="bg-white/20 text-white text-base px-4 py-3 rounded-lg text-center"
+              style={{ lineHeight: 20 }}
+              placeholder="Barcode number"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              keyboardType="number-pad"
+              autoFocus
+              value={manualBarcode}
+              onChangeText={setManualBarcode}
+              onSubmitEditing={handleManualSubmit}
+            />
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => { setManualEntryVisible(false); setManualBarcode(''); setScanned(false); scanLock.current = false; }}
+                className="flex-1 bg-white/20 py-3 rounded-lg items-center"
+              >
+                <Text className="text-white font-semibold text-sm">Cancel</Text>
+              </TouchableOpacity>
+              <UIButton
+                variant="primary"
+                disabled={!manualBarcode.trim()}
+                onPress={handleManualSubmit}
+                className="flex-1 py-3 rounded-lg"
+                textClassName="text-sm"
+              >
+                Look Up
+              </UIButton>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      )}
+
+      {/* Bottom controls: segmented control, shutter */}
+      {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && (
+        <View
+          className="absolute bottom-0 left-0 right-0 items-center gap-4"
+          style={{ paddingBottom: Math.max(insets.bottom + 8, 24) }}
+        >
+          {scanMode === 'barcode' && !notFoundBarcode && (
+            <TouchableOpacity onPress={handleShowManualEntry}>
+              <Text className="text-white/80 text-sm underline">Manually enter barcode</Text>
+            </TouchableOpacity>
+          )}
+
           <View className="bg-black/50 rounded-lg mx-8 self-stretch">
             <SegmentedControl
               segments={SCAN_SEGMENTS}
