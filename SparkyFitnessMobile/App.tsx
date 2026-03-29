@@ -137,6 +137,13 @@ function AppContent() {
     navigation.getParent()?.navigate('FoodSearch', { date });
   }, [getActiveDiaryDate]);
 
+  const handleBarcodeScan = useCallback(() => {
+    const navigation = navigationRef.current;
+    if (!navigation) return;
+    const date = getActiveDiaryDate();
+    navigation.getParent()?.navigate('FoodScan', { date });
+  }, [getActiveDiaryDate]);
+
   const addSheetNavigation = useMemo(() => ({
     navigate: (screen: string, params?: Record<string, unknown>) => {
       navigationRef.current?.getParent()?.navigate(screen, params);
@@ -305,6 +312,7 @@ function AppContent() {
             name="FoodScan"
             component={FoodScanScreen}
             options={{
+              presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
               gestureDirection: 'horizontal',
@@ -373,7 +381,7 @@ function AppContent() {
             }}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddExercise={handleAddExercise} onSyncHealthData={handleSyncHealthData} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddExercise={handleAddExercise} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} />
         <ReauthModal
           visible={showReauthModal}
           expiredConfigId={expiredConfigId}

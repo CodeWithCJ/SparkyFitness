@@ -370,20 +370,22 @@ export default function OnboardingScreen({ navigation }: Props) {
       <View className="mb-6">
         <Text className="text-sm mb-2 text-text-secondary">SparkyFitness URL</Text>
         <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
-          <TextInput
-            className="flex-1 p-2.5 text-base text-text-primary"
-            style={{ lineHeight: 20 }}
-            placeholder="https://your-sparky-app.com"
-            placeholderTextColor={textMuted}
-            value={serverUrl}
-            onChangeText={(text) => {
-              setServerUrl(text);
-              if (error) setError('');
-            }}
-            autoCapitalize="none"
+          <View className="flex-1">
+            <TextInput
+              className="p-2.5 text-base text-text-primary"
+              style={{ lineHeight: 20 }}
+              placeholder="https://your-sparky-app.com"
+              placeholderTextColor={textMuted}
+              value={serverUrl}
+              onChangeText={(text) => {
+                setServerUrl(text);
+                if (error) setError('');
+              }}
+              autoCapitalize="none"
             keyboardType="url"
             autoCorrect={false}
-          />
+            />
+          </View>
           <Button
             variant="ghost"
             onPress={async () => setServerUrl(await Clipboard.getString())}
@@ -507,15 +509,17 @@ export default function OnboardingScreen({ navigation }: Props) {
         <View className="mb-4">
           <Text className="text-sm mb-2 text-text-secondary">API Key</Text>
           <View className="flex-row items-center border border-border-subtle rounded-lg pr-2.5 bg-raised">
-            <TextInput
-              className="flex-1 p-2.5 text-base text-text-primary"
-              style={{ lineHeight: 20 }}
-              placeholder="Uds3d8i..."
-              placeholderTextColor={textMuted}
-              value={apiKey}
-              onChangeText={setApiKey}
-              secureTextEntry
-            />
+            <View className="flex-1">
+              <TextInput
+                className="p-2.5 text-base text-text-primary"
+                style={{ lineHeight: 20 }}
+                placeholder="Uds3d8i..."
+                placeholderTextColor={textMuted}
+                value={apiKey}
+                onChangeText={setApiKey}
+                secureTextEntry
+              />
+            </View>
             <Button
               variant="ghost"
               onPress={async () => setApiKey(await Clipboard.getString())}

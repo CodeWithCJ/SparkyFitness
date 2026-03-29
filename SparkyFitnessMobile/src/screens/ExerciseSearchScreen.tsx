@@ -221,17 +221,19 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     <View className="px-4 py-2">
       <View className="flex-row items-center bg-raised rounded-lg border border-border-subtle px-3 py-2.5">
         <Icon name="search" size={18} color={textMuted} />
-        <TextInput
-          className="flex-1 text-text-primary ml-2"
-          style={{ fontSize: 16, lineHeight: 20 }}
-          placeholder={activeTab === 'workouts' ? 'Search workouts...' : 'Search exercises...'}
-          placeholderTextColor={textMuted}
-          value={searchText}
-          onChangeText={setSearchText}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-        />
+        <View className="flex-1 ml-2">
+          <TextInput
+            className="text-text-primary"
+            style={{ fontSize: 16, lineHeight: 20 }}
+            placeholder={activeTab === 'workouts' ? 'Search workouts...' : 'Search exercises...'}
+            placeholderTextColor={textMuted}
+            value={searchText}
+            onChangeText={setSearchText}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+        </View>
         {searchText.length > 0 && (
           <Button variant="ghost" onPress={() => setSearchText('')} hitSlop={8} className="p-0">
             <Icon name="close" size={16} color={textMuted} />
