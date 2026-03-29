@@ -6,7 +6,7 @@ const exerciseRepository = require('../../models/exercise');
 const activityDetailsRepository = require('../../models/activityDetailsRepository');
 const sleepRepository = require('../../models/sleepRepository');
 const { log } = require('../../config/logging');
-//const { todayInZone } = require('@workspace/shared');
+const { todayInZone } = require('@workspace/shared');
 
 // Conversion factors for en-US to Metric
 const LBS_TO_KG = 0.453592;
