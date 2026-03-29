@@ -1,4 +1,4 @@
-import { transformHealthRecords } from '../../../src/services/healthconnect/dataTransformation';
+import { transformHealthRecords, extractTimezoneMetadata } from '../../../src/services/healthconnect/dataTransformation';
 import { toLocalDateString } from '../../../src/services/healthconnect/dataAggregation';
 import type {
   TransformedRecord,
@@ -1144,5 +1144,214 @@ describe('transformHealthRecords', () => {
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe('2024-01-16');
     });
+  });
+
+  describe('timezone metadata', () => {
+    test('value transformer includes record_utc_offset_minutes when startZoneOffset present', () => {
+      const records = [
+        {
+          time: '2024-01-15T08:00:00Z',
+          weight: { inKilograms: 75.5 },
+          startZoneOffset: { totalSeconds: 32400 }, // UTC+9 (540 min)
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_utc_offset_minutes).toBe(540);
+      expect(result[0].record_timezone).toBeUndefined();
+    });
+
+    test('value transformer omits timezone metadata when zone offset absent', () => {
+      const records = [
+        { time: '2024-01-15T08:00:00Z', weight: { inKilograms: 75.5 } },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_utc_offset_minutes).toBeUndefined();
+      expect(result[0].record_timezone).toBeUndefined();
+    });
+
+    test('handles negative UTC offsets (west of Greenwich)', () => {
+      const records = [
+        {
+          time: '2024-01-15T08:00:00Z',
+          weight: { inKilograms: 80 },
+          startZoneOffset: { totalSeconds: -18000 }, // UTC-5 (-300 min)
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+
+      expect(result[0].record_utc_offset_minutes).toBe(-300);
+    });
+
+    test('handles UTC+0 offset', () => {
+      const records = [
+        {
+          time: '2024-01-15T08:00:00Z',
+          weight: { inKilograms: 80 },
+          startZoneOffset: { totalSeconds: 0 },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+
+      expect(result[0].record_utc_offset_minutes).toBe(0);
+    });
+
+    test('pre-aggregated records do not extract timezone from platform fields', () => {
+      const records = [
+        { date: '2024-01-15', value: 5000, type: 'step', startZoneOffset: { totalSeconds: 32400 } },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Steps', unit: 'count', type: 'step' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      // Pre-aggregated records bypass value transformers, platform zone offset fields are not extracted
+      expect(result[0].record_utc_offset_minutes).toBeUndefined();
+    });
+
+    test('pre-aggregated records forward record_timezone when present', () => {
+      const records = [
+        { value: 5000, date: '2024-01-15', type: 'step', record_timezone: 'America/New_York' },
+        { value: 2500, date: '2024-01-16', type: 'step', record_utc_offset_minutes: 540 },
+        { value: 1000, date: '2024-01-17', type: 'step' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'Steps', unit: 'count', type: 'step' }) as TransformedRecord[];
+
+      expect(result).toHaveLength(3);
+      expect(result[0].record_timezone).toBe('America/New_York');
+      expect(result[0].record_utc_offset_minutes).toBeUndefined();
+      expect(result[1].record_utc_offset_minutes).toBe(540);
+      expect(result[1].record_timezone).toBeUndefined();
+      expect(result[2].record_timezone).toBeUndefined();
+      expect(result[2].record_utc_offset_minutes).toBeUndefined();
+    });
+
+    test('ExerciseSession includes record_utc_offset_minutes from startZoneOffset', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 56,
+          startZoneOffset: { totalSeconds: 32400 }, // UTC+9
+          endZoneOffset: { totalSeconds: 32400 },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_utc_offset_minutes).toBe(540);
+      expect(result[0].record_timezone).toBeUndefined();
+    });
+
+    test('ExerciseSession omits timezone metadata when zone offset absent', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 56,
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_utc_offset_minutes).toBeUndefined();
+    });
+
+    test('ExerciseSession travel scenario: workout in UTC+9, keeps original offset', () => {
+      // User recorded a workout in Tokyo (UTC+9), later syncs from NYC (UTC-5)
+      // The record should carry the original UTC+9 offset
+      const records = [
+        {
+          startTime: '2024-01-15T23:00:00Z', // Jan 16 08:00 JST
+          endTime: '2024-01-16T00:00:00Z',   // Jan 16 09:00 JST
+          exerciseType: 56,
+          startZoneOffset: { totalSeconds: 32400 }, // UTC+9 (Tokyo)
+          endZoneOffset: { totalSeconds: 32400 },
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_utc_offset_minutes).toBe(540);
+    });
+
+    test('SleepSession includes record_utc_offset_minutes from endZoneOffset (wake-based)', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T22:00:00Z',
+          endTime: '2024-01-16T06:00:00Z',
+          startZoneOffset: { totalSeconds: 32400 }, // UTC+9
+          endZoneOffset: { totalSeconds: -18000 },  // UTC-5
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result).toHaveLength(1);
+      // Sleep uses endZoneOffset (wake-based) when available
+      expect(result[0].record_utc_offset_minutes).toBe(-300);
+    });
+
+    test('SleepSession falls back to startZoneOffset when endZoneOffset absent', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T22:00:00Z',
+          endTime: '2024-01-16T06:00:00Z',
+          startZoneOffset: { totalSeconds: 32400 }, // UTC+9
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_utc_offset_minutes).toBe(540);
+    });
+
+    test('SleepSession omits timezone metadata when zone offsets absent', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T22:00:00Z',
+          endTime: '2024-01-16T06:00:00Z',
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].record_utc_offset_minutes).toBeUndefined();
+    });
+  });
+});
+
+describe('extractTimezoneMetadata', () => {
+  test('extracts offset from startZoneOffset by default', () => {
+    const rec = { startZoneOffset: { totalSeconds: 32400 } }; // UTC+9
+    expect(extractTimezoneMetadata(rec)).toEqual({ record_utc_offset_minutes: 540 });
+  });
+
+  test('extracts offset from endZoneOffset when preferEnd is true', () => {
+    const rec = {
+      startZoneOffset: { totalSeconds: 32400 },
+      endZoneOffset: { totalSeconds: -18000 },
+    };
+    expect(extractTimezoneMetadata(rec, true)).toEqual({ record_utc_offset_minutes: -300 });
+  });
+
+  test('falls back to endZoneOffset when startZoneOffset missing', () => {
+    const rec = { endZoneOffset: { totalSeconds: 3600 } }; // UTC+1
+    expect(extractTimezoneMetadata(rec)).toEqual({ record_utc_offset_minutes: 60 });
+  });
+
+  test('falls back to startZoneOffset when preferEnd and endZoneOffset missing', () => {
+    const rec = { startZoneOffset: { totalSeconds: 3600 } };
+    expect(extractTimezoneMetadata(rec, true)).toEqual({ record_utc_offset_minutes: 60 });
+  });
+
+  test('returns empty object when no zone offset fields present', () => {
+    expect(extractTimezoneMetadata({})).toEqual({});
+  });
+
+  test('rounds non-integer offset minutes', () => {
+    // Some zones have 30/45-minute offsets (e.g., India UTC+5:30 = 19800s)
+    const rec = { startZoneOffset: { totalSeconds: 19800 } };
+    expect(extractTimezoneMetadata(rec)).toEqual({ record_utc_offset_minutes: 330 });
   });
 });

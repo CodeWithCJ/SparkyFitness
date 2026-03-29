@@ -5,7 +5,8 @@ const fitbitIntegrationService = require('../integrations/fitbit/fitbitService')
 const fitbitDataProcessor = require('../integrations/fitbit/fitbitDataProcessor');
 const { getSystemClient } = require('../db/poolManager');
 const { loadRawBundle } = require('../utils/diagnosticLogger');
-const moment = require('moment');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone, addDays } = require('@workspace/shared');
 const fs = require('fs');
 const path = require('path');
 
@@ -31,17 +32,18 @@ async function syncFitbitData(
   customEndDate = null
 ) {
   let startDate, endDate;
-  const today = moment();
+  const tz = await loadUserTimezone(userId);
+  const today = todayInZone(tz);
 
   if (customStartDate) {
     startDate = customStartDate;
-    endDate = customEndDate || today.format('YYYY-MM-DD');
+    endDate = customEndDate || today;
   } else if (syncType === 'manual') {
-    endDate = today.format('YYYY-MM-DD');
-    startDate = today.clone().subtract(7, 'days').format('YYYY-MM-DD');
+    endDate = today;
+    startDate = addDays(today, -7);
   } else if (syncType === 'scheduled') {
-    endDate = today.format('YYYY-MM-DD');
-    startDate = today.format('YYYY-MM-DD');
+    endDate = today;
+    startDate = today;
   } else {
     throw new Error("Invalid syncType. Must be 'manual' or 'scheduled'.");
   }
@@ -83,7 +85,9 @@ async function syncFitbitData(
         await fitbitDataProcessor.processFitbitProfile(
           userId,
           userId,
-          responses['raw_profile'].data
+          responses['raw_profile'].data,
+          null,
+          tz
         );
       if (responses['raw_heart_rate'])
         await fitbitDataProcessor.processFitbitHeartRate(
@@ -182,7 +186,8 @@ async function syncFitbitData(
           userId,
           userId,
           responses['raw_water'].data,
-          waterUnit
+          waterUnit,
+          tz
         );
       if (responses['raw_cardio_fitness'])
         await fitbitDataProcessor.processFitbitCardioFitness(
@@ -442,7 +447,9 @@ async function syncFitbitData(
       await fitbitDataProcessor.processFitbitProfile(
         userId,
         userId,
-        profileData
+        profileData,
+        null,
+        tz
       );
     if (heartRateData)
       await fitbitDataProcessor.processFitbitHeartRate(
@@ -515,7 +522,8 @@ async function syncFitbitData(
         userId,
         userId,
         waterData,
-        waterUnit
+        waterUnit,
+        tz
       );
     if (cardioFitnessData)
       await fitbitDataProcessor.processFitbitCardioFitness(

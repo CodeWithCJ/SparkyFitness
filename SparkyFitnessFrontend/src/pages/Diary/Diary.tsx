@@ -10,7 +10,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatDateToYYYYMMDD } from '@/lib/utils';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import DiaryTopControls, { DayTotals } from './DiaryTopControls';
@@ -187,7 +187,7 @@ const Diary = () => {
     debug(loggingLevel, 'Handling date select:', newDate);
     if (newDate) {
       setDate(newDate);
-      const dateString = formatDateInUserTimezone(newDate, 'yyyy-MM-dd');
+      const dateString = formatDateToYYYYMMDD(newDate);
       info(loggingLevel, 'Date selected:', dateString);
       setSelectedDate(dateString);
     }
@@ -257,10 +257,7 @@ const Diary = () => {
         quantity: quantity,
         unit: unit,
         variant_id: selectedVariant.id,
-        entry_date: formatDateInUserTimezone(
-          parseDateInUserTimezone(selectedDate),
-          'yyyy-MM-dd'
-        ),
+        entry_date: selectedDate,
       });
       info(loggingLevel, 'Food entry added successfully.');
     } catch (err) {
@@ -499,10 +496,7 @@ const Diary = () => {
         mealTemplate={selectedMealTemplate}
         open={isLogMealDialogOpen}
         onOpenChange={setIsLogMealDialogOpen}
-        date={formatDateInUserTimezone(
-          parseDateInUserTimezone(selectedDate),
-          'yyyy-MM-dd'
-        )}
+        date={selectedDate}
         mealType={selectedMealType}
       />
 
@@ -511,7 +505,7 @@ const Diary = () => {
         <ConvertToMealDialog
           isOpen={isConvertToMealDialogOpen}
           onClose={() => setIsConvertToMealDialogOpen(false)}
-          selectedDate={formatDateInUserTimezone(date, 'yyyy-MM-dd')}
+          selectedDate={selectedDate}
           mealType={convertToMealSourceMealType}
         />
       )}

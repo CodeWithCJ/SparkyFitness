@@ -14,7 +14,7 @@ export interface UserPreferences {
     | 'dd/MM/yyyy'
     | string;
   language: string;
-  timezone: string;
+  timezone: string | null;
 
   default_weight_unit: 'kg' | 'lbs' | 'st_lbs';
   default_measurement_unit: 'cm' | 'inches' | 'ft_in';

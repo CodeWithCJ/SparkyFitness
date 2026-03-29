@@ -8,10 +8,17 @@ import { SleepStageEvent } from './mobileHealthData';
 export const HEALTH_CONNECT_SOURCE = 'Health Connect' as const;
 export const HEALTHKIT_SOURCE = 'HealthKit' as const;
 
+/** Zone offset from Health Connect (e.g. { totalSeconds: 32400 } for UTC+9) */
+export interface HCZoneOffset {
+  totalSeconds: number;
+}
+
 /** Heart rate record from Health Connect */
 export interface HCHeartRateRecord {
   startTime: string;
   samples: { beatsPerMinute: number }[];
+  startZoneOffset?: HCZoneOffset;
+  endZoneOffset?: HCZoneOffset;
 }
 
 /** Heart rate record from HealthKit */
@@ -25,6 +32,8 @@ export interface HCStepsRecord {
   startTime: string;
   endTime?: string;
   count: number;
+  startZoneOffset?: HCZoneOffset;
+  endZoneOffset?: HCZoneOffset;
 }
 
 /** Energy record (calories) from Health Connect */
@@ -35,6 +44,8 @@ export interface HCEnergyRecord {
     inCalories?: number;
     inKilocalories?: number;
   };
+  startZoneOffset?: HCZoneOffset;
+  endZoneOffset?: HCZoneOffset;
 }
 
 /** Sleep record from HealthKit - used as input to aggregateSleepSessions */
@@ -42,6 +53,8 @@ export interface HKSleepRecord {
   startTime: string;
   endTime: string;
   value: string | number;
+  /** HealthKit metadata forwarded from the reader layer (may contain HKTimeZone) */
+  metadata?: { HKTimeZone?: string; [key: string]: unknown };
 }
 
 // ==========================================
@@ -72,21 +85,31 @@ export interface SleepSessionAccumulator {
   light_sleep_seconds: number;
   rem_sleep_seconds: number;
   awake_sleep_seconds: number;
+  /** IANA timezone from the sample that set wake_time (for server-side day derivation) */
+  record_timezone?: string;
 }
 
 // ==========================================
 // AGGREGATED OUTPUT TYPES
 // ==========================================
 
+/** Optional per-record timezone metadata for server-side day derivation */
+export interface RecordTimezoneMetadata {
+  /** IANA timezone when available (best source for HealthKit) */
+  record_timezone?: string | null;
+  /** Fixed UTC offset in minutes (best fallback for Health Connect) */
+  record_utc_offset_minutes?: number | null;
+}
+
 /** Standard aggregated health data entry */
-export interface AggregatedHealthRecord {
+export interface AggregatedHealthRecord extends RecordTimezoneMetadata {
   date: string;
   value: number;
   type: string;
 }
 
 /** Sleep session output (complex structure) */
-export interface AggregatedSleepSession {
+export interface AggregatedSleepSession extends RecordTimezoneMetadata {
   type: 'SleepSession';
   source: typeof HEALTHKIT_SOURCE | typeof HEALTH_CONNECT_SOURCE;
   timestamp: string;
@@ -116,7 +139,7 @@ export interface ExerciseSet {
 }
 
 /** Exercise session output (complex structure) */
-export interface TransformedExerciseSession {
+export interface TransformedExerciseSession extends RecordTimezoneMetadata {
   type: 'ExerciseSession';
   source: typeof HEALTHKIT_SOURCE | typeof HEALTH_CONNECT_SOURCE;
   date: string;
@@ -146,7 +169,7 @@ export interface TransformedExerciseSession {
 export type MetricConfig = Pick<HealthMetric, 'recordType' | 'unit' | 'type'>;
 
 /** Simple transformed record for API */
-export interface TransformedRecord {
+export interface TransformedRecord extends RecordTimezoneMetadata {
   value: number;
   type: string;
   date: string;

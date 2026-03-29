@@ -101,6 +101,33 @@ async function getUserPreferences(userId) {
   }
 }
 
+async function bootstrapUserTimezoneIfUnset(userId, timezone) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `WITH bootstrapped AS (
+         INSERT INTO user_preferences (user_id, timezone)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id) DO UPDATE SET
+           timezone = EXCLUDED.timezone,
+           updated_at = now()
+         WHERE user_preferences.timezone IS NULL
+         RETURNING *
+       )
+       SELECT * FROM bootstrapped
+       UNION ALL
+       SELECT * FROM user_preferences
+       WHERE user_id = $1
+         AND NOT EXISTS (SELECT 1 FROM bootstrapped)
+       LIMIT 1`,
+      [userId, timezone]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+
 async function upsertUserPreferences(preferenceData) {
   const client = await getClient(preferenceData.user_id); // User-specific operation
   try {
@@ -118,7 +145,7 @@ async function upsertUserPreferences(preferenceData) {
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
-       COALESCE($6, ''), COALESCE($7, 'never'), COALESCE($8, 'INFO'), COALESCE($9, 'UTC'),
+       COALESCE($6, ''), COALESCE($7, 'never'), COALESCE($8, 'INFO'), $9,
        $10, COALESCE($11, 10), COALESCE($12, 'ml'),
        COALESCE($13, 'Mifflin-St Jeor'), COALESCE($14, 'U.S. Navy'), COALESCE($15, false),
        COALESCE($16, 'en'), COALESCE($17, 'dynamic'), COALESCE($18, 'kcal'),
@@ -204,5 +231,6 @@ module.exports = {
   updateUserPreferences,
   deleteUserPreferences,
   getUserPreferences,
+  bootstrapUserTimezoneIfUnset,
   upsertUserPreferences,
 };

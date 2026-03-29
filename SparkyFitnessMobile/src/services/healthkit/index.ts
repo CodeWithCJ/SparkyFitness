@@ -13,6 +13,7 @@ import {
   PermissionRequest,
 } from '../../types/healthRecords';
 import { getSyncStartDate } from '../../utils/syncUtils';
+import { getDeviceTimezone } from '../../utils/dateUtils';
 import { toLocalDateString } from './dataAggregation';
 
 // Re-export for backward compatibility with callers importing from this module
@@ -395,6 +396,7 @@ const getAggregatedDataByDate = async (
   }
 
   const results: AggregatedHealthRecord[] = [];
+  const deviceTz = getDeviceTimezone();
   const currentDate = new Date(startDate);
   // let daysQueried = 0;
   // let daysWithData = 0;
@@ -441,6 +443,7 @@ const getAggregatedDataByDate = async (
           date: dateStr,
           value: queryResult.value,
           type: config.type,
+          record_timezone: deviceTz,
         });
       }
     } catch (error) {
@@ -517,14 +520,25 @@ const handleSleepSession: RecordHandler = async (identifier, startDate, endDate)
     return overlapsDateRange(recordStartDate, recordEndDate, startDate, endDate);
   });
 
-  return filteredSamples.map(s => ({
-    startTime: s.startDate,
-    endTime: s.endDate,
-    value: s.value,
-    metadata: (s as unknown as { metadata?: unknown }).metadata,
-    sourceName: (s as unknown as { sourceName?: string }).sourceName,
-    sourceId: (s as unknown as { sourceId?: string }).sourceId,
-  }));
+  return filteredSamples.map(s => {
+    // Normalize timezone: HealthKit exposes timezone as both metadata.HKTimeZone
+    // and the flattened metadataTimeZone field. Ensure HKTimeZone is always set
+    // so the aggregation layer can find it consistently.
+    const rawMetadata = (s as unknown as { metadata?: Record<string, unknown> }).metadata;
+    const flatTz = (s as unknown as { metadataTimeZone?: string }).metadataTimeZone;
+    const metadata = rawMetadata
+      ? { ...rawMetadata, ...(flatTz && !rawMetadata.HKTimeZone ? { HKTimeZone: flatTz } : {}) }
+      : (flatTz ? { HKTimeZone: flatTz } : undefined);
+
+    return {
+      startTime: s.startDate,
+      endTime: s.endDate,
+      value: s.value,
+      metadata,
+      sourceName: (s as unknown as { sourceName?: string }).sourceName,
+      sourceId: (s as unknown as { sourceId?: string }).sourceId,
+    };
+  });
 };
 
 // Handler for Stress (MindfulSession) records
@@ -623,7 +637,7 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
       // Stats fetch failed - keep using direct properties from workout
     }
 
-    return {
+    const record: Record<string, unknown> = {
       startTime: w.startDate,
       endTime: w.endDate,
       activityType: w.workoutActivityType,
@@ -632,6 +646,12 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
       totalDistance,
       uuid: (w as unknown as { uuid?: string }).uuid,
     };
+    // Forward timezone metadata so the transform layer can attach it to output records
+    const tz = (w as unknown as { metadataTimeZone?: string }).metadataTimeZone;
+    if (tz) {
+      record.metadata = { HKTimeZone: tz };
+    }
+    return record;
   }));
 
   return workoutsWithStats;
@@ -732,12 +752,17 @@ const createQuantityHandler = (recordType: string): RecordHandler => {
     const transform = QUANTITY_TRANSFORMS[recordType] || ((base: Record<string, unknown>) => base);
 
     return filteredSamples.map(s => {
-      const baseRecord = {
+      const baseRecord: Record<string, unknown> = {
         startTime: s.startDate,
         endTime: s.endDate,
         time: s.startDate,
         value: s.quantity,
       };
+      // Forward timezone metadata so the transform layer can attach it to output records
+      const tz = (s as unknown as { metadataTimeZone?: string }).metadataTimeZone;
+      if (tz) {
+        baseRecord.metadata = { HKTimeZone: tz };
+      }
       return transform(baseRecord, s.quantity);
     });
   };

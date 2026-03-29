@@ -14,6 +14,8 @@ const userRepository = require('../models/userRepository');
 const preferenceRepository = require('../models/preferenceRepository');
 const bmrService = require('./bmrService');
 const { log } = require('../config/logging');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone } = require('@workspace/shared');
 
 const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
 
@@ -22,9 +24,12 @@ const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
  * Calculates TDEE based on historical weight and calorie intake data.
  */
 async function calculateAdaptiveTdee(userId, dateParam) {
-  const calculationDate = dateParam
-    ? startOfDay(parseISO(dateParam))
-    : startOfDay(new Date());
+  let calculationDateStr = dateParam;
+  if (!calculationDateStr) {
+    const tz = await loadUserTimezone(userId);
+    calculationDateStr = todayInZone(tz);
+  }
+  const calculationDate = startOfDay(parseISO(calculationDateStr));
   const cacheKey = `adaptive_tdee_${userId}_${format(calculationDate, 'yyyy-MM-dd')}`;
   const cachedResult = tdeeCache.get(cacheKey);
   if (cachedResult) {

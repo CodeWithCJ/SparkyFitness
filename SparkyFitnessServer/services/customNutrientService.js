@@ -1,6 +1,8 @@
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 const { v4: uuidv4 } = require('uuid');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone } = require('@workspace/shared');
 
 class CustomNutrientService {
   /**
@@ -38,10 +40,11 @@ class CustomNutrientService {
           [name, userId]
         );
 
-        const today = new Date().toISOString().split('T')[0];
+        const tz = await loadUserTimezone(userId);
+        const today = todayInZone(tz);
         await client.query(
-          `UPDATE user_goals 
-           SET custom_nutrients = jsonb_set(custom_nutrients, ARRAY[$1], '0'::jsonb) 
+          `UPDATE user_goals
+           SET custom_nutrients = jsonb_set(custom_nutrients, ARRAY[$1], '0'::jsonb)
            WHERE user_id = $2 AND (goal_date >= $3 OR goal_date IS NULL)`,
           [name, userId, today]
         );
@@ -187,7 +190,8 @@ class CustomNutrientService {
       );
 
       // 6. Remove from Future Goals (Always - date >= today)
-      const today = new Date().toISOString().split('T')[0];
+      const tz = await loadUserTimezone(userId);
+      const today = todayInZone(tz);
       await client.query(
         'UPDATE user_goals SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2 AND (goal_date >= $3 OR goal_date IS NULL)',
         [nutrientName, userId, today]

@@ -5,7 +5,12 @@ const withingsIntegrationService = require('../integrations/withings/withingsSer
 const withingsDataProcessor = require('../integrations/withings/withingsDataProcessor');
 const { getSystemClient } = require('../db/poolManager');
 const { loadRawBundle } = require('../utils/diagnosticLogger');
-const moment = require('moment');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const {
+  todayInZone,
+  addDays,
+  dayRangeToUtcRange,
+} = require('@workspace/shared');
 const fs = require('fs');
 const path = require('path');
 
@@ -23,18 +28,19 @@ log(
  * @param {string} syncType - 'manual' or 'scheduled'
  */
 async function syncWithingsData(userId, syncType = 'manual') {
-  const today = new Date();
+  const tz = await loadUserTimezone(userId);
+  const todayStr = todayInZone(tz);
 
   // Calculate dates for sync
-  const endDateForYMD = new Date(today);
-  endDateForYMD.setDate(today.getDate() + 1); // Tomorrow
-  const startDateForYMD = new Date(today);
-  startDateForYMD.setDate(today.getDate() - 7); // 7 days ago
-
-  const startDateYMD = startDateForYMD.toISOString().split('T')[0];
-  const endDateYMD = endDateForYMD.toISOString().split('T')[0];
-  const startDateUnix = Math.floor(startDateForYMD.getTime() / 1000);
-  const endDateUnix = Math.floor(today.getTime() / 1000);
+  const startDateYMD = addDays(todayStr, -7);
+  const endDateYMD = addDays(todayStr, 1);
+  const { start: startDateUtc } = dayRangeToUtcRange(
+    startDateYMD,
+    todayStr,
+    tz
+  );
+  const startDateUnix = Math.floor(startDateUtc.getTime() / 1000);
+  const endDateUnix = Math.floor(Date.now() / 1000);
 
   log(
     'info',
@@ -64,14 +70,16 @@ async function syncWithingsData(userId, syncType = 'manual') {
         await withingsDataProcessor.processWithingsMeasures(
           userId,
           userId,
-          responses['raw_measures'].data.body?.measuregrps || []
+          responses['raw_measures'].data.body?.measuregrps || [],
+          tz
         );
       }
       if (responses['raw_heart']) {
         await withingsDataProcessor.processWithingsHeartData(
           userId,
           userId,
-          responses['raw_heart'].data.body?.series || []
+          responses['raw_heart'].data.body?.series || [],
+          tz
         );
       }
       if (responses['raw_sleep']) {
@@ -79,7 +87,8 @@ async function syncWithingsData(userId, syncType = 'manual') {
           userId,
           userId,
           responses['raw_sleep'].data.body?.series || [],
-          responses['raw_sleep_summary']?.data.body?.series || []
+          responses['raw_sleep_summary']?.data.body?.series || [],
+          tz
         );
       }
       if (responses['raw_workouts']) {
@@ -173,8 +182,8 @@ async function syncWithingsData(userId, syncType = 'manual') {
       sleep_summary: await safeFetch('raw_sleep_summary', () =>
         withingsIntegrationService.fetchSleepSummaryData(
           userId,
-          startDateUnix,
-          endDateUnix
+          startDateYMD,
+          endDateYMD
         )
       ),
       workouts: await safeFetch('raw_workouts', () =>
@@ -200,14 +209,16 @@ async function syncWithingsData(userId, syncType = 'manual') {
       await withingsDataProcessor.processWithingsMeasures(
         userId,
         userId,
-        bundle.measures
+        bundle.measures,
+        tz
       );
     }
     if (bundle.heart) {
       await withingsDataProcessor.processWithingsHeartData(
         userId,
         userId,
-        bundle.heart
+        bundle.heart,
+        tz
       );
     }
     if (bundle.sleep || bundle.sleep_summary) {
@@ -215,7 +226,8 @@ async function syncWithingsData(userId, syncType = 'manual') {
         userId,
         userId,
         bundle.sleep || [],
-        bundle.sleep_summary || []
+        bundle.sleep_summary || [],
+        tz
       );
     }
     if (bundle.workouts) {

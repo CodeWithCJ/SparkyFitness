@@ -24,7 +24,7 @@ export interface UserPreferences {
   system_prompt?: string;
   auto_clear_history?: string;
   logging_level?: string;
-  timezone?: string;
+  timezone?: string | null;
   item_display_limit?: number;
   language?: string;
 }

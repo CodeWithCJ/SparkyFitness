@@ -3,6 +3,8 @@ const weeklyGoalPlanRepository = require('../models/weeklyGoalPlanRepository');
 const goalPresetRepository = require('../models/goalPresetRepository');
 const { log } = require('../config/logging');
 const { format, getDay } = require('date-fns');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone } = require('@workspace/shared');
 
 // Helper function to calculate grams from percentages
 function calculateGramsFromPercentages(
@@ -331,7 +333,7 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
     // If cascade is false, or if editing a past date, only update that specific date
     if (
       !p_cascade ||
-      new Date(p_start_date) < new Date(format(new Date(), 'yyyy-MM-dd'))
+      p_start_date < todayInZone(await loadUserTimezone(authenticatedUserId))
     ) {
       log(
         'debug',

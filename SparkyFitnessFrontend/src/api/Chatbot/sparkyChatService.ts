@@ -1,4 +1,5 @@
 import { apiCall } from '@/api/api';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { setUserLoggingLevel } from '@/utils/userPreferences';
 import {
   debug,
@@ -597,18 +598,17 @@ const extractDateFromInput = (
   userDate: string
 ): string | undefined => {
   const lowerInput = input.toLowerCase();
-  const today = new Date(userDate); // Use user's date
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  const [y, m, d] = userDate.split('-').map(Number) as [number, number, number];
+  const today = new Date(y, m - 1, d);
+  const yesterday = new Date(y, m - 1, d - 1);
+  const tomorrow = new Date(y, m - 1, d + 1);
 
   if (lowerInput.includes('today')) {
-    return today.toISOString().split('T')[0];
+    return formatDateToYYYYMMDD(today);
   } else if (lowerInput.includes('yesterday')) {
-    return yesterday.toISOString().split('T')[0];
+    return formatDateToYYYYMMDD(yesterday);
   } else if (lowerInput.includes('tomorrow')) {
-    return tomorrow.toISOString().split('T')[0];
+    return formatDateToYYYYMMDD(tomorrow);
   }
 
   const dateMatch = lowerInput.match(
@@ -633,7 +633,7 @@ const extractDateFromInput = (
         if (!yearStr && date > today) {
           date.setFullYear(year - 1);
         }
-        return date.toISOString().split('T')[0];
+        return formatDateToYYYYMMDD(date);
       }
     }
   }

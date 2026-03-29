@@ -29,6 +29,13 @@ module.exports = {
     '^@workspace/shared/(.*)$': '<rootDir>/../shared/src/$1',
   },
 
+  // Transform TypeScript files using the built-in typescript package
+  // (keep the default babel-jest for .js so jest.mock hoisting still works)
+  transform: {
+    '\\.js$': 'babel-jest',
+    '\\.ts$': '<rootDir>/jest-ts-transform.js',
+  },
+
   // Transform ES modules from node_modules
   transformIgnorePatterns: ['node_modules/(?!(uuid|@workspace/shared)/)'],
 

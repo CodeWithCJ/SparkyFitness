@@ -12,6 +12,7 @@ import type {
 } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { toast as sonnerToast } from 'sonner';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { formatSecondsToHHMM } from '@/utils/timeFormatters';
 import {
   HIGH_DEBT_THRESHOLD_HOURS,
@@ -190,7 +191,7 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           const debtDate =
             typeof d.date === 'string'
               ? d.date.split('T')[0]
-              : new Date(d.date).toISOString().split('T')[0];
+              : formatDateToYYYYMMDD(new Date(d.date));
           return dateKey === debtDate;
         });
 

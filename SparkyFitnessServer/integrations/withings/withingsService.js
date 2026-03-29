@@ -627,7 +627,7 @@ async function fetchAndProcessSleepData(
 }
 
 // Function to fetch sleep summary data (action=getsummary)
-async function fetchSleepSummaryData(userId, startDate, endDate) {
+async function fetchSleepSummaryData(userId, startDateYMD, endDateYMD) {
   const accessToken = await getValidAccessToken(userId);
   const client = await getClient(userId);
   try {
@@ -636,10 +636,6 @@ async function fetchSleepSummaryData(userId, startDate, endDate) {
       [userId]
     );
     const withingsUserId = providerResult.rows[0].external_user_id;
-
-    // Convert dates to YYYY-MM-DD for getsummary
-    const startDateYMD = new Date(startDate * 1000).toISOString().split('T')[0];
-    const endDateYMD = new Date(endDate * 1000).toISOString().split('T')[0];
 
     let allSeries = [];
     let offset = 0;

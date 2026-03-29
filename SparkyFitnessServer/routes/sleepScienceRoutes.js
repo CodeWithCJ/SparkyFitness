@@ -4,6 +4,8 @@ const sleepScienceService = require('../services/sleepScienceService');
 const { log } = require('../config/logging');
 const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone } = require('@workspace/shared');
 
 /**
  * @swagger
@@ -78,9 +80,11 @@ router.post(
     try {
       const userId = req.userId;
       const windowDays = req.body.windowDays || 90;
+      const tz = await loadUserTimezone(userId);
       const result = await sleepScienceService.calculateBaseline(
         userId,
-        windowDays
+        windowDays,
+        tz
       );
       res.status(200).json(result);
     } catch (error) {
@@ -159,7 +163,8 @@ router.get(
         req.query.targetUserId && req.query.targetUserId !== 'undefined'
           ? req.query.targetUserId
           : req.userId;
-      const date = req.query.date || new Date().toISOString().slice(0, 10);
+      const tz = await loadUserTimezone(targetUserId);
+      const date = req.query.date || todayInZone(tz);
       const data = await sleepScienceService.getDailyNeed(targetUserId, date);
       res.status(200).json(data);
     } catch (error) {

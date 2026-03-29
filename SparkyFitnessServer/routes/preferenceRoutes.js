@@ -3,6 +3,34 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const preferenceService = require('../services/preferenceService');
 
+// Endpoint to bootstrap timezone from the device only if unset
+router.post('/bootstrap-timezone', authenticate, async (req, res, next) => {
+  const { timezone } = req.body;
+
+  try {
+    const preferences = await preferenceService.bootstrapUserTimezone(
+      req.userId,
+      req.userId,
+      timezone
+    );
+    res.status(200).json(preferences);
+  } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message.startsWith('Forbidden')) {
+      return res.status(403).json({ error: error.message });
+    }
+    if (
+      error.message ===
+      'User preferences not found or not authorized to update.'
+    ) {
+      return res.status(404).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
 // Endpoint to update user preferences
 /**
  * @swagger
@@ -33,6 +61,9 @@ router.put('/', authenticate, async (req, res, next) => {
     );
     res.status(200).json(updatedPreferences);
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }
@@ -141,6 +172,9 @@ router.post('/', authenticate, async (req, res, next) => {
     );
     res.status(200).json(newPreferences);
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
     if (error.message.startsWith('Forbidden')) {
       return res.status(403).json({ error: error.message });
     }

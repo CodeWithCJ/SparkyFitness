@@ -9,6 +9,7 @@ import i18n from '@/i18n';
 import { debug, info, warn, error } from '@/utils/logging';
 
 import { parseISO, subDays, subYears } from 'date-fns';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import {
   calculateFoodEntryNutrition,
   getEnergyUnitString,
@@ -91,14 +92,10 @@ export const getComparisonDates = (
       return [startDate, endDate]; // Should not happen
   }
 
-  const splitStartDate = compStartDate.toISOString().split('T')[0];
-  const splitEndDate = compEndDate.toISOString().split('T')[0];
-
-  if (splitStartDate && splitEndDate) {
-    return [splitStartDate, splitEndDate];
-  } else {
-    return ['', ''];
-  }
+  return [
+    formatDateToYYYYMMDD(compStartDate),
+    formatDateToYYYYMMDD(compEndDate),
+  ];
 };
 
 export const getHRVStatus = (

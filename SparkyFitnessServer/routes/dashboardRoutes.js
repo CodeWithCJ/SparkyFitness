@@ -3,6 +3,8 @@ const router = express.Router();
 const dashboardService = require('../services/DashboardService');
 const { authenticate } = require('../middleware/authMiddleware');
 const { log } = require('../config/logging');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
+const { todayInZone } = require('@workspace/shared');
 
 /**
  * @swagger
@@ -27,7 +29,8 @@ const { log } = require('../config/logging');
 router.get('/stats', authenticate, async (req, res, next) => {
   try {
     const userId = req.activeUserId || req.authenticatedUserId;
-    const date = req.query.date || new Date().toISOString().split('T')[0];
+    const tz = await loadUserTimezone(userId);
+    const date = req.query.date || todayInZone(tz);
 
     log('info', `Dashboard stats requested for user ${userId} on date ${date}`);
 

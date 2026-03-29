@@ -3,6 +3,7 @@ const router = express.Router();
 const fastingRepository = require('../models/fastingRepository');
 const moodRepository = require('../models/moodRepository');
 const { log } = require('../config/logging');
+const { loadUserTimezone } = require('../utils/timezoneLoader');
 const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 const { canAccessUserData } = require('../utils/permissionUtils');
@@ -448,10 +449,12 @@ router.get('/history/range/:startDate/:endDate', async (req, res) => {
   );
 
   try {
+    const tz = await loadUserTimezone(userId);
     const logs = await fastingRepository.getFastingLogsByDateRange(
       userId,
       startDate,
-      endDate
+      endDate,
+      tz
     );
     res.json(logs);
   } catch (error) {

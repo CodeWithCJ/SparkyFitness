@@ -10,6 +10,8 @@ const {
 } = require('../../security/encryption');
 const { log } = require('../../config/logging');
 const polarDataProcessor = require('./polarDataProcessor');
+const { loadUserTimezone } = require('../../utils/timezoneLoader');
+const { todayInZone, addDays } = require('@workspace/shared');
 
 const POLAR_AUTH_URL = 'https://flow.polar.com/oauth2/authorization';
 const POLAR_TOKEN_URL = 'https://polarremote.com/v2/oauth2/token';
@@ -747,12 +749,9 @@ async function fetchRecentDailyActivity(userId, accessToken) {
     );
 
     // Calculate date range: Last 28 days (max allowed by API)
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 28);
-
-    const to = endDate.toISOString().split('T')[0];
-    const from = startDate.toISOString().split('T')[0];
+    const tz = await loadUserTimezone(userId);
+    const to = todayInZone(tz);
+    const from = addDays(to, -28);
 
     log('debug', `Requesting Polar activity from ${from} to ${to}`);
 

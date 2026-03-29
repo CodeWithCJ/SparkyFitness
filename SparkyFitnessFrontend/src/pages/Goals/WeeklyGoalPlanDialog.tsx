@@ -17,7 +17,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { cn, formatDateToYYYYMMDD } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -76,7 +76,7 @@ export const WeeklyGoalPlanDialog = ({
       } else {
         setCurrentWeeklyPlan({
           ...DEFAULT_PLAN,
-          start_date: new Date().toISOString().split('T')[0],
+          start_date: formatDateToYYYYMMDD(new Date()),
         } as WeeklyGoalPlan);
       }
     }
@@ -159,7 +159,7 @@ export const WeeklyGoalPlanDialog = ({
                     <CalendarDays className="mr-2 h-4 w-4" />
                     {currentWeeklyPlan.start_date ? (
                       formatDateInUserTimezone(
-                        new Date(currentWeeklyPlan.start_date),
+                        currentWeeklyPlan.start_date,
                         dateFormat
                       )
                     ) : (
@@ -174,14 +174,11 @@ export const WeeklyGoalPlanDialog = ({
                     mode="single"
                     selected={parseDateInUserTimezone(
                       currentWeeklyPlan.start_date
-                    )} // Changed
+                    )}
                     onSelect={(date) =>
                       setCurrentWeeklyPlan({
                         ...currentWeeklyPlan,
-                        start_date: formatDateInUserTimezone(
-                          date!,
-                          'yyyy-MM-dd'
-                        ),
+                        start_date: date ? formatDateToYYYYMMDD(date) : '',
                       })
                     }
                     yearsRange={10}
@@ -205,15 +202,14 @@ export const WeeklyGoalPlanDialog = ({
                     <CalendarDays className="mr-2 h-4 w-4" />
                     {currentWeeklyPlan.end_date ? (
                       formatDateInUserTimezone(
-                        parseDateInUserTimezone(currentWeeklyPlan.end_date),
+                        currentWeeklyPlan.end_date,
                         dateFormat
                       )
                     ) : (
                       <span>
                         {t('goals.goalsSettings.pickADate', 'Pick a date')}
                       </span>
-                    )}{' '}
-                    // Changed
+                    )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -223,13 +219,11 @@ export const WeeklyGoalPlanDialog = ({
                       currentWeeklyPlan.end_date
                         ? parseDateInUserTimezone(currentWeeklyPlan.end_date)
                         : undefined
-                    } // Changed
+                    }
                     onSelect={(date) =>
                       setCurrentWeeklyPlan({
                         ...currentWeeklyPlan,
-                        end_date: date
-                          ? formatDateInUserTimezone(date, 'yyyy-MM-dd')
-                          : null,
+                        end_date: date ? formatDateToYYYYMMDD(date) : null,
                       })
                     }
                     yearsRange={10}

@@ -3,6 +3,7 @@ const { log } = require('../config/logging');
 const format = require('pg-format');
 const foodEntryDb = require('./foodEntry');
 const foodEntryMealRepository = require('./foodEntryMealRepository');
+const { addDays, compareDays, dayOfWeek } = require('@workspace/shared');
 
 async function deleteFoodEntriesByMealPlanId(mealPlanId, userId) {
   const client = await getClient(userId); // User-specific operation
@@ -24,25 +25,20 @@ async function deleteFoodEntriesByMealPlanId(mealPlanId, userId) {
   }
 }
 
-async function deleteFoodEntriesByTemplateId(
-  templateId,
-  userId,
-  currentClientDate = null
-) {
+async function deleteFoodEntriesByTemplateId(templateId, userId, today) {
   const client = await getClient(userId); // User-specific operation
   try {
-    let query =
-      'DELETE FROM food_entries WHERE meal_plan_template_id = $1 AND user_id = $2';
-    const params = [templateId, userId];
+    const params = [templateId, userId, today];
 
     // Only delete from today onwards
-    query += ' AND entry_date >= CURRENT_DATE';
+    const query =
+      'DELETE FROM food_entries WHERE meal_plan_template_id = $1 AND user_id = $2 AND entry_date >= $3';
 
     // 1. Identify food_entry_meals to delete (orphaned by this operation)
     const entryMealsQuery = `
       SELECT DISTINCT food_entry_meal_id
       FROM food_entries
-      WHERE meal_plan_template_id = $1 AND user_id = $2 AND entry_date >= CURRENT_DATE AND food_entry_meal_id IS NOT NULL
+      WHERE meal_plan_template_id = $1 AND user_id = $2 AND entry_date >= $3 AND food_entry_meal_id IS NOT NULL
     `;
     const entryMealsResult = await client.query(entryMealsQuery, params);
     const entryMealIds = entryMealsResult.rows.map((r) => r.food_entry_meal_id);
@@ -75,11 +71,7 @@ async function deleteFoodEntriesByTemplateId(
   }
 }
 
-async function createFoodEntriesFromTemplate(
-  templateId,
-  userId,
-  currentClientDate = null
-) {
+async function createFoodEntriesFromTemplate(templateId, userId, today) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
@@ -132,20 +124,20 @@ async function createFoodEntriesFromTemplate(
       return;
     }
 
-    // Determine the effective "today" based on currentClientDate or server's local date
-    const today = currentClientDate ? new Date(currentClientDate) : new Date();
-    today.setHours(0, 0, 0, 0); // Normalize to start of day
-
-    let currentDate = new Date(start_date);
-    currentDate.setHours(0, 0, 0, 0); // Normalize template start_date to start of day
+    // start_date/end_date come from pg as Date objects; extract the YYYY-MM-DD string
+    const startDay =
+      typeof start_date === 'string'
+        ? start_date.slice(0, 10)
+        : start_date.toISOString().slice(0, 10);
+    // If end_date is not provided, default to one year from start_date
+    const endDay = end_date
+      ? typeof end_date === 'string'
+        ? end_date.slice(0, 10)
+        : end_date.toISOString().slice(0, 10)
+      : addDays(startDay, 365);
 
     // Start from today if template start_date is in the past
-    if (currentDate < today) {
-      currentDate = today;
-    }
-
-    const lastDate = new Date(end_date);
-    lastDate.setHours(0, 0, 0, 0); // Normalize template end_date to start of day
+    let currentDay = compareDays(startDay, today) < 0 ? today : startDay;
 
     const foodEntriesToInsert = [];
     const mealIds = new Set();
@@ -225,20 +217,22 @@ async function createFoodEntriesFromTemplate(
     const existingEntriesResult = await client.query(existingEntriesQuery, [
       userId,
       templateId,
-      currentDate,
-      lastDate,
+      currentDay,
+      endDay,
     ]);
     existingEntriesResult.rows.forEach((entry) => {
-      const key = `${entry.food_id || entry.meal_id}-${entry.meal_type_id}-${
-        entry.entry_date.toISOString().split('T')[0]
-      }-${entry.variant_id}`;
+      const dateStr =
+        typeof entry.entry_date === 'string'
+          ? entry.entry_date.slice(0, 10)
+          : entry.entry_date.toISOString().slice(0, 10);
+      const key = `${entry.food_id || entry.meal_id}-${entry.meal_type_id}-${dateStr}-${entry.variant_id}`;
       existingFoodEntries.add(key);
     });
 
-    while (currentDate <= lastDate) {
-      const dayOfWeek = currentDate.getDay();
+    while (compareDays(currentDay, endDay) <= 0) {
+      const dow = dayOfWeek(currentDay);
       const assignmentsForDay = assignments.filter(
-        (a) => a.day_of_week === dayOfWeek
+        (a) => a.day_of_week === dow
       );
 
       for (const assignment of assignmentsForDay) {
@@ -246,9 +240,7 @@ async function createFoodEntriesFromTemplate(
           const mealFoods = mealFoodsMap.get(assignment.meal_id) || [];
           if (mealFoods.length === 0) continue;
 
-          const entryKey = `${assignment.meal_id}-${assignment.meal_type_id}-${
-            currentDate.toISOString().split('T')[0]
-          }-null`;
+          const entryKey = `${assignment.meal_id}-${assignment.meal_type_id}-${currentDay}-null`;
           if (existingFoodEntries.has(entryKey)) continue;
 
           const meal = mealsMap.get(assignment.meal_id);
@@ -267,7 +259,7 @@ async function createFoodEntriesFromTemplate(
             user_id: userId,
             meal_template_id: assignment.meal_id,
             meal_type_id: assignment.meal_type_id,
-            entry_date: currentDate.toISOString().split('T')[0],
+            entry_date: currentDay,
             name: meal.name,
             description: meal.description || '',
             quantity: mealQuantity,
@@ -319,7 +311,7 @@ async function createFoodEntriesFromTemplate(
               assignment.meal_type_id,
               scaledQuantity,
               foodItem.unit,
-              currentDate.toISOString().split('T')[0],
+              currentDay,
               foodItem.variant_id,
               templateId,
               foodItem.food_name,
@@ -359,9 +351,7 @@ async function createFoodEntriesFromTemplate(
           const variant = variantsMap.get(assignment.variant_id);
           if (!food || !variant) continue;
 
-          const entryKey = `${assignment.food_id}-${assignment.meal_type_id}-${
-            currentDate.toISOString().split('T')[0]
-          }-${assignment.variant_id}`;
+          const entryKey = `${assignment.food_id}-${assignment.meal_type_id}-${currentDay}-${assignment.variant_id}`;
           if (existingFoodEntries.has(entryKey)) continue;
 
           foodEntriesToInsert.push([
@@ -370,7 +360,7 @@ async function createFoodEntriesFromTemplate(
             assignment.meal_type_id,
             assignment.quantity,
             assignment.unit,
-            currentDate.toISOString().split('T')[0],
+            currentDay,
             assignment.variant_id,
             templateId,
             food.name,
@@ -402,7 +392,7 @@ async function createFoodEntriesFromTemplate(
           existingFoodEntries.add(entryKey);
         }
       }
-      currentDate.setDate(currentDate.getDate() + 1);
+      currentDay = addDays(currentDay, 1);
     }
 
     if (foodEntriesToInsert.length > 0) {

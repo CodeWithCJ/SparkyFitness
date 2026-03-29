@@ -11,6 +11,11 @@ jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+jest.mock('../../../src/utils/dateUtils', () => ({
+  ...jest.requireActual('../../../src/utils/dateUtils'),
+  getDeviceTimezone: () => 'America/New_York',
+}));
+
 describe('aggregateHeartRateByDate', () => {
   describe('input validation', () => {
     test('returns empty array for empty input', () => {
@@ -26,7 +31,7 @@ describe('aggregateHeartRateByDate', () => {
       ];
       const result = aggregateHeartRateByDate(records);
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ date: '2024-01-15', value: 72, type: 'heart_rate' });
+      expect(result[0]).toEqual({ date: '2024-01-15', value: 72, type: 'heart_rate', record_timezone: 'America/New_York' });
     });
 
     test('averages multiple samples within a single record', () => {
@@ -140,7 +145,7 @@ describe('aggregateHeartRateByDate', () => {
         { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
       ];
       const result = aggregateHeartRateByDate(records);
-      expect(result[0]).toEqual({ date: '2024-01-15', value: 72, type: 'heart_rate' });
+      expect(result[0]).toEqual({ date: '2024-01-15', value: 72, type: 'heart_rate', record_timezone: 'America/New_York' });
     });
   });
 
@@ -177,7 +182,7 @@ describe('aggregateStepsByDate', () => {
       ];
       const result = aggregateStepsByDate(records);
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ date: '2024-01-15', value: 5000, type: 'step' });
+      expect(result[0]).toEqual({ date: '2024-01-15', value: 5000, type: 'step', record_timezone: 'America/New_York' });
     });
 
     test('sums multiple records on the same day', () => {
@@ -302,7 +307,7 @@ describe('aggregateTotalCaloriesByDate', () => {
       ];
       const result = await aggregateTotalCaloriesByDate(records);
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ date: '2024-01-15', value: 500, type: 'total_calories' });
+      expect(result[0]).toEqual({ date: '2024-01-15', value: 500, type: 'total_calories', record_timezone: 'America/New_York' });
     });
 
     test('sums multiple records on the same day', async () => {
@@ -464,7 +469,7 @@ describe('aggregateActiveCaloriesByDate', () => {
       ];
       const result = aggregateActiveCaloriesByDate(records);
       expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({ date: '2024-01-15', value: 500, type: 'Active Calories' });
+      expect(result[0]).toEqual({ date: '2024-01-15', value: 500, type: 'Active Calories', record_timezone: 'America/New_York' });
     });
 
     test('sums multiple records on the same day', () => {
@@ -591,5 +596,179 @@ describe('aggregateActiveCaloriesByDate', () => {
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe('2024-01-16');
     });
+  });
+});
+
+describe('timezone metadata on aggregated records', () => {
+  test('aggregateStepsByDate uses device timezone when no zone offset', () => {
+    const records: HCStepsRecord[] = [
+      { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', count: 5000 },
+    ];
+    const result = aggregateStepsByDate(records);
+    expect(result[0].record_timezone).toBe('America/New_York');
+    expect(result[0].record_utc_offset_minutes).toBeUndefined();
+  });
+
+  test('aggregateHeartRateByDate uses device timezone when no zone offset', () => {
+    const records: HCHeartRateRecord[] = [
+      { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
+    ];
+    const result = aggregateHeartRateByDate(records);
+    expect(result[0].record_timezone).toBe('America/New_York');
+    expect(result[0].record_utc_offset_minutes).toBeUndefined();
+  });
+
+  test('aggregateTotalCaloriesByDate uses device timezone when no zone offset', async () => {
+    const records: HCEnergyRecord[] = [
+      { startTime: '2024-01-15T10:00:00Z', energy: { inKilocalories: 500 } },
+    ];
+    const result = await aggregateTotalCaloriesByDate(records);
+    expect(result[0].record_timezone).toBe('America/New_York');
+    expect(result[0].record_utc_offset_minutes).toBeUndefined();
+  });
+
+  test('aggregateActiveCaloriesByDate uses device timezone when no zone offset', () => {
+    const records: HCEnergyRecord[] = [
+      { startTime: '2024-01-15T10:00:00Z', energy: { inCalories: 500 } },
+    ];
+    const result = aggregateActiveCaloriesByDate(records);
+    expect(result[0].record_timezone).toBe('America/New_York');
+    expect(result[0].record_utc_offset_minutes).toBeUndefined();
+  });
+
+  test('aggregateStepsByDate uses record_utc_offset_minutes when zone offset present', () => {
+    const records: HCStepsRecord[] = [
+      {
+        startTime: '2024-01-15T10:00:00Z',
+        endTime: '2024-01-15T11:00:00Z',
+        count: 5000,
+        endZoneOffset: { totalSeconds: 32400 }, // UTC+9
+      },
+    ];
+    const result = aggregateStepsByDate(records);
+    expect(result[0].record_utc_offset_minutes).toBe(540);
+    expect(result[0].record_timezone).toBeUndefined();
+  });
+
+  test('aggregateHeartRateByDate uses record_utc_offset_minutes when zone offset present', () => {
+    const records: HCHeartRateRecord[] = [
+      {
+        startTime: '2024-01-15T10:00:00Z',
+        samples: [{ beatsPerMinute: 72 }],
+        startZoneOffset: { totalSeconds: -18000 }, // UTC-5
+      },
+    ];
+    const result = aggregateHeartRateByDate(records);
+    expect(result[0].record_utc_offset_minutes).toBe(-300);
+    expect(result[0].record_timezone).toBeUndefined();
+  });
+});
+
+describe('travel scenario: per-record offset bucketing', () => {
+  // Scenario: User walked in Tokyo (UTC+9) at 12:30 AM local Jan 15.
+  // UTC equivalent: Jan 14 15:30 UTC.
+  // Without offset, device in UTC-5 would bucket to Jan 14 (wrong).
+  // With UTC+9 offset, correctly bucketed to Jan 15.
+
+  test('steps recorded in UTC+9 bucket to the correct Tokyo day even when device is UTC-5', () => {
+    const records: HCStepsRecord[] = [
+      {
+        // 2024-01-15T00:30:00+09:00 = 2024-01-14T15:30:00Z
+        startTime: '2024-01-14T15:00:00Z',
+        endTime: '2024-01-14T15:30:00Z',
+        count: 2000,
+        startZoneOffset: { totalSeconds: 32400 }, // UTC+9
+        endZoneOffset: { totalSeconds: 32400 },
+      },
+    ];
+    const result = aggregateStepsByDate(records);
+    expect(result).toHaveLength(1);
+    // endTime 15:30 UTC + 9h = Jan 15 00:30 local → Jan 15
+    expect(result[0].date).toBe('2024-01-15');
+    expect(result[0].value).toBe(2000);
+    expect(result[0].record_utc_offset_minutes).toBe(540);
+  });
+
+  test('total calories recorded at midnight crossing in UTC+9 bucket correctly', () => {
+    const records: HCEnergyRecord[] = [
+      {
+        // 2024-01-14T23:00:00+09:00 = 2024-01-14T14:00:00Z → still Jan 14 in Tokyo
+        startTime: '2024-01-14T14:00:00Z',
+        endTime: '2024-01-14T14:30:00Z',
+        energy: { inKilocalories: 100 },
+        startZoneOffset: { totalSeconds: 32400 },
+        endZoneOffset: { totalSeconds: 32400 },
+      },
+      {
+        // 2024-01-15T00:30:00+09:00 = 2024-01-14T15:30:00Z → Jan 15 in Tokyo
+        startTime: '2024-01-14T15:00:00Z',
+        endTime: '2024-01-14T15:30:00Z',
+        energy: { inKilocalories: 200 },
+        startZoneOffset: { totalSeconds: 32400 },
+        endZoneOffset: { totalSeconds: 32400 },
+      },
+    ];
+    const result = aggregateTotalCaloriesByDate(records);
+    expect(result).toHaveLength(2);
+    // endTime 14:30 UTC + 9h = Jan 14 23:30 local → Jan 14
+    expect(result.find(r => r.date === '2024-01-14')?.value).toBe(100);
+    // endTime 15:30 UTC + 9h = Jan 15 00:30 local → Jan 15
+    expect(result.find(r => r.date === '2024-01-15')?.value).toBe(200);
+  });
+
+  test('active calories use startTime offset for bucketing', () => {
+    const records: HCEnergyRecord[] = [
+      {
+        // 2024-01-15T00:15:00+09:00 = 2024-01-14T15:15:00Z
+        startTime: '2024-01-14T15:15:00Z',
+        energy: { inCalories: 300 },
+        startZoneOffset: { totalSeconds: 32400 }, // UTC+9
+      },
+    ];
+    const result = aggregateActiveCaloriesByDate(records);
+    expect(result).toHaveLength(1);
+    // startTime 15:15 UTC + 9h = Jan 15 00:15 local → Jan 15
+    expect(result[0].date).toBe('2024-01-15');
+    expect(result[0].record_utc_offset_minutes).toBe(540);
+  });
+
+  test('heart rate recorded in UTC+9 buckets to correct day', () => {
+    const records: HCHeartRateRecord[] = [
+      {
+        // 2024-01-15T01:00:00+09:00 = 2024-01-14T16:00:00Z
+        startTime: '2024-01-14T16:00:00Z',
+        samples: [{ beatsPerMinute: 68 }],
+        startZoneOffset: { totalSeconds: 32400 },
+      },
+    ];
+    const result = aggregateHeartRateByDate(records);
+    expect(result).toHaveLength(1);
+    // 16:00 UTC + 9h = Jan 15 01:00 local → Jan 15
+    expect(result[0].date).toBe('2024-01-15');
+    expect(result[0].value).toBe(68);
+  });
+
+  test('mixed records with and without offsets use correct bucketing strategy', () => {
+    const records: HCStepsRecord[] = [
+      {
+        // Record WITH offset: 2024-01-15T00:30:00+09:00 = 2024-01-14T15:30:00Z → Jan 15 via offset
+        startTime: '2024-01-14T15:00:00Z',
+        endTime: '2024-01-14T15:30:00Z',
+        count: 1000,
+        endZoneOffset: { totalSeconds: 32400 },
+      },
+      {
+        // Record WITHOUT offset: device local time used (mock is UTC-5)
+        // 2024-01-15T10:00:00Z = 5:00 AM ET on Jan 15 → Jan 15
+        startTime: '2024-01-15T10:00:00Z',
+        endTime: '2024-01-15T11:00:00Z',
+        count: 3000,
+      },
+    ];
+    const result = aggregateStepsByDate(records);
+    // Both records land on Jan 15, so they should be summed
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe('2024-01-15');
+    expect(result[0].value).toBe(4000);
   });
 });

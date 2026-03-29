@@ -10,7 +10,7 @@ import {
   type TransformedRecord,
 } from '../../types/healthRecords';
 import { SleepStageEvent } from '../../types/mobileHealthData';
-import { toLocalDateString } from '../../utils/dateUtils';
+import { toLocalDateString, getDeviceTimezone } from '../../utils/dateUtils';
 
 // Re-export for backward compatibility
 export { toLocalDateString };
@@ -29,10 +29,12 @@ export const aggregateHeartRateByDate = (records: HKHeartRateRecord[]): Aggregat
     return acc;
   }, {});
 
+  const deviceTz = getDeviceTimezone();
   const result: AggregatedHealthRecord[] = Object.keys(aggregatedData).map(date => ({
     date,
     value: Math.round(aggregatedData[date].total / aggregatedData[date].count),
     type: 'heart_rate',
+    record_timezone: deviceTz,
   }));
   return result;
 };
@@ -60,7 +62,7 @@ const mapHealthKitSleepStage = (hkStage: string | number): SleepStageType => {
 
 const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSession => {
   const totalDuration = (session.wake_time.getTime() - session.bedtime.getTime()) / 1000;
-  return {
+  const result: AggregatedSleepSession = {
     type: 'SleepSession',
     source: 'HealthKit',
     timestamp: session.bedtime.toISOString(),
@@ -75,6 +77,10 @@ const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSessi
     awake_sleep_seconds: session.awake_sleep_seconds,
     stage_events: session.stage_events,
   };
+  if (session.record_timezone) {
+    result.record_timezone = session.record_timezone;
+  }
+  return result;
 };
 
 export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSleepSession[] => {
@@ -95,6 +101,7 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
     const duration = (recordEndTime.getTime() - recordStartTime.getTime()) / 1000;
 
     const stageType = mapHealthKitSleepStage(record.value);
+    const recordTz = record.metadata?.HKTimeZone;
 
     // If no current session or a significant gap, start a new session
     if (!currentSession || (recordStartTime.getTime() - currentSession.wake_time.getTime() > SESSION_GAP_THRESHOLD_MS)) {
@@ -112,11 +119,16 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
         light_sleep_seconds: 0,
         rem_sleep_seconds: 0,
         awake_sleep_seconds: 0,
+        record_timezone: recordTz,
       };
     } else {
       // Extend current session's wake_time if this record extends it
       if (recordEndTime > currentSession.wake_time) {
         currentSession.wake_time = recordEndTime;
+        // Track timezone from the sample that defines wake time
+        if (recordTz) {
+          currentSession.record_timezone = recordTz;
+        }
       }
       // Extend current session's bedtime if this record starts earlier
       if (recordStartTime < currentSession.bedtime) {
@@ -179,6 +191,13 @@ export const aggregateByDay = (
   const result: TransformedRecord[] = [];
 
   for (const [date, dayRecords] of groups) {
+    // Propagate timezone metadata from the first record of the day group
+    const { record_timezone, record_utc_offset_minutes } = dayRecords[0];
+    const tz = {
+      ...(record_timezone != null ? { record_timezone } : {}),
+      ...(record_utc_offset_minutes != null ? { record_utc_offset_minutes } : {}),
+    };
+
     if (strategy === 'min-max-avg') {
       let min = dayRecords[0].value;
       let max = dayRecords[0].value;
@@ -190,19 +209,19 @@ export const aggregateByDay = (
       }
       const avg = total / dayRecords.length;
       result.push(
-        { value: parseFloat(min.toFixed(2)), type: `${baseType}_min`, date, unit, source: dayRecords[0].source },
-        { value: parseFloat(max.toFixed(2)), type: `${baseType}_max`, date, unit, source: dayRecords[0].source },
-        { value: parseFloat(avg.toFixed(2)), type: `${baseType}_avg`, date, unit, source: dayRecords[0].source },
+        { value: parseFloat(min.toFixed(2)), type: `${baseType}_min`, date, unit, source: dayRecords[0].source, ...tz },
+        { value: parseFloat(max.toFixed(2)), type: `${baseType}_max`, date, unit, source: dayRecords[0].source, ...tz },
+        { value: parseFloat(avg.toFixed(2)), type: `${baseType}_avg`, date, unit, source: dayRecords[0].source, ...tz },
       );
     } else if (strategy === 'sum') {
       let total = 0;
       for (const rec of dayRecords) {
         total += rec.value;
       }
-      result.push({ value: parseFloat(total.toFixed(2)), type: baseType, date, unit, source: dayRecords[0].source });
+      result.push({ value: parseFloat(total.toFixed(2)), type: baseType, date, unit, source: dayRecords[0].source, ...tz });
     } else if (strategy === 'last') {
       // Take first record: HealthKit queries use ascending: false (newest-first)
-      result.push({ value: dayRecords[0].value, type: baseType, date, unit, source: dayRecords[0].source });
+      result.push({ value: dayRecords[0].value, type: baseType, date, unit, source: dayRecords[0].source, ...tz });
     }
   }
 

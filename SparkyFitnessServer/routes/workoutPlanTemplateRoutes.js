@@ -32,11 +32,9 @@ const workoutPlanTemplateService = require('../services/workoutPlanTemplateServi
  */
 router.post('/', authenticate, async (req, res, next) => {
   try {
-    const { currentClientDate, ...planData } = req.body;
     const newPlan = await workoutPlanTemplateService.createWorkoutPlanTemplate(
       req.userId,
-      planData,
-      currentClientDate
+      req.body
     );
     res.status(201).json(newPlan);
   } catch (error) {
@@ -171,13 +169,11 @@ router.get('/:id', authenticate, async (req, res, next) => {
  */
 router.put('/:id', authenticate, async (req, res, next) => {
   try {
-    const { currentClientDate, ...updateData } = req.body;
     const updatedPlan =
       await workoutPlanTemplateService.updateWorkoutPlanTemplate(
         req.userId,
         req.params.id,
-        updateData,
-        currentClientDate
+        req.body
       );
     res.status(200).json(updatedPlan);
   } catch (error) {

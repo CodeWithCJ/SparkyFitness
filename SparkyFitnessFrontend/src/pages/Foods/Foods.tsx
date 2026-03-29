@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useState } from 'react';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -170,7 +171,7 @@ const FoodDatabaseManager: React.FC = () => {
         meal_type: 'breakfast', // Default to breakfast for now, or make dynamic
         quantity: quantity,
         unit: unit,
-        entry_date: new Date().toISOString().split('T')[0] ?? '', // Current date
+        entry_date: formatDateToYYYYMMDD(new Date()),
         variant_id: selectedVariant.id || null,
       },
     });

@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useState } from 'react';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -123,7 +124,7 @@ const MealPlanCalendar: React.FC = () => {
         });
         return;
       }
-      const currentClientDate = new Date().toISOString().split('T')[0] ?? '';
+      const currentClientDate = formatDateToYYYYMMDD(new Date());
 
       await updateMealPlanTemplate({
         userId: activeUserId,

@@ -539,4 +539,121 @@ describe('healthConnectService.ts (Android)', () => {
     });
   });
 
+  describe('travel scenario: per-record offset bucketing', () => {
+    // Scenario: User recorded data in Tokyo (UTC+9) at 12:30 AM local Jan 15.
+    // UTC equivalent: Jan 14 15:30 UTC.
+    // Without offset, device in different TZ would bucket to Jan 14 (wrong).
+    // With endZoneOffset UTC+9, correctly bucketed to Jan 15.
+
+    test('TotalCalories recorded in UTC+9 bucket to the correct Tokyo day', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          {
+            // 2024-01-15T00:30:00+09:00 = 2024-01-14T15:30:00Z
+            startTime: '2024-01-14T15:00:00Z',
+            endTime: '2024-01-14T15:30:00Z',
+            energy: { inKilocalories: 50 },
+            endZoneOffset: { totalSeconds: 32400 }, // UTC+9
+          },
+        ],
+      });
+
+      const result = await androidService.getAggregatedTotalCaloriesByDate(
+        new Date('2024-01-14T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      // endTime 15:30 UTC + 9h offset = Jan 15 00:30 local → Jan 15
+      expect(result[0].date).toBe('2024-01-15');
+      expect(result[0].record_utc_offset_minutes).toBe(540);
+    });
+
+    test('Distance recorded in UTC+9 bucket to the correct Tokyo day', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          {
+            startTime: '2024-01-14T15:00:00Z',
+            endTime: '2024-01-14T15:30:00Z',
+            distance: { inMeters: 2000 },
+            endZoneOffset: { totalSeconds: 32400 },
+          },
+        ],
+      });
+
+      const result = await androidService.getAggregatedDistanceByDate(
+        new Date('2024-01-14T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2024-01-15');
+      expect(result[0].record_utc_offset_minutes).toBe(540);
+    });
+
+    test('FloorsClimbed recorded in UTC+9 bucket to the correct Tokyo day', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          {
+            startTime: '2024-01-14T15:00:00Z',
+            endTime: '2024-01-14T15:30:00Z',
+            floors: 3,
+            endZoneOffset: { totalSeconds: 32400 },
+          },
+        ],
+      });
+
+      const result = await androidService.getAggregatedFloorsClimbedByDate(
+        new Date('2024-01-14T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2024-01-15');
+      expect(result[0].record_utc_offset_minutes).toBe(540);
+    });
+
+    test('records without zone offsets fall back to device-local bucketing (no offset metadata)', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          { startTime: '2024-01-15T10:00:00Z', energy: { inKilocalories: 200 } },
+        ],
+      });
+
+      const result = await androidService.getAggregatedTotalCaloriesByDate(
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2024-01-15');
+      expect(result[0].record_utc_offset_minutes).toBeUndefined();
+    });
+
+    test('sync sends offset metadata through the full pipeline for TotalCalories', async () => {
+      mockReadRecords.mockResolvedValue({
+        records: [
+          {
+            startTime: '2024-01-14T15:00:00Z',
+            endTime: '2024-01-14T15:30:00Z',
+            energy: { inKilocalories: 100 },
+            endZoneOffset: { totalSeconds: 32400 },
+          },
+        ],
+      });
+
+      const healthMetricStates: HealthMetricStates = { isTotalCaloriesSyncEnabled: true };
+
+      await androidService.syncHealthData('24h', healthMetricStates);
+
+      const payload = mockApiSyncHealthData.mock.calls[0][0];
+      const calRecords = payload.filter((r: { type: string }) => r.type === 'total_calories');
+
+      expect(calRecords).toHaveLength(1);
+      expect(calRecords[0].date).toBe('2024-01-15');
+      // Offset metadata should survive through transform → payload
+      expect(calRecords[0].record_utc_offset_minutes).toBe(540);
+    });
+  });
+
 });

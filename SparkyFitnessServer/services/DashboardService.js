@@ -6,7 +6,11 @@ const preferenceRepository = require('../models/preferenceRepository');
 const bmrService = require('./bmrService');
 const adaptiveTdeeService = require('./AdaptiveTdeeService');
 const { log } = require('../config/logging');
-const { CALORIE_CALCULATION_CONSTANTS } = require('@workspace/shared');
+const {
+  CALORIE_CALCULATION_CONSTANTS,
+  userHourMinute,
+} = require('@workspace/shared');
+const { userAge } = require('../utils/dateHelpers');
 
 /**
  * Aggregates stats for external dashboards (like gethomepage.dev).
@@ -83,17 +87,8 @@ async function getDashboardStats(userId, date) {
     const multiplier = bmrService.ActivityMultiplier[activityLevel] || 1.2;
 
     if (userProfile && userPreferences) {
-      const dob = userProfile.date_of_birth;
-      let age = 30;
-      if (dob) {
-        const today = new Date();
-        const birthDate = new Date(dob);
-        age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
-        }
-      }
+      const tz = userPreferences?.timezone || 'UTC';
+      const age = userAge(userProfile.date_of_birth, tz) ?? 30;
       const gender = userProfile.gender || 'male';
       const bmrAlgorithm = userPreferences.bmr_algorithm || 'Mifflin-St Jeor';
       const bodyFat = latestMeasurements?.body_fat_percentage;
@@ -156,8 +151,9 @@ async function getDashboardStats(userId, date) {
     } else if (adjustmentMode === 'tdee' || adjustmentMode === 'smart') {
       // Device Projection (TDEE adjustment)
       // For dashboard, we assume current time is "now" for projection
-      const now = new Date();
-      const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
+      const tz = userPreferences?.timezone || 'UTC';
+      const { hour, minute } = userHourMinute(tz);
+      const minutesSinceMidnight = hour * 60 + minute;
       const dayFraction = minutesSinceMidnight / (24 * 60);
 
       const projectedDeviceCalories =

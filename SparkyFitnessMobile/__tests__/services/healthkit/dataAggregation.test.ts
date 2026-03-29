@@ -11,6 +11,11 @@ jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+jest.mock('../../../src/utils/dateUtils', () => ({
+  ...jest.requireActual('../../../src/utils/dateUtils'),
+  getDeviceTimezone: () => 'America/New_York',
+}));
+
 describe('toLocalDateString', () => {
   test('returns YYYY-MM-DD format', () => {
     const result = toLocalDateString('2024-01-15T12:00:00Z');
@@ -55,7 +60,7 @@ describe('aggregateHeartRateByDate', () => {
     ];
     const result = aggregateHeartRateByDate(records);
     expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ date: '2024-01-15', value: 72, type: 'heart_rate' });
+    expect(result[0]).toEqual({ date: '2024-01-15', value: 72, type: 'heart_rate', record_timezone: 'America/New_York' });
   });
 
   test('averages multiple records on the same day (rounded)', () => {
@@ -270,6 +275,77 @@ describe('aggregateSleepSessions', () => {
     const expectedDate = toLocalDateString(wakeTime);
     expect(result[0].entry_date).toBe(expectedDate);
   });
+
+  test('preserves record_timezone from single sleep record', () => {
+    const records: HKSleepRecord[] = [
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T06:00:00Z',
+        value: 3,
+        metadata: { HKTimeZone: 'America/New_York' },
+      },
+    ];
+    const result = aggregateSleepSessions(records);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].record_timezone).toBe('America/New_York');
+  });
+
+  test('uses timezone from the sample that set wake_time when merging', () => {
+    // First sample: bedtime in Tokyo
+    // Second sample: extends wake time, recorded in New York
+    const records: HKSleepRecord[] = [
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T04:00:00Z',
+        value: 4, // deep
+        metadata: { HKTimeZone: 'Asia/Tokyo' },
+      },
+      {
+        startTime: '2024-01-16T04:00:00Z',
+        endTime: '2024-01-16T06:00:00Z', // extends wake time
+        value: 3, // light
+        metadata: { HKTimeZone: 'America/New_York' },
+      },
+    ];
+    const result = aggregateSleepSessions(records);
+
+    expect(result).toHaveLength(1);
+    // Should use timezone from the record that extended wake_time
+    expect(result[0].record_timezone).toBe('America/New_York');
+  });
+
+  test('omits record_timezone when no metadata on any sleep record', () => {
+    const records: HKSleepRecord[] = [
+      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T06:00:00Z', value: 3 },
+    ];
+    const result = aggregateSleepSessions(records);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].record_timezone).toBeUndefined();
+  });
+
+  test('keeps initial timezone when later records do not extend wake_time', () => {
+    // First sample sets both bedtime and wake_time with Tokyo timezone
+    // Second sample is within existing range, no timezone
+    const records: HKSleepRecord[] = [
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T06:00:00Z',
+        value: 4,
+        metadata: { HKTimeZone: 'Asia/Tokyo' },
+      },
+      {
+        startTime: '2024-01-16T02:00:00Z',
+        endTime: '2024-01-16T04:00:00Z', // does NOT extend wake time
+        value: 5, // rem
+      },
+    ];
+    const result = aggregateSleepSessions(records);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].record_timezone).toBe('Asia/Tokyo');
+  });
 });
 
 describe('aggregateByDay', () => {
@@ -341,5 +417,80 @@ describe('aggregateByDay', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({ value: 72, type: 'weight', date: '2024-01-15', unit: 'kg' });
+  });
+});
+
+describe('timezone metadata propagation', () => {
+  test('aggregateHeartRateByDate includes device timezone on output', () => {
+    const records: HKHeartRateRecord[] = [
+      { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
+    ];
+    const result = aggregateHeartRateByDate(records);
+    expect(result[0].record_timezone).toBe('America/New_York');
+  });
+
+  test('aggregateByDay propagates record_timezone from input records', () => {
+    const records: TransformedRecord[] = [
+      { value: 100, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit', record_timezone: 'Asia/Tokyo' },
+      { value: 200, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit', record_timezone: 'Asia/Tokyo' },
+    ];
+    const result = aggregateByDay(records, 'step', 'count', 'sum');
+    expect(result).toHaveLength(1);
+    expect(result[0].record_timezone).toBe('Asia/Tokyo');
+  });
+
+  test('aggregateByDay propagates record_utc_offset_minutes from input records', () => {
+    const records: TransformedRecord[] = [
+      { value: 72, type: 'weight', date: '2024-01-15', unit: 'kg', source: 'Health Connect', record_utc_offset_minutes: 540 },
+    ];
+    const result = aggregateByDay(records, 'weight', 'kg', 'last');
+    expect(result).toHaveLength(1);
+    expect(result[0].record_utc_offset_minutes).toBe(540);
+  });
+
+  test('aggregateByDay omits timezone fields when not present on input', () => {
+    const records: TransformedRecord[] = [
+      { value: 100, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit' },
+    ];
+    const result = aggregateByDay(records, 'step', 'count', 'sum');
+    expect(result).toHaveLength(1);
+    expect(result[0].record_timezone).toBeUndefined();
+    expect(result[0].record_utc_offset_minutes).toBeUndefined();
+  });
+});
+
+describe('iOS aggregate strategy: device-local bucketing', () => {
+  // iOS HealthKit statistics queries (steps, calories, distance, floors) are bounded
+  // by device-local day boundaries. Unlike Health Connect, HealthKit does not provide
+  // per-record zone offsets on cumulative statistics. The device timezone is attached
+  // so the server knows which timezone was used for bucketing.
+  //
+  // Limitation: if the user travels and syncs later, the day boundaries were set by
+  // the device timezone at query time, which may not match the timezone where the
+  // activity originally occurred. This is accepted for Phase 5; the alternative
+  // (switching to raw samples) would sacrifice accuracy for cumulative metrics.
+
+  test('aggregateHeartRateByDate always uses device timezone (no per-record offset available)', () => {
+    // HealthKit heart rate uses raw samples, not statistics.
+    // Still uses device-local time via toLocalDateString, tagged with device timezone.
+    const records: HKHeartRateRecord[] = [
+      { startTime: '2024-01-15T10:00:00Z', samples: [{ beatsPerMinute: 72 }] },
+    ];
+    const result = aggregateHeartRateByDate(records);
+    expect(result[0].record_timezone).toBe('America/New_York');
+    expect(result[0].record_utc_offset_minutes).toBeUndefined();
+  });
+
+  test('aggregateByDay preserves device timezone from upstream iOS queries', () => {
+    // Simulates records that came through iOS getAggregatedStepsByDate,
+    // which already sets record_timezone to the device timezone.
+    const records: TransformedRecord[] = [
+      { value: 3000, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit', record_timezone: 'America/New_York' },
+      { value: 2000, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit', record_timezone: 'America/New_York' },
+    ];
+    const result = aggregateByDay(records, 'step', 'count', 'sum');
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe(5000);
+    expect(result[0].record_timezone).toBe('America/New_York');
   });
 });

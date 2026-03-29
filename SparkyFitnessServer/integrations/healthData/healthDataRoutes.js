@@ -4,6 +4,8 @@ const { getClient, getSystemClient } = require('../../db/poolManager'); // Use g
 const { log } = require('../../config/logging');
 const measurementService = require('../../services/measurementService'); // Import the new service
 const mobileHealthDataRoutes = require('./mobileHealthDataRoutes'); // Import the new mobile health data routes
+const { loadUserTimezone } = require('../../utils/timezoneLoader');
+const { instantToDay } = require('@workspace/shared');
 
 const sleepRepository = require('../../models/sleepRepository'); // Import sleepRepository
 
@@ -60,8 +62,9 @@ router.post('/sleep/manual_entry', async (req, res, next) => {
       });
     }
 
+    const tz = await loadUserTimezone(req.userId);
     const sleepEntryData = {
-      entry_date: new Date(bedtime).toISOString().split('T')[0], // Derive date from bedtime
+      entry_date: instantToDay(bedtime, tz), // Derive date from bedtime in user's timezone
       bedtime: new Date(bedtime),
       wake_time: new Date(wake_time),
       duration_in_seconds: duration_in_seconds,

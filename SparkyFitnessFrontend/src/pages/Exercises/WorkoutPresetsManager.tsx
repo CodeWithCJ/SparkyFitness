@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit, Trash2, CalendarPlus, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -61,18 +62,14 @@ const WorkoutPresetsManager = () => {
 
   const handleLogPresetToDiary = async (preset: WorkoutPreset) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      if (today) {
-        await logWorkoutPreset({ presetId: preset.id, date: today });
-        toast({
-          title: t('common.success', 'Success'),
-          description: t('workoutPresetsManager.logSuccess', {
-            presetName: preset.name,
-          }),
-        });
-      } else {
-        throw new Error('today is undefined');
-      }
+      const today = formatDateToYYYYMMDD(new Date());
+      await logWorkoutPreset({ presetId: preset.id, date: today });
+      toast({
+        title: t('common.success', 'Success'),
+        description: t('workoutPresetsManager.logSuccess', {
+          presetName: preset.name,
+        }),
+      });
     } catch (err) {
       toast({
         title: t('common.error', 'Error'),

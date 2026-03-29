@@ -8,6 +8,7 @@ import {
 } from '../../src/services/api/healthDataApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 import { notifySessionExpired } from '../../src/services/api/authService';
+import { ensureTimezoneBootstrapped } from '../../src/services/api/preferencesApi';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
@@ -22,12 +23,20 @@ jest.mock('../../src/services/api/authService', () => {
   };
 });
 
+jest.mock('../../src/services/api/preferencesApi', () => ({
+  ensureTimezoneBootstrapped: jest.fn(),
+}));
+
 const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
   typeof getActiveServerConfig
 >;
 const mockNotifySessionExpired = notifySessionExpired as jest.MockedFunction<
   typeof notifySessionExpired
 >;
+const mockEnsureTimezoneBootstrapped =
+  ensureTimezoneBootstrapped as jest.MockedFunction<
+    typeof ensureTimezoneBootstrapped
+  >;
 
 describe('healthDataApi', () => {
   const mockFetch = jest.fn();
@@ -38,6 +47,7 @@ describe('healthDataApi', () => {
     global.fetch = mockFetch;
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockEnsureTimezoneBootstrapped.mockResolvedValue('America/Chicago');
   });
 
   afterEach(() => {
@@ -289,6 +299,20 @@ describe('healthDataApi', () => {
       );
     });
 
+    test('ensures timezone bootstrap before syncing health data', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      await syncHealthData(testData);
+
+      expect(mockEnsureTimezoneBootstrapped).toHaveBeenCalledTimes(1);
+      expect(mockEnsureTimezoneBootstrapped).toHaveBeenCalledWith({ throwOnFailure: true });
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
     test('removes trailing slash from URL before making request', async () => {
       mockGetActiveServerConfig.mockResolvedValue({
         ...testConfig,
@@ -347,6 +371,20 @@ describe('healthDataApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
 
       await syncHealthData([]);
+
+      expect(mockEnsureTimezoneBootstrapped).not.toHaveBeenCalled();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    test('does not send health data when timezone bootstrap fails', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockEnsureTimezoneBootstrapped.mockRejectedValueOnce(
+        new Error('Timezone bootstrap failed'),
+      );
+
+      await expect(syncHealthData(testData)).rejects.toThrow(
+        'Timezone bootstrap failed',
+      );
 
       expect(mockFetch).not.toHaveBeenCalled();
     });

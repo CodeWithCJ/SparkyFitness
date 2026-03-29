@@ -8,18 +8,24 @@ jest.mock('../../src/services/api/preferencesApi', () => ({
   fetchPreferences: jest.fn(),
 }));
 
+jest.mock('../../src/services/LogService', () => ({
+  addLog: jest.fn(),
+}));
+
 const mockFetchPreferences = fetchPreferences as jest.MockedFunction<typeof fetchPreferences>;
 
 describe('usePreferences', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    jest.useRealTimers();
     jest.clearAllMocks();
     queryClient = createTestQueryClient();
   });
 
   afterEach(() => {
     queryClient.clear();
+    jest.useRealTimers();
   });
 
   describe('query behavior', () => {
@@ -44,6 +50,7 @@ describe('usePreferences', () => {
         default_distance_unit: 'km' as const,
         energy_unit: 'kcal' as const,
         include_bmr_in_net_calories: true,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
       mockFetchPreferences.mockResolvedValue(preferencesData);
 

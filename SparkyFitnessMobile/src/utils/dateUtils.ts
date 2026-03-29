@@ -8,6 +8,23 @@ export const toLocalDateString = (timestamp: string | Date): string => {
   return `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
 };
 
+/** Returns the device's IANA timezone (e.g. 'America/New_York'). */
+export const getDeviceTimezone = (): string =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+/**
+ * Derives a YYYY-MM-DD date string from a UTC timestamp using a fixed UTC offset.
+ * Used for Health Connect records that carry per-record zone offsets, so the day
+ * bucket reflects where the record was created rather than the current device timezone.
+ */
+export const toDateStringWithOffset = (timestamp: string | Date, offsetMinutes: number): string => {
+  const utcMs = new Date(timestamp).getTime();
+  const localMs = utcMs + offsetMinutes * 60 * 1000;
+  const d = new Date(localMs);
+  // Use UTC methods since we already applied the offset manually
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+};
+
 // Get today's date in YYYY-MM-DD format (local timezone)
 export const getTodayDate = (): string => {
   const now = new Date();

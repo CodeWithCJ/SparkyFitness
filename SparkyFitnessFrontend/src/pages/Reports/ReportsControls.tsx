@@ -8,9 +8,8 @@ import {
 } from '@/components/ui/popover';
 import { ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { cn } from '@/lib/utils';
+import { cn, formatDateToYYYYMMDD } from '@/lib/utils';
 import { debug, info } from '@/utils/logging';
-import { format } from 'date-fns';
 
 interface ReportsControlsProps {
   startDate: string;
@@ -25,17 +24,13 @@ const ReportsControls = ({
   onStartDateChange,
   onEndDateChange,
 }: ReportsControlsProps) => {
-  const {
-    formatDate,
-    parseDateInUserTimezone,
-    formatDateInUserTimezone,
-    loggingLevel,
-  } = usePreferences();
+  const { formatDate, parseDateInUserTimezone, loggingLevel } =
+    usePreferences();
   info(loggingLevel, 'ReportsControls: Rendering component.');
 
   const handleStartDateSelect = (newDate: Date | undefined) => {
     if (newDate) {
-      const dateString = formatDateInUserTimezone(newDate, 'yyyy-MM-dd'); // Format the date to YYYY-MM-DD using user's preferred timezone
+      const dateString = formatDateToYYYYMMDD(newDate);
       debug(loggingLevel, 'ReportsControls: Start date selected:', dateString);
       onStartDateChange(dateString);
     } else {
@@ -45,7 +40,7 @@ const ReportsControls = ({
 
   const handleEndDateSelect = (newDate: Date | undefined) => {
     if (newDate) {
-      const dateString = format(newDate, 'yyyy-MM-dd'); // Format the date to YYYY-MM-DD using the local timezone
+      const dateString = formatDateToYYYYMMDD(newDate);
       debug(loggingLevel, 'ReportsControls: End date selected:', dateString);
       onEndDateChange(dateString);
     } else {
