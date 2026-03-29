@@ -211,7 +211,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       {/* Barcode guide corner brackets */}
       {scanMode === 'barcode' && !notFoundBarcode && !loading && !manualEntryVisible && (
         <View pointerEvents="none" style={StyleSheet.absoluteFillObject} className="justify-center items-center">
-          <View style={{ width: GUIDE_WIDTH, height: GUIDE_HEIGHT }}>
+          <View style={{ width: GUIDE_WIDTH, height: GUIDE_HEIGHT, marginBottom: 120 }}>
             <View style={{ ...CORNER_STYLE, top: 0, left: 0, borderTopWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderTopLeftRadius: 4 }} />
             <View style={{ ...CORNER_STYLE, top: 0, right: 0, borderTopWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderTopRightRadius: 4 }} />
             <View style={{ ...CORNER_STYLE, bottom: 0, left: 0, borderBottomWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderBottomLeftRadius: 4 }} />
@@ -312,7 +312,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               autoFocus
               value={manualBarcode}
               onChangeText={setManualBarcode}
-              returnKeyType="go"
               onSubmitEditing={handleManualSubmit}
             />
             <View className="flex-row gap-3">
