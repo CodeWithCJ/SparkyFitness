@@ -209,7 +209,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       />
 
       {/* Barcode guide corner brackets */}
-      {scanMode === 'barcode' && !notFoundBarcode && !loading && (
+      {scanMode === 'barcode' && !notFoundBarcode && !loading && !manualEntryVisible && (
         <View pointerEvents="none" style={StyleSheet.absoluteFillObject} className="justify-center items-center">
           <View style={{ width: GUIDE_WIDTH, height: GUIDE_HEIGHT }}>
             <View style={{ ...CORNER_STYLE, top: 0, left: 0, borderTopWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderTopLeftRadius: 4 }} />
@@ -314,7 +314,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   autoFocus
                   value={manualBarcode}
                   onChangeText={setManualBarcode}
-                  returnKeyType="search"
+                  returnKeyType="done"
                   onSubmitEditing={handleManualSubmit}
                 />
                 <View className="flex-row gap-3">
@@ -343,13 +343,15 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               </TouchableOpacity>
             )}
 
-            <View className="bg-black/50 rounded-lg mx-8 self-stretch">
-              <SegmentedControl
-                segments={SCAN_SEGMENTS}
-                activeKey={scanMode}
-                onSelect={handleSegmentChange}
-              />
-            </View>
+            {!manualEntryVisible && (
+              <View className="bg-black/50 rounded-lg mx-8 self-stretch">
+                <SegmentedControl
+                  segments={SCAN_SEGMENTS}
+                  activeKey={scanMode}
+                  onSelect={handleSegmentChange}
+                />
+              </View>
+            )}
 
             {scanMode === 'label' && (
               <TouchableOpacity
