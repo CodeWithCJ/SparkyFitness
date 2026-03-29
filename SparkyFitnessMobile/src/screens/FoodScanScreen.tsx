@@ -295,75 +295,77 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       )}
 
-      {/* Bottom controls: manual entry, segmented control, shutter */}
-      {!capturedPhoto && !labelProcessing && !loading && (
+      {/* Manual barcode entry dialog - centered on screen */}
+      {scanMode === 'barcode' && manualEntryVisible && !capturedPhoto && !labelProcessing && !loading && (
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="absolute bottom-0 left-0 right-0"
-          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+          style={StyleSheet.absoluteFillObject}
+          className="justify-center items-center"
         >
-          <View className="items-center gap-4 pb-4">
-            {scanMode === 'barcode' && manualEntryVisible && (
-              <View className="bg-black/70 rounded-xl mx-8 p-4 self-stretch gap-3">
-                <Text className="text-white text-base font-semibold text-center">Enter Barcode</Text>
-                <TextInput
-                  className="bg-white/20 text-white text-base px-4 py-3 rounded-lg text-center"
-                  placeholder="Barcode number"
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  keyboardType="number-pad"
-                  autoFocus
-                  value={manualBarcode}
-                  onChangeText={setManualBarcode}
-                  returnKeyType="done"
-                  onSubmitEditing={handleManualSubmit}
-                />
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={() => { setManualEntryVisible(false); setManualBarcode(''); setScanned(false); scanLock.current = false; }}
-                    className="flex-1 bg-white/20 py-3 rounded-lg items-center"
-                  >
-                    <Text className="text-white font-semibold text-sm">Cancel</Text>
-                  </TouchableOpacity>
-                  <UIButton
-                    variant="primary"
-                    disabled={!manualBarcode.trim()}
-                    onPress={handleManualSubmit}
-                    className="flex-1 py-3 rounded-lg"
-                    textClassName="text-sm"
-                  >
-                    Look Up
-                  </UIButton>
-                </View>
-              </View>
-            )}
-
-            {scanMode === 'barcode' && !manualEntryVisible && !notFoundBarcode && (
-              <TouchableOpacity onPress={() => { scanLock.current = true; setManualEntryVisible(true); setScanned(true); }}>
-                <Text className="text-white/80 text-sm underline">Manually enter barcode</Text>
-              </TouchableOpacity>
-            )}
-
-            {!manualEntryVisible && (
-              <View className="bg-black/50 rounded-lg mx-8 self-stretch">
-                <SegmentedControl
-                  segments={SCAN_SEGMENTS}
-                  activeKey={scanMode}
-                  onSelect={handleSegmentChange}
-                />
-              </View>
-            )}
-
-            {scanMode === 'label' && (
+          <View className="bg-black/70 rounded-xl mx-8 p-4 self-stretch gap-3">
+            <Text className="text-white text-base font-semibold text-center">Enter Barcode</Text>
+            <TextInput
+              className="bg-white/20 text-white text-base px-4 py-3 rounded-lg text-center"
+              placeholder="Barcode number"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              keyboardType="number-pad"
+              autoFocus
+              value={manualBarcode}
+              onChangeText={setManualBarcode}
+              returnKeyType="go"
+              onSubmitEditing={handleManualSubmit}
+            />
+            <View className="flex-row gap-3">
               <TouchableOpacity
-                onPress={handleLabelCapture}
-                className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
-                activeOpacity={0.7}
+                onPress={() => { setManualEntryVisible(false); setManualBarcode(''); setScanned(false); scanLock.current = false; }}
+                className="flex-1 bg-white/20 py-3 rounded-lg items-center"
               >
-                <View className="w-16 h-16 rounded-full bg-white" />
+                <Text className="text-white font-semibold text-sm">Cancel</Text>
               </TouchableOpacity>
-            )}
+              <UIButton
+                variant="primary"
+                disabled={!manualBarcode.trim()}
+                onPress={handleManualSubmit}
+                className="flex-1 py-3 rounded-lg"
+                textClassName="text-sm"
+              >
+                Look Up
+              </UIButton>
+            </View>
           </View>
         </KeyboardAvoidingView>
+      )}
+
+      {/* Bottom controls: segmented control, shutter */}
+      {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && (
+        <View
+          className="absolute bottom-0 left-0 right-0 items-center gap-4"
+          style={{ paddingBottom: Math.max(insets.bottom + 8, 24) }}
+        >
+          {scanMode === 'barcode' && !notFoundBarcode && (
+            <TouchableOpacity onPress={() => { scanLock.current = true; setManualEntryVisible(true); setScanned(true); }}>
+              <Text className="text-white/80 text-sm underline">Manually enter barcode</Text>
+            </TouchableOpacity>
+          )}
+
+          <View className="bg-black/50 rounded-lg mx-8 self-stretch">
+            <SegmentedControl
+              segments={SCAN_SEGMENTS}
+              activeKey={scanMode}
+              onSelect={handleSegmentChange}
+            />
+          </View>
+
+          {scanMode === 'label' && (
+            <TouchableOpacity
+              onPress={handleLabelCapture}
+              className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
+              activeOpacity={0.7}
+            >
+              <View className="w-16 h-16 rounded-full bg-white" />
+            </TouchableOpacity>
+          )}
+        </View>
       )}
     </View>
   );
