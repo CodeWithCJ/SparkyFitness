@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -49,12 +49,6 @@ const HomeDashboardFasting = () => {
     const pad = (n: number) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
-
-  useEffect(() => {
-    if (showStartDialog) {
-      setStartLocal(formatForLocalInput(new Date()));
-    }
-  }, [showStartDialog]);
 
   const { data: activeFast, isLoading } = useCurrentFast();
   const { mutateAsync: startFast } = useStartFastMutation();
@@ -139,7 +133,10 @@ const HomeDashboardFasting = () => {
                 <span className="text-4xl">🍽️</span>
               </div>
               <Button
-                onClick={() => setShowStartDialog(true)}
+                onClick={() => {
+                  setStartLocal(formatForLocalInput(new Date()));
+                  setShowStartDialog(true);
+                }}
                 className="w-full gap-2 font-semibold"
               >
                 <Play className="w-4 h-4" /> Start Fast
