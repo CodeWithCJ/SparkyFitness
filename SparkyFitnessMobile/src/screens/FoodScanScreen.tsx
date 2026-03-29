@@ -305,8 +305,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           <View className="bg-black/70 rounded-xl mx-8 p-4 self-stretch gap-3">
             <Text className="text-white text-base font-semibold text-center">Enter Barcode</Text>
             <TextInput
-              className="bg-white/20 text-white text-base px-4 rounded-lg text-center"
-              style={{ height: 48, textAlignVertical: 'center' }}
+              className="bg-white/20 text-white text-base px-4 py-3 rounded-lg text-center"
+              style={{ lineHeight: 20 }}
               placeholder="Barcode number"
               placeholderTextColor="rgba(255,255,255,0.5)"
               keyboardType="number-pad"
