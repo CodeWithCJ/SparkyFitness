@@ -49,6 +49,15 @@ export const AccountSecurity = () => {
   };
 
   const handlePasswordChange = async () => {
+    if (!passwordForm.current_password) {
+      toast({
+        title: 'Error',
+        description: 'Current password is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (passwordForm.new_password !== passwordForm.confirm_password) {
       toast({
         title: 'Error',
@@ -148,57 +157,84 @@ export const AccountSecurity = () => {
             value={user?.email || ''} // Pre-fill with user's email if available
             readOnly
           />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
-              <Label htmlFor="new_password">
-                {t('settings.accountSecurity.newPassword', 'New Password')}
+              <Label htmlFor="current_password">
+                {t(
+                  'settings.accountSecurity.currentPassword',
+                  'Current Password'
+                )}
               </Label>
               <Input
-                id="new_password"
+                id="current_password"
                 type="password"
-                autoComplete="new-password"
-                value={passwordForm.new_password}
+                autoComplete="current-password"
+                value={passwordForm.current_password}
                 onChange={(e) =>
                   setPasswordForm((prev) => ({
                     ...prev,
-                    new_password: e.target.value,
+                    current_password: e.target.value,
                   }))
                 }
                 placeholder={t(
-                  'settings.accountSecurity.enterNewPassword',
-                  'Enter new password'
+                  'settings.accountSecurity.enterCurrentPassword',
+                  'Enter current password'
                 )}
               />
             </div>
-            <div>
-              <Label htmlFor="confirm_password">
-                {t(
-                  'settings.accountSecurity.confirmNewPassword',
-                  'Confirm New Password'
-                )}
-              </Label>
-              <Input
-                id="confirm_password"
-                type="password"
-                autoComplete="new-password"
-                value={passwordForm.confirm_password}
-                onChange={(e) =>
-                  setPasswordForm((prev) => ({
-                    ...prev,
-                    confirm_password: e.target.value,
-                  }))
-                }
-                placeholder={t(
-                  'settings.accountSecurity.confirmNewPassword',
-                  'Confirm New Password'
-                )}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="new_password">
+                  {t('settings.accountSecurity.newPassword', 'New Password')}
+                </Label>
+                <Input
+                  id="new_password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={passwordForm.new_password}
+                  onChange={(e) =>
+                    setPasswordForm((prev) => ({
+                      ...prev,
+                      new_password: e.target.value,
+                    }))
+                  }
+                  placeholder={t(
+                    'settings.accountSecurity.enterNewPassword',
+                    'Enter new password'
+                  )}
+                />
+              </div>
+              <div>
+                <Label htmlFor="confirm_password">
+                  {t(
+                    'settings.accountSecurity.confirmNewPassword',
+                    'Confirm New Password'
+                  )}
+                </Label>
+                <Input
+                  id="confirm_password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={passwordForm.confirm_password}
+                  onChange={(e) =>
+                    setPasswordForm((prev) => ({
+                      ...prev,
+                      confirm_password: e.target.value,
+                    }))
+                  }
+                  placeholder={t(
+                    'settings.accountSecurity.confirmNewPassword',
+                    'Confirm New Password'
+                  )}
+                />
+              </div>
             </div>
           </div>
           <Button
             type="submit"
             disabled={
               isLoading ||
+              !passwordForm.current_password ||
               !passwordForm.new_password ||
               !passwordForm.confirm_password
             }

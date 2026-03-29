@@ -684,6 +684,8 @@
       "updateEmail": "Update Email",
       "verifyNewEmail": "You'll need to verify your new email address",
       "changePassword": "Change Password",
+      "currentPassword": "Current Password",
+      "enterCurrentPassword": "Enter current password",
       "newPassword": "New Password",
       "enterNewPassword": "Enter new password",
       "confirmNewPassword": "Confirm New Password",
