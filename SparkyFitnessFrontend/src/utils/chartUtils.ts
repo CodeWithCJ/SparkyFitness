@@ -134,7 +134,14 @@ export function shouldExcludeIncompleteDay(dataKey: string): boolean {
  * @returns Configuration object with scaling preferences
  */
 export function getChartConfig(dataKey: string) {
-  const weightMetrics = ['weight', 'neck', 'waist', 'hips'];
+  const weightMetrics = [
+    'weight',
+    'neck',
+    'waist',
+    'hips',
+    'height',
+    'body_fat_percentage',
+  ];
   const nutritionMetrics = ['calories', 'protein', 'carbs', 'fat'];
   const vitaminMetrics = ['vitamin_a', 'vitamin_c', 'calcium', 'iron'];
 
