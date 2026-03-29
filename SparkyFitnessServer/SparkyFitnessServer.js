@@ -105,21 +105,36 @@ if (allowPrivateNetworks) {
 }
 
 // Use cors middleware to allow requests from your frontend (and optionally private networks)
+// Use cors middleware with dynamic configuration to allow Referer fallback (essential for HTTP IPs)
 app.use(
-  cors({
-    origin: createCorsOriginChecker(
+  cors((req, callback) => {
+    const originChecker = createCorsOriginChecker(
       process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080',
       allowPrivateNetworks,
       process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS
-    ),
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'x-provider-id',
-      'x-api-key',
-    ],
-    credentials: true, // Allow cookies to be sent from the frontend
+    );
+
+    const origin = req.header('Origin');
+    originChecker(
+      origin,
+      (err, allowed) => {
+        callback(null, {
+          origin: allowed,
+          methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+          allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'x-provider-id',
+            'x-api-key',
+            'x-client-id',
+            'x-requested-with',
+          ],
+          credentials: true,
+          maxAge: 86400,
+        });
+      },
+      req
+    );
   })
 );
 

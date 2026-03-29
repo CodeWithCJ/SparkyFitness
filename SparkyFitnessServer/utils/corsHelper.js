@@ -100,41 +100,50 @@ function createCorsOriginChecker(
     });
   }
 
-  return (origin, callback) => {
-    // Reject requests with no origin for security
-    // Non-browser clients (mobile apps, API clients) should use JWT/API key authentication
-    if (!origin) {
-      //console.info('CORS: Rejected request with no Origin header');
-      return callback(null, false);
-    }
-
-    // Check if origin matches configured frontend URL
-    if (allowedOrigins.includes(origin)) {
+  return (origin, callback, req) => {
+    // 1. Basic Check: Match the origin exactly against your list
+    const effectiveOrigin = origin === 'null' ? undefined : origin;
+    if (effectiveOrigin && allowedOrigins.includes(effectiveOrigin)) {
       return callback(null, true);
     }
 
-    // Extract hostname from origin (e.g., "http://192.168.1.100:3000" -> "192.168.1.100")
+    // 2. Private Network Check (Broad switch)
     try {
-      const originUrl = new URL(origin);
-      const originHostname = originUrl.hostname;
-
-      // Check if origin is from a private network (only if explicitly enabled)
-      if (allowPrivateNetworks && isPrivateNetworkAddress(originHostname)) {
-        return callback(null, true);
+      if (effectiveOrigin) {
+        const { hostname } = new URL(effectiveOrigin);
+        if (allowPrivateNetworks && isPrivateNetworkAddress(hostname)) {
+          return callback(null, true);
+        }
       }
-    } catch (err) {
-      // If URL parsing fails, log and reject silently
-      console.warn(
-        `Invalid origin attempted: ${origin}, error: ${err.message}`
-      );
-      return callback(null, false);
+    } catch (e) {
+      /* ignore invalid origins */
     }
 
-    // Reject if not allowed - log for security monitoring and debugging
+    // 3. Fallback: Check the Referer (Fixes HTTPS to HTTP IP failures)
+    const referer = req?.headers?.referer;
+    if (referer) {
+      try {
+        const refOrigin = new URL(referer).origin;
+        if (allowedOrigins.includes(refOrigin)) {
+          return callback(null, true);
+        }
+      } catch (e) {
+        /* ignore invalid referers */
+      }
+    }
+
+    // 4. Default: Allow requests with no headers (e.g., local curl/mobile apps)
+    if (!effectiveOrigin && !referer) {
+      return callback(null, true);
+    }
+
+    // 5. Reject if no match found
     const rejectionReason = allowPrivateNetworks
-      ? 'origin not in allowlist and not a private network'
-      : 'origin not in allowlist (private networks disabled)';
-    console.info(`CORS: Rejected origin ${origin} - ${rejectionReason}`);
+      ? 'origin/referer not in allowlist and not a private network'
+      : 'origin/referer not in allowlist (private networks disabled)';
+    console.info(
+      `CORS: Rejected ${origin || 'no origin'} - ${rejectionReason}`
+    );
     return callback(null, false);
   };
 }

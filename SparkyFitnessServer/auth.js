@@ -126,6 +126,7 @@ const auth = betterAuth({
 
   // Base URL configuration - MUST use public frontend URL for OIDC to work
   baseURL:
+    process.env.BETTER_AUTH_URL ||
     (process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('http')
       ? process.env.SPARKY_FITNESS_FRONTEND_URL
       : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`
@@ -190,8 +191,10 @@ const auth = betterAuth({
   advanced: {
     cookiePrefix: 'sparky',
     // DROP SECURE FLAG if private network access is enabled (typically for local IP access over HTTP)
+    // DROP SECURE FLAG if private network access is enabled OR if we trust an HTTP IP (Fixes browser cookie rejection on IPs)
     useSecureCookies:
-      process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true'
+      process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true' ||
+      process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS?.includes('http://')
         ? false
         : process.env.SPARKY_FITNESS_FRONTEND_URL?.startsWith('https'),
     trustProxy: true,
@@ -276,25 +279,19 @@ const auth = betterAuth({
   // Trust proxy (for Docker/Nginx deployments)
   // NOTE: Better Auth calls this with the raw Request object directly (not a context wrapper)
   trustedOrigins: (request) => {
+    // 1. Gather all explicitly configured trusted origins
     const origins = [process.env.SPARKY_FITNESS_FRONTEND_URL];
-    const isPrivateEnabled = process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true';
-
-    // Always include extra trusted origins regardless of private network flag
     if (process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS) {
       const extras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS.split(
         ','
       ).map((o) => o.trim());
       origins.push(...extras);
     }
+    const cleanOrigins = [...new Set(origins)]
+      .filter(Boolean)
+      .map((url) => url.replace(/\/$/, ''));
 
-    if (!isPrivateEnabled) {
-      return [...new Set(origins)]
-        .filter(Boolean)
-        .map((url) => url.replace(/\/$/, ''));
-    }
-
-    // --- Dynamic Private Network Logic ---
-    // request IS the raw Fetch Request object here (not a context wrapper)
+    // 2. Identify the dynamic origin and referer
     const originHeader =
       typeof request?.headers?.get === 'function'
         ? request.headers.get('origin')
@@ -305,54 +302,66 @@ const auth = betterAuth({
         ? request.headers.get('referer')
         : request?.headers?.referer;
 
-    let detectedOrigin = originHeader;
+    // --- DEBUG LOGGING (Sparingly for development) ---
+    // Trigger logs for anything that isn't your primary frontend domain (e.g., local IPs, extra origins)
+    const isExtraOrigin =
+      (originHeader &&
+        !originHeader.includes(process.env.SPARKY_FITNESS_FRONTEND_URL)) ||
+      (refererHeader &&
+        !refererHeader.includes(process.env.SPARKY_FITNESS_FRONTEND_URL));
 
-    console.log(`[AUTH DEBUG] Request Headers:`, {
-      origin: originHeader,
-      referer: refererHeader,
-      host:
-        typeof request?.headers?.get === 'function'
-          ? request.headers.get('host')
-          : request?.headers?.host,
-    });
+    if (isExtraOrigin || originHeader === 'null') {
+      console.log(`[AUTH DEBUG] Verifying Trusted Origin:`, {
+        origin: originHeader,
+        referer: refererHeader,
+        cleanOrigins,
+      });
+    }
 
-    // Fallback: extract origin from referer if no origin header
-    if (!detectedOrigin && refererHeader) {
-      try {
-        const refUrl = new URL(refererHeader);
-        detectedOrigin = refUrl.origin;
-      } catch (e) {
-        // Ignore invalid referer
+    // 3. Fallback: If Origin is null/missing (HTTPS -> HTTP call), trust based on Referer
+    if (!originHeader || originHeader === 'null') {
+      if (refererHeader) {
+        try {
+          const refUrl = new URL(refererHeader);
+          if (cleanOrigins.includes(refUrl.origin)) {
+            if (isExtraOrigin || originHeader === 'null') {
+              console.log(
+                `[AUTH DEBUG] Allowing request based on Trusted Referer: ${refUrl.origin}`
+              );
+            }
+            // Include both to ensure Better Auth has a string it can match
+            return [...cleanOrigins, originHeader, refUrl.origin].filter(
+              Boolean
+            );
+          }
+        } catch (e) {}
       }
     }
 
-    if (detectedOrigin) {
+    // 4. Handle Private Network switch (Allows ANY private IP)
+    const isPrivateEnabled = process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true';
+    if (isPrivateEnabled && (originHeader || refererHeader)) {
+      const detected = originHeader || refererHeader;
       try {
-        const { hostname } = new URL(detectedOrigin);
+        const { hostname } = new URL(detected);
         if (isPrivateNetworkAddress(hostname)) {
-          console.log(
-            `[AUTH DEBUG] Trusting private network origin: ${detectedOrigin}`
-          );
-          origins.push(detectedOrigin);
+          if (isExtraOrigin) {
+            console.log(
+              `[AUTH DEBUG] Allowing request based on Private Network mode: ${detected}`
+            );
+          }
+          return [...cleanOrigins, detected];
         }
-      } catch (err) {
-        // Ignore invalid URL
-      }
+      } catch (e) {}
     }
 
-    const finalOrigins = [...new Set(origins)]
-      .filter(Boolean)
-      .map((url) => url.replace(/\/$/, ''));
-
-    if (
-      detectedOrigin &&
-      (detectedOrigin.includes('192.168.') ||
-        detectedOrigin.includes('localhost'))
-    ) {
-      console.log(`[AUTH DEBUG] Resulting Trusted Origins:`, finalOrigins);
+    if (isExtraOrigin && !cleanOrigins.includes(originHeader)) {
+      console.warn(
+        `[AUTH DEBUG] Rejecting request. Not in EXTRA_TRUSTED_ORIGINS and Private Mode is OFF.`
+      );
     }
 
-    return finalOrigins;
+    return cleanOrigins;
   },
 
   databaseHooks: {
