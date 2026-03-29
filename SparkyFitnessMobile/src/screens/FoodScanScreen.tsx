@@ -109,7 +109,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   };
 
   const handleManualSubmit = async () => {
-    if (scanLock.current) return;
     const barcode = manualBarcode.trim();
     if (!barcode) return;
     setManualEntryVisible(false);
@@ -180,6 +179,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   };
 
   const handleShowManualEntry = () => {
+    scanLock.current = true;
     setManualEntryVisible(true);
     setScanned(true);
   };
