@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -59,7 +59,7 @@ export function useCustomFoodForm({
   const [originalVariants, setOriginalVariants] = useState<FormFoodVariant[]>(
     []
   );
-  const loadedVariantsRef = useRef<FormFoodVariant[]>([]);
+  const [loadedVariants, setLoadedVariants] = useState<FormFoodVariant[]>([]);
   const [variantErrors, setVariantErrors] = useState<string[]>([]);
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
@@ -72,9 +72,10 @@ export function useCustomFoodForm({
   const resetForm = useCallback(() => {
     setFormData({ name: '', brand: '', is_quick_food: false });
     const defaultVariant = createDefaultFormVariant(customNutrients);
+    const snapshot = [deepClone(defaultVariant)];
     setVariants([defaultVariant]);
-    setOriginalVariants([deepClone(defaultVariant)]);
-    loadedVariantsRef.current = [deepClone(defaultVariant)];
+    setOriginalVariants(snapshot);
+    setLoadedVariants(snapshot);
     setVariantErrors(['']);
   }, [customNutrients]);
 
@@ -83,7 +84,7 @@ export function useCustomFoodForm({
 
     try {
       const data = await queryClient.fetchQuery(foodVariantsOptions(food.id));
-      let loadedVariants: FormFoodVariant[] = [];
+      let loaded: FormFoodVariant[] = [];
 
       if (data && data.length > 0) {
         let defaultVariant =
@@ -95,30 +96,32 @@ export function useCustomFoodForm({
 
         if (defaultVariant) {
           defaultVariant = { ...defaultVariant, is_default: true };
-          loadedVariants = [
+          loaded = [
             foodVariantToFormVariant({ ...defaultVariant, is_locked: false }),
             ...data
               .filter((v) => v.id !== defaultVariant?.id)
               .map((v) => foodVariantToFormVariant({ ...v, is_locked: false })),
           ];
         } else {
-          loadedVariants = data.map((v) =>
+          loaded = data.map((v) =>
             foodVariantToFormVariant({ ...v, is_locked: false })
           );
         }
       } else {
-        loadedVariants = [createDefaultFormVariant(customNutrients)];
+        loaded = [createDefaultFormVariant(customNutrients)];
       }
 
-      setVariants(loadedVariants);
-      setOriginalVariants(deepClone(loadedVariants));
-      loadedVariantsRef.current = deepClone(loadedVariants);
+      const snapshot = deepClone(loaded);
+      setVariants(loaded);
+      setOriginalVariants(snapshot);
+      setLoadedVariants(snapshot);
     } catch (err) {
       console.error('Error loading variants:', err);
       const fallback = createDefaultFormVariant(customNutrients);
+      const snapshot = [deepClone(fallback)];
       setVariants([fallback]);
-      setOriginalVariants([deepClone(fallback)]);
-      loadedVariantsRef.current = [deepClone(fallback)];
+      setOriginalVariants(snapshot);
+      setLoadedVariants(snapshot);
     }
   }, [food?.default_variant, food?.id, queryClient, customNutrients]);
 
@@ -138,9 +141,10 @@ export function useCustomFoodForm({
             glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
           })
         );
+        const snapshot = deepClone(mapped);
         setVariants(mapped);
-        setOriginalVariants(deepClone(mapped));
-        loadedVariantsRef.current = deepClone(mapped);
+        setOriginalVariants(snapshot);
+        setLoadedVariants(snapshot);
         setVariantErrors(new Array(food.variants.length).fill(null));
       } else {
         loadExistingVariants();
@@ -148,9 +152,10 @@ export function useCustomFoodForm({
     } else if (initialVariants && initialVariants.length > 0) {
       setFormData({ name: '', brand: '', is_quick_food: false });
       const mapped = initialVariants.map(foodVariantToFormVariant);
+      const snapshot = deepClone(mapped);
       setVariants(mapped);
-      setOriginalVariants(deepClone(mapped));
-      loadedVariantsRef.current = deepClone(mapped);
+      setOriginalVariants(snapshot);
+      setLoadedVariants(snapshot);
       setVariantErrors(new Array(initialVariants.length).fill(null));
     } else {
       resetForm();
@@ -169,12 +174,10 @@ export function useCustomFoodForm({
       serving_size: 1,
       is_default: false,
     });
+    const clone = deepClone(newVariant);
     setVariants((prev) => [...prev, newVariant]);
-    setOriginalVariants((prev) => [...prev, deepClone(newVariant)]);
-    loadedVariantsRef.current = [
-      ...loadedVariantsRef.current,
-      deepClone(newVariant),
-    ];
+    setOriginalVariants((prev) => [...prev, clone]);
+    setLoadedVariants((prev) => [...prev, clone]);
     setVariantErrors((prev) => [...prev, '']);
   };
 
@@ -194,12 +197,10 @@ export function useCustomFoodForm({
       is_default: false,
       is_locked: false,
     };
+    const clone = deepClone(newVariant);
     setVariants((prev) => [...prev, newVariant]);
-    setOriginalVariants((prev) => [...prev, deepClone(newVariant)]);
-    loadedVariantsRef.current = [
-      ...loadedVariantsRef.current,
-      deepClone(newVariant),
-    ];
+    setOriginalVariants((prev) => [...prev, clone]);
+    setLoadedVariants((prev) => [...prev, clone]);
     setVariantErrors((prev) => [...prev, '']);
   };
 
@@ -235,7 +236,7 @@ export function useCustomFoodForm({
       nutrientFields.includes(field as NumericFoodVariantKeys) ||
       isCustomNutrient;
 
-    // Build the updated variant
+    // Build updated variant
     let newVariant: FormFoodVariant;
     if (isCustomNutrient) {
       newVariant = {
@@ -266,19 +267,18 @@ export function useCustomFoodForm({
       setVariantErrors(updatedErrors);
     }
 
-    // Energy conversion
+    // Energy conversion: input arrives in display unit, store as kcal
     if (field === 'calories' && value !== '' && typeof value === 'number') {
       newVariant.calories = convertEnergy(value, energyUnit, 'kcal');
     }
 
-    // Unit change — scale or restore nutrition
+    // Unit change — restore loaded values on revert, otherwise scale
     if (field === 'serving_unit') {
       const oldUnit = currentVariant.serving_unit;
       const newUnit = String(value);
-      const loadedVariant = loadedVariantsRef.current[index];
+      const loadedVariant = loadedVariants[index];
 
       if (loadedVariant && newUnit === loadedVariant.serving_unit) {
-        // Restore original values when reverting to the loaded unit
         for (const nutrient of nutrientFields)
           newVariant[nutrient] = loadedVariant[nutrient];
       } else {
@@ -332,7 +332,7 @@ export function useCustomFoodForm({
         }
       }
     } else {
-      // Update baseline for any non-scaling change
+      // Update scaling baseline for any non-scaling change
       updatedOriginalVariants[index] = deepClone(newVariant);
       setOriginalVariants(updatedOriginalVariants);
     }
@@ -437,7 +437,7 @@ export function useCustomFoodForm({
     loading,
     showSyncConfirmation,
     setShowSyncConfirmation,
-    loadedVariantsRef,
+    loadedVariants,
     platform,
     // Handlers
     updateField,

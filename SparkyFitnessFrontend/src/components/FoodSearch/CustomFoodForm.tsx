@@ -10,7 +10,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import type { Food, FoodVariant } from '@/types/food';
 
-import { useUpdateFoodEntriesSnapshotMutation } from '@/hooks/Foods/useFoods';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { VariantCard } from './VariantCard';
 import { useCustomFoodForm } from '@/hooks/Foods/useFoodForm';
@@ -35,7 +34,7 @@ const CustomFoodForm = ({
     loading,
     showSyncConfirmation,
     setShowSyncConfirmation,
-    loadedVariantsRef,
+    loadedVariants,
     updateField,
     addVariant,
     duplicateVariant,
@@ -49,7 +48,6 @@ const CustomFoodForm = ({
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const { data: customNutrients } = useCustomNutrients();
-  useUpdateFoodEntriesSnapshotMutation();
 
   const foodDatabasePreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === 'food_database' && p.platform === platform
@@ -131,7 +129,7 @@ const CustomFoodForm = ({
                     convertEnergy={convertEnergy}
                     customNutrients={customNutrients}
                     baseServingUnit={
-                      loadedVariantsRef.current[index]?.serving_unit ??
+                      loadedVariants[index]?.serving_unit ??
                       variant.serving_unit
                     }
                     onUpdate={updateVariant}

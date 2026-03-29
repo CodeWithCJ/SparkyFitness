@@ -11,8 +11,6 @@ import { UserCustomNutrient } from '@/types/customNutrient';
 import type { GlycemicIndex, NumericFoodVariantKeys } from '@/types/food';
 import type { FormFoodVariant } from '@/utils/foodForm';
 
-// ─── Section config ───────────────────────────────────────────────────────────
-
 interface NutrientFieldConfig {
   key: NumericFoodVariantKeys;
   label: string;
@@ -84,8 +82,6 @@ const GLYCEMIC_INDEX_OPTIONS: { value: GlycemicIndex; label: string }[] = [
   { value: 'Very High', label: 'Very High' },
 ];
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 interface NutrientGridProps {
   variantIndex: number;
   variant: FormFoodVariant;
@@ -104,13 +100,9 @@ interface NutrientGridProps {
   ) => void;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function gridId(variantIndex: number, key: string) {
   return `nutrient-${variantIndex}-${key}`;
 }
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function NutrientInput({
   id,
@@ -142,8 +134,6 @@ function NutrientInput({
     </div>
   );
 }
-
-// ─── Main component ───────────────────────────────────────────────────────────
 
 export function NutrientGrid({
   variantIndex,
@@ -191,32 +181,12 @@ export function NutrientGrid({
         </div>
       )}
 
-      {/* Calories (special-cased for energy unit conversion) */}
-      {visible.has('calories') && (
-        <div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <NutrientInput
-              id={gridId(variantIndex, 'calories')}
-              label={`Calories (${energyUnit})`}
-              value={
-                variant.calories === ''
-                  ? ''
-                  : Math.round(
-                      convertEnergy(variant.calories || 0, 'kcal', energyUnit)
-                    )
-              }
-              step="1"
-              disabled={isLocked}
-              onChange={update('calories')}
-            />
-          </div>
-        </div>
-      )}
-
       {/* Standard sections */}
       {NUTRIENT_SECTIONS.map((section) => {
         const visibleFields = section.fields.filter((f) => visible.has(f.key));
-        if (visibleFields.length === 0) return null;
+        const isMainNutrients = section.title === 'Main Nutrients';
+        const showCalories = isMainNutrients && visible.has('calories');
+        if (!showCalories && visibleFields.length === 0) return null;
 
         return (
           <div key={section.title}>
@@ -224,6 +194,26 @@ export function NutrientGrid({
               {section.title}
             </h5>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {showCalories && (
+                <NutrientInput
+                  id={gridId(variantIndex, 'calories')}
+                  label={`Calories (${energyUnit})`}
+                  value={
+                    variant.calories === ''
+                      ? ''
+                      : Math.round(
+                          convertEnergy(
+                            variant.calories || 0,
+                            'kcal',
+                            energyUnit
+                          )
+                        )
+                  }
+                  step="1"
+                  disabled={isLocked}
+                  onChange={update('calories')}
+                />
+              )}
               {visibleFields.map(({ key, label, unit, step }) => (
                 <NutrientInput
                   key={key}

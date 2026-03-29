@@ -19,8 +19,6 @@ import { UNIT_GROUPS } from '@/constants/foodForm';
 import { UserCustomNutrient } from '@/types/customNutrient';
 import { NutrientGrid } from './NutrientFormGrid';
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 interface VariantCardProps {
   index: number;
   variant: FormFoodVariant;
@@ -42,8 +40,6 @@ interface VariantCardProps {
   onDuplicate: (index: number) => void;
   onRemove: (index: number) => void;
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export function VariantCard({
   index,
