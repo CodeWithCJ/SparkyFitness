@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Platform, Button, StyleSheet, ActivityIndicator, Image, TextInput, KeyboardAvoidingView } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, Button, StyleSheet, ActivityIndicator, Image, Modal, KeyboardAvoidingView, ScrollView } from 'react-native';
 import Toast from 'react-native-toast-message';
 import UIButton from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
+import FormInput from '../components/FormInput';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
@@ -178,6 +179,18 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     setManualBarcode('');
   };
 
+  const handleShowManualEntry = () => {
+    setManualEntryVisible(true);
+    setScanned(true);
+  };
+
+  const handleDismissManualEntry = () => {
+    setManualEntryVisible(false);
+    setManualBarcode('');
+    setScanned(false);
+    scanLock.current = false;
+  };
+
   const handleScanLabel = () => {
     setScanMode('label');
     setScanned(false);
@@ -296,59 +309,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       )}
 
-      {/* Manual barcode entry dialog - centered on screen */}
-      {scanMode === 'barcode' && manualEntryVisible && !capturedPhoto && !labelProcessing && !loading && (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={StyleSheet.absoluteFillObject}
-          className="justify-center items-center"
-        >
-          <View className="bg-black/70 rounded-xl mx-8 p-4 self-stretch gap-3">
-            <Text className="text-white text-base font-semibold text-center">Enter Barcode</Text>
-            <TextInput
-              className="bg-white/20 text-white text-base px-4 py-3 rounded-lg text-center"
-              style={{ lineHeight: 20 }}
-              placeholder="Barcode number"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              keyboardType="number-pad"
-              autoFocus
-              value={manualBarcode}
-              onChangeText={setManualBarcode}
-              onSubmitEditing={handleManualSubmit}
-            />
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => { setManualEntryVisible(false); setManualBarcode(''); setScanned(false); scanLock.current = false; }}
-                className="flex-1 bg-white/20 py-3 rounded-lg items-center"
-              >
-                <Text className="text-white font-semibold text-sm">Cancel</Text>
-              </TouchableOpacity>
-              <UIButton
-                variant="primary"
-                disabled={!manualBarcode.trim()}
-                onPress={handleManualSubmit}
-                className="flex-1 py-3 rounded-lg"
-                textClassName="text-sm"
-              >
-                Look Up
-              </UIButton>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      )}
-
       {/* Bottom controls: segmented control, shutter */}
       {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && (
         <View
           className="absolute bottom-0 left-0 right-0 items-center gap-4"
           style={{ paddingBottom: Math.max(insets.bottom + 8, 24) }}
         >
-          {scanMode === 'barcode' && !notFoundBarcode && (
-            <TouchableOpacity onPress={() => { scanLock.current = true; setManualEntryVisible(true); setScanned(true); }}>
-              <Text className="text-white/80 text-sm underline">Manually enter barcode</Text>
-            </TouchableOpacity>
-          )}
-
           <View className="bg-black/50 rounded-lg mx-8 self-stretch">
             <SegmentedControl
               segments={SCAN_SEGMENTS}
@@ -356,6 +322,16 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               onSelect={handleSegmentChange}
             />
           </View>
+
+          {scanMode === 'barcode' && !notFoundBarcode && (
+            <TouchableOpacity
+              onPress={handleShowManualEntry}
+              className="w-20 h-20 rounded-full border-4 border-white items-center justify-center bg-white/20"
+              activeOpacity={0.7}
+            >
+              <Icon name="pencil" size={28} color="#fff" />
+            </TouchableOpacity>
+          )}
 
           {scanMode === 'label' && (
             <TouchableOpacity
@@ -368,6 +344,59 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           )}
         </View>
       )}
+
+      {/* Manual barcode entry modal */}
+      <Modal
+        visible={manualEntryVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleDismissManualEntry}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1"
+        >
+          <ScrollView
+            contentContainerClassName="justify-center items-center p-6"
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            bounces={false}
+          >
+            <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm gap-4">
+              <Text className="text-text-primary text-base font-semibold text-center">Enter Barcode</Text>
+              <FormInput
+                placeholder="Barcode number"
+                keyboardType="number-pad"
+                autoFocus
+                value={manualBarcode}
+                onChangeText={setManualBarcode}
+                onSubmitEditing={handleManualSubmit}
+                style={{ textAlign: 'center' }}
+              />
+              <View className="flex-row gap-3">
+                <UIButton
+                  variant="outline"
+                  onPress={handleDismissManualEntry}
+                  className="flex-1 py-3 rounded-lg"
+                  textClassName="text-sm"
+                >
+                  Cancel
+                </UIButton>
+                <UIButton
+                  variant="primary"
+                  disabled={!manualBarcode.trim()}
+                  onPress={handleManualSubmit}
+                  className="flex-1 py-3 rounded-lg"
+                  textClassName="text-sm"
+                >
+                  Look Up
+                </UIButton>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
