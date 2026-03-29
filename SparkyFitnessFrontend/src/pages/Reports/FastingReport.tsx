@@ -11,13 +11,27 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
   LineChart,
   Line,
   CartesianGrid,
   type TooltipValueType,
 } from 'recharts';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { parseISO } from 'date-fns';
+import {
+  parseISO,
+  subDays,
+  eachDayOfInterval,
+  format as formatDF,
+} from 'date-fns';
 import ZoomableChart from '@/components/ZoomableChart';
 import { List, Clock, Hourglass, Award } from 'lucide-react';
 import { calculateSmartYAxisDomain, getChartConfig } from '@/utils/chartUtils';
@@ -43,6 +57,17 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  const formatHoursToReadable = (
+    value: TooltipValueType | undefined | number
+  ) => {
+    if (value === null || value === undefined) return '';
+    const num = Number(Array.isArray(value) ? value[0] : value);
+    if (Number.isNaN(num)) return String(value);
+    const hrs = Math.floor(num);
+    const mins = Math.round((num - hrs) * 60);
+    return `${hrs}h ${mins}m`;
+  };
 
   // Compute summary statistics
   const summary = useMemo(() => {
@@ -108,17 +133,29 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
     return Object.entries(zones).map(([name, value]) => ({ name, value }));
   }, [fastingData]);
 
-  // Consistency calendar data (heatmap style) – simplified as array of dates with count
-  const calendarData = useMemo(() => {
-    const map: Record<string, number> = {};
+  // Heatmap Data (Last 90 Days)
+  const heatmapData = useMemo(() => {
+    const today = new Date();
+    const startDate = subDays(today, 90);
+
+    // Define the interval of 91 days (including today)
+    const daysInterval = eachDayOfInterval({ start: startDate, end: today });
+
+    // Create map for fast lookup
+    const fastDaysMap: Record<string, number> = {};
     fastingData.forEach((f) => {
-      const date = formatDateInUserTimezone(
-        parseISO(f.start_time),
-        'yyyy-MM-dd'
-      );
-      map[date] = (map[date] || 0) + 1;
+      // Find local date string
+      const d = formatDateInUserTimezone(parseISO(f.start_time), 'yyyy-MM-dd');
+      fastDaysMap[d] = (fastDaysMap[d] || 0) + (f.duration_minutes ?? 0);
     });
-    return Object.entries(map).map(([date, count]) => ({ date, count }));
+
+    return daysInterval.map((d) => {
+      const dateStr = formatDF(d, 'yyyy-MM-dd');
+      return {
+        date: dateStr,
+        minutesFasted: fastDaysMap[dateStr] || 0,
+      };
+    });
   }, [fastingData, formatDateInUserTimezone]);
 
   // Trend line (moving average of daily hours)
@@ -239,18 +276,7 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                               : num.toFixed(2);
                           }}
                         />
-                        <Tooltip
-                          formatter={(value: TooltipValueType | undefined) => {
-                            if (value === null || value === undefined)
-                              return '';
-                            const num = Number(
-                              Array.isArray(value) ? value[0] : value
-                            );
-                            return Number.isNaN(num)
-                              ? String(value)
-                              : num.toFixed(2);
-                          }}
-                        />
+                        <Tooltip formatter={formatHoursToReadable} />
                         <Bar
                           dataKey="hours"
                           fill="#6366f1"
@@ -289,6 +315,8 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
               debounce={100}
             >
               <PieChart>
+                <Tooltip />
+                <Legend verticalAlign="bottom" height={36} />
                 <Pie
                   data={zoneData}
                   dataKey="value"
@@ -318,23 +346,114 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
         </CardContent>
       </Card>
 
-      {/* Consistency Calendar (simple heatmap) */}
+      {/* Fasting History Table (Replaces Consistency List) */}
       <Card>
         <CardHeader>
           <CardTitle>
-            {t('reports.fasting.consistency', 'Fasting Consistency')}
+            {t('reports.fasting.history', 'Fasting History')}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* For brevity, render as a list of dates with count */}
-          <ul className="space-y-1">
-            {calendarData.map((d) => (
-              <li key={d.date}>
-                {d.date}: {d.count} {t('reports.fasting.fast', 'fast')}
-                {d.count > 1 ? 's' : ''}
-              </li>
-            ))}
-          </ul>
+          <div className="rounded-md border max-h-[400px] overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    {t('reports.fasting.startDate', 'Start Date')}
+                  </TableHead>
+                  <TableHead>
+                    {t('reports.fasting.endDate', 'End Date')}
+                  </TableHead>
+                  <TableHead>
+                    {t('reports.fasting.duration', 'Duration')}
+                  </TableHead>
+                  <TableHead>
+                    {t('reports.fasting.protocol', 'Protocol')}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fastingData
+                  .slice()
+                  .sort(
+                    (a, b) =>
+                      parseISO(b.start_time).getTime() -
+                      parseISO(a.start_time).getTime()
+                  )
+                  .map((f) => {
+                    const startStr = formatDateInUserTimezone(
+                      parseISO(f.start_time),
+                      'MMM dd, yyyy h:mm a'
+                    );
+                    const endStr = f.end_time
+                      ? formatDateInUserTimezone(
+                          parseISO(f.end_time),
+                          'MMM dd, yyyy h:mm a'
+                        )
+                      : 'Ongoing';
+                    const duration = formatHoursToReadable(
+                      (f.duration_minutes ?? 0) / 60
+                    );
+                    return (
+                      <TableRow key={f.id}>
+                        <TableCell>{startStr}</TableCell>
+                        <TableCell>{endStr}</TableCell>
+                        <TableCell>{duration}</TableCell>
+                        <TableCell>{f.fasting_type || 'Custom'}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Consistency Heatmap (GitHub Style) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {t(
+              'reports.fasting.consistencyGrid',
+              'Fasting Heatmap (Last 90 Days)'
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-[3px] max-w-full">
+            {heatmapData.map((d) => {
+              // Determine shade of green based on minutes fasted
+              // 0 = gray, > 0 = scale
+              let bgClass = 'bg-muted';
+              if (d.minutesFasted > 0) {
+                if (d.minutesFasted < 12 * 60)
+                  bgClass = 'bg-green-300 dark:bg-green-800';
+                else if (d.minutesFasted < 16 * 60)
+                  bgClass = 'bg-green-400 dark:bg-green-700';
+                else if (d.minutesFasted < 20 * 60)
+                  bgClass = 'bg-green-500 dark:bg-green-600';
+                else bgClass = 'bg-green-600 dark:bg-green-500';
+              }
+              return (
+                <div
+                  key={d.date}
+                  title={`${d.date}: ${formatHoursToReadable(d.minutesFasted / 60)}`}
+                  className={`w-4 h-4 rounded-sm ${bgClass} transition-colors hover:ring-2 ring-primary`}
+                />
+              );
+            })}
+          </div>
+          <div className="flex gap-2 items-center mt-4 text-xs text-muted-foreground">
+            <span>Less</span>
+            <div className="flex gap-[3px]">
+              <div className="w-4 h-4 rounded-sm bg-muted" />
+              <div className="w-4 h-4 rounded-sm bg-green-300 dark:bg-green-800" />
+              <div className="w-4 h-4 rounded-sm bg-green-400 dark:bg-green-700" />
+              <div className="w-4 h-4 rounded-sm bg-green-500 dark:bg-green-600" />
+              <div className="w-4 h-4 rounded-sm bg-green-600 dark:bg-green-500" />
+            </div>
+            <span>More</span>
+          </div>
         </CardContent>
       </Card>
 
@@ -381,16 +500,7 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                               : num.toFixed(2);
                           }}
                         />
-                        <Tooltip
-                          formatter={(value: TooltipValueType | undefined) => {
-                            if (value === null || value === undefined)
-                              return '';
-                            const num = Number(value);
-                            return Number.isNaN(num)
-                              ? String(value)
-                              : num.toFixed(2);
-                          }}
-                        />
+                        <Tooltip formatter={formatHoursToReadable} />
                         <Line
                           type="monotone"
                           dataKey="avg"
