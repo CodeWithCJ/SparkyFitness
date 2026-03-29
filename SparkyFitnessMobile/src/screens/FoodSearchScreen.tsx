@@ -177,18 +177,20 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     <View className="px-4 py-2">
       <View className="flex-row items-center bg-raised rounded-lg px-3 py-2.5">
         <Icon name="search" size={18} color={textMuted} />
-        <TextInput
-          className="flex-1 text-text-primary ml-2"
-          // Match line height, font size to vertically center the text in search bar. Doesn't seem to work in tailwind
-          style={{ fontSize: 16, lineHeight: 20 }}
-          placeholder={activeTab === 'meal' ? 'Search meals...' : 'Search foods...'}
-          placeholderTextColor={textMuted}
-          value={searchText}
-          onChangeText={setSearchText}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-        />
+        <View className="flex-1 ml-2">
+          <TextInput
+            className="text-text-primary"
+            // Match line height, font size to vertically center the text in search bar. Doesn't seem to work in tailwind
+            style={{ fontSize: 16, lineHeight: 20 }}
+            placeholder={activeTab === 'meal' ? 'Search meals...' : 'Search foods...'}
+            placeholderTextColor={textMuted}
+            value={searchText}
+            onChangeText={setSearchText}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+        </View>
         {searchText.length > 0 && (
           <Button variant="ghost" onPress={() => setSearchText('')} hitSlop={8} className="p-0">
             <Icon name="close" size={16} color={textMuted} />
