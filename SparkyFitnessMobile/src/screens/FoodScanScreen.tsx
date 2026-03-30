@@ -306,9 +306,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   barcode: notFoundBarcode,
                 })}
                 className="rounded-lg"
-                textClassName="text-sm text-accent-primary"
               >
-                Add Food Manually
+                <Text className="text-sm font-semibold text-accent-primary">Add Food Manually</Text>
               </UIButton>
             </View>
           </View>
