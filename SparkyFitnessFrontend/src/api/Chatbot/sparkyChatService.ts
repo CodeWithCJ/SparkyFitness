@@ -220,22 +220,28 @@ export const processUserInput = async (
       let jsonString = jsonMatch ? jsonMatch[1] : aiResponse.response;
       jsonString = stripJsonComments(jsonString ?? '').trim(); // Strip comments before parsing
 
-      // Handle cases where AI returns multiple JSON objects (like JSONLines)
       let parsed;
-      if (
-        jsonString.startsWith('{') &&
-        jsonString.endsWith('}') &&
-        /}\s*{/.test(jsonString)
-      ) {
-        const arrayString = `[${jsonString.replace(/(})\s*({)/g, '$1,$2')}]`;
-        const parsedArray = JSON.parse(arrayString);
-        // Take the last object as the actual response
-        parsed = parsedArray[parsedArray.length - 1];
-      } else {
+      try {
         parsed = JSON.parse(jsonString);
+      } catch (e) {
+        // If standard parsing fails, attempt to fix concatenated JSON objects (JSON Lines format)
+        try {
+          const fixedJsonString = `[${jsonString.replace(/}\s*{/g, '},{')}]`;
+          parsed = JSON.parse(fixedJsonString);
+        } catch (fixError) {
+          throw e; // Throw the original error if the fix fails
+        }
       }
 
-      parsedResponse = parsed;
+      // Ensure we extract the final object if the AI returned an array
+      if (Array.isArray(parsed)) {
+        if (parsed.length === 0) {
+          throw new Error('AI returned an empty JSON array.');
+        }
+        parsedResponse = parsed[parsed.length - 1];
+      } else {
+        parsedResponse = parsed;
+      }
 
       info(
         userLoggingLevel,
