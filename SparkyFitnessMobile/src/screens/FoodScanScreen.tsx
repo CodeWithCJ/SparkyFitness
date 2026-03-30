@@ -327,13 +327,14 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
 
           <View className="h-20 items-center justify-center">
             {scanMode === 'barcode' && !notFoundBarcode && (
-              <TouchableOpacity
+              <UIButton
+                variant="secondary"
                 onPress={handleShowManualEntry}
-                className="bg-black/60 py-3 px-6 rounded-lg"
-                activeOpacity={0.7}
+                className="px-6 rounded-lg"
+                textClassName="text-sm"
               >
-                <Text className="text-white font-semibold text-sm">Manually enter barcode</Text>
-              </TouchableOpacity>
+                Manually enter barcode
+              </UIButton>
             )}
 
             {scanMode === 'label' && (
