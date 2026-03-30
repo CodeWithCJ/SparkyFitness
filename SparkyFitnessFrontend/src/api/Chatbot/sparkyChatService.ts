@@ -570,9 +570,27 @@ const callAIForFoodOptions = async (
       foodOptionsJsonString = jsonMatch[1];
     }
 
+    let rawFoodOptions;
     try {
-      const rawFoodOptions = JSON.parse(foodOptionsJsonString);
+      rawFoodOptions = JSON.parse(foodOptionsJsonString);
+    } catch (e) {
+      // AI sometimes hallucinates stray words inside the JSON payload (e.g. "Cohh" on its own line).
+      // Filter out lines that contain only letters and typical sentence punctuation, lacking JSON syntax characters.
+      const cleanedLines = foodOptionsJsonString
+        .split('\n')
+        .filter((line: string) => {
+          const trimmed = line.trim();
+          // Keep empty lines or lines with standard JSON structural characters
+          if (!trimmed) return true;
+          // If it looks like plain text without any JSON structural markers, discard it
+          if (/^[a-zA-Z\s.,!?]+$/.test(trimmed)) return false;
+          return true;
+        });
+      const cleanedJsonString = cleanedLines.join('\n');
+      rawFoodOptions = JSON.parse(cleanedJsonString);
+    }
 
+    try {
       const foodOptions: FoodOption[] = (
         Array.isArray(rawFoodOptions) ? rawFoodOptions : []
       ).map((rawOption: RawFoodOption) => {
