@@ -290,14 +290,14 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
             <Text className="text-text-primary text-base font-semibold">No match for barcode</Text>
             <Text className="text-text-secondary text-sm text-center">You can scan the nutrition label or enter it manually.</Text>
-            <View className="flex-row gap-3 mt-2 self-stretch">
+            <View className="gap-3 mt-2 self-stretch">
               <UIButton
                 variant="primary"
                 onPress={handleScanLabel}
-                className="flex-1 py-3 rounded-lg"
+                className="py-3 rounded-lg"
                 textClassName="text-sm"
               >
-                Scan Label
+                Scan Nutrition Label
               </UIButton>
               <UIButton
                 variant="outline"
@@ -305,10 +305,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   date: route.params?.date,
                   barcode: notFoundBarcode,
                 })}
-                className="flex-1 py-3 rounded-lg"
+                className="py-3 rounded-lg"
                 textClassName="text-sm"
               >
-                Enter Manually
+                Add Food Manually
               </UIButton>
             </View>
           </View>
@@ -336,7 +336,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   onPress={handleShowManualEntry}
                   className="bg-raised px-6 py-3 rounded-xl"
                 >
-                  <Text className="text-text-primary text-sm font-semibold">Manually enter barcode</Text>
+                  <Text className="text-text-primary text-sm font-semibold">Type Barcode Instead</Text>
                 </TouchableOpacity>
               )}
 
