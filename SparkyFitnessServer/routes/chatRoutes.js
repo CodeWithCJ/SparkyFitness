@@ -69,6 +69,24 @@ router.post('/', authenticate, async (req, res, next) => {
         });
       }
 
+      // Validate required fields before hitting the database
+      if (!service_data) {
+        return res.status(400).json({ error: 'service_data is required.' });
+      }
+      // service_type and service_name are only required when creating a new record (no id)
+      if (!service_data.id) {
+        if (!service_data.service_type) {
+          return res
+            .status(400)
+            .json({ error: 'service_data.service_type is required.' });
+        }
+        if (!service_data.service_name) {
+          return res
+            .status(400)
+            .json({ error: 'service_data.service_name is required.' });
+        }
+      }
+
       const result = await chatService.handleAiServiceSettings(
         action,
         service_data,

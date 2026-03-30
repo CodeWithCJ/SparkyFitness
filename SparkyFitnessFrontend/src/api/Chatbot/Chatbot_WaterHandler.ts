@@ -81,8 +81,7 @@ export const processWaterInput = async (
     );
 
     const primaryContainer = await getPrimaryWaterContainer();
-    const containerId =
-      primaryContainer?.id || '00000000-0000-0000-0000-000000000001'; // Use primary container ID or a default
+    const containerId = primaryContainer?.id || null; // Use primary container ID or null
 
     await apiCall('/measurements/water-intake', {
       method: 'POST',
