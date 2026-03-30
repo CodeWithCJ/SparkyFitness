@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -49,12 +49,17 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textMuted, borderSubtle, raisedBg] = useCSSVariable([
+  const [accentPrimary, textMuted, textPrimary, borderSubtle, dangerColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
+    '--color-text-primary',
     '--color-border-subtle',
-    '--color-raised',
-  ]) as [string, string, string, string];
+    '--color-bg-danger',
+  ]) as [string, string, string, string, string];
+
+  // Track which set is currently being edited: "exerciseClientId:setClientId"
+  const [activeSetKey, setActiveSetKey] = useState<string | null>(null);
+  const [isNameEditing, setIsNameEditing] = useState(false);
 
   const {
     state,
@@ -112,7 +117,12 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const isInitializingEditForm = isEditMode && !hasPopulatedRef.current;
 
-  useSelectedExercise(route.params, addExercise);
+  const handleAddExercise = useCallback((exercise: Parameters<typeof addExercise>[0]) => {
+    const { exerciseClientId, setClientId } = addExercise(exercise);
+    setActiveSetKey(`${exerciseClientId}:${setClientId}`);
+  }, [addExercise]);
+
+  useSelectedExercise(route.params, handleAddExercise);
 
   const handleCancel = useCallback(() => {
     if (!isEditMode && !hasDraftData) {
@@ -222,59 +232,91 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     [removeExercise],
   );
 
+  const handleAddSet = useCallback(
+    (exerciseClientId: string) => {
+      const newSetId = addSet(exerciseClientId);
+      if (newSetId) {
+        setActiveSetKey(`${exerciseClientId}:${newSetId}`);
+      }
+    },
+    [addSet],
+  );
+
   const renderSetRow = (
     exercise: WorkoutDraftExercise,
     set: WorkoutDraftSet,
-    index: number,
-  ) => (
-    <View key={set.clientId} className="flex-row items-center py-1.5 gap-2">
-      <Text className="text-sm text-text-muted w-8 text-center">
-        {index + 1}
-      </Text>
-      <FormInput
-        style={{ width: 80, textAlign: 'center', paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}
-        value={set.weight}
-        onChangeText={(v: string) =>
-          updateSetField(exercise.clientId, set.clientId, 'weight', v)
-        }
-        placeholder={weightUnit}
-        keyboardType="decimal-pad"
-        returnKeyType="next"
-      />
-      <Text className="text-sm text-text-muted">×</Text>
-      <FormInput
-        style={{ width: 60, textAlign: 'center', paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}
-        value={set.reps}
-        onChangeText={(v: string) =>
-          updateSetField(exercise.clientId, set.clientId, 'reps', v)
-        }
-        placeholder="reps"
-        keyboardType="number-pad"
-        returnKeyType="done"
-      />
-      <Button
-        variant="ghost"
-        onPress={() => removeSet(exercise.clientId, set.clientId)}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        className="ml-auto py-0 px-0"
-      >
-        <Icon name="remove-circle" size={20} color={textMuted} />
-      </Button>
-    </View>
-  );
+  ) => {
+    const setKey = `${exercise.clientId}:${set.clientId}`;
+    const isActive = activeSetKey === setKey;
+    const weightDisplay = set.weight || '–';
+    const repsDisplay = set.reps || '–';
 
-  const renderExerciseCard = (exercise: WorkoutDraftExercise) => (
-    <View key={exercise.clientId} className="bg-surface rounded-xl p-4 mb-3">
-      <View className="flex-row items-center justify-between mb-2">
+    if (isActive) {
+      return (
+        <View key={set.clientId} className="flex-row items-center py-1.5 gap-2">
+          <FormInput
+            style={{ width: 80, textAlign: 'center', paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}
+            value={set.weight}
+            onChangeText={(v: string) =>
+              updateSetField(exercise.clientId, set.clientId, 'weight', v)
+            }
+            placeholder="0"
+            keyboardType="decimal-pad"
+            returnKeyType="next"
+            autoFocus
+          />
+          <Text className="text-sm text-text-muted">×</Text>
+          <FormInput
+            style={{ width: 60, textAlign: 'center', paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}
+            value={set.reps}
+            onChangeText={(v: string) =>
+              updateSetField(exercise.clientId, set.clientId, 'reps', v)
+            }
+            placeholder="reps"
+            keyboardType="number-pad"
+            returnKeyType="done"
+            onSubmitEditing={() => setActiveSetKey(null)}
+          />
+          <Button
+            variant="ghost"
+            onPress={() => removeSet(exercise.clientId, set.clientId)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="py-0 px-0"
+          >
+            <Icon name="remove-circle" size={20} color={dangerColor} />
+          </Button>
+        </View>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        key={set.clientId}
+        className="flex-row items-center py-2.5 gap-2"
+        onPress={() => setActiveSetKey(setKey)}
+        activeOpacity={0.6}
+      >
+        <Text className="text-sm text-text-primary" style={{ width: 80, textAlign: 'center' }}>
+          {weightDisplay}
+        </Text>
+        <Text className="text-sm text-text-muted">×</Text>
+        <Text className="text-sm text-text-primary" style={{ width: 60, textAlign: 'center' }}>
+          {repsDisplay}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderExerciseSection = (exercise: WorkoutDraftExercise) => (
+    <View key={exercise.clientId} className="mb-4">
+      <View className="flex-row items-center justify-between mb-1">
         <View className="flex-1 mr-2">
           <Text className="text-base font-semibold text-text-primary">
             {exercise.exerciseName}
           </Text>
-          {exercise.exerciseCategory && (
-            <Text className="text-xs text-text-muted mt-0.5">
-              {exercise.exerciseCategory}
-            </Text>
-          )}
+          <Text className="text-xs text-text-muted mt-0.5">
+            {[exercise.exerciseCategory, weightUnit].filter(Boolean).join(' · ')}
+          </Text>
         </View>
         <Button
           variant="ghost"
@@ -286,32 +328,12 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
         </Button>
       </View>
 
-      {/* Set header */}
-      <View className="flex-row items-center py-1 gap-2 mb-1">
-        <Text className="text-xs font-semibold text-text-muted w-8 text-center">
-          Set
-        </Text>
-        <Text
-          className="text-xs font-semibold text-text-muted"
-          style={{ width: 80, textAlign: 'center' }}
-        >
-          Weight
-        </Text>
-        <View style={{ width: 12 }} />
-        <Text
-          className="text-xs font-semibold text-text-muted"
-          style={{ width: 60, textAlign: 'center' }}
-        >
-          Reps
-        </Text>
-      </View>
+      {exercise.sets.map((set) => renderSetRow(exercise, set))}
 
-      {exercise.sets.map((set, index) => renderSetRow(exercise, set, index))}
-
-      <Button
-        variant="ghost"
-        onPress={() => addSet(exercise.clientId)}
-        className="flex-row py-2 mt-2"
+      <TouchableOpacity
+        className="flex-row items-center self-start py-2 px-3 mt-1 rounded-lg"
+        onPress={() => handleAddSet(exercise.clientId)}
+        activeOpacity={0.6}
       >
         <Icon name="add-circle" size={18} color={accentPrimary} />
         <Text
@@ -320,7 +342,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           Add Set
         </Text>
-      </Button>
+      </TouchableOpacity>
     </View>
   );
 
@@ -333,7 +355,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
       ) : (
         <>
           {/* Header */}
-          <View className="flex-row items-center justify-between px-4 py-3">
+          <View className="flex-row items-center px-3 py-3">
             <Button
               variant="ghost"
               onPress={handleCancel}
@@ -341,24 +363,6 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
               className="py-0 px-0"
             >
               <Icon name="close" size={24} color={accentPrimary} />
-            </Button>
-            <Button
-              variant="ghost"
-              onPress={handleFinish}
-              disabled={isPending || !hasDraftData}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              className="py-0 px-0"
-            >
-              {isPending ? (
-                <ActivityIndicator size="small" color={accentPrimary} />
-              ) : (
-                <Text
-                  className="text-base font-semibold"
-                  style={{ color: hasDraftData ? accentPrimary : textMuted }}
-                >
-                  {isEditMode ? 'Save' : 'Finish'}
-                </Text>
-              )}
             </Button>
           </View>
 
@@ -373,53 +377,90 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
             >
               {/* Workout name */}
               <View className="mb-4">
-                <Text className="text-sm font-medium text-text-secondary mb-1.5">Name</Text>
-                <FormInput
-                  className="text-xl font-bold text-text-primary"
-                  value={state.name}
-                  onChangeText={setName}
-                  placeholder="Workout"
-                  returnKeyType="done"
-                />
+                {isNameEditing ? (
+                  <FormInput
+                    className="text-xl font-bold text-text-primary rounded-lg"
+                    value={state.name}
+                    onChangeText={setName}
+                    placeholder="Workout"
+                    returnKeyType="done"
+                    autoFocus
+                    onBlur={() => setIsNameEditing(false)}
+                    onSubmitEditing={() => setIsNameEditing(false)}
+                  />
+                ) : (
+                  <TouchableOpacity
+                    className="flex-row items-center self-start gap-2"
+                    onPress={() => setIsNameEditing(true)}
+                    activeOpacity={0.6}
+                  >
+                    <Text className="text-xl font-bold text-text-primary">
+                      {state.name || 'Workout'}
+                    </Text>
+                    <Icon name="pencil" size={20} color={textMuted} />
+                  </TouchableOpacity>
+                )}
               </View>
 
               {/* Date row */}
-              <View className="mb-4">
-                <Text className="text-sm font-medium text-text-secondary mb-1.5">Date</Text>
+              <TouchableOpacity
+                onPress={() => calendarSheetRef.current?.present()}
+                activeOpacity={0.7}
+                className="flex-row items-center mb-4"
+              >
+                <Text className="text-text-secondary text-base">Date</Text>
+                <Text className="text-text-primary text-base font-medium mx-1.5">
+                  {formatDateLabel(state.entryDate)}
+                </Text>
+                <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
+              </TouchableOpacity>
+
+              {/* Exercises */}
+              {state.exercises.map(renderExerciseSection)}
+
+              {/* Add Exercise */}
+              <View className="py-4 mb-4">
                 <TouchableOpacity
-                  className="flex-row items-center justify-between py-3 px-3 rounded-lg"
-                  style={{
-                    backgroundColor: raisedBg,
-                    borderWidth: 1,
-                    borderColor: borderSubtle,
-                  }}
-                  onPress={() => calendarSheetRef.current?.present()}
-                  activeOpacity={0.7}
+                  className="flex-row items-center self-center py-2 px-3 rounded-lg"
+                  onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
+                  activeOpacity={0.6}
                 >
-                  <Text className="text-base text-text-primary">{formatDateLabel(state.entryDate)}</Text>
-                  <Icon name="chevron-forward" size={16} color={textMuted} />
+                  <Icon name="add-circle" size={20} color={accentPrimary} />
+                  <Text className="text-base font-medium ml-2" style={{ color: accentPrimary }}>
+                    Add Exercise
+                  </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Exercise cards */}
-              {state.exercises.map(renderExerciseCard)}
-
-              {/* Add Exercise button */}
-              <TouchableOpacity
-                className="rounded-xl py-4 mb-6 flex-row items-center justify-center"
-                onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
-                activeOpacity={0.7}
-              >
-                <Icon name="add-circle" size={20} color={accentPrimary} />
-                <Text
-                  className="text-base font-medium ml-2"
-                  style={{ color: accentPrimary }}
-                >
-                  Add Exercise
-                </Text>
-              </TouchableOpacity>
+              {/* Bottom spacer so content isn't hidden behind footer */}
+              <View style={{ height: 80 }} />
             </ScrollView>
           </KeyboardAvoidingView>
+
+          {/* Sticky footer */}
+          <View
+            className="px-4 py-3"
+            style={{
+              paddingBottom: Math.max(insets.bottom, 12),
+              borderTopWidth: 1,
+              borderTopColor: borderSubtle,
+            }}
+          >
+            <Button
+              variant="primary"
+              onPress={handleFinish}
+              disabled={isPending || !hasDraftData}
+              className="py-3"
+            >
+              {isPending ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
+                  {isEditMode ? 'Save' : 'Finish'}
+                </Text>
+              )}
+            </Button>
+          </View>
 
         </>
       )}

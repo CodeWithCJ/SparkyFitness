@@ -56,7 +56,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
   } = useActivityForm({
     isEditMode,
     initialDate,
-    skipDraftLoad: !!route.params?.selectedExercise && !isEditMode,
+    skipDraftLoad: (!!route.params?.selectedExercise || !!route.params?.skipDraftLoad) && !isEditMode,
   });
 
   const { createEntry, isPending: isCreating, invalidateCache: invalidateCreateCache } = useCreateExerciseEntry();

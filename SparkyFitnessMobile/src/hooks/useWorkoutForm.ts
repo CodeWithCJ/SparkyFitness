@@ -16,11 +16,23 @@ function generateClientId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
+function formatWorkoutDate(dateString: string): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function defaultWorkoutName(dateString: string): string {
+  return `Workout - ${formatWorkoutDate(dateString)}`;
+}
+
 function createEmptyDraft(): WorkoutDraft {
+  const today = getTodayDate();
   return {
     type: 'workout',
-    name: 'Workout',
-    entryDate: getTodayDate(),
+    name: defaultWorkoutName(today),
+    nameManuallySet: false,
+    entryDate: today,
     exercises: [],
   };
 }
@@ -35,9 +47,9 @@ type WorkoutFormAction =
   | { type: 'RESTORE_DRAFT'; draft: WorkoutDraft }
   | { type: 'SET_DATE'; date: string }
   | { type: 'SET_NAME'; name: string }
-  | { type: 'ADD_EXERCISE'; exercise: Exercise }
+  | { type: 'ADD_EXERCISE'; exercise: Exercise; exerciseClientId: string; setClientId: string }
   | { type: 'REMOVE_EXERCISE'; clientId: string }
-  | { type: 'ADD_SET'; exerciseClientId: string }
+  | { type: 'ADD_SET'; exerciseClientId: string; setClientId: string }
   | { type: 'REMOVE_SET'; exerciseClientId: string; setClientId: string }
   | { type: 'UPDATE_SET_FIELD'; exerciseClientId: string; setClientId: string; field: 'weight' | 'reps'; value: string }
   | { type: 'RESET' }
@@ -47,13 +59,18 @@ type WorkoutFormAction =
 export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormAction): WorkoutDraft {
   switch (action.type) {
     case 'RESTORE_DRAFT':
-      return action.draft;
+      return { ...action.draft, nameManuallySet: action.draft.nameManuallySet ?? true };
 
-    case 'SET_DATE':
-      return { ...state, entryDate: action.date };
+    case 'SET_DATE': {
+      const next: WorkoutDraft = { ...state, entryDate: action.date };
+      if (!state.nameManuallySet) {
+        next.name = defaultWorkoutName(action.date);
+      }
+      return next;
+    }
 
     case 'SET_NAME':
-      return { ...state, name: action.name };
+      return { ...state, name: action.name, nameManuallySet: true };
 
     case 'ADD_EXERCISE':
       return {
@@ -61,11 +78,11 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
         exercises: [
           ...state.exercises,
           {
-            clientId: generateClientId(),
+            clientId: action.exerciseClientId,
             exerciseId: action.exercise.id,
             exerciseName: action.exercise.name,
             exerciseCategory: action.exercise.category,
-            sets: [createEmptySet()],
+            sets: [{ clientId: action.setClientId, weight: '', reps: '' }],
           },
         ],
       };
@@ -83,7 +100,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           if (exercise.clientId !== action.exerciseClientId) return exercise;
           const lastSet = exercise.sets[exercise.sets.length - 1];
           const newSet: WorkoutDraftSet = {
-            clientId: generateClientId(),
+            clientId: action.setClientId,
             weight: lastSet?.weight ?? '',
             reps: lastSet?.reps ?? '',
           };
@@ -128,6 +145,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
       return {
         type: 'workout',
         name: action.session.name,
+        nameManuallySet: true,
         entryDate: action.session.entry_date ? normalizeDate(action.session.entry_date) : getTodayDate(),
         exercises: action.session.exercises.map(exercise => ({
           clientId: generateClientId(),
@@ -148,6 +166,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
       return {
         type: 'workout',
         name: action.preset.name,
+        nameManuallySet: true,
         entryDate: action.date ?? getTodayDate(),
         exercises: action.preset.exercises.map(exercise => ({
           clientId: generateClientId(),
@@ -193,9 +212,12 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     onInitialDate: initialDate ? () => dispatch({ type: 'SET_DATE', date: initialDate }) : undefined,
   });
 
-  const addExercise = useCallback((exercise: Exercise) => {
+  const addExercise = useCallback((exercise: Exercise): { exerciseClientId: string; setClientId: string } => {
     exercisesModifiedRef.current = true;
-    dispatch({ type: 'ADD_EXERCISE', exercise });
+    const exerciseClientId = generateClientId();
+    const setClientId = generateClientId();
+    dispatch({ type: 'ADD_EXERCISE', exercise, exerciseClientId, setClientId });
+    return { exerciseClientId, setClientId };
   }, []);
 
   const removeExercise = useCallback((clientId: string) => {
@@ -203,9 +225,11 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     dispatch({ type: 'REMOVE_EXERCISE', clientId });
   }, []);
 
-  const addSet = useCallback((exerciseClientId: string) => {
+  const addSet = useCallback((exerciseClientId: string): string => {
     exercisesModifiedRef.current = true;
-    dispatch({ type: 'ADD_SET', exerciseClientId });
+    const setClientId = generateClientId();
+    dispatch({ type: 'ADD_SET', exerciseClientId, setClientId });
+    return setClientId;
   }, []);
 
   const removeSet = useCallback((exerciseClientId: string, setClientId: string) => {

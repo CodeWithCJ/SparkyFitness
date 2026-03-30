@@ -15,6 +15,7 @@ export interface WorkoutDraftExercise {
 export interface WorkoutDraft {
   type: 'workout';
   name: string;
+  nameManuallySet?: boolean;
   entryDate: string;
   exercises: WorkoutDraftExercise[];
 }

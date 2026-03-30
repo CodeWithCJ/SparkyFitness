@@ -13,7 +13,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { useUniwind, useCSSVariable } from 'uniwind';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { queryClient, serverConnectionQueryKey } from './src/hooks';
+import { queryClient, serverConnectionQueryKey , useSyncHealthData } from './src/hooks';
 
 import { createStackNavigator } from '@react-navigation/stack';
 import SyncScreen from './src/screens/SyncScreen';
@@ -37,13 +37,11 @@ import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
 import { loadBackgroundSyncEnabled, loadTimeRange, getActiveServerConfig } from './src/services/storage';
 import type { TimeRange } from './src/services/storage';
-import { initHealthConnect, loadHealthPreference } from './src/services/healthConnectService';
+import { initHealthConnect, loadHealthPreference , startObservers, stopObservers } from './src/services/healthConnectService';
 import { HEALTH_METRICS } from './src/HealthMetrics';
-import { useSyncHealthData } from './src/hooks';
 import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
-import { startObservers, stopObservers } from './src/services/healthConnectService';
 import { initializeTheme } from './src/services/themeService';
-import { useStartExercise } from './src/hooks/useStartExercise';
+import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { initLogService } from './src/services/LogService';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -144,16 +142,66 @@ function AppContent() {
     navigation.getParent()?.navigate('FoodScan', { date });
   }, [getActiveDiaryDate]);
 
-  const addSheetNavigation = useMemo(() => ({
-    navigate: (screen: string, params?: Record<string, unknown>) => {
-      navigationRef.current?.getParent()?.navigate(screen, params);
-    },
-  }), []);
+  const navigateFromSheet = useCallback((screen: string, params?: Record<string, unknown>) => {
+    navigationRef.current?.getParent()?.navigate(screen, params);
+  }, []);
 
-  const handleAddExercise = useStartExercise({
-    navigation: addSheetNavigation,
-    getDate: getActiveDiaryDate,
-  });
+  const handleStartExerciseForm = useCallback(
+    async (screen: 'WorkoutForm' | 'ActivityForm') => {
+      const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
+      if (!isConnected) {
+        Alert.alert(
+          'No Server Connected',
+          'Configure your server connection in Settings to add an exercise.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Go to Settings',
+              onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
+            },
+          ],
+        );
+        return;
+      }
+
+      const date = getActiveDiaryDate();
+      const draft = await loadActiveDraft();
+      if (draft) {
+        Alert.alert(
+          'Draft in Progress',
+          `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Resume Draft',
+              onPress: () => {
+                if (draft.type === 'workout') {
+                  navigateFromSheet('WorkoutForm');
+                } else {
+                  navigateFromSheet('ActivityForm');
+                }
+              },
+            },
+            {
+              text: 'Discard & Continue',
+              style: 'destructive',
+              onPress: async () => {
+                await clearDraft();
+                navigateFromSheet(screen, { date, skipDraftLoad: true });
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      navigateFromSheet(screen, { date, skipDraftLoad: true });
+    },
+    [navigateFromSheet, getActiveDiaryDate],
+  );
+
+  const handleAddWorkout = useCallback(() => handleStartExerciseForm('WorkoutForm'), [handleStartExerciseForm]);
+  const handleAddActivity = useCallback(() => handleStartExerciseForm('ActivityForm'), [handleStartExerciseForm]);
 
   const syncMutation = useSyncHealthData();
 
@@ -333,10 +381,8 @@ function AppContent() {
             name="ExerciseSearch"
             component={ExerciseSearchScreen}
             options={{
-              presentation: 'modal',
               headerShown: false,
-              gestureEnabled: true,
-              gestureDirection: 'horizontal',
+              presentation: 'modal',
             }}
           />
           <Stack.Screen
@@ -383,7 +429,7 @@ function AppContent() {
             }}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddExercise={handleAddExercise} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} />
         <ReauthModal
           visible={showReauthModal}
           expiredConfigId={expiredConfigId}

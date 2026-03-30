@@ -25,6 +25,7 @@ export function useDraftPersistence<T extends FormDraft>(options: UseDraftPersis
     if (isEditMode || skipDraftLoad) {
       if (skipDraftLoad) {
         onInitialDate?.();
+        skipNextSaveRef.current = true;
       }
       isDraftLoadedRef.current = true;
       return;
@@ -59,6 +60,8 @@ export function useDraftPersistence<T extends FormDraft>(options: UseDraftPersis
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+        saveDraft(stateRef.current);
       }
     };
   }, [state, isEditMode]);

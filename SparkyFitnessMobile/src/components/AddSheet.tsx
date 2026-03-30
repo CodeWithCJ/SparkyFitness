@@ -17,7 +17,8 @@ export interface AddSheetRef {
 
 interface AddSheetProps {
   onAddFood: () => void;
-  onAddExercise: () => void;
+  onAddWorkout: () => void;
+  onAddActivity: () => void;
   onSyncHealthData: () => void;
   onBarcodeScan: () => void;
 }
@@ -29,7 +30,7 @@ interface ActionCard {
 }
 
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
-  ({ onAddFood, onAddExercise, onSyncHealthData, onBarcodeScan }, ref) => {
+  ({ onAddFood, onAddWorkout, onAddActivity, onSyncHealthData, onBarcodeScan }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -73,16 +74,17 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
 
     const cards: ActionCard[] = [
       { label: 'Add Food', icon: 'food', onPress: onAddFood },
-      { label: 'Add Workout', icon: 'exercise-weights', onPress: onAddExercise },
-      { label: 'Sync Health Data', icon: 'sync', onPress: onSyncHealthData },
+      { label: 'Add Workout', icon: 'exercise-weights', onPress: onAddWorkout },
+      { label: 'Add Activity', icon: 'exercise-running', onPress: onAddActivity },
       { label: 'Barcode Scan', icon: 'scan', onPress: onBarcodeScan },
+      { label: 'Sync Health Data', icon: 'sync', onPress: onSyncHealthData },
     ];
 
-    const renderCard = (card: ActionCard, isLeft: boolean) => (
+    const renderCard = (card: ActionCard) => (
       <Button
         key={card.label}
         variant="primary"
-        className={`flex-1 py-5 ${isLeft ? 'mr-1.5' : 'ml-1.5'}`}
+        className="flex-1 py-5 mx-1.5"
         style={{ backgroundColor: raisedBg }}
         onPress={() => handleAction(card.onPress)}
       >
@@ -101,14 +103,15 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
-        <BottomSheetView className="pb-5 px-4">
+        <BottomSheetView className="pb-5 px-2.5">
           <View className="flex-row mb-3">
-            {renderCard(cards[0], true)}
-            {renderCard(cards[1], false)}
+            {renderCard(cards[0])}
+            {renderCard(cards[1])}
+            {renderCard(cards[2])}
           </View>
           <View className="flex-row">
-            {renderCard(cards[2], true)}
-            {renderCard(cards[3], false)}
+            {renderCard(cards[3])}
+            {renderCard(cards[4])}
           </View>
         </BottomSheetView>
       </BottomSheetModal>

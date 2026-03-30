@@ -48,15 +48,16 @@ describe('workoutFormReducer', () => {
       };
 
       const result = workoutFormReducer(initial, { type: 'RESTORE_DRAFT', draft: restoredDraft });
-      expect(result).toEqual(restoredDraft);
+      expect(result).toEqual({ ...restoredDraft, nameManuallySet: true });
     });
   });
 
   describe('SET_NAME', () => {
-    it('updates the workout name', () => {
+    it('updates the workout name and marks as manually set', () => {
       const state = makeEmptyDraft();
       const result = workoutFormReducer(state, { type: 'SET_NAME', name: 'Push Day' });
       expect(result.name).toBe('Push Day');
+      expect(result.nameManuallySet).toBe(true);
     });
   });
 
@@ -64,7 +65,7 @@ describe('workoutFormReducer', () => {
     it('appends an exercise with one empty set', () => {
       const state = makeEmptyDraft();
       const exercise = makeExercise();
-      const result = workoutFormReducer(state, { type: 'ADD_EXERCISE', exercise });
+      const result = workoutFormReducer(state, { type: 'ADD_EXERCISE', exercise, exerciseClientId: 'ecid-1', setClientId: 'scid-1' });
 
       expect(result.exercises).toHaveLength(1);
       expect(result.exercises[0].exerciseId).toBe('ex-1');
@@ -73,8 +74,8 @@ describe('workoutFormReducer', () => {
       expect(result.exercises[0].sets).toHaveLength(1);
       expect(result.exercises[0].sets[0].weight).toBe('');
       expect(result.exercises[0].sets[0].reps).toBe('');
-      expect(result.exercises[0].clientId).toBeTruthy();
-      expect(result.exercises[0].sets[0].clientId).toBeTruthy();
+      expect(result.exercises[0].clientId).toBe('ecid-1');
+      expect(result.exercises[0].sets[0].clientId).toBe('scid-1');
     });
 
     it('preserves existing exercises', () => {
@@ -82,8 +83,8 @@ describe('workoutFormReducer', () => {
       const ex1 = makeExercise({ id: 'ex-1', name: 'Bench Press' });
       const ex2 = makeExercise({ id: 'ex-2', name: 'Squat' });
 
-      let result = workoutFormReducer(state, { type: 'ADD_EXERCISE', exercise: ex1 });
-      result = workoutFormReducer(result, { type: 'ADD_EXERCISE', exercise: ex2 });
+      let result = workoutFormReducer(state, { type: 'ADD_EXERCISE', exercise: ex1, exerciseClientId: 'ecid-1', setClientId: 'scid-1' });
+      result = workoutFormReducer(result, { type: 'ADD_EXERCISE', exercise: ex2, exerciseClientId: 'ecid-2', setClientId: 'scid-2' });
 
       expect(result.exercises).toHaveLength(2);
       expect(result.exercises[0].exerciseName).toBe('Bench Press');
@@ -309,7 +310,8 @@ describe('workoutFormReducer', () => {
 
       const result = workoutFormReducer(state, { type: 'RESET' });
       expect(result.type).toBe('workout');
-      expect(result.name).toBe('Workout');
+      expect(result.name).toBe('Workout - Mar 12');
+      expect(result.nameManuallySet).toBe(false);
       expect(result.exercises).toEqual([]);
       expect(result.entryDate).toBeTruthy();
     });
@@ -322,10 +324,11 @@ describe('workoutFormReducer', () => {
       expect(result.entryDate).toBe('2026-04-01');
     });
 
-    it('preserves other fields', () => {
+    it('preserves name when manually set', () => {
       const state: WorkoutDraft = {
         ...makeEmptyDraft(),
         name: 'Leg Day',
+        nameManuallySet: true,
         exercises: [
           {
             clientId: 'ex-1',
@@ -339,6 +342,15 @@ describe('workoutFormReducer', () => {
       const result = workoutFormReducer(state, { type: 'SET_DATE', date: '2026-04-01' });
       expect(result.name).toBe('Leg Day');
       expect(result.exercises).toHaveLength(1);
+    });
+
+    it('auto-updates name when not manually set', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        nameManuallySet: false,
+      };
+      const result = workoutFormReducer(state, { type: 'SET_DATE', date: '2026-04-01' });
+      expect(result.name).toBe('Workout - Apr 1');
     });
   });
 
