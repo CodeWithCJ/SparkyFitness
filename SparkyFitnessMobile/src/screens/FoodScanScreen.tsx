@@ -284,7 +284,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       {/* No match for barcode — floating card */}
       {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && notFoundBarcode && (
         <View
-          className="absolute left-0 right-0 items-center px-4"
+          className="absolute left-0 right-0 items-center px-8"
           style={{ bottom: Math.max(insets.bottom + 8, 24) + 76 }}
         >
           <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
@@ -294,7 +294,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               <UIButton
                 variant="primary"
                 onPress={handleScanLabel}
-                className="py-3 rounded-lg"
+                className="rounded-lg"
                 textClassName="text-sm"
               >
                 Scan Nutrition Label
@@ -305,7 +305,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   date: route.params?.date,
                   barcode: notFoundBarcode,
                 })}
-                className="py-3 rounded-lg"
+                className="rounded-lg"
                 textClassName="text-sm"
               >
                 Add Food Manually
