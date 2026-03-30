@@ -195,10 +195,18 @@ const SparkyChatInterface = () => {
             numberMatch[1]
           );
 
-          const lastBotMessage = displayMessages
-            .slice()
-            .reverse()
-            .find((msg) => !msg.isUser && msg.metadata);
+          // localMessages carries in-memory metadata (e.g. foodOptions) that is
+          // stripped when messages are saved to/reloaded from the server. Always
+          // check localMessages first before falling back to displayMessages.
+          const lastBotMessage =
+            localMessages
+              .slice()
+              .reverse()
+              .find((msg) => !msg.isUser && msg.metadata?.foodOptions) ??
+            displayMessages
+              .slice()
+              .reverse()
+              .find((msg) => !msg.isUser && msg.metadata);
 
           if (lastBotMessage?.metadata?.foodOptions) {
             response = await processUserInput({

@@ -218,9 +218,25 @@ export const processUserInput = async (
     try {
       const jsonMatch = aiResponse.response.match(/```json\n([\s\S]*?)\n```/);
       let jsonString = jsonMatch ? jsonMatch[1] : aiResponse.response;
-      jsonString = stripJsonComments(jsonString ?? ''); // Strip comments before parsing
+      jsonString = stripJsonComments(jsonString ?? '').trim(); // Strip comments before parsing
 
-      parsedResponse = JSON.parse(jsonString);
+      // Handle cases where AI returns multiple JSON objects (like JSONLines)
+      let parsed;
+      if (
+        jsonString.startsWith('{') &&
+        jsonString.endsWith('}') &&
+        /}\s*{/.test(jsonString)
+      ) {
+        const arrayString = `[${jsonString.replace(/(})\s*({)/g, '$1,$2')}]`;
+        const parsedArray = JSON.parse(arrayString);
+        // Take the last object as the actual response
+        parsed = parsedArray[parsedArray.length - 1];
+      } else {
+        parsed = JSON.parse(jsonString);
+      }
+
+      parsedResponse = parsed;
+
       info(
         userLoggingLevel,
         `[${transactionId}] Parsed AI response:`,
@@ -269,12 +285,36 @@ export const processUserInput = async (
           const { foodName, unit, mealType, quantity, entryDate } =
             foodResponse.metadata;
 
-          const foodOptions = await callAIForFoodOptions(
-            foodName ?? '',
-            unit ?? '',
-            userLoggingLevel,
-            activeAIServiceSetting as AiServiceSettingsResponse
-          );
+          let foodOptions: FoodOption[] = [];
+          let foodOptionsError: string | null = null;
+          try {
+            foodOptions = await callAIForFoodOptions(
+              foodName ?? '',
+              unit ?? '',
+              userLoggingLevel,
+              activeAIServiceSetting as AiServiceSettingsResponse
+            );
+          } catch (foodOptErr: unknown) {
+            const msg = getErrorMessage(foodOptErr) ?? '';
+            if (
+              msg.includes('429') ||
+              msg.toLowerCase().includes('rate limit') ||
+              msg.toLowerCase().includes('too many requests')
+            ) {
+              foodOptionsError = `The AI service is rate-limited. Please wait a moment and try again, or switch to a different AI model in settings.`;
+            } else {
+              foodOptionsError = `Sorry, I couldn't find "${foodName}" in the database and had trouble generating suitable options. Please check your AI service configuration in settings or try a different food.`;
+            }
+          }
+
+          if (foodOptionsError) {
+            error(
+              userLoggingLevel,
+              `[${transactionId}] Food options AI error:`,
+              foodOptionsError
+            );
+            return { action: 'none', response: foodOptionsError };
+          }
 
           if (foodOptions.length > 0) {
             info(
@@ -331,11 +371,14 @@ export const processUserInput = async (
           userLoggingLevel
         );
       case 'log_water': {
-        // Map AI's glasses_consumed to quantity for processWaterInput
+        // Map AI's glasses_consumed to quantity for processWaterInput.
+        // The AI may return numeric fields as strings — always coerce to number.
         const waterData = parsedResponse.data;
         if (waterData && waterData.glasses_consumed !== undefined) {
-          waterData.quantity = waterData.glasses_consumed;
-          delete waterData.glasses_consumed; // Remove the old key if necessary
+          waterData.quantity = Number(waterData.glasses_consumed);
+          delete waterData.glasses_consumed;
+        } else if (waterData && waterData.quantity !== undefined) {
+          waterData.quantity = Number(waterData.quantity);
         }
         return await processWaterInput(
           waterData,
@@ -534,7 +577,10 @@ const callAIForFoodOptions = async (
           protein: rawOption.macros?.protein || rawOption.protein || 0,
           carbs: rawOption.macros?.carbs || rawOption.carbs || 0,
           fat: rawOption.macros?.fat || rawOption.fat || 0,
-          serving_size: parseFloat(rawOption.serving_size.toString()) || 1,
+          serving_size:
+            rawOption.serving_size != null
+              ? parseFloat(rawOption.serving_size.toString()) || 1
+              : 1,
           serving_unit: rawOption.serving_unit || 'serving',
           saturated_fat:
             rawOption.macros?.saturated_fat || rawOption.saturated_fat,
@@ -589,7 +635,9 @@ const callAIForFoodOptions = async (
     }
   } catch (err: unknown) {
     error(userLoggingLevel, 'Error in callAIForFoodOptions:', err);
-    return [];
+    // Rethrow rate-limit and recognisable API errors so the caller can
+    // surface a specific message instead of the generic fallback.
+    throw err;
   }
 };
 
