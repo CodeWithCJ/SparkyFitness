@@ -26,6 +26,16 @@ function createEmptyDraft(): ActivityDraft {
   };
 }
 
+function formatActivityDate(dateString: string): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function defaultActivityName(exerciseName: string, dateString: string): string {
+  return `${exerciseName} - ${formatActivityDate(dateString)}`;
+}
+
 function calculateCalories(caloriesPerHour: number, durationStr: string): string {
   const duration = parseFloat(durationStr);
   if (!caloriesPerHour || isNaN(duration) || duration <= 0) return '';
@@ -56,7 +66,7 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         exerciseName: action.exercise.name,
         exerciseCategory: action.exercise.category,
         caloriesPerHour: action.exercise.calories_per_hour,
-        name: state.name || action.exercise.name,
+        name: state.nameManuallySet ? state.name : defaultActivityName(action.exercise.name, state.entryDate),
       };
       if (!state.caloriesManuallySet) {
         newState.calories = calculateCalories(action.exercise.calories_per_hour, state.duration);
@@ -65,7 +75,7 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
     }
 
     case 'SET_NAME':
-      return { ...state, name: action.value };
+      return { ...state, name: action.value, nameManuallySet: true };
 
     case 'SET_DURATION': {
       const newState = { ...state, duration: action.value };
@@ -85,8 +95,13 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         caloriesManuallySet: action.value !== '',
       };
 
-    case 'SET_DATE':
-      return { ...state, entryDate: action.value };
+    case 'SET_DATE': {
+      const next: ActivityDraft = { ...state, entryDate: action.value };
+      if (!state.nameManuallySet && state.exerciseName) {
+        next.name = defaultActivityName(state.exerciseName, action.value);
+      }
+      return next;
+    }
 
     case 'SET_NOTES':
       return { ...state, notes: action.value };

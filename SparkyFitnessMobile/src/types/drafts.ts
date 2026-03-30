@@ -23,6 +23,7 @@ export interface WorkoutDraft {
 export interface ActivityDraft {
   type: 'activity';
   name: string;
+  nameManuallySet?: boolean;
   exerciseId: string | null;
   exerciseName: string;
   exerciseCategory: string | null;

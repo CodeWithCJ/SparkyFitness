@@ -31,6 +31,7 @@ import WorkoutFormScreen from './src/screens/WorkoutFormScreen';
 import ActivityFormScreen from './src/screens/ActivityFormScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
+import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
@@ -147,7 +148,7 @@ function AppContent() {
   }, []);
 
   const handleStartExerciseForm = useCallback(
-    async (screen: 'WorkoutForm' | 'ActivityForm') => {
+    async (screen: 'WorkoutForm' | 'ActivityForm' | 'PresetSearch') => {
       const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
       if (!isConnected) {
         Alert.alert(
@@ -187,7 +188,11 @@ function AppContent() {
               style: 'destructive',
               onPress: async () => {
                 await clearDraft();
-                navigateFromSheet(screen, { date, skipDraftLoad: true });
+                if (screen === 'PresetSearch') {
+                  navigateFromSheet('PresetSearch', { date });
+                } else {
+                  navigateFromSheet(screen, { date, skipDraftLoad: true });
+                }
               },
             },
           ],
@@ -195,13 +200,18 @@ function AppContent() {
         return;
       }
 
-      navigateFromSheet(screen, { date, skipDraftLoad: true });
+      if (screen === 'PresetSearch') {
+        navigateFromSheet('PresetSearch', { date });
+      } else {
+        navigateFromSheet(screen, { date, skipDraftLoad: true });
+      }
     },
     [navigateFromSheet, getActiveDiaryDate],
   );
 
   const handleAddWorkout = useCallback(() => handleStartExerciseForm('WorkoutForm'), [handleStartExerciseForm]);
   const handleAddActivity = useCallback(() => handleStartExerciseForm('ActivityForm'), [handleStartExerciseForm]);
+  const handleAddFromPreset = useCallback(() => handleStartExerciseForm('PresetSearch'), [handleStartExerciseForm]);
 
   const syncMutation = useSyncHealthData();
 
@@ -386,6 +396,15 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="PresetSearch"
+            component={PresetSearchScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          />
+          <Stack.Screen
             name="WorkoutForm"
             component={WorkoutFormScreen}
             options={{
@@ -429,7 +448,7 @@ function AppContent() {
             }}
           />
         </Stack.Navigator>
-        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} />
+        <AddSheet ref={addSheetRef} onAddFood={handleAddFood} onAddWorkout={handleAddWorkout} onAddActivity={handleAddActivity} onAddFromPreset={handleAddFromPreset} onSyncHealthData={handleSyncHealthData} onBarcodeScan={handleBarcodeScan} />
         <ReauthModal
           visible={showReauthModal}
           expiredConfigId={expiredConfigId}

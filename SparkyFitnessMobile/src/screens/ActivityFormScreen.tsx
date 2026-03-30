@@ -1,10 +1,12 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ActivityIndicator,
 } from 'react-native';
@@ -35,12 +37,13 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textMuted, borderSubtle, raisedBg] = useCSSVariable([
+  const [accentPrimary, textMuted, textPrimary, borderSubtle, raisedBg] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
+    '--color-text-primary',
     '--color-border-subtle',
     '--color-raised',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string, string, string];
 
   const {
     state,
@@ -67,6 +70,13 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
 
   const showDistance = isDistanceExercise(state.exerciseName);
+
+  const [isNameEditing, setIsNameEditing] = useState(false);
+
+  const dismissEditing = useCallback(() => {
+    if (isNameEditing) setIsNameEditing(false);
+    Keyboard.dismiss();
+  }, [isNameEditing]);
 
   // Populate form once in edit mode (wait for preferences to resolve)
   const hasPopulatedRef = useRef(false);
@@ -132,27 +142,14 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <Button variant="ghost" onPress={handleCancel} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} className="py-0 px-0">
-          <Icon name="close" size={24} color={accentPrimary} />
-        </Button>
+      <View className="flex-row items-center px-3 py-3">
         <Button
           variant="ghost"
-          onPress={handleSave}
-          disabled={isPending || !canSave}
+          onPress={handleCancel}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           className="py-0 px-0"
         >
-          {isPending ? (
-            <ActivityIndicator size="small" color={accentPrimary} />
-          ) : (
-            <Text
-              className="text-base font-semibold"
-              style={{ color: canSave ? accentPrimary : textMuted }}
-            >
-              Save
-            </Text>
-          )}
+          <Icon name="close" size={24} color={accentPrimary} />
         </Button>
       </View>
 
@@ -161,120 +158,167 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={insets.top}
       >
-        <ScrollView className="flex-1 px-4" keyboardShouldPersistTaps="handled">
-          {/* Activity name */}
-          <FormInput
-            className="text-xl font-bold text-text-primary mb-4"
-            value={state.name}
-            onChangeText={setName}
-            placeholder="Activity"
-            returnKeyType="done"
-          />
-
-          {/* Exercise picker row */}
-          <TouchableOpacity
-            className="rounded-xl p-4 mb-4"
-            style={{ backgroundColor: raisedBg }}
-            onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
-            activeOpacity={0.7}
-          >
-            {state.exerciseId ? (
-              <View className="flex-row items-center">
-                <Icon name="exercise" size={20} color={accentPrimary} />
-                <View className="ml-3 flex-1">
-                  <Text className="text-base font-semibold text-text-primary">{state.exerciseName}</Text>
-                  {state.exerciseCategory && (
-                    <Text className="text-sm text-text-muted mt-0.5">{state.exerciseCategory}</Text>
-                  )}
-                </View>
-                <Icon name="chevron-forward" size={16} color={textMuted} />
-              </View>
-            ) : (
-              <View className="flex-row items-center">
-                <Icon name="add-circle" size={20} color={accentPrimary} />
-                <Text className="text-base font-medium ml-3" style={{ color: accentPrimary }}>
-                  Select Activity
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-
-          {/* Duration */}
-          <View className="mb-4">
-            <Text className="text-sm font-medium text-text-secondary mb-1.5">Duration (min)</Text>
-            <FormInput
-              value={state.duration}
-              onChangeText={setDuration}
-              placeholder="0"
-              keyboardType="number-pad"
-              returnKeyType="done"
-            />
-          </View>
-
-          {/* Distance (conditional) */}
-          {showDistance && (
+        <ScrollView
+          className="flex-1 px-4"
+          keyboardShouldPersistTaps="handled"
+        >
+          <Pressable onPress={dismissEditing}>
+            {/* Activity name */}
             <View className="mb-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">
-                Distance ({distanceUnit === 'miles' ? 'mi' : 'km'})
+              {isNameEditing ? (
+                <FormInput
+                  className="text-xl font-bold text-text-primary rounded-lg"
+                  value={state.name}
+                  onChangeText={setName}
+                  placeholder="Activity"
+                  returnKeyType="done"
+                  autoFocus
+                  selectTextOnFocus
+                  onBlur={() => setIsNameEditing(false)}
+                  onSubmitEditing={() => setIsNameEditing(false)}
+                />
+              ) : (
+                <TouchableOpacity
+                  className="flex-row items-center self-start gap-2"
+                  onPress={() => setIsNameEditing(true)}
+                  activeOpacity={0.6}
+                >
+                  <Text className="text-xl font-bold text-text-primary">
+                    {state.name || state.exerciseName || 'Activity'}
+                  </Text>
+                  <Icon name="pencil" size={20} color={textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Date row */}
+            <TouchableOpacity
+              onPress={() => calendarSheetRef.current?.present()}
+              activeOpacity={0.7}
+              className="flex-row items-center mb-4"
+            >
+              <Text className="text-text-secondary text-base">Date</Text>
+              <Text className="text-text-primary text-base font-medium mx-1.5">
+                {formatDateLabel(state.entryDate)}
               </Text>
+              <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
+            </TouchableOpacity>
+
+            {/* Exercise picker row */}
+            <TouchableOpacity
+              className="rounded-xl p-4 mb-4"
+              style={{ backgroundColor: raisedBg }}
+              onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
+              activeOpacity={0.7}
+            >
+              {state.exerciseId ? (
+                <View className="flex-row items-center">
+                  <Icon name="exercise" size={20} color={accentPrimary} />
+                  <View className="ml-3 flex-1">
+                    <Text className="text-base font-semibold text-text-primary">{state.exerciseName}</Text>
+                    {state.exerciseCategory && (
+                      <Text className="text-sm text-text-muted mt-0.5">{state.exerciseCategory}</Text>
+                    )}
+                  </View>
+                  <Icon name="chevron-forward" size={16} color={textMuted} />
+                </View>
+              ) : (
+                <View className="flex-row items-center">
+                  <Icon name="add-circle" size={20} color={accentPrimary} />
+                  <Text className="text-base font-medium ml-3" style={{ color: accentPrimary }}>
+                    Select Activity
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* Duration */}
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">Duration (min)</Text>
               <FormInput
-                value={state.distance}
-                onChangeText={setDistance}
+                value={state.duration}
+                onChangeText={setDuration}
                 placeholder="0"
-                keyboardType="decimal-pad"
+                keyboardType="number-pad"
                 returnKeyType="done"
               />
             </View>
-          )}
 
-          {/* Calories */}
-          <View className="mb-4">
-            <Text className="text-sm font-medium text-text-secondary mb-1.5">Calories</Text>
-            <FormInput
-              value={state.calories}
-              onChangeText={setCalories}
-              placeholder="Enter calories"
-              keyboardType="number-pad"
-              returnKeyType="done"
-            />
-            <Text className="text-xs text-text-muted mt-1">
-              {state.caloriesManuallySet ? 'Custom' : 'Auto-calculated'}
-            </Text>
-          </View>
+            {/* Distance (conditional) */}
+            {showDistance && (
+              <View className="mb-4">
+                <Text className="text-sm font-medium text-text-secondary mb-1.5">
+                  Distance ({distanceUnit === 'miles' ? 'mi' : 'km'})
+                </Text>
+                <FormInput
+                  value={state.distance}
+                  onChangeText={setDistance}
+                  placeholder="0"
+                  keyboardType="decimal-pad"
+                  returnKeyType="done"
+                />
+              </View>
+            )}
 
-          {/* Date row */}
-          <View className="mb-4">
-            <Text className="text-sm font-medium text-text-secondary mb-1.5">Date</Text>
-            <TouchableOpacity
-              className="flex-row items-center justify-between py-3 px-3 rounded-lg"
-              style={{
-                backgroundColor: raisedBg,
-                borderWidth: 1,
-                borderColor: borderSubtle,
-              }}
-              onPress={() => calendarSheetRef.current?.present()}
-              activeOpacity={0.7}
-            >
-              <Text className="text-base text-text-primary">{formatDateLabel(state.entryDate)}</Text>
-              <Icon name="chevron-forward" size={16} color={textMuted} />
-            </TouchableOpacity>
-          </View>
+            {/* Calories */}
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">Calories</Text>
+              <FormInput
+                value={state.calories}
+                onChangeText={setCalories}
+                placeholder="0"
+                keyboardType="number-pad"
+                returnKeyType="done"
+              />
+              <Text className="text-xs text-text-muted mt-1">
+                {state.caloriesManuallySet ? 'Custom' : 'Auto-calculated'}
+              </Text>
+            </View>
 
-          {/* Notes */}
-          <View className="mb-6">
-            <Text className="text-sm font-medium text-text-secondary mb-1.5">Notes</Text>
-            <FormInput
-              value={state.notes}
-              onChangeText={setNotes}
-              placeholder="Optional notes..."
-              multiline
-              textAlignVertical="top"
-              returnKeyType="default"
-              style={{ minHeight: 80 }}
-            />
-          </View>
+            {/* Notes */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">Notes</Text>
+              <FormInput
+                value={state.notes}
+                onChangeText={setNotes}
+                placeholder="Optional notes..."
+                multiline
+                textAlignVertical="top"
+                returnKeyType="default"
+                style={{ minHeight: 80 }}
+              />
+            </View>
+
+            {/* Bottom spacer */}
+            <View style={{ height: 80 }} />
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Sticky footer */}
+      <View
+        className="px-4 py-3"
+        style={{
+          paddingBottom: Math.max(insets.bottom, 12),
+          borderTopWidth: 1,
+          borderTopColor: borderSubtle,
+        }}
+      >
+        <Button
+          variant="primary"
+          onPress={handleSave}
+          disabled={isPending || !canSave}
+          className="py-3"
+        >
+          {isPending ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
+              Save
+            </Text>
+          )}
+        </Button>
+      </View>
 
       <CalendarSheet
         ref={calendarSheetRef}

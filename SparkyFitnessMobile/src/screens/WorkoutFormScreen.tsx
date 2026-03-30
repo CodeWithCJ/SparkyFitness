@@ -2,13 +2,17 @@ import React, { useRef, useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -48,6 +52,7 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
+  const repsInputRef = useRef<TextInput>(null);
 
   const [accentPrimary, textMuted, textPrimary, borderSubtle, dangerColor] = useCSSVariable([
     '--color-accent-primary',
@@ -60,6 +65,11 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
   // Track which set is currently being edited: "exerciseClientId:setClientId"
   const [activeSetKey, setActiveSetKey] = useState<string | null>(null);
   const [isNameEditing, setIsNameEditing] = useState(false);
+
+  const dismissEditing = useCallback(() => {
+    if (activeSetKey) setActiveSetKey(null);
+    Keyboard.dismiss();
+  }, [activeSetKey]);
 
   const {
     state,
@@ -264,9 +274,11 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
             keyboardType="decimal-pad"
             returnKeyType="next"
             autoFocus
+            onSubmitEditing={() => repsInputRef.current?.focus()}
           />
           <Text className="text-sm text-text-muted">×</Text>
           <FormInput
+            ref={repsInputRef}
             style={{ width: 60, textAlign: 'center', paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}
             value={set.reps}
             onChangeText={(v: string) =>
@@ -290,20 +302,35 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     return (
-      <TouchableOpacity
+      <ReanimatedSwipeable
         key={set.clientId}
-        className="flex-row items-center py-2.5 gap-2"
-        onPress={() => setActiveSetKey(setKey)}
-        activeOpacity={0.6}
+        renderRightActions={() => (
+          <TouchableOpacity
+            className="bg-bg-danger justify-center items-center"
+            style={{ width: 72 }}
+            onPress={() => removeSet(exercise.clientId, set.clientId)}
+            activeOpacity={0.7}
+          >
+            <Text className="text-text-danger font-semibold text-sm">Delete</Text>
+          </TouchableOpacity>
+        )}
+        overshootRight={false}
+        rightThreshold={40}
       >
-        <Text className="text-sm text-text-primary" style={{ width: 80, textAlign: 'center' }}>
-          {weightDisplay}
-        </Text>
-        <Text className="text-sm text-text-muted">×</Text>
-        <Text className="text-sm text-text-primary" style={{ width: 60, textAlign: 'center' }}>
-          {repsDisplay}
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          className="flex-row items-center py-2.5 gap-2 bg-background"
+          onPress={() => setActiveSetKey(setKey)}
+          activeOpacity={0.6}
+        >
+          <Text className="text-sm text-text-primary" style={{ width: 80, textAlign: 'center' }}>
+            {weightDisplay}
+          </Text>
+          <Text className="text-sm text-text-muted">×</Text>
+          <Text className="text-sm text-text-primary" style={{ width: 60, textAlign: 'center' }}>
+            {repsDisplay}
+          </Text>
+        </TouchableOpacity>
+      </ReanimatedSwipeable>
     );
   };
 
@@ -375,65 +402,68 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
               className="flex-1 px-4"
               keyboardShouldPersistTaps="handled"
             >
-              {/* Workout name */}
-              <View className="mb-4">
-                {isNameEditing ? (
-                  <FormInput
-                    className="text-xl font-bold text-text-primary rounded-lg"
-                    value={state.name}
-                    onChangeText={setName}
-                    placeholder="Workout"
-                    returnKeyType="done"
-                    autoFocus
-                    onBlur={() => setIsNameEditing(false)}
-                    onSubmitEditing={() => setIsNameEditing(false)}
-                  />
-                ) : (
+              <Pressable onPress={dismissEditing}>
+                {/* Workout name */}
+                <View className="mb-4">
+                  {isNameEditing ? (
+                    <FormInput
+                      className="text-xl font-bold text-text-primary rounded-lg"
+                      value={state.name}
+                      onChangeText={setName}
+                      placeholder="Workout"
+                      returnKeyType="done"
+                      autoFocus
+                      selectTextOnFocus
+                      onBlur={() => setIsNameEditing(false)}
+                      onSubmitEditing={() => setIsNameEditing(false)}
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      className="flex-row items-center self-start gap-2"
+                      onPress={() => setIsNameEditing(true)}
+                      activeOpacity={0.6}
+                    >
+                      <Text className="text-xl font-bold text-text-primary">
+                        {state.name || 'Workout'}
+                      </Text>
+                      <Icon name="pencil" size={20} color={textMuted} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Date row */}
+                <TouchableOpacity
+                  onPress={() => calendarSheetRef.current?.present()}
+                  activeOpacity={0.7}
+                  className="flex-row items-center mb-4"
+                >
+                  <Text className="text-text-secondary text-base">Date</Text>
+                  <Text className="text-text-primary text-base font-medium mx-1.5">
+                    {formatDateLabel(state.entryDate)}
+                  </Text>
+                  <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
+                </TouchableOpacity>
+
+                {/* Exercises */}
+                {state.exercises.map(renderExerciseSection)}
+
+                {/* Add Exercise */}
+                <View className="py-4 mb-4">
                   <TouchableOpacity
-                    className="flex-row items-center self-start gap-2"
-                    onPress={() => setIsNameEditing(true)}
+                    className="flex-row items-center self-center py-2 px-3 rounded-lg"
+                    onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
                     activeOpacity={0.6}
                   >
-                    <Text className="text-xl font-bold text-text-primary">
-                      {state.name || 'Workout'}
+                    <Icon name="add-circle" size={20} color={accentPrimary} />
+                    <Text className="text-base font-medium ml-2" style={{ color: accentPrimary }}>
+                      Add Exercise
                     </Text>
-                    <Icon name="pencil" size={20} color={textMuted} />
                   </TouchableOpacity>
-                )}
-              </View>
+                </View>
 
-              {/* Date row */}
-              <TouchableOpacity
-                onPress={() => calendarSheetRef.current?.present()}
-                activeOpacity={0.7}
-                className="flex-row items-center mb-4"
-              >
-                <Text className="text-text-secondary text-base">Date</Text>
-                <Text className="text-text-primary text-base font-medium mx-1.5">
-                  {formatDateLabel(state.entryDate)}
-                </Text>
-                <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
-              </TouchableOpacity>
-
-              {/* Exercises */}
-              {state.exercises.map(renderExerciseSection)}
-
-              {/* Add Exercise */}
-              <View className="py-4 mb-4">
-                <TouchableOpacity
-                  className="flex-row items-center self-center py-2 px-3 rounded-lg"
-                  onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
-                  activeOpacity={0.6}
-                >
-                  <Icon name="add-circle" size={20} color={accentPrimary} />
-                  <Text className="text-base font-medium ml-2" style={{ color: accentPrimary }}>
-                    Add Exercise
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Bottom spacer so content isn't hidden behind footer */}
-              <View style={{ height: 80 }} />
+                {/* Bottom spacer so content isn't hidden behind footer */}
+                <View style={{ height: 80 }} />
+              </Pressable>
             </ScrollView>
           </KeyboardAvoidingView>
 
