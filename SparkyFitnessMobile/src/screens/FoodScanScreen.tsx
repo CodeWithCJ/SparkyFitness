@@ -285,7 +285,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && notFoundBarcode && (
         <View
           className="absolute left-0 right-0 items-center px-4"
-          style={{ bottom: Math.max(insets.bottom + 8, 24) + 156 }}
+          style={{ bottom: Math.max(insets.bottom + 8, 24) + 76 }}
         >
           <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
             <Text className="text-text-primary text-base font-semibold">No match for barcode</Text>
@@ -329,26 +329,28 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             />
           </View>
 
-          <View className="h-20 items-center justify-center">
-            {scanMode === 'barcode' && !notFoundBarcode && (
-              <TouchableOpacity
-                onPress={handleShowManualEntry}
-                className="bg-raised px-6 py-3 rounded-xl"
-              >
-                <Text className="text-text-primary text-sm font-semibold">Manually enter barcode</Text>
-              </TouchableOpacity>
-            )}
+          {!(scanMode === 'barcode' && notFoundBarcode) && (
+            <View className="h-20 items-center justify-center">
+              {scanMode === 'barcode' && (
+                <TouchableOpacity
+                  onPress={handleShowManualEntry}
+                  className="bg-raised px-6 py-3 rounded-xl"
+                >
+                  <Text className="text-text-primary text-sm font-semibold">Manually enter barcode</Text>
+                </TouchableOpacity>
+              )}
 
-            {scanMode === 'label' && (
-              <TouchableOpacity
-                onPress={handleLabelCapture}
-                className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
-                activeOpacity={0.7}
-              >
-                <View className="w-16 h-16 rounded-full bg-white" />
-              </TouchableOpacity>
-            )}
-          </View>
+              {scanMode === 'label' && (
+                <TouchableOpacity
+                  onPress={handleLabelCapture}
+                  className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
+                  activeOpacity={0.7}
+                >
+                  <View className="w-16 h-16 rounded-full bg-white" />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
       )}
 
