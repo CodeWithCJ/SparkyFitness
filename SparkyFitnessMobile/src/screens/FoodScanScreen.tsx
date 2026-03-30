@@ -92,9 +92,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         });
       }
     } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Something went wrong looking up this barcode.' });
-      setScanned(false);
-      scanLock.current = false;
+      setNotFoundBarcode(barcode);
     } finally {
       setLoading(false);
     }
@@ -287,7 +285,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && notFoundBarcode && (
         <View
           className="absolute left-0 right-0 items-center px-4"
-          style={{ bottom: Math.max(insets.bottom, 16) + 220 }}
+          style={{ bottom: Math.max(insets.bottom + 8, 24) + 156 }}
         >
           <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
             <Text className="text-text-primary text-base font-semibold">No match for barcode</Text>
@@ -335,9 +333,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             {scanMode === 'barcode' && !notFoundBarcode && (
               <TouchableOpacity
                 onPress={handleShowManualEntry}
-                className="bg-black/50 px-6 py-3 rounded-lg"
+                className="bg-raised px-6 py-3 rounded-xl"
               >
-                <Text className="text-white text-sm font-semibold">Manually enter barcode</Text>
+                <Text className="text-text-primary text-sm font-semibold">Manually enter barcode</Text>
               </TouchableOpacity>
             )}
 
