@@ -67,7 +67,7 @@ SparkyFitness can sync data from multiple health and fitness platforms:
 - **Fatsecret**
 - **Nutritioninx**
 - **Mealie**
-- **Tandori**
+- **Tandoor**
 - **Strava** (partially tested)
 
 Integrations automatically sync activity data such as steps, workouts, and sleep, along with health metrics like weight and body measurements, to your SparkyFitness server.
