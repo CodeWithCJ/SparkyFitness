@@ -283,40 +283,46 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       )}
 
+      {/* No match for barcode — floating card */}
+      {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && notFoundBarcode && (
+        <View
+          className="absolute left-0 right-0 items-center px-4"
+          style={{ bottom: Math.max(insets.bottom, 16) + 220 }}
+        >
+          <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
+            <Text className="text-text-primary text-base font-semibold">No match for barcode</Text>
+            <Text className="text-text-secondary text-sm text-center">You can scan the nutrition label or enter it manually.</Text>
+            <View className="flex-row gap-3 mt-2 self-stretch">
+              <UIButton
+                variant="primary"
+                onPress={handleScanLabel}
+                className="flex-1 py-3 rounded-lg"
+                textClassName="text-sm"
+              >
+                Scan Label
+              </UIButton>
+              <UIButton
+                variant="outline"
+                onPress={() => navigation.replace('FoodForm', { mode: 'create-food',
+                  date: route.params?.date,
+                  barcode: notFoundBarcode,
+                })}
+                className="flex-1 py-3 rounded-lg"
+                textClassName="text-sm"
+              >
+                Enter Manually
+              </UIButton>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Bottom controls: segmented control, shutter */}
       {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && (
         <View
           className="absolute bottom-0 left-0 right-0 items-center gap-4"
           style={{ paddingBottom: Math.max(insets.bottom + 8, 24) }}
         >
-          {scanMode === 'barcode' && notFoundBarcode && (
-            <View className="mx-8 self-stretch bg-surface rounded-xl p-5 items-center gap-3">
-              <Text className="text-text-primary text-base font-semibold">No match for barcode</Text>
-              <Text className="text-text-secondary text-sm text-center">You can scan the nutrition label or enter it manually.</Text>
-              <View className="flex-row gap-3 mt-2 self-stretch">
-                <UIButton
-                  variant="primary"
-                  onPress={handleScanLabel}
-                  className="flex-1 py-3 rounded-lg"
-                  textClassName="text-sm"
-                >
-                  Scan Nutrition Label
-                </UIButton>
-                <UIButton
-                  variant="outline"
-                  onPress={() => navigation.replace('FoodForm', { mode: 'create-food',
-                    date: route.params?.date,
-                    barcode: notFoundBarcode,
-                  })}
-                  className="flex-1 py-3 rounded-lg"
-                  textClassName="text-sm"
-                >
-                  Enter Manually
-                </UIButton>
-              </View>
-            </View>
-          )}
-
           <View className="bg-black/50 rounded-lg mx-8 self-stretch">
             <SegmentedControl
               segments={SCAN_SEGMENTS}
@@ -327,14 +333,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
 
           <View className="h-20 items-center justify-center">
             {scanMode === 'barcode' && !notFoundBarcode && (
-              <UIButton
-                variant="secondary"
+              <TouchableOpacity
                 onPress={handleShowManualEntry}
-                className="px-6 rounded-lg"
-                textClassName="text-sm"
+                className="bg-black/50 px-6 py-3 rounded-lg"
               >
-                Manually enter barcode
-              </UIButton>
+                <Text className="text-white text-sm font-semibold">Manually enter barcode</Text>
+              </TouchableOpacity>
             )}
 
             {scanMode === 'label' && (
