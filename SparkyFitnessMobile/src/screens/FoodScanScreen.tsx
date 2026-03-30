@@ -92,9 +92,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         });
       }
     } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Something went wrong looking up this barcode.' });
-      setScanned(false);
-      scanLock.current = false;
+      setNotFoundBarcode(barcode);
     } finally {
       setLoading(false);
     }
@@ -261,32 +259,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       )}
 
-      {scanMode === 'barcode' && notFoundBarcode && !loading && (
-        <View className="absolute bottom-24 left-0 right-0 mx-8 bg-black/70 rounded-xl p-5 items-center gap-3">
-          <Text className="text-white text-base font-semibold">No match for barcode</Text>
-          <Text className="text-white/70 text-sm text-center">You can scan the nutrition label or enter it manually.</Text>
-          <View className="flex-row gap-3 mt-2">
-            <UIButton
-              variant="primary"
-              onPress={handleScanLabel}
-              className="flex-1 py-3 rounded-lg"
-              textClassName="text-sm"
-            >
-              Scan Nutrition Label
-            </UIButton>
-            <TouchableOpacity
-              onPress={() => navigation.replace('FoodForm', { mode: 'create-food',
-                date: route.params?.date,
-                barcode: notFoundBarcode,
-              })}
-              className="flex-1 bg-white/20 py-3 rounded-lg items-center"
-            >
-              <Text className="text-white font-semibold text-sm">Enter Manually</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
       {/* Photo preview with Retake / Use Photo */}
       {capturedPhoto && !labelProcessing && (
         <View className="absolute inset-0">
@@ -309,18 +281,46 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       )}
 
+      {/* No match for barcode — floating card */}
+      {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && scanMode === 'barcode' && notFoundBarcode && (
+        <View
+          className="absolute left-0 right-0 items-center px-4"
+          style={{ bottom: Math.max(insets.bottom + 8, 24) + 76 }}
+        >
+          <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
+            <Text className="text-text-primary text-base font-semibold">No match for barcode</Text>
+            <Text className="text-text-secondary text-sm text-center">You can scan the nutrition label or enter it manually.</Text>
+            <View className="flex-row gap-3 mt-2 self-stretch">
+              <UIButton
+                variant="primary"
+                onPress={handleScanLabel}
+                className="flex-1 py-3 rounded-lg"
+                textClassName="text-sm"
+              >
+                Scan Label
+              </UIButton>
+              <UIButton
+                variant="outline"
+                onPress={() => navigation.replace('FoodForm', { mode: 'create-food',
+                  date: route.params?.date,
+                  barcode: notFoundBarcode,
+                })}
+                className="flex-1 py-3 rounded-lg"
+                textClassName="text-sm"
+              >
+                Enter Manually
+              </UIButton>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Bottom controls: segmented control, shutter */}
       {!capturedPhoto && !labelProcessing && !loading && !manualEntryVisible && (
         <View
           className="absolute bottom-0 left-0 right-0 items-center gap-4"
           style={{ paddingBottom: Math.max(insets.bottom + 8, 24) }}
         >
-          {scanMode === 'barcode' && !notFoundBarcode && (
-            <TouchableOpacity onPress={handleShowManualEntry}>
-              <Text className="text-white/80 text-sm underline">Manually enter barcode</Text>
-            </TouchableOpacity>
-          )}
-
           <View className="bg-black/50 rounded-lg mx-8 self-stretch">
             <SegmentedControl
               segments={SCAN_SEGMENTS}
@@ -329,27 +329,28 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             />
           </View>
 
-          <View className="h-20 items-center justify-center">
-            {scanMode === 'barcode' && !notFoundBarcode && (
-              <TouchableOpacity
-                onPress={handleShowManualEntry}
-                className="bg-black/60 py-3 px-6 rounded-lg"
-                activeOpacity={0.7}
-              >
-                <Text className="text-white font-semibold text-sm">Manually enter barcode</Text>
-              </TouchableOpacity>
-            )}
+          {!(scanMode === 'barcode' && notFoundBarcode) && (
+            <View className="h-20 items-center justify-center">
+              {scanMode === 'barcode' && (
+                <TouchableOpacity
+                  onPress={handleShowManualEntry}
+                  className="bg-raised px-6 py-3 rounded-xl"
+                >
+                  <Text className="text-text-primary text-sm font-semibold">Manually enter barcode</Text>
+                </TouchableOpacity>
+              )}
 
-            {scanMode === 'label' && (
-              <TouchableOpacity
-                onPress={handleLabelCapture}
-                className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
-                activeOpacity={0.7}
-              >
-                <View className="w-16 h-16 rounded-full bg-white" />
-              </TouchableOpacity>
-            )}
-          </View>
+              {scanMode === 'label' && (
+                <TouchableOpacity
+                  onPress={handleLabelCapture}
+                  className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
+                  activeOpacity={0.7}
+                >
+                  <View className="w-16 h-16 rounded-full bg-white" />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
       )}
 
