@@ -23,7 +23,7 @@ async function upsertAiServiceSetting(settingData) {
       // Update existing service
       const result = await client.query(
         `UPDATE ai_service_settings SET
-          service_name = $1, service_type = $2, custom_url = $3,
+          service_name = COALESCE($1, service_name), service_type = COALESCE($2, service_type), custom_url = $3,
           system_prompt = $4, is_active = $5, model_name = $6,
           encrypted_api_key = COALESCE($7, encrypted_api_key),
           api_key_iv = COALESCE($8, api_key_iv),
