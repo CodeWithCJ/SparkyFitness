@@ -209,7 +209,27 @@ export const fetchExerciseDetails = async (
   const response = await apiCall(`/exercises/${exerciseId}`, {
     method: 'GET',
   });
-  return exerciseSnapshotResponseSchema.parse(response);
+
+  const parsedResponse = { ...response };
+  const arrayFields = [
+    'images',
+    'primary_muscles',
+    'secondary_muscles',
+    'equipment',
+    'instructions',
+  ];
+
+  arrayFields.forEach((field) => {
+    if (typeof parsedResponse[field] === 'string') {
+      try {
+        parsedResponse[field] = JSON.parse(parsedResponse[field]);
+      } catch {
+        parsedResponse[field] = [];
+      }
+    }
+  });
+
+  return exerciseSnapshotResponseSchema.parse(parsedResponse);
 };
 
 export const getActivityDetails = async (
