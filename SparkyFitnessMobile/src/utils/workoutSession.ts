@@ -1,7 +1,7 @@
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 import type { WorkoutDraftExercise } from '../types/drafts';
-import { weightToKg } from './unitConversions';
+import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
 
 export const CATEGORY_ICON_MAP: Record<string, IconName> = {
   Strength: 'exercise-weights',
@@ -185,6 +185,43 @@ export function getWorkoutSummary(session: ExerciseSessionResponse): {
     duration: session.duration_minutes,
     calories: session.calories_burned,
   };
+}
+
+export function buildSessionSubtitle(
+  session: ExerciseSessionResponse,
+  duration: number,
+  calories: number,
+  weightUnit: 'kg' | 'lbs' = 'kg',
+  distanceUnit: 'km' | 'miles' = 'km',
+): string {
+  if (session.type === 'preset') {
+    const exerciseCount = session.exercises.length;
+    const totalSets = session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+    const totalVolumeKg = session.exercises.reduce(
+      (sum, ex) => ex.sets.reduce((s, set) => s + (set.weight ?? 0) * (set.reps ?? 0), sum),
+      0,
+    );
+
+    const parts: string[] = [];
+    parts.push(`${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}`);
+    if (totalSets > 0) parts.push(`${totalSets} sets`);
+    if (totalVolumeKg > 0) {
+      const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
+      parts.push(`${vol.toLocaleString()} ${weightUnit}`);
+    }
+    return parts.join(' \u00b7 ');
+  }
+
+  // Individual activity: duration, distance, calories
+  const parts: string[] = [];
+  if (duration > 0) parts.push(formatDuration(duration));
+  if (session.distance != null && session.distance > 0) {
+    const dist = distanceFromKm(session.distance, distanceUnit);
+    const label = distanceUnit === 'miles' ? 'mi' : 'km';
+    parts.push(`${dist.toFixed(1)} ${label}`);
+  }
+  if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
+  return parts.join(' \u00b7 ');
 }
 
 export function buildExercisesPayload(
