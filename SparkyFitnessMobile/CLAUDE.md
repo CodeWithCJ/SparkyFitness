@@ -25,7 +25,7 @@ tsc --noEmit                                   # Type check only
 
 - `App.tsx` — Root providers: `QueryClientProvider` → `GestureHandlerRootView` → `BottomSheetModalProvider` → `NavigationContainer` → `SafeAreaProvider` → `Toast`
 - **Root Stack Navigator** (`@react-navigation/stack`): `Onboarding` (shown when no server config exists) + `Tabs` screen + food entry flow (`FoodSearch`, `FoodForm`, `FoodEntryAdd`, `FoodEntryView`, `FoodScan`) + exercise/workout flow (`ExerciseSearch` (modal), `PresetSearch`, `WorkoutAdd`, `ActivityAdd`, `WorkoutDetail`, `ActivityDetail`) + `Logs` + `Sync` screen. Dynamic initial route: `Onboarding` if no `ServerConfig` exists, otherwise `Tabs`.
-- **Tab Navigator** (`@bottom-tabs/react-navigation`): **Dashboard** (default), **Diary**, **Add** (opens `AddSheet` bottom sheet — Food, Exercise drill-down (Workout/Activity/Preset), Sync Health Data, Barcode Scan), **Workouts** (exercise history), **Settings**. Uses `CustomTabBar` — custom tab bar with a floating circular "Add" button raised above the bar. `TAB_BAR_HEIGHT = 56` exported for layout calculations.
+- **Tab Navigator** (`@react-navigation/bottom-tabs`): **Dashboard** (default), **Diary**, **Add** (opens `AddSheet` bottom sheet — Food, Exercise drill-down (Workout/Activity/Preset), Sync Health Data, Barcode Scan), **Workouts** (exercise history), **Settings**. Uses `CustomTabBar` — custom tab bar with a floating circular "Add" button raised above the bar. `TAB_BAR_HEIGHT = 56` exported for layout calculations.
 - Tab icons: SF Symbols on iOS, Ionicons on Android (via `Icon` component). Tab-specific icons: `tab-dashboard` (grid), `tab-workouts` (dumbbell)
 
 ### Source Structure (`src/`)
