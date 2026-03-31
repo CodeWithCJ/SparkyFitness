@@ -21,6 +21,7 @@ function createEmptyDraft(): ActivityDraft {
     distance: '',
     calories: '',
     caloriesManuallySet: false,
+    avgHeartRate: '',
     entryDate: getTodayDate(),
     notes: '',
   };
@@ -49,6 +50,7 @@ type ActivityFormAction =
   | { type: 'SET_DURATION'; value: string }
   | { type: 'SET_DISTANCE'; value: string }
   | { type: 'SET_CALORIES'; value: string }
+  | { type: 'SET_AVG_HEART_RATE'; value: string }
   | { type: 'SET_DATE'; value: string }
   | { type: 'SET_NOTES'; value: string }
   | { type: 'RESET' }
@@ -57,7 +59,7 @@ type ActivityFormAction =
 export function activityFormReducer(state: ActivityDraft, action: ActivityFormAction): ActivityDraft {
   switch (action.type) {
     case 'RESTORE_DRAFT':
-      return action.draft;
+      return { ...action.draft, nameManuallySet: action.draft.nameManuallySet ?? true };
 
     case 'SET_EXERCISE': {
       const newState = {
@@ -95,6 +97,9 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         caloriesManuallySet: action.value !== '',
       };
 
+    case 'SET_AVG_HEART_RATE':
+      return { ...state, avgHeartRate: action.value };
+
     case 'SET_DATE': {
       const next: ActivityDraft = { ...state, entryDate: action.value };
       if (!state.nameManuallySet && state.exerciseName) {
@@ -127,6 +132,7 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         distance,
         calories: String(entry.calories_burned),
         caloriesManuallySet: true,
+        avgHeartRate: entry.avg_heart_rate != null ? String(entry.avg_heart_rate) : '',
         entryDate: entry.entry_date ?? getTodayDate(),
         notes: entry.notes ?? '',
       };
@@ -175,6 +181,10 @@ export function useActivityForm({ isEditMode = false, initialDate, skipDraftLoad
     dispatch({ type: 'SET_CALORIES', value });
   }, []);
 
+  const setAvgHeartRate = useCallback((value: string) => {
+    dispatch({ type: 'SET_AVG_HEART_RATE', value });
+  }, []);
+
   const setDate = useCallback((value: string) => {
     dispatch({ type: 'SET_DATE', value });
   }, []);
@@ -185,8 +195,10 @@ export function useActivityForm({ isEditMode = false, initialDate, skipDraftLoad
 
   const reset = useCallback(() => {
     dispatch({ type: 'RESET' });
-    clearDraft();
-  }, []);
+    if (!isEditMode) {
+      clearDraft();
+    }
+  }, [isEditMode]);
 
   const populate = useCallback((entry: IndividualSessionResponse, distanceUnit: 'km' | 'miles') => {
     dispatch({ type: 'POPULATE', entry, distanceUnit });
@@ -199,11 +211,12 @@ export function useActivityForm({ isEditMode = false, initialDate, skipDraftLoad
     setDuration,
     setDistance,
     setCalories,
+    setAvgHeartRate,
     setDate,
     setNotes,
     reset,
     populate,
-    hasDraftData: state.exerciseId !== null || state.duration !== '' || state.calories !== '' || state.distance !== '' || state.notes !== '',
+    hasDraftData: state.exerciseId !== null || state.duration !== '' || state.calories !== '' || state.distance !== '' || state.avgHeartRate !== '' || state.notes !== '',
   };
 }
 

@@ -1,29 +1,27 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
-import { getSourceLabel, formatDuration, getWorkoutSummary } from '../utils/workoutSession';
+import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
 import {
-  useDeleteExerciseEntry,
   useDeleteWorkout,
-  useUpdateExerciseEntry,
   useUpdateWorkout,
 } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
-import { syncExerciseSessionInCache } from '../hooks/syncExerciseSessionInCache';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
+import Toast from 'react-native-toast-message';
+import { addLog } from '../services/LogService';
 import { extractActivitySummary } from '../utils/activityDetails';
-import { weightFromKg, weightToKg, distanceFromKm, distanceToKm } from '../utils/unitConversions';
+import { weightFromKg, weightToKg } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { ExerciseEntryResponse, ExerciseSnapshotResponse, UpdatePresetSessionRequest } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
@@ -51,11 +49,9 @@ function generateClientId(): string {
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [session, setSession] = useState(route.params.session);
-  const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const { preferences } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
-  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
@@ -73,45 +69,21 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const { label: sourceLabel } = getSourceLabel(session.source);
+  const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
   const entryDate = session.entry_date ?? '';
   const normalizedDate = normalizeDate(entryDate);
 
-  const isPreset = session.type === 'preset';
-  const { name, duration, calories } = getWorkoutSummary(session);
-
-  // Delete hooks (only one will be used based on session type)
-  const deleteActivity = useDeleteExerciseEntry({
-    entryId: session.id,
-    entryDate: normalizedDate,
-    onSuccess: () => {
-      deleteActivity.invalidateCache();
-      navigation.goBack();
-    },
-  });
+  const { name } = getWorkoutSummary(session);
 
   const deleteWorkout = useDeleteWorkout({
     sessionId: session.id,
     entryDate: normalizedDate,
-    onSuccess: () => {
-      deleteWorkout.invalidateCache();
-      navigation.goBack();
-    },
+    onSuccess: () => navigation.goBack(),
   });
 
-  const handleDelete = () => {
-    if (isPreset) {
-      deleteWorkout.confirmAndDelete();
-    } else {
-      deleteActivity.confirmAndDelete();
-    }
-  };
+  const isDeleting = deleteWorkout.isPending;
 
-  const isDeleting = deleteActivity.isPending || deleteWorkout.isPending;
-
-  const { updateEntry, isPending: isUpdatingEntry, invalidateCache: invalidateEntryCache } = useUpdateExerciseEntry();
-  const { updateSession, isPending: isUpdatingSession, invalidateCache: invalidateSessionCache } = useUpdateWorkout();
-  const isSaving = isUpdatingEntry || isUpdatingSession;
+  const { updateSession, isPending: isSaving, invalidateCache: invalidateSessionCache } = useUpdateWorkout();
   const [isEditing, setIsEditing] = useState(false);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
 
@@ -127,41 +99,26 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const startEditing = () => {
-    if (session.type === 'individual') {
-      const displayDistance = session.distance != null && session.distance > 0
-        ? distanceFromKm(session.distance, distanceUnit).toFixed(2)
-        : '';
-      setEditValues({
-        entry_date: normalizedDate,
-        name: session.name ?? session.exercise_snapshot?.name ?? '',
-        notes: session.notes ?? '',
-        calories_burned: session.calories_burned > 0 ? String(Math.round(session.calories_burned)) : '',
-        duration_minutes: session.duration_minutes > 0 ? String(session.duration_minutes) : '',
-        distance: displayDistance,
-        avg_heart_rate: session.avg_heart_rate != null ? String(session.avg_heart_rate) : '',
-      });
-    } else {
-      setEditValues({
-        entry_date: normalizedDate,
-        name: session.name ?? '',
-        notes: session.notes ?? '',
-      });
-      setEditExercises(session.exercises.map(exercise => ({
+    setEditValues({
+      entry_date: normalizedDate,
+      name: session.name ?? '',
+      notes: session.notes ?? '',
+    });
+    setEditExercises(session.exercises.map(exercise => ({
+      clientId: generateClientId(),
+      exerciseId: exercise.exercise_id,
+      exerciseName: exercise.exercise_snapshot?.name ?? 'Unknown',
+      exerciseCategory: exercise.exercise_snapshot?.category ?? null,
+      snapshot: exercise.exercise_snapshot ?? null,
+      sets: exercise.sets.map(set => ({
         clientId: generateClientId(),
-        exerciseId: exercise.exercise_id,
-        exerciseName: exercise.exercise_snapshot?.name ?? 'Unknown',
-        exerciseCategory: exercise.exercise_snapshot?.category ?? null,
-        snapshot: exercise.exercise_snapshot ?? null,
-        sets: exercise.sets.map(set => ({
-          clientId: generateClientId(),
-          weight: set.weight != null
-            ? String(parseFloat(weightFromKg(set.weight, weightUnit as 'kg' | 'lbs').toFixed(1)))
-            : '',
-          reps: set.reps != null ? String(set.reps) : '',
-        })),
-      })));
-      exercisesModifiedRef.current = false;
-    }
+        weight: set.weight != null
+          ? String(parseFloat(weightFromKg(set.weight, weightUnit as 'kg' | 'lbs').toFixed(1)))
+          : '',
+        reps: set.reps != null ? String(set.reps) : '',
+      })),
+    })));
+    exercisesModifiedRef.current = false;
     setIsEditing(true);
   };
 
@@ -259,77 +216,44 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const dateChanged = editedDate !== normalizedDate;
 
     try {
-      if (session.type === 'individual') {
-        const distanceValue = editValues.distance ? parseFloat(editValues.distance) : null;
-        const payload = {
-          exercise_id: session.exercise_id,
-          exercise_name: editValues.name || null,
-          duration_minutes: parseFloat(editValues.duration_minutes) || 0,
-          calories_burned: parseFloat(editValues.calories_burned) || 0,
-          entry_date: editedDate,
-          distance: distanceValue != null ? distanceToKm(distanceValue, distanceUnit) : null,
-          avg_heart_rate: editValues.avg_heart_rate ? parseInt(editValues.avg_heart_rate, 10) : null,
-          notes: editValues.notes || null,
-        };
-        const updatedEntry = await updateEntry({ id: session.id, payload });
-        invalidateEntryCache(editedDate);
-        if (dateChanged) invalidateEntryCache(normalizedDate);
-        const updatedSession = {
-          ...session,
-          ...updatedEntry,
-          entry_date: editedDate,
-          name: payload.exercise_name ?? null,
-          notes: payload.notes,
-          calories_burned: payload.calories_burned,
-          duration_minutes: payload.duration_minutes,
-          distance: distanceValue != null ? distanceToKm(distanceValue, distanceUnit) : null,
-          avg_heart_rate: payload.avg_heart_rate,
-        };
-        syncExerciseSessionInCache(queryClient, updatedSession);
-        setSession(updatedSession);
-      } else {
-        const exercisesWithSets = editExercises.filter(e => e.sets.length > 0);
-        const payload: UpdatePresetSessionRequest = {
-          name: editValues.name.trim() || session.name,
-          entry_date: editedDate,
-          notes: editValues.notes || null,
-          ...(exercisesModifiedRef.current && exercisesWithSets.length > 0 ? {
-            exercises: exercisesWithSets.map((exercise, index) => ({
-              exercise_id: exercise.exerciseId,
-              sort_order: index,
-              duration_minutes: 0,
-              sets: exercise.sets.map((set, setIndex) => {
-                const weight = parseFloat(set.weight);
-                const reps = parseInt(set.reps, 10);
-                return {
-                  set_number: setIndex + 1,
-                  weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
-                  reps: isNaN(reps) ? null : reps,
-                };
-              }),
-            })),
-          } : {}),
-        };
-        const updatedSession = await updateSession({ id: session.id, payload });
-        invalidateSessionCache(editedDate);
-        if (dateChanged) invalidateSessionCache(normalizedDate);
-        setSession(updatedSession);
-      }
+      const exercisesWithSets = editExercises.filter(e => e.sets.length > 0);
+      const payload: UpdatePresetSessionRequest = {
+        name: editValues.name.trim() || session.name,
+        entry_date: editedDate,
+        notes: editValues.notes || null,
+        ...(exercisesModifiedRef.current && exercisesWithSets.length > 0 ? {
+          exercises: exercisesWithSets.map((exercise, index) => ({
+            exercise_id: exercise.exerciseId,
+            sort_order: index,
+            duration_minutes: 0,
+            sets: exercise.sets.map((set, setIndex) => {
+              const weight = parseFloat(set.weight);
+              const reps = parseInt(set.reps, 10);
+              return {
+                set_number: setIndex + 1,
+                weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
+                reps: isNaN(reps) ? null : reps,
+              };
+            }),
+          })),
+        } : {}),
+      };
+      const updatedSession = await updateSession({ id: session.id, payload });
+      invalidateSessionCache(editedDate);
+      if (dateChanged) invalidateSessionCache(normalizedDate);
+      setSession(updatedSession);
       setIsEditing(false);
       setEditValues({});
       setEditExercises([]);
       setActiveSetKey(null);
       exercisesModifiedRef.current = false;
-    } catch {}
+    } catch (error) {
+      addLog(`Failed to save workout: ${error}`, 'ERROR');
+      Toast.show({ type: 'error', text1: 'Failed to save workout', text2: 'Please try again.' });
+    }
   };
 
   // --- Formatting helpers ---
-
-  const formatDistance = (distanceKm: number): string => {
-    const value = distanceFromKm(distanceKm, distanceUnit);
-    const label = distanceUnit === 'miles' ? 'mi' : 'km';
-    return `${value.toFixed(2)} ${label}`;
-  };
 
   const getExerciseSetSummary = (exercise: ExerciseEntryResponse): string => {
     if (exercise.sets.length === 0) return '';
@@ -385,52 +309,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
-  const renderMetadataBadges = (snapshot: ExerciseSnapshotResponse | null | undefined) => {
-    if (!snapshot) return null;
-    const badges = [snapshot.level, snapshot.force, snapshot.mechanic].filter(Boolean);
-    if (badges.length === 0) return null;
-
-    return (
-      <View className="flex-row flex-wrap gap-1 mt-1">
-        {badges.map(badge => (
-          <View
-            key={badge}
-            className="rounded-full px-2 py-0.5"
-            style={{ backgroundColor: `${textMuted}15` }}
-          >
-            <Text className="text-xs text-text-muted capitalize">{badge}</Text>
-          </View>
-        ))}
-      </View>
-    );
-  };
-
-  const renderExerciseImages = (images: string[] | null | undefined, size: number = 200) => {
-    if (!images?.length) return null;
-    const sources = images.map(img => getImageSource(img)).filter(Boolean);
-    if (sources.length === 0) return null;
-
-    if (sources.length === 1) {
-      return (
-        <View className="items-center mt-3 mb-1">
-          <SafeImage source={sources[0]!} style={{ width: size, height: size, borderRadius: 12 }} />
-        </View>
-      );
-    }
-
-    return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3 mb-1">
-        <View className="flex-row gap-3">
-          {sources.map((src, i) => (
-            <SafeImage key={i} source={src!} style={{ width: size, height: size, borderRadius: 12 }} />
-          ))}
-        </View>
-      </ScrollView>
-    );
-  };
-
   const renderPresetContent = () => {
-    if (session.type !== 'preset') return null;
 
     // In edit mode, render from editExercises with editable sets
     if (isEditing) {
@@ -690,93 +569,6 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
-  const renderIndividualContent = () => {
-    if (session.type !== 'individual') return null;
-
-    const metrics: { label: string; value: string }[] = [];
-
-    if (session.distance != null && session.distance > 0) {
-      metrics.push({ label: 'Distance', value: formatDistance(session.distance) });
-    }
-    if (session.avg_heart_rate != null) {
-      metrics.push({ label: 'Avg Heart Rate', value: `${session.avg_heart_rate} bpm` });
-    }
-    if (session.notes) {
-      metrics.push({ label: 'Notes', value: session.notes });
-    }
-
-    if (metrics.length === 0) return null;
-
-    return (
-      <View className="bg-surface rounded-xl p-4 mt-4">
-        {metrics.map((metric, i) => (
-          <View
-            key={metric.label}
-            className={`flex-row justify-between py-2 ${i < metrics.length - 1 ? 'border-b border-border-subtle' : ''}`}
-          >
-            <Text className="text-sm text-text-secondary">{metric.label}</Text>
-            <Text className="text-sm text-text-primary flex-1 text-right ml-4" numberOfLines={2}>
-              {metric.value}
-            </Text>
-          </View>
-        ))}
-      </View>
-    );
-  };
-
-  const renderIndividualEditForm = () => (
-    <View className="bg-surface rounded-xl p-4">
-      <View className="mb-3">
-        <Text className="text-sm font-medium text-text-secondary mb-1">Duration (min)</Text>
-        <FormInput
-          value={editValues.duration_minutes ?? ''}
-          onChangeText={(v) => updateEditValue('duration_minutes', v)}
-          keyboardType="numeric"
-          placeholder="0"
-        />
-      </View>
-      <View className="mb-3">
-        <Text className="text-sm font-medium text-text-secondary mb-1">Calories</Text>
-        <FormInput
-          value={editValues.calories_burned ?? ''}
-          onChangeText={(v) => updateEditValue('calories_burned', v)}
-          keyboardType="numeric"
-          placeholder="0"
-        />
-      </View>
-      <View className="mb-3">
-        <Text className="text-sm font-medium text-text-secondary mb-1">
-          Distance ({distanceUnit === 'miles' ? 'mi' : 'km'})
-        </Text>
-        <FormInput
-          value={editValues.distance ?? ''}
-          onChangeText={(v) => updateEditValue('distance', v)}
-          keyboardType="decimal-pad"
-          placeholder="0.00"
-        />
-      </View>
-      <View className="mb-3">
-        <Text className="text-sm font-medium text-text-secondary mb-1">Avg Heart Rate (bpm)</Text>
-        <FormInput
-          value={editValues.avg_heart_rate ?? ''}
-          onChangeText={(v) => updateEditValue('avg_heart_rate', v)}
-          keyboardType="numeric"
-          placeholder=""
-        />
-      </View>
-      <View>
-        <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
-        <FormInput
-          value={editValues.notes ?? ''}
-          onChangeText={(v) => updateEditValue('notes', v)}
-          placeholder="Add notes..."
-          multiline
-          style={{ minHeight: 60 }}
-        />
-      </View>
-    </View>
-  );
-
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {/* Header */}
@@ -818,7 +610,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <Icon name="chevron-back" size={22} color={accentPrimary} />
             </Button>
             <View className="flex-1" />
-            {session.source === 'sparky' && (
+            {isSparky && (
               <Button
                 variant="ghost"
                 onPress={startEditing}
@@ -866,21 +658,30 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Summary card / Edit form */}
-        {isEditing && !isPreset ? renderIndividualEditForm() : (() => {
+        {/* Summary card */}
+        {(() => {
+          const exercises = isEditing ? editExercises : session.exercises;
+          const exerciseCount = exercises.length;
+          const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+          const totalVolume = isEditing
+            ? editExercises.reduce((sum, ex) => ex.sets.reduce((s, set) => {
+                const w = parseFloat(set.weight);
+                const r = parseInt(set.reps, 10);
+                return s + (isNaN(w) || isNaN(r) ? 0 : w * r);
+              }, sum), 0)
+            : session.exercises.reduce((sum, ex) => sum + getExerciseVolume(ex), 0);
+
           const summaryItems: { value: string; label: string }[] = [];
-          if (isPreset && session.type === 'preset') {
-            summaryItems.push({
-              value: String(session.exercises.length),
-              label: session.exercises.length === 1 ? 'Exercise' : 'Exercises',
-            });
-            const totalSets = session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
-            if (totalSets > 0) summaryItems.push({ value: String(totalSets), label: 'Sets' });
-            const totalVolume = session.exercises.reduce((sum, ex) => sum + getExerciseVolume(ex), 0);
-            if (totalVolume > 0) summaryItems.push({ value: formatVolume(totalVolume), label: 'Volume' });
-          } else {
-            if (duration > 0) summaryItems.push({ value: formatDuration(duration), label: 'Duration' });
-            if (calories > 0) summaryItems.push({ value: String(Math.round(calories)), label: 'Calories' });
+          summaryItems.push({
+            value: String(exerciseCount),
+            label: exerciseCount === 1 ? 'Exercise' : 'Exercises',
+          });
+          if (totalSets > 0) summaryItems.push({ value: String(totalSets), label: 'Sets' });
+          if (totalVolume > 0) {
+            const volumeLabel = isEditing
+              ? `${Math.round(totalVolume).toLocaleString()} ${weightUnit}`
+              : formatVolume(totalVolume);
+            summaryItems.push({ value: volumeLabel, label: 'Volume' });
           }
           if (summaryItems.length === 0) return null;
           return (
@@ -902,18 +703,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           );
         })()}
 
-        {/* Exercise images (individual sessions only) */}
-        {session.type === 'individual' && renderExerciseImages(session.exercise_snapshot?.images)}
-
-        {/* Metadata badges (individual sessions only) */}
-        {session.type === 'individual' && renderMetadataBadges(session.exercise_snapshot)}
-
-        {/* Variant-specific content */}
+        {/* Exercises */}
         {renderPresetContent()}
-        {!isEditing && renderIndividualContent()}
 
-        {/* Preset edit controls */}
-        {isEditing && isPreset && (
+        {/* Edit controls */}
+        {isEditing && (
           <>
             <View className="py-4">
               <TouchableOpacity
@@ -941,8 +735,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </>
         )}
 
-        {/* Preset notes (view mode) */}
-        {!isEditing && isPreset && session.notes && (
+        {/* Notes (view mode) */}
+        {!isEditing && session.notes && (
           <View className="mt-4 px-4">
             <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
             <Text className="text-sm text-text-primary">{session.notes}</Text>
@@ -955,7 +749,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {isEditing && (
           <Button
             variant="ghost"
-            onPress={handleDelete}
+            onPress={() => deleteWorkout.confirmAndDelete()}
             disabled={isDeleting}
             className="mt-6"
           >

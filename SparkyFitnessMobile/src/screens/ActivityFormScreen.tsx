@@ -4,12 +4,10 @@ import {
   Text,
   TouchableOpacity,
   Pressable,
-  ScrollView,
-  KeyboardAvoidingView,
   Keyboard,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -22,6 +20,8 @@ import { distanceToKm } from '../utils/unitConversions';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
 import { clearDraft } from '../services/workoutDraftService';
+import Toast from 'react-native-toast-message';
+import { addLog } from '../services/LogService';
 import { formatDateLabel } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -51,6 +51,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
     setDuration,
     setDistance,
     setCalories,
+    setAvgHeartRate,
     setDate,
     setNotes,
     populate,
@@ -86,7 +87,11 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useSelectedExercise(route.params, setExercise);
 
-  const canSave = state.exerciseId && state.duration && parseFloat(state.duration) > 0;
+  const canSave = state.exerciseId && (
+    (state.duration && parseFloat(state.duration) > 0) ||
+    (state.calories && parseInt(state.calories, 10) > 0) ||
+    (state.distance && parseFloat(state.distance) > 0)
+  );
 
   const handleCancel = useCallback(() => {
     if (!isEditMode && !hasDraftData) {
@@ -96,8 +101,8 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [isEditMode, hasDraftData, navigation]);
 
   const handleSave = useCallback(async () => {
-    const durationMinutes = parseFloat(state.duration);
-    if (!state.exerciseId || isNaN(durationMinutes) || durationMinutes <= 0) return;
+    const durationMinutes = parseFloat(state.duration) || 0;
+    if (!state.exerciseId) return;
 
     const caloriesBurned = parseInt(state.calories, 10) || 0;
 
@@ -109,6 +114,8 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
       }
     }
 
+    const avgHeartRate = state.avgHeartRate ? parseInt(state.avgHeartRate, 10) : null;
+
     const payload = {
       exercise_id: state.exerciseId,
       exercise_name: state.name.trim() || state.exerciseName || null,
@@ -116,6 +123,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
       calories_burned: caloriesBurned,
       entry_date: state.entryDate,
       distance: distanceKm,
+      avg_heart_rate: avgHeartRate && !isNaN(avgHeartRate) ? avgHeartRate : null,
       notes: state.notes || null,
     };
 
@@ -130,7 +138,10 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
         invalidateCreateCache(state.entryDate);
         navigation.pop(popCount);
       }
-    } catch {}
+    } catch (error) {
+      addLog(`Failed to save activity: ${error}`, 'ERROR');
+      Toast.show({ type: 'error', text1: 'Failed to save activity', text2: 'Please try again.' });
+    }
   }, [
     state, distanceUnit, isEditMode, entry, popCount,
     createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, navigation,
@@ -150,15 +161,11 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
         </Button>
       </View>
 
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top}
+      <KeyboardAwareScrollView
+        contentContainerClassName="px-4"
+        bottomOffset={80}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView
-          className="flex-1 px-4"
-          keyboardShouldPersistTaps="handled"
-        >
           <Pressable onPress={dismissEditing}>
             {/* Activity name */}
             <View className="mb-4">
@@ -270,6 +277,18 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
             </View>
 
+            {/* Avg Heart Rate */}
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">Avg Heart Rate (bpm)</Text>
+              <FormInput
+                value={state.avgHeartRate}
+                onChangeText={setAvgHeartRate}
+                placeholder="0"
+                keyboardType="number-pad"
+                returnKeyType="done"
+              />
+            </View>
+
             {/* Notes */}
             <View className="mb-6">
               <Text className="text-sm font-medium text-text-secondary mb-1.5">Notes</Text>
@@ -287,8 +306,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Bottom spacer */}
             <View style={{ height: 80 }} />
           </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
 
       {/* Sticky footer */}
       <View

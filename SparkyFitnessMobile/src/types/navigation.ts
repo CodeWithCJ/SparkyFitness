@@ -37,7 +37,8 @@ export type RootStackParamList = {
     skipDraftLoad?: boolean;
   } | undefined;
   ActivityForm: { entry?: IndividualSessionResponse; date?: string; popCount?: number; selectedExercise?: Exercise; selectionNonce?: number; skipDraftLoad?: boolean } | undefined;
-  WorkoutDetail: { session: ExerciseSessionResponse; selectedExercise?: Exercise; selectionNonce?: number };
+  WorkoutDetail: { session: PresetSessionResponse; selectedExercise?: Exercise; selectionNonce?: number };
+  ActivityDetail: { session: IndividualSessionResponse };
   Logs: undefined;
   Sync: undefined;
 };

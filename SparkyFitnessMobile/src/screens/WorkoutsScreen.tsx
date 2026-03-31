@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { TAB_BAR_HEIGHT } from '../components/CustomTabBar';
@@ -9,7 +9,6 @@ import StatusView from '../components/StatusView';
 import WorkoutCard from '../components/WorkoutCard';
 import { useServerConnection, useExerciseHistory } from '../hooks';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { loadActiveDraft, clearDraft } from '../services/workoutDraftService';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
@@ -56,39 +55,6 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
 
     return groups;
   }, [sessions]);
-
-  const handleAddWorkout = useCallback(async () => {
-    const draft = await loadActiveDraft();
-    if (draft) {
-      Alert.alert(
-        'Draft in Progress',
-        `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Resume Draft',
-            onPress: () => {
-              if (draft.type === 'workout') {
-                navigation.navigate('WorkoutAdd');
-              } else {
-                navigation.navigate('ActivityForm');
-              }
-            },
-          },
-          {
-            text: 'Discard & Continue',
-            style: 'destructive',
-            onPress: async () => {
-              await clearDraft();
-              navigation.navigate('WorkoutAdd', { skipDraftLoad: true });
-            },
-          },
-        ],
-      );
-      return;
-    }
-    navigation.navigate('WorkoutAdd', { skipDraftLoad: true });
-  }, [navigation]);
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -163,7 +129,13 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
               {group.sessions.map(session => (
                 <TouchableOpacity
                   key={session.id}
-                  onPress={() => navigation.navigate('WorkoutDetail', { session })}
+                  onPress={() => {
+                    if (session.type === 'preset') {
+                      navigation.navigate('WorkoutDetail', { session });
+                    } else {
+                      navigation.navigate('ActivityDetail', { session });
+                    }
+                  }}
                   activeOpacity={0.7}
                 >
                   <WorkoutCard session={session} getImageSource={getImageSource} />
@@ -194,16 +166,8 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-baseline justify-between px-4 pt-4 pb-5">
+      <View className="px-4 pt-4 pb-5">
         <Text className="text-2xl font-bold text-text-primary">Workouts</Text>
-        {isConnected && (
-          <Button
-            variant="header"
-            onPress={handleAddWorkout}
-          >
-            <Icon name="add" size={26} color={accentPrimary} />
-          </Button>
-        )}
       </View>
       {renderContent()}
     </View>

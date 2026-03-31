@@ -32,6 +32,7 @@ export interface ActivityDraft {
   distance: string;
   calories: string;
   caloriesManuallySet: boolean;
+  avgHeartRate: string;
   entryDate: string;
   notes: string;
 }

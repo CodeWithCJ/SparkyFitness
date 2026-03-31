@@ -21,6 +21,7 @@ const makeExercise = (overrides?: Partial<Exercise>): Exercise => ({
 
 const makeEmptyDraft = (): ActivityDraft => ({
   type: 'activity',
+  name: '',
   exerciseId: null,
   exerciseName: '',
   exerciseCategory: null,
@@ -79,6 +80,24 @@ describe('activityFormReducer', () => {
 
       expect(result.calories).toBe('');
     });
+
+    it('auto-generates name from exercise name and date when not manually set', () => {
+      const state = makeEmptyDraft();
+      const exercise = makeExercise({ name: 'Running' });
+
+      const result = activityFormReducer(state, { type: 'SET_EXERCISE', exercise });
+
+      expect(result.name).toBe('Running - Mar 12');
+    });
+
+    it('preserves name when nameManuallySet is true', () => {
+      const state: ActivityDraft = { ...makeEmptyDraft(), name: 'Morning Jog', nameManuallySet: true };
+      const exercise = makeExercise({ name: 'Running' });
+
+      const result = activityFormReducer(state, { type: 'SET_EXERCISE', exercise });
+
+      expect(result.name).toBe('Morning Jog');
+    });
   });
 
   describe('SET_DURATION', () => {
@@ -125,6 +144,16 @@ describe('activityFormReducer', () => {
     });
   });
 
+  describe('SET_NAME', () => {
+    it('updates name and marks as manually set', () => {
+      const state = makeEmptyDraft();
+      const result = activityFormReducer(state, { type: 'SET_NAME', value: 'Morning Run' });
+
+      expect(result.name).toBe('Morning Run');
+      expect(result.nameManuallySet).toBe(true);
+    });
+  });
+
   describe('SET_DISTANCE', () => {
     it('updates distance value', () => {
       const state = makeEmptyDraft();
@@ -156,11 +185,38 @@ describe('activityFormReducer', () => {
     });
   });
 
+  describe('SET_AVG_HEART_RATE', () => {
+    it('updates the avgHeartRate field', () => {
+      const state = makeEmptyDraft();
+      const result = activityFormReducer(state, { type: 'SET_AVG_HEART_RATE', value: '145' });
+      expect(result.avgHeartRate).toBe('145');
+    });
+  });
+
   describe('SET_DATE', () => {
     it('updates the entry date', () => {
       const state = makeEmptyDraft();
       const result = activityFormReducer(state, { type: 'SET_DATE', value: '2026-03-15' });
       expect(result.entryDate).toBe('2026-03-15');
+    });
+
+    it('auto-updates name when not manually set and exercise is selected', () => {
+      const state: ActivityDraft = { ...makeEmptyDraft(), exerciseName: 'Running' };
+      const result = activityFormReducer(state, { type: 'SET_DATE', value: '2026-04-01' });
+
+      expect(result.name).toBe('Running - Apr 1');
+    });
+
+    it('preserves name when manually set', () => {
+      const state: ActivityDraft = {
+        ...makeEmptyDraft(),
+        name: 'Morning Jog',
+        nameManuallySet: true,
+        exerciseName: 'Running',
+      };
+      const result = activityFormReducer(state, { type: 'SET_DATE', value: '2026-04-01' });
+
+      expect(result.name).toBe('Morning Jog');
     });
   });
 
@@ -230,10 +286,11 @@ describe('activityFormReducer', () => {
 
     it('populates all fields from an entry in km mode', () => {
       const state = makeEmptyDraft();
-      const entry = makeEntry({ distance: 10 });
+      const entry = makeEntry({ distance: 10, name: 'Morning Run' });
 
       const result = activityFormReducer(state, { type: 'POPULATE', entry, distanceUnit: 'km' });
 
+      expect(result.name).toBe('Morning Run');
       expect(result.exerciseId).toBe('ex-1');
       expect(result.exerciseName).toBe('Running');
       expect(result.exerciseCategory).toBe('Cardio');
@@ -243,6 +300,24 @@ describe('activityFormReducer', () => {
       expect(result.entryDate).toBe('2026-03-10');
       expect(result.notes).toBe('Great session');
       expect(result.distance).toBe('10');
+    });
+
+    it('falls back to exercise_snapshot name when entry name is null', () => {
+      const state = makeEmptyDraft();
+      const entry = makeEntry({ name: null });
+
+      const result = activityFormReducer(state, { type: 'POPULATE', entry, distanceUnit: 'km' });
+
+      expect(result.name).toBe('Running');
+    });
+
+    it('populates avg_heart_rate when present', () => {
+      const state = makeEmptyDraft();
+      const entry = makeEntry({ avg_heart_rate: 155 });
+
+      const result = activityFormReducer(state, { type: 'POPULATE', entry, distanceUnit: 'km' });
+
+      expect(result.avgHeartRate).toBe('155');
     });
 
     it('converts distance from km to miles when distanceUnit is miles', () => {
@@ -316,6 +391,7 @@ describe('activityFormReducer', () => {
       const initial = makeEmptyDraft();
       const restoredDraft: ActivityDraft = {
         type: 'activity',
+        name: 'Evening Ride',
         exerciseId: 'ex-2',
         exerciseName: 'Cycling',
         exerciseCategory: 'Cardio',
@@ -330,7 +406,25 @@ describe('activityFormReducer', () => {
 
       const result = activityFormReducer(initial, { type: 'RESTORE_DRAFT', draft: restoredDraft });
 
-      expect(result).toEqual(restoredDraft);
+      expect(result).toEqual({ ...restoredDraft, nameManuallySet: true });
+    });
+
+    it('defaults nameManuallySet to true when not present in draft', () => {
+      const initial = makeEmptyDraft();
+      const draft: ActivityDraft = { ...makeEmptyDraft(), nameManuallySet: undefined };
+
+      const result = activityFormReducer(initial, { type: 'RESTORE_DRAFT', draft });
+
+      expect(result.nameManuallySet).toBe(true);
+    });
+
+    it('preserves explicit nameManuallySet value from draft', () => {
+      const initial = makeEmptyDraft();
+      const draft: ActivityDraft = { ...makeEmptyDraft(), nameManuallySet: false };
+
+      const result = activityFormReducer(initial, { type: 'RESTORE_DRAFT', draft });
+
+      expect(result.nameManuallySet).toBe(false);
     });
   });
 });

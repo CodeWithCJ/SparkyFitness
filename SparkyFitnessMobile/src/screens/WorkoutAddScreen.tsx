@@ -5,13 +5,11 @@ import {
   TextInput,
   TouchableOpacity,
   Pressable,
-  ScrollView,
-  KeyboardAvoidingView,
   Keyboard,
-  Platform,
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -393,15 +391,11 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </Button>
           </View>
 
-          <KeyboardAvoidingView
-            className="flex-1"
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={insets.top}
+          <KeyboardAwareScrollView
+            contentContainerClassName="px-4"
+            bottomOffset={80}
+            keyboardShouldPersistTaps="handled"
           >
-            <ScrollView
-              className="flex-1 px-4"
-              keyboardShouldPersistTaps="handled"
-            >
               <Pressable onPress={dismissEditing}>
                 {/* Workout name */}
                 <View className="mb-4">
@@ -464,8 +458,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 {/* Bottom spacer so content isn't hidden behind footer */}
                 <View style={{ height: 80 }} />
               </Pressable>
-            </ScrollView>
-          </KeyboardAvoidingView>
+          </KeyboardAwareScrollView>
 
           {/* Sticky footer */}
           <View

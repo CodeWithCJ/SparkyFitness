@@ -31,6 +31,7 @@ import FoodScanScreen from './src/screens/FoodScanScreen';
 import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
 import ActivityFormScreen from './src/screens/ActivityFormScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
+import ActivityDetailScreen from './src/screens/ActivityDetailScreen';
 import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import PresetSearchScreen from './src/screens/PresetSearchScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -426,6 +427,15 @@ function AppContent() {
           <Stack.Screen
             name="WorkoutDetail"
             component={WorkoutDetailScreen}
+            options={{
+              headerShown: false,
+              gestureEnabled: true,
+              gestureDirection: 'horizontal',
+            }}
+          />
+          <Stack.Screen
+            name="ActivityDetail"
+            component={ActivityDetailScreen}
             options={{
               headerShown: false,
               gestureEnabled: true,

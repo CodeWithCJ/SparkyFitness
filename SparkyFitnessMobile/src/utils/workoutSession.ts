@@ -73,20 +73,20 @@ export function getWorkoutIcon(session: ExerciseSessionResponse): IconName {
 }
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
-  HealthKit: 'Apple Health',
-  'Health Connect': 'Health Connect',
-  Garmin: 'Garmin',
+  healthkit: 'Apple Health',
+  'health connect': 'Health Connect',
   garmin: 'Garmin',
-  Strava: 'Strava',
-  Fitbit: 'Fitbit',
-  Withings: 'Withings',
+  strava: 'Strava',
+  fitbit: 'Fitbit',
+  withings: 'Withings',
 };
 
 export function getSourceLabel(source: string | null): { label: string; isSparky: boolean } {
-  if (source == null || source === 'manual' || source === 'sparky') {
+  const s = source?.toLowerCase() ?? null;
+  if (s == null || s === 'manual' || s === 'sparky') {
     return { label: 'Sparky', isSparky: true };
   }
-  return { label: SOURCE_DISPLAY_NAMES[source] ?? source, isSparky: false };
+  return { label: SOURCE_DISPLAY_NAMES[s] ?? source!, isSparky: false };
 }
 
 export function formatDuration(minutes: number): string {

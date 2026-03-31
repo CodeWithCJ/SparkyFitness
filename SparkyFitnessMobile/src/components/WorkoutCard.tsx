@@ -12,7 +12,7 @@ interface WorkoutCardProps {
   getImageSource?: GetImageSource;
 }
 
-export { CATEGORY_ICON_MAP, getWorkoutIcon, getSourceLabel, formatDuration, getFirstImage, getWorkoutSummary } from '../utils/workoutSession';
+export { getSourceLabel, formatDuration, getWorkoutSummary } from '../utils/workoutSession';
 
 const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;

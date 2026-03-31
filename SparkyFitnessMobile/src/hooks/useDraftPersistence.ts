@@ -54,6 +54,7 @@ export function useDraftPersistence<T extends FormDraft>(options: UseDraftPersis
       clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = setTimeout(() => {
+      saveTimeoutRef.current = null;
       saveDraft(state);
     }, 300);
 
@@ -61,10 +62,21 @@ export function useDraftPersistence<T extends FormDraft>(options: UseDraftPersis
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
-        saveDraft(stateRef.current);
       }
     };
   }, [state, isEditMode]);
+
+  // Flush unsaved changes on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+        saveDraft(stateRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (isEditMode) return;

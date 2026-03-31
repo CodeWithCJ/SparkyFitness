@@ -37,10 +37,6 @@ function createEmptyDraft(): WorkoutDraft {
   };
 }
 
-function createEmptySet(): WorkoutDraftSet {
-  return { clientId: generateClientId(), weight: '', reps: '' };
-}
-
 // --- Reducer ---
 
 type WorkoutFormAction =
