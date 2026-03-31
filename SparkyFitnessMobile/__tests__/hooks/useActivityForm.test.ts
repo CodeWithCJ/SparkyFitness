@@ -1,9 +1,10 @@
-import { activityFormReducer } from '../../src/hooks/useActivityForm';
+import { activityFormReducer, getActivityDraftSubmission } from '../../src/hooks/useActivityForm';
 import type { ActivityDraft } from '../../src/types/drafts';
 import type { Exercise } from '../../src/types/exercise';
 
 jest.mock('../../src/utils/dateUtils', () => ({
   getTodayDate: () => '2026-03-12',
+  normalizeDate: (value: string) => value.split('T')[0],
 }));
 
 const makeExercise = (overrides?: Partial<Exercise>): Exercise => ({
@@ -431,6 +432,70 @@ describe('activityFormReducer', () => {
       const result = activityFormReducer(initial, { type: 'RESTORE_DRAFT', draft });
 
       expect(result.nameManuallySet).toBe(false);
+    });
+  });
+
+  describe('getActivityDraftSubmission', () => {
+    it('builds parsed submission values and marks add-mode saves as valid', () => {
+      const state: ActivityDraft = {
+        ...makeEmptyDraft(),
+        exerciseId: 'ex-1',
+        exerciseName: 'Running',
+        name: 'Morning Run',
+        duration: '45',
+        distance: '10',
+        calories: '450',
+        avgHeartRate: '155',
+        notes: 'Felt strong',
+      };
+
+      const result = getActivityDraftSubmission(state, 'km');
+
+      expect(result).toEqual({
+        exerciseId: 'ex-1',
+        exerciseName: 'Morning Run',
+        durationMinutes: 45,
+        caloriesBurned: 450,
+        entryDate: '2026-03-12',
+        distanceKm: 10,
+        avgHeartRate: 155,
+        notes: 'Felt strong',
+        hasDuration: true,
+        hasCalories: true,
+        hasDistance: true,
+        canSave: true,
+      });
+    });
+
+    it('falls back to exercise name and clears invalid numeric fields', () => {
+      const state: ActivityDraft = {
+        ...makeEmptyDraft(),
+        exerciseId: 'ex-1',
+        exerciseName: 'Cycling',
+        name: '   ',
+        duration: '',
+        distance: '0',
+        calories: 'abc',
+        avgHeartRate: 'NaN',
+        notes: '',
+      };
+
+      const result = getActivityDraftSubmission(state, 'miles');
+
+      expect(result).toEqual({
+        exerciseId: 'ex-1',
+        exerciseName: 'Cycling',
+        durationMinutes: 0,
+        caloriesBurned: 0,
+        entryDate: '2026-03-12',
+        distanceKm: null,
+        avgHeartRate: null,
+        notes: null,
+        hasDuration: false,
+        hasCalories: false,
+        hasDistance: false,
+        canSave: false,
+      });
     });
   });
 });

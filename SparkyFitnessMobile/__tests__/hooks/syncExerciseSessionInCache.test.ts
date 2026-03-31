@@ -11,6 +11,7 @@ import type {
   ExerciseHistoryResponse,
   ExerciseSessionResponse,
 } from '@workspace/shared';
+import type { InfiniteData } from '@tanstack/react-query';
 import type { DailySummaryRawData } from '../../src/hooks/useDailySummary';
 
 type PresetSession = Extract<ExerciseSessionResponse, { type: 'preset' }>;
@@ -93,21 +94,23 @@ describe('syncExerciseSessionInCache', () => {
       },
     };
 
-    queryClient.setQueryData([...exerciseHistoryQueryKey, 1], historyPage);
+    queryClient.setQueryData<InfiniteData<ExerciseHistoryResponse>>(exerciseHistoryQueryKey, {
+      pages: [historyPage],
+      pageParams: [1],
+    });
     queryClient.setQueryData(dailySummaryQueryKey('2024-06-15'), dailySummary);
 
     syncExerciseSessionInCache(queryClient, updatedSession);
 
-    const cachedHistory = queryClient.getQueryData<ExerciseHistoryResponse>([
-      ...exerciseHistoryQueryKey,
-      1,
-    ]);
+    const cachedHistory = queryClient.getQueryData<InfiniteData<ExerciseHistoryResponse>>(
+      exerciseHistoryQueryKey,
+    );
     const cachedSummary = queryClient.getQueryData<DailySummaryRawData>(
       dailySummaryQueryKey('2024-06-15'),
     );
 
-    expect(cachedHistory?.sessions[0]).toEqual(updatedSession);
-    expect(cachedHistory?.sessions[1]).toEqual(otherSession);
+    expect(cachedHistory?.pages[0].sessions[0]).toEqual(updatedSession);
+    expect(cachedHistory?.pages[0].sessions[1]).toEqual(otherSession);
     expect(cachedSummary?.exerciseEntries[0]).toEqual(updatedSession);
     expect(cachedSummary?.exerciseEntries[1]).toEqual(otherSession);
   });
@@ -121,15 +124,17 @@ describe('syncExerciseSessionInCache', () => {
       pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
     };
 
-    queryClient.setQueryData([...exerciseHistoryQueryKey, 1], historyPage);
+    queryClient.setQueryData<InfiniteData<ExerciseHistoryResponse>>(exerciseHistoryQueryKey, {
+      pages: [historyPage],
+      pageParams: [1],
+    });
 
     syncExerciseSessionInCache(queryClient, updatedSession);
 
-    const cached = queryClient.getQueryData<ExerciseHistoryResponse>([
-      ...exerciseHistoryQueryKey,
-      1,
-    ]);
-    expect(cached).toBe(historyPage);
+    const cached = queryClient.getQueryData<InfiniteData<ExerciseHistoryResponse>>(
+      exerciseHistoryQueryKey,
+    );
+    expect(cached?.pages[0]).toBe(historyPage);
   });
 
   test('skips daily summary update when entry_date is null', () => {

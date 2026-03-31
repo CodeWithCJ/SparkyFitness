@@ -15,13 +15,11 @@ import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import SafeImage from '../components/SafeImage';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { useActivityForm } from '../hooks/useActivityForm';
+import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { distanceToKm } from '../utils/unitConversions';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
-import { clearDraft } from '../services/workoutDraftService';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import { formatDateLabel } from '../utils/dateUtils';
@@ -58,6 +56,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     setNotes,
     populate,
     hasDraftData,
+    discardDraft,
   } = useActivityForm({
     isEditMode,
     initialDate,
@@ -90,55 +89,39 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useSelectedExercise(route.params, setExercise);
 
-  const canSave = state.exerciseId && (
-    (state.duration && parseFloat(state.duration) > 0) ||
-    (state.calories && parseInt(state.calories, 10) > 0) ||
-    (state.distance && parseFloat(state.distance) > 0)
-  );
+  const submission = getActivityDraftSubmission(state, distanceUnit);
+  const canSave = submission.canSave;
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = useCallback(async () => {
     if (!isEditMode && !hasDraftData) {
-      clearDraft();
+      await discardDraft();
     }
     navigation.goBack();
-  }, [isEditMode, hasDraftData, navigation]);
+  }, [discardDraft, isEditMode, hasDraftData, navigation]);
 
   const handleSave = useCallback(async () => {
-    const durationMinutes = parseFloat(state.duration) || 0;
-    if (!state.exerciseId) return;
-
-    const caloriesBurned = parseInt(state.calories, 10) || 0;
-
-    let distanceKm: number | null = null;
-    if (state.distance) {
-      const distanceVal = parseFloat(state.distance);
-      if (!isNaN(distanceVal) && distanceVal > 0) {
-        distanceKm = distanceToKm(distanceVal, distanceUnit);
-      }
-    }
-
-    const avgHeartRate = state.avgHeartRate ? parseInt(state.avgHeartRate, 10) : null;
+    if (!submission.exerciseId || !submission.canSave) return;
 
     const payload = {
-      exercise_id: state.exerciseId,
-      exercise_name: state.name.trim() || state.exerciseName || null,
-      duration_minutes: durationMinutes,
-      calories_burned: caloriesBurned,
-      entry_date: state.entryDate,
-      distance: distanceKm,
-      avg_heart_rate: avgHeartRate && !isNaN(avgHeartRate) ? avgHeartRate : null,
-      notes: state.notes || null,
+      exercise_id: submission.exerciseId,
+      exercise_name: submission.exerciseName,
+      duration_minutes: submission.durationMinutes,
+      calories_burned: submission.caloriesBurned,
+      entry_date: submission.entryDate,
+      distance: submission.distanceKm,
+      avg_heart_rate: submission.avgHeartRate,
+      notes: submission.notes,
     };
 
     try {
       if (isEditMode && entry) {
         await updateEntry({ id: entry.id, payload });
-        invalidateUpdateCache(state.entryDate);
+        invalidateUpdateCache(submission.entryDate);
         navigation.pop(popCount);
       } else {
         await createEntry(payload);
-        await clearDraft();
-        invalidateCreateCache(state.entryDate);
+        await discardDraft();
+        invalidateCreateCache(submission.entryDate);
         navigation.pop(popCount);
       }
     } catch (error) {
@@ -146,8 +129,8 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
       Toast.show({ type: 'error', text1: 'Failed to save activity', text2: 'Please try again.' });
     }
   }, [
-    state, distanceUnit, isEditMode, entry, popCount,
-    createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, navigation,
+    submission, isEditMode, entry, popCount,
+    createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, discardDraft, navigation,
   ]);
 
   return (

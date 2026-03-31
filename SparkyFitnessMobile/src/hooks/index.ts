@@ -52,4 +52,5 @@ export { useActivityForm } from './useActivityForm';
 export { useDeleteExerciseEntry, useDeleteWorkout, useUpdateWorkout } from './useExerciseMutations';
 export { useWorkoutPresets } from './useWorkoutPresets';
 export { useWorkoutPresetSearch } from './useWorkoutPresetSearch';
+export { useExerciseSetEditing } from './useExerciseSetEditing';
 

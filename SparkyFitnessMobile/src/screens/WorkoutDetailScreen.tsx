@@ -1,5 +1,5 @@
-import React, { useRef, useState, useCallback } from 'react';
-import { View, Text, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -7,7 +7,7 @@ import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
-import EditableSetRow from '../components/EditableSetRow';
+import WorkoutEditableExerciseList from '../components/WorkoutEditableExerciseList';
 import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
 import {
   useDeleteWorkout,
@@ -16,16 +16,16 @@ import {
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
-import { useWorkoutForm } from '../hooks/useWorkoutForm';
+import { useWorkoutForm, getWorkoutDraftSubmission } from '../hooks/useWorkoutForm';
+import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
-import { weightToKg, weightFromKg } from '../utils/unitConversions';
+import { weightFromKg } from '../utils/unitConversions';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import { extractActivitySummary } from '../utils/activityDetails';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { ExerciseEntryResponse, UpdatePresetSessionRequest } from '@workspace/shared';
-import type { Exercise } from '../types/exercise';
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
@@ -81,10 +81,18 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     populate,
     exercisesModifiedRef,
   } = useWorkoutForm({ isEditMode: true, skipDraftLoad: true });
+  const submission = getWorkoutDraftSubmission(formState, weightUnit as 'kg' | 'lbs');
+  const hasEditedExercisesWithSets = submission.canSave;
 
-  // Track which set is being edited: "exerciseClientId:setClientId"
-  const [activeSetKey, setActiveSetKey] = useState<string | null>(null);
-  const [activeSetField, setActiveSetField] = useState<'weight' | 'reps'>('weight');
+  const {
+    activeSetKey,
+    activeSetField,
+    handleAddExercise,
+    handleRemoveExercise,
+    handleAddSet,
+    activateSet,
+    deactivateSet,
+  } = useExerciseSetEditing({ addExercise, removeExercise, addSet });
 
   const startEditing = () => {
     populate(session, weightUnit as 'kg' | 'lbs');
@@ -95,69 +103,36 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const cancelEditing = () => {
     setIsEditing(false);
     setEditNotes('');
-    setActiveSetKey(null);
+    deactivateSet();
   };
-
-  // --- Exercise editing callbacks ---
-
-  const handleAddExercise = useCallback((exercise: Exercise) => {
-    const { exerciseClientId, setClientId } = addExercise(exercise);
-    setActiveSetKey(`${exerciseClientId}:${setClientId}`);
-  }, [addExercise]);
 
   useSelectedExercise(route.params, handleAddExercise);
 
-  const handleRemoveExercise = useCallback((exercise: { clientId: string; exerciseName: string; sets: { weight: string; reps: string }[] }) => {
-    const hasData = exercise.sets.some(s => s.weight || s.reps);
-    const doRemove = () => removeExercise(exercise.clientId);
-    if (hasData) {
-      Alert.alert(
-        'Remove Exercise?',
-        `Remove "${exercise.exerciseName}" and all its sets?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Remove', style: 'destructive', onPress: doRemove },
-        ],
-      );
-    } else {
-      doRemove();
-    }
-  }, [removeExercise]);
-
-  const handleAddSet = useCallback((exerciseClientId: string) => {
-    const newSetId = addSet(exerciseClientId);
-    if (newSetId) {
-      setActiveSetKey(`${exerciseClientId}:${newSetId}`);
-    }
-  }, [addSet]);
+  const openExerciseSearch = () => {
+    navigation.navigate('ExerciseSearch', { returnKey: route.key });
+  };
 
   // --- Save ---
 
   const handleSave = async () => {
-    const editedDate = formState.entryDate;
+    const editedDate = submission.entryDate;
     const dateChanged = editedDate !== normalizedDate;
 
     try {
-      const exercisesWithSets = formState.exercises.filter(e => e.sets.length > 0);
+      if (exercisesModifiedRef.current && !submission.canSave) {
+        Toast.show({
+          type: 'error',
+          text1: 'Workout needs an exercise',
+          text2: 'Add at least one exercise with a set or delete the workout.',
+        });
+        return;
+      }
       const payload: UpdatePresetSessionRequest = {
-        name: formState.name.trim() || session.name,
+        name: submission.name,
         entry_date: editedDate,
         notes: editNotes || null,
-        ...(exercisesModifiedRef.current && exercisesWithSets.length > 0 ? {
-          exercises: exercisesWithSets.map((exercise, index) => ({
-            exercise_id: exercise.exerciseId,
-            sort_order: index,
-            duration_minutes: 0,
-            sets: exercise.sets.map((set, setIndex) => {
-              const weight = parseFloat(set.weight);
-              const reps = parseInt(set.reps, 10);
-              return {
-                set_number: setIndex + 1,
-                weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
-                reps: isNaN(reps) ? null : reps,
-              };
-            }),
-          })),
+        ...(exercisesModifiedRef.current && submission.canSave ? {
+          exercises: submission.payloadExercises,
         } : {}),
       };
       const updatedSession = await updateSession({ id: session.id, payload });
@@ -166,7 +141,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setSession(updatedSession);
       setIsEditing(false);
       setEditNotes('');
-      setActiveSetKey(null);
+      deactivateSet();
     } catch (error) {
       addLog(`Failed to save workout: ${error}`, 'ERROR');
       Toast.show({ type: 'error', text1: 'Failed to save workout', text2: 'Please try again.' });
@@ -228,95 +203,6 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       </View>
     );
   };
-
-  const renderEditableExercises = () => (
-    <View>
-      {formState.exercises.map(exercise => {
-        const snapshot = exercise.snapshot;
-        const metadataItems = [snapshot?.category, snapshot?.level, snapshot?.force, snapshot?.mechanic].filter(Boolean);
-
-        return (
-          <View key={exercise.clientId}>
-            <View className="border-t border-border-subtle" />
-            <View className="flex-row items-start py-4">
-              <SafeImage
-                source={snapshot?.images?.[0] ? getImageSource(snapshot.images[0]) : null}
-                style={{ width: 48, height: 48, borderRadius: 8, marginRight: 12, marginTop: 2, opacity: 0.8 }}
-              />
-              <View className="flex-1">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-lg font-semibold text-text-primary flex-1 mr-2" numberOfLines={1}>
-                    {exercise.exerciseName}
-                  </Text>
-                  <Button
-                    variant="ghost"
-                    onPress={() => handleRemoveExercise(exercise)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    className="py-0 px-0"
-                  >
-                    <Icon name="close" size={18} color={textMuted} />
-                  </Button>
-                </View>
-
-                {metadataItems.length > 0 && (
-                  <Text className="text-xs text-text-muted mt-1">
-                    {metadataItems.join(' \u2022 ')}
-                  </Text>
-                )}
-
-                {exercise.sets.length > 0 && (
-                  <>
-                    <View className="border-t border-border-subtle mt-3 mb-1" />
-                    <View className="mt-2">
-                      <View className="flex-row items-center py-1 mb-1">
-                        <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
-                        <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
-                        <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
-                        <View style={{ width: 18 }} />
-                      </View>
-                      {exercise.sets.map((set, index) => {
-                        const setKey = `${exercise.clientId}:${set.clientId}`;
-                        const isLastSet = index === exercise.sets.length - 1;
-                        return (
-                          <EditableSetRow
-                            key={set.clientId}
-                            set={set}
-                            setNumber={index + 1}
-                            isActive={activeSetKey === setKey}
-                            initialFocusField={activeSetField}
-                            weightUnit={weightUnit}
-                            onActivate={(field) => {
-                              setActiveSetField(field ?? 'weight');
-                              setActiveSetKey(setKey);
-                            }}
-                            onDeactivate={() => setActiveSetKey(null)}
-                            onUpdateField={(field, value) => updateSetField(exercise.clientId, set.clientId, field, value)}
-                            onRemove={() => removeSet(exercise.clientId, set.clientId)}
-                            onAdvance={isLastSet ? () => handleAddSet(exercise.clientId) : undefined}
-                          />
-                        );
-                      })}
-                    </View>
-                  </>
-                )}
-
-                <TouchableOpacity
-                  className="flex-row items-center self-start py-2 mt-1 rounded-lg"
-                  onPress={() => handleAddSet(exercise.clientId)}
-                  activeOpacity={0.6}
-                >
-                  <Icon name="add-circle" size={16} color={accentPrimary} />
-                  <Text className="text-xs font-medium ml-1" style={{ color: accentPrimary }}>
-                    Add Set
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        );
-      })}
-    </View>
-  );
 
   const renderViewExercises = () => (
     <View>
@@ -477,7 +363,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <Button
               variant="ghost"
               onPress={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || !hasEditedExercisesWithSets}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               className="py-0 px-0"
             >
@@ -551,24 +437,27 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {renderSummaryCard()}
 
         {/* Exercises */}
-        {isEditing ? renderEditableExercises() : renderViewExercises()}
+        {isEditing ? (
+          <WorkoutEditableExerciseList
+            exercises={formState.exercises}
+            getImageSource={getImageSource}
+            weightUnit={weightUnit as 'kg' | 'lbs'}
+            activeSetKey={activeSetKey}
+            activeSetField={activeSetField}
+            onActivateSet={activateSet}
+            onDeactivateSet={deactivateSet}
+            onUpdateSetField={updateSetField}
+            onRemoveSet={removeSet}
+            onAddSet={handleAddSet}
+            onRemoveExercise={handleRemoveExercise}
+            onAddExercisePress={openExerciseSearch}
+            mode="detail"
+          />
+        ) : renderViewExercises()}
 
         {/* Edit controls */}
         {isEditing && (
           <>
-            <View className="py-4">
-              <TouchableOpacity
-                className="flex-row items-center self-center py-2 px-3 rounded-lg"
-                onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
-                activeOpacity={0.6}
-              >
-                <Icon name="add-circle" size={20} color={accentPrimary} />
-                <Text className="text-base font-medium ml-2" style={{ color: accentPrimary }}>
-                  Add Exercise
-                </Text>
-              </TouchableOpacity>
-            </View>
-
             <View className="mt-4">
               <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
               <FormInput

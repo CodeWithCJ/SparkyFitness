@@ -3,8 +3,9 @@ import { clearDraft } from '../services/workoutDraftService';
 import { useDraftPersistence } from './useDraftPersistence';
 import { getTodayDate, normalizeDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
+import { buildExercisesPayload } from '../utils/workoutSession';
 import type { Exercise } from '../types/exercise';
-import type { WorkoutDraft, WorkoutDraftSet } from '../types/drafts';
+import type { WorkoutDraft, WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { WorkoutPreset } from '../types/workoutPresets';
 
@@ -34,6 +35,31 @@ function createEmptyDraft(): WorkoutDraft {
     nameManuallySet: false,
     entryDate: today,
     exercises: [],
+  };
+}
+
+export interface WorkoutDraftSubmission {
+  name: string;
+  entryDate: string;
+  exercisesWithSets: WorkoutDraftExercise[];
+  exerciseCount: number;
+  canSave: boolean;
+  payloadExercises: ReturnType<typeof buildExercisesPayload>;
+}
+
+export function getWorkoutDraftSubmission(
+  state: WorkoutDraft,
+  weightUnit: 'kg' | 'lbs',
+): WorkoutDraftSubmission {
+  const exercisesWithSets = state.exercises.filter(exercise => exercise.sets.length > 0);
+
+  return {
+    name: state.name.trim() || 'Workout',
+    entryDate: state.entryDate,
+    exercisesWithSets,
+    exerciseCount: exercisesWithSets.length,
+    canSave: exercisesWithSets.length > 0,
+    payloadExercises: buildExercisesPayload(exercisesWithSets, weightUnit),
   };
 }
 
@@ -207,7 +233,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
   const [state, dispatch] = useReducer(workoutFormReducer, undefined, createEmptyDraft);
   const exercisesModifiedRef = useRef(false);
 
-  useDraftPersistence({
+  const { clearPersistedDraft } = useDraftPersistence({
     state,
     draftType: 'workout',
     isEditMode,
@@ -260,9 +286,15 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
   const reset = useCallback(() => {
     dispatch({ type: 'RESET' });
     if (!isEditMode) {
-      clearDraft();
+      void clearDraft();
     }
   }, [isEditMode]);
+
+  const discardDraft = useCallback(async () => {
+    if (!isEditMode) {
+      await clearPersistedDraft();
+    }
+  }, [clearPersistedDraft, isEditMode]);
 
   const populate = useCallback((session: PresetSessionResponse, weightUnit: 'kg' | 'lbs') => {
     exercisesModifiedRef.current = false;
@@ -284,6 +316,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     setName,
     setDate,
     reset,
+    discardDraft,
     populate,
     populateFromPreset,
     hasDraftData: state.exercises.length > 0,

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,7 +8,7 @@ import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
-import { getSourceLabel, formatDuration, getWorkoutSummary } from '../utils/workoutSession';
+import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
 import {
   useDeleteExerciseEntry,
   useUpdateExerciseEntry,
@@ -16,16 +16,17 @@ import {
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { syncExerciseSessionInCache } from '../hooks/syncExerciseSessionInCache';
+import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
-import { distanceFromKm, distanceToKm } from '../utils/unitConversions';
+import { distanceFromKm } from '../utils/unitConversions';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'ActivityDetail'>;
 
-type EditableField = 'name' | 'duration_minutes' | 'calories_burned' | 'distance' | 'avg_heart_rate' | 'notes';
+type EditableField = 'name' | 'duration' | 'calories' | 'distance' | 'avgHeartRate' | 'notes';
 
 const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [session, setSession] = useState(route.params.session);
@@ -36,11 +37,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textMuted, borderSubtle] = useCSSVariable([
+  const [accentPrimary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
-    '--color-text-muted',
     '--color-border-subtle',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const { getImageSource } = useExerciseImageSource();
 
@@ -56,7 +56,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     entryId: session.id,
     entryDate: normalizedDate,
     onSuccess: () => {
-      deleteActivity.invalidateCache();
       navigation.goBack();
     },
   });
@@ -69,33 +68,22 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeField, setActiveField] = useState<EditableField | null>(null);
 
-  // Local edit values — populated on entering edit mode, read/written by inline inputs
-  const [editValues, setEditValues] = useState({
-    name: '',
-    duration_minutes: '',
-    calories_burned: '',
-    distance: '',
-    avg_heart_rate: '',
-    notes: '',
-  });
-  const [editDate, setEditDate] = useState('');
-
-  const updateEditValue = useCallback((field: EditableField, value: string) => {
-    setEditValues(prev => ({ ...prev, [field]: value }));
-  }, []);
+  const {
+    state: formState,
+    setName,
+    setDuration,
+    setDistance,
+    setCalories,
+    setAvgHeartRate,
+    setDate,
+    setNotes,
+    populate,
+  } = useActivityForm({ isEditMode: true, skipDraftLoad: true });
+  const submission = getActivityDraftSubmission(formState, distanceUnit);
 
   const startEditing = () => {
-    setEditValues({
-      name: session.name ?? session.exercise_snapshot?.name ?? '',
-      duration_minutes: session.duration_minutes > 0 ? String(session.duration_minutes) : '',
-      calories_burned: session.calories_burned > 0 ? String(Math.round(session.calories_burned)) : '',
-      distance: session.distance != null && session.distance > 0
-        ? String(parseFloat(distanceFromKm(session.distance, distanceUnit).toFixed(2)))
-        : '',
-      avg_heart_rate: session.avg_heart_rate != null ? String(session.avg_heart_rate) : '',
-      notes: session.notes ?? '',
-    });
-    setEditDate(normalizedDate);
+    populate(session, distanceUnit);
+    setActiveField(null);
     setIsEditing(true);
   };
 
@@ -105,40 +93,35 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleSave = async () => {
-    const dateChanged = editDate !== normalizedDate;
-    const durationMinutes = parseFloat(editValues.duration_minutes) || 0;
-    const caloriesBurned = parseFloat(editValues.calories_burned) || 0;
-    const distanceVal = editValues.distance ? parseFloat(editValues.distance) : null;
-    const distanceKm = distanceVal != null && !isNaN(distanceVal) && distanceVal > 0
-      ? distanceToKm(distanceVal, distanceUnit)
-      : null;
-    const avgHeartRate = editValues.avg_heart_rate ? parseInt(editValues.avg_heart_rate, 10) : null;
+    if (!submission.exerciseId) return;
+
+    const dateChanged = submission.entryDate !== normalizedDate;
 
     const payload = {
-      exercise_id: session.exercise_id,
-      exercise_name: editValues.name.trim() || null,
-      duration_minutes: durationMinutes,
-      calories_burned: caloriesBurned,
-      entry_date: editDate,
-      distance: distanceKm,
-      avg_heart_rate: avgHeartRate && !isNaN(avgHeartRate) ? avgHeartRate : null,
-      notes: editValues.notes || null,
+      exercise_id: submission.exerciseId,
+      exercise_name: submission.exerciseName,
+      duration_minutes: submission.durationMinutes,
+      calories_burned: submission.caloriesBurned,
+      entry_date: submission.entryDate,
+      distance: submission.distanceKm,
+      avg_heart_rate: submission.avgHeartRate,
+      notes: submission.notes,
     };
 
     try {
       const updatedEntry = await updateEntry({ id: session.id, payload });
-      invalidateEntryCache(editDate);
+      invalidateEntryCache(submission.entryDate);
       if (dateChanged) invalidateEntryCache(normalizedDate);
       const updatedSession = {
         ...session,
         ...updatedEntry,
-        name: payload.exercise_name,
-        notes: payload.notes,
-        calories_burned: payload.calories_burned,
-        duration_minutes: payload.duration_minutes,
-        distance: payload.distance,
-        avg_heart_rate: payload.avg_heart_rate,
-        entry_date: editDate,
+        name: submission.exerciseName,
+        notes: submission.notes,
+        calories_burned: submission.caloriesBurned,
+        duration_minutes: submission.durationMinutes,
+        distance: submission.distanceKm,
+        avg_heart_rate: submission.avgHeartRate,
+        entry_date: submission.entryDate,
       };
       syncExerciseSessionInCache(queryClient, updatedSession);
       setSession(updatedSession);
@@ -175,14 +158,16 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const buildStats = (): StatItem[] => {
     const stats: StatItem[] = [];
     const distLabel = distanceUnit === 'miles' ? 'mi' : 'km';
+    const paceDuration = isEditing ? submission.durationMinutes : duration;
+    const paceDistanceKm = isEditing ? submission.distanceKm : session.distance;
 
     if (isEditing || duration > 0) {
       stats.push({
         value: isEditing
-          ? (editValues.duration_minutes || '—')
+          ? (formState.duration || '—')
           : (duration > 0 ? String(Math.round(duration)) : '—'),
         label: 'Duration',
-        editKey: 'duration_minutes',
+        editKey: 'duration',
         editSuffix: 'min',
         keyboardType: 'numeric',
       });
@@ -190,10 +175,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || calories > 0) {
       stats.push({
         value: isEditing
-          ? (editValues.calories_burned || '—')
+          ? (formState.calories || '—')
           : (calories > 0 ? String(Math.round(calories)) : '—'),
         label: 'Calories',
-        editKey: 'calories_burned',
+        editKey: 'calories',
         editSuffix: 'cal',
         keyboardType: 'numeric',
       });
@@ -201,7 +186,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || (session.distance != null && session.distance > 0)) {
       stats.push({
         value: isEditing
-          ? (editValues.distance || '—')
+          ? (formState.distance || '—')
           : (session.distance != null && session.distance > 0
               ? String(distanceFromKm(session.distance, distanceUnit).toFixed(1))
               : '—'),
@@ -214,10 +199,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || session.avg_heart_rate != null) {
       stats.push({
         value: isEditing
-          ? (editValues.avg_heart_rate || '—')
+          ? (formState.avgHeartRate || '—')
           : (session.avg_heart_rate != null ? String(session.avg_heart_rate) : '—'),
         label: 'Avg Heart Rate',
-        editKey: 'avg_heart_rate',
+        editKey: 'avgHeartRate',
         editSuffix: 'bpm',
         keyboardType: 'numeric',
       });
@@ -225,11 +210,51 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (session.steps != null && session.steps > 0) {
       stats.push({ value: session.steps.toLocaleString(), label: 'Steps' });
     }
-    if (session.distance != null && session.distance > 0 && duration > 0) {
-      const pace = formatPace(duration, session.distance);
+    if (paceDistanceKm != null && paceDistanceKm > 0 && paceDuration > 0) {
+      const pace = formatPace(paceDuration, paceDistanceKm);
       if (pace) stats.push({ value: pace, label: 'Pace' });
     }
     return stats;
+  };
+
+  const getFieldValue = (field: EditableField): string => {
+    switch (field) {
+      case 'name':
+        return formState.name;
+      case 'duration':
+        return formState.duration;
+      case 'calories':
+        return formState.calories;
+      case 'distance':
+        return formState.distance;
+      case 'avgHeartRate':
+        return formState.avgHeartRate;
+      case 'notes':
+        return formState.notes;
+    }
+  };
+
+  const updateFieldValue = (field: EditableField, value: string) => {
+    switch (field) {
+      case 'name':
+        setName(value);
+        break;
+      case 'duration':
+        setDuration(value);
+        break;
+      case 'calories':
+        setCalories(value);
+        break;
+      case 'distance':
+        setDistance(value);
+        break;
+      case 'avgHeartRate':
+        setAvgHeartRate(value);
+        break;
+      case 'notes':
+        setNotes(value);
+        break;
+    }
   };
 
   const renderStatCard = (stat: StatItem) => {
@@ -241,8 +266,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={{ minHeight: 24 }}>
           {isActive && stat.editKey ? (
             <FormInput
-              value={editValues[stat.editKey]}
-              onChangeText={(v) => updateEditValue(stat.editKey!, v)}
+              value={getFieldValue(stat.editKey)}
+              onChangeText={(v) => updateFieldValue(stat.editKey!, v)}
               onBlur={() => setActiveField(null)}
               keyboardType={stat.keyboardType ?? 'numeric'}
               placeholder="0"
@@ -385,8 +410,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               <TouchableOpacity onPress={() => setActiveField('name')} activeOpacity={0.6}>
                 {activeField === 'name' ? (
                   <FormInput
-                    value={editValues.name}
-                    onChangeText={(v) => updateEditValue('name', v)}
+                    value={formState.name}
+                    onChangeText={setName}
                     onBlur={() => setActiveField(null)}
                     placeholder="Activity Name"
                     autoFocus
@@ -394,7 +419,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   />
                 ) : (
                   <Text className="text-xl font-bold text-text-primary mb-0.5">
-                    {editValues.name || name}
+                    {formState.name || name}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -411,7 +436,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   activeOpacity={0.7}
                 >
                   <Text className="text-sm" style={{ color: accentPrimary }}>
-                    {formatDateLabel(editDate)}
+                    {formatDateLabel(formState.entryDate)}
                   </Text>
                   <Icon name="chevron-down" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
                 </TouchableOpacity>
@@ -436,8 +461,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               {isEditing ? (
                 activeField === 'notes' ? (
                   <FormInput
-                    value={editValues.notes}
-                    onChangeText={(v) => updateEditValue('notes', v)}
+                    value={formState.notes}
+                    onChangeText={setNotes}
                     onBlur={() => setActiveField(null)}
                     placeholder="Add notes..."
                     multiline
@@ -447,7 +472,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 ) : (
                   <TouchableOpacity onPress={() => setActiveField('notes')} activeOpacity={0.6}>
                     <Text className="text-sm text-text-primary">
-                      {editValues.notes || 'Add notes...'}
+                      {formState.notes || 'Add notes...'}
                     </Text>
                   </TouchableOpacity>
                 )
@@ -478,8 +503,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <CalendarSheet
         ref={calendarSheetRef}
-        selectedDate={isEditing ? editDate : normalizedDate}
-        onSelectDate={setEditDate}
+        selectedDate={isEditing ? formState.entryDate : normalizedDate}
+        onSelectDate={setDate}
       />
     </View>
   );

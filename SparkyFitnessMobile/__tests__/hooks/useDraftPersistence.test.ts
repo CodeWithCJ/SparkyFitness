@@ -6,9 +6,10 @@ import type { ActivityDraft, WorkoutDraft } from '../../src/types/drafts';
 jest.mock('../../src/services/workoutDraftService', () => ({
   loadDraft: jest.fn(),
   saveDraft: jest.fn(),
+  clearDraft: jest.fn(),
 }));
 
-const { loadDraft: mockLoadDraft, saveDraft: mockSaveDraft } = jest.requireMock(
+const { loadDraft: mockLoadDraft, saveDraft: mockSaveDraft, clearDraft: mockClearDraft } = jest.requireMock(
   '../../src/services/workoutDraftService',
 );
 
@@ -316,6 +317,25 @@ describe('useDraftPersistence', () => {
 
       unmount();
 
+      expect(mockSaveDraft).not.toHaveBeenCalled();
+    });
+
+    it('does not save on unmount after explicitly clearing the persisted draft', async () => {
+      const state1 = makeActivityDraft();
+      const { result, rerender, unmount } = renderDraftPersistence({ state: state1 });
+
+      await act(async () => {});
+
+      const state2 = makeActivityDraft({ exerciseId: 'ex-1', duration: '30' });
+      rerender({ state: state2 });
+
+      await act(async () => {
+        await result.current.clearPersistedDraft();
+      });
+
+      unmount();
+
+      expect(mockClearDraft).toHaveBeenCalled();
       expect(mockSaveDraft).not.toHaveBeenCalled();
     });
   });

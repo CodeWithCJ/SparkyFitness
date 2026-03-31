@@ -1,4 +1,8 @@
-import { workoutFormReducer, type WorkoutDraft } from '../../src/hooks/useWorkoutForm';
+import {
+  workoutFormReducer,
+  getWorkoutDraftSubmission,
+  type WorkoutDraft,
+} from '../../src/hooks/useWorkoutForm';
 import type { Exercise } from '../../src/types/exercise';
 import type { PresetSessionResponse, ExerciseEntrySetResponse } from '@workspace/shared';
 import type { WorkoutPreset } from '../../src/types/workoutPresets';
@@ -612,6 +616,75 @@ describe('workoutFormReducer', () => {
       expect(result.exercises).toHaveLength(2);
       expect(result.exercises[0].exerciseName).toBe('Bench Press');
       expect(result.exercises[1].exerciseName).toBe('Overhead Press');
+    });
+  });
+
+  describe('getWorkoutDraftSubmission', () => {
+    it('builds normalized submission values from exercises with sets', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        name: 'Push Day',
+        entryDate: '2026-03-20',
+        exercises: [
+          {
+            clientId: 'ex-1',
+            exerciseId: 'uuid-1',
+            exerciseName: 'Bench Press',
+            exerciseCategory: 'Strength',
+            images: [],
+            sets: [{ clientId: 'set-1', weight: '225', reps: '5' }],
+          },
+          {
+            clientId: 'ex-2',
+            exerciseId: 'uuid-2',
+            exerciseName: 'Accessory',
+            exerciseCategory: 'Strength',
+            images: [],
+            sets: [],
+          },
+        ],
+      };
+
+      const result = getWorkoutDraftSubmission(state, 'kg');
+
+      expect(result.name).toBe('Push Day');
+      expect(result.entryDate).toBe('2026-03-20');
+      expect(result.exerciseCount).toBe(1);
+      expect(result.canSave).toBe(true);
+      expect(result.exercisesWithSets).toHaveLength(1);
+      expect(result.payloadExercises).toEqual([
+        {
+          exercise_id: 'uuid-1',
+          sort_order: 0,
+          duration_minutes: 0,
+          sets: [{ set_number: 1, weight: 225, reps: 5 }],
+        },
+      ]);
+    });
+
+    it('falls back to default name and returns unsaveable state when no exercise has sets', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        name: '   ',
+        exercises: [
+          {
+            clientId: 'ex-1',
+            exerciseId: 'uuid-1',
+            exerciseName: 'Bench Press',
+            exerciseCategory: 'Strength',
+            images: [],
+            sets: [],
+          },
+        ],
+      };
+
+      const result = getWorkoutDraftSubmission(state, 'lbs');
+
+      expect(result.name).toBe('Workout');
+      expect(result.exerciseCount).toBe(0);
+      expect(result.canSave).toBe(false);
+      expect(result.exercisesWithSets).toEqual([]);
+      expect(result.payloadExercises).toEqual([]);
     });
   });
 });

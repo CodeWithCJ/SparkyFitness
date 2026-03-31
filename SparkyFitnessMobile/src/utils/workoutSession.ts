@@ -1,5 +1,7 @@
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
+import type { WorkoutDraftExercise } from '../types/drafts';
+import { weightToKg } from './unitConversions';
 
 export const CATEGORY_ICON_MAP: Record<string, IconName> = {
   Strength: 'exercise-weights',
@@ -183,4 +185,24 @@ export function getWorkoutSummary(session: ExerciseSessionResponse): {
     duration: session.duration_minutes,
     calories: session.calories_burned,
   };
+}
+
+export function buildExercisesPayload(
+  exercises: WorkoutDraftExercise[],
+  weightUnit: 'kg' | 'lbs',
+) {
+  return exercises.map((exercise, index) => ({
+    exercise_id: exercise.exerciseId,
+    sort_order: index,
+    duration_minutes: 0,
+    sets: exercise.sets.map((set, setIndex) => {
+      const weight = parseFloat(set.weight);
+      const reps = parseInt(set.reps, 10);
+      return {
+        set_number: setIndex + 1,
+        weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
+        reps: isNaN(reps) ? null : reps,
+      };
+    }),
+  }));
 }
