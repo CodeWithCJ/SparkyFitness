@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, FlatList, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
@@ -28,7 +28,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   useRefetchOnFocus(refetch, true);
 
   const handleSelectPreset = useCallback((preset: WorkoutPreset) => {
-    navigation.navigate('WorkoutForm', { preset, date, popCount: 2 });
+    navigation.navigate('WorkoutAdd', { preset, date, popCount: 2 });
   }, [navigation, date]);
 
   const renderPresetRow = useCallback(({ item }: { item: WorkoutPreset }) => (
@@ -94,7 +94,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   };
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-subtle">
         <Button

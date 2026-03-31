@@ -17,7 +17,6 @@ import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useActivityForm } from '../hooks/useActivityForm';
-import { isDistanceExercise } from '../constants/exercise';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { distanceToKm } from '../utils/unitConversions';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
@@ -68,8 +67,6 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const { preferences } = usePreferences();
   const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
-
-  const showDistance = isDistanceExercise(state.exerciseName);
 
   const [isNameEditing, setIsNameEditing] = useState(false);
 
@@ -244,21 +241,19 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
               />
             </View>
 
-            {/* Distance (conditional) */}
-            {showDistance && (
-              <View className="mb-4">
-                <Text className="text-sm font-medium text-text-secondary mb-1.5">
-                  Distance ({distanceUnit === 'miles' ? 'mi' : 'km'})
-                </Text>
-                <FormInput
-                  value={state.distance}
-                  onChangeText={setDistance}
-                  placeholder="0"
-                  keyboardType="decimal-pad"
-                  returnKeyType="done"
-                />
-              </View>
-            )}
+            {/* Distance */}
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">
+                Distance ({distanceUnit === 'miles' ? 'mi' : 'km'})
+              </Text>
+              <FormInput
+                value={state.distance}
+                onChangeText={setDistance}
+                placeholder="0"
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+              />
+            </View>
 
             {/* Calories */}
             <View className="mb-4">

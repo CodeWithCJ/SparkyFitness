@@ -27,7 +27,7 @@ export type RootStackParamList = {
   FoodScan: { date?: string } | undefined;
   ExerciseSearch: { returnKey: string };
   PresetSearch: { date?: string } | undefined;
-  WorkoutForm: {
+  WorkoutAdd: {
     session?: PresetSessionResponse;
     preset?: WorkoutPreset;
     date?: string;
@@ -37,7 +37,7 @@ export type RootStackParamList = {
     skipDraftLoad?: boolean;
   } | undefined;
   ActivityForm: { entry?: IndividualSessionResponse; date?: string; popCount?: number; selectedExercise?: Exercise; selectionNonce?: number; skipDraftLoad?: boolean } | undefined;
-  WorkoutDetail: { session: ExerciseSessionResponse };
+  WorkoutDetail: { session: ExerciseSessionResponse; selectedExercise?: Exercise; selectionNonce?: number };
   Logs: undefined;
   Sync: undefined;
 };

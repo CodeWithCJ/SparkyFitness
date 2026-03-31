@@ -37,9 +37,9 @@ import type {
   UpdatePresetSessionRequest,
 } from '@workspace/shared';
 
-type Props = RootStackScreenProps<'WorkoutForm'>;
+type Props = RootStackScreenProps<'WorkoutAdd'>;
 
-const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
+const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const session = route.params?.session;
   const preset = route.params?.preset;
   const initialDate = route.params?.date;
@@ -504,4 +504,4 @@ const WorkoutFormScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
-export default WorkoutFormScreen;
+export default WorkoutAddScreen;

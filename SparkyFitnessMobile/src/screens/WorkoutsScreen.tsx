@@ -69,7 +69,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
             text: 'Resume Draft',
             onPress: () => {
               if (draft.type === 'workout') {
-                navigation.navigate('WorkoutForm');
+                navigation.navigate('WorkoutAdd');
               } else {
                 navigation.navigate('ActivityForm');
               }
@@ -80,14 +80,14 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
             style: 'destructive',
             onPress: async () => {
               await clearDraft();
-              navigation.navigate('WorkoutForm', { skipDraftLoad: true });
+              navigation.navigate('WorkoutAdd', { skipDraftLoad: true });
             },
           },
         ],
       );
       return;
     }
-    navigation.navigate('WorkoutForm', { skipDraftLoad: true });
+    navigation.navigate('WorkoutAdd', { skipDraftLoad: true });
   }, [navigation]);
 
   const [refreshing, setRefreshing] = useState(false);

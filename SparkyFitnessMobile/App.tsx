@@ -8,6 +8,7 @@ import {
   type Theme,
 } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useUniwind, useCSSVariable } from 'uniwind';
@@ -27,7 +28,7 @@ import FoodEntryAddScreen from './src/screens/FoodEntryAddScreen';
 import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
-import WorkoutFormScreen from './src/screens/WorkoutFormScreen';
+import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
 import ActivityFormScreen from './src/screens/ActivityFormScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
@@ -148,7 +149,7 @@ function AppContent() {
   }, []);
 
   const handleStartExerciseForm = useCallback(
-    async (screen: 'WorkoutForm' | 'ActivityForm' | 'PresetSearch') => {
+    async (screen: 'WorkoutAdd' | 'ActivityForm' | 'PresetSearch') => {
       const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
       if (!isConnected) {
         Alert.alert(
@@ -177,7 +178,7 @@ function AppContent() {
               text: 'Resume Draft',
               onPress: () => {
                 if (draft.type === 'workout') {
-                  navigateFromSheet('WorkoutForm');
+                  navigateFromSheet('WorkoutAdd');
                 } else {
                   navigateFromSheet('ActivityForm');
                 }
@@ -209,7 +210,7 @@ function AppContent() {
     [navigateFromSheet, getActiveDiaryDate],
   );
 
-  const handleAddWorkout = useCallback(() => handleStartExerciseForm('WorkoutForm'), [handleStartExerciseForm]);
+  const handleAddWorkout = useCallback(() => handleStartExerciseForm('WorkoutAdd'), [handleStartExerciseForm]);
   const handleAddActivity = useCallback(() => handleStartExerciseForm('ActivityForm'), [handleStartExerciseForm]);
   const handleAddFromPreset = useCallback(() => handleStartExerciseForm('PresetSearch'), [handleStartExerciseForm]);
 
@@ -304,7 +305,7 @@ function AppContent() {
   return (
     <NavigationContainer theme={navigationTheme}>
       <SafeAreaProvider>
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
         <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
           <Stack.Screen
             name="Onboarding"
@@ -405,8 +406,8 @@ function AppContent() {
             }}
           />
           <Stack.Screen
-            name="WorkoutForm"
-            component={WorkoutFormScreen}
+            name="WorkoutAdd"
+            component={WorkoutAddScreen}
             options={{
               headerShown: false,
               gestureEnabled: true,
@@ -493,11 +494,13 @@ function SafeAreaToast() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView className="flex-1">
-        <BottomSheetModalProvider>
-          <AppContent />
-        </BottomSheetModalProvider>
-      </GestureHandlerRootView>
+      <KeyboardProvider>
+        <GestureHandlerRootView className="flex-1">
+          <BottomSheetModalProvider>
+            <AppContent />
+          </BottomSheetModalProvider>
+        </GestureHandlerRootView>
+      </KeyboardProvider>
     </QueryClientProvider>
   );
 }
