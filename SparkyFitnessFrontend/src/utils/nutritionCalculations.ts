@@ -537,8 +537,10 @@ export const getMealData = (
       : [];
 
   const combinedEntries: (FoodEntry | FoodEntryMeal)[] = [...entries, ...meals];
+  const mealKey = mealType.toLowerCase();
+  const percentageKey = `${mealKey}_percentage` as keyof Goals;
 
-  const percentage = goals?.meal_percentages?.[mealType.toLowerCase()] ?? 0;
+  const percentage = (goals?.[percentageKey] as number) ?? 0;
 
   let displayName = mealType;
   if (mealType.toLowerCase() === 'breakfast')
