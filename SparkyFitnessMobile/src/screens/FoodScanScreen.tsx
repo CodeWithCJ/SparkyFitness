@@ -307,7 +307,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 })}
                 className="rounded-lg"
               >
-                <Text className="text-sm font-semibold text-accent-primary">Add Food Manually</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: accentPrimary }}>Add Food Manually</Text>
               </UIButton>
             </View>
           </View>
