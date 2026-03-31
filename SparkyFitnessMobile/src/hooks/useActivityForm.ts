@@ -16,6 +16,7 @@ function createEmptyDraft(): ActivityDraft {
     exerciseId: null,
     exerciseName: '',
     exerciseCategory: null,
+    exerciseImages: [],
     caloriesPerHour: 0,
     duration: '',
     distance: '',
@@ -67,6 +68,7 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         exerciseId: action.exercise.id,
         exerciseName: action.exercise.name,
         exerciseCategory: action.exercise.category,
+        exerciseImages: action.exercise.images ?? [],
         caloriesPerHour: action.exercise.calories_per_hour,
         name: state.nameManuallySet ? state.name : defaultActivityName(action.exercise.name, state.entryDate),
       };
@@ -127,6 +129,7 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         exerciseId: entry.exercise_id,
         exerciseName: entry.exercise_snapshot?.name ?? '',
         exerciseCategory: entry.exercise_snapshot?.category ?? null,
+        exerciseImages: entry.exercise_snapshot?.images ?? [],
         caloriesPerHour: 0,
         duration: String(entry.duration_minutes),
         distance,

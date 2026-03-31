@@ -42,6 +42,7 @@ describe('workoutFormReducer', () => {
             exerciseId: 'ex-1',
             exerciseName: 'Squat',
             exerciseCategory: 'Strength',
+            images: [],
             sets: [{ clientId: 'set-1', weight: '135', reps: '5' }],
           },
         ],

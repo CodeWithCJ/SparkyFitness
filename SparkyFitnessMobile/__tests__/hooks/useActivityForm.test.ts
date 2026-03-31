@@ -30,6 +30,7 @@ const makeEmptyDraft = (): ActivityDraft => ({
   distance: '',
   calories: '',
   caloriesManuallySet: false,
+  avgHeartRate: '',
   entryDate: '2026-03-12',
   notes: '',
 });
@@ -232,6 +233,7 @@ describe('activityFormReducer', () => {
     it('returns a fresh empty draft', () => {
       const state: ActivityDraft = {
         type: 'activity',
+        name: 'Morning Run',
         exerciseId: 'ex-1',
         exerciseName: 'Running',
         exerciseCategory: 'Cardio',
@@ -240,6 +242,7 @@ describe('activityFormReducer', () => {
         distance: '5',
         calories: '300',
         caloriesManuallySet: true,
+        avgHeartRate: '155',
         entryDate: '2026-03-10',
         notes: 'Morning run',
       };
@@ -247,6 +250,7 @@ describe('activityFormReducer', () => {
       const result = activityFormReducer(state, { type: 'RESET' });
 
       expect(result.type).toBe('activity');
+      expect(result.name).toBe('');
       expect(result.exerciseId).toBeNull();
       expect(result.exerciseName).toBe('');
       expect(result.exerciseCategory).toBeNull();
@@ -255,6 +259,7 @@ describe('activityFormReducer', () => {
       expect(result.distance).toBe('');
       expect(result.calories).toBe('');
       expect(result.caloriesManuallySet).toBe(false);
+      expect(result.avgHeartRate).toBe('');
       expect(result.entryDate).toBeTruthy();
       expect(result.notes).toBe('');
     });
@@ -400,6 +405,7 @@ describe('activityFormReducer', () => {
         distance: '20',
         calories: '500',
         caloriesManuallySet: true,
+        avgHeartRate: '140',
         entryDate: '2026-03-11',
         notes: 'Evening ride',
       };

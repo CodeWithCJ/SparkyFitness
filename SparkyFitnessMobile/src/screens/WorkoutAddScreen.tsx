@@ -2,7 +2,6 @@ import React, { useRef, useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   Pressable,
   Keyboard,
@@ -10,25 +9,27 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import SafeImage from '../components/SafeImage';
+import EditableSetRow from '../components/EditableSetRow';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useWorkoutForm } from '../hooks/useWorkoutForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { formatDateLabel } from '../utils/dateUtils';
 import { useCreateWorkout, useUpdateWorkout } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
+import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { clearDraft } from '../services/workoutDraftService';
 import { weightToKg } from '../utils/unitConversions';
+import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 import type {
   WorkoutDraftExercise,
-  WorkoutDraftSet,
 } from '../hooks/useWorkoutForm';
 import type {
   CreatePresetSessionRequest,
@@ -50,18 +51,17 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
-  const repsInputRef = useRef<TextInput>(null);
 
-  const [accentPrimary, textMuted, textPrimary, borderSubtle, dangerColor] = useCSSVariable([
+  const [accentPrimary, textMuted, textPrimary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-text-primary',
     '--color-border-subtle',
-    '--color-bg-danger',
-  ]) as [string, string, string, string, string];
+  ]) as [string, string, string, string];
 
   // Track which set is currently being edited: "exerciseClientId:setClientId"
   const [activeSetKey, setActiveSetKey] = useState<string | null>(null);
+  const [activeSetField, setActiveSetField] = useState<'weight' | 'reps'>('weight');
   const [isNameEditing, setIsNameEditing] = useState(false);
 
   const dismissEditing = useCallback(() => {
@@ -97,6 +97,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const isPending = isCreating || isUpdating;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
+  const { getImageSource } = useExerciseImageSource();
 
   // Populate the edit form once after the preferences query settles so
   // the initial unit conversion is correct without overwriting later edits.
@@ -199,7 +200,10 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
               invalidateCreateCache(state.entryDate);
               navigation.pop(popCount);
             }
-          } catch {}
+          } catch (error) {
+            addLog(`Failed to save workout: ${error}`, 'ERROR');
+            Toast.show({ type: 'error', text1: 'Failed to save workout', text2: 'Please try again.' });
+          }
         },
       },
     ]);
@@ -250,97 +254,19 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     [addSet],
   );
 
-  const renderSetRow = (
-    exercise: WorkoutDraftExercise,
-    set: WorkoutDraftSet,
-  ) => {
-    const setKey = `${exercise.clientId}:${set.clientId}`;
-    const isActive = activeSetKey === setKey;
-    const weightDisplay = set.weight || '–';
-    const repsDisplay = set.reps || '–';
-
-    if (isActive) {
-      return (
-        <View key={set.clientId} className="flex-row items-center py-1.5 gap-2">
-          <FormInput
-            style={{ width: 80, textAlign: 'center', paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}
-            value={set.weight}
-            onChangeText={(v: string) =>
-              updateSetField(exercise.clientId, set.clientId, 'weight', v)
-            }
-            placeholder="0"
-            keyboardType="decimal-pad"
-            returnKeyType="next"
-            autoFocus
-            onSubmitEditing={() => repsInputRef.current?.focus()}
-          />
-          <Text className="text-sm text-text-muted">×</Text>
-          <FormInput
-            ref={repsInputRef}
-            style={{ width: 60, textAlign: 'center', paddingTop: 6, paddingBottom: 6, paddingLeft: 8, paddingRight: 8 }}
-            value={set.reps}
-            onChangeText={(v: string) =>
-              updateSetField(exercise.clientId, set.clientId, 'reps', v)
-            }
-            placeholder="reps"
-            keyboardType="number-pad"
-            returnKeyType="done"
-            onSubmitEditing={() => setActiveSetKey(null)}
-          />
-          <Button
-            variant="ghost"
-            onPress={() => removeSet(exercise.clientId, set.clientId)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            className="py-0 px-0"
-          >
-            <Icon name="remove-circle" size={20} color={dangerColor} />
-          </Button>
-        </View>
-      );
-    }
-
-    return (
-      <ReanimatedSwipeable
-        key={set.clientId}
-        renderRightActions={() => (
-          <TouchableOpacity
-            className="bg-bg-danger justify-center items-center"
-            style={{ width: 72 }}
-            onPress={() => removeSet(exercise.clientId, set.clientId)}
-            activeOpacity={0.7}
-          >
-            <Text className="text-text-danger font-semibold text-sm">Delete</Text>
-          </TouchableOpacity>
-        )}
-        overshootRight={false}
-        rightThreshold={40}
-      >
-        <TouchableOpacity
-          className="flex-row items-center py-2.5 gap-2 bg-background"
-          onPress={() => setActiveSetKey(setKey)}
-          activeOpacity={0.6}
-        >
-          <Text className="text-sm text-text-primary" style={{ width: 80, textAlign: 'center' }}>
-            {weightDisplay}
-          </Text>
-          <Text className="text-sm text-text-muted">×</Text>
-          <Text className="text-sm text-text-primary" style={{ width: 60, textAlign: 'center' }}>
-            {repsDisplay}
-          </Text>
-        </TouchableOpacity>
-      </ReanimatedSwipeable>
-    );
-  };
-
   const renderExerciseSection = (exercise: WorkoutDraftExercise) => (
     <View key={exercise.clientId} className="mb-4">
-      <View className="flex-row items-center justify-between mb-1">
+      <View className="flex-row items-start justify-between mb-1">
+        <SafeImage
+          source={exercise.images?.[0] ? getImageSource(exercise.images[0]) : null}
+          style={{ width: 48, height: 48, borderRadius: 8, marginRight: 12, marginTop: 2, opacity: 0.8 }}
+        />
         <View className="flex-1 mr-2">
           <Text className="text-base font-semibold text-text-primary">
             {exercise.exerciseName}
           </Text>
           <Text className="text-xs text-text-muted mt-0.5">
-            {[exercise.exerciseCategory, weightUnit].filter(Boolean).join(' · ')}
+            {[exercise.exerciseCategory, weightUnit].filter(Boolean).join(' \u00b7 ')}
           </Text>
         </View>
         <Button
@@ -353,7 +279,38 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
         </Button>
       </View>
 
-      {exercise.sets.map((set) => renderSetRow(exercise, set))}
+      {exercise.sets.length > 0 && (
+        <View className="mt-1">
+          <View className="flex-row items-center py-1 mb-1">
+            <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
+            <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
+            <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+            <View style={{ width: 18 }} />
+          </View>
+          {exercise.sets.map((set, index) => {
+            const setKey = `${exercise.clientId}:${set.clientId}`;
+            const isLastSet = index === exercise.sets.length - 1;
+            return (
+              <EditableSetRow
+                key={set.clientId}
+                set={set}
+                setNumber={index + 1}
+                isActive={activeSetKey === setKey}
+                initialFocusField={activeSetField}
+                weightUnit={weightUnit}
+                onActivate={(field) => {
+                  setActiveSetField(field ?? 'weight');
+                  setActiveSetKey(setKey);
+                }}
+                onDeactivate={() => setActiveSetKey(null)}
+                onUpdateField={(field, value) => updateSetField(exercise.clientId, set.clientId, field, value)}
+                onRemove={() => removeSet(exercise.clientId, set.clientId)}
+                onAdvance={isLastSet ? () => handleAddSet(exercise.clientId) : undefined}
+              />
+            );
+          })}
+        </View>
+      )}
 
       <TouchableOpacity
         className="flex-row items-center self-start py-2 px-3 mt-1 rounded-lg"

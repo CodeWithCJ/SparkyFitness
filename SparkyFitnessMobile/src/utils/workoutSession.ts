@@ -114,6 +114,58 @@ export function getSessionCalories(session: ExerciseSessionResponse): number {
   return session.calories_burned || 0;
 }
 
+// --- Exercise stats (single-pass over sessions array) ---
+
+export interface ExerciseStats {
+  caloriesBurned: number;
+  activeCalories: number;
+  otherExerciseCalories: number;
+  durationMinutes: number;
+}
+
+export function calculateExerciseStats(sessions: ExerciseSessionResponse[]): ExerciseStats {
+  let caloriesBurned = 0;
+  let activeCalories = 0;
+  let otherExerciseCalories = 0;
+  let durationMinutes = 0;
+
+  for (const session of sessions) {
+    const sessionCals = getSessionCalories(session);
+    caloriesBurned += sessionCals;
+
+    if (session.type === 'preset') {
+      otherExerciseCalories += sessionCals;
+      durationMinutes += session.total_duration_minutes;
+    } else {
+      const isActiveCals = session.exercise_snapshot?.name === 'Active Calories';
+      if (isActiveCals) {
+        activeCalories += session.calories_burned || 0;
+      } else {
+        otherExerciseCalories += sessionCals;
+        durationMinutes += session.duration_minutes ?? 0;
+      }
+    }
+  }
+
+  return { caloriesBurned, activeCalories, otherExerciseCalories, durationMinutes };
+}
+
+/** Total calories across all sessions. */
+export const calculateCaloriesBurned = (sessions: ExerciseSessionResponse[]): number =>
+  calculateExerciseStats(sessions).caloriesBurned;
+
+/** Calories from "Active Calories" individual entries only (e.g. watch/fitness tracker). */
+export const calculateActiveCalories = (sessions: ExerciseSessionResponse[]): number =>
+  calculateExerciseStats(sessions).activeCalories;
+
+/** Calories from all sessions except "Active Calories" entries. */
+export const calculateOtherExerciseCalories = (sessions: ExerciseSessionResponse[]): number =>
+  calculateExerciseStats(sessions).otherExerciseCalories;
+
+/** Total duration in minutes, excluding "Active Calories" entries. */
+export const calculateExerciseDuration = (sessions: ExerciseSessionResponse[]): number =>
+  calculateExerciseStats(sessions).durationMinutes;
+
 export function getWorkoutSummary(session: ExerciseSessionResponse): {
   name: string;
   duration: number;

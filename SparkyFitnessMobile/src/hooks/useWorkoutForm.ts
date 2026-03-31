@@ -55,7 +55,11 @@ type WorkoutFormAction =
 export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormAction): WorkoutDraft {
   switch (action.type) {
     case 'RESTORE_DRAFT':
-      return { ...action.draft, nameManuallySet: action.draft.nameManuallySet ?? true };
+      return {
+        ...action.draft,
+        nameManuallySet: action.draft.nameManuallySet ?? true,
+        exercises: action.draft.exercises.map(e => ({ ...e, images: e.images ?? [] })),
+      };
 
     case 'SET_DATE': {
       const next: WorkoutDraft = { ...state, entryDate: action.date };
@@ -78,6 +82,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
             exerciseId: action.exercise.id,
             exerciseName: action.exercise.name,
             exerciseCategory: action.exercise.category,
+            images: action.exercise.images ?? [],
             sets: [{ clientId: action.setClientId, weight: '', reps: '' }],
           },
         ],
@@ -148,6 +153,8 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           exerciseId: exercise.exercise_id,
           exerciseName: exercise.exercise_snapshot?.name ?? 'Unknown',
           exerciseCategory: exercise.exercise_snapshot?.category ?? null,
+          images: exercise.exercise_snapshot?.images ?? [],
+          snapshot: exercise.exercise_snapshot ?? null,
           sets: exercise.sets.map(set => ({
             clientId: generateClientId(),
             weight: set.weight != null
@@ -169,6 +176,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           exerciseId: exercise.exercise_id,
           exerciseName: exercise.exercise_name,
           exerciseCategory: null,
+          images: exercise.image_url ? [exercise.image_url] : [],
           sets: exercise.sets.map(set => ({
             clientId: generateClientId(),
             weight: set.weight != null

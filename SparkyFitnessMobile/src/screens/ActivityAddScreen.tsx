@@ -13,9 +13,11 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import SafeImage from '../components/SafeImage';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { useActivityForm } from '../hooks/useActivityForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
+import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { distanceToKm } from '../utils/unitConversions';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
@@ -25,9 +27,9 @@ import { addLog } from '../services/LogService';
 import { formatDateLabel } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 
-type Props = RootStackScreenProps<'ActivityForm'>;
+type Props = RootStackScreenProps<'ActivityAdd'>;
 
-const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
+const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const entry = route.params?.entry;
   const initialDate = route.params?.date;
   const popCount = route.params?.popCount ?? 1;
@@ -68,6 +70,7 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const { preferences } = usePreferences();
   const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+  const { getImageSource } = useExerciseImageSource();
 
   const [isNameEditing, setIsNameEditing] = useState(false);
 
@@ -217,7 +220,14 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
             >
               {state.exerciseId ? (
                 <View className="flex-row items-center">
-                  <Icon name="exercise" size={20} color={accentPrimary} />
+                  {state.exerciseImages?.[0] ? (
+                    <SafeImage
+                      source={getImageSource(state.exerciseImages[0])}
+                      style={{ width: 40, height: 40, borderRadius: 8, opacity: 0.8 }}
+                    />
+                  ) : (
+                    <Icon name="exercise" size={20} color={accentPrimary} />
+                  )}
                   <View className="ml-3 flex-1">
                     <Text className="text-base font-semibold text-text-primary">{state.exerciseName}</Text>
                     {state.exerciseCategory && (
@@ -342,4 +352,4 @@ const ActivityFormScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
-export default ActivityFormScreen;
+export default ActivityAddScreen;

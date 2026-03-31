@@ -29,7 +29,7 @@ import FoodEntryViewScreen from './src/screens/FoodEntryViewScreen';
 import FoodFormScreen from './src/screens/FoodFormScreen';
 import FoodScanScreen from './src/screens/FoodScanScreen';
 import WorkoutAddScreen from './src/screens/WorkoutAddScreen';
-import ActivityFormScreen from './src/screens/ActivityFormScreen';
+import ActivityAddScreen from './src/screens/ActivityAddScreen';
 import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ActivityDetailScreen from './src/screens/ActivityDetailScreen';
 import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
@@ -150,7 +150,7 @@ function AppContent() {
   }, []);
 
   const handleStartExerciseForm = useCallback(
-    async (screen: 'WorkoutAdd' | 'ActivityForm' | 'PresetSearch') => {
+    async (screen: 'WorkoutAdd' | 'ActivityAdd' | 'PresetSearch') => {
       const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
       if (!isConnected) {
         Alert.alert(
@@ -181,7 +181,7 @@ function AppContent() {
                 if (draft.type === 'workout') {
                   navigateFromSheet('WorkoutAdd');
                 } else {
-                  navigateFromSheet('ActivityForm');
+                  navigateFromSheet('ActivityAdd');
                 }
               },
             },
@@ -212,7 +212,7 @@ function AppContent() {
   );
 
   const handleAddWorkout = useCallback(() => handleStartExerciseForm('WorkoutAdd'), [handleStartExerciseForm]);
-  const handleAddActivity = useCallback(() => handleStartExerciseForm('ActivityForm'), [handleStartExerciseForm]);
+  const handleAddActivity = useCallback(() => handleStartExerciseForm('ActivityAdd'), [handleStartExerciseForm]);
   const handleAddFromPreset = useCallback(() => handleStartExerciseForm('PresetSearch'), [handleStartExerciseForm]);
 
   const syncMutation = useSyncHealthData();
@@ -416,8 +416,8 @@ function AppContent() {
             }}
           />
           <Stack.Screen
-            name="ActivityForm"
-            component={ActivityFormScreen}
+            name="ActivityAdd"
+            component={ActivityAddScreen}
             options={{
               headerShown: false,
               gestureEnabled: true,

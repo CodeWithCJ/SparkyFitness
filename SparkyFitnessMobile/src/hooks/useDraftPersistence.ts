@@ -20,6 +20,8 @@ export function useDraftPersistence<T extends FormDraft>(options: UseDraftPersis
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
+  const isEditModeRef = useRef(isEditMode);
+  isEditModeRef.current = isEditMode;
 
   useEffect(() => {
     if (isEditMode || skipDraftLoad) {
@@ -66,12 +68,16 @@ export function useDraftPersistence<T extends FormDraft>(options: UseDraftPersis
     };
   }, [state, isEditMode]);
 
-  // Flush unsaved changes on unmount
+  // Flush unsaved changes on unmount. This must NOT depend on saveTimeoutRef
+  // because React cleans up effects in declaration order — the debounced save
+  // effect above clears the ref before this cleanup runs.
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
+      }
+      if (!isEditModeRef.current) {
         saveDraft(stateRef.current);
       }
     };

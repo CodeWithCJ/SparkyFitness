@@ -145,7 +145,7 @@ const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
           ))}
           {hasMore && (
             <Button
-              variant="secondary"
+              variant="ghost"
               onPress={loadMore}
               disabled={isLoadingMore}
               className="mt-1 mb-4"

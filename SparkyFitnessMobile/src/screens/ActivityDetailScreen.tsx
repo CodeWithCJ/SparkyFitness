@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,8 @@ import { syncExerciseSessionInCache } from '../hooks/syncExerciseSessionInCache'
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
 import { distanceFromKm, distanceToKm } from '../utils/unitConversions';
+import Toast from 'react-native-toast-message';
+import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'ActivityDetail'>;
@@ -61,80 +63,72 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const isDeleting = deleteActivity.isPending;
 
-  const { updateEntry, invalidateCache: invalidateEntryCache } = useUpdateExerciseEntry();
+  const { updateEntry, isPending: isSaving, invalidateCache: invalidateEntryCache } = useUpdateExerciseEntry();
 
-  // --- Inline editing state ---
+  // --- Edit mode state ---
+  const [isEditing, setIsEditing] = useState(false);
   const [activeField, setActiveField] = useState<EditableField | null>(null);
-  const [editValue, setEditValueState] = useState('');
-  const pendingEditRef = useRef<{ field: EditableField; value: string } | null>(null);
 
-  const setEditValue = (value: string) => {
-    setEditValueState(value);
-    if (pendingEditRef.current) {
-      pendingEditRef.current.value = value;
-    }
+  // Local edit values — populated on entering edit mode, read/written by inline inputs
+  const [editValues, setEditValues] = useState({
+    name: '',
+    duration_minutes: '',
+    calories_burned: '',
+    distance: '',
+    avg_heart_rate: '',
+    notes: '',
+  });
+  const [editDate, setEditDate] = useState('');
+
+  const updateEditValue = useCallback((field: EditableField, value: string) => {
+    setEditValues(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  const startEditing = () => {
+    setEditValues({
+      name: session.name ?? session.exercise_snapshot?.name ?? '',
+      duration_minutes: session.duration_minutes > 0 ? String(session.duration_minutes) : '',
+      calories_burned: session.calories_burned > 0 ? String(Math.round(session.calories_burned)) : '',
+      distance: session.distance != null && session.distance > 0
+        ? String(parseFloat(distanceFromKm(session.distance, distanceUnit).toFixed(2)))
+        : '',
+      avg_heart_rate: session.avg_heart_rate != null ? String(session.avg_heart_rate) : '',
+      notes: session.notes ?? '',
+    });
+    setEditDate(normalizedDate);
+    setIsEditing(true);
   };
 
-  const getFieldValue = useCallback((field: EditableField): string => {
-    switch (field) {
-      case 'name':
-        return session.name ?? session.exercise_snapshot?.name ?? '';
-      case 'duration_minutes':
-        return session.duration_minutes > 0 ? String(session.duration_minutes) : '';
-      case 'calories_burned':
-        return session.calories_burned > 0 ? String(Math.round(session.calories_burned)) : '';
-      case 'distance':
-        return session.distance != null && session.distance > 0
-          ? distanceFromKm(session.distance, distanceUnit).toFixed(2)
-          : '';
-      case 'avg_heart_rate':
-        return session.avg_heart_rate != null ? String(session.avg_heart_rate) : '';
-      case 'notes':
-        return session.notes ?? '';
-    }
-  }, [session, distanceUnit]);
-
-  const startFieldEdit = (field: EditableField) => {
-    if (!isSparky) return;
-    // Save any pending edit from the previous field
-    if (pendingEditRef.current) {
-      const { field: prevField, value: prevValue } = pendingEditRef.current;
-      saveField(prevField, prevValue);
-    }
-    setActiveField(field);
-    const value = getFieldValue(field);
-    setEditValue(value);
-    pendingEditRef.current = { field, value };
-  };
-
-  const saveField = async (field: EditableField, value: string) => {
+  const cancelEditing = () => {
+    setIsEditing(false);
     setActiveField(null);
-    pendingEditRef.current = null;
+  };
 
-    // Check if value actually changed
-    const oldValue = getFieldValue(field);
-    if (value === oldValue) return;
-
-    const distanceValue = field === 'distance' && value ? parseFloat(value) : undefined;
+  const handleSave = async () => {
+    const dateChanged = editDate !== normalizedDate;
+    const durationMinutes = parseFloat(editValues.duration_minutes) || 0;
+    const caloriesBurned = parseFloat(editValues.calories_burned) || 0;
+    const distanceVal = editValues.distance ? parseFloat(editValues.distance) : null;
+    const distanceKm = distanceVal != null && !isNaN(distanceVal) && distanceVal > 0
+      ? distanceToKm(distanceVal, distanceUnit)
+      : null;
+    const avgHeartRate = editValues.avg_heart_rate ? parseInt(editValues.avg_heart_rate, 10) : null;
 
     const payload = {
       exercise_id: session.exercise_id,
-      exercise_name: field === 'name' ? (value || null) : (session.name ?? null),
-      duration_minutes: field === 'duration_minutes' ? (parseFloat(value) || 0) : session.duration_minutes,
-      calories_burned: field === 'calories_burned' ? (parseFloat(value) || 0) : session.calories_burned,
-      entry_date: normalizedDate,
-      distance: field === 'distance'
-        ? (distanceValue != null ? distanceToKm(distanceValue, distanceUnit) : null)
-        : (session.distance ?? null),
-      avg_heart_rate: field === 'avg_heart_rate'
-        ? (value ? parseInt(value, 10) : null)
-        : (session.avg_heart_rate ?? null),
-      notes: field === 'notes' ? (value || null) : (session.notes ?? null),
+      exercise_name: editValues.name.trim() || null,
+      duration_minutes: durationMinutes,
+      calories_burned: caloriesBurned,
+      entry_date: editDate,
+      distance: distanceKm,
+      avg_heart_rate: avgHeartRate && !isNaN(avgHeartRate) ? avgHeartRate : null,
+      notes: editValues.notes || null,
     };
 
     try {
       const updatedEntry = await updateEntry({ id: session.id, payload });
-      invalidateEntryCache(normalizedDate);
+      invalidateEntryCache(editDate);
+      if (dateChanged) invalidateEntryCache(normalizedDate);
       const updatedSession = {
         ...session,
         ...updatedEntry,
@@ -144,43 +138,19 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         duration_minutes: payload.duration_minutes,
         distance: payload.distance,
         avg_heart_rate: payload.avg_heart_rate,
+        entry_date: editDate,
       };
       syncExerciseSessionInCache(queryClient, updatedSession);
       setSession(updatedSession);
-    } catch {}
-  };
-
-  const saveDate = async (date: string) => {
-    if (date === normalizedDate) return;
-
-    const payload = {
-      exercise_id: session.exercise_id,
-      exercise_name: session.name ?? null,
-      duration_minutes: session.duration_minutes,
-      calories_burned: session.calories_burned,
-      entry_date: date,
-      distance: session.distance ?? null,
-      avg_heart_rate: session.avg_heart_rate ?? null,
-      notes: session.notes ?? null,
-    };
-
-    try {
-      const updatedEntry = await updateEntry({ id: session.id, payload });
-      invalidateEntryCache(date);
-      invalidateEntryCache(normalizedDate);
-      const updatedSession = { ...session, ...updatedEntry, entry_date: date };
-      syncExerciseSessionInCache(queryClient, updatedSession);
-      setSession(updatedSession);
-    } catch {}
+      setIsEditing(false);
+      setActiveField(null);
+    } catch (error) {
+      addLog(`Failed to save activity: ${error}`, 'ERROR');
+      Toast.show({ type: 'error', text1: 'Failed to save activity', text2: 'Please try again.' });
+    }
   };
 
   // --- Formatting helpers ---
-
-  const formatDistance = (distanceKm: number): string => {
-    const value = distanceFromKm(distanceKm, distanceUnit);
-    const label = distanceUnit === 'miles' ? 'mi' : 'km';
-    return `${value.toFixed(1)} ${label}`;
-  };
 
   const formatPace = (durationMin: number, distanceKm: number): string | null => {
     if (durationMin <= 0 || distanceKm <= 0) return null;
@@ -206,39 +176,46 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const stats: StatItem[] = [];
     const distLabel = distanceUnit === 'miles' ? 'mi' : 'km';
 
-    if (isSparky || duration > 0) {
+    if (isEditing || duration > 0) {
       stats.push({
-        value: duration > 0 ? String(Math.round(duration)) : '—',
+        value: isEditing
+          ? (editValues.duration_minutes || '—')
+          : (duration > 0 ? String(Math.round(duration)) : '—'),
         label: 'Duration',
         editKey: 'duration_minutes',
         editSuffix: 'min',
         keyboardType: 'numeric',
       });
     }
-    if (isSparky || calories > 0) {
+    if (isEditing || calories > 0) {
       stats.push({
-        value: calories > 0 ? String(Math.round(calories)) : '—',
+        value: isEditing
+          ? (editValues.calories_burned || '—')
+          : (calories > 0 ? String(Math.round(calories)) : '—'),
         label: 'Calories',
         editKey: 'calories_burned',
         editSuffix: 'cal',
         keyboardType: 'numeric',
       });
     }
-    if (isSparky || (session.distance != null && session.distance > 0)) {
-      const distValue = session.distance != null && session.distance > 0
-        ? String(distanceFromKm(session.distance, distanceUnit).toFixed(1))
-        : '—';
+    if (isEditing || (session.distance != null && session.distance > 0)) {
       stats.push({
-        value: distValue,
+        value: isEditing
+          ? (editValues.distance || '—')
+          : (session.distance != null && session.distance > 0
+              ? String(distanceFromKm(session.distance, distanceUnit).toFixed(1))
+              : '—'),
         label: 'Distance',
         editKey: 'distance',
         editSuffix: distLabel,
         keyboardType: 'decimal-pad',
       });
     }
-    if (isSparky || session.avg_heart_rate != null) {
+    if (isEditing || session.avg_heart_rate != null) {
       stats.push({
-        value: session.avg_heart_rate != null ? String(session.avg_heart_rate) : '—',
+        value: isEditing
+          ? (editValues.avg_heart_rate || '—')
+          : (session.avg_heart_rate != null ? String(session.avg_heart_rate) : '—'),
         label: 'Avg Heart Rate',
         editKey: 'avg_heart_rate',
         editSuffix: 'bpm',
@@ -257,16 +234,16 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const renderStatCard = (stat: StatItem) => {
     const isActive = activeField === stat.editKey;
-    const canEdit = isSparky && stat.editKey;
+    const canEdit = isEditing && stat.editKey;
 
     const content = (
       <View className={`bg-surface rounded-xl p-3 ${canEdit ? 'border' : ''}`} style={canEdit ? { borderColor: isActive ? accentPrimary : borderSubtle } : undefined}>
         <View style={{ minHeight: 24 }}>
           {isActive && stat.editKey ? (
             <FormInput
-              value={editValue}
-              onChangeText={setEditValue}
-              onBlur={() => saveField(stat.editKey!, editValue)}
+              value={editValues[stat.editKey]}
+              onChangeText={(v) => updateEditValue(stat.editKey!, v)}
+              onBlur={() => setActiveField(null)}
               keyboardType={stat.keyboardType ?? 'numeric'}
               placeholder="0"
               autoFocus
@@ -301,7 +278,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <TouchableOpacity
           key={stat.label}
           className="flex-1"
-          onPress={() => startFieldEdit(stat.editKey!)}
+          onPress={() => setActiveField(stat.editKey!)}
           activeOpacity={0.7}
         >
           {content}
@@ -342,27 +319,61 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3">
-        <Button
-          variant="ghost"
-          onPress={() => {
-            if (pendingEditRef.current) {
-              const { field, value } = pendingEditRef.current;
-              saveField(field, value);
-            }
-            navigation.goBack();
-          }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="py-0 px-0"
-        >
-          <Icon name="chevron-back" size={22} color={accentPrimary} />
-        </Button>
-        <View className="flex-1" />
+      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
+        {isEditing ? (
+          <>
+            <Button
+              variant="ghost"
+              onPress={cancelEditing}
+              disabled={isSaving}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="py-0 px-0"
+            >
+              <Text className="text-accent-primary text-base font-medium">Cancel</Text>
+            </Button>
+            <View className="flex-1" />
+            <Button
+              variant="ghost"
+              onPress={handleSave}
+              disabled={isSaving}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="py-0 px-0"
+            >
+              {isSaving ? (
+                <ActivityIndicator size="small" color={accentPrimary} />
+              ) : (
+                <Text className="text-accent-primary text-base font-semibold">Save</Text>
+              )}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              onPress={() => navigation.goBack()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="py-0 px-0"
+            >
+              <Icon name="chevron-back" size={22} color={accentPrimary} />
+            </Button>
+            <View className="flex-1" />
+            {isSparky && (
+              <Button
+                variant="ghost"
+                onPress={startEditing}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                className="py-0 px-0"
+              >
+                <Text className="text-accent-primary text-base font-medium">Edit</Text>
+              </Button>
+            )}
+          </>
+        )}
       </View>
 
       <KeyboardAwareScrollView contentContainerClassName="px-4 pb-8" bottomOffset={20} keyboardShouldPersistTaps="handled">
         {/* Title area */}
-        <View className="flex-row items-start mb-4">
+        <View className="flex-row items-start mb-4 mt-4">
           {firstImageSource && (
             <SafeImage
               source={firstImageSource}
@@ -370,37 +381,44 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             />
           )}
           <View className="flex-1">
-            {activeField === 'name' ? (
-              <FormInput
-                value={editValue}
-                onChangeText={setEditValue}
-                onBlur={() => saveField('name', editValue)}
-                placeholder="Activity Name"
-                autoFocus
-                style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 8, paddingBottom: 8, fontSize: 20, fontWeight: '700' }}
-              />
-            ) : isSparky ? (
-              <TouchableOpacity onPress={() => startFieldEdit('name')} activeOpacity={0.6}>
-                <Text className="text-xl font-bold text-text-primary mb-0.5">{name}</Text>
+            {isEditing ? (
+              <TouchableOpacity onPress={() => setActiveField('name')} activeOpacity={0.6}>
+                {activeField === 'name' ? (
+                  <FormInput
+                    value={editValues.name}
+                    onChangeText={(v) => updateEditValue('name', v)}
+                    onBlur={() => setActiveField(null)}
+                    placeholder="Activity Name"
+                    autoFocus
+                    style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 8, paddingBottom: 8, fontSize: 20, fontWeight: '700' }}
+                  />
+                ) : (
+                  <Text className="text-xl font-bold text-text-primary mb-0.5">
+                    {editValues.name || name}
+                  </Text>
+                )}
               </TouchableOpacity>
             ) : (
               <Text className="text-xl font-bold text-text-primary mb-0.5">{name}</Text>
             )}
-            {isSparky ? (
-              <TouchableOpacity
-                className="flex-row items-center mb-0.5"
-                onPress={() => calendarSheetRef.current?.present()}
-                activeOpacity={0.7}
-              >
-                <Text className="text-sm" style={{ color: accentPrimary }}>
-                  {formatDateLabel(normalizedDate)}
-                </Text>
-                <Icon name="chevron-down" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
-              </TouchableOpacity>
-            ) : entryDate ? (
-              <Text className="text-sm text-text-muted mb-0.5">{formatDate(entryDate)}</Text>
-            ) : null}
-            <Text className="text-sm text-text-muted">{sourceLabel}</Text>
+            <View className="flex-row items-center">
+              <Text className="text-sm text-text-muted">{sourceLabel}</Text>
+              <Text className="text-sm text-text-muted mx-2">{'\u2022'}</Text>
+              {isEditing ? (
+                <TouchableOpacity
+                  className="flex-row items-center"
+                  onPress={() => calendarSheetRef.current?.present()}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-sm" style={{ color: accentPrimary }}>
+                    {formatDateLabel(editDate)}
+                  </Text>
+                  <Icon name="chevron-down" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
+                </TouchableOpacity>
+              ) : entryDate ? (
+                <Text className="text-sm text-text-muted">{formatDate(entryDate)}</Text>
+              ) : null}
+            </View>
           </View>
         </View>
 
@@ -410,27 +428,29 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {renderStatsGrid()}
 
         {/* Notes section */}
-        {(activeField === 'notes' || session.notes || isSparky) && (
+        {(isEditing || session.notes) && (
           <>
             <Divider />
             <View className="py-4">
               <Text className="text-sm font-medium text-text-secondary mb-2">Notes</Text>
-              {activeField === 'notes' ? (
-                <FormInput
-                  value={editValue}
-                  onChangeText={setEditValue}
-                  onBlur={() => saveField('notes', editValue)}
-                  placeholder="Add notes..."
-                  multiline
-                  autoFocus
-                  style={{ minHeight: 60 }}
-                />
-              ) : isSparky ? (
-                <TouchableOpacity onPress={() => startFieldEdit('notes')} activeOpacity={0.6}>
-                  <Text className="text-sm text-text-primary">
-                    {session.notes || 'Add notes...'}
-                  </Text>
-                </TouchableOpacity>
+              {isEditing ? (
+                activeField === 'notes' ? (
+                  <FormInput
+                    value={editValues.notes}
+                    onChangeText={(v) => updateEditValue('notes', v)}
+                    onBlur={() => setActiveField(null)}
+                    placeholder="Add notes..."
+                    multiline
+                    autoFocus
+                    style={{ minHeight: 60 }}
+                  />
+                ) : (
+                  <TouchableOpacity onPress={() => setActiveField('notes')} activeOpacity={0.6}>
+                    <Text className="text-sm text-text-primary">
+                      {editValues.notes || 'Add notes...'}
+                    </Text>
+                  </TouchableOpacity>
+                )
               ) : (
                 <Text className="text-sm text-text-primary">{session.notes}</Text>
               )}
@@ -439,7 +459,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         )}
 
         {/* Delete */}
-        {isSparky && (
+        {isEditing && (
           <>
             <Divider />
             <Button
@@ -458,8 +478,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <CalendarSheet
         ref={calendarSheetRef}
-        selectedDate={normalizedDate}
-        onSelectDate={saveDate}
+        selectedDate={isEditing ? editDate : normalizedDate}
+        onSelectDate={setEditDate}
       />
     </View>
   );
