@@ -5,25 +5,27 @@ import type { ExerciseSessionResponse } from '@workspace/shared';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
 import { getWorkoutIcon, getSourceLabel, formatDuration, getWorkoutSummary, getFirstImage } from '../utils/workoutSession';
+import { weightFromKg, distanceFromKm } from '../utils/unitConversions';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 
 interface WorkoutCardProps {
   session: ExerciseSessionResponse;
   getImageSource?: GetImageSource;
+  weightUnit?: 'kg' | 'lbs';
+  distanceUnit?: 'km' | 'miles';
 }
 
 export { getSourceLabel, formatDuration, getWorkoutSummary } from '../utils/workoutSession';
 
-const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource }) => {
+const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource, weightUnit = 'kg', distanceUnit = 'km' }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
   const textMuted = useCSSVariable('--color-text-muted') as string;
   const textSecondary = useCSSVariable('--color-text-secondary') as string;
   const iconName = getWorkoutIcon(session);
   const { name, duration, calories } = getWorkoutSummary(session);
   const source = session.source;
-  const subtitle = session.type === 'preset'
-    ? `${session.exercises.length} exercise${session.exercises.length !== 1 ? 's' : ''}`
-    : undefined;
+
+  const subtitle = buildSubtitle(session, duration, calories, weightUnit, distanceUnit);
 
   const { label: sourceLabel, isSparky } = getSourceLabel(source);
 
@@ -58,17 +60,50 @@ const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource }) =
             </View>
           </View>
           <Text className="text-sm text-text-secondary mt-0.5">
-            {[
-              duration > 0 ? formatDuration(duration) : null,
-              calories > 0 ? `${Math.round(calories)} Cal` : null,
-              subtitle,
-            ].filter(Boolean).join(' · ')}
+            {subtitle}
           </Text>
         </View>
       </View>
     </View>
   );
 });
+
+function buildSubtitle(
+  session: ExerciseSessionResponse,
+  duration: number,
+  calories: number,
+  weightUnit: 'kg' | 'lbs',
+  distanceUnit: 'km' | 'miles',
+): string {
+  if (session.type === 'preset') {
+    const exerciseCount = session.exercises.length;
+    const totalSets = session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+    const totalVolumeKg = session.exercises.reduce(
+      (sum, ex) => ex.sets.reduce((s, set) => s + (set.weight ?? 0) * (set.reps ?? 0), sum),
+      0,
+    );
+
+    const parts: string[] = [];
+    parts.push(`${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}`);
+    if (totalSets > 0) parts.push(`${totalSets} sets`);
+    if (totalVolumeKg > 0) {
+      const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
+      parts.push(`${vol.toLocaleString()} ${weightUnit}`);
+    }
+    return parts.join(' \u00b7 ');
+  }
+
+  // Individual activity: duration, distance, calories
+  const parts: string[] = [];
+  if (duration > 0) parts.push(formatDuration(duration));
+  if (session.distance != null && session.distance > 0) {
+    const dist = distanceFromKm(session.distance, distanceUnit);
+    const label = distanceUnit === 'miles' ? 'mi' : 'km';
+    parts.push(`${dist.toFixed(1)} ${label}`);
+  }
+  if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
+  return parts.join(' \u00b7 ');
+}
 
 WorkoutCard.displayName = 'WorkoutCard';
 
