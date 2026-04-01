@@ -8,7 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -227,7 +227,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 {/* Workout name */}
                 <View className="mb-4">
                   {isNameEditing ? (
-                    <Animated.View key="name-edit" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                    <FadeView key="name-edit">
                       <FormInput
                         className="text-xl font-bold text-text-primary rounded-lg"
                         value={state.name}
@@ -239,9 +239,9 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         onBlur={() => setIsNameEditing(false)}
                         onSubmitEditing={() => setIsNameEditing(false)}
                       />
-                    </Animated.View>
+                    </FadeView>
                   ) : (
-                    <Animated.View key="name-view" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                    <FadeView key="name-view">
                       <TouchableOpacity
                         className="flex-row items-center self-start gap-2"
                         onPress={() => setIsNameEditing(true)}
@@ -252,7 +252,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         </Text>
                         <Icon name="pencil" size={20} color={textMuted} />
                       </TouchableOpacity>
-                    </Animated.View>
+                    </FadeView>
                   )}
                 </View>
 

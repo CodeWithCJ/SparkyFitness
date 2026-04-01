@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
-import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -30,6 +31,30 @@ import type { ExerciseEntryResponse, UpdatePresetSessionRequest } from '@workspa
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
+function getExerciseVolume(exercise: ExerciseEntryResponse): number {
+  return exercise.sets.reduce((total, set) => {
+    return total + (set.weight ?? 0) * (set.reps ?? 0);
+  }, 0);
+}
+
+function getExerciseSetSummary(exercise: ExerciseEntryResponse, weightUnit: string): string {
+  if (exercise.sets.length === 0) return '';
+  const firstSet = exercise.sets[0];
+  const allSame = exercise.sets.every(
+    s => s.weight === firstSet.weight && s.reps === firstSet.reps
+  );
+  if (allSame && firstSet.weight != null && firstSet.reps != null) {
+    const displayWeight = parseFloat(weightFromKg(firstSet.weight, weightUnit as 'kg' | 'lbs').toFixed(1));
+    return `${exercise.sets.length} × ${firstSet.reps} @ ${displayWeight} ${weightUnit}`;
+  }
+  return `${exercise.sets.length} sets`;
+}
+
+function formatVolume(volumeKg: number, weightUnit: string): string {
+  const value = weightFromKg(volumeKg, weightUnit as 'kg' | 'lbs');
+  return `${Math.round(value).toLocaleString()} ${weightUnit}`;
+}
+
 interface ExerciseRowProps {
   exercise: ExerciseEntryResponse;
   isExpanded: boolean;
@@ -37,10 +62,7 @@ interface ExerciseRowProps {
   getImageSource: ReturnType<typeof useExerciseImageSource>['getImageSource'];
   accentPrimary: string;
   textMuted: string;
-  renderSetTable: (exercise: ExerciseEntryResponse) => React.ReactNode;
-  getExerciseSetSummary: (exercise: ExerciseEntryResponse) => string;
-  formatVolume: (volumeKg: number) => string;
-  getExerciseVolume: (exercise: ExerciseEntryResponse) => number;
+  weightUnit: string;
 }
 
 const ExerciseRow = React.memo(({
@@ -50,10 +72,7 @@ const ExerciseRow = React.memo(({
   getImageSource,
   accentPrimary,
   textMuted,
-  renderSetTable,
-  getExerciseSetSummary,
-  formatVolume,
-  getExerciseVolume,
+  weightUnit,
 }: ExerciseRowProps) => {
   const snapshot = exercise.exercise_snapshot;
   const metadataItems = [snapshot?.category, snapshot?.level, snapshot?.force, snapshot?.mechanic].filter(Boolean);
@@ -69,6 +88,32 @@ const ExerciseRow = React.memo(({
   const chevronStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
+
+  const renderSetTable = () => {
+    if (exercise.sets.length === 0) return null;
+    return (
+      <View className="mt-2">
+        <View className="flex-row py-1 mb-1">
+          <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
+          <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
+          <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+        </View>
+        {exercise.sets.map(set => {
+          const displayWeight = set.weight != null
+            ? `${parseFloat(weightFromKg(set.weight, weightUnit as 'kg' | 'lbs').toFixed(1))} ${weightUnit}`
+            : '\u2014';
+          const displayReps = set.reps != null ? String(set.reps) : '\u2014';
+          return (
+            <View key={set.id} className="flex-row py-1.5">
+              <Text className="text-sm text-text-muted w-10 text-center">{set.set_number}</Text>
+              <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
+              <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
 
   return (
     <View>
@@ -96,7 +141,7 @@ const ExerciseRow = React.memo(({
           </View>
 
           {isExpanded ? (
-            <Animated.View key="expanded" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+            <FadeView key="expanded">
               {metadataItems.length > 0 && (
                 <Text className="text-xs text-text-muted mt-1">
                   {metadataItems.join(' \u2022 ')}
@@ -105,24 +150,24 @@ const ExerciseRow = React.memo(({
               {exercise.sets.length > 0 && (
                 <>
                   <View className="border-t border-border-subtle mt-3 mb-1" />
-                  {renderSetTable(exercise)}
+                  {renderSetTable()}
                 </>
               )}
-            </Animated.View>
+            </FadeView>
           ) : (
             exercise.sets.length > 0 && (
-              <Animated.View key="collapsed" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+              <FadeView key="collapsed">
                 <View className="mt-1">
                   <Text className="text-sm text-text-secondary">
-                    {getExerciseSetSummary(exercise)}
+                    {getExerciseSetSummary(exercise, weightUnit)}
                   </Text>
                   {volume > 0 && (
                     <Text className="text-xs text-text-muted mt-0.5">
-                      Volume: {formatVolume(volume)}
+                      Volume: {formatVolume(volume, weightUnit)}
                     </Text>
                   )}
                 </View>
-              </Animated.View>
+              </FadeView>
             )
           )}
         </View>
@@ -252,61 +297,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
-  // --- Formatting helpers ---
-
-  const getExerciseSetSummary = (exercise: ExerciseEntryResponse): string => {
-    if (exercise.sets.length === 0) return '';
-    const firstSet = exercise.sets[0];
-    const allSame = exercise.sets.every(
-      s => s.weight === firstSet.weight && s.reps === firstSet.reps
-    );
-    if (allSame && firstSet.weight != null && firstSet.reps != null) {
-      const displayWeight = parseFloat(weightFromKg(firstSet.weight, weightUnit as 'kg' | 'lbs').toFixed(1));
-      return `${exercise.sets.length} \u00d7 ${firstSet.reps} @ ${displayWeight} ${weightUnit}`;
-    }
-    return `${exercise.sets.length} sets`;
-  };
-
-  const getExerciseVolume = (exercise: ExerciseEntryResponse): number => {
-    return exercise.sets.reduce((total, set) => {
-      return total + (set.weight ?? 0) * (set.reps ?? 0);
-    }, 0);
-  };
-
-  const formatVolume = (volumeKg: number): string => {
-    const value = weightFromKg(volumeKg, weightUnit as 'kg' | 'lbs');
-    return `${Math.round(value).toLocaleString()} ${weightUnit}`;
-  };
-
   // --- Read-only render helpers ---
-
-  const renderSetTable = (exercise: ExerciseEntryResponse) => {
-    if (exercise.sets.length === 0) return null;
-
-    return (
-      <View className="mt-2">
-        <View className="flex-row py-1 mb-1">
-          <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
-          <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
-          <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
-        </View>
-        {exercise.sets.map(set => {
-          const displayWeight = set.weight != null
-            ? `${parseFloat(weightFromKg(set.weight, weightUnit as 'kg' | 'lbs').toFixed(1))} ${weightUnit}`
-            : '\u2014';
-          const displayReps = set.reps != null ? String(set.reps) : '\u2014';
-
-          return (
-            <View key={set.id} className="flex-row py-1.5">
-              <Text className="text-sm text-text-muted w-10 text-center">{set.set_number}</Text>
-              <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
-              <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
-            </View>
-          );
-        })}
-      </View>
-    );
-  };
 
   const renderViewExercises = () => (
     <View>
@@ -319,10 +310,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           getImageSource={getImageSource}
           accentPrimary={accentPrimary}
           textMuted={textMuted}
-          renderSetTable={renderSetTable}
-          getExerciseSetSummary={getExerciseSetSummary}
-          formatVolume={formatVolume}
-          getExerciseVolume={getExerciseVolume}
+          weightUnit={weightUnit}
         />
       ))}
     </View>
@@ -376,7 +364,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (totalVolume > 0) {
       const volumeLabel = isEditing
         ? `${Math.round(totalVolume).toLocaleString()} ${weightUnit}`
-        : formatVolume(totalVolume);
+        : formatVolume(totalVolume, weightUnit);
       summaryItems.push({ value: volumeLabel, label: 'Volume' });
     }
     if (summaryItems.length === 0) return null;
@@ -405,10 +393,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         {isEditing ? (
-          <Animated.View
+          <FadeView
             key="header-edit"
-            entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(150)}
             style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
           >
             <Button
@@ -434,12 +420,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text className="text-accent-primary text-base font-semibold">Save</Text>
               )}
             </Button>
-          </Animated.View>
+          </FadeView>
         ) : (
-          <Animated.View
+          <FadeView
             key="header-view"
-            entering={FadeIn.duration(200)}
-            exiting={FadeOut.duration(150)}
             style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
           >
             <Button
@@ -461,7 +445,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text className="text-accent-primary text-base font-medium">Edit</Text>
               </Button>
             )}
-          </Animated.View>
+          </FadeView>
         )}
       </View>
 
@@ -469,7 +453,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Title area */}
         <View className="mb-4">
           {isEditing ? (
-            <Animated.View key="edit-title" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+            <FadeView key="edit-title">
               <FormInput
                 value={formState.name}
                 onChangeText={setFormName}
@@ -477,11 +461,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 className="text-xl font-bold text-text-primary mb-1"
                 style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 0, paddingBottom: 0, fontSize: 20 }}
               />
-            </Animated.View>
+            </FadeView>
           ) : (
-            <Animated.View key="view-title" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+            <FadeView key="view-title">
               <Text className="text-xl font-bold text-text-primary mb-1">{name}</Text>
-            </Animated.View>
+            </FadeView>
           )}
           <View className="flex-row items-center">
             <Text className="text-sm text-text-muted">{sourceLabel}</Text>
@@ -527,7 +511,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Edit controls */}
         {isEditing && (
-          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+          <FadeView>
             <View className="mt-4">
               <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
               <FormInput
@@ -538,24 +522,24 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={{ minHeight: 60 }}
               />
             </View>
-          </Animated.View>
+          </FadeView>
         )}
 
         {/* Notes (view mode) */}
         {!isEditing && session.notes && (
-          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+          <FadeView>
             <View className="mt-4 px-4">
               <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
               <Text className="text-sm text-text-primary">{session.notes}</Text>
             </View>
-          </Animated.View>
+          </FadeView>
         )}
 
         {renderActivityDetails()}
 
         {/* Delete button */}
         {isEditing && (
-          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+          <FadeView>
             <Button
               variant="ghost"
               onPress={() => deleteWorkout.confirmAndDelete()}
@@ -566,7 +550,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 {isDeleting ? 'Deleting...' : 'Delete Workout'}
               </Text>
             </Button>
-          </Animated.View>
+          </FadeView>
         )}
       </KeyboardAwareScrollView>
 

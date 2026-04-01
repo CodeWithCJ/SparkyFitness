@@ -124,20 +124,14 @@ function EditableExerciseCard({
         )}
 
         <TouchableOpacity
-          className="flex-row items-center py-3"
+          className="flex-row items-center justify-center py-3"
           onPress={() => onAddSet(exercise.clientId)}
           activeOpacity={0.6}
         >
-          <View className="w-10 items-center justify-center">
-            <Icon name="add" size={18} color={accentPrimary} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-base font-medium text-center" style={{ color: accentPrimary }}>
-              Add Set
-            </Text>
-          </View>
-          <View className="flex-1" />
-          <View style={{ width: 18 }} />
+          <Icon name="add" size={18} color={accentPrimary} />
+          <Text className="text-base font-medium ml-1" style={{ color: accentPrimary }}>
+            Add Set
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

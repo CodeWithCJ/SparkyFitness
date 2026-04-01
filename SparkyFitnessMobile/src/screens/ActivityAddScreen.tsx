@@ -7,7 +7,7 @@ import {
   Keyboard,
   ActivityIndicator,
 } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -157,7 +157,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Activity name */}
             <View className="mb-4">
               {isNameEditing ? (
-                <Animated.View key="name-edit" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                <FadeView key="name-edit">
                   <FormInput
                     className="text-xl font-bold text-text-primary rounded-lg"
                     value={state.name}
@@ -169,9 +169,9 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     onBlur={() => setIsNameEditing(false)}
                     onSubmitEditing={() => setIsNameEditing(false)}
                   />
-                </Animated.View>
+                </FadeView>
               ) : (
-                <Animated.View key="name-view" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                <FadeView key="name-view">
                   <TouchableOpacity
                     className="flex-row items-center self-start gap-2"
                     onPress={() => setIsNameEditing(true)}
@@ -182,7 +182,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     </Text>
                     <Icon name="pencil" size={20} color={textMuted} />
                   </TouchableOpacity>
-                </Animated.View>
+                </FadeView>
               )}
             </View>
 
@@ -207,7 +207,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
               activeOpacity={0.7}
             >
               {state.exerciseId ? (
-                <Animated.View key="exercise-selected" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                <FadeView key="exercise-selected">
                   <View className="flex-row items-center">
                     {state.exerciseImages?.[0] ? (
                       <SafeImage
@@ -225,16 +225,16 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     </View>
                     <Icon name="chevron-forward" size={16} color={textMuted} />
                   </View>
-                </Animated.View>
+                </FadeView>
               ) : (
-                <Animated.View key="exercise-empty" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                <FadeView key="exercise-empty">
                   <View className="flex-row items-center">
                     <Icon name="add-circle" size={20} color={accentPrimary} />
                     <Text className="text-base font-medium ml-3" style={{ color: accentPrimary }}>
                       Select Activity
                     </Text>
                   </View>
-                </Animated.View>
+                </FadeView>
               )}
             </TouchableOpacity>
 
