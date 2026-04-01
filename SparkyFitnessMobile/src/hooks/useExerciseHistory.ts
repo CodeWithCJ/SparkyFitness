@@ -70,7 +70,7 @@ export function useExerciseHistory(
     if (query.hasNextPage && !query.isFetching) {
       void query.fetchNextPage();
     }
-  }, [query.fetchNextPage, query.hasNextPage, query.isFetching]);
+  }, [query]);
 
   useRefetchOnFocus(refetch, enabled);
 

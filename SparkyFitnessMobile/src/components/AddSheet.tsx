@@ -121,11 +121,13 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         style={{ backgroundColor: raisedBg }}
         onPress={() => handleAction(onPress)}
       >
-        <Icon name={icon} size={32} color={accentPrimary} />
+        <View className="h-10 items-center justify-center">
+          <Icon name={icon} size={32} color={accentPrimary} />
+        </View>
         <Text className="text-text-primary text-sm font-medium mt-2">
           {label}
         </Text>
-        <Text className="text-xs mt-1" style={{ color: textSecondary }}>
+        <Text className="text-xs mt-1 text-center" numberOfLines={2} style={{ color: textSecondary, minHeight: 32 }}>
           {subtitle}
         </Text>
       </Button>

@@ -4,7 +4,7 @@ import { useCSSVariable } from 'uniwind';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
-import { getWorkoutIcon, getSourceLabel, formatDuration, getWorkoutSummary, getFirstImage, buildSessionSubtitle } from '../utils/workoutSession';
+import { getWorkoutIcon, getSourceLabel, getWorkoutSummary, getFirstImage, buildSessionSubtitle } from '../utils/workoutSession';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 
 interface WorkoutCardProps {
@@ -14,7 +14,7 @@ interface WorkoutCardProps {
   distanceUnit?: 'km' | 'miles';
 }
 
-export { getSourceLabel, formatDuration, getWorkoutSummary } from '../utils/workoutSession';
+export { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
 
 const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource, weightUnit = 'kg', distanceUnit = 'km' }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
