@@ -168,6 +168,7 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
 jest.mock('react-native-reanimated', () => {
   const React = require('react');
   const { View } = require('react-native');
+  const createAnimationMock = () => ({ duration: () => createAnimationMock() });
   return {
     __esModule: true,
     default: { View },
@@ -179,6 +180,9 @@ jest.mock('react-native-reanimated', () => {
     withSequence: (...args) => args[args.length - 1],
     useAnimatedReaction: jest.fn(),
     Easing: { linear: jest.fn(), ease: jest.fn(), bezier: jest.fn(() => jest.fn()) },
+    FadeIn: createAnimationMock(),
+    FadeOut: createAnimationMock(),
+    LinearTransition: createAnimationMock(),
   };
 });
 

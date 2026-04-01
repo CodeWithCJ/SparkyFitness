@@ -1,5 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -8,7 +9,7 @@ import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
 import WorkoutEditableExerciseList from '../components/WorkoutEditableExerciseList';
-import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
+import { getSourceLabel, getWorkoutSummary, CATEGORY_ICON_MAP } from '../utils/workoutSession';
 import {
   useDeleteWorkout,
   useUpdateWorkout,
@@ -28,6 +29,109 @@ import type { RootStackScreenProps } from '../types/navigation';
 import type { ExerciseEntryResponse, UpdatePresetSessionRequest } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
+
+interface ExerciseRowProps {
+  exercise: ExerciseEntryResponse;
+  isExpanded: boolean;
+  onToggle: (exerciseId: string) => void;
+  getImageSource: ReturnType<typeof useExerciseImageSource>['getImageSource'];
+  accentPrimary: string;
+  textMuted: string;
+  renderSetTable: (exercise: ExerciseEntryResponse) => React.ReactNode;
+  getExerciseSetSummary: (exercise: ExerciseEntryResponse) => string;
+  formatVolume: (volumeKg: number) => string;
+  getExerciseVolume: (exercise: ExerciseEntryResponse) => number;
+}
+
+const ExerciseRow = React.memo(({
+  exercise,
+  isExpanded,
+  onToggle,
+  getImageSource,
+  accentPrimary,
+  textMuted,
+  renderSetTable,
+  getExerciseSetSummary,
+  formatVolume,
+  getExerciseVolume,
+}: ExerciseRowProps) => {
+  const snapshot = exercise.exercise_snapshot;
+  const metadataItems = [snapshot?.category, snapshot?.level, snapshot?.force, snapshot?.mechanic].filter(Boolean);
+  const volume = getExerciseVolume(exercise);
+  const exerciseIcon = (snapshot?.category && CATEGORY_ICON_MAP[snapshot.category]) || 'exercise-weights';
+
+  const rotation = useSharedValue(isExpanded ? 0 : -90);
+
+  useEffect(() => {
+    rotation.value = withTiming(isExpanded ? 0 : -90, { duration: 200 });
+  }, [isExpanded, rotation]);
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  return (
+    <View>
+      <View className="border-t border-border-subtle" />
+      <TouchableOpacity
+        className="flex-row items-start py-4"
+        onPress={() => onToggle(exercise.id)}
+        activeOpacity={0.7}
+      >
+        <View className="mr-3 items-center justify-center" style={{ width: 48, height: 48, marginTop: 2 }}>
+          <SafeImage
+            source={snapshot?.images?.[0] ? getImageSource(snapshot.images[0]) : null}
+            style={{ width: 48, height: 48, borderRadius: 8, opacity: 0.8 }}
+            fallback={<Icon name={exerciseIcon} size={28} color={accentPrimary} />}
+          />
+        </View>
+        <View className="flex-1">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-lg font-semibold text-text-primary flex-1 mr-2" numberOfLines={1}>
+              {snapshot?.name ?? 'Unknown exercise'}
+            </Text>
+            <Animated.View style={chevronStyle}>
+              <Icon name="chevron-down" size={18} color={textMuted} />
+            </Animated.View>
+          </View>
+
+          {isExpanded ? (
+            <Animated.View key="expanded" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+              {metadataItems.length > 0 && (
+                <Text className="text-xs text-text-muted mt-1">
+                  {metadataItems.join(' \u2022 ')}
+                </Text>
+              )}
+              {exercise.sets.length > 0 && (
+                <>
+                  <View className="border-t border-border-subtle mt-3 mb-1" />
+                  {renderSetTable(exercise)}
+                </>
+              )}
+            </Animated.View>
+          ) : (
+            exercise.sets.length > 0 && (
+              <Animated.View key="collapsed" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                <View className="mt-1">
+                  <Text className="text-sm text-text-secondary">
+                    {getExerciseSetSummary(exercise)}
+                  </Text>
+                  {volume > 0 && (
+                    <Text className="text-xs text-text-muted mt-0.5">
+                      Volume: {formatVolume(volume)}
+                    </Text>
+                  )}
+                </View>
+              </Animated.View>
+            )
+          )}
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+});
+
+ExerciseRow.displayName = 'ExerciseRow';
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [session, setSession] = useState(route.params.session);
@@ -206,69 +310,21 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const renderViewExercises = () => (
     <View>
-      {session.exercises.map(exercise => {
-        const isExpanded = !!expandedSections[exercise.id];
-        const snapshot = exercise.exercise_snapshot;
-        const metadataItems = [snapshot?.category, snapshot?.level, snapshot?.force, snapshot?.mechanic].filter(Boolean);
-        const volume = getExerciseVolume(exercise);
-
-        return (
-          <View key={exercise.id}>
-            <View className="border-t border-border-subtle" />
-            <TouchableOpacity
-              className="flex-row items-start py-4"
-              onPress={() => toggleSection(exercise.id)}
-              activeOpacity={0.7}
-            >
-              <SafeImage
-                source={snapshot?.images?.[0] ? getImageSource(snapshot.images[0]) : null}
-                style={{ width: 48, height: 48, borderRadius: 8, marginRight: 12, marginTop: 2, opacity: 0.8 }}
-              />
-              <View className="flex-1">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-lg font-semibold text-text-primary flex-1 mr-2" numberOfLines={1}>
-                    {snapshot?.name ?? 'Unknown exercise'}
-                  </Text>
-                  <Icon
-                    name={isExpanded ? 'chevron-down' : 'chevron-forward'}
-                    size={18}
-                    color={textMuted}
-                  />
-                </View>
-
-                {isExpanded ? (
-                  <>
-                    {metadataItems.length > 0 && (
-                      <Text className="text-xs text-text-muted mt-1">
-                        {metadataItems.join(' \u2022 ')}
-                      </Text>
-                    )}
-                    {exercise.sets.length > 0 && (
-                      <>
-                        <View className="border-t border-border-subtle mt-3 mb-1" />
-                        {renderSetTable(exercise)}
-                      </>
-                    )}
-                  </>
-                ) : (
-                  exercise.sets.length > 0 && (
-                    <View className="mt-1">
-                      <Text className="text-sm text-text-secondary">
-                        {getExerciseSetSummary(exercise)}
-                      </Text>
-                      {volume > 0 && (
-                        <Text className="text-xs text-text-muted mt-0.5">
-                          Volume: {formatVolume(volume)}
-                        </Text>
-                      )}
-                    </View>
-                  )
-                )}
-              </View>
-            </TouchableOpacity>
-          </View>
-        );
-      })}
+      {session.exercises.map(exercise => (
+        <ExerciseRow
+          key={exercise.id}
+          exercise={exercise}
+          isExpanded={!!expandedSections[exercise.id]}
+          onToggle={toggleSection}
+          getImageSource={getImageSource}
+          accentPrimary={accentPrimary}
+          textMuted={textMuted}
+          renderSetTable={renderSetTable}
+          getExerciseSetSummary={getExerciseSetSummary}
+          formatVolume={formatVolume}
+          getExerciseVolume={getExerciseVolume}
+        />
+      ))}
     </View>
   );
 
@@ -349,7 +405,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         {isEditing ? (
-          <>
+          <Animated.View
+            key="header-edit"
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(150)}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+          >
             <Button
               variant="ghost"
               onPress={cancelEditing}
@@ -373,9 +434,14 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text className="text-accent-primary text-base font-semibold">Save</Text>
               )}
             </Button>
-          </>
+          </Animated.View>
         ) : (
-          <>
+          <Animated.View
+            key="header-view"
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(150)}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+          >
             <Button
               variant="ghost"
               onPress={() => navigation.goBack()}
@@ -395,7 +461,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text className="text-accent-primary text-base font-medium">Edit</Text>
               </Button>
             )}
-          </>
+          </Animated.View>
         )}
       </View>
 
@@ -403,15 +469,19 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Title area */}
         <View className="mb-4">
           {isEditing ? (
-            <FormInput
-              value={formState.name}
-              onChangeText={setFormName}
-              placeholder="Workout Name"
-              className="text-xl font-bold text-text-primary mb-1"
-              style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 0, paddingBottom: 0 }}
-            />
+            <Animated.View key="edit-title" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+              <FormInput
+                value={formState.name}
+                onChangeText={setFormName}
+                placeholder="Workout Name"
+                className="text-xl font-bold text-text-primary mb-1"
+                style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 0, paddingBottom: 0, fontSize: 20 }}
+              />
+            </Animated.View>
           ) : (
-            <Text className="text-xl font-bold text-text-primary mb-1">{name}</Text>
+            <Animated.View key="view-title" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+              <Text className="text-xl font-bold text-text-primary mb-1">{name}</Text>
+            </Animated.View>
           )}
           <View className="flex-row items-center">
             <Text className="text-sm text-text-muted">{sourceLabel}</Text>
@@ -457,7 +527,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Edit controls */}
         {isEditing && (
-          <>
+          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
             <View className="mt-4">
               <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
               <FormInput
@@ -468,31 +538,35 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 style={{ minHeight: 60 }}
               />
             </View>
-          </>
+          </Animated.View>
         )}
 
         {/* Notes (view mode) */}
         {!isEditing && session.notes && (
-          <View className="mt-4 px-4">
-            <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
-            <Text className="text-sm text-text-primary">{session.notes}</Text>
-          </View>
+          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+            <View className="mt-4 px-4">
+              <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
+              <Text className="text-sm text-text-primary">{session.notes}</Text>
+            </View>
+          </Animated.View>
         )}
 
         {renderActivityDetails()}
 
         {/* Delete button */}
         {isEditing && (
-          <Button
-            variant="ghost"
-            onPress={() => deleteWorkout.confirmAndDelete()}
-            disabled={isDeleting}
-            className="mt-6"
-          >
-            <Text className="text-bg-danger text-base font-medium">
-              {isDeleting ? 'Deleting...' : 'Delete Workout'}
-            </Text>
-          </Button>
+          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+            <Button
+              variant="ghost"
+              onPress={() => deleteWorkout.confirmAndDelete()}
+              disabled={isDeleting}
+              className="mt-6"
+            >
+              <Text className="text-bg-danger text-base font-medium">
+                {isDeleting ? 'Deleting...' : 'Delete Workout'}
+              </Text>
+            </Button>
+          </Animated.View>
         )}
       </KeyboardAwareScrollView>
 

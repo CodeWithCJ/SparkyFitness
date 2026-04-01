@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
 import Button from '../components/ui/Button';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -103,7 +103,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   const [chartPage, setChartPage] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const topSafeAreaStyle = Platform.OS === 'ios' ? { paddingTop: insets.top } : undefined;
+  const topSafeAreaStyle = { paddingTop: insets.top };
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refetch(), refetchPreferences(), refetchMeasurements(), refetchSteps()]);
@@ -143,7 +143,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               onNextDay={goToNextDay}
               onToday={goToToday}
               onDatePress={openCalendar}
-              skipSafeAreaTop
+              skipTopInset
             />
           )}
           <View className="flex-1 items-center justify-center p-8 shadow-sm">
@@ -165,7 +165,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             onNextDay={goToNextDay}
             onToday={goToToday}
             onDatePress={openCalendar}
-            skipSafeAreaTop
+            skipTopInset
           />
           <View className="flex-1 items-center justify-center p-8 shadow-sm">
             <Icon name="alert-circle" size={64} color="#EF4444" />
@@ -221,7 +221,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           onNextDay={goToNextDay}
           onToday={goToToday}
           onDatePress={openCalendar}
-          skipSafeAreaTop
+          skipTopInset
           skipHorizontalPadding
         />
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (

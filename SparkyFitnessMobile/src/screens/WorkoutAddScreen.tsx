@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -226,28 +227,32 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 {/* Workout name */}
                 <View className="mb-4">
                   {isNameEditing ? (
-                    <FormInput
-                      className="text-xl font-bold text-text-primary rounded-lg"
-                      value={state.name}
-                      onChangeText={setName}
-                      placeholder="Workout"
-                      returnKeyType="done"
-                      autoFocus
-                      selectTextOnFocus
-                      onBlur={() => setIsNameEditing(false)}
-                      onSubmitEditing={() => setIsNameEditing(false)}
-                    />
+                    <Animated.View key="name-edit" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                      <FormInput
+                        className="text-xl font-bold text-text-primary rounded-lg"
+                        value={state.name}
+                        onChangeText={setName}
+                        placeholder="Workout"
+                        returnKeyType="done"
+                        autoFocus
+                        selectTextOnFocus
+                        onBlur={() => setIsNameEditing(false)}
+                        onSubmitEditing={() => setIsNameEditing(false)}
+                      />
+                    </Animated.View>
                   ) : (
-                    <TouchableOpacity
-                      className="flex-row items-center self-start gap-2"
-                      onPress={() => setIsNameEditing(true)}
-                      activeOpacity={0.6}
-                    >
-                      <Text className="text-xl font-bold text-text-primary">
-                        {state.name || 'Workout'}
-                      </Text>
-                      <Icon name="pencil" size={20} color={textMuted} />
-                    </TouchableOpacity>
+                    <Animated.View key="name-view" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                      <TouchableOpacity
+                        className="flex-row items-center self-start gap-2"
+                        onPress={() => setIsNameEditing(true)}
+                        activeOpacity={0.6}
+                      >
+                        <Text className="text-xl font-bold text-text-primary">
+                          {state.name || 'Workout'}
+                        </Text>
+                        <Icon name="pencil" size={20} color={textMuted} />
+                      </TouchableOpacity>
+                    </Animated.View>
                   )}
                 </View>
 

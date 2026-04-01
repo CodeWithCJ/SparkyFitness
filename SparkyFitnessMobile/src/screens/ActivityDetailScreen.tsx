@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -265,25 +266,29 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       <View className={`bg-surface rounded-xl p-3 ${canEdit ? 'border' : ''}`} style={canEdit ? { borderColor: isActive ? accentPrimary : borderSubtle } : undefined}>
         <View style={{ minHeight: 24 }}>
           {isActive && stat.editKey ? (
-            <FormInput
-              value={getFieldValue(stat.editKey)}
-              onChangeText={(v) => updateFieldValue(stat.editKey!, v)}
-              onBlur={() => setActiveField(null)}
-              keyboardType={stat.keyboardType ?? 'numeric'}
-              placeholder="0"
-              autoFocus
-              style={{
-                borderWidth: 0,
-                backgroundColor: 'transparent',
-                paddingLeft: 0,
-                paddingTop: 0,
-                paddingBottom: 0,
-                fontSize: 18,
-                fontWeight: '600',
-              }}
-            />
+            <Animated.View key="stat-edit" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+              <FormInput
+                value={getFieldValue(stat.editKey)}
+                onChangeText={(v) => updateFieldValue(stat.editKey!, v)}
+                onBlur={() => setActiveField(null)}
+                keyboardType={stat.keyboardType ?? 'numeric'}
+                placeholder="0"
+                autoFocus
+                style={{
+                  borderWidth: 0,
+                  backgroundColor: 'transparent',
+                  paddingLeft: 0,
+                  paddingTop: 0,
+                  paddingBottom: 0,
+                  fontSize: 18,
+                  fontWeight: '600',
+                }}
+              />
+            </Animated.View>
           ) : (
-            <Text className="text-lg font-semibold text-text-primary">{stat.value}</Text>
+            <Animated.View key="stat-view" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+              <Text className="text-lg font-semibold text-text-primary">{stat.value}</Text>
+            </Animated.View>
           )}
           {stat.editSuffix && (
             <Text
@@ -346,7 +351,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
         {isEditing ? (
-          <>
+          <Animated.View
+            key="header-edit"
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(150)}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+          >
             <Button
               variant="ghost"
               onPress={cancelEditing}
@@ -370,9 +380,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text className="text-accent-primary text-base font-semibold">Save</Text>
               )}
             </Button>
-          </>
+          </Animated.View>
         ) : (
-          <>
+          <Animated.View
+            key="header-view"
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(150)}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+          >
             <Button
               variant="ghost"
               onPress={() => navigation.goBack()}
@@ -392,7 +407,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text className="text-accent-primary text-base font-medium">Edit</Text>
               </Button>
             )}
-          </>
+          </Animated.View>
         )}
       </View>
 
@@ -407,24 +422,28 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
           <View className="flex-1">
             {isEditing ? (
-              <TouchableOpacity onPress={() => setActiveField('name')} activeOpacity={0.6}>
-                {activeField === 'name' ? (
-                  <FormInput
-                    value={formState.name}
-                    onChangeText={setName}
-                    onBlur={() => setActiveField(null)}
-                    placeholder="Activity Name"
-                    autoFocus
-                    style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 8, paddingBottom: 8, fontSize: 20, fontWeight: '700' }}
-                  />
-                ) : (
-                  <Text className="text-xl font-bold text-text-primary mb-0.5">
-                    {formState.name || name}
-                  </Text>
-                )}
-              </TouchableOpacity>
+              <Animated.View key="edit-title" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                <TouchableOpacity onPress={() => setActiveField('name')} activeOpacity={0.6}>
+                  {activeField === 'name' ? (
+                    <FormInput
+                      value={formState.name}
+                      onChangeText={setName}
+                      onBlur={() => setActiveField(null)}
+                      placeholder="Activity Name"
+                      autoFocus
+                      style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 8, paddingBottom: 8, fontSize: 20, fontWeight: '700' }}
+                    />
+                  ) : (
+                    <Text className="text-xl font-bold text-text-primary mb-0.5">
+                      {formState.name || name}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
             ) : (
-              <Text className="text-xl font-bold text-text-primary mb-0.5">{name}</Text>
+              <Animated.View key="view-title" entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+                <Text className="text-xl font-bold text-text-primary mb-0.5">{name}</Text>
+              </Animated.View>
             )}
             <View className="flex-row items-center">
               <Text className="text-sm text-text-muted">{sourceLabel}</Text>
@@ -485,7 +504,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Delete */}
         {isEditing && (
-          <>
+          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
             <Divider />
             <Button
               variant="ghost"
@@ -497,7 +516,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 {isDeleting ? 'Deleting...' : 'Delete Activity'}
               </Text>
             </Button>
-          </>
+          </Animated.View>
         )}
       </KeyboardAwareScrollView>
 

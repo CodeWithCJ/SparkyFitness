@@ -15,6 +15,7 @@ interface DateNavigatorProps {
   hideChevrons?: boolean;
   showDateAlways?: boolean;
   skipSafeAreaTop?: boolean;
+  skipTopInset?: boolean;
   skipHorizontalPadding?: boolean;
 }
 
@@ -28,6 +29,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
   hideChevrons,
   showDateAlways,
   skipSafeAreaTop,
+  skipTopInset,
   skipHorizontalPadding,
 }) => {
   const insets = useSafeAreaInsets();
@@ -39,8 +41,12 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
     ? formatDate(selectedDate)
     : formatDateLabel(selectedDate);
 
+  const paddingTop = skipTopInset
+    ? 16
+    : (skipSafeAreaTop && Platform.OS === 'ios') ? 16 : insets.top + 16;
+
   return (
-    <View style={{ paddingTop: (skipSafeAreaTop && Platform.OS === 'ios') ? 16 : insets.top + 16, paddingHorizontal: skipHorizontalPadding ? 0 : 16 }}
+    <View style={{ paddingTop, paddingHorizontal: skipHorizontalPadding ? 0 : 16 }}
           className="flex-row justify-between items-center pb-5">
       <Text className="text-2xl font-bold text-text-primary">{title}</Text>
       <View className="flex-row items-center">
