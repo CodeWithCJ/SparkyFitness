@@ -15,7 +15,7 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
   const handleAddExercise = useCallback((exercise: Exercise) => {
     const { exerciseClientId, setClientId } = actions.addExercise(exercise);
     setActiveSetKey(`${exerciseClientId}:${setClientId}`);
-  }, [actions]);
+  }, [actions.addExercise]);
 
   const handleRemoveExercise = useCallback(
     (exercise: { clientId: string; exerciseName: string; sets: { weight: string; reps: string }[] }) => {
@@ -34,7 +34,7 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
         doRemove();
       }
     },
-    [actions],
+    [actions.removeExercise],
   );
 
   const handleAddSet = useCallback((exerciseClientId: string) => {
@@ -42,7 +42,7 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
     if (newSetId) {
       setActiveSetKey(`${exerciseClientId}:${newSetId}`);
     }
-  }, [actions]);
+  }, [actions.addSet]);
 
   const activateSet = useCallback((setKey: string, field: 'weight' | 'reps') => {
     setActiveSetField(field);
