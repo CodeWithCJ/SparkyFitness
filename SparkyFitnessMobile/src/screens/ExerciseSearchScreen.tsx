@@ -18,16 +18,14 @@ import { useCSSVariable } from 'uniwind';
 import { useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import SegmentedControl from '../components/SegmentedControl';
-import { useServerConnection, useExternalProviders, useSuggestedExercises, useExerciseSearch, useWorkoutPresets, useWorkoutPresetSearch } from '../hooks';
+import { useServerConnection, useExternalProviders, useSuggestedExercises, useExerciseSearch } from '../hooks';
 import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
 import { importExercise } from '../services/api/externalExerciseSearchApi';
 import { EXERCISE_PROVIDER_TYPES } from '../types/externalProviders';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
-import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
-import { resolveExerciseEntryTarget } from '../constants/exercise';
 
 type ExerciseSearchScreenProps = RootStackScreenProps<'ExerciseSearch'>;
 
@@ -36,25 +34,15 @@ type ExerciseSection = {
   data: Exercise[];
 };
 
-type TabKey = 'search' | 'online' | 'workouts';
+type TabKey = 'search' | 'online';
 
-const PICKER_TABS: { key: TabKey; label: string }[] = [
+const TABS: { key: TabKey; label: string }[] = [
   { key: 'search', label: 'Search' },
   { key: 'online', label: 'Online' },
-] as const;
-
-const ENTRY_TABS: { key: TabKey; label: string }[] = [
-  { key: 'search', label: 'Search' },
-  { key: 'online', label: 'Online' },
-  { key: 'workouts', label: 'Workouts' },
 ] as const;
 
 const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation, route }) => {
-  const params = route.params;
-  const isEntryMode = 'mode' in params && params.mode === 'entry';
-  const returnKey = 'returnKey' in params ? params.returnKey : undefined;
-  const entryDate = isEntryMode ? params.date : undefined;
-  const entryTarget = isEntryMode ? params.entryTarget : undefined;
+  const { returnKey } = route.params;
 
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -64,8 +52,6 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     '--color-text-secondary',
   ]) as [string, string, string];
   const { isConnected } = useServerConnection();
-
-  const tabs = isEntryMode ? ENTRY_TABS : PICKER_TABS;
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
   const [searchText, setSearchText] = useState('');
@@ -111,23 +97,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     providerId: selectedProvider ?? undefined,
   });
 
-  // Workout presets (entry mode only)
-  const {
-    presets,
-    isLoading: isPresetsLoading,
-    isError: isPresetsError,
-    refetch: refetchPresets,
-  } = useWorkoutPresets({ enabled: isConnected && isEntryMode && activeTab === 'workouts' });
-  const {
-    searchResults: presetSearchResults,
-    isSearching: isPresetSearching,
-    isSearchActive: isPresetSearchActive,
-    isSearchError: isPresetSearchError,
-  } = useWorkoutPresetSearch(searchText, {
-    enabled: isConnected && isEntryMode && activeTab === 'workouts',
-  });
-
-  useEffect(() => {
+useEffect(() => {
     if (providers.length === 0) return;
     if (hasUserSelectedProvider.current && providers.some((p) => p.id === selectedProvider)) return;
     setSelectedProvider(providers[0].id);
@@ -136,32 +106,12 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
   // --- Selection handlers ---
 
   const handleSelectExercise = useCallback((exercise: Exercise) => {
-    if (isEntryMode) {
-      const selectedTarget = resolveExerciseEntryTarget(exercise, entryTarget ?? 'activity');
-
-      if (selectedTarget === 'workout') {
-        navigation.navigate('WorkoutForm', {
-          date: entryDate,
-          selectedExercise: exercise,
-          selectionNonce: Date.now(),
-          popCount: 2,
-        });
-      } else {
-        navigation.navigate('ActivityForm', {
-          date: entryDate,
-          selectedExercise: exercise,
-          selectionNonce: Date.now(),
-          popCount: 2,
-        });
-      }
-    } else {
-      navigation.dispatch({
-        ...CommonActions.setParams({ selectedExercise: exercise, selectionNonce: Date.now() }),
-        source: returnKey!,
-      });
-      navigation.goBack();
-    }
-  }, [isEntryMode, entryTarget, returnKey, entryDate, navigation]);
+    navigation.dispatch({
+      ...CommonActions.setParams({ selectedExercise: exercise, selectionNonce: Date.now() }),
+      source: returnKey,
+    });
+    navigation.goBack();
+  }, [returnKey, navigation]);
 
   const handleImportExercise = useCallback(async (item: ExternalExerciseItem) => {
     setImportingExerciseId(item.id);
@@ -175,14 +125,6 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
       setImportingExerciseId(null);
     }
   }, [queryClient, handleSelectExercise]);
-
-  const handleSelectPreset = useCallback((preset: WorkoutPreset) => {
-    navigation.navigate('WorkoutForm', { preset, date: entryDate, popCount: 2 });
-  }, [entryDate, navigation]);
-
-  const handleNewWorkout = useCallback(() => {
-    navigation.navigate('WorkoutForm', { date: entryDate, popCount: 2, skipDraftLoad: true });
-  }, [entryDate, navigation]);
 
   // --- Shared renderers ---
 
@@ -225,7 +167,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
           <TextInput
             className="text-text-primary"
             style={{ fontSize: 16, lineHeight: 20 }}
-            placeholder={activeTab === 'workouts' ? 'Search workouts...' : 'Search exercises...'}
+            placeholder="Search exercises..."
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
@@ -458,92 +400,12 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
     );
   };
 
-  // --- Workouts tab (entry mode only) ---
-
-  const renderPresetItem = ({ item }: { item: WorkoutPreset }) => (
-    <TouchableOpacity
-      className="px-4 py-3 border-b border-border-subtle"
-      activeOpacity={0.7}
-      onPress={() => handleSelectPreset(item)}
-    >
-      <Text className="text-text-primary text-base font-medium">{item.name}</Text>
-      {item.description && (
-        <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>{item.description}</Text>
-      )}
-      <Text className="text-text-muted text-xs mt-0.5">
-        {item.exercises.length} exercise{item.exercises.length !== 1 ? 's' : ''}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const renderPresetSearchResults = () => {
-    if (isPresetSearching && presetSearchResults.length === 0) {
-      return <StatusView loading />;
-    }
-
-    if (isPresetSearchError) {
-      return <StatusView icon="alert-circle" title="Failed to search workouts" />;
-    }
-
-    if (presetSearchResults.length === 0) {
-      return <StatusView title="No matching workouts found" />;
-    }
-
-    return (
-      <FlatList
-        data={presetSearchResults}
-        keyExtractor={(item) => item.id}
-        renderItem={renderPresetItem}
-        keyboardShouldPersistTaps="handled"
-      />
-    );
-  };
-
-  const renderWorkoutsTab = () => {
-    if (!isConnected) {
-      return <StatusView icon="cloud-offline" title="Connect to a server to view workouts" />;
-    }
-
-    if (isPresetSearchActive) {
-      return renderPresetSearchResults();
-    }
-
-    if (isPresetsLoading) {
-      return <StatusView loading />;
-    }
-
-    if (isPresetsError) {
-      return (
-        <StatusView
-          icon="alert-circle"
-          title="Failed to load workouts"
-          action={{ label: 'Retry', onPress: () => refetchPresets() }}
-        />
-      );
-    }
-
-    if (presets.length === 0) {
-      return <StatusView title="No workout presets found" />;
-    }
-
-    return (
-      <FlatList
-        data={presets}
-        keyExtractor={(item) => item.id}
-        renderItem={renderPresetItem}
-        keyboardShouldPersistTaps="handled"
-      />
-    );
-  };
-
   const renderTabContent = () => {
     switch (activeTab) {
       case 'search':
         return renderSearchTab();
       case 'online':
         return renderOnlineTab();
-      case 'workouts':
-        return renderWorkoutsTab();
     }
   };
 
@@ -562,23 +424,12 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
           Exercises
         </Text>
-        {isEntryMode ? (
-          <Button
-            variant="ghost"
-            onPress={handleNewWorkout}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            className="z-10 p-0"
-          >
-            <Icon name="add" size={26} color={accentColor} />
-          </Button>
-        ) : (
-          <View style={{ width: 22 }} />
-        )}
+        <View style={{ width: 22 }} />
       </View>
 
       {/* Segmented control */}
       <View className="px-4 mt-2">
-        <SegmentedControl segments={tabs} activeKey={activeTab} onSelect={setActiveTab} />
+        <SegmentedControl segments={TABS} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
 
       {/* Search bar */}

@@ -1,8 +1,8 @@
 import { useReducer, useCallback } from 'react';
 import { clearDraft } from '../services/workoutDraftService';
 import { useDraftPersistence } from './useDraftPersistence';
-import { getTodayDate } from '../utils/dateUtils';
-import { kmToMiles } from '../utils/unitConversions';
+import { getTodayDate, normalizeDate } from '../utils/dateUtils';
+import { kmToMiles, distanceToKm } from '../utils/unitConversions';
 import type { Exercise } from '../types/exercise';
 import type { ActivityDraft } from '../types/drafts';
 import type { IndividualSessionResponse } from '@workspace/shared';
@@ -16,20 +16,76 @@ function createEmptyDraft(): ActivityDraft {
     exerciseId: null,
     exerciseName: '',
     exerciseCategory: null,
+    exerciseImages: [],
     caloriesPerHour: 0,
     duration: '',
     distance: '',
     calories: '',
     caloriesManuallySet: false,
+    avgHeartRate: '',
     entryDate: getTodayDate(),
     notes: '',
   };
+}
+
+function formatActivityDate(dateString: string): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function defaultActivityName(exerciseName: string, dateString: string): string {
+  return `${exerciseName} - ${formatActivityDate(dateString)}`;
 }
 
 function calculateCalories(caloriesPerHour: number, durationStr: string): string {
   const duration = parseFloat(durationStr);
   if (!caloriesPerHour || isNaN(duration) || duration <= 0) return '';
   return String(Math.round(caloriesPerHour * (duration / 60)));
+}
+
+export interface ActivityDraftSubmission {
+  exerciseId: string | null;
+  exerciseName: string | null;
+  durationMinutes: number;
+  caloriesBurned: number;
+  entryDate: string;
+  distanceKm: number | null;
+  avgHeartRate: number | null;
+  notes: string | null;
+  hasDuration: boolean;
+  hasCalories: boolean;
+  hasDistance: boolean;
+  canSave: boolean;
+}
+
+export function getActivityDraftSubmission(
+  state: ActivityDraft,
+  distanceUnit: 'km' | 'miles',
+): ActivityDraftSubmission {
+  const durationMinutes = parseFloat(state.duration);
+  const caloriesBurned = parseInt(state.calories, 10);
+  const distanceValue = parseFloat(state.distance);
+  const hasDuration = !isNaN(durationMinutes) && durationMinutes > 0;
+  const hasCalories = !isNaN(caloriesBurned) && caloriesBurned > 0;
+  const hasDistance = !isNaN(distanceValue) && distanceValue > 0;
+  const avgHeartRateValue = state.avgHeartRate ? parseInt(state.avgHeartRate, 10) : null;
+
+  return {
+    exerciseId: state.exerciseId,
+    exerciseName: state.name.trim() || state.exerciseName || null,
+    durationMinutes: hasDuration ? durationMinutes : 0,
+    caloriesBurned: hasCalories ? caloriesBurned : 0,
+    entryDate: state.entryDate,
+    distanceKm: hasDistance ? distanceToKm(distanceValue, distanceUnit) : null,
+    avgHeartRate:
+      avgHeartRateValue != null && !isNaN(avgHeartRateValue) ? avgHeartRateValue : null,
+    notes: state.notes || null,
+    hasDuration,
+    hasCalories,
+    hasDistance,
+    canSave: state.exerciseId != null && (hasDuration || hasCalories || hasDistance),
+  };
 }
 
 type ActivityFormAction =
@@ -39,6 +95,7 @@ type ActivityFormAction =
   | { type: 'SET_DURATION'; value: string }
   | { type: 'SET_DISTANCE'; value: string }
   | { type: 'SET_CALORIES'; value: string }
+  | { type: 'SET_AVG_HEART_RATE'; value: string }
   | { type: 'SET_DATE'; value: string }
   | { type: 'SET_NOTES'; value: string }
   | { type: 'RESET' }
@@ -47,7 +104,7 @@ type ActivityFormAction =
 export function activityFormReducer(state: ActivityDraft, action: ActivityFormAction): ActivityDraft {
   switch (action.type) {
     case 'RESTORE_DRAFT':
-      return action.draft;
+      return { ...action.draft, nameManuallySet: action.draft.nameManuallySet ?? true };
 
     case 'SET_EXERCISE': {
       const newState = {
@@ -55,8 +112,9 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         exerciseId: action.exercise.id,
         exerciseName: action.exercise.name,
         exerciseCategory: action.exercise.category,
+        exerciseImages: action.exercise.images ?? [],
         caloriesPerHour: action.exercise.calories_per_hour,
-        name: state.name || action.exercise.name,
+        name: state.nameManuallySet ? state.name : defaultActivityName(action.exercise.name, state.entryDate),
       };
       if (!state.caloriesManuallySet) {
         newState.calories = calculateCalories(action.exercise.calories_per_hour, state.duration);
@@ -65,7 +123,7 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
     }
 
     case 'SET_NAME':
-      return { ...state, name: action.value };
+      return { ...state, name: action.value, nameManuallySet: true };
 
     case 'SET_DURATION': {
       const newState = { ...state, duration: action.value };
@@ -85,8 +143,16 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         caloriesManuallySet: action.value !== '',
       };
 
-    case 'SET_DATE':
-      return { ...state, entryDate: action.value };
+    case 'SET_AVG_HEART_RATE':
+      return { ...state, avgHeartRate: action.value };
+
+    case 'SET_DATE': {
+      const next: ActivityDraft = { ...state, entryDate: action.value };
+      if (!state.nameManuallySet && state.exerciseName) {
+        next.name = defaultActivityName(state.exerciseName, action.value);
+      }
+      return next;
+    }
 
     case 'SET_NOTES':
       return { ...state, notes: action.value };
@@ -107,12 +173,14 @@ export function activityFormReducer(state: ActivityDraft, action: ActivityFormAc
         exerciseId: entry.exercise_id,
         exerciseName: entry.exercise_snapshot?.name ?? '',
         exerciseCategory: entry.exercise_snapshot?.category ?? null,
+        exerciseImages: entry.exercise_snapshot?.images ?? [],
         caloriesPerHour: 0,
         duration: String(entry.duration_minutes),
         distance,
         calories: String(entry.calories_burned),
         caloriesManuallySet: true,
-        entryDate: entry.entry_date ?? getTodayDate(),
+        avgHeartRate: entry.avg_heart_rate != null ? String(entry.avg_heart_rate) : '',
+        entryDate: entry.entry_date ? normalizeDate(entry.entry_date) : getTodayDate(),
         notes: entry.notes ?? '',
       };
     }
@@ -131,7 +199,7 @@ interface UseActivityFormOptions {
 export function useActivityForm({ isEditMode = false, initialDate, skipDraftLoad = false }: UseActivityFormOptions = {}) {
   const [state, dispatch] = useReducer(activityFormReducer, undefined, createEmptyDraft);
 
-  useDraftPersistence({
+  const { clearPersistedDraft } = useDraftPersistence({
     state,
     draftType: 'activity',
     isEditMode,
@@ -160,6 +228,10 @@ export function useActivityForm({ isEditMode = false, initialDate, skipDraftLoad
     dispatch({ type: 'SET_CALORIES', value });
   }, []);
 
+  const setAvgHeartRate = useCallback((value: string) => {
+    dispatch({ type: 'SET_AVG_HEART_RATE', value });
+  }, []);
+
   const setDate = useCallback((value: string) => {
     dispatch({ type: 'SET_DATE', value });
   }, []);
@@ -170,8 +242,16 @@ export function useActivityForm({ isEditMode = false, initialDate, skipDraftLoad
 
   const reset = useCallback(() => {
     dispatch({ type: 'RESET' });
-    clearDraft();
-  }, []);
+    if (!isEditMode) {
+      void clearDraft();
+    }
+  }, [isEditMode]);
+
+  const discardDraft = useCallback(async () => {
+    if (!isEditMode) {
+      await clearPersistedDraft();
+    }
+  }, [clearPersistedDraft, isEditMode]);
 
   const populate = useCallback((entry: IndividualSessionResponse, distanceUnit: 'km' | 'miles') => {
     dispatch({ type: 'POPULATE', entry, distanceUnit });
@@ -184,11 +264,12 @@ export function useActivityForm({ isEditMode = false, initialDate, skipDraftLoad
     setDuration,
     setDistance,
     setCalories,
+    setAvgHeartRate,
     setDate,
     setNotes,
     reset,
+    discardDraft,
     populate,
-    hasDraftData: state.exerciseId !== null || state.duration !== '' || state.calories !== '' || state.distance !== '' || state.notes !== '',
+    hasDraftData: state.exerciseId !== null || state.duration !== '' || state.calories !== '' || state.distance !== '' || state.avgHeartRate !== '' || state.notes !== '',
   };
 }
-

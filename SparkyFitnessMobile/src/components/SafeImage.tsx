@@ -1,11 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Image, type ImageStyle, type StyleProp } from 'react-native';
-import { getImageSourceSignature } from '../utils/imageSource';
-
 interface SafeImageProps {
   source: { uri: string; headers: Record<string, string> } | null;
   style: StyleProp<ImageStyle>;
   fallback?: React.ReactNode;
+}
+
+function getImageSourceSignature(
+  source: { uri: string; headers: Record<string, string> } | null,
+): string {
+  if (!source) return '';
+
+  const headerSignature = Object.entries(source.headers)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}:${value}`)
+    .join('|');
+
+  return `${source.uri}|${headerSignature}`;
 }
 
 const SafeImage: React.FC<SafeImageProps> = ({ source, style, fallback = null }) => {

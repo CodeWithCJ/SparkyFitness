@@ -25,8 +25,9 @@ export type RootStackParamList = {
     | { mode: 'create-food'; date?: string; initialFood?: Partial<FoodFormData>; barcode?: string; providerType?: string }
     | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string };
   FoodScan: { date?: string } | undefined;
-  ExerciseSearch: { returnKey: string } | { mode: 'entry'; date?: string; entryTarget?: 'workout' | 'activity' };
-  WorkoutForm: {
+  ExerciseSearch: { returnKey: string };
+  PresetSearch: { date?: string } | undefined;
+  WorkoutAdd: {
     session?: PresetSessionResponse;
     preset?: WorkoutPreset;
     date?: string;
@@ -35,8 +36,9 @@ export type RootStackParamList = {
     selectionNonce?: number;
     skipDraftLoad?: boolean;
   } | undefined;
-  ActivityForm: { entry?: IndividualSessionResponse; date?: string; popCount?: number; selectedExercise?: Exercise; selectionNonce?: number } | undefined;
-  WorkoutDetail: { session: ExerciseSessionResponse };
+  ActivityAdd: { entry?: IndividualSessionResponse; date?: string; popCount?: number; selectedExercise?: Exercise; selectionNonce?: number; skipDraftLoad?: boolean } | undefined;
+  WorkoutDetail: { session: PresetSessionResponse; selectedExercise?: Exercise; selectionNonce?: number };
+  ActivityDetail: { session: IndividualSessionResponse };
   Logs: undefined;
   Sync: undefined;
 };

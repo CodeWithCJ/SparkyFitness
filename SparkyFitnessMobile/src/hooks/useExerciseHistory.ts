@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useCallback, useEffect, useRef } from 'react';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { fetchExerciseHistory } from '../services/api/exerciseApi';
 import { exerciseHistoryQueryKey, exerciseHistoryResetQueryKey } from './queryKeys';
@@ -25,14 +25,15 @@ export function useExerciseHistory(
 ): UseExerciseHistoryReturn {
   const { enabled = true } = options;
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [sessions, setSessions] = useState<ExerciseSessionResponse[]>([]);
   const lastResetTokenRef = useRef(0);
 
-  const query = useQuery({
-    queryKey: [...exerciseHistoryQueryKey, page],
-    queryFn: () => fetchExerciseHistory(page),
+  const query = useInfiniteQuery({
+    queryKey: exerciseHistoryQueryKey,
+    queryFn: ({ pageParam }) => fetchExerciseHistory(pageParam),
     enabled,
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasMore ? lastPage.pagination.page + 1 : undefined,
   });
 
   const resetTokenQuery = useQuery({
@@ -42,34 +43,22 @@ export function useExerciseHistory(
     staleTime: Infinity,
   });
 
-  useEffect(() => {
-    if (!query.data) return;
-    if (page === 1) {
-      setSessions(query.data.sessions);
-    } else {
-      setSessions(prev => [...prev, ...query.data.sessions]);
-    }
-  }, [query.data, page]);
+  const sessions = useMemo<ExerciseSessionResponse[]>(
+    () => query.data?.pages.flatMap(page => page.sessions) ?? [],
+    [query.data?.pages],
+  );
 
   useEffect(() => {
     const resetToken = resetTokenQuery.data ?? 0;
     if (resetToken === lastResetTokenRef.current) return;
 
     lastResetTokenRef.current = resetToken;
-    setPage(1);
-    setSessions([]);
-  }, [resetTokenQuery.data]);
+    void queryClient.resetQueries({ queryKey: exerciseHistoryQueryKey, exact: true });
+  }, [queryClient, resetTokenQuery.data]);
 
   const refetch = useCallback(async () => {
-    queryClient.removeQueries({ queryKey: exerciseHistoryQueryKey });
-    setPage(1);
     try {
-      const data = await queryClient.fetchQuery({
-        queryKey: [...exerciseHistoryQueryKey, 1],
-        queryFn: () => fetchExerciseHistory(1),
-        staleTime: 0,
-      });
-      setSessions(data.sessions);
+      await queryClient.resetQueries({ queryKey: exerciseHistoryQueryKey, exact: true });
     } catch {
       // Error state is captured by the useQuery hook — no need to rethrow.
       // Swallowing here prevents unhandled rejections from pull-to-refresh
@@ -78,21 +67,21 @@ export function useExerciseHistory(
   }, [queryClient]);
 
   const loadMore = useCallback(() => {
-    if (query.data?.pagination.hasMore && !query.isFetching) {
-      setPage(prev => prev + 1);
+    if (query.hasNextPage && !query.isFetching) {
+      void query.fetchNextPage();
     }
-  }, [query.data?.pagination.hasMore, query.isFetching]);
+  }, [query.fetchNextPage, query.hasNextPage, query.isFetching]);
 
   useRefetchOnFocus(refetch, enabled);
 
   return {
     sessions,
-    isLoading: query.isLoading && page === 1,
-    isLoadingMore: query.isFetching && page > 1,
+    isLoading: query.isLoading,
+    isLoadingMore: query.isFetchingNextPage,
     isError: query.isError,
-    error: query.error,
+    error: query.error as Error | null,
     refetch,
     loadMore,
-    hasMore: query.data?.pagination.hasMore ?? false,
+    hasMore: query.hasNextPage ?? false,
   };
 }

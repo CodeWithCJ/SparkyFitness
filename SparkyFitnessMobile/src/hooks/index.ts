@@ -49,8 +49,8 @@ export { useExerciseSearch } from './useExerciseSearch';
 export { useExternalExerciseSearch } from './useExternalExerciseSearch';
 export { useCreateWorkout, useCreateExerciseEntry, useUpdateExerciseEntry } from './useExerciseMutations';
 export { useActivityForm } from './useActivityForm';
-export { isDistanceExercise } from '../constants/exercise';
 export { useDeleteExerciseEntry, useDeleteWorkout, useUpdateWorkout } from './useExerciseMutations';
 export { useWorkoutPresets } from './useWorkoutPresets';
 export { useWorkoutPresetSearch } from './useWorkoutPresetSearch';
-export { useStartExercise } from './useStartExercise';
+export { useExerciseSetEditing } from './useExerciseSetEditing';
+

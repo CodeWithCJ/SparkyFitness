@@ -6,12 +6,7 @@ import {
   calculateFat,
   calculateFiber,
 } from '../services/api/foodEntriesApi';
-import {
-  calculateCaloriesBurned,
-  calculateActiveCalories,
-  calculateOtherExerciseCalories,
-  calculateExerciseDuration,
-} from '../services/api/exerciseApi';
+import { calculateExerciseStats } from '../utils/workoutSession';
 import { fetchDailySummary } from '../services/api/dailySummaryApi';
 import type { DailySummary } from '../types/dailySummary';
 import type { DailyGoals } from '../types/goals';
@@ -53,10 +48,9 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
 
       const calorieGoal = goals.calories || 0;
       const caloriesConsumed = calculateCaloriesConsumed(foodEntries);
-      const caloriesBurned = calculateCaloriesBurned(exerciseEntries);
-      const activeCalories = calculateActiveCalories(exerciseEntries);
-      const otherExerciseCalories = calculateOtherExerciseCalories(exerciseEntries);
-      const exerciseMinutes = calculateExerciseDuration(exerciseEntries);
+      const exerciseStats = calculateExerciseStats(exerciseEntries);
+      const { caloriesBurned, activeCalories, otherExerciseCalories } = exerciseStats;
+      const exerciseMinutes = exerciseStats.durationMinutes;
       const netCalories = caloriesConsumed - caloriesBurned;
       const remainingCalories = calorieGoal - netCalories;
 

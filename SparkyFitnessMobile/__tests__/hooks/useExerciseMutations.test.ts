@@ -195,7 +195,7 @@ describe('useExerciseMutations', () => {
       );
     });
 
-    it('calls deleteWorkout API when user confirms', async () => {
+    it('calls deleteWorkout API and fires onSuccess when user confirms', async () => {
       mockDeleteWorkout.mockResolvedValue(undefined);
 
       const onSuccess = jest.fn();
@@ -218,6 +218,8 @@ describe('useExerciseMutations', () => {
 
       await waitFor(() => {
         expect(mockDeleteWorkout).toHaveBeenCalledWith('session-1');
+        expect(onSuccess).toHaveBeenCalled();
+        expect(mockInvalidateCache).toHaveBeenCalledWith(queryClient, '2026-03-20');
       });
     });
 
@@ -253,7 +255,7 @@ describe('useExerciseMutations', () => {
       );
     });
 
-    it('calls deleteExerciseEntry API when user confirms', async () => {
+    it('calls deleteExerciseEntry API and fires onSuccess when user confirms', async () => {
       mockDeleteExerciseEntry.mockResolvedValue(undefined);
 
       const onSuccess = jest.fn();
@@ -275,6 +277,8 @@ describe('useExerciseMutations', () => {
 
       await waitFor(() => {
         expect(mockDeleteExerciseEntry).toHaveBeenCalledWith('entry-1');
+        expect(onSuccess).toHaveBeenCalled();
+        expect(mockInvalidateCache).toHaveBeenCalledWith(queryClient, '2026-03-20');
       });
     });
   });

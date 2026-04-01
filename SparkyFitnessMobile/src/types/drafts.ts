@@ -9,12 +9,16 @@ export interface WorkoutDraftExercise {
   exerciseId: string;
   exerciseName: string;
   exerciseCategory: string | null;
+  images: string[];
   sets: WorkoutDraftSet[];
+  /** Present only when editing an existing session — not persisted to drafts. */
+  snapshot?: import('@workspace/shared').ExerciseSnapshotResponse | null;
 }
 
 export interface WorkoutDraft {
   type: 'workout';
   name: string;
+  nameManuallySet?: boolean;
   entryDate: string;
   exercises: WorkoutDraftExercise[];
 }
@@ -22,14 +26,17 @@ export interface WorkoutDraft {
 export interface ActivityDraft {
   type: 'activity';
   name: string;
+  nameManuallySet?: boolean;
   exerciseId: string | null;
   exerciseName: string;
   exerciseCategory: string | null;
+  exerciseImages: string[];
   caloriesPerHour: number;
   duration: string;
   distance: string;
   calories: string;
   caloriesManuallySet: boolean;
+  avgHeartRate: string;
   entryDate: string;
   notes: string;
 }

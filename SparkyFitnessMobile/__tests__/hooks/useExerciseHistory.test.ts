@@ -6,6 +6,7 @@ import {
 } from '../../src/hooks/queryKeys';
 import { fetchExerciseHistory } from '../../src/services/api/exerciseApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import type { InfiniteData } from '@tanstack/react-query';
 import type { ExerciseHistoryResponse } from '@workspace/shared';
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
@@ -299,6 +300,106 @@ describe('useExerciseHistory', () => {
     });
 
     expect(mockFetchExerciseHistory).toHaveBeenLastCalledWith(1);
+  });
+
+  test('cache updates to a loaded later page replace sessions without duplicating rows', async () => {
+    const page1Session = makeIndividualSession('1', 'Bench Press');
+    const page2Session = makeIndividualSession('2', 'Deadlift');
+
+    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page1Session], 1, true, 2));
+
+    const { result } = renderHook(() => useExerciseHistory(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(1);
+    });
+
+    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page2Session], 2, false, 2));
+
+    act(() => {
+      result.current.loadMore();
+    });
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(2);
+    });
+
+    act(() => {
+      queryClient.setQueryData<InfiniteData<ExerciseHistoryResponse>>(
+        exerciseHistoryQueryKey,
+        existing => {
+          expect(existing).toBeDefined();
+          return {
+            ...existing!,
+            pages: existing!.pages.map(page =>
+              page.pagination.page === 2
+                ? {
+                    ...page,
+                    sessions: [{ ...page2Session, name: 'Updated Deadlift' }],
+                  }
+                : page,
+            ),
+          };
+        },
+      );
+    });
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(2);
+      expect(result.current.sessions[1].name).toBe('Updated Deadlift');
+    });
+  });
+
+  test('cache updates to an earlier loaded page still update visible sessions', async () => {
+    const page1Session = makeIndividualSession('1', 'Bench Press');
+    const page2Session = makeIndividualSession('2', 'Deadlift');
+
+    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page1Session], 1, true, 2));
+
+    const { result } = renderHook(() => useExerciseHistory(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(1);
+    });
+
+    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page2Session], 2, false, 2));
+
+    act(() => {
+      result.current.loadMore();
+    });
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(2);
+    });
+
+    act(() => {
+      queryClient.setQueryData<InfiniteData<ExerciseHistoryResponse>>(
+        exerciseHistoryQueryKey,
+        existing => {
+          expect(existing).toBeDefined();
+          return {
+            ...existing!,
+            pages: existing!.pages.map(page =>
+              page.pagination.page === 1
+                ? {
+                    ...page,
+                    sessions: [{ ...page1Session, name: 'Updated Bench Press' }],
+                  }
+                : page,
+            ),
+          };
+        },
+      );
+    });
+
+    await waitFor(() => {
+      expect(result.current.sessions).toHaveLength(2);
+      expect(result.current.sessions[0].name).toBe('Updated Bench Press');
+    });
   });
 
   test('exports correct query key', () => {

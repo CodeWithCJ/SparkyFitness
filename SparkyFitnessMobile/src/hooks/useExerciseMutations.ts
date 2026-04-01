@@ -68,7 +68,10 @@ function useDeleteMutation({
 
   const mutation = useMutation({
     mutationFn: () => deleteFn(id),
-    onSuccess: () => onSuccess?.(),
+    onSuccess: () => {
+      invalidateExerciseCache(queryClient, normalizedDate);
+      onSuccess?.();
+    },
     onError: () => {
       Toast.show({ type: 'error', text1: 'Failed to delete', text2: 'Please try again.' });
     },

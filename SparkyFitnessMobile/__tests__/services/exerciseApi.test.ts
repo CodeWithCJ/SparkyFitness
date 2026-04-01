@@ -1,11 +1,13 @@
 import {
   fetchExerciseEntries,
   fetchExerciseHistory,
+} from '../../src/services/api/exerciseApi';
+import {
   calculateCaloriesBurned,
   calculateActiveCalories,
   calculateOtherExerciseCalories,
   calculateExerciseDuration,
-} from '../../src/services/api/exerciseApi';
+} from '../../src/utils/workoutSession';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 

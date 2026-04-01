@@ -1,4 +1,4 @@
-import type { QueryClient } from '@tanstack/react-query';
+import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import type { ExerciseHistoryResponse, ExerciseSessionResponse } from '@workspace/shared';
 import type { DailySummaryRawData } from './useDailySummary';
 import { normalizeDate } from '../utils/dateUtils';
@@ -26,19 +26,32 @@ export function syncExerciseSessionInCache(
   queryClient: QueryClient,
   updatedSession: ExerciseSessionResponse,
 ) {
-  queryClient.setQueriesData<ExerciseHistoryResponse>(
+  queryClient.setQueriesData<InfiniteData<ExerciseHistoryResponse>>(
     { queryKey: exerciseHistoryQueryKey },
     existing => {
       if (!existing) return existing;
 
-      const nextSessions = replaceSession(existing.sessions, updatedSession);
-      if (nextSessions === existing.sessions) {
+      let didUpdate = false;
+      const nextPages = existing.pages.map(page => {
+        const nextSessions = replaceSession(page.sessions, updatedSession);
+        if (nextSessions === page.sessions) {
+          return page;
+        }
+
+        didUpdate = true;
+        return {
+          ...page,
+          sessions: nextSessions,
+        };
+      });
+
+      if (!didUpdate) {
         return existing;
       }
 
       return {
         ...existing,
-        sessions: nextSessions,
+        pages: nextPages,
       };
     },
   );

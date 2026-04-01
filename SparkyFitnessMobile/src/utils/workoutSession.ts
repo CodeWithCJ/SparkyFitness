@@ -1,5 +1,7 @@
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
+import type { WorkoutDraftExercise } from '../types/drafts';
+import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
 
 export const CATEGORY_ICON_MAP: Record<string, IconName> = {
   Strength: 'exercise-weights',
@@ -73,20 +75,20 @@ export function getWorkoutIcon(session: ExerciseSessionResponse): IconName {
 }
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
-  HealthKit: 'Apple Health',
-  'Health Connect': 'Health Connect',
-  Garmin: 'Garmin',
+  healthkit: 'Apple Health',
+  'health connect': 'Health Connect',
   garmin: 'Garmin',
-  Strava: 'Strava',
-  Fitbit: 'Fitbit',
-  Withings: 'Withings',
+  strava: 'Strava',
+  fitbit: 'Fitbit',
+  withings: 'Withings',
 };
 
 export function getSourceLabel(source: string | null): { label: string; isSparky: boolean } {
-  if (source == null || source === 'manual' || source === 'sparky') {
+  const s = source?.toLowerCase() ?? null;
+  if (s == null || s === 'manual' || s === 'sparky') {
     return { label: 'Sparky', isSparky: true };
   }
-  return { label: SOURCE_DISPLAY_NAMES[source] ?? source, isSparky: false };
+  return { label: SOURCE_DISPLAY_NAMES[s] ?? source!, isSparky: false };
 }
 
 export function formatDuration(minutes: number): string {
@@ -114,6 +116,58 @@ export function getSessionCalories(session: ExerciseSessionResponse): number {
   return session.calories_burned || 0;
 }
 
+// --- Exercise stats (single-pass over sessions array) ---
+
+export interface ExerciseStats {
+  caloriesBurned: number;
+  activeCalories: number;
+  otherExerciseCalories: number;
+  durationMinutes: number;
+}
+
+export function calculateExerciseStats(sessions: ExerciseSessionResponse[]): ExerciseStats {
+  let caloriesBurned = 0;
+  let activeCalories = 0;
+  let otherExerciseCalories = 0;
+  let durationMinutes = 0;
+
+  for (const session of sessions) {
+    const sessionCals = getSessionCalories(session);
+    caloriesBurned += sessionCals;
+
+    if (session.type === 'preset') {
+      otherExerciseCalories += sessionCals;
+      durationMinutes += session.total_duration_minutes;
+    } else {
+      const isActiveCals = session.exercise_snapshot?.name === 'Active Calories';
+      if (isActiveCals) {
+        activeCalories += session.calories_burned || 0;
+      } else {
+        otherExerciseCalories += sessionCals;
+        durationMinutes += session.duration_minutes ?? 0;
+      }
+    }
+  }
+
+  return { caloriesBurned, activeCalories, otherExerciseCalories, durationMinutes };
+}
+
+/** Total calories across all sessions. */
+export const calculateCaloriesBurned = (sessions: ExerciseSessionResponse[]): number =>
+  calculateExerciseStats(sessions).caloriesBurned;
+
+/** Calories from "Active Calories" individual entries only (e.g. watch/fitness tracker). */
+export const calculateActiveCalories = (sessions: ExerciseSessionResponse[]): number =>
+  calculateExerciseStats(sessions).activeCalories;
+
+/** Calories from all sessions except "Active Calories" entries. */
+export const calculateOtherExerciseCalories = (sessions: ExerciseSessionResponse[]): number =>
+  calculateExerciseStats(sessions).otherExerciseCalories;
+
+/** Total duration in minutes, excluding "Active Calories" entries. */
+export const calculateExerciseDuration = (sessions: ExerciseSessionResponse[]): number =>
+  calculateExerciseStats(sessions).durationMinutes;
+
 export function getWorkoutSummary(session: ExerciseSessionResponse): {
   name: string;
   duration: number;
@@ -131,4 +185,61 @@ export function getWorkoutSummary(session: ExerciseSessionResponse): {
     duration: session.duration_minutes,
     calories: session.calories_burned,
   };
+}
+
+export function buildSessionSubtitle(
+  session: ExerciseSessionResponse,
+  duration: number,
+  calories: number,
+  weightUnit: 'kg' | 'lbs' = 'kg',
+  distanceUnit: 'km' | 'miles' = 'km',
+): string {
+  if (session.type === 'preset') {
+    const exerciseCount = session.exercises.length;
+    const totalSets = session.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+    const totalVolumeKg = session.exercises.reduce(
+      (sum, ex) => ex.sets.reduce((s, set) => s + (set.weight ?? 0) * (set.reps ?? 0), sum),
+      0,
+    );
+
+    const parts: string[] = [];
+    parts.push(`${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}`);
+    if (totalSets > 0) parts.push(`${totalSets} sets`);
+    if (totalVolumeKg > 0) {
+      const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
+      parts.push(`${vol.toLocaleString()} ${weightUnit}`);
+    }
+    return parts.join(' \u00b7 ');
+  }
+
+  // Individual activity: duration, distance, calories
+  const parts: string[] = [];
+  if (duration > 0) parts.push(formatDuration(duration));
+  if (session.distance != null && session.distance > 0) {
+    const dist = distanceFromKm(session.distance, distanceUnit);
+    const label = distanceUnit === 'miles' ? 'mi' : 'km';
+    parts.push(`${dist.toFixed(1)} ${label}`);
+  }
+  if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
+  return parts.join(' \u00b7 ');
+}
+
+export function buildExercisesPayload(
+  exercises: WorkoutDraftExercise[],
+  weightUnit: 'kg' | 'lbs',
+) {
+  return exercises.map((exercise, index) => ({
+    exercise_id: exercise.exerciseId,
+    sort_order: index,
+    duration_minutes: 0,
+    sets: exercise.sets.map((set, setIndex) => {
+      const weight = parseFloat(set.weight);
+      const reps = parseInt(set.reps, 10);
+      return {
+        set_number: setIndex + 1,
+        weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
+        reps: isNaN(reps) ? null : reps,
+      };
+    }),
+  }));
 }

@@ -50,6 +50,7 @@ function ToastContent({
         shadowOpacity: 0.15,
         shadowRadius: 4,
         elevation: 4,
+        borderRadius: 8
       }}
     >
       {text1 ? (

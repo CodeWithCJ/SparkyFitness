@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
-import { View, Text } from 'react-native';
+import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { View, Text, Pressable } from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -17,7 +17,9 @@ export interface AddSheetRef {
 
 interface AddSheetProps {
   onAddFood: () => void;
-  onAddExercise: () => void;
+  onAddWorkout: () => void;
+  onAddActivity: () => void;
+  onAddFromPreset: () => void;
   onSyncHealthData: () => void;
   onBarcodeScan: () => void;
 }
@@ -29,18 +31,20 @@ interface ActionCard {
 }
 
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
-  ({ onAddFood, onAddExercise, onSyncHealthData, onBarcodeScan }, ref) => {
+  ({ onAddFood, onAddWorkout, onAddActivity, onAddFromPreset, onSyncHealthData, onBarcodeScan }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
+    const [showExerciseMenu, setShowExerciseMenu] = useState(false);
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
 
-    const [surfaceBg, textMuted, accentPrimary, raisedBg] =
+    const [surfaceBg, textMuted, accentPrimary, raisedBg, textSecondary] =
       useCSSVariable([
         '--color-surface',
         '--color-text-muted',
         '--color-accent-primary',
         '--color-raised',
-      ]) as [string, string, string, string];
+        '--color-text-secondary',
+      ]) as [string, string, string, string, string];
 
     useImperativeHandle(ref, () => ({
       present: () => bottomSheetRef.current?.present(),
@@ -71,24 +75,51 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       action?.();
     }, []);
 
+    const handleDismiss = useCallback(() => {
+      setShowExerciseMenu(false);
+    }, []);
+
     const cards: ActionCard[] = [
-      { label: 'Add Food', icon: 'food', onPress: onAddFood },
-      { label: 'Add Workout', icon: 'exercise-weights', onPress: onAddExercise },
+      { label: 'Food', icon: 'food', onPress: onAddFood },
+      { label: 'Exercise', icon: 'exercise-weights' },
       { label: 'Sync Health Data', icon: 'sync', onPress: onSyncHealthData },
       { label: 'Barcode Scan', icon: 'scan', onPress: onBarcodeScan },
     ];
 
-    const renderCard = (card: ActionCard, isLeft: boolean) => (
+    const renderCard = (card: ActionCard) => (
       <Button
         key={card.label}
         variant="primary"
-        className={`flex-1 py-5 ${isLeft ? 'mr-1.5' : 'ml-1.5'}`}
+        className="flex-1 py-5 mx-1.5"
         style={{ backgroundColor: raisedBg }}
-        onPress={() => handleAction(card.onPress)}
+        onPress={() => card.onPress ? handleAction(card.onPress) : setShowExerciseMenu(true)}
       >
         <Icon name={card.icon} size={32} color={accentPrimary} />
         <Text className="text-text-primary text-sm font-medium mt-2">
           {card.label}
+        </Text>
+      </Button>
+    );
+
+    const renderExerciseOption = (
+      label: string,
+      subtitle: string,
+      icon: IconName,
+      onPress: () => void,
+    ) => (
+      <Button
+        key={label}
+        variant="primary"
+        className="flex-1 py-5 mx-1.5"
+        style={{ backgroundColor: raisedBg }}
+        onPress={() => handleAction(onPress)}
+      >
+        <Icon name={icon} size={32} color={accentPrimary} />
+        <Text className="text-text-primary text-sm font-medium mt-2">
+          {label}
+        </Text>
+        <Text className="text-xs mt-1" style={{ color: textSecondary }}>
+          {subtitle}
         </Text>
       </Button>
     );
@@ -100,16 +131,38 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
+        onDismiss={handleDismiss}
       >
-        <BottomSheetView className="pb-5 px-4">
-          <View className="flex-row mb-3">
-            {renderCard(cards[0], true)}
-            {renderCard(cards[1], false)}
-          </View>
-          <View className="flex-row">
-            {renderCard(cards[2], true)}
-            {renderCard(cards[3], false)}
-          </View>
+        <BottomSheetView className="pb-5 px-2.5">
+          {showExerciseMenu ? (
+            <>
+              <Pressable
+                className="flex-row items-center mb-3 px-1.5"
+                onPress={() => setShowExerciseMenu(false)}
+              >
+                <Icon name="chevron-back" size={20} color={accentPrimary} />
+                <Text className="text-sm font-medium ml-1" style={{ color: accentPrimary }}>
+                  Back
+                </Text>
+              </Pressable>
+              <View className="flex-row">
+                {renderExerciseOption('Workout', 'Sets & reps', 'exercise-weights', onAddWorkout)}
+                {renderExerciseOption('Activity', 'Duration & distance', 'exercise-running', onAddActivity)}
+                {renderExerciseOption('Preset', 'Use a template', 'bookmark', onAddFromPreset)}
+              </View>
+            </>
+          ) : (
+            <>
+              <View className="flex-row mb-3">
+                {renderCard(cards[0])}
+                {renderCard(cards[1])}
+              </View>
+              <View className="flex-row">
+                {renderCard(cards[2])}
+                {renderCard(cards[3])}
+              </View>
+            </>
+          )}
         </BottomSheetView>
       </BottomSheetModal>
     );

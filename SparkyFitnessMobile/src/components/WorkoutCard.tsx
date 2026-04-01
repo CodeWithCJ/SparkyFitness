@@ -4,26 +4,27 @@ import { useCSSVariable } from 'uniwind';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
-import { getWorkoutIcon, getSourceLabel, formatDuration, getWorkoutSummary, getFirstImage } from '../utils/workoutSession';
+import { getWorkoutIcon, getSourceLabel, formatDuration, getWorkoutSummary, getFirstImage, buildSessionSubtitle } from '../utils/workoutSession';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 
 interface WorkoutCardProps {
   session: ExerciseSessionResponse;
   getImageSource?: GetImageSource;
+  weightUnit?: 'kg' | 'lbs';
+  distanceUnit?: 'km' | 'miles';
 }
 
-export { CATEGORY_ICON_MAP, getWorkoutIcon, getSourceLabel, formatDuration, getFirstImage, getWorkoutSummary } from '../utils/workoutSession';
+export { getSourceLabel, formatDuration, getWorkoutSummary } from '../utils/workoutSession';
 
-const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource }) => {
+const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource, weightUnit = 'kg', distanceUnit = 'km' }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
   const textMuted = useCSSVariable('--color-text-muted') as string;
   const textSecondary = useCSSVariable('--color-text-secondary') as string;
   const iconName = getWorkoutIcon(session);
   const { name, duration, calories } = getWorkoutSummary(session);
   const source = session.source;
-  const subtitle = session.type === 'preset'
-    ? `${session.exercises.length} exercise${session.exercises.length !== 1 ? 's' : ''}`
-    : undefined;
+
+  const subtitle = buildSessionSubtitle(session, duration, calories, weightUnit, distanceUnit);
 
   const { label: sourceLabel, isSparky } = getSourceLabel(source);
 
@@ -58,11 +59,7 @@ const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource }) =
             </View>
           </View>
           <Text className="text-sm text-text-secondary mt-0.5">
-            {[
-              duration > 0 ? formatDuration(duration) : null,
-              calories > 0 ? `${Math.round(calories)} Cal` : null,
-              subtitle,
-            ].filter(Boolean).join(' · ')}
+            {subtitle}
           </Text>
         </View>
       </View>
