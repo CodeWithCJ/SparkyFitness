@@ -1,7 +1,8 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Pressable, ScrollView, TextInput } from 'react-native';
 import Button from '../components/ui/Button';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated, { LinearTransition } from 'react-native-reanimated';
+import FadeView from '../components/FadeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
@@ -330,7 +331,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           <Icon name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
         {canEdit && !isEditing && (
-          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={{ marginLeft: 'auto', zIndex: 10 }}>
+          <FadeView style={{ marginLeft: 'auto', zIndex: 10 }}>
             <Button
               variant="ghost"
               onPress={() => updateEdit({ isEditing: true })}
@@ -339,10 +340,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
             >
               Edit
             </Button>
-          </Animated.View>
+          </FadeView>
         )}
         {isEditing && (
-          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={{ marginLeft: 'auto', zIndex: 10 }}>
+          <FadeView style={{ marginLeft: 'auto', zIndex: 10 }}>
             <Button
               variant="ghost"
               onPress={handleSave}
@@ -351,7 +352,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
             >
               Done
             </Button>
-          </Animated.View>
+          </FadeView>
         )}
       </View>
 
@@ -367,7 +368,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
             </Text>
           )}
           {isEditing ? (
-            <Animated.View key="edit-serving" entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)}>
+            <FadeView key="edit-serving">
             <View className="mt-3">
               <View className="flex-row items-center">
                 <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
@@ -429,11 +430,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
                 )}
               </View>
             </View>
-            </Animated.View>
+            </FadeView>
           ) : (
-            <Animated.View key="view-serving" entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)}>
+            <FadeView key="view-serving">
               <Text className="text-text-secondary text-sm mt-3">{servingsDisplay}</Text>
-            </Animated.View>
+            </FadeView>
           )}
         </Animated.View>
 
@@ -481,15 +482,15 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
               ))}
             </Animated.View>
             {isEditing && (
-              <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+              <FadeView>
                 <Icon name="chevron-forward" size={16} color={textPrimary} style={{ marginLeft: 8 }} />
-              </Animated.View>
+              </FadeView>
             )}
           </Animated.View>
           {isEditing && (
-            <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
+            <FadeView>
               <Text className="text-text-secondary text-xs text-center mt-4">Tap to edit nutrition</Text>
-            </Animated.View>
+            </FadeView>
           )}
         </Pressable>
         </Animated.View>

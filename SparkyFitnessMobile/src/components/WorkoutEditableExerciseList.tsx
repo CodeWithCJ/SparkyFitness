@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import EditableExerciseCard from './EditableExerciseCard';
@@ -45,7 +46,7 @@ function WorkoutEditableExerciseList({
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   return (
-    <View>
+    <Animated.View layout={LinearTransition.duration(300)}>
       {exercises.map(exercise => {
         const imagePath = exercise.images?.[0] ?? null;
         const metadataItems = [
@@ -80,21 +81,32 @@ function WorkoutEditableExerciseList({
 
         if (mode === 'detail') {
           return (
-            <View key={exercise.clientId}>
+            <Animated.View
+              key={exercise.clientId}
+              entering={FadeIn.duration(200)}
+              exiting={FadeOut.duration(150)}
+              layout={LinearTransition.duration(300)}
+            >
               <View className="border-t border-border-subtle" />
               {card}
-            </View>
+            </Animated.View>
           );
         }
 
         return (
-          <View key={exercise.clientId} className="mb-4">
+          <Animated.View
+            key={exercise.clientId}
+            className="mb-4"
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(150)}
+            layout={LinearTransition.duration(300)}
+          >
             {card}
-          </View>
+          </Animated.View>
         );
       })}
 
-      <View className={mode === 'detail' ? 'py-4' : 'py-4 mb-4'}>
+      <Animated.View className={mode === 'detail' ? 'py-4' : 'py-4 mb-4'} layout={LinearTransition.duration(300)}>
         <TouchableOpacity
           className="flex-row items-center self-center py-2 px-3 rounded-lg"
           onPress={onAddExercisePress}
@@ -105,8 +117,8 @@ function WorkoutEditableExerciseList({
             Add Exercise
           </Text>
         </TouchableOpacity>
-      </View>
-    </View>
+      </Animated.View>
+    </Animated.View>
   );
 }
 

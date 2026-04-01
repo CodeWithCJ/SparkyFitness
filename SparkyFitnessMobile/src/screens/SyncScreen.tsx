@@ -414,7 +414,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         {isAndroid && (
           <View className="mt-4">
             <Button
-              variant="outline"
+              variant="ghost"
               className="flex-row items-center"
               onPress={handleShareHealthReport}
               disabled={!isHealthConnectInitialized || isSharingReport}

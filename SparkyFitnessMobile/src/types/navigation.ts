@@ -1,6 +1,6 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { StackScreenProps } from '@react-navigation/stack';
-import type { ExerciseSessionResponse, IndividualSessionResponse, PresetSessionResponse } from '@workspace/shared';
+import type { IndividualSessionResponse, PresetSessionResponse } from '@workspace/shared';
 import type { FoodInfoItem } from './foodInfo';
 import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';

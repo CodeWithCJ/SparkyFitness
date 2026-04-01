@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, LayoutAnimation } from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -92,7 +92,14 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         variant="primary"
         className="flex-1 py-5 mx-1.5"
         style={{ backgroundColor: raisedBg }}
-        onPress={() => card.onPress ? handleAction(card.onPress) : setShowExerciseMenu(true)}
+        onPress={() => {
+          if (card.onPress) {
+            handleAction(card.onPress);
+          } else {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setShowExerciseMenu(true);
+          }
+        }}
       >
         <Icon name={card.icon} size={32} color={accentPrimary} />
         <Text className="text-text-primary text-sm font-medium mt-2">
@@ -114,11 +121,13 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         style={{ backgroundColor: raisedBg }}
         onPress={() => handleAction(onPress)}
       >
-        <Icon name={icon} size={32} color={accentPrimary} />
+        <View className="h-10 items-center justify-center">
+          <Icon name={icon} size={32} color={accentPrimary} />
+        </View>
         <Text className="text-text-primary text-sm font-medium mt-2">
           {label}
         </Text>
-        <Text className="text-xs mt-1" style={{ color: textSecondary }}>
+        <Text className="text-xs mt-1 text-center" numberOfLines={2} style={{ color: textSecondary, minHeight: 32 }}>
           {subtitle}
         </Text>
       </Button>
@@ -138,7 +147,10 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
             <>
               <Pressable
                 className="flex-row items-center mb-3 px-1.5"
-                onPress={() => setShowExerciseMenu(false)}
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setShowExerciseMenu(false);
+                }}
               >
                 <Icon name="chevron-back" size={20} color={accentPrimary} />
                 <Text className="text-sm font-medium ml-1" style={{ color: accentPrimary }}>

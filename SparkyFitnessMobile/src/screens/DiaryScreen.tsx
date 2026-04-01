@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Platform } from 'react-native';
 import Button from '../components/ui/Button';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
@@ -43,6 +43,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       }
     }, [])
   );
+
+  useEffect(() => {
+    navigation.setParams({ selectedDate });
+  }, [navigation, selectedDate]);
 
   const goToPreviousDay = useCallback(() => setSelectedDate(prev => addDays(prev, -1)), []);
   const goToNextDay = useCallback(() => setSelectedDate(prev => {
