@@ -808,9 +808,9 @@ router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
   const { startDate, endDate, aggregationLevel = 'daily' } = req.query;
   const validAggregationLevels = ['daily', 'weekly', 'monthly'];
   const resolvedAggregationLevel = validAggregationLevels.includes(
-    aggregationLevel
+    aggregationLevel.toLowerCase()
   )
-    ? aggregationLevel
+    ? aggregationLevel.toLowerCase()
     : 'daily';
 
   if (!exerciseId) {

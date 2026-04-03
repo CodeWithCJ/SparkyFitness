@@ -925,8 +925,24 @@ async function getExerciseProgressData(
              SUM(ee.distance) AS distance,
              ROUND(AVG(ee.avg_heart_rate)) AS avg_heart_rate,
              MAX(ee.source) AS provider_name,
-             '[]'::json AS sets
+             COALESCE(
+               json_agg(
+                 json_build_object(
+                   'id', ees.id,
+                   'set_number', ees.set_number,
+                   'set_type', ees.set_type,
+                   'reps', ees.reps,
+                   'weight', ees.weight,
+                   'duration', ees.duration,
+                   'rest_time', ees.rest_time,
+                   'notes', ees.notes,
+                   'rpe', ees.rpe
+                 ) ORDER BY ees.set_number
+               ) FILTER (WHERE ees.id IS NOT NULL),
+               '[]'::json
+             ) AS sets
            FROM exercise_entries ee
+           LEFT JOIN exercise_entry_sets ees ON ees.exercise_entry_id = ee.id
            WHERE ee.user_id = $1
              AND ee.exercise_id = $2
              AND ee.entry_date BETWEEN $3 AND $4
