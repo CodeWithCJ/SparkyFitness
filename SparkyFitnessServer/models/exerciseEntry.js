@@ -917,7 +917,7 @@ async function getExerciseProgressData(
         format(
           `SELECT
              MIN(ee.id::text) AS exercise_entry_id,
-             TO_CHAR(date_trunc(%L, ee.entry_date), 'YYYY-MM-DD') AS entry_date,
+             TO_CHAR(date_trunc(%1$L, ee.entry_date), 'YYYY-MM-DD') AS entry_date,
              COALESCE(SUM(ee.duration_minutes), 0) AS duration_minutes,
              COALESCE(SUM(ee.calories_burned), 0) AS calories_burned,
              NULL AS notes,
@@ -926,29 +926,23 @@ async function getExerciseProgressData(
              ROUND(AVG(ee.avg_heart_rate)) AS avg_heart_rate,
              MAX(ee.source) AS provider_name,
              COALESCE(
-               json_agg(
-                 json_build_object(
-                   'id', ees.id,
-                   'set_number', ees.set_number,
-                   'set_type', ees.set_type,
-                   'reps', ees.reps,
-                   'weight', ees.weight,
-                   'duration', ees.duration,
-                   'rest_time', ees.rest_time,
-                   'notes', ees.notes,
-                   'rpe', ees.rpe
-                 ) ORDER BY ees.set_number
-               ) FILTER (WHERE ees.id IS NOT NULL),
-               '[]'::json
+               (SELECT json_agg(set_data ORDER BY set_data.set_number)
+                FROM (
+                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
+                  FROM exercise_entry_sets ees
+                  JOIN exercise_entries ee2 ON ees.exercise_entry_id = ee2.id
+                  WHERE ee2.user_id = $1
+                    AND ee2.exercise_id = $2
+                    AND date_trunc(%1$L, ee2.entry_date) = date_trunc(%1$L, ee.entry_date)
+                ) AS set_data
+               ), '[]'::json
              ) AS sets
            FROM exercise_entries ee
-           LEFT JOIN exercise_entry_sets ees ON ees.exercise_entry_id = ee.id
            WHERE ee.user_id = $1
              AND ee.exercise_id = $2
              AND ee.entry_date BETWEEN $3 AND $4
-           GROUP BY date_trunc(%L, ee.entry_date)
+           GROUP BY date_trunc(%1$L, ee.entry_date)
            ORDER BY entry_date ASC`,
-          truncUnit,
           truncUnit
         ),
         [userId, exerciseId, startDate, endDate]
