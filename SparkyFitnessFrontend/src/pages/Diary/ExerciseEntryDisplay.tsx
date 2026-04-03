@@ -142,13 +142,14 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           )}
           {/* Image Display Logic */}
           {(() => {
+            const snapshot = exerciseEntry.exercise_snapshot;
+
             const imageUrl = exerciseEntry.image_url
               ? exerciseEntry.image_url
-              : exerciseEntry.exercise_snapshot?.images &&
-                  exerciseEntry.exercise_snapshot.images.length > 0
-                ? exerciseEntry.exercise_snapshot.source
-                  ? `/uploads/exercises/${exerciseEntry.exercise_snapshot.images[0]}`
-                  : exerciseEntry.exercise_snapshot.images[0]
+              : snapshot?.images && snapshot.images.length > 0
+                ? exerciseEntry.source
+                  ? `/uploads/exercises/${snapshot.images[0]}`
+                  : snapshot.images[0]
                 : null;
 
             if (!imageUrl) return null;
