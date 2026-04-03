@@ -805,7 +805,13 @@ router.put(
  */
 router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
   const { exerciseId } = req.params;
-  const { startDate, endDate } = req.query;
+  const { startDate, endDate, aggregationLevel = 'daily' } = req.query;
+  const validAggregationLevels = ['daily', 'weekly', 'monthly'];
+  const resolvedAggregationLevel = validAggregationLevels.includes(
+    aggregationLevel
+  )
+    ? aggregationLevel
+    : 'daily';
 
   if (!exerciseId) {
     return res.status(400).json({ error: 'Exercise ID is required.' });
@@ -821,7 +827,8 @@ router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
       req.userId,
       exerciseId,
       startDate,
-      endDate
+      endDate,
+      resolvedAggregationLevel
     );
     res.status(200).json(progressData);
   } catch (error) {

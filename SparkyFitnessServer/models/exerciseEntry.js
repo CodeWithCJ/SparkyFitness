@@ -901,36 +901,67 @@ async function getExerciseEntriesByDate(userId, selectedDate) {
   }
 }
 
-async function getExerciseProgressData(userId, exerciseId, startDate, endDate) {
+async function getExerciseProgressData(
+  userId,
+  exerciseId,
+  startDate,
+  endDate,
+  aggregationLevel = 'daily'
+) {
   const client = await getClient(userId);
   try {
-    const result = await client.query(
-      `SELECT
-         ee.id AS exercise_entry_id,
-         ee.entry_date,
-         ee.duration_minutes,
-         ee.calories_burned,
-         ee.notes,
-         ee.image_url,
-         ee.distance,
-         ee.avg_heart_rate,
-         ee.source AS provider_name,
-         COALESCE(
-           (SELECT json_agg(set_data ORDER BY set_data.set_number)
-            FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
-              FROM exercise_entry_sets ees
-              WHERE ees.exercise_entry_id = ee.id
-            ) AS set_data
-           ), '[]'::json
-         ) AS sets
-       FROM exercise_entries ee
-       WHERE ee.user_id = $1
-         AND ee.exercise_id = $2
-         AND ee.entry_date BETWEEN $3 AND $4
-       ORDER BY ee.entry_date ASC`,
-      [userId, exerciseId, startDate, endDate]
-    );
+    let result;
+    if (aggregationLevel === 'weekly' || aggregationLevel === 'monthly') {
+      const truncUnit = aggregationLevel === 'weekly' ? 'week' : 'month';
+      result = await client.query(
+        `SELECT
+           MIN(ee.id::text) AS exercise_entry_id,
+           TO_CHAR(date_trunc('${truncUnit}', ee.entry_date), 'YYYY-MM-DD') AS entry_date,
+           COALESCE(SUM(ee.duration_minutes), 0) AS duration_minutes,
+           COALESCE(SUM(ee.calories_burned), 0) AS calories_burned,
+           NULL AS notes,
+           NULL AS image_url,
+           SUM(ee.distance) AS distance,
+           ROUND(AVG(ee.avg_heart_rate)) AS avg_heart_rate,
+           MAX(ee.source) AS provider_name,
+           '[]'::json AS sets
+         FROM exercise_entries ee
+         WHERE ee.user_id = $1
+           AND ee.exercise_id = $2
+           AND ee.entry_date BETWEEN $3 AND $4
+         GROUP BY date_trunc('${truncUnit}', ee.entry_date)
+         ORDER BY entry_date ASC`,
+        [userId, exerciseId, startDate, endDate]
+      );
+    } else {
+      result = await client.query(
+        `SELECT
+           ee.id AS exercise_entry_id,
+           ee.entry_date,
+           ee.duration_minutes,
+           ee.calories_burned,
+           ee.notes,
+           ee.image_url,
+           ee.distance,
+           ee.avg_heart_rate,
+           ee.source AS provider_name,
+           COALESCE(
+             (SELECT json_agg(set_data ORDER BY set_data.set_number)
+              FROM (
+                SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
+                FROM exercise_entry_sets ees
+                WHERE ees.exercise_entry_id = ee.id
+              ) AS set_data
+             ), '[]'::json
+           ) AS sets
+         FROM exercise_entries ee
+         WHERE ee.user_id = $1
+           AND ee.exercise_id = $2
+           AND ee.entry_date BETWEEN $3 AND $4
+         ORDER BY ee.entry_date ASC`,
+        [userId, exerciseId, startDate, endDate]
+      );
+    }
     return result.rows;
   } finally {
     client.release();

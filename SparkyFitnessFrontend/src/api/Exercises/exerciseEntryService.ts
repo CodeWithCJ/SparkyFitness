@@ -184,7 +184,11 @@ export const getExerciseProgressData = async (
       method: 'GET',
     }
   );
-  return z.array(exerciseProgressResponseSchema).parse(response);
+  if (!Array.isArray(response)) return [];
+  return response
+    .map((item) => exerciseProgressResponseSchema.safeParse(item))
+    .filter((r) => r.success)
+    .map((r) => r.data);
 };
 
 export const getExerciseHistory = async (

@@ -1289,7 +1289,8 @@ async function getExerciseProgressData(
   authenticatedUserId,
   exerciseId,
   startDate,
-  endDate
+  endDate,
+  aggregationLevel = 'daily'
 ) {
   try {
     // getExerciseProgressData is implemented in the exerciseEntry module
@@ -1297,7 +1298,8 @@ async function getExerciseProgressData(
       authenticatedUserId,
       exerciseId,
       startDate,
-      endDate
+      endDate,
+      aggregationLevel
     );
     return progressData;
   } catch (error) {
