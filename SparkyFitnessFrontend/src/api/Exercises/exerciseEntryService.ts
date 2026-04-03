@@ -185,10 +185,11 @@ export const getExerciseProgressData = async (
     }
   );
   if (!Array.isArray(response)) return [];
-  return response
-    .map((item) => exerciseProgressResponseSchema.safeParse(item))
-    .filter((r) => r.success)
-    .map((r) => r.data);
+  return response.reduce<ExerciseProgressResponse[]>((acc, item) => {
+    const r = exerciseProgressResponseSchema.safeParse(item);
+    if (r.success) acc.push(r.data);
+    return acc;
+  }, []);
 };
 
 export const getExerciseHistory = async (

@@ -914,23 +914,27 @@ async function getExerciseProgressData(
     if (aggregationLevel === 'weekly' || aggregationLevel === 'monthly') {
       const truncUnit = aggregationLevel === 'weekly' ? 'week' : 'month';
       result = await client.query(
-        `SELECT
-           MIN(ee.id::text) AS exercise_entry_id,
-           TO_CHAR(date_trunc('${truncUnit}', ee.entry_date), 'YYYY-MM-DD') AS entry_date,
-           COALESCE(SUM(ee.duration_minutes), 0) AS duration_minutes,
-           COALESCE(SUM(ee.calories_burned), 0) AS calories_burned,
-           NULL AS notes,
-           NULL AS image_url,
-           SUM(ee.distance) AS distance,
-           ROUND(AVG(ee.avg_heart_rate)) AS avg_heart_rate,
-           MAX(ee.source) AS provider_name,
-           '[]'::json AS sets
-         FROM exercise_entries ee
-         WHERE ee.user_id = $1
-           AND ee.exercise_id = $2
-           AND ee.entry_date BETWEEN $3 AND $4
-         GROUP BY date_trunc('${truncUnit}', ee.entry_date)
-         ORDER BY entry_date ASC`,
+        format(
+          `SELECT
+             MIN(ee.id::text) AS exercise_entry_id,
+             TO_CHAR(date_trunc(%L, ee.entry_date), 'YYYY-MM-DD') AS entry_date,
+             COALESCE(SUM(ee.duration_minutes), 0) AS duration_minutes,
+             COALESCE(SUM(ee.calories_burned), 0) AS calories_burned,
+             NULL AS notes,
+             NULL AS image_url,
+             SUM(ee.distance) AS distance,
+             ROUND(AVG(ee.avg_heart_rate)) AS avg_heart_rate,
+             MAX(ee.source) AS provider_name,
+             '[]'::json AS sets
+           FROM exercise_entries ee
+           WHERE ee.user_id = $1
+             AND ee.exercise_id = $2
+             AND ee.entry_date BETWEEN $3 AND $4
+           GROUP BY date_trunc(%L, ee.entry_date)
+           ORDER BY entry_date ASC`,
+          truncUnit,
+          truncUnit
+        ),
         [userId, exerciseId, startDate, endDate]
       );
     } else {
