@@ -274,6 +274,164 @@ describe('transformHealthRecords', () => {
 
       expect(result).toHaveLength(0);
     });
+
+    test('processes sleep stages into duration breakdowns', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T22:00:00Z',
+          endTime: '2024-01-16T06:00:00Z',
+          stages: [
+            { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T22:30:00Z', stage: 4 },  // LIGHT - 30min
+            { startTime: '2024-01-15T22:30:00Z', endTime: '2024-01-15T23:30:00Z', stage: 5 },  // DEEP - 60min
+            { startTime: '2024-01-15T23:30:00Z', endTime: '2024-01-16T00:00:00Z', stage: 6 },  // REM - 30min
+            { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T00:15:00Z', stage: 1 },  // AWAKE - 15min
+            { startTime: '2024-01-16T00:15:00Z', endTime: '2024-01-16T06:00:00Z', stage: 4 },  // LIGHT - 5h45m
+          ],
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].stage_events).toEqual([
+        {
+          stage_type: 'light',
+          start_time: '2024-01-15T22:00:00.000Z',
+          end_time: '2024-01-15T22:30:00.000Z',
+          duration_in_seconds: 1800,
+        },
+        {
+          stage_type: 'deep',
+          start_time: '2024-01-15T22:30:00.000Z',
+          end_time: '2024-01-15T23:30:00.000Z',
+          duration_in_seconds: 3600,
+        },
+        {
+          stage_type: 'rem',
+          start_time: '2024-01-15T23:30:00.000Z',
+          end_time: '2024-01-16T00:00:00.000Z',
+          duration_in_seconds: 1800,
+        },
+        {
+          stage_type: 'awake',
+          start_time: '2024-01-16T00:00:00.000Z',
+          end_time: '2024-01-16T00:15:00.000Z',
+          duration_in_seconds: 900,
+        },
+        {
+          stage_type: 'light',
+          start_time: '2024-01-16T00:15:00.000Z',
+          end_time: '2024-01-16T06:00:00.000Z',
+          duration_in_seconds: 20700,
+        },
+      ]);
+      expect(result[0].deep_sleep_seconds).toBe(3600);     // 60min
+      expect(result[0].light_sleep_seconds).toBe(22500);   // 30min + 5h45m
+      expect(result[0].rem_sleep_seconds).toBe(1800);      // 30min
+      expect(result[0].awake_sleep_seconds).toBe(900);     // 15min
+      expect(result[0].time_asleep_in_seconds).toBe(27900); // total minus awake
+      expect(result[0].duration_in_seconds).toBe(28800);    // full 8 hours
+    });
+
+    test('maps generic sleeping and out-of-bed stages into duration totals', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T22:00:00Z',
+          endTime: '2024-01-16T01:00:00Z',
+          stages: [
+            { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T23:00:00Z', stage: 1 },  // AWAKE
+            { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T00:00:00Z', stage: 2 },  // SLEEPING (generic)
+            { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T01:00:00Z', stage: 3 },  // OUT_OF_BED
+          ],
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result[0].stage_events).toEqual([
+        {
+          stage_type: 'awake',
+          start_time: '2024-01-15T22:00:00.000Z',
+          end_time: '2024-01-15T23:00:00.000Z',
+          duration_in_seconds: 3600,
+        },
+        {
+          stage_type: 'light',
+          start_time: '2024-01-15T23:00:00.000Z',
+          end_time: '2024-01-16T00:00:00.000Z',
+          duration_in_seconds: 3600,
+        },
+        {
+          stage_type: 'awake',
+          start_time: '2024-01-16T00:00:00.000Z',
+          end_time: '2024-01-16T01:00:00.000Z',
+          duration_in_seconds: 3600,
+        },
+      ]);
+      expect(result[0].light_sleep_seconds).toBe(3600); // SLEEPING → light
+      expect(result[0].awake_sleep_seconds).toBe(7200); // AWAKE + OUT_OF_BED
+      expect(result[0].time_asleep_in_seconds).toBe(3600);
+    });
+
+    test('falls back to full duration as light sleep when no stages present', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T22:00:00Z',
+          endTime: '2024-01-16T06:00:00Z',
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result[0].stage_events).toHaveLength(0);
+      expect(result[0].light_sleep_seconds).toBe(28800);
+      expect(result[0].deep_sleep_seconds).toBe(0);
+      expect(result[0].rem_sleep_seconds).toBe(0);
+      expect(result[0].awake_sleep_seconds).toBe(0);
+      expect(result[0].time_asleep_in_seconds).toBe(28800);
+    });
+
+    test('skips stage entries with invalid timestamps', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T22:00:00Z',
+          endTime: '2024-01-16T06:00:00Z',
+          stages: [
+            { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T23:00:00Z', stage: 5 },  // valid DEEP
+            { startTime: 'invalid', endTime: '2024-01-16T01:00:00Z', stage: 4 },                // invalid
+          ],
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result[0].stage_events).toEqual([
+        {
+          stage_type: 'deep',
+          start_time: '2024-01-15T22:00:00.000Z',
+          end_time: '2024-01-15T23:00:00.000Z',
+          duration_in_seconds: 3600,
+        },
+      ]);
+      expect(result[0].deep_sleep_seconds).toBe(3600);
+      expect(result[0].time_asleep_in_seconds).toBe(3600);
+    });
+
+    test('falls back to full duration when all stages are unknown', () => {
+      const records = [
+        {
+          startTime: '2024-01-15T22:00:00Z',
+          endTime: '2024-01-16T06:00:00Z',
+          stages: [
+            { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T06:00:00Z', stage: 0 },
+          ],
+        },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+
+      expect(result[0].stage_events).toHaveLength(0);
+      expect(result[0].light_sleep_seconds).toBe(28800);
+      expect(result[0].deep_sleep_seconds).toBe(0);
+      expect(result[0].rem_sleep_seconds).toBe(0);
+      expect(result[0].awake_sleep_seconds).toBe(0);
+      expect(result[0].time_asleep_in_seconds).toBe(28800);
+    });
   });
 
   describe('ExerciseSession records', () => {

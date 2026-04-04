@@ -6,6 +6,7 @@ import {
   TransformedExerciseSession,
   AggregatedSleepSession,
   RecordTimezoneMetadata,
+  SleepStageType,
   HEALTH_CONNECT_SOURCE,
 } from '../../types/healthRecords';
 import { toLocalDateString } from '../../utils/dateUtils';
@@ -462,6 +463,25 @@ const EXERCISE_MAP: Record<number, string> = {
   83: 'Yoga',
 } as const;
 
+// Health Connect SleepStageType constants from react-native-health-connect.
+// We skip UNKNOWN values so they do not distort asleep-time totals downstream.
+const mapHealthConnectSleepStage = (stage: number): SleepStageType | null => {
+  switch (stage) {
+    case 1: return 'awake';
+    case 2: return 'light';   // SLEEPING (generic) → light
+    case 3: return 'awake';   // OUT_OF_BED → awake
+    case 4: return 'light';
+    case 5: return 'deep';
+    case 6: return 'rem';
+    case 0:
+      addLog('[HealthConnect] Skipping UNKNOWN sleep stage value', 'WARNING');
+      return null;
+    default:
+      addLog(`[HealthConnect] Skipping unsupported sleep stage value: ${stage}`, 'WARNING');
+      return null;
+  }
+};
+
 const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
   HeartRate: (rec, _record, metricConfig, output) => {
     const samples = rec.samples as { beatsPerMinute: number }[] | undefined;
@@ -518,6 +538,48 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     const durationInSeconds = (end - start) / 1000;
     const recordDate = toLocalDateString(rec.endTime as string);
 
+    const stages = rec.stages as { startTime: string; endTime: string; stage: number }[] | undefined;
+
+    let deepSeconds = 0;
+    let lightSeconds = 0;
+    let remSeconds = 0;
+    let awakeSeconds = 0;
+    let hasRecognizedStages = false;
+    const stageEvents: AggregatedSleepSession['stage_events'] = [];
+
+    if (stages && stages.length > 0) {
+      for (const stage of stages) {
+        const stageStart = new Date(stage.startTime).getTime();
+        const stageEnd = new Date(stage.endTime).getTime();
+        if (isNaN(stageStart) || isNaN(stageEnd)) continue;
+
+        const stageDuration = (stageEnd - stageStart) / 1000;
+        if (stageDuration <= 0) continue;
+
+        const stageType = mapHealthConnectSleepStage(stage.stage);
+        if (!stageType) continue;
+
+        hasRecognizedStages = true;
+        stageEvents.push({
+          stage_type: stageType,
+          start_time: new Date(stageStart).toISOString(),
+          end_time: new Date(stageEnd).toISOString(),
+          duration_in_seconds: stageDuration,
+        });
+
+        switch (stageType) {
+          case 'deep': deepSeconds += stageDuration; break;
+          case 'light': lightSeconds += stageDuration; break;
+          case 'rem': remSeconds += stageDuration; break;
+          case 'awake': awakeSeconds += stageDuration; break;
+        }
+      }
+    }
+
+    const timeAsleep = hasRecognizedStages
+      ? deepSeconds + lightSeconds + remSeconds
+      : durationInSeconds;
+
     const sleepSession: AggregatedSleepSession = {
       type: 'SleepSession',
       source: HEALTH_CONNECT_SOURCE,
@@ -526,13 +588,13 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       bedtime: rec.startTime as string,
       wake_time: rec.endTime as string,
       duration_in_seconds: durationInSeconds,
-      time_asleep_in_seconds: durationInSeconds,
-      stage_events: [],
+      time_asleep_in_seconds: timeAsleep,
+      stage_events: stageEvents,
       sleep_score: 0,
-      deep_sleep_seconds: 0,
-      light_sleep_seconds: durationInSeconds,
-      rem_sleep_seconds: 0,
-      awake_sleep_seconds: 0,
+      deep_sleep_seconds: deepSeconds,
+      light_sleep_seconds: hasRecognizedStages ? lightSeconds : durationInSeconds,
+      rem_sleep_seconds: remSeconds,
+      awake_sleep_seconds: awakeSeconds,
       ...extractTimezoneMetadata(rec, true),
     };
     output.push(sleepSession);
