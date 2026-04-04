@@ -108,14 +108,15 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
       return;
     }
     const { date } = paramResult.data;
-    const { userId } = req.query;
+    const userIdQuery = req.query.userId;
+    const userId = Array.isArray(userIdQuery) ? userIdQuery[0] : userIdQuery;
     const targetUserId = typeof userId === 'string' ? userId : req.userId;
 
     if (typeof userId === 'string' && userId !== req.userId) {
       const hasPermission = await canAccessUserData(
         userId,
         'diary',
-        req.authenticatedUserId || req.userId
+        req.originalUserId || req.userId
       );
       if (!hasPermission) {
         res.status(403).json({ error: 'Forbidden' });
@@ -190,7 +191,7 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
       const hasPermission = await canAccessUserData(
         user_id,
         'checkin',
-        req.authenticatedUserId || req.userId
+        req.originalUserId || req.userId
       );
       if (!hasPermission) {
         res.status(403).json({ error: 'Forbidden' });
