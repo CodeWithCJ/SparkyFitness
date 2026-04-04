@@ -916,33 +916,43 @@ async function getExerciseProgressData(
       result = await client.query(
         format(
           `SELECT
-             MIN(ee.id::text) AS exercise_entry_id,
-             TO_CHAR(date_trunc(%1$L, ee.entry_date), 'YYYY-MM-DD') AS entry_date,
-             COALESCE(SUM(ee.duration_minutes), 0) AS duration_minutes,
-             COALESCE(SUM(ee.calories_burned), 0) AS calories_burned,
+             g.exercise_entry_id,
+             TO_CHAR(g.trunc_date, 'YYYY-MM-DD') AS entry_date,
+             g.duration_minutes,
+             g.calories_burned,
              NULL AS notes,
              NULL AS image_url,
-             SUM(ee.distance) AS distance,
-             ROUND(AVG(ee.avg_heart_rate)) AS avg_heart_rate,
-             MAX(ee.source) AS provider_name,
-             COALESCE(
-               (SELECT json_agg(set_data ORDER BY set_data.set_number)
-                FROM (
-                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
-                  FROM exercise_entry_sets ees
-                  JOIN exercise_entries ee2 ON ees.exercise_entry_id = ee2.id
-                  WHERE ee2.user_id = $1
-                    AND ee2.exercise_id = $2
-                    AND date_trunc(%1$L, ee2.entry_date) = date_trunc(%1$L, ee.entry_date)
-                ) AS set_data
-               ), '[]'::json
-             ) AS sets
-           FROM exercise_entries ee
-           WHERE ee.user_id = $1
-             AND ee.exercise_id = $2
-             AND ee.entry_date BETWEEN $3 AND $4
-           GROUP BY date_trunc(%1$L, ee.entry_date)
-           ORDER BY entry_date ASC`,
+             g.distance,
+             g.avg_heart_rate,
+             g.provider_name,
+             COALESCE(s.sets_json, '[]'::json) AS sets
+           FROM (
+             SELECT
+               MIN(ee.id::text) AS exercise_entry_id,
+               date_trunc(%1$L, ee.entry_date) AS trunc_date,
+               COALESCE(SUM(ee.duration_minutes), 0) AS duration_minutes,
+               COALESCE(SUM(ee.calories_burned), 0) AS calories_burned,
+               SUM(ee.distance) AS distance,
+               ROUND(AVG(ee.avg_heart_rate)) AS avg_heart_rate,
+               MAX(ee.source) AS provider_name
+             FROM exercise_entries ee
+             WHERE ee.user_id = $1
+               AND ee.exercise_id = $2
+               AND ee.entry_date BETWEEN $3 AND $4
+             GROUP BY date_trunc(%1$L, ee.entry_date)
+           ) g
+           LEFT JOIN LATERAL (
+             SELECT json_agg(set_data ORDER BY set_data.set_number) AS sets_json
+             FROM (
+               SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe
+               FROM exercise_entry_sets ees
+               JOIN exercise_entries ee2 ON ees.exercise_entry_id = ee2.id
+               WHERE ee2.user_id = $1
+                 AND ee2.exercise_id = $2
+                 AND date_trunc(%1$L, ee2.entry_date) = g.trunc_date
+             ) AS set_data
+           ) s ON true
+           ORDER BY g.trunc_date ASC`,
           truncUnit
         ),
         [userId, exerciseId, startDate, endDate]
