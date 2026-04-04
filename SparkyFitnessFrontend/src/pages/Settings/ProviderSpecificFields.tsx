@@ -28,6 +28,7 @@ export const ProviderSpecificFields = ({
   const needsAppId = [
     'nutritionix',
     'fatsecret',
+    'edamam',
     'withings',
     'fitbit',
     'strava',
@@ -38,6 +39,7 @@ export const ProviderSpecificFields = ({
     'tandoor',
     'nutritionix',
     'fatsecret',
+    'edamam',
     'usda',
     'withings',
     'fitbit',
