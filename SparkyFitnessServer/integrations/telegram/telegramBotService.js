@@ -19,17 +19,24 @@ class TelegramBotService {
   async initialize() {
     try {
       const settings = await globalSettingsRepository.getGlobalSettings();
-      const token = settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
+      const token =
+        settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
 
       if (!token) {
-        log('info', '[TELEGRAM BOT] Bot token not configured. Telegram integration is inactive.');
+        log(
+          'info',
+          '[TELEGRAM BOT] Bot token not configured. Telegram integration is inactive.'
+        );
         return;
       }
 
       const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
 
       if (webhookUrl) {
-        log('info', `[TELEGRAM BOT] Initializing in WEBHOOK mode. URL: ${webhookUrl}`);
+        log(
+          'info',
+          `[TELEGRAM BOT] Initializing in WEBHOOK mode. URL: ${webhookUrl}`
+        );
         this.bot = new TelegramBot(token, { polling: false });
         const fullWebhookUrl = `${webhookUrl.replace(/\/$/, '')}/api/telegram/webhook`;
         await this.bot.setWebHook(fullWebhookUrl);
@@ -39,7 +46,10 @@ class TelegramBotService {
         this.bot = new TelegramBot(token, { polling: true });
       }
 
-      log('info', `[TELEGRAM BOT] Bot active: ${settings.telegram_bot_name || 'SparkyFitnessBot'}`);
+      log(
+        'info',
+        `[TELEGRAM BOT] Bot active: ${settings.telegram_bot_name || 'SparkyFitnessBot'}`
+      );
       this.setupHandlers();
     } catch (error) {
       log('error', '[TELEGRAM BOT] Initialization error:', error);
@@ -62,81 +72,111 @@ class TelegramBotService {
       }
 
       const user = await this.findUserAndLanguageByChatId(chatId);
-      
+
       if (user) {
         const lang = user.language;
         const t = this.getTranslations(lang);
         const keyboardOptions = this.getMainMenuKeyboard(t);
 
-        return this.bot.sendMessage(chatId, `${t.greeting}, ${user.name}! ${t.helpPrompt}`, keyboardOptions);
+        return this.bot.sendMessage(
+          chatId,
+          `${t.greeting}, ${user.name}! ${t.helpPrompt}`,
+          keyboardOptions
+        );
       }
 
-      this.bot.sendMessage(chatId, 'Welcome to SparkyFitness! Link your account in the web app under Settings → Telegram, then send `/start <CODE>`.');
+      this.bot.sendMessage(
+        chatId,
+        'Welcome to SparkyFitness! Link your account in the web app under Settings → Telegram, then send `/start <CODE>`.'
+      );
     });
 
-    this.bot.onText(/\/(profile|профиль)|👤 (Профіль|Профиль|Profile)/i, async (msg) => {
-      const chatId = msg.chat.id;
-      const user = await this.findUserAndLanguageByChatId(chatId);
-      if (!user) return;
-      
-      this.bot.sendChatAction(chatId, 'typing').catch(() => {});
-      try {
-        const profileText = await this.formatProfileResponse(user.id, user.language);
-        this.bot.sendMessage(chatId, profileText, { parse_mode: 'HTML' });
-      } catch (e) {
-        this.bot.sendMessage(chatId, `❌ Error: ${e.message}`);
+    this.bot.onText(
+      /\/(profile|профиль)|👤 (Профіль|Профиль|Profile)/i,
+      async (msg) => {
+        const chatId = msg.chat.id;
+        const user = await this.findUserAndLanguageByChatId(chatId);
+        if (!user) return;
+
+        this.bot.sendChatAction(chatId, 'typing').catch(() => {});
+        try {
+          const profileText = await this.formatProfileResponse(
+            user.id,
+            user.language
+          );
+          this.bot.sendMessage(chatId, profileText, { parse_mode: 'HTML' });
+        } catch (e) {
+          this.bot.sendMessage(chatId, `❌ Error: ${e.message}`);
+        }
       }
-    });
+    );
 
-    this.bot.onText(/\/(diary|дневник|щоденник)|📖 (Меню щоденника|Меню дневника|Diary Menu)/i, async (msg) => {
-      const chatId = msg.chat.id;
-      const user = await this.findUserAndLanguageByChatId(chatId);
-      if (!user) return;
-      
-      const t = this.getTranslations(user.language);
-      this.bot.sendMessage(chatId, "Оберіть розділ щоденника:", this.getDiaryMenuKeyboard(t));
-    });
+    this.bot.onText(
+      /\/(diary|дневник|щоденник)|📖 (Меню щоденника|Меню дневника|Diary Menu)/i,
+      async (msg) => {
+        const chatId = msg.chat.id;
+        const user = await this.findUserAndLanguageByChatId(chatId);
+        if (!user) return;
+
+        const t = this.getTranslations(user.language);
+        this.bot.sendMessage(
+          chatId,
+          'Оберіть розділ щоденника:',
+          this.getDiaryMenuKeyboard(t)
+        );
+      }
+    );
 
     this.bot.onText(/⬅️ (Назад|Back)/i, async (msg) => {
       const chatId = msg.chat.id;
       const user = await this.findUserAndLanguageByChatId(chatId);
       if (!user) return;
-      
+
       const t = this.getTranslations(user.language);
-      this.bot.sendMessage(chatId, "Головне меню:", this.getMainMenuKeyboard(t));
+      this.bot.sendMessage(
+        chatId,
+        'Головне меню:',
+        this.getMainMenuKeyboard(t)
+      );
     });
 
-    this.bot.onText(/\/(language|мова|язык)|🌐 (Мова|Язык|Language)/i, async (msg) => {
-      const chatId = msg.chat.id;
-      const user = await this.findUserAndLanguageByChatId(chatId);
-      if (!user) return;
-      
-      const t = this.getTranslations(user.language);
-      this.bot.sendMessage(chatId, t.chooseLanguage, {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '🇬🇧 English', callback_data: 'setlang:en' }],
-            [{ text: '🇺🇦 Українська', callback_data: 'setlang:uk' }],
-            [{ text: '🇷🇺 Русский', callback_data: 'setlang:ru' }]
-          ]
-        }
-      });
-    });
+    this.bot.onText(
+      /\/(language|мова|язык)|🌐 (Мова|Язык|Language)/i,
+      async (msg) => {
+        const chatId = msg.chat.id;
+        const user = await this.findUserAndLanguageByChatId(chatId);
+        if (!user) return;
 
-    this.bot.onText(/\/(sync|синхронизировать|синхронізувати)|🔄 (Пристрої|Устройства|Devices)/i, async (msg) => {
-      const chatId = msg.chat.id;
-      const user = await this.findUserAndLanguageByChatId(chatId);
-      if (!user) return;
-      
-      const t = this.getTranslations(user.language);
-      this.bot.sendMessage(chatId, "Оберіть платформу для синхронізації:", {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: t.syncGarmin, callback_data: 'sync:garmin' }]
-          ]
-        }
-      });
-    });
+        const t = this.getTranslations(user.language);
+        this.bot.sendMessage(chatId, t.chooseLanguage, {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🇬🇧 English', callback_data: 'setlang:en' }],
+              [{ text: '🇺🇦 Українська', callback_data: 'setlang:uk' }],
+              [{ text: '🇷🇺 Русский', callback_data: 'setlang:ru' }],
+            ],
+          },
+        });
+      }
+    );
+
+    this.bot.onText(
+      /\/(sync|синхронизировать|синхронізувати)|🔄 (Пристрої|Устройства|Devices)/i,
+      async (msg) => {
+        const chatId = msg.chat.id;
+        const user = await this.findUserAndLanguageByChatId(chatId);
+        if (!user) return;
+
+        const t = this.getTranslations(user.language);
+        this.bot.sendMessage(chatId, 'Оберіть платформу для синхронізації:', {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: t.syncGarmin, callback_data: 'sync:garmin' }],
+            ],
+          },
+        });
+      }
+    );
 
     this.bot.on('message', async (msg) => {
       if (msg.text && msg.text.startsWith('/')) return;
@@ -145,13 +185,23 @@ class TelegramBotService {
       const user = await this.findUserAndLanguageByChatId(chatId);
 
       if (!user) {
-        this.bot.sendMessage(chatId, 'Your account is not linked. Please link it in the web app under Settings → Telegram.');
+        this.bot.sendMessage(
+          chatId,
+          'Your account is not linked. Please link it in the web app under Settings → Telegram.'
+        );
         return;
       }
 
       const t = this.getTranslations(user.language);
       // Ignore main menu button presses if handled separately
-      if (msg.text === t.profile || msg.text === t.language || msg.text === t.diary || msg.text === t.syncMenu || msg.text === t.back) return;
+      if (
+        msg.text === t.profile ||
+        msg.text === t.language ||
+        msg.text === t.diary ||
+        msg.text === t.syncMenu ||
+        msg.text === t.back
+      )
+        return;
 
       // Handle custom standard commands directly without AI
       if (msg.text === t.todayLog) {
@@ -162,7 +212,10 @@ class TelegramBotService {
       if (msg.text === t.macros) {
         this.bot.sendChatAction(chatId, 'typing').catch(() => {});
         try {
-          const profileText = await this.formatProfileResponse(user.id, user.language);
+          const profileText = await this.formatProfileResponse(
+            user.id,
+            user.language
+          );
           this.bot.sendMessage(chatId, profileText, { parse_mode: 'HTML' });
         } catch (e) {
           this.bot.sendMessage(chatId, `❌ Error: ${e.message}`);
@@ -184,20 +237,35 @@ class TelegramBotService {
         const newLang = type;
         await this.setLanguage(user.id, newLang);
         const t = this.getTranslations(newLang);
-        
-        await this.bot.deleteMessage(chatId, query.message.message_id).catch(()=>false);
-        await this.bot.sendMessage(chatId, t.langSet, this.getMainMenuKeyboard(t));
+
+        await this.bot
+          .deleteMessage(chatId, query.message.message_id)
+          .catch(() => false);
+        await this.bot.sendMessage(
+          chatId,
+          t.langSet,
+          this.getMainMenuKeyboard(t)
+        );
         return this.bot.answerCallbackQuery(query.id);
       } else if (action === 'sync') {
         if (type === 'garmin') {
           const garminService = require('../../services/garminService');
-          this.bot.sendMessage(chatId, '🔄 Синхронізація з Garmin запущена... Це може зайняти хвилину.');
+          this.bot.sendMessage(
+            chatId,
+            '🔄 Синхронізація з Garmin запущена... Це може зайняти хвилину.'
+          );
           try {
-            await garminService.fetchAndStoreGarminData(user.id);
-            this.bot.sendMessage(chatId, '✅ Синхронізація Garmin успішно завершена!');
+            await garminService.syncGarminData(user.id);
+            this.bot.sendMessage(
+              chatId,
+              '✅ Синхронізація Garmin успішно завершена!'
+            );
           } catch (error) {
             log('error', `[TELEGRAM BOT] Garmin sync error: ${error.message}`);
-            this.bot.sendMessage(chatId, '❌ Помилка синхронізації Garmin. Переконайтеся, що ваш акаунт підключено у веб-додатку.');
+            this.bot.sendMessage(
+              chatId,
+              '❌ Помилка синхронізації Garmin. Переконайтеся, що ваш акаунт підключено у веб-додатку.'
+            );
           }
         }
         return this.bot.answerCallbackQuery(query.id);
@@ -208,7 +276,10 @@ class TelegramBotService {
           let success = false;
           if (type === 'measurement') {
             const measurementRepository = require('../../models/measurementRepository');
-            success = await measurementRepository.deleteCheckInMeasurements(id, user.id);
+            success = await measurementRepository.deleteCheckInMeasurements(
+              id,
+              user.id
+            );
           } else if (type === 'food') {
             const foodRepository = require('../../models/foodRepository');
             success = await foodRepository.deleteFoodEntry(id, user.id);
@@ -217,19 +288,23 @@ class TelegramBotService {
           if (success) {
             await this.bot.editMessageText(`✅ Запис видалено.`, {
               chat_id: chatId,
-              message_id: query.message.message_id
+              message_id: query.message.message_id,
             });
           } else {
-            await this.bot.answerCallbackQuery(query.id, { text: '❌ Не вдалося знайти запис.' });
+            await this.bot.answerCallbackQuery(query.id, {
+              text: '❌ Не вдалося знайти запис.',
+            });
           }
         } catch (e) {
           log('error', `[TELEGRAM BOT] Callback delete error: ${e.message}`);
-          await this.bot.answerCallbackQuery(query.id, { text: '❌ Помилка видалення.' });
+          await this.bot.answerCallbackQuery(query.id, {
+            text: '❌ Помилка видалення.',
+          });
         }
       } else if (action === 'cancel_del') {
         await this.bot.editMessageText('❌ Видалення скасовано.', {
           chat_id: chatId,
-          message_id: query.message.message_id
+          message_id: query.message.message_id,
         });
       }
 
@@ -239,21 +314,48 @@ class TelegramBotService {
     log('info', '[TELEGRAM BOT] Handlers setup complete.');
   }
 
+  getMainMenuKeyboard(t) {
+    return {
+      reply_markup: {
+        keyboard: [
+          [{ text: t.profile }, { text: t.diary }],
+          [{ text: t.macros }, { text: t.syncMenu }],
+          [{ text: t.language }],
+        ],
+        resize_keyboard: true,
+      },
+    };
+  }
+
+  getDiaryMenuKeyboard(t) {
+    return {
+      reply_markup: {
+        keyboard: [[{ text: t.todayLog }], [{ text: t.back }]],
+        resize_keyboard: true,
+      },
+    };
+  }
+
   async handleDirectTodayLog(chatId, user) {
     this.bot.sendChatAction(chatId, 'typing').catch(() => {});
     try {
       const foodEntry = require('../../models/foodEntry');
       const { todayInZone } = require('@workspace/shared');
       const { loadUserTimezone } = require('../../utils/timezoneLoader');
-      
+
       const tz = await loadUserTimezone(user.id);
       const today = todayInZone(tz);
-      const todayFood = await foodEntry.getFoodEntriesByDate(user.id, today).catch(() => []);
-      
+      const todayFood = await foodEntry
+        .getFoodEntriesByDate(user.id, today)
+        .catch(() => []);
+
       const t = this.getTranslations(user.language);
 
       if (!todayFood || todayFood.length === 0) {
-        return this.bot.sendMessage(chatId, `🤷 Здається, сьогодні ще нічого не записано. Спробуй написати або надіслати фото їжі!`);
+        return this.bot.sendMessage(
+          chatId,
+          `🤷 Здається, сьогодні ще нічого не записано. Спробуй написати або надіслати фото їжі!`
+        );
       }
 
       let text = `🍏 <b>${t.todayLog} (${today})</b>\n\n`;
@@ -261,10 +363,13 @@ class TelegramBotService {
 
       // Групуємо по meal_type
       const grouped = {
-        breakfast: [], lunch: [], dinner: [], snacks: []
+        breakfast: [],
+        lunch: [],
+        dinner: [],
+        snacks: [],
       };
 
-      todayFood.forEach(f => {
+      todayFood.forEach((f) => {
         const type = f.meal_type || 'snacks';
         if (grouped[type]) grouped[type].push(f);
         else grouped.snacks.push(f);
@@ -272,20 +377,23 @@ class TelegramBotService {
       });
 
       const mealNames = {
-        breakfast: 'Сніданок', lunch: 'Обід', dinner: 'Вечеря', snacks: 'Перекуси'
+        breakfast: 'Сніданок',
+        lunch: 'Обід',
+        dinner: 'Вечеря',
+        snacks: 'Перекуси',
       };
 
       for (const [type, items] of Object.entries(grouped)) {
         if (items.length > 0) {
           text += `<b>${mealNames[type]}:</b>\n`;
-          items.forEach(i => {
+          items.forEach((i) => {
             const cal = i.calories ? `${Math.round(i.calories)} ккал` : '';
             text += ` • ${i.food_name || i.name} — ${i.quantity} ${i.unit} ${cal}\n`;
           });
           text += '\n';
         }
       }
-      
+
       text += `<b>Всього:</b> ${Math.round(totalCals)} ккал`;
       this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
     } catch (e) {
@@ -312,7 +420,10 @@ class TelegramBotService {
       const aiService = await chatRepository.getActiveAiServiceSetting(user.id);
       if (!aiService) {
         clearInterval(typingInterval);
-        return this.bot.sendMessage(chatId, 'Please configure an AI service in the web app under Settings → AI.');
+        return this.bot.sendMessage(
+          chatId,
+          'Please configure an AI service in the web app under Settings → AI.'
+        );
       }
 
       // Build context (measurements + goals + today's food) and inject into the user message text
@@ -322,7 +433,9 @@ class TelegramBotService {
       const today = todayInZone(tz);
 
       const contextBlock = await this.buildContextBlock(user.id, today, tz);
-      const langNote = this.buildLanguageInstruction(msg.text || msg.caption || '');
+      const langNote = this.buildLanguageInstruction(
+        msg.text || msg.caption || ''
+      );
 
       // Inject context into the first text part
       let contextInjected = false;
@@ -348,23 +461,49 @@ class TelegramBotService {
       const messages = [{ role: 'user', content: enrichedParts }];
 
       // First AI call
-      log('info', `[TELEGRAM BOT] AI Input for user ${user.id}: ${JSON.stringify(messages)}`);
-      let response = await chatService.processChatMessage(messages, aiService.id, user.id);
-      log('info', `[TELEGRAM BOT] AI Response for user ${user.id}: ${JSON.stringify(response)}`);
+      log(
+        'info',
+        `[TELEGRAM BOT] AI Input for user ${user.id}: ${JSON.stringify(messages)}`
+      );
+      let response = await chatService.processChatMessage(
+        messages,
+        aiService.id,
+        user.id
+      );
+      log(
+        'info',
+        `[TELEGRAM BOT] AI Response for user ${user.id}: ${JSON.stringify(response)}`
+      );
 
       // Agentic loop: if AI requests more data
-      response = await this.handleDataRequest(response, messages, aiService.id, user.id, chatId);
+      response = await this.handleDataRequest(
+        response,
+        messages,
+        aiService.id,
+        user.id,
+        chatId
+      );
 
       clearInterval(typingInterval);
 
       if (response && response.content) {
         // Try to execute the intent in the DB
-        const executionResult = await this.tryExecuteIntent(response.content, user.id, today);
+        const executionResult = await this.tryExecuteIntent(
+          response.content,
+          user.id,
+          today
+        );
 
         // If intent was executed, send DB result; otherwise send AI text response
         if (executionResult !== null) {
-          if (typeof executionResult === 'object' && executionResult.intent === 'confirm_deletion') {
-            await this.showDeletionConfirmation(chatId, executionResult.matches);
+          if (
+            typeof executionResult === 'object' &&
+            executionResult.intent === 'confirm_deletion'
+          ) {
+            await this.showDeletionConfirmation(
+              chatId,
+              executionResult.matches
+            );
           } else {
             await this.sendLongMessage(chatId, executionResult);
           }
@@ -384,7 +523,7 @@ class TelegramBotService {
     let text = 'Знайдено записи для видалення:\n\n';
     const keyboard = [];
 
-    matches.forEach(m => {
+    matches.forEach((m) => {
       let label = '';
       if (m.type === 'measurement') {
         label = `🗑️ ${m.subType}: ${m.value} ${m.unit} за ${m.date}`;
@@ -392,15 +531,17 @@ class TelegramBotService {
         label = `🗑️ ${m.name} (${Math.round(m.calories)} ккал) за ${m.date}`;
       }
       text += `• ${label}\n`;
-      keyboard.push([{ text: label, callback_data: `confirm_del:${m.type}:${m.id}` }]);
+      keyboard.push([
+        { text: label, callback_data: `confirm_del:${m.type}:${m.id}` },
+      ]);
     });
 
     keyboard.push([{ text: '❌ Скасувати', callback_data: 'cancel_del' }]);
 
     await this.bot.sendMessage(chatId, text, {
       reply_markup: {
-        inline_keyboard: keyboard
-      }
+        inline_keyboard: keyboard,
+      },
     });
   }
 
@@ -417,7 +558,9 @@ class TelegramBotService {
 
     const [recentMeasurements, todayGoal, todayFood] = await Promise.all([
       measurementRepository.getLatestMeasurementsSummary(userId, 1),
-      goalRepository.getMostRecentGoalBeforeDate(userId, today).catch(() => null),
+      goalRepository
+        .getMostRecentGoalBeforeDate(userId, today)
+        .catch(() => null),
       foodEntry.getFoodEntriesByDate(userId, today).catch(() => []),
     ]);
 
@@ -429,10 +572,12 @@ class TelegramBotService {
     }
 
     let caloriesEaten = 0;
-    let protein = 0, carbs = 0, fat = 0;
+    let protein = 0,
+      carbs = 0,
+      fat = 0;
 
     if (todayFood && todayFood.length > 0) {
-      todayFood.forEach(f => {
+      todayFood.forEach((f) => {
         caloriesEaten += Number(f.calories || 0);
         protein += Number(f.protein || 0);
         carbs += Number(f.carbs || 0);
@@ -443,11 +588,11 @@ class TelegramBotService {
     if (todayGoal) {
       const goalCal = todayGoal.calories || 0;
       const remaining = goalCal - caloriesEaten;
-      
+
       text += `${t.dailyGoal} ${goalCal} kcal\n`;
       text += `${t.consumed} ${Math.round(caloriesEaten)} kcal\n`;
       text += `${t.remaining} ${Math.round(remaining)} kcal\n\n`;
-      
+
       text += `${t.protein}: ${Math.round(protein)} / ${todayGoal.protein || '?'} g\n`;
       text += `${t.carbs}: ${Math.round(carbs)} / ${todayGoal.carbs || '?'} g\n`;
       text += `${t.fat}: ${Math.round(fat)} / ${todayGoal.fat || '?'} g\n`;
@@ -469,11 +614,16 @@ class TelegramBotService {
     if (msg.photo) {
       const photo = msg.photo[msg.photo.length - 1];
       const fileLink = await this.bot.getFileLink(photo.file_id);
-      
+
       try {
-        const response = await axios.get(fileLink, { responseType: 'arraybuffer' });
+        const response = await axios.get(fileLink, {
+          responseType: 'arraybuffer',
+        });
         const base64 = Buffer.from(response.data).toString('base64');
-        parts.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } });
+        parts.push({
+          type: 'image_url',
+          image_url: { url: `data:image/jpeg;base64,${base64}` },
+        });
       } catch (e) {
         log('error', `[TELEGRAM BOT] Photo fetch error: ${e.message}`);
       }
@@ -487,7 +637,7 @@ class TelegramBotService {
       const media = msg.voice || msg.video_note || msg.video;
       const fileId = media.file_id;
       const fileLink = await this.bot.getFileLink(fileId);
-      
+
       let type = 'audio_url';
       let mimeType = 'audio/ogg'; // Telegram voice is .oga (ogg)
 
@@ -497,14 +647,16 @@ class TelegramBotService {
       }
 
       // Download and convert to base64 to pass to AI
-      const response = await axios.get(fileLink, { responseType: 'arraybuffer' });
-      const base64 = Buffer.from(response.data).toString('base64');
-      
-      parts.push({ 
-        type, 
-        [type]: { url: `data:${mimeType};base64,${base64}` } 
+      const response = await axios.get(fileLink, {
+        responseType: 'arraybuffer',
       });
-      
+      const base64 = Buffer.from(response.data).toString('base64');
+
+      parts.push({
+        type,
+        [type]: { url: `data:${mimeType};base64,${base64}` },
+      });
+
       if (msg.caption) {
         parts.push({ type: 'text', text: `Caption: ${msg.caption}` });
       }
@@ -527,7 +679,9 @@ class TelegramBotService {
 
     const [recentMeasurements, todayGoal, todayFood] = await Promise.all([
       measurementRepository.getLatestMeasurementsSummary(userId, 3),
-      goalRepository.getMostRecentGoalBeforeDate(userId, today).catch(() => null),
+      goalRepository
+        .getMostRecentGoalBeforeDate(userId, today)
+        .catch(() => null),
       foodEntry.getFoodEntriesByDate(userId, today).catch(() => []),
     ]);
 
@@ -537,7 +691,7 @@ class TelegramBotService {
       timeZone: tz,
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false
+      hour12: false,
     });
     const userCurrentTime = userTimeFormatter.format(now);
 
@@ -553,7 +707,8 @@ class TelegramBotService {
         if (h.steps) parts.push(`steps: ${h.steps}`);
         if (h.waist) parts.push(`waist: ${h.waist} cm`);
         if (h.hips) parts.push(`hips: ${h.hips} cm`);
-        if (h.body_fat_percentage) parts.push(`body fat: ${h.body_fat_percentage}%`);
+        if (h.body_fat_percentage)
+          parts.push(`body fat: ${h.body_fat_percentage}%`);
         block += `  ${h.entry_date}: ${parts.length > 0 ? parts.join(', ') : 'no values recorded'}\n`;
       });
     } else {
@@ -561,7 +716,9 @@ class TelegramBotService {
     }
 
     if (todayGoal) {
-      const water = todayGoal.water_goal_ml ? `${Math.round(todayGoal.water_goal_ml / 1000)} L` : '?';
+      const water = todayGoal.water_goal_ml
+        ? `${Math.round(todayGoal.water_goal_ml / 1000)} L`
+        : '?';
       block += `Current goals: calories ${todayGoal.calories || '?'} kcal, protein ${todayGoal.protein || '?'} g, carbs ${todayGoal.carbs || '?'} g, fat ${todayGoal.fat || '?'} g, water ${water}.\n`;
     }
 
@@ -596,7 +753,10 @@ class TelegramBotService {
 
     if (!parsed || parsed.intent !== 'request_data') return response;
 
-    log('info', `[TELEGRAM BOT] AI requested more data: ${JSON.stringify(parsed.data)}`);
+    log(
+      'info',
+      `[TELEGRAM BOT] AI requested more data: ${JSON.stringify(parsed.data)}`
+    );
     this.bot.sendChatAction(chatId, 'typing').catch(() => {});
 
     const measurementRepository = require('../../models/measurementRepository');
@@ -615,9 +775,13 @@ class TelegramBotService {
     let fetchedData = [];
 
     if (dataType === 'food_history') {
-      fetchedData = await foodEntry.getFoodEntriesByDateRange(userId, startDate, today).catch(() => []);
+      fetchedData = await foodEntry
+        .getFoodEntriesByDateRange(userId, startDate, today)
+        .catch(() => []);
     } else {
-      fetchedData = await measurementRepository.getCheckInMeasurementsByDateRange(userId, startDate, today).catch(() => []);
+      fetchedData = await measurementRepository
+        .getCheckInMeasurementsByDateRange(userId, startDate, today)
+        .catch(() => []);
     }
 
     // Append additional data as a new user message turn
@@ -634,7 +798,11 @@ class TelegramBotService {
       },
     ];
 
-    return chatService.processChatMessage(updatedMessages, serviceConfigId, userId);
+    return chatService.processChatMessage(
+      updatedMessages,
+      serviceConfigId,
+      userId
+    );
   }
 
   /**
@@ -660,7 +828,13 @@ class TelegramBotService {
 
     // Logging intents: execute in DB
     try {
-      const result = await executeIntent(parsed.intent, parsed.data || {}, parsed.entryDate, userId, today);
+      const result = await executeIntent(
+        parsed.intent,
+        parsed.data || {},
+        parsed.entryDate,
+        userId,
+        today
+      );
       return result;
     } catch (e) {
       log('error', `[TELEGRAM BOT] Intent execution error: ${e.message}`);
@@ -689,7 +863,10 @@ class TelegramBotService {
       try {
         await this.bot.sendMessage(c, t, o);
       } catch (e) {
-        log('warn', `[TELEGRAM BOT] HTML parse failed, falling back to plain text: ${e.message}`);
+        log(
+          'warn',
+          `[TELEGRAM BOT] HTML parse failed, falling back to plain text: ${e.message}`
+        );
         // Fallback to plain text by removing HTML tags
         await this.bot.sendMessage(c, t.replace(/<[^>]*>?/gm, ''));
       }
@@ -710,7 +887,8 @@ class TelegramBotService {
           chunk = para;
         } else {
           // Single paragraph too long — hard split
-          const parts = para.match(new RegExp(`[\\s\\S]{1,${maxLength}}`, 'g')) || [];
+          const parts =
+            para.match(new RegExp(`[\\s\\S]{1,${maxLength}}`, 'g')) || [];
           for (const part of parts) {
             await sendSafe(chatId, part, opts);
           }
@@ -734,13 +912,22 @@ class TelegramBotService {
       );
 
       if (result.rowCount > 0) {
-        this.bot.sendMessage(chatId, `✅ Account linked: ${result.rows[0].name}. You can now log meals, exercises, and chat with AI directly here!`);
+        this.bot.sendMessage(
+          chatId,
+          `✅ Account linked: ${result.rows[0].name}. You can now log meals, exercises, and chat with AI directly here!`
+        );
       } else {
-        this.bot.sendMessage(chatId, 'Invalid or expired linking code. Please generate a new one in the app.');
+        this.bot.sendMessage(
+          chatId,
+          'Invalid or expired linking code. Please generate a new one in the app.'
+        );
       }
     } catch (error) {
       log('error', '[TELEGRAM BOT] Linking error:', error);
-      this.bot.sendMessage(chatId, 'An error occurred while linking your account.');
+      this.bot.sendMessage(
+        chatId,
+        'An error occurred while linking your account.'
+      );
     } finally {
       client.release();
     }
@@ -787,15 +974,17 @@ class TelegramBotService {
         profile: '👤 Profile',
         addWater: '💧 Add Water',
         diary: '📖 Diary Menu',
-        todayLog: '🍏 Today\'s Log',
+        todayLog: "🍏 Today's Log",
         macros: '📊 Macros',
         syncMenu: '🔄 Devices',
         language: '🌐 Language',
         back: '⬅️ Back',
         syncGarmin: '⌚ Sync Garmin',
         greeting: 'Hello',
-        helpPrompt: 'I\'m your SparkyFitness assistant. How can I help you today?',
-        unlinked: 'Your account is not linked. Please link it in the web app under Settings → Telegram.',
+        helpPrompt:
+          "I'm your SparkyFitness assistant. How can I help you today?",
+        unlinked:
+          'Your account is not linked. Please link it in the web app under Settings → Telegram.',
         profileTitle: '👤 <b>Your Profile</b>',
         weight: '⚖️ <b>Weight:</b>',
         notSpecified: 'Not specified',
@@ -813,7 +1002,7 @@ class TelegramBotService {
         profile: '👤 Профіль',
         addWater: '💧 Додати воду',
         diary: '📖 Меню щоденника',
-        todayLog: '🍏 Що я з\'їв?',
+        todayLog: "🍏 Що я з'їв?",
         macros: '📊 Мої макроси',
         syncMenu: '🔄 Пристрої',
         language: '🌐 Мова',
@@ -821,7 +1010,8 @@ class TelegramBotService {
         syncGarmin: '⌚ Синхронізувати Garmin',
         greeting: 'Привіт',
         helpPrompt: 'Я твій SparkyFitness асистент. Чим можу допомогти?',
-        unlinked: 'Твій акаунт не прив\'язаний. Зроби це у веб-додатку в розділі Налаштування → Telegram.',
+        unlinked:
+          "Твій акаунт не прив'язаний. Зроби це у веб-додатку в розділі Налаштування → Telegram.",
         profileTitle: '👤 <b>Твій Профіль</b>',
         weight: '⚖️ <b>Вага:</b>',
         notSpecified: 'Не вказано',
@@ -847,7 +1037,8 @@ class TelegramBotService {
         syncGarmin: '⌚ Синхронизировать Garmin',
         greeting: 'Привет',
         helpPrompt: 'Я твой ассистент SparkyFitness. Чем могу помочь?',
-        unlinked: 'Твой аккаунт не привязан. Сделай это в веб-приложении в разделе Настройки → Telegram.',
+        unlinked:
+          'Твой аккаунт не привязан. Сделай это в веб-приложении в разделе Настройки → Telegram.',
         profileTitle: '👤 <b>Твой Профиль</b>',
         weight: '⚖️ <b>Вес:</b>',
         notSpecified: 'Не указан',
@@ -860,7 +1051,7 @@ class TelegramBotService {
         noGoals: '⚠️ <i>Цели не настроены. Зайдите в веб-приложение.</i>',
         chooseLanguage: 'Выберите ваш язык:',
         langSet: '✅ Язык успешно изменен!',
-      }
+      },
     };
     return translations[lang] || translations['en'];
   }
