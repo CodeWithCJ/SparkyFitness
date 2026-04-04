@@ -117,7 +117,7 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
     }
     const { date } = paramResult.data;
     const waterData = await measurementService.getWaterIntake(
-      req.userId,
+      req.originalUserId || req.userId,
       req.userId,
       date
     );
