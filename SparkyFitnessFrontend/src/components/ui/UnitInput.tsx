@@ -89,7 +89,9 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     let converted = num;
     if (unit === 'lbs') converted = lbsToKg(num);
     if (unit === 'inches') converted = inchesToCm(num);
-    onChange(converted);
+    if (converted !== metricValue) {
+      onChange(converted);
+    }
   };
 
   const handleSplitChange = (v1: string, v2: string) => {
@@ -103,7 +105,9 @@ export const UnitInput: React.FC<UnitInputProps> = ({
     let converted = 0;
     if (unit === 'st_lbs') converted = stonesLbsToKg(n1, n2);
     else if (unit === 'ft_in') converted = feetInchesToCm(n1, n2);
-    onChange(converted);
+    if (converted !== metricValue) {
+      onChange(converted);
+    }
   };
 
   // Render two inputs for st_lbs or ft_in
