@@ -31,7 +31,12 @@ const {
   getMealieFoodDetails,
   searchTandoorFoods,
   getTandoorFoodDetails,
+  searchEdamamFoods,
+  getEdamamFoodDetails,
 } = require('../../services/foodIntegrationService');
+const {
+  mapEdamamSearchItem,
+} = require('../../integrations/edamam/edamamService');
 
 const router = express.Router();
 
@@ -41,6 +46,7 @@ const VALID_PROVIDER_TYPES = [
   'openfoodfacts',
   'usda',
   'fatsecret',
+  'edamam',
   'mealie',
   'tandoor',
 ] as const;
@@ -248,6 +254,22 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
         break;
       }
 
+      case 'edamam': {
+        const result = await searchEdamamFoods(
+          query,
+          credentials.app_id,
+          credentials.app_key
+        );
+        foods = (result.hints || []).map(mapEdamamSearchItem).filter(Boolean);
+        pagination = {
+          page: 1,
+          pageSize: foods.length,
+          totalCount: foods.length,
+          hasMore: !!result.nextHref,
+        };
+        break;
+      }
+
       case 'mealie': {
         const result = await searchMealieFoods(
           query,
@@ -398,6 +420,18 @@ const detailHandler: RequestHandler<{
             default_variant: variant,
             variants: [variant],
           };
+        }
+        break;
+      }
+
+      case 'edamam': {
+        const result = await getEdamamFoodDetails(
+          externalId,
+          credentials.app_id,
+          credentials.app_key
+        );
+        if (result) {
+          food = result;
         }
         break;
       }

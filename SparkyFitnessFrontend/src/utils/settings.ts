@@ -6,6 +6,7 @@ export const providerRequirements: Record<string, string[]> = {
   tandoor: ['base_url', 'app_key'],
   nutritionix: ['app_id', 'app_key'],
   fatsecret: ['app_id', 'app_key'],
+  edamam: ['app_id', 'app_key'],
   withings: ['app_id', 'app_key'],
   fitbit: ['app_id', 'app_key'],
   garmin: ['app_id', 'app_key'],
@@ -36,6 +37,7 @@ export const getProviderTypes = () => [
   { value: 'openfoodfacts', label: 'OpenFoodFacts' },
   { value: 'nutritionix', label: 'Nutritionix' },
   { value: 'fatsecret', label: 'FatSecret' },
+  { value: 'edamam', label: 'Edamam' },
   { value: 'wger', label: 'Wger (Exercise)' },
   { value: 'free-exercise-db', label: 'Free Exercise DB' },
   { value: 'mealie', label: 'Mealie' },
@@ -68,6 +70,7 @@ export const getProviderCategory = (
       return ['exercise'];
     case 'fatsecret':
     case 'openfoodfacts':
+    case 'edamam':
     case 'mealie':
     case 'tandoor':
     case 'usda':

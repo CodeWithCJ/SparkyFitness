@@ -7,6 +7,12 @@ const {
 } = require('../integrations/fatsecret/fatsecretService');
 const MealieService = require('../integrations/mealie/mealieService'); // Import MealieService
 const TandoorService = require('../integrations/tandoor/tandoorService'); // Import TandoorService
+const {
+  searchEdamamByQuery,
+  searchEdamamByBarcode,
+  mapEdamamFood,
+  EDAMAM_NUTRIENTS_URL,
+} = require('../integrations/edamam/edamamService');
 
 // Maps user language codes to FatSecret language+region pairs.
 // Only languages confirmed by FatSecret localization docs are listed.
@@ -25,36 +31,47 @@ const FATSECRET_LOCALE = {
   ko: { language: 'ko', region: 'KR' },
 };
 
+async function fetchFatSecretSearch(accessToken, query, page, locale) {
+  const params = {
+    method: 'foods.search',
+    search_expression: query,
+    page_number: page - 1,
+    format: 'json',
+    ...(locale ? { language: locale.language, region: locale.region } : {}),
+  };
+  const searchUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams(params).toString()}`;
+  log('info', `FatSecret Search URL: ${searchUrl}`);
+  const response = await fetch(searchUrl, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    log('error', 'FatSecret Food Search API error:', errorText);
+    throw new Error(`FatSecret API error: ${errorText}`);
+  }
+  return response.json();
+}
+
 async function searchFatSecretFoods(query, clientId, clientSecret, page = 1, language = 'en') {
   try {
     const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
     const locale = FATSECRET_LOCALE[language];
-    const params = {
-      method: 'foods.search',
-      search_expression: query,
-      page_number: page - 1,
-      format: 'json',
-      ...(locale ? { language: locale.language, region: locale.region } : {}),
-    };
-    const searchUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams(params).toString()}`;
-    log('info', `FatSecret Search URL: ${searchUrl}`);
-    const response = await fetch(searchUrl, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      log('error', 'FatSecret Food Search API error:', errorText);
-      throw new Error(`FatSecret API error: ${errorText}`);
+    let data = await fetchFatSecretSearch(accessToken, query, page, locale);
+    let foods = data.foods || {};
+
+    // If localized search returned no results, fall back to global English search
+    if (locale && Number(foods.total_results || 0) === 0) {
+      log('info', `FatSecret: no results for locale ${locale.language}/${locale.region}, falling back to global search`);
+      data = await fetchFatSecretSearch(accessToken, query, page, null);
+      foods = data.foods || {};
     }
 
-    const data = await response.json();
-    const foods = data.foods || {};
     const totalCount = Number(foods.total_results || 0);
     const pageNum = Number(foods.page_number || 0) + 1;
     const maxResults = Number(foods.max_results || 20);
@@ -195,6 +212,72 @@ async function getMealieFoodDetails(slug, baseUrl, apiKey, userId, providerId) {
   }
 }
 
+async function searchEdamamFoods(query, appId, appKey) {
+  try {
+    const data = await searchEdamamByQuery(query, appId, appKey);
+    const hints = data.hints || [];
+    const nextHref = data._links?.next?.href || null;
+    return { hints, nextHref };
+  } catch (error) {
+    log('error', `Error searching Edamam foods with query "${query}":`, error);
+    throw error;
+  }
+}
+
+async function getEdamamFoodDetails(foodId, appId, appKey) {
+  try {
+    // Edamam requires a POST to /nutrients with a dummy quantity to get measures + nutrients
+    const url = `${EDAMAM_NUTRIENTS_URL}?app_id=${appId}&app_key=${appKey}`;
+    const body = {
+      ingredients: [{ quantity: 100, measureURI: 'http://www.edamam.com/ontologies/edamam.owl#Measure_gram', foodId }],
+    };
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      log('error', 'Edamam nutrients API error:', text);
+      throw new Error(`Edamam nutrients API error (${response.status}): ${text}`);
+    }
+    const data = await response.json();
+    // data.ingredients[0] has the food with label + totalNutrients per 100g
+    const ingredient = data.ingredients?.[0];
+    if (!ingredient) return null;
+    // Build a minimal food object that mapEdamamFood can use
+    const food = {
+      foodId,
+      label: ingredient.food,
+      brand: ingredient.brand || null,
+      nutrients: {},
+    };
+    // totalNutrients gives per-100g values
+    for (const [code, info] of Object.entries(data.totalNutrients || {})) {
+      food.nutrients[code] = info.quantity;
+    }
+    return mapEdamamFood(food, ingredient.measures || [], null);
+  } catch (error) {
+    log('error', `Error getting Edamam food details for foodId ${foodId}:`, error);
+    throw error;
+  }
+}
+
+async function searchEdamamFoodsByBarcode(barcode, appId, appKey) {
+  try {
+    const data = await searchEdamamByBarcode(barcode, appId, appKey);
+    if (!data) return null;
+    const hints = data.hints || [];
+    const parsed = data.parsed || [];
+    // Prefer parsed (exact barcode match) over hints
+    const items = parsed.length > 0 ? parsed : hints;
+    return items;
+  } catch (error) {
+    log('error', `Error searching Edamam by barcode ${barcode}:`, error);
+    throw error;
+  }
+}
+
 module.exports = {
   searchFatSecretFoods,
   getFatSecretNutrients,
@@ -202,6 +285,9 @@ module.exports = {
   getMealieFoodDetails,
   searchTandoorFoods,
   getTandoorFoodDetails,
+  searchEdamamFoods,
+  getEdamamFoodDetails,
+  searchEdamamFoodsByBarcode,
 };
 
 async function searchTandoorFoods(query, baseUrl, apiKey, userId, providerId) {
