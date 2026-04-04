@@ -25,6 +25,7 @@ export interface ExternalDataProvider {
     | 'openfoodfacts'
     | 'nutritionix'
     | 'fatsecret'
+    | 'edamam'
     | 'wger'
     | 'mealie'
     | 'free-exercise-db'
