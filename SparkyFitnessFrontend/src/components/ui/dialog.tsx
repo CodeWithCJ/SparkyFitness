@@ -3,7 +3,6 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import ConfirmationDialog from './ConfirmationDialog';
 
 const Dialog = DialogPrimitive.Root;
 
@@ -44,11 +43,6 @@ const DialogContent = React.forwardRef<
     }
   };
 
-  const handleConfirmClose = () => {
-    setShowConfirm(false);
-    hiddenCloseRef.current?.click();
-  };
-
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -60,12 +54,12 @@ const DialogContent = React.forwardRef<
         )}
         {...props}
         onInteractOutside={(e) => {
-          if (requireConfirmation) handleCloseAttempt(e);
-          if (!e.defaultPrevented) props.onInteractOutside?.(e);
+          props.onInteractOutside?.(e);
+          if (requireConfirmation && !e.defaultPrevented) handleCloseAttempt(e);
         }}
         onEscapeKeyDown={(e) => {
-          if (requireConfirmation) handleCloseAttempt(e);
-          if (!e.defaultPrevented) props.onEscapeKeyDown?.(e);
+          props.onEscapeKeyDown?.(e);
+          if (requireConfirmation && !e.defaultPrevented) handleCloseAttempt(e);
         }}
       >
         {children}
@@ -89,15 +83,43 @@ const DialogContent = React.forwardRef<
         <DialogPrimitive.Close ref={hiddenCloseRef} className="hidden" />
       </DialogPrimitive.Content>
 
-      <ConfirmationDialog
-        open={showConfirm}
-        onOpenChange={setShowConfirm}
-        onConfirm={handleConfirmClose}
-        title="Close Window"
-        description="Are you sure you want to close this? Any unsaved changes will be lost."
-        variant="destructive"
-        confirmLabel="Close"
-      />
+      {requireConfirmation && (
+        <DialogPrimitive.Root open={showConfirm} onOpenChange={setShowConfirm}>
+          <DialogPrimitive.Portal>
+            <DialogOverlay className="z-60" />
+            <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-[60] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+              <div className="flex flex-col space-y-1.5 text-center sm:text-left">
+                <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
+                  Close Window
+                </DialogPrimitive.Title>
+                <DialogPrimitive.Description className="text-sm text-muted-foreground">
+                  Are you sure you want to close this? Any unsaved changes will
+                  be lost.
+                </DialogPrimitive.Description>
+              </div>
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConfirm(false);
+                    hiddenCloseRef.current?.click();
+                  }}
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
+                >
+                  Close
+                </button>
+              </div>
+            </DialogPrimitive.Content>
+          </DialogPrimitive.Portal>
+        </DialogPrimitive.Root>
+      )}
     </DialogPortal>
   );
 });

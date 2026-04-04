@@ -1105,7 +1105,7 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
           onOpenChange={setIsAddExerciseDialogOpen}
         >
           <DialogContent
-            onInteractOutside={(e) => e.preventDefault()}
+            requireConfirmation
             className="max-w-2xl max-h-[90vh] overflow-y-auto"
           >
             <DialogHeader>
