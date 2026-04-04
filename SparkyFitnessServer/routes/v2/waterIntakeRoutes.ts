@@ -7,12 +7,13 @@ import {
 } from '../../schemas/measurementSchemas';
 
 const checkPermissionMiddleware = require('../../middleware/checkPermissionMiddleware');
-const { canAccessUserData } = require('../../utils/permissionUtils');
+const onBehalfOfMiddleware = require('../../middleware/onBehalfOfMiddleware');
 const measurementService = require('../../services/measurementService');
 
 const router = express.Router();
 
 router.use(checkPermissionMiddleware('checkin'));
+router.use(onBehalfOfMiddleware);
 
 /**
  * @swagger
@@ -29,6 +30,11 @@ router.use(checkPermissionMiddleware('checkin'));
  *         schema:
  *           type: string
  *           format: uuid
+ *       - in: header
+ *         name: x-on-behalf-of-user-id
+ *         schema:
+ *           type: string
+ *         description: Target user ID for family access.
  *     responses:
  *       200:
  *         description: Water intake entry.
@@ -86,11 +92,11 @@ const getWaterIntakeEntryHandler: RequestHandler = async (req, res, next) => {
  *           type: string
  *           format: date
  *         description: Date in YYYY-MM-DD format.
- *       - in: query
- *         name: userId
+ *       - in: header
+ *         name: x-on-behalf-of-user-id
  *         schema:
  *           type: string
- *         description: Optional user ID for family access.
+ *         description: Target user ID for family access.
  *     responses:
  *       200:
  *         description: Water intake data for the date.
@@ -110,33 +116,13 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
       return;
     }
     const { date } = paramResult.data;
-    const userIdQuery = req.query.userId;
-    const userId = Array.isArray(userIdQuery) ? userIdQuery[0] : userIdQuery;
-    const targetUserId = typeof userId === 'string' ? userId : req.userId;
-
-    if (typeof userId === 'string' && userId !== req.userId) {
-      const hasPermission = await canAccessUserData(
-        userId,
-        'diary',
-        req.originalUserId || req.userId
-      );
-      if (!hasPermission) {
-        res.status(403).json({ error: 'Forbidden' });
-        return;
-      }
-    }
-
     const waterData = await measurementService.getWaterIntake(
+      req.originalUserId || req.userId,
       req.userId,
-      targetUserId,
       date
     );
     res.status(200).json(waterData);
   } catch (error: unknown) {
-    if (error instanceof Error && error.message.startsWith('Forbidden')) {
-      res.status(403).json({ error: error.message });
-      return;
-    }
     next(error);
   }
 };
@@ -149,6 +135,12 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
  *     tags: [Wellness & Metrics]
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: x-on-behalf-of-user-id
+ *         schema:
+ *           type: string
+ *         description: Target user ID for family access.
  *     requestBody:
  *       required: true
  *       content:
@@ -165,8 +157,6 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
  *               container_id:
  *                 type: number
  *                 nullable: true
- *               user_id:
- *                 type: string
  *     responses:
  *       200:
  *         description: Water intake entry upserted successfully.
@@ -185,24 +175,9 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
       });
       return;
     }
-    const { entry_date, change_drinks, container_id, user_id } =
-      bodyResult.data;
-    const targetUserId = user_id ?? req.userId;
-
-    if (user_id && user_id !== req.userId) {
-      const hasPermission = await canAccessUserData(
-        user_id,
-        'checkin',
-        req.originalUserId || req.userId
-      );
-      if (!hasPermission) {
-        res.status(403).json({ error: 'Forbidden' });
-        return;
-      }
-    }
-
+    const { entry_date, change_drinks, container_id } = bodyResult.data;
     const result = await measurementService.upsertWaterIntake(
-      targetUserId,
+      req.userId,
       req.originalUserId || req.userId,
       entry_date,
       change_drinks,
@@ -233,6 +208,11 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
+ *       - in: header
+ *         name: x-on-behalf-of-user-id
+ *         schema:
+ *           type: string
+ *         description: Target user ID for family access.
  *     requestBody:
  *       content:
  *         application/json:
@@ -317,6 +297,11 @@ const updateWaterIntakeHandler: RequestHandler = async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
+ *       - in: header
+ *         name: x-on-behalf-of-user-id
+ *         schema:
+ *           type: string
+ *         description: Target user ID for family access.
  *     responses:
  *       200:
  *         description: Water intake entry deleted successfully.
