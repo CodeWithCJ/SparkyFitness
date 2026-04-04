@@ -82,37 +82,27 @@ export const UnitInput: React.FC<UnitInputProps> = ({
   }
 
   const handleSingleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    setVal1(raw);
-    const num = parseFloat(raw) || 0;
-
+    setVal1(e.target.value);
+  };
+  const handleSingleBlur = () => {
+    const num = parseFloat(val1) || 0;
     let converted = num;
     if (unit === 'lbs') converted = lbsToKg(num);
     if (unit === 'inches') converted = inchesToCm(num);
-
     onChange(converted);
   };
 
   const handleSplitChange = (v1: string, v2: string) => {
-    // v1 (Major Unit - St/Ft) must be an integer. Remove non-numeric chars.
-    const cleanV1 = v1.replace(/[^0-9]/g, '');
+    setVal1(v1.replace(/[^0-9]/g, ''));
+    setVal2(v2);
+  };
 
-    // v2 (Minor Unit - Lb/In) can be decimal internally but we'll round it for UI
-    const cleanV2 = v2;
-
-    setVal1(cleanV1);
-    setVal2(cleanV2);
-
-    const n1 = parseFloat(cleanV1) || 0;
-    const n2 = parseFloat(cleanV2) || 0;
-
+  const handleSplitBlur = () => {
+    const n1 = parseFloat(val1) || 0;
+    const n2 = parseFloat(val2) || 0;
     let converted = 0;
-    if (unit === 'st_lbs') {
-      converted = stonesLbsToKg(n1, n2);
-    } else if (unit === 'ft_in') {
-      converted = feetInchesToCm(n1, n2);
-    }
-
+    if (unit === 'st_lbs') converted = stonesLbsToKg(n1, n2);
+    else if (unit === 'ft_in') converted = feetInchesToCm(n1, n2);
     onChange(converted);
   };
 
@@ -130,6 +120,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
             step="1"
             value={val1}
             onChange={(e) => handleSplitChange(e.target.value, val2)}
+            onBlur={handleSplitBlur}
             className="pr-8"
             placeholder="0"
           />
@@ -148,6 +139,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
             }
             value={val2}
             onChange={(e) => handleSplitChange(val1, e.target.value)}
+            onBlur={handleSplitBlur}
             className="pr-8"
             placeholder="0"
           />
@@ -171,6 +163,7 @@ export const UnitInput: React.FC<UnitInputProps> = ({
         step={step}
         value={val1}
         onChange={handleSingleChange}
+        onBlur={handleSingleBlur}
         placeholder={placeholder}
         className="pr-9"
       />
