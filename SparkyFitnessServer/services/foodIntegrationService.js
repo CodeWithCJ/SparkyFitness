@@ -8,15 +8,35 @@ const {
 const MealieService = require('../integrations/mealie/mealieService'); // Import MealieService
 const TandoorService = require('../integrations/tandoor/tandoorService'); // Import TandoorService
 
-async function searchFatSecretFoods(query, clientId, clientSecret, page = 1) {
+// Maps user language codes to FatSecret language+region pairs.
+// Only languages confirmed by FatSecret localization docs are listed.
+const FATSECRET_LOCALE = {
+  ru: { language: 'ru', region: 'RU' },
+  uk: { language: 'uk', region: 'UA' },
+  de: { language: 'de', region: 'DE' },
+  fr: { language: 'fr', region: 'FR' },
+  es: { language: 'es', region: 'ES' },
+  pt: { language: 'pt', region: 'BR' },
+  it: { language: 'it', region: 'IT' },
+  nl: { language: 'nl', region: 'NL' },
+  pl: { language: 'pl', region: 'PL' },
+  zh: { language: 'zh', region: 'CN' },
+  ja: { language: 'ja', region: 'JP' },
+  ko: { language: 'ko', region: 'KR' },
+};
+
+async function searchFatSecretFoods(query, clientId, clientSecret, page = 1, language = 'en') {
   try {
     const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
-    const searchUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams({
+    const locale = FATSECRET_LOCALE[language];
+    const params = {
       method: 'foods.search',
       search_expression: query,
       page_number: page - 1,
       format: 'json',
-    }).toString()}`;
+      ...(locale ? { language: locale.language, region: locale.region } : {}),
+    };
+    const searchUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams(params).toString()}`;
     log('info', `FatSecret Search URL: ${searchUrl}`);
     const response = await fetch(searchUrl, {
       method: 'GET',
@@ -57,21 +77,25 @@ async function searchFatSecretFoods(query, clientId, clientSecret, page = 1) {
   }
 }
 
-async function getFatSecretNutrients(foodId, clientId, clientSecret) {
+async function getFatSecretNutrients(foodId, clientId, clientSecret, language = 'en') {
   try {
-    // Check cache first
-    const cachedData = foodNutrientCache.get(foodId);
+    // Check cache first — include language in cache key so localized results are cached separately
+    const cacheKey = `${foodId}_${language}`;
+    const cachedData = foodNutrientCache.get(cacheKey);
     if (cachedData && Date.now() < cachedData.expiry) {
-      log('info', `Returning cached data for foodId: ${foodId}`);
+      log('info', `Returning cached data for foodId: ${foodId} (${language})`);
       return cachedData.data;
     }
 
     const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
-    const nutrientsUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams({
+    const locale = FATSECRET_LOCALE[language];
+    const params = {
       method: 'food.get.v4',
       food_id: foodId,
       format: 'json',
-    }).toString()}`;
+      ...(locale ? { language: locale.language, region: locale.region } : {}),
+    };
+    const nutrientsUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams(params).toString()}`;
     log('info', `FatSecret Nutrients URL: ${nutrientsUrl}`);
     const response = await fetch(nutrientsUrl, {
       method: 'GET',
@@ -90,7 +114,7 @@ async function getFatSecretNutrients(foodId, clientId, clientSecret) {
 
     const data = await response.json();
     // Store in cache
-    foodNutrientCache.set(foodId, {
+    foodNutrientCache.set(cacheKey, {
       data: data,
       expiry: Date.now() + CACHE_DURATION_MS,
     });
