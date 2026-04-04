@@ -129,7 +129,8 @@ export const EditProviderForm = ({
         </>
       )}
       {(editData.provider_type === 'nutritionix' ||
-        editData.provider_type === 'fatsecret') && (
+        editData.provider_type === 'fatsecret' ||
+        editData.provider_type === 'edamam') && (
         <>
           <div>
             <Label>App ID</Label>
