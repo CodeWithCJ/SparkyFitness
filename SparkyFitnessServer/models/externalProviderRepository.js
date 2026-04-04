@@ -7,7 +7,7 @@ async function getExternalDataProviders(userId) {
   try {
     const result = await client.query(
       `SELECT edp.id, edp.user_id, edp.provider_name, edp.provider_type, edp.is_active, edp.base_url, 
-              edp.shared_with_public, edp.encrypted_access_token, edp.sync_frequency,
+              edp.shared_with_public, edp.encrypted_access_token, edp.encrypted_garth_dump, edp.sync_frequency,
               ept.is_strictly_private
        FROM external_data_providers edp
        LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
@@ -17,7 +17,7 @@ async function getExternalDataProviders(userId) {
     // log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
     return result.rows.map((row) => ({
       ...row,
-      has_token: !!row.encrypted_access_token, // Add has_token property
+      has_token: !!row.encrypted_access_token || !!row.encrypted_garth_dump, // Add has_token property
     }));
   } finally {
     client.release();
@@ -109,7 +109,7 @@ async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
           is_active: row.is_active,
           base_url: row.base_url,
           sync_frequency: row.sync_frequency,
-          has_token: !!row.encrypted_access_token, // Add has_token property
+          has_token: !!row.encrypted_access_token || !!row.encrypted_garth_dump, // Add has_token property
           is_strictly_private: !!row.is_strictly_private,
         };
       })

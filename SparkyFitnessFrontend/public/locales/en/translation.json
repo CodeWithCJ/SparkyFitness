@@ -475,7 +475,9 @@
       "language": "Language",
       "english": "English",
       "tamil": "தமிழ்",
-      "savePreferences": "Save Preferences"
+      "savePreferences": "Save Preferences",
+      "successTitle": "Success",
+      "successDescription": "Preferences saved successfully."
     },
     "waterTracking": {
       "title": "Water Tracking",
