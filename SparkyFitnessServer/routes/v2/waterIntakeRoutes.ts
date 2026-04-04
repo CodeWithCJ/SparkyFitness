@@ -44,7 +44,8 @@ const getWaterIntakeEntryHandler: RequestHandler = async (req, res, next) => {
     const paramResult = UuidParamSchema.safeParse(req.params);
     if (!paramResult.success) {
       res.status(400).json({
-        error: paramResult.error.issues.map((i) => i.message).join(', '),
+        error: 'Validation error',
+        details: paramResult.error.flatten().fieldErrors,
       });
       return;
     }
@@ -103,7 +104,8 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
     const paramResult = DateParamSchema.safeParse(req.params);
     if (!paramResult.success) {
       res.status(400).json({
-        error: paramResult.error.issues.map((i) => i.message).join(', '),
+        error: 'Validation error',
+        details: paramResult.error.flatten().fieldErrors,
       });
       return;
     }
@@ -259,7 +261,8 @@ const updateWaterIntakeHandler: RequestHandler = async (req, res, next) => {
     const paramResult = UuidParamSchema.safeParse(req.params);
     if (!paramResult.success) {
       res.status(400).json({
-        error: paramResult.error.issues.map((i) => i.message).join(', '),
+        error: 'Validation error',
+        details: paramResult.error.flatten().fieldErrors,
       });
       return;
     }
@@ -287,8 +290,9 @@ const updateWaterIntakeHandler: RequestHandler = async (req, res, next) => {
         return;
       }
       if (
+        error.message === 'Water intake entry not found.' ||
         error.message ===
-        'Water intake entry not found or not authorized to update.'
+          'Water intake entry not found or not authorized to update.'
       ) {
         res.status(404).json({ error: error.message });
         return;
@@ -326,7 +330,8 @@ const deleteWaterIntakeHandler: RequestHandler = async (req, res, next) => {
     const paramResult = UuidParamSchema.safeParse(req.params);
     if (!paramResult.success) {
       res.status(400).json({
-        error: paramResult.error.issues.map((i) => i.message).join(', '),
+        error: 'Validation error',
+        details: paramResult.error.flatten().fieldErrors,
       });
       return;
     }
@@ -340,8 +345,9 @@ const deleteWaterIntakeHandler: RequestHandler = async (req, res, next) => {
         return;
       }
       if (
+        error.message === 'Water intake entry not found.' ||
         error.message ===
-        'Water intake entry not found or not authorized to delete.'
+          'Water intake entry not found or not authorized to delete.'
       ) {
         res.status(404).json({ error: error.message });
         return;
