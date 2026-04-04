@@ -905,7 +905,10 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <TooltipProvider>
-        <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          requireConfirmation
+          className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle>
               {initialData
@@ -1101,7 +1104,10 @@ const AddWorkoutPlanDialog: React.FC<AddWorkoutPlanDialogProps> = ({
           open={isAddExerciseDialogOpen}
           onOpenChange={setIsAddExerciseDialogOpen}
         >
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent
+            onInteractOutside={(e) => e.preventDefault()}
+            className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
             <DialogHeader>
               <DialogTitle>
                 {t(

@@ -713,7 +713,10 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
           </div>
 
           <Dialog open={showMapping} onOpenChange={setShowMapping}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogContent
+              requireConfirmation
+              className="max-w-4xl max-h-[80vh] overflow-y-auto"
+            >
               <DialogHeader>
                 <DialogTitle>
                   {t(
