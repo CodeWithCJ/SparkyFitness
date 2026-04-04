@@ -67,7 +67,7 @@ export const UpsertWaterIntakeBodySchema = z
   .object({
     entry_date: requiredLegacyString('entry_date'),
     change_drinks: requiredLegacyNumber,
-    container_id: nullableLegacyNumber,
+    container_id: nullableOptionalLegacyNumber,
     user_id: optionalLegacyString,
   })
   .loose();
