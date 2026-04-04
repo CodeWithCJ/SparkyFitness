@@ -125,6 +125,7 @@ const FoodUnitSelector = ({
         vitamin_c: food.default_variant?.vitamin_c || 0,
         calcium: food.default_variant?.calcium || 0,
         iron: food.default_variant?.iron || 0,
+        custom_nutrients: food.default_variant?.custom_nutrients,
       };
 
       let combinedVariants: FoodVariant[] = [primaryUnit];
@@ -152,6 +153,7 @@ const FoodUnitSelector = ({
           vitamin_c: variant.vitamin_c || 0,
           calcium: variant.calcium || 0,
           iron: variant.iron || 0,
+          custom_nutrients: variant.custom_nutrients,
         }));
 
         const otherVariants = variantsFromDb.filter(
@@ -198,6 +200,7 @@ const FoodUnitSelector = ({
         vitamin_c: food.default_variant?.vitamin_c || 0,
         calcium: food.default_variant?.calcium || 0,
         iron: food.default_variant?.iron || 0,
+        custom_nutrients: food.default_variant?.custom_nutrients,
       };
       setVariants([primaryUnit]);
       setSelectedVariant(primaryUnit);

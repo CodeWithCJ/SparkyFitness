@@ -8,7 +8,6 @@ import {
   ExerciseSessionResponse,
   exerciseSessionResponseSchema,
   ExerciseEntryResponse,
-  exerciseEntryResponseSchema,
   CreateExerciseEntryRequest,
   UpdateExerciseEntryRequest,
   exerciseProgressResponseSchema,
@@ -17,6 +16,7 @@ import {
   ExerciseSnapshotResponse,
 } from '@workspace/shared';
 import z from 'zod';
+import { parseJsonArray } from './exerciseService';
 
 export const fetchExerciseEntries = async (
   date: string,
@@ -205,7 +205,7 @@ export const getExerciseHistory = async (
       method: 'GET',
     }
   );
-  return z.array(exerciseEntryResponseSchema).parse(response);
+  return response;
 };
 
 export const fetchExerciseDetails = async (
@@ -225,13 +225,7 @@ export const fetchExerciseDetails = async (
   ];
 
   arrayFields.forEach((field) => {
-    if (typeof parsedResponse[field] === 'string') {
-      try {
-        parsedResponse[field] = JSON.parse(parsedResponse[field]);
-      } catch {
-        parsedResponse[field] = [];
-      }
-    }
+    parsedResponse[field] = parseJsonArray(parsedResponse[field]) || [];
   });
 
   return exerciseSnapshotResponseSchema.parse(parsedResponse);
