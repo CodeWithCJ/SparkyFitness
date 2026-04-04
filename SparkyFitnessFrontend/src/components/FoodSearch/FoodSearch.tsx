@@ -70,6 +70,10 @@ export type ExternalResultWrapper =
   | {
       provider_type: 'tandoor';
       food: Food;
+    }
+  | {
+      provider_type: 'edamam';
+      food: Food;
     };
 
 interface EnhancedFoodSearchProps {
@@ -222,6 +226,7 @@ const EnhancedFoodSearch = ({
           | 'openfoodfacts'
           | 'usda'
           | 'fatsecret'
+          | 'edamam'
           | 'mealie'
           | 'tandoor';
         const mapped: ExternalResultWrapper = {
@@ -354,6 +359,17 @@ const EnhancedFoodSearch = ({
       setExternalResults(
         data.foods.map((food: Food) => ({
           provider_type: 'tandoor' as const,
+          food,
+        }))
+      );
+    },
+    edamam: async (term, id) => {
+      const data = await queryClient.fetchQuery(
+        searchFoodsV2Options('edamam', term, id)
+      );
+      setExternalResults(
+        data.foods.map((food: Food) => ({
+          provider_type: 'edamam' as const,
           food,
         }))
       );
