@@ -344,10 +344,10 @@ const deleteWaterIntakeHandler: RequestHandler = async (req, res, next) => {
 
 // Note: /entry/:id must be registered before /:date to avoid Express matching
 // "entry" as a date parameter.
-router.get('/water-intake/entry/:id', getWaterIntakeEntryHandler);
-router.get('/water-intake/:date', getWaterIntakeHandler);
-router.post('/water-intake', upsertWaterIntakeHandler);
-router.put('/water-intake/:id', updateWaterIntakeHandler);
-router.delete('/water-intake/:id', deleteWaterIntakeHandler);
+router.get('/entry/:id', getWaterIntakeEntryHandler);
+router.get('/:date', getWaterIntakeHandler);
+router.post('/', upsertWaterIntakeHandler);
+router.put('/:id', updateWaterIntakeHandler);
+router.delete('/:id', deleteWaterIntakeHandler);
 
 export default router;

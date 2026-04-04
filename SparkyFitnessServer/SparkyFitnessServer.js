@@ -338,7 +338,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/foods', foodRoutes);
 app.use('/api/v2/foods', v2FoodRoutes);
 app.use('/api/v2/exercise-entries', v2ExerciseEntryRoutes);
-app.use('/api/v2/measurements', v2WaterIntakeRoutes);
+app.use('/api/v2/measurements/water-intake', v2WaterIntakeRoutes);
 app.use('/api/food-entries', foodEntryRoutes);
 app.use('/api/food-entry-meals', foodEntryMealRoutes);
 app.use('/api/meals', mealRoutes);
