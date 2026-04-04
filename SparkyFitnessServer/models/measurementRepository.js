@@ -857,7 +857,25 @@ module.exports = {
   getLatestCheckInMeasurementsOnOrBeforeDate,
   getMostRecentMeasurement,
   getStepCaloriesForDate,
+  getLatestMeasurementsSummary,
 };
+
+async function getLatestMeasurementsSummary(userId, limit = 3) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT weight, steps, height, neck, waist, hips, body_fat_percentage, entry_date::TEXT 
+       FROM check_in_measurements 
+       WHERE user_id = $1 
+       ORDER BY entry_date DESC 
+       LIMIT $2`,
+      [userId, limit]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
 
 async function getLatestMeasurement(userId) {
   const client = await getClient(userId); // User-specific operation

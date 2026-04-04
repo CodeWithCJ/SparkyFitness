@@ -430,6 +430,17 @@
     "syncFailed_other": "Failed to synchronize {{count}} providers."
   },
   "settings": {
+    "telegram": {
+      "title": "Telegram Bot Settings",
+      "description": "Configure your Telegram Bot for AI interactions",
+      "botName": "Bot Name / Username",
+      "botToken": "Telegram Bot Token",
+      "botFatherHint": "Get this from @BotFather on Telegram.",
+      "success": "Success",
+      "successUpdate": "Telegram settings updated successfully",
+      "error": "Error",
+      "errorUpdate": "Failed to update Telegram settings"
+    },
     "profileInformation": {
       "title": "Profile Information",
       "description": "Manage your personal information and profile picture",

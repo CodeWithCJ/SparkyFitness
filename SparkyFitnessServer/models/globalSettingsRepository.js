@@ -53,6 +53,10 @@ async function getGlobalSettings() {
       settings.allow_user_ai_config = true;
     }
 
+    // Telegram Bot Settings
+    settings.telegram_bot_token = settings.telegram_bot_token || null;
+    settings.telegram_bot_name = settings.telegram_bot_name || null;
+
     log(
       'info',
       `[GLOBAL SETTINGS REPO] Retrieved Global Settings with overrides: ${JSON.stringify(settings)}`
@@ -74,15 +78,21 @@ async function saveGlobalSettings(settings) {
 
     const result = await client.query(
       `UPDATE global_settings
-             SET enable_email_password_login = $1, is_oidc_active = $2, mfa_mandatory = $3, allow_user_ai_config = COALESCE($4, allow_user_ai_config, true)
+             SET enable_email_password_login = $1, 
+                 is_oidc_active = $2, 
+                 mfa_mandatory = $3, 
+                 allow_user_ai_config = COALESCE($4, allow_user_ai_config, true),
+                 telegram_bot_token = $5,
+                 telegram_bot_name = $6
              WHERE id = 1
              RETURNING *`,
-      // Use 'is_mfa_mandatory' from the incoming settings from the frontend
       [
         settings.enable_email_password_login,
         settings.is_oidc_active,
         settings.is_mfa_mandatory,
         allowUserAiConfig,
+        settings.telegram_bot_token,
+        settings.telegram_bot_name,
       ]
     );
     // Return the full truth (DB + ENV overrides)

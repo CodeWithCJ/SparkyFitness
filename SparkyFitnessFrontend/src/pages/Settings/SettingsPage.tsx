@@ -9,6 +9,7 @@ import {
   Cloud,
   Sparkles,
   UtensilsCrossed,
+  MessageSquare,
 } from 'lucide-react';
 import FamilyAccessManager from './FamilyAccessManager';
 import AIServiceSettings from './AIServiceSettings';
@@ -16,6 +17,7 @@ import CustomCategoryManager from './CustomCategoryManager';
 import MealTypeManager from './MealTypeManager';
 import ExternalProviderSettings from './ExternalProviderSettings';
 import NutrientDisplaySettings from './NutrientDisplaySettings';
+import TelegramSettings from './TelegramSettings';
 import {
   Accordion,
   AccordionItem,
@@ -216,6 +218,22 @@ const Settings = () => {
               )}
             />
             <AIServiceSettings />
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem
+          value="telegram-integration"
+          className="border rounded-lg mb-4"
+        >
+          <AccordionTrigger
+            className="flex items-center gap-2 p-4 hover:no-underline"
+            description="Link your Telegram account to interact with SparkyFitness"
+          >
+            <MessageSquare className="h-5 w-5" />
+            Telegram Integration
+          </AccordionTrigger>
+          <AccordionContent className="p-4 pt-0">
+            <TelegramSettings />
           </AccordionContent>
         </AccordionItem>
 

@@ -5,6 +5,8 @@ export interface GlobalSettings {
   allow_user_ai_config?: boolean;
   is_email_login_env_configured?: boolean;
   is_oidc_active_env_configured?: boolean;
+  telegram_bot_token?: string | null;
+  telegram_bot_name?: string | null;
 }
 
 export interface OidcProvider {

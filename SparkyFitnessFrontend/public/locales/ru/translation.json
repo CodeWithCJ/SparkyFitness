@@ -109,5 +109,18 @@
   },
   "documentationViewer": {
     "loadingFeaturesInventory": "Загрузка..."
+  },
+  "settings": {
+    "telegram": {
+      "title": "Настройки Telegram бота",
+      "description": "Настройте своего бота Telegram для взаимодействия с ИИ",
+      "botName": "Имя / Username бота",
+      "botToken": "Токен Telegram бота",
+      "botFatherHint": "Получите этот токен у @BotFather в Telegram.",
+      "success": "Успех",
+      "successUpdate": "Настройки Telegram успешно обновлены",
+      "error": "Ошибка",
+      "errorUpdate": "Не удалось обновить настройки Telegram"
+    }
   }
 }

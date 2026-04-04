@@ -8,7 +8,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Globe } from 'lucide-react';
+import { Plus, Globe, MessageSquare } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -229,8 +230,80 @@ const GlobalAISettings = () => {
     setDeleteDialogOpen(true);
   };
 
+  const handleTelegramBotChange = (field: string, value: string) => {
+    if (!globalSettings) return;
+
+    const newSettings: GlobalSettings = {
+      ...globalSettings,
+      [field]: value,
+    };
+
+    updateSettings(newSettings, {
+      onSuccess: () => {
+        toast({
+          title: t('settings.telegram.success'),
+          description: t('settings.telegram.successUpdate'),
+        });
+      },
+      onError: () => {
+        toast({
+          title: t('settings.telegram.error'),
+          description: t('settings.telegram.errorUpdate'),
+          variant: 'destructive',
+        });
+      },
+    });
+  };
+
   return (
-    <Accordion type="multiple" className="w-full">
+    <Accordion type="multiple" className="w-full space-y-4">
+      <AccordionItem
+        value="telegram-bot-settings"
+        className="border rounded-lg"
+      >
+        <AccordionTrigger
+          className="flex items-center gap-2 p-4 hover:no-underline"
+          description={t('settings.telegram.description')}
+        >
+          <MessageSquare className="h-5 w-5" />
+          {t('settings.telegram.title')}
+        </AccordionTrigger>
+        <AccordionContent className="p-4 pt-0 space-y-4">
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="telegram_bot_name">
+                {t('settings.telegram.botName')}
+              </Label>
+              <Input
+                id="telegram_bot_name"
+                placeholder="@MyFitnessBot"
+                defaultValue={globalSettings?.telegram_bot_name || ''}
+                onBlur={(e) =>
+                  handleTelegramBotChange('telegram_bot_name', e.target.value)
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="telegram_bot_token">
+                {t('settings.telegram.botToken')}
+              </Label>
+              <Input
+                id="telegram_bot_token"
+                type="password"
+                placeholder="123456789:ABCDefgh..."
+                defaultValue={globalSettings?.telegram_bot_token || ''}
+                onBlur={(e) =>
+                  handleTelegramBotChange('telegram_bot_token', e.target.value)
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('settings.telegram.botFatherHint')}
+              </p>
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
       <AccordionItem value="global-ai-settings" className="border rounded-lg">
         <AccordionTrigger
           className="flex items-center gap-2 p-4 hover:no-underline"
