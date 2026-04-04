@@ -1293,10 +1293,10 @@ async function getExerciseProgressData(
   aggregationLevel = 'daily'
 ) {
   try {
-    // getExerciseProgressData is implemented in the exerciseEntry module
+    const resolvedExerciseId = await resolveExerciseIdToUuid(exerciseId);
     const progressData = await exerciseEntryDb.getExerciseProgressData(
       authenticatedUserId,
-      exerciseId,
+      resolvedExerciseId,
       startDate,
       endDate,
       aggregationLevel
