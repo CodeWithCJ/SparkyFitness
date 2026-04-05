@@ -11,7 +11,7 @@ import { fetchDailySummary } from '../services/api/dailySummaryApi';
 import type { DailySummary } from '../types/dailySummary';
 import type { DailyGoals } from '../types/goals';
 import type { FoodEntry } from '../types/foodEntries';
-import type { ExerciseSessionResponse } from '@workspace/shared';
+import type { ExerciseSessionResponse, CalorieBalance } from '@workspace/shared';
 import type { WaterIntake } from '../types/measurements';
 
 import { useRefetchOnFocus } from './useRefetchOnFocus';
@@ -23,6 +23,7 @@ export interface DailySummaryRawData {
   exerciseEntries: ExerciseSessionResponse[];
   waterIntake: WaterIntake;
   stepCalories: number;
+  calorieBalance: CalorieBalance;
 }
 
 interface UseDailySummaryOptions {
@@ -41,10 +42,11 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         exerciseEntries: data.exerciseSessions,
         waterIntake: { water_ml: data.waterIntake },
         stepCalories: data.stepCalories ?? 0,
+        calorieBalance: data.calorieBalance,
       };
     },
     select: (raw): DailySummary => {
-      const { goals, foodEntries, exerciseEntries, waterIntake, stepCalories } = raw;
+      const { goals, foodEntries, exerciseEntries, waterIntake, stepCalories, calorieBalance } = raw;
 
       const calorieGoal = goals.calories || 0;
       const caloriesConsumed = calculateCaloriesConsumed(foodEntries);
@@ -87,6 +89,7 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         waterGoal: goals.water_goal_ml ?? 2500,
         foodEntries,
         exerciseEntries,
+        calorieBalance,
       };
     },
     enabled,

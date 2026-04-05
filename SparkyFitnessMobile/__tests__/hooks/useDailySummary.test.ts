@@ -47,12 +47,25 @@ const makeGoals = (overrides = {}) => ({
   ...overrides,
 });
 
+const makeCalorieBalance = (overrides: Record<string, unknown> = {}) => ({
+  eaten: 0,
+  burned: 0,
+  remaining: 2000,
+  goal: 2000,
+  net: 0,
+  progress: 0,
+  bmr: 1700,
+  exerciseSource: 'none' as const,
+  ...overrides,
+});
+
 const makeSummaryResponse = (overrides: Record<string, unknown> = {}) => ({
   goals: makeGoals(overrides.goals as Record<string, unknown>),
   foodEntries: (overrides.foodEntries ?? []) as any[],
   exerciseSessions: (overrides.exerciseSessions ?? []) as any[],
   waterIntake: (overrides.waterIntake ?? 0) as number,
   stepCalories: (overrides.stepCalories ?? 0) as number,
+  calorieBalance: makeCalorieBalance(overrides.calorieBalance as Record<string, unknown>),
 });
 
 describe('useDailySummary', () => {
@@ -111,6 +124,39 @@ describe('useDailySummary', () => {
       expect(result.current.summary?.caloriesBurned).toBe(200);
       expect(result.current.summary?.exerciseMinutes).toBe(30);
       expect(result.current.summary?.foodEntries).toHaveLength(1);
+    });
+
+    test('preserves the server-computed calorie balance', async () => {
+      const serverBalance = makeCalorieBalance({
+        eaten: 1600,
+        burned: 1200,
+        remaining: 1800,
+        goal: 2200,
+        net: 400,
+        progress: 18,
+        bmr: 1700,
+        exerciseSource: 'active' as const,
+      });
+
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        calorieBalance: serverBalance,
+        foodEntries: [
+          { id: '1', calories: 800, protein: 40, carbs: 80, fat: 20, dietary_fiber: 10, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate },
+        ],
+        exerciseSessions: [
+          { type: 'individual', id: '1', calories_burned: 300, exercise_snapshot: { name: 'Running' }, duration_minutes: 45 },
+        ],
+      }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.calorieBalance).toEqual(serverBalance);
     });
 
     test('includes water intake from API', async () => {
