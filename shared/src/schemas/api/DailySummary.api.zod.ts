@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { dailyGoalsResponseSchema } from "./DailyGoals.api.zod";
-import { foodEntryResponseSchema } from "./FoodEntries.api.zod";
-import { exerciseSessionResponseSchema } from "./ExerciseEntries.api.zod";
+import { dailyGoalsResponseSchema } from "./DailyGoals.api.zod.ts";
+import { foodEntryResponseSchema } from "./FoodEntries.api.zod.ts";
+import { exerciseSessionResponseSchema } from "./ExerciseEntries.api.zod.ts";
 
 export const calorieBalanceSchema = z.object({
   eaten: z.number(),
