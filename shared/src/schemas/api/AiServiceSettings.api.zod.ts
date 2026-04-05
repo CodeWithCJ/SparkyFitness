@@ -4,7 +4,7 @@ import {
   aiServiceSettingsInitializerSchema,
   aiServiceSettingsMutatorSchema,
   aiServiceSettingsSchema,
-} from "../database/AiServiceSettings.zod";
+} from "../database/AiServiceSettings.zod.ts";
 
 export const aiServiceSettingsResponseSchema = aiServiceSettingsSchema
   .extend({
