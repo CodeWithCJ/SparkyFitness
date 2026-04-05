@@ -4,19 +4,19 @@
  * by calling service/repository functions directly.
  */
 
-const { log } = require('../../config/logging');
-const measurementService = require('../../services/measurementService');
-const measurementRepository = require('../../models/measurementRepository');
-const foodEntryService = require('../../services/foodEntryService');
-const foodRepository = require('../../models/foodRepository');
-const exerciseService = require('../../services/exerciseService');
-const foodEntry = require('../../models/foodEntry');
+import { log } from '../../config/logging';
+import * as measurementService from '../../services/measurementService';
+import * as measurementRepository from '../../models/measurementRepository';
+import * as foodEntryService from '../../services/foodEntryService';
+import * as foodRepository from '../../models/foodRepository';
+import * as exerciseService from '../../services/exerciseService';
+import * as foodEntry from '../../models/foodEntry';
 
 /**
  * Execute a parsed AI intent for a given user.
  * Returns a user-facing confirmation string.
  */
-async function executeIntent(intent, data, entryDate, userId, today) {
+export async function executeIntent(intent: string, data: any, entryDate: string | null, userId: string, today: string): Promise<any> {
   const dateToUse = resolveDate(entryDate, today);
 
   switch (intent) {
@@ -54,7 +54,7 @@ async function executeIntent(intent, data, entryDate, userId, today) {
 /**
  * Log body measurements (weight, steps, waist, hips, neck, height).
  */
-async function executeMeasurement(data, dateToUse, userId) {
+export async function executeMeasurement(data: any, dateToUse: string, userId: string): Promise<string> {
   const measurements = Array.isArray(data.measurements) ? data.measurements : [data];
   const confirmed = [];
   const failed = [];
@@ -121,7 +121,7 @@ async function executeMeasurement(data, dateToUse, userId) {
 /**
  * Log water intake. AI sends glasses_consumed or quantity in ml/glasses.
  */
-async function executeWater(data, dateToUse, userId) {
+export async function executeWater(data: any, dateToUse: string, userId: string): Promise<string> {
   try {
     const glassesOrMl = Number(data.glasses_consumed ?? data.quantity ?? 1);
     const unit = data.unit || 'glass';
@@ -146,12 +146,12 @@ async function executeWater(data, dateToUse, userId) {
 /**
  * Log food entry with inline nutritional snapshot from AI.
  */
-async function executeFood(data, dateToUse, userId) {
+export async function executeFood(data: any, dateToUse: string, userId: string): Promise<string> {
   try {
-    const mealType = normalizeMealType(data.meal_type);
-    const quantity = Number(data.quantity) || 1;
-    const unit = data.unit || 'serving';
-    const foodName = data.food_name || 'Unknown Food';
+    const mealType = normalizeMealType(data?.meal_type);
+    const quantity = Number(data?.quantity ?? data?.qty ?? data?.amount) || 1;
+    const unit = data?.unit || data?.serving_unit || 'serving';
+    const foodName = data?.food_name || data?.name || 'Unknown Food';
 
     // 1. Search for existing food or create a quick log food
     let foodId = null;
@@ -169,23 +169,23 @@ async function executeFood(data, dateToUse, userId) {
         brand: 'AI Log',
         is_custom: true,
         is_quick_food: true,
-        calories: Number(data.calories) || 0,
-        protein: Number(data.protein) || 0,
-        carbs: Number(data.carbs) || 0,
-        fat: Number(data.fat) || 0,
-        saturated_fat: data.saturated_fat ? Number(data.saturated_fat) : null,
-        polyunsaturated_fat: data.polyunsaturated_fat ? Number(data.polyunsaturated_fat) : null,
-        monounsaturated_fat: data.monounsaturated_fat ? Number(data.monounsaturated_fat) : null,
-        trans_fat: data.trans_fat ? Number(data.trans_fat) : null,
-        cholesterol: data.cholesterol ? Number(data.cholesterol) : null,
-        sodium: data.sodium ? Number(data.sodium) : null,
-        potassium: data.potassium ? Number(data.potassium) : null,
-        dietary_fiber: data.dietary_fiber ? Number(data.dietary_fiber) : null,
-        sugars: data.sugars ? Number(data.sugars) : null,
-        vitamin_a: data.vitamin_a ? Number(data.vitamin_a) : null,
-        vitamin_c: data.vitamin_c ? Number(data.vitamin_c) : null,
-        calcium: data.calcium ? Number(data.calcium) : null,
-        iron: data.iron ? Number(data.iron) : null,
+        calories: Number(data?.calories) || 0,
+        protein: Number(data?.protein) || 0,
+        carbs: Number(data?.carbs) || 0,
+        fat: Number(data?.fat) || 0,
+        saturated_fat: data?.saturated_fat ? Number(data.saturated_fat) : null,
+        polyunsaturated_fat: data?.polyunsaturated_fat ? Number(data.polyunsaturated_fat) : null,
+        monounsaturated_fat: data?.monounsaturated_fat ? Number(data.monounsaturated_fat) : null,
+        trans_fat: data?.trans_fat ? Number(data.trans_fat) : null,
+        cholesterol: data?.cholesterol ? Number(data.cholesterol) : null,
+        sodium: data?.sodium ? Number(data.sodium) : null,
+        potassium: data?.potassium ? Number(data.potassium) : null,
+        dietary_fiber: data?.dietary_fiber ? Number(data.dietary_fiber) : null,
+        sugars: data?.sugars ? Number(data.sugars) : null,
+        vitamin_a: data?.vitamin_a ? Number(data.vitamin_a) : null,
+        vitamin_c: data?.vitamin_c ? Number(data.vitamin_c) : null,
+        calcium: data?.calcium ? Number(data.calcium) : null,
+        iron: data?.iron ? Number(data.iron) : null,
         serving_size: 1,
         serving_unit: 'piece', // Default for quick log
       });
@@ -199,30 +199,30 @@ async function executeFood(data, dateToUse, userId) {
 
     const entryData = {
       user_id: userId,
-      food_name: data.food_name || 'Unknown Food',
+      food_name: data?.food_name || 'Unknown Food',
       meal_type: mealType,
       entry_date: dateToUse,
       quantity,
       unit,
       serving_size: quantity,
       serving_unit: unit,
-      calories: Number(data.calories) || null,
-      protein: Number(data.protein) || null,
-      carbs: Number(data.carbs) || null,
-      fat: Number(data.fat) || null,
-      saturated_fat: data.saturated_fat ? Number(data.saturated_fat) : null,
-      polyunsaturated_fat: data.polyunsaturated_fat ? Number(data.polyunsaturated_fat) : null,
-      monounsaturated_fat: data.monounsaturated_fat ? Number(data.monounsaturated_fat) : null,
-      trans_fat: data.trans_fat ? Number(data.trans_fat) : null,
-      cholesterol: data.cholesterol ? Number(data.cholesterol) : null,
-      sodium: data.sodium ? Number(data.sodium) : null,
-      potassium: data.potassium ? Number(data.potassium) : null,
-      dietary_fiber: data.dietary_fiber ? Number(data.dietary_fiber) : null,
-      sugars: data.sugars ? Number(data.sugars) : null,
-      vitamin_a: data.vitamin_a ? Number(data.vitamin_a) : null,
-      vitamin_c: data.vitamin_c ? Number(data.vitamin_c) : null,
-      calcium: data.calcium ? Number(data.calcium) : null,
-      iron: data.iron ? Number(data.iron) : null,
+      calories: Number(data?.calories ?? data?.kcal ?? data?.energy) || null,
+      protein: Number(data?.protein) || null,
+      carbs: Number(data?.carbs) || null,
+      fat: Number(data?.fat) || null,
+      saturated_fat: data?.saturated_fat ? Number(data.saturated_fat) : null,
+      polyunsaturated_fat: data?.polyunsaturated_fat ? Number(data.polyunsaturated_fat) : null,
+      monounsaturated_fat: data?.monounsaturated_fat ? Number(data.monounsaturated_fat) : null,
+      trans_fat: data?.trans_fat ? Number(data.trans_fat) : null,
+      cholesterol: data?.cholesterol ? Number(data.cholesterol) : null,
+      sodium: data?.sodium ? Number(data.sodium) : null,
+      potassium: data?.potassium ? Number(data.potassium) : null,
+      dietary_fiber: data?.dietary_fiber ? Number(data.dietary_fiber) : null,
+      sugars: data?.sugars ? Number(data.sugars) : null,
+      vitamin_a: data?.vitamin_a ? Number(data.vitamin_a) : null,
+      vitamin_c: data?.vitamin_c ? Number(data.vitamin_c) : null,
+      calcium: data?.calcium ? Number(data.calcium) : null,
+      iron: data?.iron ? Number(data.iron) : null,
       food_id: foodId,
       variant_id: variantId,
     };
@@ -240,7 +240,7 @@ async function executeFood(data, dateToUse, userId) {
 /**
  * Log exercise entry. Searches existing exercises, creates if not found.
  */
-async function executeExercise(data, dateToUse, userId) {
+export async function executeExercise(data: any, dateToUse: string, userId: string): Promise<string> {
   try {
     const name = data.exercise_name || 'Unknown Exercise';
     const duration = Number(data.duration_minutes) || 30;
@@ -298,7 +298,7 @@ async function executeExercise(data, dateToUse, userId) {
   }
 }
 
-function resolveDate(entryDate, today) {
+function resolveDate(entryDate: string | null, today: string): string {
   if (!entryDate) return today;
   const lower = entryDate.toLowerCase();
   if (lower === 'today') return today;
@@ -312,14 +312,15 @@ function resolveDate(entryDate, today) {
   return today;
 }
 
-function normalizeMealType(raw) {
-  const m = (raw || 'snacks').toLowerCase();
+function normalizeMealType(raw: string | null | undefined): string {
+  if (!raw) return 'snacks';
+  const m = String(raw).toLowerCase();
   if (m === 'snack') return 'snacks';
   if (['breakfast', 'lunch', 'dinner', 'snacks'].includes(m)) return m;
   return 'snacks';
 }
 
-function estimateCaloriesPerHour(name) {
+function estimateCaloriesPerHour(name: string): number {
   const lower = name.toLowerCase();
   if (/run|jog|sprint/.test(lower)) return 600;
   if (/swim/.test(lower)) return 500;
@@ -334,7 +335,7 @@ function estimateCaloriesPerHour(name) {
  * Handle deletion intents.
  * These will return a state that causes the bot to show confirmation buttons.
  */
-async function executeDeleteMeasurement(data, dateToUse, userId) {
+export async function executeDeleteMeasurement(data: any, dateToUse: string, userId: string): Promise<any> {
   try {
     const { measurements = [] } = data;
     const itemsToDelete = Array.isArray(measurements) ? measurements : [data];
@@ -376,7 +377,7 @@ async function executeDeleteMeasurement(data, dateToUse, userId) {
   }
 }
 
-async function executeDeleteFood(data, dateToUse, userId) {
+export async function executeDeleteFood(data: any, dateToUse: string, userId: string): Promise<any> {
   try {
     const foodName = data.food_name;
 
@@ -405,12 +406,4 @@ async function executeDeleteFood(data, dateToUse, userId) {
   }
 }
 
-module.exports = {
-  executeIntent,
-  executeMeasurement,
-  executeWater,
-  executeFood,
-  executeExercise,
-  executeDeleteMeasurement,
-  executeDeleteFood,
-};
+

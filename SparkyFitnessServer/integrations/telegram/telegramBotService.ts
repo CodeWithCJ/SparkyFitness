@@ -1,9 +1,10 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { log } from '../../config/logging';
 import globalSettingsRepository from '../../models/globalSettingsRepository';
-import chatService from '../../services/chatService';
+import * as chatService from '../../services/chatService';
 import * as chatRepository from '../../models/chatRepository';
 import * as exerciseEntry from '../../models/exerciseEntry';
+import * as foodEntry from '../../models/foodEntry';
 import * as poolManager from '../../db/poolManager';
 import { executeIntent } from './intentExecutor';
 import axios from 'axios';
@@ -126,44 +127,47 @@ class TelegramBotService {
     });
 
     this.bot.onText(/\/(profile|профиль)/i, async (msg) => {
-        const chatId = msg.chat.id;
-        const user = await this.findUserAndLanguageByChatId(chatId);
-        if (!user) return;
+      const chatId = msg.chat.id;
+      const user = await this.findUserAndLanguageByChatId(chatId);
+      if (!user) return;
 
-        this.bot!.sendChatAction(chatId, 'typing').catch(() => {});
-        try {
-          const profileText = await this.formatProfileResponse(
-            user.id,
-            user.language
-          );
-          this.bot!.sendMessage(chatId, profileText, { parse_mode: 'HTML' });
-        } catch (e: any) {
-          this.bot!.sendMessage(chatId, `❌ Error: ${e.message}`);
-        }
+      this.bot!.sendChatAction(chatId, 'typing').catch(() => {});
+      try {
+        const profileText = await this.formatProfileResponse(
+          user.id,
+          user.language
+        );
+        this.bot!.sendMessage(chatId, profileText, { parse_mode: 'HTML' });
+      } catch (e: any) {
+        this.bot!.sendMessage(chatId, `❌ Error: ${e.message}`);
       }
-    );
+    });
 
     this.bot.onText(/\/(diary|дневник|щоденник)/i, async (msg) => {
-        const chatId = msg.chat.id;
-        const user = await this.findUserAndLanguageByChatId(chatId);
-        if (!user) return;
+      const chatId = msg.chat.id;
+      const user = await this.findUserAndLanguageByChatId(chatId);
+      if (!user) return;
 
-        const t = this.getTranslations(user.language);
-        return this.bot!.sendMessage(chatId, t.diary, this.getDiaryMenuKeyboard(t));
-      }
-    );
+      const t = this.getTranslations(user.language);
+      return this.bot!.sendMessage(
+        chatId,
+        t.diary,
+        this.getDiaryMenuKeyboard(t)
+      );
+    });
 
     this.bot.onText(/\/(exercises|упражнения|вправи)/i, async (msg) => {
-        const chatId = msg.chat.id;
-        const user = await this.findUserAndLanguageByChatId(chatId);
-        if (!user) return;
+      const chatId = msg.chat.id;
+      const user = await this.findUserAndLanguageByChatId(chatId);
+      if (!user) return;
 
-        this.bot!.sendChatAction(chatId, 'typing').catch(() => {});
-        return this.handleDirectRecentExercises(chatId, user);
-      }
-    );
+      this.bot!.sendChatAction(chatId, 'typing').catch(() => {});
+      return this.handleDirectRecentExercises(chatId, user);
+    });
 
-    this.bot.onText(/\/(sync|синхронизировать|синхронізувати)/i, async (msg) => {
+    this.bot.onText(
+      /\/(sync|синхронизировать|синхронізувати)/i,
+      async (msg) => {
         const chatId = msg.chat.id;
         const user = await this.findUserAndLanguageByChatId(chatId);
         if (!user) return;
@@ -186,11 +190,14 @@ class TelegramBotService {
       }
 
       const t = this.getTranslations(user.language);
-      
+
       // Centralized button handling
       if (msg.text === t.profile) {
         this.bot!.sendChatAction(chatId, 'typing').catch(() => {});
-        const profileText = await this.formatProfileResponse(user.id, user.language);
+        const profileText = await this.formatProfileResponse(
+          user.id,
+          user.language
+        );
         this.bot!.sendMessage(chatId, profileText, { parse_mode: 'HTML' });
         return;
       }
@@ -214,7 +221,11 @@ class TelegramBotService {
       }
 
       if (msg.text === t.back) {
-        return this.bot!.sendMessage(chatId, t.welcome, this.getMainMenuKeyboard(t));
+        return this.bot!.sendMessage(
+          chatId,
+          t.welcome,
+          this.getMainMenuKeyboard(t)
+        );
       }
 
       // Handle custom standard commands directly without AI
@@ -243,7 +254,7 @@ class TelegramBotService {
     this.bot.on('callback_query', async (query) => {
       const chatId = query.message?.chat.id;
       if (!chatId) return;
-      
+
       const user = await this.findUserAndLanguageByChatId(chatId);
       if (!user) return;
 
@@ -254,7 +265,9 @@ class TelegramBotService {
         await this.setLanguage(user.id, newLang);
         const t = this.getTranslations(newLang);
 
-        await this.bot!.deleteMessage(chatId, query.message!.message_id).catch(() => false);
+        await this.bot!.deleteMessage(chatId, query.message!.message_id).catch(
+          () => false
+        );
         await this.bot!.sendMessage(
           chatId,
           t.langSet,
@@ -328,7 +341,11 @@ class TelegramBotService {
     }
   }
 
-  async processMessage(chatId: number, user: TelegramUser, msg: TelegramBot.Message): Promise<void> {
+  async processMessage(
+    chatId: number,
+    user: TelegramUser,
+    msg: TelegramBot.Message
+  ): Promise<void> {
     this.bot!.sendChatAction(chatId, 'typing');
 
     const typingInterval = setInterval(() => {
@@ -345,47 +362,85 @@ class TelegramBotService {
       const aiService = await chatRepository.getActiveAiServiceSetting(user.id);
       if (!aiService) {
         clearInterval(typingInterval);
-        return (this.bot!.sendMessage(
+        return this.bot!.sendMessage(
           chatId,
           'No AI service configured. Please check your settings in the web app.'
-        ) as unknown) as void;
+        ) as unknown as void;
       }
 
       const chatHistory = await chatRepository.getChatHistoryByUserId(user.id);
-      const exerciseSummary = await this.getExerciseSummary(user.id);
+      let exerciseSummary = await this.getExerciseSummary(user.id);
+      let extraContext = '';
 
-      const historyContext = chatHistory.map((h: any) => ({
-        role: h.message_type === 'user' ? 'user' : 'assistant',
-        content: h.content,
-      }));
+      const processAiTurn = async (forceDataRequest: string | null = null) => {
+        let historyContext = chatHistory.map((h: any) => ({
+          role: h.message_type === 'user' ? 'user' : 'assistant',
+          content: h.content,
+        }));
 
-      const contextBlock = this.buildContextBlock(user, exerciseSummary);
-      const fullMessages = [
-        { role: 'user', content: contextBlock },
-        {
-          role: 'assistant',
-          content: 'Understood. I will provide concise, helpful responses for Telegram.',
-        },
-        ...historyContext,
-        { role: 'user', content: msg.text || '[Image/File]' },
-      ];
+        const contextBlock = this.buildContextBlock(
+          user,
+          exerciseSummary,
+          extraContext
+        );
+        const fullMessages = [
+          { role: 'system', content: contextBlock },
+          ...historyContext,
+          {
+            role: 'user',
+            content: forceDataRequest ? forceDataRequest : contentParts,
+          },
+        ];
 
-      const response = await chatService.processChatMessage(
-        fullMessages,
-        aiService.id,
-        user.id
-      );
+        const response = await chatService.processChatMessage(
+          fullMessages,
+          aiService.id,
+          user.id
+        );
+
+        if (response && response.intent === 'request_data') {
+          clearInterval(typingInterval);
+
+          // Відправляємо користувачеві проміжне повідомлення ("Один момент...")
+          const waitMsg = response.text || response.content;
+          if (waitMsg && waitMsg.trim() !== '') {
+            await this.bot!.sendMessage(chatId, waitMsg, {
+              parse_mode: 'HTML',
+            }).catch(() => {});
+          }
+
+          log(
+            'info',
+            `[TELEGRAM BOT] Intent 'request_data' received. Params: ${JSON.stringify(response.data)}`
+          );
+          return this.handleDataRequest(
+            chatId,
+            user,
+            response.data,
+            msg.text || '',
+            aiService.id,
+            chatHistory
+          );
+        }
+        return response;
+      };
+
+      let response = await processAiTurn();
 
       clearInterval(typingInterval);
 
       if (response && (response.text || response.content)) {
         const replyText = response.text || response.content;
-        await chatRepository.saveChatMessage(user.id, msg.text || '[Multi-modal]', 'user');
-        await chatRepository.saveChatMessage(user.id, replyText, 'ai');
+        await chatRepository.saveChatMessage(
+          user.id,
+          msg.text || '[Multi-modal]',
+          'user'
+        );
+        await chatRepository.saveChatMessage(user.id, replyText, 'assistant');
 
-        await this.bot!.sendMessage(chatId, replyText, { parse_mode: 'Markdown' });
-        
-        if (response.intent) {
+        await this.bot!.sendMessage(chatId, replyText, { parse_mode: 'HTML' });
+
+        if (response.intent && response.intent !== 'request_data') {
           await this.tryExecuteIntent(chatId, user, response);
         }
       }
@@ -396,11 +451,128 @@ class TelegramBotService {
     }
   }
 
-  async tryExecuteIntent(chatId: number, user: TelegramUser, response: any): Promise<void> {
+  private async handleDataRequest(
+    chatId: number,
+    user: TelegramUser,
+    dataParams: any,
+    originalMsgText: string,
+    aiServiceId: string,
+    chatHistory: any[]
+  ): Promise<any> {
+    this.bot!.sendChatAction(chatId, 'typing');
+    const typingInterval = setInterval(() => {
+      this.bot!.sendChatAction(chatId, 'typing').catch(() => {});
+    }, 4000);
+
+    try {
+      const type = dataParams?.type || 'exercise_history';
+      const days = parseInt(dataParams?.days) || 14;
+      let fetchedDataText = '';
+
+      const tz = await loadUserTimezone(user.id);
+      const today = todayInZone(tz);
+      const endDate = today;
+      const startDate = new Date(
+        new Date().setDate(new Date().getDate() - days)
+      )
+        .toISOString()
+        .split('T')[0];
+
+      if (type.includes('exercise')) {
+        const exercises = await exerciseEntry.getExerciseEntriesByDateRange(
+          user.id,
+          startDate,
+          endDate
+        );
+        if (!exercises || exercises.length === 0) {
+          fetchedDataText = `No exercises found in the last ${days} days.`;
+        } else {
+          fetchedDataText = exercises
+            .map((ex: any) => {
+              const date = ex.entry_date
+                ? new Date(ex.entry_date).toISOString().split('T')[0]
+                : 'Unknown';
+              return `- ${date}: ${ex.exercise_name || ex.name} (${ex.duration_minutes}m, ${Math.round(ex.calories)}kcal)`;
+            })
+            .join('\n');
+        }
+      } else if (type.includes('food')) {
+        const foods = await foodEntry.getFoodEntriesByDateRange(
+          user.id,
+          startDate,
+          endDate
+        );
+        if (!foods || foods.length === 0) {
+          fetchedDataText = `No food logs found in the last ${days} days.`;
+        } else {
+          fetchedDataText = foods
+            .map((f: any) => {
+              return `- ${f.entry_date}: ${f.food_name} (${Math.round(f.calories)}kcal)`;
+            })
+            .join('\n');
+        }
+      } else {
+        fetchedDataText = 'Requested data type not recognized.';
+      }
+
+      log(
+        'info',
+        `[TELEGRAM BOT] Fetched data for ${type}:\n${fetchedDataText}`
+      );
+
+      const extraContext = `\n[SYSTEM UPDATE: The requested data has been fetched below. Use this to respond:]\n${fetchedDataText}\n\nCRITICAL INSTRUCTION: You MUST use the 'chat' intent to summarize the list above. It is STRICTLY FORBIDDEN to use 'request_data' intent now, as the data is already in this prompt.`;
+      const contextBlock = this.buildContextBlock(user, '', extraContext);
+
+      const historyContext = chatHistory.map((h: any) => ({
+        role: h.message_type === 'user' ? 'user' : 'assistant',
+        content: h.content,
+      }));
+
+      const fullMessages = [
+        { role: 'system', content: contextBlock },
+        ...historyContext,
+        // Instead of repeating the user's query, we explicitly command the AI as the user
+        // and remove any trigger words like "last 10" or "history"
+        {
+          role: 'user',
+          content: `[SYSTEM: Data fetched. Read the SYSTEM UPDATE above and summarize the entries provided.]`,
+        },
+      ];
+
+      log(
+        'info',
+        `[TELEGRAM BOT] Second AI request payload prepared for user ${user.id}. Context Block contains fetched data.`
+      );
+
+      const response = await chatService.processChatMessage(
+        fullMessages,
+        aiServiceId,
+        user.id
+      );
+
+      log(
+        'info',
+        `[TELEGRAM BOT] Second AI response received. Intent: ${response?.intent}, Text: ${response?.text?.substring(0, 100)}...`
+      );
+
+      clearInterval(typingInterval);
+      return response;
+    } catch (e: any) {
+      clearInterval(typingInterval);
+      log('error', '[TELEGRAM BOT] Error handling data request:', e);
+      this.bot!.sendMessage(chatId, `❌ AI Data Fetch Error: ${e.message}`);
+    }
+  }
+
+  async tryExecuteIntent(
+    chatId: number,
+    user: TelegramUser,
+    response: any
+  ): Promise<void> {
     try {
       const tz = await loadUserTimezone(user.id);
       const today = todayInZone(tz);
-      
+
       const result = await executeIntent(
         response.intent,
         response.data,
@@ -408,7 +580,7 @@ class TelegramBotService {
         user.id,
         today
       );
-      
+
       if (result && result.message) {
         await this.bot!.sendMessage(chatId, result.message);
       }
@@ -417,7 +589,10 @@ class TelegramBotService {
     }
   }
 
-  async handleDirectTodayLog(chatId: number, user: TelegramUser): Promise<void> {
+  async handleDirectTodayLog(
+    chatId: number,
+    user: TelegramUser
+  ): Promise<void> {
     try {
       const { todayInZone } = require('@workspace/shared');
       const { loadUserTimezone } = require('../../utils/timezoneLoader');
@@ -433,7 +608,10 @@ class TelegramBotService {
       client.release();
 
       if (todayFood.length === 0) {
-        return (this.bot!.sendMessage(chatId, 'Жодних записів про їжу за сьогодні.') as unknown) as void;
+        return this.bot!.sendMessage(
+          chatId,
+          'Жодних записів про їжу за сьогодні.'
+        ) as unknown as void;
       }
 
       let text = `🍴 <b>Щоденник за сьогодні (${today}):</b>\n\n`;
@@ -478,7 +656,10 @@ class TelegramBotService {
     }
   }
 
-  async handleDirectRecentExercises(chatId: number, user: TelegramUser): Promise<void> {
+  async handleDirectRecentExercises(
+    chatId: number,
+    user: TelegramUser
+  ): Promise<void> {
     try {
       const { todayInZone } = require('@workspace/shared');
       const { loadUserTimezone } = require('../../utils/timezoneLoader');
@@ -497,12 +678,19 @@ class TelegramBotService {
       const t = this.getTranslations(user.language);
 
       if (!exercises || exercises.length === 0) {
-        return (this.bot!.sendMessage(chatId, t.noRecentActivities) as unknown) as void;
+        return this.bot!.sendMessage(
+          chatId,
+          t.noRecentActivities
+        ) as unknown as void;
       }
 
       exercises = exercises.filter((ex: any) => {
         const name = (ex.exercise_name || ex.name || '').toLowerCase();
-        if (name === 'active calories' && !ex.duration_minutes && !ex.distance) {
+        if (
+          name === 'active calories' &&
+          !ex.duration_minutes &&
+          !ex.distance
+        ) {
           return false;
         }
         return true;
@@ -526,8 +714,10 @@ class TelegramBotService {
 
         let keepCurrent = !existing;
         if (existing) {
-          const existingScore = (existing.distance ? 1 : 0) + (existing.avg_heart_rate ? 1 : 0);
-          const currentScore = (ex.distance ? 1 : 0) + (ex.avg_heart_rate ? 1 : 0);
+          const existingScore =
+            (existing.distance ? 1 : 0) + (existing.avg_heart_rate ? 1 : 0);
+          const currentScore =
+            (ex.distance ? 1 : 0) + (ex.avg_heart_rate ? 1 : 0);
           if (currentScore > existingScore) {
             keepCurrent = true;
           }
@@ -573,7 +763,8 @@ class TelegramBotService {
           else if (name.includes('walk')) emoji = '🚶';
           else if (name.includes('hik')) emoji = '🧗';
           else if (name.includes('yoga')) emoji = '🧘';
-          else if (name.includes('strength') || name.includes('press')) emoji = '💪';
+          else if (name.includes('strength') || name.includes('press'))
+            emoji = '💪';
 
           text += `${emoji} <b>${ex.exercise_name || ex.name}</b> — ${durationText}${cals}\n`;
 
@@ -599,31 +790,105 @@ class TelegramBotService {
     }
   }
 
-  private async buildContentParts(chatId: number, msg: TelegramBot.Message): Promise<any[] | null> {
+    private async buildContentParts(chatId: number, msg: TelegramBot.Message): Promise<any[] | null> {
     const parts: any[] = [];
+    let hasMedia = false;
+
     if (msg.text) {
-      parts.push({ text: msg.text });
+      parts.push({ type: 'text', text: msg.text });
+    } else if (msg.caption) {
+      parts.push({ type: 'text', text: msg.caption });
     }
-    // Handle photos/files here if needed
+
+    // Handle photos
+    if (msg.photo && msg.photo.length > 0) {
+      hasMedia = true;
+      const largestPhoto = msg.photo[msg.photo.length - 1];
+      try {
+        const base64Image = await this.getFileBase64(largestPhoto.file_id);
+        if (base64Image) {
+          parts.push({
+            type: 'image_url',
+            image_url: { url: `data:image/jpeg;base64,${base64Image}` }
+          });
+        }
+      } catch (e: any) {
+        log('error', '[TELEGRAM BOT] Photo fetch error:', e.message);
+      }
+    }
+
+    // Handle voice/video notes/audio
+    if (msg.voice || msg.audio || msg.video_note || msg.video || msg.document) {
+        hasMedia = true;
+        const fileId = msg.voice?.file_id || msg.audio?.file_id || msg.video_note?.file_id || msg.video?.file_id || msg.document?.file_id;
+        try {
+            const base64Data = await this.getFileBase64(fileId!);
+            if (base64Data) {
+                log('info', `[TELEGRAM BOT] Fetched media file of length ${base64Data.length}`);
+                // Для сучасних моделей (як-от Gemini 1.5 Pro) ми можемо відправити аудіо/відео через data url або inline_data
+                // Тут ми визначаємо mime-type для базових форматів, які підтримує Telegram
+                let mimeType = 'application/octet-stream';
+                if (msg.voice || msg.audio) mimeType = 'audio/ogg'; // Telegram voice notes are usually ogg
+                if (msg.video || msg.video_note) mimeType = 'video/mp4';
+                
+                parts.push({
+                    type: 'image_url', // Використовуємо image_url, бо наш chatService.ts перетворює його на inline_data для Gemini
+                    image_url: { url: `data:${mimeType};base64,${base64Data}` }
+                });
+            }
+        } catch (e: any) {
+             log('error', '[TELEGRAM BOT] Media fetch error:', e.message);
+        }
+    }
+
+    if (parts.length === 0 && !hasMedia) {
+        return null;
+    }
+
     return parts.length > 0 ? parts : null;
   }
 
-  private buildContextBlock(user: any, exerciseSummary: string): string {
-    return `
-SYSTEM CONTEXT FOR TELEGRAM BOT:
-- User: ${user.name} (ID: ${user.id})
-- Today: ${new Date().toISOString().split('T')[0]}
-- Exercise History (Last 7 days):
-${exerciseSummary}
-
-INSTRUCTIONS:
-1. You are SparkyFitness AI, a helpful fitness assistant.
-2. If the user asks for historical data beyond 7 days, trigger the 'request_data' intent with data_type='exercise_history'.
-3. Keep responses concise for Telegram.
-    `.trim();
+  private async getFileBase64(fileId: string): Promise<string | null> {
+    if (!this.bot) return null;
+    try {
+      const file = await this.bot.getFile(fileId);
+      const fileUrl = `https://api.telegram.org/file/bot${this.bot.token}/${file.file_path}`;
+      const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+      return Buffer.from(response.data, 'binary').toString('base64');
+    } catch (e: any) {
+      log('error', '[TELEGRAM BOT] Error downloading file from Telegram:', e.message);
+      return null;
+    }
   }
 
-  private async findUserAndLanguageByChatId(chatId: number): Promise<TelegramUser | null> {
+  private buildContextBlock(
+    user: any,
+    exerciseSummary: string,
+    extraContext: string = ''
+  ): string {
+    const today = new Date().toISOString().split('T')[0];
+    return `
+SYSTEM CONTEXT FOR SPARKY FITNESS AI (TELEGRAM):
+- Current Date: ${today}
+- Active User: ${user.name} (ID: ${user.id})
+- Preferred Language: ${user.language || 'en'}
+
+USER'S RECENT EXERCISE HISTORY (Last 7 Days):
+${exerciseSummary || 'No recent exercises found.'}
+
+BEHAVIORAL INSTRUCTIONS:
+1. You are Sparky, a professional and motivating fitness coach.
+2. You are communicating via Telegram. Keep your responses VERY CONCISE, friendly, and use Markdown (bold, lists).
+3. When the user asks about "workouts", "sessions", or "exercises" (e.g., "последние занятия"), refer to the Exercise History provided above.
+4. For every message, you MUST identify the intent (log_food, log_exercise, log_measurement, chat, etc.) and return it in the JSON format as defined in your main system prompt.
+5. If you are just chatting or answering a question without a specific log intent, use the "chat" or "ask_question" intent and put your response in the "response" field.
+${extraContext}
+`;
+  }
+
+  private async findUserAndLanguageByChatId(
+    chatId: number
+  ): Promise<TelegramUser | null> {
     const client = await poolManager.getSystemClient();
     try {
       const result = await client.query(
@@ -641,16 +906,27 @@ INSTRUCTIONS:
 
   private async getExerciseSummary(userId: string): Promise<string> {
     try {
-      const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0];
       const endDate = new Date().toISOString().split('T')[0];
-      const exercises = await exerciseEntry.getExerciseEntriesByDateRange(userId, startDate, endDate);
-      
-      if (!exercises || exercises.length === 0) return 'No exercises in the last 7 days.';
-      
-      return exercises.map((ex: any) => {
-        const date = ex.entry_date ? new Date(ex.entry_date).toISOString().split('T')[0] : 'Unknown';
-        return `- ${date}: ${ex.exercise_name || ex.name} (${ex.duration_minutes}m, ${ex.calories}kcal)`;
-      }).join('\n');
+      const exercises = await exerciseEntry.getExerciseEntriesByDateRange(
+        userId,
+        startDate,
+        endDate
+      );
+
+      if (!exercises || exercises.length === 0)
+        return 'No exercises in the last 7 days.';
+
+      return exercises
+        .map((ex: any) => {
+          const date = ex.entry_date
+            ? new Date(ex.entry_date).toISOString().split('T')[0]
+            : 'Unknown';
+          return `- ${date}: ${ex.exercise_name || ex.name} (${ex.duration_minutes}m, ${ex.calories}kcal)`;
+        })
+        .join('\n');
     } catch (e) {
       return 'Error fetching exercise summary.';
     }
@@ -668,7 +944,10 @@ INSTRUCTIONS:
     }
   }
 
-  private async formatProfileResponse(userId: string, lang: string): Promise<string> {
+  private async formatProfileResponse(
+    userId: string,
+    lang: string
+  ): Promise<string> {
     // Simplified profile formatter
     return `👤 <b>Profile Info</b>\nUser ID: ${userId}\nLanguage: ${lang}`;
   }
@@ -730,7 +1009,9 @@ INSTRUCTIONS:
     return dicts[lang] || dicts.en;
   }
 
-  private getMainMenuKeyboard(t: TranslationSet): TelegramBot.SendMessageOptions {
+  private getMainMenuKeyboard(
+    t: TranslationSet
+  ): TelegramBot.SendMessageOptions {
     return {
       reply_markup: {
         keyboard: [
@@ -742,10 +1023,16 @@ INSTRUCTIONS:
     };
   }
 
-  private getDiaryMenuKeyboard(t: TranslationSet): TelegramBot.SendMessageOptions {
+  private getDiaryMenuKeyboard(
+    t: TranslationSet
+  ): TelegramBot.SendMessageOptions {
     return {
       reply_markup: {
-        keyboard: [[{ text: t.todayLog }], [{ text: t.exercises }], [{ text: t.back }]],
+        keyboard: [
+          [{ text: t.todayLog }],
+          [{ text: t.exercises }],
+          [{ text: t.back }],
+        ],
         resize_keyboard: true,
       },
     };
@@ -767,13 +1054,17 @@ INSTRUCTIONS:
 
   private async showSyncMenu(chatId: number, lang: string): Promise<void> {
     const t = this.getTranslations(lang);
-    await this.bot!.sendMessage(chatId, 'Оберіть платформу для синхронізації:', {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: t.syncGarmin, callback_data: 'sync:garmin' }],
-        ],
-      },
-    });
+    await this.bot!.sendMessage(
+      chatId,
+      'Оберіть платформу для синхронізації:',
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: t.syncGarmin, callback_data: 'sync:garmin' }],
+          ],
+        },
+      }
+    );
   }
 }
 
