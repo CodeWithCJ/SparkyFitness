@@ -268,6 +268,67 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
   };
 }
 
+const HEALTH_CONNECT_SLEEP_SOURCES = new Set([
+  'Health Connect',
+  'HealthConnect',
+]);
+const VALID_SLEEP_STAGE_TYPES = new Set([
+  'awake',
+  'rem',
+  'light',
+  'deep',
+  'in_bed',
+  'unknown',
+]);
+
+function isHealthConnectSleepSource(source) {
+  return typeof source === 'string' && HEALTH_CONNECT_SLEEP_SOURCES.has(source);
+}
+
+function sanitizeHealthConnectSleepStageEvents(stageEvents) {
+  if (!Array.isArray(stageEvents)) {
+    return [];
+  }
+
+  return stageEvents.reduce((sanitized, stageEvent) => {
+    if (!stageEvent || typeof stageEvent !== 'object') {
+      return sanitized;
+    }
+
+    const stageType =
+      typeof stageEvent.stage_type === 'string'
+        ? stageEvent.stage_type.toLowerCase()
+        : null;
+    if (!stageType || !VALID_SLEEP_STAGE_TYPES.has(stageType)) {
+      return sanitized;
+    }
+
+    const startTime = new Date(stageEvent.start_time);
+    const endTime = new Date(stageEvent.end_time);
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+      return sanitized;
+    }
+
+    let durationInSeconds = Number(stageEvent.duration_in_seconds);
+    if (!Number.isFinite(durationInSeconds) || durationInSeconds <= 0) {
+      durationInSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
+    }
+    durationInSeconds = Math.round(durationInSeconds);
+
+    if (durationInSeconds <= 0) {
+      return sanitized;
+    }
+
+    sanitized.push({
+      stage_type: stageType,
+      start_time: startTime.toISOString(),
+      end_time: endTime.toISOString(),
+      duration_in_seconds: durationInSeconds,
+    });
+    return sanitized;
+  }, []);
+}
+
 async function processHealthData(healthDataArray, userId, actingUserId) {
   const tz = await loadUserTimezone(userId);
   const processedResults = [];
@@ -491,6 +552,10 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           break;
         case 'SleepSession':
           try {
+            const stageEvents = isHealthConnectSleepSource(source)
+              ? sanitizeHealthConnectSleepStageEvents(dataEntry.stage_events)
+              : dataEntry.stage_events || [];
+
             // Map the dataEntry fields to what processSleepEntry expects
             const sleepEntryData = {
               entry_date: parsedDate,
@@ -510,7 +575,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
                 Number(dataEntry.time_asleep_in_seconds) || 0,
               sleep_score: Number(dataEntry.sleep_score) || 0,
               source: source,
-              stage_events: dataEntry.stage_events || [],
+              stage_events: stageEvents,
               deep_sleep_seconds: Number(dataEntry.deep_sleep_seconds) || 0,
               light_sleep_seconds: Number(dataEntry.light_sleep_seconds) || 0,
               rem_sleep_seconds: Number(dataEntry.rem_sleep_seconds) || 0,

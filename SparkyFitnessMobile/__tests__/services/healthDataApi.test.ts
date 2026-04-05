@@ -645,6 +645,54 @@ describe('healthDataApi', () => {
         expect(body).toHaveLength(CHUNK_SIZE + 500);
       });
 
+      test('preserves staged sleep session payloads inside session chunks', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+        const stageEvents = [
+          {
+            stage_type: 'deep',
+            start_time: '2024-01-15T22:00:00.000Z',
+            end_time: '2024-01-15T23:00:00.000Z',
+            duration_in_seconds: 3600,
+          },
+          {
+            stage_type: 'awake',
+            start_time: '2024-01-15T23:00:00.000Z',
+            end_time: '2024-01-15T23:15:00.000Z',
+            duration_in_seconds: 900,
+          },
+        ];
+        const data = [
+          {
+            type: 'SleepSession',
+            source: 'Health Connect',
+            timestamp: '2024-01-15T22:00:00.000Z',
+            entry_date: '2024-01-15',
+            bedtime: '2024-01-15T22:00:00.000Z',
+            wake_time: '2024-01-16T06:00:00.000Z',
+            duration_in_seconds: 28800,
+            time_asleep_in_seconds: 27900,
+            deep_sleep_seconds: 3600,
+            light_sleep_seconds: 22500,
+            rem_sleep_seconds: 1800,
+            awake_sleep_seconds: 900,
+            stage_events: stageEvents,
+          },
+        ] as HealthDataPayload;
+
+        await syncHealthData(data);
+
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+        expect(body[0].type).toBe('SleepSession');
+        expect(body[0].source).toBe('Health Connect');
+        expect(body[0].stage_events).toEqual(stageEvents);
+      });
+
       test('reports partial success when a chunk fails', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
 
