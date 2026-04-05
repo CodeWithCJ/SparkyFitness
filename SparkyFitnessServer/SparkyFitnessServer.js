@@ -23,6 +23,7 @@ const foodRoutes = require('./routes/foodRoutes');
 const v2FoodRoutes = require('./routes/v2/foodRoutes');
 const v2ExerciseEntryRoutes = require('./routes/v2/exerciseEntryRoutes');
 const v2WaterIntakeRoutes = require('./routes/v2/waterIntakeRoutes').default;
+const v2GoalPresetRoutes = require('./routes/v2/goalPresetRoutes').default;
 const mealRoutes = require('./routes/mealRoutes');
 const foodEntryRoutes = require('./routes/foodEntryRoutes'); // Add this line
 const foodEntryMealRoutes = require('./routes/foodEntryMealRoutes'); // New: FoodEntryMeal routes
@@ -339,6 +340,7 @@ app.use('/api/foods', foodRoutes);
 app.use('/api/v2/foods', v2FoodRoutes);
 app.use('/api/v2/exercise-entries', v2ExerciseEntryRoutes);
 app.use('/api/v2/measurements', v2WaterIntakeRoutes);
+app.use('/api/v2/goal-presets', v2GoalPresetRoutes);
 app.use('/api/food-entries', foodEntryRoutes);
 app.use('/api/food-entry-meals', foodEntryMealRoutes);
 app.use('/api/meals', mealRoutes);
