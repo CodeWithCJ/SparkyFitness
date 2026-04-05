@@ -283,6 +283,7 @@ const AddExerciseDialog = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        requireConfirmation
         className={
           activeTab === 'import-csv' || activeTab === 'import-history-csv'
             ? 'sm:max-w-[95vw] sm:max-h-[95vh] w-[95vw] h-[95vh] overflow-y-auto'

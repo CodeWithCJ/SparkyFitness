@@ -23,7 +23,10 @@ export const CsvImportDialog = ({
   const { t } = useTranslation();
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        requireConfirmation
+        className="max-w-6xl max-h-[90vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>
             {t('enhancedFoodSearch.importFromCSV', 'Import from CSV')}
