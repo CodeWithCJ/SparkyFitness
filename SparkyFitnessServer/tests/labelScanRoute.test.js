@@ -41,6 +41,13 @@ const sampleNutrition = {
   protein: 20,
   carbs: 25,
   fat: 8,
+  trans_fat: 0,
+  cholesterol: 10,
+  potassium: 200,
+  calcium: 100,
+  iron: 2,
+  vitamin_a: 50,
+  vitamin_c: null,
 };
 
 describe('POST /food-crud/scan-label', () => {

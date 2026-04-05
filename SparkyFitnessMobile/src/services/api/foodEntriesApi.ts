@@ -22,6 +22,13 @@ export interface CreateFoodEntryPayload {
   sodium?: number;
   dietary_fiber?: number;
   sugars?: number;
+  trans_fat?: number;
+  potassium?: number;
+  calcium?: number;
+  iron?: number;
+  cholesterol?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
   // Meal entry
   meal_id?: string;
 }
@@ -58,6 +65,13 @@ export interface UpdateFoodEntryPayload {
   sodium?: number;
   dietary_fiber?: number;
   sugars?: number;
+  trans_fat?: number;
+  potassium?: number;
+  calcium?: number;
+  iron?: number;
+  cholesterol?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
 }
 
 /**

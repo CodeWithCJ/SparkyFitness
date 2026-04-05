@@ -42,8 +42,15 @@ const sampleNutrition = {
   fat: 8,
   fiber: 3,
   saturated_fat: 2.5,
+  trans_fat: 0,
   sodium: 150,
   sugars: 6,
+  cholesterol: 10,
+  potassium: 200,
+  calcium: 100,
+  iron: 2,
+  vitamin_a: 50,
+  vitamin_c: null,
 };
 
 function mockFetchForProvider(serviceType, nutritionData = sampleNutrition) {

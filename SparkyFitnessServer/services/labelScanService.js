@@ -30,9 +30,12 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
       'Extract the nutrition facts from this food label image. ' +
       'Return a JSON object with these fields: ' +
       'name (string), brand (string), serving_size (number), serving_unit (string), ' +
-      'calories (number), protein (number), carbs (number), fat (number), ' +
-      'fiber (number), saturated_fat (number), sodium (number), sugars (number). ' +
-      'All numeric fields should be numbers, not strings. ' +
+      'calories (number), protein (number in grams), carbs (number in grams), fat (number in grams), ' +
+      'fiber (number in grams), saturated_fat (number in grams), trans_fat (number in grams), ' +
+      'sodium (number in mg), sugars (number in grams), ' +
+      'cholesterol (number in mg), potassium (number in mg), ' +
+      'calcium (number in mg), iron (number in mg), vitamin_a (number in mcg), vitamin_c (number in mg). ' +
+      'All numeric fields should be absolute amounts (not percent daily value), as numbers not strings. ' +
       'serving_size should be a number. ' +
       'Use null for any field not visible on the label. ' +
       'Return only the JSON object, no other text.';
