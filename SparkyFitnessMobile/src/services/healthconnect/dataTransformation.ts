@@ -624,11 +624,12 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       caloriesBurned = energy.inCalories / 1000;
     }
 
-    // Extract distance
-    let distance = 0;
+    // Exercise entries store distance in kilometers, but Health Connect
+    // returns aggregate session distance in meters.
+    let distanceKm = 0;
     const distanceObj = rec.distance as Record<string, number> | undefined;
     if (distanceObj?.inMeters != null && !isNaN(distanceObj.inMeters)) {
-      distance = distanceObj.inMeters;
+      distanceKm = distanceObj.inMeters / 1000;
     }
 
     const metadata = rec.metadata as { id?: string } | undefined;
@@ -645,7 +646,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       activityType: activityTypeName,
       title: title,
       caloriesBurned: parseFloat(caloriesBurned.toFixed(2)),
-      distance: parseFloat(distance.toFixed(2)),
+      distance: parseFloat(distanceKm.toFixed(2)),
       notes: rec.notes as string | undefined,
       raw_data: record,
       sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }],

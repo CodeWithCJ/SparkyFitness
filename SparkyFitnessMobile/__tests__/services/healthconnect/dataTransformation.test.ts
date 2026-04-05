@@ -590,7 +590,7 @@ describe('transformHealthRecords', () => {
       expect(result[0].caloriesBurned).toBe(0);
     });
 
-    test('extracts distance from distance.inMeters', () => {
+    test('converts distance from distance.inMeters to kilometers', () => {
       const records = [
         {
           startTime: '2024-01-15T08:00:00Z',
@@ -602,7 +602,7 @@ describe('transformHealthRecords', () => {
       const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
-      expect(result[0].distance).toBe(5000.75);
+      expect(result[0].distance).toBe(5);
     });
 
     test('defaults distance to 0 when distance is missing', () => {
@@ -656,14 +656,14 @@ describe('transformHealthRecords', () => {
           endTime: '2024-01-15T09:00:00Z',
           exerciseType: 8,
           energy: { inKilocalories: 350.5678 },
-          distance: { inMeters: 5000.1234 },
+          distance: { inMeters: 5234.1234 },
         },
       ];
       const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].caloriesBurned).toBe(350.57);
-      expect(result[0].distance).toBe(5000.12);
+      expect(result[0].distance).toBe(5.23);
     });
 
     test('extracts both caloriesBurned and distance from complete wearable record', () => {
@@ -687,7 +687,7 @@ describe('transformHealthRecords', () => {
         title: 'Morning Run',
         duration: 3600,
         caloriesBurned: 450,
-        distance: 7500,
+        distance: 7.5,
         notes: 'Great pace today',
       });
     });
@@ -722,7 +722,7 @@ describe('transformHealthRecords', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].caloriesBurned).toBe(-50);
-      expect(result[0].distance).toBe(-100);
+      expect(result[0].distance).toBe(-0.1);
     });
 
     test('includes sets array with duration in minutes', () => {
