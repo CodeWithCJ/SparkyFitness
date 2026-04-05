@@ -773,7 +773,30 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         content = data.message?.content || 'No response from AI service';
         break;
     }
-    return { content };
+    let responseText = content;
+    let intent = null;
+    let intentData = null;
+    let entryDate = null;
+
+    try {
+      // Clean content from markdown code blocks if AI wrapped JSON
+      const cleanContent = content.replace(/```json\s?/, '').replace(/\s?```/, '').trim();
+      const parsed = JSON.parse(cleanContent);
+      responseText = parsed.response || content;
+      intent = parsed.intent || null;
+      intentData = parsed.data || null;
+      entryDate = parsed.entryDate || null;
+    } catch (e) {
+      log('debug', 'AI response is not JSON or could not be parsed, treating as plain text.');
+    }
+
+    return {
+      content: responseText,
+      text: responseText,
+      intent,
+      data: intentData,
+      entryDate
+    };
   } catch (error) {
     log(
       'error',
