@@ -492,23 +492,7 @@ export function transformNormalizedFood(food: NormalizedFood, providerType: stri
     id: food.provider_external_id ?? food.id ?? '',
     name: food.name,
     brand: food.brand,
-    calories: dv.calories,
-    protein: dv.protein,
-    carbs: dv.carbs,
-    fat: dv.fat,
-    saturated_fat: dv.saturated_fat,
-    sodium: dv.sodium,
-    fiber: dv.dietary_fiber,
-    sugars: dv.sugars,
-    trans_fat: dv.trans_fat,
-    cholesterol: dv.cholesterol,
-    potassium: dv.potassium,
-    calcium: dv.calcium,
-    iron: dv.iron,
-    vitamin_a: dv.vitamin_a,
-    vitamin_c: dv.vitamin_c,
-    serving_size: dv.serving_size,
-    serving_unit: dv.serving_unit,
+    ...mapVariant(dv),
     source: food.provider_type ?? providerType,
     variants: variants && variants.length > 0 ? variants : undefined,
   };
@@ -605,8 +589,15 @@ export interface LabelScanResult {
   fat: number;
   fiber: number | null;
   saturated_fat: number | null;
+  trans_fat: number | null;
   sodium: number | null;
   sugars: number | null;
+  cholesterol: number | null;
+  potassium: number | null;
+  calcium: number | null;
+  iron: number | null;
+  vitamin_a: number | null;
+  vitamin_c: number | null;
 }
 
 export async function scanNutritionLabel(base64Image: string, mimeType: string): Promise<LabelScanResult> {

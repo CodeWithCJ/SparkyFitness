@@ -3,6 +3,38 @@ import type { ExternalFoodItem, ExternalFoodVariant } from './externalFoods';
 import type { Meal } from './meals';
 import type { BarcodeFood } from '../services/api/externalFoodSearchApi';
 
+/** Convert a numeric value to a form-compatible string. Returns '' for null/undefined. */
+export const toFormString = (v: number | null | undefined): string =>
+  v != null ? String(v) : '';
+
+/** Parse an optional form string to a number. Returns undefined for empty strings. */
+export const parseOptional = (s: string): number | undefined =>
+  s === '' ? undefined : (parseFloat(s) || 0);
+
+/** Ordered list of extra nutrient fields for display and form conversion. */
+export const EXTRA_NUTRIENT_FIELDS = [
+  { key: 'fiber', label: 'Fiber', unit: 'g' },
+  { key: 'sugars', label: 'Sugars', unit: 'g' },
+  { key: 'saturatedFat', label: 'Saturated Fat', unit: 'g' },
+  { key: 'transFat', label: 'Trans Fat', unit: 'g' },
+  { key: 'cholesterol', label: 'Cholesterol', unit: 'mg' },
+  { key: 'sodium', label: 'Sodium', unit: 'mg' },
+  { key: 'potassium', label: 'Potassium', unit: 'mg' },
+  { key: 'calcium', label: 'Calcium', unit: 'mg' },
+  { key: 'iron', label: 'Iron', unit: 'mg' },
+  { key: 'vitaminA', label: 'Vitamin A', unit: 'mcg' },
+  { key: 'vitaminC', label: 'Vitamin C', unit: 'mg' },
+] as const;
+
+type ExtraNutrientKey = typeof EXTRA_NUTRIENT_FIELDS[number]['key'];
+
+/** Build a filtered display list from a camelCase nutrient source. */
+export function buildNutrientDisplayList(source: Partial<Record<ExtraNutrientKey, number>>) {
+  return EXTRA_NUTRIENT_FIELDS
+    .filter(({ key }) => source[key] != null)
+    .map(({ key, label, unit }) => ({ label, value: source[key]!, unit }));
+}
+
 export interface FoodInfoItem {
   id: string;
   name: string;

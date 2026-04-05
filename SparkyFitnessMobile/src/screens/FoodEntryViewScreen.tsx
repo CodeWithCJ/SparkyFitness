@@ -17,6 +17,7 @@ import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import { useProfile } from '../hooks/useProfile';
 import type { UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import type { FoodFormData } from '../components/FoodForm';
+import { toFormString, parseOptional, buildNutrientDisplayList } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
 import type { FoodEntry } from '../types/foodEntries';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -121,17 +122,17 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       protein: parseFloat(adjustedValues.protein) || 0,
       carbs: parseFloat(adjustedValues.carbs) || 0,
       fat: parseFloat(adjustedValues.fat) || 0,
-      fiber: adjustedValues.fiber ? parseFloat(adjustedValues.fiber) : undefined,
-      saturatedFat: adjustedValues.saturatedFat ? parseFloat(adjustedValues.saturatedFat) : undefined,
-      sodium: adjustedValues.sodium ? parseFloat(adjustedValues.sodium) : undefined,
-      sugars: adjustedValues.sugars ? parseFloat(adjustedValues.sugars) : undefined,
-      transFat: adjustedValues.transFat ? parseFloat(adjustedValues.transFat) : undefined,
-      potassium: adjustedValues.potassium ? parseFloat(adjustedValues.potassium) : undefined,
-      calcium: adjustedValues.calcium ? parseFloat(adjustedValues.calcium) : undefined,
-      iron: adjustedValues.iron ? parseFloat(adjustedValues.iron) : undefined,
-      cholesterol: adjustedValues.cholesterol ? parseFloat(adjustedValues.cholesterol) : undefined,
-      vitaminA: adjustedValues.vitaminA ? parseFloat(adjustedValues.vitaminA) : undefined,
-      vitaminC: adjustedValues.vitaminC ? parseFloat(adjustedValues.vitaminC) : undefined,
+      fiber: parseOptional(adjustedValues.fiber),
+      saturatedFat: parseOptional(adjustedValues.saturatedFat),
+      sodium: parseOptional(adjustedValues.sodium),
+      sugars: parseOptional(adjustedValues.sugars),
+      transFat: parseOptional(adjustedValues.transFat),
+      potassium: parseOptional(adjustedValues.potassium),
+      calcium: parseOptional(adjustedValues.calcium),
+      iron: parseOptional(adjustedValues.iron),
+      cholesterol: parseOptional(adjustedValues.cholesterol),
+      vitaminA: parseOptional(adjustedValues.vitaminA),
+      vitaminC: parseOptional(adjustedValues.vitaminC),
     };
   }, [adjustedValues, activeVariant]);
 
@@ -215,17 +216,17 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         protein: String(displayValues.protein),
         carbs: String(displayValues.carbs),
         fat: String(displayValues.fat),
-        fiber: displayValues.fiber != null ? String(displayValues.fiber) : '',
-        saturatedFat: displayValues.saturatedFat != null ? String(displayValues.saturatedFat) : '',
-        sodium: displayValues.sodium != null ? String(displayValues.sodium) : '',
-        sugars: displayValues.sugars != null ? String(displayValues.sugars) : '',
-        transFat: displayValues.transFat != null ? String(displayValues.transFat) : '',
-        potassium: displayValues.potassium != null ? String(displayValues.potassium) : '',
-        calcium: displayValues.calcium != null ? String(displayValues.calcium) : '',
-        iron: displayValues.iron != null ? String(displayValues.iron) : '',
-        cholesterol: displayValues.cholesterol != null ? String(displayValues.cholesterol) : '',
-        vitaminA: displayValues.vitaminA != null ? String(displayValues.vitaminA) : '',
-        vitaminC: displayValues.vitaminC != null ? String(displayValues.vitaminC) : '',
+        fiber: toFormString(displayValues.fiber),
+        saturatedFat: toFormString(displayValues.saturatedFat),
+        sodium: toFormString(displayValues.sodium),
+        sugars: toFormString(displayValues.sugars),
+        transFat: toFormString(displayValues.transFat),
+        potassium: toFormString(displayValues.potassium),
+        calcium: toFormString(displayValues.calcium),
+        iron: toFormString(displayValues.iron),
+        cholesterol: toFormString(displayValues.cholesterol),
+        vitaminA: toFormString(displayValues.vitaminA),
+        vitaminC: toFormString(displayValues.vitaminC),
       },
     });
   };
@@ -340,33 +341,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     ? `1 serving · ${entry.serving_size} ${entry.unit} per serving`
     : `${servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2))} servings · ${entry.serving_size} ${entry.unit} per serving`;
 
-  const otherNutrients = isEditing
-    ? [
-        { label: 'Fiber', value: displayValues.fiber, unit: 'g' },
-        { label: 'Sugars', value: displayValues.sugars, unit: 'g' },
-        { label: 'Saturated Fat', value: displayValues.saturatedFat, unit: 'g' },
-        { label: 'Trans Fat', value: displayValues.transFat, unit: 'g' },
-        { label: 'Cholesterol', value: displayValues.cholesterol, unit: 'mg' },
-        { label: 'Sodium', value: displayValues.sodium, unit: 'mg' },
-        { label: 'Potassium', value: displayValues.potassium, unit: 'mg' },
-        { label: 'Calcium', value: displayValues.calcium, unit: 'mg' },
-        { label: 'Iron', value: displayValues.iron, unit: 'mg' },
-        { label: 'Vitamin A', value: displayValues.vitaminA, unit: 'mcg' },
-        { label: 'Vitamin C', value: displayValues.vitaminC, unit: 'mg' },
-      ].filter((n) => n.value != null)
-    : [
-        { label: 'Fiber', value: entry.dietary_fiber, unit: 'g' },
-        { label: 'Sugars', value: entry.sugars, unit: 'g' },
-        { label: 'Saturated Fat', value: entry.saturated_fat, unit: 'g' },
-        { label: 'Trans Fat', value: entry.trans_fat, unit: 'g' },
-        { label: 'Cholesterol', value: entry.cholesterol, unit: 'mg' },
-        { label: 'Sodium', value: entry.sodium, unit: 'mg' },
-        { label: 'Potassium', value: entry.potassium, unit: 'mg' },
-        { label: 'Calcium', value: entry.calcium, unit: 'mg' },
-        { label: 'Iron', value: entry.iron, unit: 'mg' },
-        { label: 'Vitamin A', value: entry.vitamin_a, unit: 'mcg' },
-        { label: 'Vitamin C', value: entry.vitamin_c, unit: 'mg' },
-      ].filter((n) => n.value != null);
+  const otherNutrients = buildNutrientDisplayList(displayValues);
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>

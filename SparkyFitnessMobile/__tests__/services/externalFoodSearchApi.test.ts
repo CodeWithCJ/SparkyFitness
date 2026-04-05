@@ -1320,6 +1320,7 @@ describe('externalFoodSearchApi', () => {
           vitamin_c: 0,
           serving_size: 30,
           serving_unit: 'g',
+          serving_description: '30 g',
           source: 'openfoodfacts',
           variants: undefined,
         });
@@ -1893,8 +1894,15 @@ describe('externalFoodSearchApi', () => {
         fat: 7,
         fiber: 2,
         saturated_fat: 1,
+        trans_fat: 0,
         sodium: 150,
         sugars: 12,
+        cholesterol: 0,
+        potassium: 95,
+        calcium: 20,
+        iron: 1.8,
+        vitamin_a: null,
+        vitamin_c: null,
       };
       mockFetch.mockResolvedValue({
         ok: true,

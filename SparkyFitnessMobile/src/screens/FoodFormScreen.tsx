@@ -12,10 +12,8 @@ import { useMealTypes } from '../hooks';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { getMealTypeLabel } from '../constants/meals';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../utils/dateUtils';
+import { parseOptional } from '../types/foodInfo';
 import type { RootStackScreenProps } from '../types/navigation';
-
-const parseOptional = (s: string): number | undefined =>
-  s === '' ? undefined : (parseFloat(s) || 0);
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 
