@@ -18,7 +18,11 @@ If a task also changes the frontend, mobile app, or `shared/`, read the relevant
   - `/api/api-docs/swagger`
   - `/api/api-docs/redoc`
   - `/api/api-docs/json`
-- The codebase is mostly JavaScript. Current TypeScript islands are intentionally small and include `routes/v2/`, `schemas/`, and `types/`
+- **IMPORTANT - New Code Standards**:
+  - All new backend files must be written in TypeScript
+  - All new endpoints must include Zod schemas for request/response validation
+  - All new endpoints must include automated tests
+- The codebase is currently transitioning from JavaScript to TypeScript. Existing TypeScript areas include `routes/v2/`, `schemas/`, and `types/`
 
 Startup behavior matters in this package:
 
@@ -116,9 +120,12 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 
 ### JavaScript and TypeScript Mix
 
-- This package is still primarily CommonJS JavaScript.
-- TypeScript is used for type checking only; there is no compile output step in normal development.
-- Current TS files are limited. Match the local convention around the code you are editing instead of converting files just for stylistic consistency.
+- **New Code Requirements**: All new files must be written in TypeScript
+- **Existing Code**: The package is transitioning from JavaScript to TypeScript. Existing JavaScript files may remain, but new functionality should be TypeScript
+- **Validation Requirements**: All new endpoints must include Zod schemas for request/response validation (see `schemas/` directory for examples)
+- **Testing Requirements**: All new endpoints must include automated tests in the `tests/` directory
+- TypeScript is used for type checking only; there is no compile output step in normal development
+- When editing existing JavaScript files, you may maintain them as JavaScript unless specifically converting to TypeScript as part of the task
 
 ## Environment and Secrets
 
