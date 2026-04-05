@@ -56,6 +56,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
       saturatedFat: v.saturated_fat,
       sodium: v.sodium,
       sugars: v.sugars,
+      transFat: v.trans_fat,
+      potassium: v.potassium,
+      calcium: v.calcium,
+      iron: v.iron,
+      cholesterol: v.cholesterol,
+      vitaminA: v.vitamin_a,
+      vitaminC: v.vitamin_c,
     }));
   }, [item.externalVariants]);
 
@@ -74,6 +81,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
           saturatedFat: v.saturated_fat,
           sodium: v.sodium,
           sugars: v.sugars,
+          transFat: v.trans_fat,
+          potassium: v.potassium,
+          calcium: v.calcium,
+          iron: v.iron,
+          cholesterol: v.cholesterol,
+          vitaminA: v.vitamin_a,
+          vitaminC: v.vitamin_c,
         };
       }
     }
@@ -90,8 +104,15 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
       fat: item.fat,
       fiber: item.fiber,
       saturatedFat: item.saturatedFat,
+      transFat: item.transFat,
       sodium: item.sodium,
       sugars: item.sugars,
+      potassium: item.potassium,
+      calcium: item.calcium,
+      iron: item.iron,
+      cholesterol: item.cholesterol,
+      vitaminA: item.vitaminA,
+      vitaminC: item.vitaminC,
     };
   }, [variants, externalVariantOptions, selectedVariantId, item]);
 
@@ -108,6 +129,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
       saturatedFat: adjustedValues.saturatedFat ? parseFloat(adjustedValues.saturatedFat) : undefined,
       sodium: adjustedValues.sodium ? parseFloat(adjustedValues.sodium) : undefined,
       sugars: adjustedValues.sugars ? parseFloat(adjustedValues.sugars) : undefined,
+      transFat: adjustedValues.transFat ? parseFloat(adjustedValues.transFat) : undefined,
+      potassium: adjustedValues.potassium ? parseFloat(adjustedValues.potassium) : undefined,
+      calcium: adjustedValues.calcium ? parseFloat(adjustedValues.calcium) : undefined,
+      iron: adjustedValues.iron ? parseFloat(adjustedValues.iron) : undefined,
+      cholesterol: adjustedValues.cholesterol ? parseFloat(adjustedValues.cholesterol) : undefined,
+      vitaminA: adjustedValues.vitaminA ? parseFloat(adjustedValues.vitaminA) : undefined,
+      vitaminC: adjustedValues.vitaminC ? parseFloat(adjustedValues.vitaminC) : undefined,
     };
   }, [adjustedValues, activeVariant]);
 
@@ -214,6 +242,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
       saturated_fat: source.saturatedFat,
       sodium: source.sodium,
       sugars: source.sugars,
+      trans_fat: source.transFat,
+      potassium: source.potassium,
+      calcium: source.calcium,
+      iron: source.iron,
+      cholesterol: source.cholesterol,
+      vitamin_a: source.vitaminA,
+      vitamin_c: source.vitaminC,
     };
   };
 
@@ -247,6 +282,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
             saturated_fat: displayValues.saturatedFat,
             sodium: displayValues.sodium,
             sugars: displayValues.sugars,
+            trans_fat: displayValues.transFat,
+            potassium: displayValues.potassium,
+            calcium: displayValues.calcium,
+            iron: displayValues.iron,
+            cholesterol: displayValues.cholesterol,
+            vitamin_a: displayValues.vitaminA,
+            vitamin_c: displayValues.vitaminC,
           };
         }
         return { ...base, food_id: item.id, variant_id: selectedVariantId };
@@ -332,6 +374,13 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
                     saturatedFat: displayValues.saturatedFat != null ? String(displayValues.saturatedFat) : '',
                     sodium: displayValues.sodium != null ? String(displayValues.sodium) : '',
                     sugars: displayValues.sugars != null ? String(displayValues.sugars) : '',
+                    transFat: displayValues.transFat != null ? String(displayValues.transFat) : '',
+                    potassium: displayValues.potassium != null ? String(displayValues.potassium) : '',
+                    calcium: displayValues.calcium != null ? String(displayValues.calcium) : '',
+                    iron: displayValues.iron != null ? String(displayValues.iron) : '',
+                    cholesterol: displayValues.cholesterol != null ? String(displayValues.cholesterol) : '',
+                    vitaminA: displayValues.vitaminA != null ? String(displayValues.vitaminA) : '',
+                    vitaminC: displayValues.vitaminC != null ? String(displayValues.vitaminC) : '',
                   },
                 });
               }}
@@ -426,7 +475,14 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
               { label: 'Fiber', value: displayValues.fiber, unit: 'g' },
               { label: 'Sugars', value: displayValues.sugars, unit: 'g' },
               { label: 'Saturated Fat', value: displayValues.saturatedFat, unit: 'g' },
+              { label: 'Trans Fat', value: displayValues.transFat, unit: 'g' },
+              { label: 'Cholesterol', value: displayValues.cholesterol, unit: 'mg' },
               { label: 'Sodium', value: displayValues.sodium, unit: 'mg' },
+              { label: 'Potassium', value: displayValues.potassium, unit: 'mg' },
+              { label: 'Calcium', value: displayValues.calcium, unit: 'mg' },
+              { label: 'Iron', value: displayValues.iron, unit: 'mg' },
+              { label: 'Vitamin A', value: displayValues.vitaminA, unit: 'mcg' },
+              { label: 'Vitamin C', value: displayValues.vitaminC, unit: 'mg' },
             ]
               .filter((n) => n.value != null)
               .map((n, i, arr) => (
