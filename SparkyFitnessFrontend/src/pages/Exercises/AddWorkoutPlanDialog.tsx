@@ -152,7 +152,7 @@ const AddWorkoutPlanDialog = ({
       <TooltipProvider>
         <DialogContent
           requireConfirmation
-          className="sm:max-w-300 max-h-[90vh] overflow-y-auto"
+          className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle>

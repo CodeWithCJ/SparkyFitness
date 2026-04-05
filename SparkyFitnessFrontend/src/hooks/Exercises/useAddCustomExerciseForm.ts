@@ -1,5 +1,5 @@
 // hooks/Exercises/useAddCustomExerciseForm.ts
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -41,6 +41,7 @@ export function useAddCustomExerciseForm(
   const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(
     null
   );
+  const imageUrisRef = useRef<string[]>([]);
 
   const reset = () => {
     setNewExerciseName('');
@@ -126,13 +127,20 @@ export function useAddCustomExerciseForm(
     if (!e.target.files) return;
     const filesArray = Array.from(e.target.files);
     setNewExerciseImages((prev) => [...prev, ...filesArray]);
-    filesArray.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () =>
-        setNewExerciseImageUrls((prev) => [...prev, reader.result as string]);
-      reader.readAsDataURL(file);
-    });
+
+    const newUrls = filesArray.map((file) => URL.createObjectURL(file));
+    imageUrisRef.current.push(...newUrls);
+
+    setNewExerciseImageUrls((prev) => [...prev, ...newUrls]);
   };
+
+  useEffect(() => {
+    const currentUris = imageUrisRef.current;
+
+    return () => {
+      currentUris.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   const handleRemoveImage = (index: number) => {
     setNewExerciseImages((prev) => prev.filter((_, i) => i !== index));

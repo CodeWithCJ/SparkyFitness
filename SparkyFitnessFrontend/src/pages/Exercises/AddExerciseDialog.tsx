@@ -105,7 +105,7 @@ const AddExerciseDialog = ({
         className={
           activeTab === 'import-csv' || activeTab === 'import-history-csv'
             ? 'sm:max-w-[95vw] sm:max-h-[95vh] w-[95vw] h-[95vh] overflow-y-auto'
-            : 'sm:max-w-200 overflow-y-auto max-h-[90vh]'
+            : 'sm:max-w-[800px] overflow-y-auto max-h-[90vh]'
         }
       >
         <DialogHeader>

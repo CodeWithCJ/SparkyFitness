@@ -1,6 +1,5 @@
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,680 +20,43 @@ import {
 } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { Upload, Download, Loader2, Plus, Trash2, Copy } from 'lucide-react';
-import { format, parse } from 'date-fns';
-import type { UserPreferences } from '@/services/preferenceService';
+import { format } from 'date-fns';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useImportExerciseHistoryMutation } from '@/hooks/Exercises/useExercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { HistoryImportEntry } from '@/types/exercises';
-import { getErrorMessage } from '@/utils/api';
-
-// Define the shape of a single row from the CSV
-interface CsvRow {
-  entry_date: string;
-  exercise_name: string;
-  preset_name?: string;
-  entry_notes?: string;
-  calories_burned?: string;
-  distance?: string;
-  avg_heart_rate?: string;
-  set_number?: string;
-  set_type?: string;
-  reps?: string;
-  weight?: string;
-  duration_min?: string; // Changed from duration_sec to duration_min
-  rest_time_sec?: string;
-  set_notes?: string;
-  // New Exercise Definition Fields
-  exercise_category?: string;
-  calories_per_hour?: string;
-  exercise_description?: string;
-  exercise_source?: string;
-  exercise_force?: string;
-  exercise_level?: string;
-  exercise_mechanic?: string;
-  exercise_equipment?: string; // Comma-separated
-  primary_muscles?: string; // Comma-separated
-  secondary_muscles?: string; // Comma-separated
-  instructions?: string; // Newline-separated
-  // Existing activity details
-  activity_field_name?: string;
-  activity_value?: string;
-  [key: string]: string | undefined; // Allow for arbitrary additional columns
-}
-
-// Define the grouped structure for review
-interface GroupedExerciseEntry {
-  id: string; // Client-side unique ID for grouping
-  entry_date: Date;
-  exercise_name: string;
-  preset_name?: string;
-  entry_notes?: string;
-  calories_burned?: number;
-  distance?: number;
-  avg_heart_rate?: number;
-  // Exercise definition fields
-  exercise_category?: string;
-  calories_per_hour?: number;
-  exercise_description?: string;
-  exercise_source?: string;
-  exercise_force?: string;
-  exercise_level?: string;
-  exercise_mechanic?: string;
-  exercise_equipment?: string[];
-  primary_muscles?: string[];
-  secondary_muscles?: string[];
-  instructions?: string[];
-  sets: {
-    set_number: number;
-    set_type?: string;
-    reps?: number;
-    weight?: number;
-    duration_min?: number;
-    rest_time_sec?: number;
-    notes?: string;
-  }[];
-  activity_details: {
-    field_name: string;
-    value: string | number;
-  }[];
-}
+import { useExerciseHistoryImport } from '@/hooks/Exercises/useExerciseHistoryImport';
+import { DATE_FORMATS } from '@/constants/exercises';
 
 interface ExerciseEntryHistoryImportCSVProps {
   onImportComplete: () => void;
 }
 
-const dateFormats = [
-  { value: 'MM/dd/yyyy', label: 'MM/dd/yyyy (e.g., 12/25/2024)' },
-  { value: 'dd/MM/yyyy', label: 'dd/MM/yyyy (e.g., 25/12/2024)' },
-  { value: 'dd-MMM-yyyy', label: 'dd-MMM-yyyy (e.g., 25-Dec-2024)' },
-  { value: 'yyyy-MM-dd', label: 'yyyy-MM-dd (e.g., 2024-12-25)' },
-  { value: 'MMM dd, yyyy', label: 'MMM dd, yyyy (e.g., Dec 25, 2024)' },
-];
-
 const ExerciseEntryHistoryImportCSV = ({
   onImportComplete,
 }: ExerciseEntryHistoryImportCSVProps) => {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [groupedEntries, setGroupedEntries] = useState<GroupedExerciseEntry[]>(
-    []
-  );
-  useState<UserPreferences | null>(null); // State for user preferences
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const {
+    loading,
+    file,
+    groupedEntries,
+    selectedDateFormat,
+    setSelectedDateFormat,
+    dropdownOptions,
+    handleFileChange,
+    handleProcessFile,
+    handleImportSubmit,
+    handleClearData,
+    handleAddNewEntry,
+    handleDownloadTemplate,
+    getSetDisplay,
+    getActivityDetailsDisplay,
+  } = useExerciseHistoryImport(fileInputRef, onImportComplete);
   const { dateFormat, weightUnit, distanceUnit } = usePreferences();
-  const { mutateAsync: importAsCsv } = useImportExerciseHistoryMutation();
-  const [selectedDateFormat, setSelectedDateFormat] =
-    useState<string>(dateFormat);
-  const weightUnitLabel = weightUnit === 'lbs' ? 'lbs' : 'kg';
-
-  const dropdownFields = new Set([
-    'exercise_force',
-    'exercise_level',
-    'exercise_mechanic',
-  ]);
-  const dropdownOptions: Record<string, string[]> = {
-    exercise_level: ['beginner', 'intermediate', 'expert'],
-    exercise_force: ['pull', 'push', 'static'],
-    exercise_mechanic: ['isolation', 'compound'],
-  };
-
-  const requiredHeaders = [
-    'entry_date',
-    'exercise_name',
-    ...Array.from(dropdownFields), // Include dropdown fields in required headers for display purposes
-  ];
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      setFile(event.target.files[0]);
-      setGroupedEntries([]);
-    } else {
-      setFile(null);
-    }
-  };
-
-  const parseCsvFile = (csvFile: File) => {
-    setLoading(true);
-    Papa.parse(csvFile, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rows: CsvRow[] = results.data as CsvRow[];
-
-        if (results.errors.length > 0) {
-          console.error('CSV parsing errors:', results.errors);
-          toast({
-            title: t('common.error', 'Error'),
-            description: t(
-              'exercise.importHistoryCSV.parseError',
-              'Failed to parse CSV: {{error}}',
-              { error: results.errors[0]?.message }
-            ),
-            variant: 'destructive',
-          });
-          setLoading(false);
-          return;
-        }
-
-        // Basic header validation
-        const missingHeaders = requiredHeaders.filter(
-          (header) => !results.meta.fields?.includes(header)
-        );
-        if (missingHeaders.length > 0) {
-          toast({
-            title: t('common.error', 'Error'),
-            description: t(
-              'exercise.importHistoryCSV.missingHeaders',
-              'Missing required headers: {{headers}}',
-              { headers: missingHeaders.join(', ') }
-            ),
-            variant: 'destructive',
-          });
-          setLoading(false);
-          return;
-        }
-
-        groupAndValidateData(rows);
-        setLoading(false);
-      },
-      error: (error: unknown) => {
-        const message = getErrorMessage(error);
-        console.error('CSV parsing error:', error);
-        toast({
-          title: t('common.error', 'Error'),
-          description: t(
-            'exercise.importHistoryCSV.parseError',
-            'Failed to parse CSV: {{error}}',
-            { error: message }
-          ),
-          variant: 'destructive',
-        });
-        setLoading(false);
-      },
-    });
-  };
-
-  const groupAndValidateData = (rows: CsvRow[]) => {
-    const grouped: { [key: string]: GroupedExerciseEntry } = {};
-
-    rows.forEach((row, index) => {
-      const entryDateStr = row.entry_date;
-      const exerciseName = row.exercise_name?.trim();
-      const presetName = row.preset_name?.trim() || 'Individual Entry'; // Default if not provided
-
-      if (!entryDateStr || !exerciseName) {
-        toast({
-          title: t('common.error', 'Error'),
-          description: t(
-            'exercise.importHistoryCSV.validationError',
-            "Row {{rowNum}}: Missing required 'entry_date' or 'exercise_name'. Skipping row.",
-            { rowNum: index + 2 }
-          ),
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      let parsedDate: Date;
-      try {
-        // Attempt to parse date based on selected format
-        // This is a simplified parse, more robust parsing might be needed
-        // For now, assuming date-fns parse function will be used in backend.
-        // Frontend only validates if it's a 'valid' date with the format
-        // More robust date parsing for various formats
-        const parseDateString = (
-          dateString: string,
-          formatString: string
-        ): Date => {
-          // date-fns parse is strict, so we rely on the exact format string.
-          // No need for custom delimiter replacement here, as `parse` expects the format as given.
-          const parsed = parse(dateString, formatString, new Date());
-          return parsed;
-        };
-
-        // Use parseDateString for selectedDateFormat
-        parsedDate = parseDateString(entryDateStr, selectedDateFormat);
-
-        if (isNaN(parsedDate.getTime())) {
-          throw new Error('Invalid date.');
-        }
-      } catch (e) {
-        toast({
-          title: t('common.error', 'Error'),
-          description: t(
-            'exercise.importHistoryCSV.invalidDate',
-            "Row {{rowNum}}: Invalid date format for '{{date}}'. Expected {{format}}.",
-            {
-              rowNum: index + 2,
-              date: entryDateStr,
-              format: selectedDateFormat,
-            }
-          ),
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const key = `${format(parsedDate, 'yyyy-MM-dd')}-${exerciseName}-${presetName}`;
-
-      if (!grouped[key]) {
-        grouped[key] = {
-          id: key, // Use key as a unique ID for the frontend grouping
-          entry_date: parsedDate,
-          exercise_name: exerciseName,
-          preset_name:
-            presetName !== 'Individual Entry' ? presetName : undefined,
-          entry_notes: row.entry_notes?.trim(),
-          calories_burned: row.calories_burned
-            ? parseFloat(row.calories_burned)
-            : undefined,
-          distance: row.distance ? parseFloat(row.distance) : undefined,
-          avg_heart_rate: row.avg_heart_rate
-            ? parseFloat(row.avg_heart_rate)
-            : undefined,
-          // Exercise definition fields
-          exercise_category: row.exercise_category?.trim(),
-          calories_per_hour: row.calories_per_hour
-            ? parseFloat(row.calories_per_hour)
-            : undefined,
-          exercise_description: row.exercise_description?.trim(),
-          exercise_source: row.exercise_source?.trim(),
-          exercise_force: dropdownFields.has('exercise_force')
-            ? dropdownOptions['exercise_force']?.find(
-                (option) => option === row.exercise_force?.trim()?.toLowerCase()
-              ) || row.exercise_force?.trim()
-            : row.exercise_force?.trim(),
-          exercise_level: dropdownFields.has('exercise_level')
-            ? dropdownOptions['exercise_level']?.find(
-                (option) => option === row.exercise_level?.trim()?.toLowerCase()
-              ) || row.exercise_level?.trim()
-            : row.exercise_level?.trim(),
-          exercise_mechanic: dropdownFields.has('exercise_mechanic')
-            ? dropdownOptions['exercise_mechanic']?.find(
-                (option) =>
-                  option === row.exercise_mechanic?.trim()?.toLowerCase()
-              ) || row.exercise_mechanic?.trim()
-            : row.exercise_mechanic?.trim(),
-          exercise_equipment: row.exercise_equipment
-            ? row.exercise_equipment
-                .split(',')
-                .map((s) => s.trim())
-                .filter((s) => s)
-            : undefined,
-          primary_muscles: row.primary_muscles
-            ? row.primary_muscles
-                .split(',')
-                .map((s) => s.trim())
-                .filter((s) => s)
-            : undefined,
-          secondary_muscles: row.secondary_muscles
-            ? row.secondary_muscles
-                .split(',')
-                .map((s) => s.trim())
-                .filter((s) => s)
-            : undefined,
-          instructions: row.instructions
-            ? row.instructions
-                .split('\n')
-                .map((s) => s.trim())
-                .filter((s) => s)
-            : undefined,
-          sets: [],
-          activity_details: [],
-        };
-      }
-
-      // Process set data
-      if (row.set_number) {
-        grouped[key].sets.push({
-          set_number: parseInt(row.set_number),
-          set_type: row.set_type?.trim(),
-          reps: row.reps ? parseInt(row.reps) : undefined,
-          weight: row.weight ? parseFloat(row.weight) : undefined,
-          duration_min: row.duration_min
-            ? parseInt(row.duration_min)
-            : undefined,
-          rest_time_sec: row.rest_time_sec
-            ? parseInt(row.rest_time_sec)
-            : undefined,
-          notes: row.set_notes?.trim(),
-        });
-      }
-
-      // Process activity details
-      if (row.activity_field_name && row.activity_value) {
-        grouped[key].activity_details.push({
-          field_name: row.activity_field_name.trim(),
-          value: isNaN(parseFloat(row.activity_value))
-            ? row.activity_value.trim()
-            : parseFloat(row.activity_value),
-        });
-      }
-    });
-
-    // Sort sets within each grouped entry by set_number
-    Object.values(grouped).forEach((entry) => {
-      entry.sets.sort((a, b) => (a.set_number || 0) - (b.set_number || 0));
-    });
-
-    setGroupedEntries(Object.values(grouped));
-  };
-
-  const handleProcessFile = () => {
-    if (file) {
-      parseCsvFile(file);
-    } else {
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'exercise.importHistoryCSV.noFile',
-          'Please select a CSV file to import.'
-        ),
-        variant: 'destructive',
-      });
-    }
-  };
-
-  interface FailedEntry {
-    entry: { exercise_name: string };
-    reason: string;
-  }
-
-  interface ImportError {
-    details?: {
-      failedEntries?: FailedEntry[];
-    };
-  }
-  const handleImportSubmit = async () => {
-    if (groupedEntries.length === 0) {
-      toast({
-        title: t('common.error', 'Error'),
-        description: t(
-          'exercise.importHistoryCSV.noDataToImport',
-          'No valid data to import.'
-        ),
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const entries: HistoryImportEntry[] = groupedEntries.map((entry) => ({
-        ...entry,
-        entry_date: format(entry.entry_date, 'yyyy-MM-dd'),
-      }));
-
-      await importAsCsv(entries);
-      onImportComplete();
-    } catch (error: unknown) {
-      let errorMessage = t('exercise.importHistoryCSV.importError');
-      const importError = error as ImportError;
-      if (
-        importError &&
-        typeof importError === 'object' &&
-        importError.details &&
-        Array.isArray(importError.details.failedEntries)
-      ) {
-        const detailsString = importError.details.failedEntries
-          .map((e) => `${e.entry.exercise_name} - ${e.reason}`)
-          .join(', ');
-
-        errorMessage = t('exercise.importHistoryCSV.partialImportError', {
-          details: detailsString,
-        });
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
-      toast({
-        title: t('common.error', 'Error'),
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleClearData = () => {
-    setFile(null);
-    setGroupedEntries([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    toast({
-      title: t('common.success', 'Success'),
-      description: t(
-        'exercise.importHistoryCSV.dataCleared',
-        'All parsed data cleared.'
-      ),
-    });
-  };
-
-  const handleAddNewEntry = () => {
-    const newEntryId = `manual_entry_${Date.now()}`;
-    const newEmptyEntry: GroupedExerciseEntry = {
-      id: newEntryId,
-      entry_date: new Date(), // Default to current date
-      exercise_name: '',
-      sets: [],
-      activity_details: [],
-    };
-    setGroupedEntries((prev) => [...prev, newEmptyEntry]);
-    toast({
-      title: t('common.success', 'Success'),
-      description: t(
-        'exercise.importHistoryCSV.emptyEntryAdded',
-        'New empty entry added. Please fill in the details.'
-      ),
-    });
-  };
-
-  const handleDownloadTemplate = () => {
-    const headers = [
-      'entry_date',
-      'exercise_name',
-      'preset_name',
-      'entry_notes',
-      'calories_burned',
-      'distance',
-      'avg_heart_rate',
-      'set_number',
-      'set_type',
-      'reps',
-      'weight',
-      'duration_min',
-      'rest_time_sec',
-      'set_notes',
-      // Exercise definition fields
-      'exercise_category',
-      'calories_per_hour',
-      'exercise_description',
-      'exercise_source',
-      'exercise_force',
-      'exercise_level',
-      'exercise_mechanic',
-      'exercise_equipment',
-      'primary_muscles',
-      'secondary_muscles',
-      'instructions',
-      // Activity details fields
-      'activity_field_name',
-      'activity_value',
-    ];
-    const dummyData = [
-      {
-        entry_date: format(new Date(), 'MM/dd/yyyy'),
-        exercise_name: 'Barbell Bench Press',
-        preset_name: 'Upper Body Strength',
-        entry_notes: 'Feeling strong today',
-        calories_burned: '300',
-        distance: '',
-        avg_heart_rate: '',
-        set_number: '1',
-        set_type: 'Working Set',
-        reps: '10',
-        weight: '60.0',
-        duration_min: '1',
-        rest_time_sec: '90',
-        set_notes: 'Controlled movement',
-        // Exercise definition fields for new exercise (if 'Barbell Bench Press' doesn't exist)
-        exercise_category: 'strength',
-        calories_per_hour: '400',
-        exercise_description:
-          'A compound exercise for chest, shoulders, and triceps.',
-        exercise_source: 'CSV_Import',
-        exercise_force: 'push',
-        exercise_level: 'intermediate',
-        exercise_mechanic: 'compound',
-        exercise_equipment: 'barbell,bench',
-        primary_muscles: 'chest,triceps',
-        secondary_muscles: 'shoulders',
-        instructions: 'Lie on bench.\nUnrack bar.\nLower to chest.\nPress up.',
-        activity_field_name: 'Mood',
-        activity_value: 'Energized',
-      },
-      {
-        entry_date: format(new Date(), 'MM/dd/yyyy'),
-        exercise_name: 'Barbell Bench Press',
-        preset_name: 'Upper Body Strength',
-        entry_notes: '',
-        calories_burned: '',
-        distance: '',
-        avg_heart_rate: '',
-        set_number: '2',
-        set_type: 'Working Set',
-        reps: '8',
-        weight: '70.0',
-        duration_min: '1',
-        rest_time_sec: '120',
-        set_notes: 'Push harder',
-        // No need for exercise definition fields on subsequent rows for the same exercise group
-        activity_field_name: 'RPE',
-        activity_value: '8',
-      },
-      {
-        entry_date: format(new Date(), 'MM/dd/yyyy'),
-        exercise_name: 'Deadlift',
-        preset_name: 'Lower Body Strength',
-        entry_notes: 'New PR attempt',
-        calories_burned: '400',
-        distance: '',
-        avg_heart_rate: '150',
-        set_number: '1',
-        set_type: 'Warmup',
-        reps: '5',
-        weight: '80.0',
-        duration_min: '1',
-        rest_time_sec: '60',
-        set_notes: '',
-        // Exercise definition fields for new exercise
-        exercise_category: 'strength',
-        calories_per_hour: '500',
-        exercise_description: 'A full-body strength exercise.',
-        exercise_source: 'CSV_Import',
-        exercise_force: 'pull',
-        exercise_level: 'expert',
-        exercise_mechanic: 'compound',
-        exercise_equipment: 'barbell',
-        primary_muscles: 'lower back,glutes,hamstrings',
-        secondary_muscles: 'quadriceps,traps',
-        instructions: 'Stand over bar.\nHinge at hips.\nLift with legs.',
-        activity_field_name: '',
-        activity_value: '',
-      },
-      {
-        entry_date: format(new Date(), 'MM/dd/yyyy'),
-        exercise_name: 'Deadlift',
-        preset_name: 'Lower Body Strength',
-        entry_notes: '',
-        calories_burned: '',
-        distance: '',
-        avg_heart_rate: '',
-        set_number: '2',
-        set_type: 'Working Set',
-        reps: '3',
-        weight: '120.0',
-        duration_min: '1',
-        rest_time_sec: '180',
-        set_notes: 'Almost there',
-        activity_field_name: 'Form Rating',
-        activity_value: 'Good',
-      },
-      {
-        entry_date: format(new Date(), 'MM/dd/yyyy'),
-        exercise_name: 'Outdoor Run',
-        preset_name: '',
-        entry_notes: 'Enjoyed the fresh air',
-        calories_burned: '250',
-        distance: '5.0',
-        avg_heart_rate: '160',
-        set_number: '',
-        set_type: '',
-        reps: '',
-        weight: '',
-        duration_min: '30',
-        rest_time_sec: '',
-        set_notes: '',
-        // Exercise definition fields for new exercise
-        exercise_category: 'cardio',
-        calories_per_hour: '350',
-        exercise_description: 'Running outdoors for cardiovascular fitness.',
-        exercise_source: 'CSV_Import',
-        exercise_force: '',
-        exercise_level: 'beginner',
-        exercise_mechanic: '',
-        exercise_equipment: '',
-        primary_muscles: 'quadriceps,hamstrings,calves',
-        secondary_muscles: '',
-        instructions: 'Run at a steady pace.',
-        activity_field_name: 'Route',
-        activity_value: 'Park Loop',
-      },
-    ];
-    const csv = Papa.unparse({
-      fields: headers,
-      data: dummyData,
-    });
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'historical_exercise_entries_template.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  const getSetDisplay = (sets: GroupedExerciseEntry['sets']) => {
-    return sets
-      .map((set) => {
-        const repsDisplay = set.reps ?? '-';
-        const weightDisplay =
-          set.weight != null ? `${set.weight}${weightUnitLabel}` : '-';
-        const setTypeDisplay = set.set_type || '-';
-        return `${set.set_number}: ${repsDisplay} reps @ ${weightDisplay} (${setTypeDisplay})`;
-      })
-      .join('; ');
-  };
-
-  const getActivityDetailsDisplay = (
-    details: GroupedExerciseEntry['activity_details']
-  ) => {
-    return details
-      .map((detail) => `${detail.field_name}: ${detail.value}`)
-      .join('; ');
-  };
 
   return (
     <Card>
@@ -801,15 +163,14 @@ const ExerciseEntryHistoryImportCSV = ({
               accept=".csv"
               ref={fileInputRef}
               onChange={handleFileChange}
-              className="flex-grow"
+              className="grow"
             />
             <Select
               onValueChange={setSelectedDateFormat}
               value={selectedDateFormat}
             >
-              {' '}
               {/* Use value instead of defaultValue for controlled component */}
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-52">
                 <SelectValue
                   placeholder={t(
                     'exercise.importHistoryCSV.selectDateFormat',
@@ -818,7 +179,7 @@ const ExerciseEntryHistoryImportCSV = ({
                 />
               </SelectTrigger>
               <SelectContent>
-                {dateFormats.map((formatOption) => (
+                {DATE_FORMATS.map((formatOption) => (
                   <SelectItem
                     key={formatOption.value}
                     value={formatOption.value}
@@ -833,7 +194,7 @@ const ExerciseEntryHistoryImportCSV = ({
             <Button
               onClick={handleProcessFile}
               disabled={loading || !file}
-              className="flex-grow"
+              className="grow"
             >
               {loading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -845,7 +206,7 @@ const ExerciseEntryHistoryImportCSV = ({
             <Button
               onClick={handleDownloadTemplate}
               variant="outline"
-              className="flex-grow"
+              className="grow"
             >
               <Download className="mr-2 h-4 w-4" />
               {t(
@@ -858,7 +219,7 @@ const ExerciseEntryHistoryImportCSV = ({
                 type="button"
                 onClick={handleClearData}
                 variant="destructive"
-                className="flex-grow"
+                className="grow"
               >
                 <Trash2 size={16} className="mr-2" />
                 {t('exercise.importHistoryCSV.clearData', 'Clear Data')}
@@ -868,7 +229,7 @@ const ExerciseEntryHistoryImportCSV = ({
               type="button"
               onClick={handleAddNewEntry}
               variant="outline"
-              className="flex-grow"
+              className="grow"
             >
               <Plus size={16} className="mr-2" />
               {t('exercise.importHistoryCSV.addEmptyEntry', 'Add Empty Entry')}
