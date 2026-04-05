@@ -49,6 +49,13 @@ const createGoalPresetHandler: RequestHandler = async (req, res, next) => {
     );
     res.status(201).json(newPreset);
   } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.message === 'A goal preset with this name already exists.'
+    ) {
+      res.status(409).json({ error: error.message });
+      return;
+    }
     next(error);
   }
 };

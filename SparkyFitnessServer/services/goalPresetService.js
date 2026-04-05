@@ -59,6 +59,9 @@ async function createGoalPreset(userId, presetData) {
     const newPreset = await goalPresetRepository.createGoalPreset(dbPresetData);
     return newPreset;
   } catch (error) {
+    if (error.code === '23505') {
+      throw new Error('A goal preset with this name already exists.');
+    }
     log('error', `Error creating goal preset for user ${userId}:`, error);
     throw new Error('Failed to create goal preset.');
   }
