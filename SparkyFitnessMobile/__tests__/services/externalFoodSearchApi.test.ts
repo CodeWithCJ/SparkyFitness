@@ -14,6 +14,10 @@ import {
   transformMealieItem,
   searchMealie,
   scanNutritionLabel,
+  transformNormalizedFood,
+  searchExternalFoods,
+  fetchExternalFoodDetails,
+  lookupBarcodeV2,
 } from '../../src/services/api/externalFoodSearchApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 
@@ -1251,6 +1255,588 @@ describe('externalFoodSearchApi', () => {
         });
 
         await expect(searchMealie('soup', 'provider-mealie')).rejects.toThrow('Server error: 500');
+      });
+    });
+  });
+
+  describe('V2 API', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key',
+    };
+
+    describe('transformNormalizedFood', () => {
+      test('flattens default_variant to top-level fields', () => {
+        const food = {
+          id: 'internal-1',
+          name: 'Chicken Breast',
+          brand: 'Farm Fresh',
+          provider_external_id: 'ext-123',
+          provider_type: 'openfoodfacts',
+          is_custom: false,
+          default_variant: {
+            serving_size: 30,
+            serving_unit: 'g',
+            calories: 50,
+            protein: 9,
+            carbs: 0,
+            fat: 1,
+            saturated_fat: 0.3,
+            sodium: 25,
+            dietary_fiber: 0,
+            sugars: 0,
+            trans_fat: 0.1,
+            cholesterol: 30,
+            potassium: 150,
+            calcium: 5,
+            iron: 0.4,
+            vitamin_a: 2,
+            vitamin_c: 0,
+            is_default: true,
+          },
+        };
+
+        const result = transformNormalizedFood(food, 'openfoodfacts');
+
+        expect(result).toEqual({
+          id: 'ext-123',
+          name: 'Chicken Breast',
+          brand: 'Farm Fresh',
+          calories: 50,
+          protein: 9,
+          carbs: 0,
+          fat: 1,
+          saturated_fat: 0.3,
+          sodium: 25,
+          fiber: 0,
+          sugars: 0,
+          trans_fat: 0.1,
+          cholesterol: 30,
+          potassium: 150,
+          calcium: 5,
+          iron: 0.4,
+          vitamin_a: 2,
+          vitamin_c: 0,
+          serving_size: 30,
+          serving_unit: 'g',
+          source: 'openfoodfacts',
+          variants: undefined,
+        });
+      });
+
+      test('maps dietary_fiber to fiber', () => {
+        const food = {
+          name: 'Oats',
+          brand: null,
+          is_custom: false,
+          default_variant: {
+            serving_size: 40,
+            serving_unit: 'g',
+            calories: 150,
+            protein: 5,
+            carbs: 27,
+            fat: 3,
+            dietary_fiber: 4,
+            is_default: true,
+          },
+        };
+
+        const result = transformNormalizedFood(food, 'usda');
+
+        expect(result.fiber).toBe(4);
+      });
+
+      test('prefers provider_external_id over id for ExternalFoodItem.id', () => {
+        const food = {
+          id: 'internal-id',
+          name: 'Test',
+          brand: null,
+          provider_external_id: 'ext-id',
+          is_custom: false,
+          default_variant: {
+            serving_size: 100, serving_unit: 'g', calories: 100,
+            protein: 5, carbs: 10, fat: 3, is_default: true,
+          },
+        };
+
+        expect(transformNormalizedFood(food, 'usda').id).toBe('ext-id');
+      });
+
+      test('falls back to food.id when provider_external_id is absent', () => {
+        const food = {
+          id: 'internal-id',
+          name: 'Test',
+          brand: null,
+          is_custom: false,
+          default_variant: {
+            serving_size: 100, serving_unit: 'g', calories: 100,
+            protein: 5, carbs: 10, fat: 3, is_default: true,
+          },
+        };
+
+        expect(transformNormalizedFood(food, 'usda').id).toBe('internal-id');
+      });
+
+      test('falls back to empty string when both id and provider_external_id are absent', () => {
+        const food = {
+          name: 'Test',
+          brand: null,
+          is_custom: false,
+          default_variant: {
+            serving_size: 100, serving_unit: 'g', calories: 100,
+            protein: 5, carbs: 10, fat: 3, is_default: true,
+          },
+        };
+
+        expect(transformNormalizedFood(food, 'usda').id).toBe('');
+      });
+
+      test('prefers provider_type over providerType argument for source', () => {
+        const food = {
+          name: 'Test',
+          brand: null,
+          provider_type: 'openfoodfacts',
+          is_custom: false,
+          default_variant: {
+            serving_size: 100, serving_unit: 'g', calories: 100,
+            protein: 5, carbs: 10, fat: 3, is_default: true,
+          },
+        };
+
+        expect(transformNormalizedFood(food, 'fallback').source).toBe('openfoodfacts');
+      });
+
+      test('falls back to providerType argument when provider_type is absent', () => {
+        const food = {
+          name: 'Test',
+          brand: null,
+          is_custom: false,
+          default_variant: {
+            serving_size: 100, serving_unit: 'g', calories: 100,
+            protein: 5, carbs: 10, fat: 3, is_default: true,
+          },
+        };
+
+        expect(transformNormalizedFood(food, 'mealie').source).toBe('mealie');
+      });
+
+      test('maps variants with serving_description', () => {
+        const food = {
+          name: 'Pasta',
+          brand: null,
+          provider_external_id: 'ext-1',
+          is_custom: false,
+          default_variant: {
+            serving_size: 100, serving_unit: 'g', calories: 150,
+            protein: 5, carbs: 30, fat: 1, is_default: true,
+          },
+          variants: [
+            {
+              serving_size: 200, serving_unit: 'g', calories: 300,
+              protein: 10, carbs: 60, fat: 2, dietary_fiber: 3,
+              trans_fat: 0, is_default: false,
+            },
+          ],
+        };
+
+        const result = transformNormalizedFood(food, 'fatsecret');
+
+        // default_variant comes first, then the extra variant
+        expect(result.variants).toHaveLength(2);
+        expect(result.variants![0].serving_description).toBe('100 g');
+        expect(result.variants![0].calories).toBe(150);
+        expect(result.variants![1].serving_description).toBe('200 g');
+        expect(result.variants![1].fiber).toBe(3);
+        expect(result.variants![1].trans_fat).toBe(0);
+      });
+
+      test('puts default_variant first in variants array', () => {
+        const defaultVariant = {
+          serving_size: 140, serving_unit: 'g', calories: 220,
+          protein: 8, carbs: 43, fat: 1, is_default: true,
+        };
+        const otherVariant = {
+          serving_size: 56, serving_unit: 'g', calories: 200,
+          protein: 7, carbs: 42, fat: 1, is_default: false,
+        };
+        const food = {
+          name: 'Pasta',
+          brand: null,
+          provider_external_id: 'ext-1',
+          is_custom: false,
+          default_variant: defaultVariant,
+          // Server sends default later in the array
+          variants: [otherVariant, defaultVariant],
+        };
+
+        const result = transformNormalizedFood(food, 'fatsecret');
+
+        // default_variant must be ext-0 for FoodEntryAddScreen
+        expect(result.variants![0].serving_size).toBe(140);
+        expect(result.variants![0].calories).toBe(220);
+        expect(result.variants![1].serving_size).toBe(56);
+      });
+
+      test('includes only default_variant when variants array is empty', () => {
+        const food = {
+          name: 'Test',
+          brand: null,
+          is_custom: false,
+          default_variant: {
+            serving_size: 100, serving_unit: 'g', calories: 100,
+            protein: 5, carbs: 10, fat: 3, is_default: true,
+          },
+          variants: [],
+        };
+
+        const result = transformNormalizedFood(food, 'usda');
+        expect(result.variants).toHaveLength(1);
+        expect(result.variants![0].serving_size).toBe(100);
+      });
+
+      test('omits variants when variants is undefined', () => {
+        const food = {
+          name: 'Test',
+          brand: null,
+          is_custom: false,
+          default_variant: {
+            serving_size: 100, serving_unit: 'g', calories: 100,
+            protein: 5, carbs: 10, fat: 3, is_default: true,
+          },
+        };
+
+        expect(transformNormalizedFood(food, 'usda').variants).toBeUndefined();
+      });
+
+      test('handles optional nutrient fields being undefined', () => {
+        const food = {
+          name: 'Basic Food',
+          brand: null,
+          provider_external_id: 'basic-1',
+          is_custom: false,
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 200,
+            protein: 10,
+            carbs: 25,
+            fat: 8,
+            is_default: true,
+          },
+        };
+
+        const result = transformNormalizedFood(food, 'usda');
+
+        expect(result.saturated_fat).toBeUndefined();
+        expect(result.sodium).toBeUndefined();
+        expect(result.fiber).toBeUndefined();
+        expect(result.sugars).toBeUndefined();
+        expect(result.trans_fat).toBeUndefined();
+        expect(result.cholesterol).toBeUndefined();
+        expect(result.potassium).toBeUndefined();
+        expect(result.calcium).toBeUndefined();
+        expect(result.iron).toBeUndefined();
+        expect(result.vitamin_a).toBeUndefined();
+        expect(result.vitamin_c).toBeUndefined();
+      });
+    });
+
+    describe('searchExternalFoods', () => {
+      test('calls correct v2 endpoint with providerType and query params', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({
+            foods: [],
+            pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
+          }),
+        });
+
+        await searchExternalFoods('openfoodfacts', 'chicken', 2);
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/v2/foods/search/openfoodfacts?query=chicken&page=2'),
+          expect.anything(),
+        );
+      });
+
+      test('includes providerId in query params when provided', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({
+            foods: [],
+            pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
+          }),
+        });
+
+        await searchExternalFoods('usda', 'rice', 1, 'provider-abc');
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('providerId=provider-abc'),
+          expect.anything(),
+        );
+      });
+
+      test('omits providerId when undefined', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({
+            foods: [],
+            pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
+          }),
+        });
+
+        await searchExternalFoods('openfoodfacts', 'rice', 1);
+
+        const url = mockFetch.mock.calls[0][0] as string;
+        expect(url).not.toContain('providerId');
+      });
+
+      test('transforms response foods through transformNormalizedFood', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({
+            foods: [{
+              name: 'Rice',
+              brand: null,
+              provider_external_id: 'rice-1',
+              provider_type: 'usda',
+              is_custom: false,
+              default_variant: {
+                serving_size: 45,
+                serving_unit: 'g',
+                calories: 160,
+                protein: 3,
+                carbs: 36,
+                fat: 0,
+                dietary_fiber: 1,
+                is_default: true,
+              },
+            }],
+            pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+          }),
+        });
+
+        const result = await searchExternalFoods('usda', 'rice', 1, 'prov-1');
+
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].id).toBe('rice-1');
+        expect(result.items[0].source).toBe('usda');
+        expect(result.items[0].fiber).toBe(1);
+        expect(result.items[0].serving_size).toBe(45);
+      });
+    });
+
+    describe('fetchExternalFoodDetails', () => {
+      test('calls correct v2 endpoint', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({
+            name: 'Pasta',
+            brand: null,
+            provider_external_id: '42',
+            is_custom: false,
+            default_variant: {
+              serving_size: 140,
+              serving_unit: 'g',
+              calories: 220,
+              protein: 8,
+              carbs: 43,
+              fat: 1,
+              is_default: true,
+            },
+          }),
+        });
+
+        await fetchExternalFoodDetails('fatsecret', '42', 'prov-fs');
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/v2/foods/details/fatsecret/42?providerId=prov-fs'),
+          expect.anything(),
+        );
+      });
+
+      test('omits query string when no providerId', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({
+            name: 'Banana',
+            brand: null,
+            provider_external_id: 'abc',
+            is_custom: false,
+            default_variant: {
+              serving_size: 118,
+              serving_unit: 'g',
+              calories: 105,
+              protein: 1,
+              carbs: 27,
+              fat: 0,
+              is_default: true,
+            },
+          }),
+        });
+
+        await fetchExternalFoodDetails('openfoodfacts', 'abc');
+
+        const url = mockFetch.mock.calls[0][0] as string;
+        expect(url).toContain('/api/v2/foods/details/openfoodfacts/abc');
+        expect(url).not.toContain('?');
+      });
+
+      test('returns transformed ExternalFoodItem', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({
+            name: 'Pasta',
+            brand: 'Barilla',
+            provider_external_id: '42',
+            provider_type: 'fatsecret',
+            is_custom: false,
+            default_variant: {
+              serving_size: 140,
+              serving_unit: 'g',
+              calories: 220,
+              protein: 8,
+              carbs: 43,
+              fat: 1,
+              trans_fat: 0,
+              cholesterol: 0,
+              is_default: true,
+            },
+            variants: [
+              {
+                serving_size: 56,
+                serving_unit: 'g',
+                calories: 200,
+                protein: 7,
+                carbs: 42,
+                fat: 1,
+                is_default: false,
+              },
+            ],
+          }),
+        });
+
+        const result = await fetchExternalFoodDetails('fatsecret', '42', 'prov-fs');
+
+        expect(result.id).toBe('42');
+        expect(result.name).toBe('Pasta');
+        expect(result.brand).toBe('Barilla');
+        expect(result.source).toBe('fatsecret');
+        expect(result.trans_fat).toBe(0);
+        // default_variant (140g) first, then the 56g variant
+        expect(result.variants).toHaveLength(2);
+        expect(result.variants![0].serving_description).toBe('140 g');
+        expect(result.variants![1].serving_description).toBe('56 g');
+      });
+    });
+
+    describe('lookupBarcodeV2', () => {
+      test('calls correct v2 endpoint', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ source: 'not_found', food: null }),
+        });
+
+        await lookupBarcodeV2('1234567890');
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/v2/foods/barcode/1234567890'),
+          expect.anything(),
+        );
+      });
+
+      test('returns not_found when food is null', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ source: 'not_found', food: null }),
+        });
+
+        const result = await lookupBarcodeV2('0000000000');
+
+        expect(result.source).toBe('not_found');
+        expect(result.food).toBeNull();
+      });
+
+      test('returns local source with id', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({
+            source: 'local',
+            food: {
+              id: 'food-42',
+              name: 'Local Food',
+              brand: 'Brand X',
+              barcode: '1234567890',
+              is_custom: false,
+              default_variant: {
+                serving_size: 100,
+                serving_unit: 'g',
+                calories: 250,
+                protein: 12,
+                carbs: 30,
+                fat: 8,
+                trans_fat: 0.5,
+                cholesterol: 20,
+                is_default: true,
+              },
+            },
+          }),
+        });
+
+        const result = await lookupBarcodeV2('1234567890');
+
+        expect(result.source).toBe('local');
+        expect(result.food!.id).toBe('food-42');
+        expect(result.food!.name).toBe('Local Food');
+        expect(result.food!.default_variant.trans_fat).toBe(0.5);
+      });
+
+      test('returns external source for non-local match', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({
+            source: 'openfoodfacts',
+            food: {
+              name: 'External Food',
+              brand: null,
+              barcode: '9999999999',
+              provider_external_id: 'off-abc',
+              provider_type: 'openfoodfacts',
+              is_custom: false,
+              default_variant: {
+                serving_size: 30,
+                serving_unit: 'g',
+                calories: 120,
+                protein: 3,
+                carbs: 20,
+                fat: 4,
+                potassium: 80,
+                calcium: 15,
+                is_default: true,
+              },
+            },
+          }),
+        });
+
+        const result = await lookupBarcodeV2('9999999999');
+
+        expect(result.source).toBe('openfoodfacts');
+        expect(result.food!.name).toBe('External Food');
+        expect(result.food!.provider_external_id).toBe('off-abc');
+        expect(result.food!.default_variant.potassium).toBe(80);
+        expect(result.food!.default_variant.calcium).toBe(15);
       });
     });
   });

@@ -10,7 +10,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
 import { useCSSVariable } from 'uniwind';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
-import { lookupBarcode, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
+import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
 
 type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 
@@ -44,7 +44,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
 
   const performBarcodeLookup = async (barcode: string) => {
     try {
-      const result = await lookupBarcode(barcode);
+      const result = await lookupBarcodeV2(barcode);
 
       if (!result.food) {
         setNotFoundBarcode(barcode);
@@ -64,6 +64,13 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           saturatedFat: dv.saturated_fat,
           sodium: dv.sodium,
           sugars: dv.sugars,
+          transFat: dv.trans_fat,
+          potassium: dv.potassium,
+          calcium: dv.calcium,
+          iron: dv.iron,
+          cholesterol: dv.cholesterol,
+          vitaminA: dv.vitamin_a,
+          vitaminC: dv.vitamin_c,
           variantId: dv.id,
           source: 'local',
           originalItem: result.food,
@@ -88,6 +95,13 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             saturatedFat: dv.saturated_fat != null ? String(dv.saturated_fat) : '',
             sodium: dv.sodium != null ? String(dv.sodium) : '',
             sugars: dv.sugars != null ? String(dv.sugars) : '',
+            transFat: dv.trans_fat != null ? String(dv.trans_fat) : '',
+            potassium: dv.potassium != null ? String(dv.potassium) : '',
+            cholesterol: dv.cholesterol != null ? String(dv.cholesterol) : '',
+            calcium: dv.calcium != null ? String(dv.calcium) : '',
+            iron: dv.iron != null ? String(dv.iron) : '',
+            vitaminA: dv.vitamin_a != null ? String(dv.vitamin_a) : '',
+            vitaminC: dv.vitamin_c != null ? String(dv.vitamin_c) : '',
           },
         });
       }

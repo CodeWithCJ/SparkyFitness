@@ -63,6 +63,13 @@ export interface BarcodeFood {
     sodium?: number;
     dietary_fiber?: number;
     sugars?: number;
+    trans_fat?: number;
+    cholesterol?: number;
+    potassium?: number;
+    calcium?: number;
+    iron?: number;
+    vitamin_a?: number;
+    vitamin_c?: number;
   };
 }
 
@@ -408,6 +415,181 @@ export async function searchMealie(query: string, providerId: string, page = 1):
       .map(transformMealieItem),
     pagination: response.pagination,
   };
+}
+
+// --- V2 API (server-normalized) ---
+
+interface NormalizedFoodVariant {
+  id?: string;
+  serving_size: number;
+  serving_unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  saturated_fat?: number;
+  polyunsaturated_fat?: number;
+  monounsaturated_fat?: number;
+  trans_fat?: number;
+  cholesterol?: number;
+  sodium?: number;
+  potassium?: number;
+  dietary_fiber?: number;
+  sugars?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  calcium?: number;
+  iron?: number;
+  is_default: boolean;
+  glycemic_index?: string;
+  custom_nutrients?: Record<string, string | number>;
+}
+
+interface NormalizedFood {
+  id?: string;
+  name: string;
+  brand: string | null;
+  barcode?: string;
+  provider_external_id?: string;
+  provider_type?: string;
+  is_custom: boolean;
+  default_variant: NormalizedFoodVariant;
+  variants?: NormalizedFoodVariant[];
+}
+
+export function transformNormalizedFood(food: NormalizedFood, providerType: string): ExternalFoodItem {
+  const dv = food.default_variant;
+
+  const mapVariant = (v: NormalizedFoodVariant): ExternalFoodVariant => ({
+    serving_size: v.serving_size,
+    serving_unit: v.serving_unit,
+    serving_description: `${v.serving_size} ${v.serving_unit}`,
+    calories: v.calories,
+    protein: v.protein,
+    carbs: v.carbs,
+    fat: v.fat,
+    saturated_fat: v.saturated_fat,
+    sodium: v.sodium,
+    fiber: v.dietary_fiber,
+    sugars: v.sugars,
+    trans_fat: v.trans_fat,
+    cholesterol: v.cholesterol,
+    potassium: v.potassium,
+    calcium: v.calcium,
+    iron: v.iron,
+    vitamin_a: v.vitamin_a,
+    vitamin_c: v.vitamin_c,
+  });
+
+  // FoodEntryAddScreen selects ext-0 (first variant) by default, so the
+  // default variant must come first to keep search/add calories consistent.
+  const defaultFirst = food.variants
+    ? [dv, ...food.variants.filter((v) => v !== dv)]
+    : undefined;
+  const variants = defaultFirst?.map(mapVariant);
+
+  return {
+    id: food.provider_external_id ?? food.id ?? '',
+    name: food.name,
+    brand: food.brand,
+    calories: dv.calories,
+    protein: dv.protein,
+    carbs: dv.carbs,
+    fat: dv.fat,
+    saturated_fat: dv.saturated_fat,
+    sodium: dv.sodium,
+    fiber: dv.dietary_fiber,
+    sugars: dv.sugars,
+    trans_fat: dv.trans_fat,
+    cholesterol: dv.cholesterol,
+    potassium: dv.potassium,
+    calcium: dv.calcium,
+    iron: dv.iron,
+    vitamin_a: dv.vitamin_a,
+    vitamin_c: dv.vitamin_c,
+    serving_size: dv.serving_size,
+    serving_unit: dv.serving_unit,
+    source: food.provider_type ?? providerType,
+    variants: variants && variants.length > 0 ? variants : undefined,
+  };
+}
+
+interface V2SearchResponse {
+  foods: NormalizedFood[];
+  pagination: ExternalFoodSearchPagination;
+}
+
+export async function searchExternalFoods(
+  providerType: string,
+  query: string,
+  page: number,
+  providerId?: string,
+): Promise<PaginatedExternalFoodSearchResult> {
+  const params = new URLSearchParams({ query, page: String(page) });
+  if (providerId) params.set('providerId', providerId);
+
+  const response = await apiFetch<V2SearchResponse>({
+    endpoint: `/api/v2/foods/search/${providerType}?${params.toString()}`,
+    serviceName: 'External Food Search',
+    operation: `search ${providerType} (v2)`,
+  });
+
+  return {
+    items: response.foods.map((f) => transformNormalizedFood(f, providerType)),
+    pagination: response.pagination,
+  };
+}
+
+export async function fetchExternalFoodDetails(
+  providerType: string,
+  externalId: string,
+  providerId?: string,
+): Promise<ExternalFoodItem> {
+  const params = new URLSearchParams();
+  if (providerId) params.set('providerId', providerId);
+  const qs = params.toString();
+
+  const response = await apiFetch<NormalizedFood>({
+    endpoint: `/api/v2/foods/details/${providerType}/${externalId}${qs ? `?${qs}` : ''}`,
+    serviceName: 'External Food Search',
+    operation: `fetch ${providerType} details (v2)`,
+  });
+
+  return transformNormalizedFood(response, providerType);
+}
+
+interface V2BarcodeResponse {
+  source: string;
+  food: NormalizedFood | null;
+}
+
+export async function lookupBarcodeV2(barcode: string): Promise<BarcodeLookupResult> {
+  const response = await apiFetch<V2BarcodeResponse>({
+    endpoint: `/api/v2/foods/barcode/${barcode}`,
+    serviceName: 'External Food Search',
+    operation: 'barcode lookup (v2)',
+  });
+
+  if (!response.food) {
+    return { source: 'not_found', food: null };
+  }
+
+  const food = response.food;
+  const barcodeFood: BarcodeFood = {
+    id: food.id,
+    name: food.name,
+    brand: food.brand,
+    barcode: food.barcode,
+    provider_external_id: food.provider_external_id,
+    provider_type: food.provider_type,
+    is_custom: food.is_custom,
+    default_variant: food.default_variant,
+  };
+
+  if (response.source === 'local') {
+    return { source: 'local', food: barcodeFood as BarcodeFood & { id: string } };
+  }
+  return { source: response.source, food: barcodeFood };
 }
 
 // --- Nutrition Label Scanning ---
