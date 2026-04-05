@@ -39,7 +39,9 @@ export const CreateGoalPresetBodySchema = GoalPresetFieldsSchema.loose();
 
 export type CreateGoalPresetBody = z.infer<typeof CreateGoalPresetBodySchema>;
 
-export const UpdateGoalPresetBodySchema =
-  GoalPresetFieldsSchema.partial().loose();
+// PUT = full replacement — repository does a full overwrite of all columns,
+// so all fields must be present to avoid writing NULL to non-nullable columns
+// or NaN when percentage calculations run without a calories value.
+export const UpdateGoalPresetBodySchema = GoalPresetFieldsSchema.loose();
 
 export type UpdateGoalPresetBody = z.infer<typeof UpdateGoalPresetBodySchema>;
