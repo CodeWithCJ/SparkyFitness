@@ -66,7 +66,7 @@ const ConvertToMealDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent requireConfirmation className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
             {t('mealCreation.convertToMeal', 'Create Meal from Diary')}

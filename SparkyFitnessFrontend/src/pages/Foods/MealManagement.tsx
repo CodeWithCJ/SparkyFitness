@@ -489,7 +489,10 @@ const MealManagement: React.FC = () => {
         open={showMealBuilderDialog}
         onOpenChange={setShowMealBuilderDialog}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          requireConfirmation
+          className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        >
           <DialogHeader>
             <DialogTitle>
               {editingMealId
