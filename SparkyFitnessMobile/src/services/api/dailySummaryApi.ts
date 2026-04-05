@@ -1,7 +1,7 @@
 import { apiFetch } from './apiClient';
 import type { DailyGoals } from '../../types/goals';
 import type { FoodEntry } from '../../types/foodEntries';
-import type { ExerciseSessionResponse } from '@workspace/shared';
+import type { ExerciseSessionResponse, CalorieBalance } from '@workspace/shared';
 
 interface DailySummaryApiResponse {
   goals: DailyGoals;
@@ -9,6 +9,7 @@ interface DailySummaryApiResponse {
   exerciseSessions: ExerciseSessionResponse[];
   waterIntake: number;
   stepCalories: number;
+  calorieBalance: CalorieBalance;
 }
 
 export const fetchDailySummary = (date: string): Promise<DailySummaryApiResponse> =>

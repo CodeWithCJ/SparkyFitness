@@ -11,7 +11,6 @@ import CalorieRingCard from '../components/CalorieRingCard';
 import MacroCard from '../components/MacroCard';
 import DateNavigator from '../components/DateNavigator';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { calculateEffectiveBurned, calculateCalorieBalance } from '../services/calculations';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
 import HydrationGauge from '../components/HydrationGauge';
@@ -192,18 +191,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       return null;
     }
 
-    const totalBurned = calculateEffectiveBurned({
-      activeCalories: summary.activeCalories,
-      otherExerciseCalories: summary.otherExerciseCalories,
-      stepCalories: summary.stepCalories,
-    });
-
-    const { netCalories, remainingCalories } = calculateCalorieBalance({
-      calorieGoal: summary.calorieGoal,
-      caloriesConsumed: summary.caloriesConsumed,
-      caloriesBurned: totalBurned,
-    });
-    const progressPercent = summary.calorieGoal > 0 ? netCalories / summary.calorieGoal : 0;
+    const { eaten, burned, remaining, goal, progress } = summary.calorieBalance;
 
     return (
       <ScrollView
@@ -224,13 +212,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           skipTopInset
           skipHorizontalPadding
         />
-        {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (
+        {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || goal > 0) && (
           <CalorieRingCard
-            caloriesConsumed={summary.caloriesConsumed}
-            caloriesBurned={totalBurned}
-            calorieGoal={summary.calorieGoal}
-            remainingCalories={remainingCalories}
-            progressPercent={progressPercent}
+            caloriesConsumed={eaten}
+            caloriesBurned={burned}
+            calorieGoal={goal}
+            remainingCalories={remaining}
+            progressPercent={progress / 100}
           />
         )}
         {/* Macros Section - 2x2 grid in one card */}
