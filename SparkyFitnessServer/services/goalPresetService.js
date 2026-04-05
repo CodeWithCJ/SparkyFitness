@@ -36,7 +36,9 @@ async function createGoalPreset(userId, presetData) {
   try {
     // If percentages are provided, calculate grams.
     // Use != null (loose) to treat both null and undefined as "not provided".
+    // Also guard calories — without it the multiplication produces NaN.
     if (
+      presetData.calories != null &&
       presetData.protein_percentage != null &&
       presetData.carbs_percentage != null &&
       presetData.fat_percentage != null
@@ -93,7 +95,9 @@ async function updateGoalPreset(presetId, userId, presetData) {
   try {
     // If percentages are provided, calculate grams.
     // Use != null (loose) to treat both null and undefined as "not provided".
+    // Also guard calories — without it the multiplication produces NaN.
     if (
+      presetData.calories != null &&
       presetData.protein_percentage != null &&
       presetData.carbs_percentage != null &&
       presetData.fat_percentage != null
