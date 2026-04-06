@@ -919,17 +919,24 @@ ${extraContext}
       const tz = await loadUserTimezone(userId);
       const today = todayInZone(tz);
 
-      const [profile, prefs, goal, todayFoods, latestMeasurement] =
-        await Promise.all([
-          userRepository.getUserProfile(userId),
-          preferenceRepository.getUserPreferences(userId),
-          goalRepository.getMostRecentGoalBeforeDate(userId, today),
-          foodEntry.getFoodEntriesByDate(userId, today),
-          measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
-            userId,
-            today
-          ),
-        ]);
+      const [
+        profile,
+        prefs,
+        goal,
+        todayFoods,
+        todayExercises,
+        latestMeasurement,
+      ] = await Promise.all([
+        userRepository.getUserProfile(userId),
+        preferenceRepository.getUserPreferences(userId),
+        goalRepository.getMostRecentGoalBeforeDate(userId, today),
+        foodEntry.getFoodEntriesByDate(userId, today),
+        exerciseEntry.getExerciseEntriesByDate(userId, today),
+        measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
+          userId,
+          today
+        ),
+      ]);
 
       if (!profile && !goal) return '';
 
@@ -979,9 +986,13 @@ ${extraContext}
         (sum: number, f: any) => sum + Number(f.fat || 0),
         0
       );
+      const caloriesBurnedToday = todayExercises.reduce(
+        (sum: number, e: any) => sum + Number(e.calories_burned || 0),
+        0
+      );
 
       const calGoal = Number(goal?.calories || 2000);
-      const remaining = calGoal - caloriesConsumed;
+      const remaining = calGoal + caloriesBurnedToday - caloriesConsumed;
 
       let context = `- Gender: ${gender || 'Unknown'}\n`;
       if (age) context += `- Age: ${age} years\n`;
@@ -991,9 +1002,10 @@ ${extraContext}
       if (tdee) context += `- TDEE (Maintenance): ${Math.round(tdee)} kcal\n`;
 
       context += `\nDAILY GOALS & PROGRESS (${today}):\n`;
-      context += `- Daily Calorie Goal: ${calGoal} kcal\n`;
+      context += `- Daily Base Calorie Goal: ${calGoal} kcal\n`;
+      context += `- Active Calories Burned Today: ${Math.round(caloriesBurnedToday)} kcal\n`;
       context += `- Consumed Today: ${Math.round(caloriesConsumed)} kcal (${Math.round(proteinConsumed)}g P, ${Math.round(carbsConsumed)}g C, ${Math.round(fatConsumed)}g F)\n`;
-      context += `- Remaining Budget: ${Math.round(remaining)} kcal\n`;
+      context += `- REMAINING CALORIES: ${Math.round(remaining)} kcal (Goal + Burned - Consumed)\n`;
 
       if (goal?.protein)
         context += `- Macronutrient Targets: ${goal.protein}g P, ${goal.carbs}g C, ${goal.fat}g F\n`;
