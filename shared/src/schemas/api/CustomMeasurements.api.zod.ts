@@ -2,9 +2,9 @@ import {
   customMeasurementsInitializerSchema,
   customMeasurementsMutatorSchema,
   customMeasurementsSchema,
-} from "../database/CustomMeasurements.zod";
+} from "../database/CustomMeasurements.zod.ts";
 import { z } from "zod";
-import { customCategoriesResponseSchema } from "./CustomCategories.api.zod";
+import { customCategoriesResponseSchema } from "./CustomCategories.api.zod.ts";
 
 export const customMeasurementsResponseSchema = customMeasurementsSchema.extend(
   {

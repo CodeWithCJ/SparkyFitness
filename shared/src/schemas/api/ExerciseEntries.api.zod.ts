@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { paginationSchema } from "./Pagination.api.zod";
+import { paginationSchema } from "./Pagination.api.zod.ts";
 
 // --- Query contracts ---
 

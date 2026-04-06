@@ -1,4 +1,4 @@
-import { ACTIVITY_MULTIPLIERS } from "../constants/calorieConstants";
+import { ACTIVITY_MULTIPLIERS } from "../constants/calorieConstants.ts";
 
 export type CalorieGoalAdjustmentMode =
   | "dynamic"
@@ -27,7 +27,7 @@ export interface ResolvedExerciseCalories {
 export function resolveExerciseCalories(
   loggedExerciseCalories: number,
   activeCaloriesFromExercise: number,
-  backgroundStepCalories: number
+  backgroundStepCalories: number,
 ): ResolvedExerciseCalories {
   const workoutPlusSteps = loggedExerciseCalories + backgroundStepCalories;
 
@@ -56,7 +56,7 @@ export function resolveExerciseCalories(
  */
 export function computeSparkyfitnessBurned(
   bmr: number,
-  activityLevel: string
+  activityLevel: string,
 ): number {
   const multiplier = ACTIVITY_MULTIPLIERS[activityLevel] ?? 1.2;
   return Math.round(bmr * multiplier);
@@ -70,7 +70,7 @@ export function computeSparkyfitnessBurned(
 export function computeProjectedBurn(
   bmr: number,
   exerciseCaloriesBurned: number,
-  now: Date = new Date()
+  now: Date = new Date(),
 ): number {
   const MIN_DAY_FRACTION = 0.05;
   const minutesSinceMidnight = now.getHours() * 60 + now.getMinutes();
@@ -92,7 +92,7 @@ export function computeProjectedBurn(
 export function computeTdeeAdjustment(
   projectedBurn: number,
   sparkyfitnessBurned: number,
-  allowNegative: boolean
+  allowNegative: boolean,
 ): number {
   const raw = projectedBurn - sparkyfitnessBurned;
   return allowNegative ? raw : Math.max(0, raw);
@@ -149,7 +149,7 @@ export function computeCaloriesRemaining({
 export function computeExerciseCredited(
   caloriesRemaining: number,
   goalCalories: number,
-  eatenCalories: number
+  eatenCalories: number,
 ): number {
   return Math.max(0, caloriesRemaining - (goalCalories - eatenCalories));
 }
@@ -159,7 +159,7 @@ export function computeExerciseCredited(
  */
 export function computeCalorieProgress(
   goalCalories: number,
-  caloriesRemaining: number
+  caloriesRemaining: number,
 ): number {
   const effectiveConsumed = goalCalories - caloriesRemaining;
   return Math.max(0, (effectiveConsumed / goalCalories) * 100);
