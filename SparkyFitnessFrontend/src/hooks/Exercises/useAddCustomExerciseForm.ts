@@ -1,4 +1,3 @@
-// hooks/Exercises/useAddCustomExerciseForm.ts
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '@/hooks/use-toast';
