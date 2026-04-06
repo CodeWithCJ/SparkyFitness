@@ -34,6 +34,7 @@ import WorkoutDetailScreen from './src/screens/WorkoutDetailScreen';
 import ActivityDetailScreen from './src/screens/ActivityDetailScreen';
 import ExerciseSearchScreen from './src/screens/ExerciseSearchScreen';
 import PresetSearchScreen from './src/screens/PresetSearchScreen';
+import CalorieSettingsScreen from './src/screens/CalorieSettingsScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
@@ -307,7 +308,7 @@ function AppContent() {
     <NavigationContainer theme={navigationTheme}>
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
-        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+        <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
           <Stack.Screen
             name="Onboarding"
             component={OnboardingScreen}
@@ -454,6 +455,13 @@ function AppContent() {
           <Stack.Screen
             name="Sync"
             component={SyncScreen}
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="CalorieSettings"
+            component={CalorieSettingsScreen}
             options={{
               headerShown: false,
             }}
