@@ -1,9 +1,39 @@
 const { getClient, getSystemClient } = require('../db/poolManager');
 const { encrypt, decrypt, ENCRYPTION_KEY } = require('../security/encryption');
-const { log } = require('../config/logging');
+import { log } from '../config/logging';
 
-async function upsertAiServiceSetting(settingData) {
-  const client = await getClient(settingData.user_id); // User-specific operation
+export interface AiServiceSetting {
+  id?: string;
+  user_id?: string;
+  service_name: string;
+  service_type: string;
+  custom_url?: string;
+  system_prompt?: string;
+  is_active: boolean;
+  model_name?: string;
+  is_public?: boolean;
+  api_key?: string;
+  encrypted_api_key?: string;
+  api_key_iv?: string;
+  api_key_tag?: string;
+  source?: string;
+}
+
+export interface ChatHistoryEntry {
+  id?: string;
+  user_id: string;
+  content: string;
+  message_type: string;
+  metadata?: any;
+  session_id?: string;
+  message?: string;
+  response?: string;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+export async function upsertAiServiceSetting(settingData: AiServiceSetting): Promise<AiServiceSetting> {
+  const client = await getClient(settingData.user_id);
   try {
     let encryptedApiKey = settingData.encrypted_api_key || null;
     let apiKeyIv = settingData.api_key_iv || null;
@@ -20,7 +50,6 @@ async function upsertAiServiceSetting(settingData) {
     }
 
     if (settingData.id) {
-      // Update existing service
       const result = await client.query(
         `UPDATE ai_service_settings SET
           service_name = COALESCE($1, service_name), service_type = COALESCE($2, service_type), custom_url = $3,
@@ -45,7 +74,6 @@ async function upsertAiServiceSetting(settingData) {
       );
       return result.rows[0];
     } else {
-      // Insert new service
       const result = await client.query(
         `INSERT INTO ai_service_settings (
           user_id, service_name, service_type, custom_url, system_prompt,
@@ -71,10 +99,9 @@ async function upsertAiServiceSetting(settingData) {
   }
 }
 
-async function getAiServiceSettingForBackend(id, userId) {
-  const client = await getClient(userId); // User-specific operation
+export async function getAiServiceSettingForBackend(id: string, userId: string): Promise<AiServiceSetting | null> {
+  const client = await getClient(userId);
   try {
-    // Try to get setting (can be user-specific or global)
     const result = await client.query(
       'SELECT * FROM ai_service_settings WHERE id = $1',
       [id]
@@ -111,8 +138,8 @@ async function getAiServiceSettingForBackend(id, userId) {
   }
 }
 
-async function getAiServiceSettingById(id, userId) {
-  const client = await getClient(userId); // User-specific operation
+export async function getAiServiceSettingById(id: string, userId: string): Promise<any> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       'SELECT id, service_name, service_type, custom_url, is_active, model_name FROM ai_service_settings WHERE id = $1',
@@ -124,8 +151,8 @@ async function getAiServiceSettingById(id, userId) {
   }
 }
 
-async function deleteAiServiceSetting(id, userId) {
-  const client = await getClient(userId); // User-specific operation
+export async function deleteAiServiceSetting(id: string, userId: string): Promise<boolean> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       'DELETE FROM ai_service_settings WHERE id = $1 RETURNING id',
@@ -137,28 +164,24 @@ async function deleteAiServiceSetting(id, userId) {
   }
 }
 
-async function getAiServiceSettingsByUserId(userId) {
-  const client = await getClient(userId); // User-specific operation
+export async function getAiServiceSettingsByUserId(userId: string): Promise<AiServiceSetting[]> {
+  const client = await getClient(userId);
   try {
-    // Get user-specific settings
     const userResult = await client.query(
       'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_public = FALSE AND user_id = $1 ORDER BY created_at DESC',
       [userId]
     );
 
-    // Get global settings (all authenticated users can read)
     const globalResult = await client.query(
       'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
       []
     );
 
-    // Combine results: user settings first, then public settings
-    // Add is_public flag to distinguish them
-    const userSettings = userResult.rows.map((row) => ({
+    const userSettings = userResult.rows.map((row: any) => ({
       ...row,
       is_public: false,
     }));
-    const publicSettings = globalResult.rows.map((row) => ({
+    const publicSettings = globalResult.rows.map((row: any) => ({
       ...row,
       is_public: true,
     }));
@@ -169,10 +192,9 @@ async function getAiServiceSettingsByUserId(userId) {
   }
 }
 
-async function getActiveAiServiceSetting(userId) {
-  const client = await getClient(userId); // User-specific operation
+export async function getActiveAiServiceSetting(userId: string): Promise<AiServiceSetting | null> {
+  const client = await getClient(userId);
   try {
-    // Priority 1: User-specific active setting
     const userResult = await client.query(
       'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_public = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
       [userId]
@@ -187,7 +209,6 @@ async function getActiveAiServiceSetting(userId) {
       return { ...setting, source: 'user' };
     }
 
-    // Priority 2: Database global active setting
     const globalResult = await client.query(
       'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt FROM ai_service_settings WHERE is_active = TRUE AND is_public = TRUE ORDER BY created_at DESC LIMIT 1',
       []
@@ -209,7 +230,7 @@ async function getActiveAiServiceSetting(userId) {
   }
 }
 
-async function clearOldChatHistory(userId) {
+export async function clearOldChatHistory(userId: string): Promise<boolean> {
   const client = await getClient(userId);
   try {
     await client.query(
@@ -225,21 +246,21 @@ async function clearOldChatHistory(userId) {
   }
 }
 
-async function getChatHistoryByUserId(userId) {
-  const client = await getClient(userId); // User-specific operation
+export async function getChatHistoryByUserId(userId: string): Promise<any[]> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
-      'SELECT content, message_type, created_at FROM sparky_chat_history ORDER BY created_at ASC LIMIT 5',
-      []
+      'SELECT content, message_type, metadata, created_at FROM sparky_chat_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10',
+      [userId]
     );
-    return result.rows;
+    return result.rows.reverse();
   } finally {
     client.release();
   }
 }
 
-async function getChatHistoryEntryById(id, userId) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+export async function getChatHistoryEntryById(id: string, userId: string): Promise<any> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       'SELECT * FROM sparky_chat_history WHERE id = $1',
@@ -251,8 +272,8 @@ async function getChatHistoryEntryById(id, userId) {
   }
 }
 
-async function getChatHistoryEntryOwnerId(id, userId) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+export async function getChatHistoryEntryOwnerId(id: string, userId: string): Promise<string | undefined> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       'SELECT user_id FROM sparky_chat_history WHERE id = $1',
@@ -264,8 +285,8 @@ async function getChatHistoryEntryOwnerId(id, userId) {
   }
 }
 
-async function updateChatHistoryEntry(id, userId, updateData) {
-  const client = await getClient(userId); // User-specific operation
+export async function updateChatHistoryEntry(id: string, userId: string, updateData: any): Promise<any> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       `UPDATE sparky_chat_history SET
@@ -294,8 +315,8 @@ async function updateChatHistoryEntry(id, userId, updateData) {
   }
 }
 
-async function deleteChatHistoryEntry(id, userId) {
-  const client = await getClient(userId); // User-specific operation
+export async function deleteChatHistoryEntry(id: string, userId: string): Promise<boolean> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       'DELETE FROM sparky_chat_history WHERE id = $1 RETURNING id',
@@ -307,8 +328,8 @@ async function deleteChatHistoryEntry(id, userId) {
   }
 }
 
-async function clearAllChatHistory(userId) {
-  const client = await getClient(userId); // User-specific operation
+export async function clearAllChatHistory(userId: string): Promise<boolean> {
+  const client = await getClient(userId);
   try {
     await client.query('DELETE FROM sparky_chat_history', []);
     return true;
@@ -317,18 +338,18 @@ async function clearAllChatHistory(userId) {
   }
 }
 
-async function saveChatHistory(historyData) {
-  const client = await getClient(historyData.user_id); // User-specific operation
+export async function saveChatMessage(
+  userId: string,
+  content: string,
+  messageType: string,
+  metadata: any = null
+): Promise<boolean> {
+  const client = await getClient(userId);
   try {
     await client.query(
       `INSERT INTO sparky_chat_history (user_id, content, message_type, metadata, created_at)
        VALUES ($1, $2, $3, $4, now())`,
-      [
-        historyData.user_id,
-        historyData.content,
-        historyData.messageType,
-        historyData.metadata,
-      ]
+      [userId, content, messageType, metadata]
     );
     return true;
   } finally {
@@ -336,8 +357,8 @@ async function saveChatHistory(historyData) {
   }
 }
 
-async function upsertGlobalAiServiceSetting(settingData) {
-  const client = await getSystemClient(); // Use system client for global operations
+export async function upsertGlobalAiServiceSetting(settingData: any): Promise<any> {
+  const client = await getSystemClient();
   try {
     let encryptedApiKey = settingData.encrypted_api_key || null;
     let apiKeyIv = settingData.api_key_iv || null;
@@ -354,7 +375,6 @@ async function upsertGlobalAiServiceSetting(settingData) {
     }
 
     if (settingData.id) {
-      // Update existing global service
       const result = await client.query(
         `UPDATE ai_service_settings SET
           service_name = $1, service_type = $2, custom_url = $3,
@@ -379,7 +399,6 @@ async function upsertGlobalAiServiceSetting(settingData) {
       );
       return result.rows[0];
     } else {
-      // Insert new global service
       const result = await client.query(
         `INSERT INTO ai_service_settings (
           user_id, is_public, service_name, service_type, custom_url, system_prompt,
@@ -404,8 +423,8 @@ async function upsertGlobalAiServiceSetting(settingData) {
   }
 }
 
-async function getGlobalAiServiceSettings() {
-  const client = await getSystemClient(); // Use system client for global operations
+export async function getGlobalAiServiceSettings(): Promise<any[]> {
+  const client = await getSystemClient();
   try {
     const result = await client.query(
       'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, created_at, updated_at FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
@@ -417,8 +436,8 @@ async function getGlobalAiServiceSettings() {
   }
 }
 
-async function getGlobalAiServiceSettingById(id) {
-  const client = await getSystemClient(); // Use system client for global operations
+export async function getGlobalAiServiceSettingById(id: string): Promise<any> {
+  const client = await getSystemClient();
   try {
     const result = await client.query(
       'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public FROM ai_service_settings WHERE id = $1 AND is_public = TRUE',
@@ -430,8 +449,8 @@ async function getGlobalAiServiceSettingById(id) {
   }
 }
 
-async function deleteGlobalAiServiceSetting(id) {
-  const client = await getSystemClient(); // Use system client for global operations
+export async function deleteGlobalAiServiceSetting(id: string): Promise<boolean> {
+  const client = await getSystemClient();
   try {
     const result = await client.query(
       'DELETE FROM ai_service_settings WHERE id = $1 AND is_public = TRUE RETURNING id',
@@ -442,24 +461,3 @@ async function deleteGlobalAiServiceSetting(id) {
     client.release();
   }
 }
-
-module.exports = {
-  upsertAiServiceSetting,
-  getAiServiceSettingById,
-  getAiServiceSettingForBackend,
-  deleteAiServiceSetting,
-  getAiServiceSettingsByUserId,
-  getActiveAiServiceSetting,
-  clearOldChatHistory,
-  getChatHistoryByUserId,
-  getChatHistoryEntryById,
-  getChatHistoryEntryOwnerId,
-  updateChatHistoryEntry,
-  deleteChatHistoryEntry,
-  clearAllChatHistory,
-  saveChatHistory,
-  upsertGlobalAiServiceSetting,
-  getGlobalAiServiceSettings,
-  getGlobalAiServiceSettingById,
-  deleteGlobalAiServiceSetting,
-};

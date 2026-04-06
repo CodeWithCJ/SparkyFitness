@@ -1,15 +1,16 @@
-const chatRepository = require('../models/chatRepository');
-const measurementRepository = require('../models/measurementRepository');
-const { log } = require('../config/logging');
-const { getDefaultModel } = require('../ai/config');
-const { Agent } = require('undici'); // Import Agent from undici
+import * as chatRepository from '../models/chatRepository';
+import * as userRepository from '../models/userRepository';
+import * as measurementRepository from '../models/measurementRepository';
+import { log } from '../config/logging';
+import { getDefaultModel } from '../ai/config';
+import { Agent } from 'undici';
 const { loadUserTimezone } = require('../utils/timezoneLoader');
 const { todayInZone } = require('@workspace/shared');
 
-async function handleAiServiceSettings(
-  action,
-  serviceData,
-  authenticatedUserId
+export async function handleAiServiceSettings(
+  action: any,
+  serviceData: any,
+  authenticatedUserId: any
 ) {
   try {
     if (action === 'save_ai_service_settings') {
@@ -40,7 +41,10 @@ async function handleAiServiceSettings(
   }
 }
 
-async function getAiServiceSettings(authenticatedUserId, targetUserId) {
+export async function getAiServiceSettings(
+  authenticatedUserId: string,
+  targetUserId: string
+) {
   try {
     const settings =
       await chatRepository.getAiServiceSettingsByUserId(targetUserId);
@@ -55,7 +59,10 @@ async function getAiServiceSettings(authenticatedUserId, targetUserId) {
   }
 }
 
-async function getActiveAiServiceSetting(authenticatedUserId, targetUserId) {
+export async function getActiveAiServiceSetting(
+  authenticatedUserId: string,
+  targetUserId: string
+) {
   try {
     const setting =
       await chatRepository.getActiveAiServiceSetting(targetUserId);
@@ -77,7 +84,10 @@ async function getActiveAiServiceSetting(authenticatedUserId, targetUserId) {
   }
 }
 
-async function deleteAiServiceSetting(authenticatedUserId, id) {
+export async function deleteAiServiceSetting(
+  authenticatedUserId: string,
+  id: string
+) {
   try {
     // Verify that the setting belongs to the authenticated user before deleting
     const setting = await chatRepository.getAiServiceSettingById(
@@ -105,7 +115,7 @@ async function deleteAiServiceSetting(authenticatedUserId, id) {
   }
 }
 
-async function clearOldChatHistory(authenticatedUserId) {
+export async function clearOldChatHistory(authenticatedUserId: string) {
   try {
     await chatRepository.clearOldChatHistory(authenticatedUserId);
     return { message: 'Old chat history cleared successfully.' };
@@ -119,7 +129,10 @@ async function clearOldChatHistory(authenticatedUserId) {
   }
 }
 
-async function getSparkyChatHistory(authenticatedUserId, targetUserId) {
+export async function getSparkyChatHistory(
+  authenticatedUserId: string,
+  targetUserId: string
+) {
   try {
     const history = await chatRepository.getChatHistoryByUserId(targetUserId);
     return history;
@@ -133,7 +146,10 @@ async function getSparkyChatHistory(authenticatedUserId, targetUserId) {
   }
 }
 
-async function getSparkyChatHistoryEntry(authenticatedUserId, id) {
+export async function getSparkyChatHistoryEntry(
+  authenticatedUserId: string,
+  id: string
+) {
   try {
     const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(
       id,
@@ -157,13 +173,13 @@ async function getSparkyChatHistoryEntry(authenticatedUserId, id) {
   }
 }
 
-async function updateSparkyChatHistoryEntry(
-  authenticatedUserId,
-  id,
-  updateData
+export async function updateSparkyChatHistoryEntry(
+  authenticatedUserId: any,
+  id: any,
+  updateData: any
 ) {
   try {
-    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id);
+    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id, authenticatedUserId);
     if (!entryOwnerId) {
       throw new Error('Chat history entry not found.');
     }
@@ -193,9 +209,12 @@ async function updateSparkyChatHistoryEntry(
   }
 }
 
-async function deleteSparkyChatHistoryEntry(authenticatedUserId, id) {
+export async function deleteSparkyChatHistoryEntry(
+  authenticatedUserId: string,
+  id: string
+) {
   try {
-    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id);
+    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id, authenticatedUserId);
     if (!entryOwnerId) {
       throw new Error('Chat history entry not found.');
     }
@@ -222,7 +241,7 @@ async function deleteSparkyChatHistoryEntry(authenticatedUserId, id) {
   }
 }
 
-async function clearAllSparkyChatHistory(authenticatedUserId) {
+export async function clearAllSparkyChatHistory(authenticatedUserId: string) {
   try {
     await chatRepository.clearAllChatHistory(authenticatedUserId);
     return { message: 'All chat history cleared successfully.' };
@@ -236,11 +255,19 @@ async function clearAllSparkyChatHistory(authenticatedUserId) {
   }
 }
 
-async function saveSparkyChatHistory(authenticatedUserId, historyData) {
+export async function saveSparkyChatHistory(
+  authenticatedUserId: string,
+  historyData: any
+) {
   try {
     // Ensure the history is saved for the authenticated user
     historyData.user_id = authenticatedUserId;
-    await chatRepository.saveChatHistory(historyData);
+    await chatRepository.saveChatMessage(
+      historyData.user_id,
+      historyData.content,
+      historyData.messageType,
+      historyData.metadata
+    );
     return { message: 'Chat history saved successfully.' };
   } catch (error) {
     log(
@@ -252,10 +279,10 @@ async function saveSparkyChatHistory(authenticatedUserId, historyData) {
   }
 }
 
-async function processChatMessage(
-  messages,
-  serviceConfigId,
-  authenticatedUserId
+export async function processChatMessage(
+  messages: any,
+  serviceConfigId: any,
+  authenticatedUserId: any
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -306,143 +333,72 @@ async function processChatMessage(
             .join('\n')
         : 'None';
 
-    const systemPromptContent = `You are Sparky, an AI nutrition and wellness coach. Your primary goal is to help users track their food, exercise, and measurements, and provide helpful advice and motivation based on their data and general health knowledge.
+    const systemPromptContent = `You are Sparky, an AI nutrition/wellness Telegram coach.
+Goal: Track food, exercise, measurements, and provide brief, actionable advice.
+Date: ${todayInZone(chatTz)}.
 
-The current date is ${todayInZone(chatTz)}.
+**CORE RULES:**
+1. **Brevity & Style:** Keep responses concise. Use Telegram HTML formatting (<b>, <i>, <code>) and emojis in the 'response' field.
+2. **Context:** Use [SYSTEM CONTEXT: RECENT PROGRESS] for insights. Don't ask for data already provided.
+3. **Dates:** Extract explicitly mentioned dates/times to the root 'entryDate' field ("today", "yesterday", "MM-DD", "YYYY-MM-DD"). Do NOT resolve relative dates to full dates. Omit if none.
+4. **Water is NOT Food:** NEVER log water under 'log_food'. ALWAYS use 'log_water'.
+5. **Images & Unknown Foods:**
+   - Extract food/exercise, estimate quantity, unit, and meal_type.
+   - **CRITICAL:** Always infer detailed nutrition based on the photo or your general knowledge if not in DB.
+   - **MAXIMAL DETAIL:** For 'log_food', you MUST provide 'calories', 'protein', 'carbs', 'fat' AND any inferable micros like 'sugars', 'dietary_fiber', 'sodium', 'potassium', 'cholesterol', 'saturated_fat', 'vitamin_a', 'vitamin_c', 'calcium', 'iron'.
+   - **MISSING DATA:** If a photo/text lacks clear portion size, output 'ask_question' intent to clarify. Do NOT guess completely ambiguous sizes.
+6. **Units & Custom Names:**
+   - Convert counts ("2 apples") to unit "piece". Match user units ("g", "cup"). Infer if missing.
+   - For custom measurements, strictly match names from this list: ${customCategoriesList}.
+7. **History Requests:** If the user asks for historical data (e.g., "what did I eat", "last 10 workouts", "my recent meals") AND the data is NOT already provided in the SYSTEM UPDATE context, you MUST return the 'request_data' intent. Set 'response' to a brief waiting message like "Один момент! 🔍 Шукаю...". If the data IS provided, use 'chat' intent to summarize it.
 
-**CRITICAL INSTRUCTION:** When the user mentions "water" in any context related to consumption or intake, you MUST use the 'log_water' intent. Do NOT classify water as a 'log_food' item.
+**OUTPUT FORMAT:**
+You MUST reply with a STRICT JSON object matching this schema:
 
-You will receive user input, which can include text and/or images. Your task is to identify the user's intent and extract relevant data. You MUST respond with a JSON object containing the 'intent' and 'data', strictly adhering to the defined intents and their required data structures.
+{
+  "intent": "log_food" | "log_exercise" | "log_measurement" | "log_water" | "delete_measurement" | "delete_food" | "ask_question" | "chat" | "request_data",
+  "data": { ... }, // Specific to intent, see below
+  "entryDate": "string", // Optional
+  "response": "string" // Optional for logs, REQUIRED for chat/questions/request_data. Use HTML/emojis.
+}
 
-For image inputs:
-- Analyze the image to identify food items, estimate quantities, and infer nutritional information.
-- If the image clearly shows food, prioritize the 'log_food' intent.
-- Extract food_name, quantity, unit, and meal_type from the image content.
-- **CRITICAL:** Always infer and include *estimated* nutritional details (calories, protein, carbs, fat, etc.) based on the identified food and estimated quantity, populating the corresponding fields in the 'log_food' intent's data. Do NOT default to 0 if an estimation can be made.
-- If the image is not food-related or unclear, treat the text input as primary.
+**INTENTS & DATA SCHEMAS:**
+- 'log_food': { food_name: string, quantity: number(default 1), unit: string("g"|"piece"|"cup"|etc), meal_type: string("breakfast"|"lunch"|"dinner"|"snacks"-infer from time), calories: number, protein: number, carbs: number, fat: number, ...[include any inferable micros like sugars, fiber, sodium, etc.], serving_size: number, serving_unit: string }
+- 'log_exercise': { exercise_name: string, duration_minutes: number|null, distance: number|null, distance_unit: string|null }
+- 'log_measurement': { measurements: [{ type: "weight"|"neck"|"waist"|"hips"|"steps"|"custom", value: number, unit: string|null, name: string|null (REQUIRED exact match if type="custom") }] }
+- 'log_water': { glasses_consumed: number(default 1) }
+- 'delete_measurement': { measurements: [{ type: string, value: number|null }] }
+- 'delete_food': { food_name: string|null }
+- 'request_data': { type: "food_history" | "exercise_history" | "measurements_history", days: "14" } // Use to fetch deep history not in context. 
+- 'ask_question' / 'chat': {} // Empty data object. MUST provide 'response'.
 
-**IMPORTANT:** If the user specifies a date or time (e.g., "yesterday", "last Monday", "at 7 PM"), extract this information and include it as a 'entryDate' field in the top level of the JSON object. **Provide relative terms like "today", "yesterday", "tomorrow", or a specific date in 'MM-DD' or 'YYYY-MM-DD' format. Do NOT try to resolve relative terms to a full date yourself.** If no date is specified, omit the 'entryDate' field.
+**SPECIAL COMMAND:**
+If input is "GENERATE_FOOD_OPTIONS:[food name] in [unit]", ignore standard JSON output and return ONLY a JSON array of 2-3 realistic options. Match requested unit if logical.
+Schema: [{"name": "string", "calories": number, "protein": number, "carbs": number, "fat": number, "serving_size": number, "serving_unit": "string (unit ONLY)"}]`;
+    const messagesForAI: any[] = [];
 
-When the user mentions logging food, exercise, or measurements, prioritize extracting the exact name of the item (food name, exercise name, measurement name) as accurately as possible from the user's input. This is crucial for looking up existing items in the database.
+    // Перевіряємо, чи є в переданому масиві messages повідомлення з role 'system'.
+    // Якщо є, ми беремо його (це дозволить telegramBotService динамічно формувати контекст).
+    const customSystemMessage = messages.find((msg) => msg.role === 'system');
 
-Here are the user's existing custom measurement categories:
-${customCategoriesList}
+    if (customSystemMessage) {
+      messagesForAI.push({
+        role: 'system',
+        content: customSystemMessage.content,
+      });
+    } else {
+      messagesForAI.push({ role: 'system', content: systemPromptContent });
+    }
 
-When the user mentions a custom measurement, compare it to the list above. If you find a match or a very similar variation (considering synonyms and capitalization), use the **exact name** from the list in the 'name' field of the measurement data. If no clear match is found in the list, use the name as provided by the user.
-
-**For 'log_food' intent, pay close attention to the unit specified by the user and match it in the 'unit' field of the food data.**
-- If the user says "gram" or "g", use "g".
-- If the user says "cup" or "cups", use "cup".
-- If the user refers to individual items by count (e.g., "two apples", "3 eggs"), use "piece".
-- If the unit is not explicitly mentioned, infer the most appropriate unit based on the food item and context (e.g., "apple" is likely "piece", "rice" is likely "g" or "cup"). Refer to common food units used in the application (like 'g', 'cup', 'oz', 'ml', 'serving', 'piece').
-
-Possible intents and their required data. You MUST select one of these intents and provide the data in the specified format:
-- 'log_food': User wants to log food. This intent is for solid food items or beverages that are not water. **This intent MUST NOT be used for logging water intake.**
-  - If you can confidently identify a single food item and its details, data should include:
-    - food_name: string (e.g., "apple", "chicken breast", "Dosa") - Extract the most likely exact name.
-    - quantity: number (e.g., 1, 100) - Infer if possible, default to 1 if a specific quantity isn't clear but a food is mentioned.
-    - unit: string (e.g., "piece", "g", "oz", "ml", "cup", "serving") - **CRITICAL: Match the user's specified unit exactly.** If the user refers to individual items by count (e.g., "two apples", "3 eggs"), use "piece". If no unit is explicitly mentioned, infer the most appropriate unit based on the food item and context (e.g., "apple" is likely "piece", "rice" is likely "g" or "cup"). Refer to common food units used in the application (like 'g', 'cup', 'oz', 'ml', 'serving', 'piece').
-    - meal_type: string ("breakfast", "lunch", "dinner", "snacks") - Infer based on time of day or context, default to "snacks".
-    - **Include as many of the following nutritional fields as you can extract from the user's input or your knowledge about the food:**
-      - calories: number
-      - protein: number
-      - carbs: number
-      - fat: number
-      - saturated_fat: number
-      - polyunsaturated_fat: number
-      - monounsaturated_fat: number
-      - trans_fat: number
-      - cholesterol: number
-      - sodium: number
-      - potassium: number
-      - dietary_fiber: number
-      - sugars: number
-      - vitamin_a: number
-      - vitamin_c: number
-      - calcium: number
-      - iron: number
-      - FoodOption: array of realistic food options (if applicable)
-      - serving_size: number
-      - serving_unit: string
-
-
-- 'log_exercise': User wants to log exercise. Data should include:
- - exercise_name: string (e.g., "running", "yoga") - Extract the most likely exact name.
- - duration_minutes: number | null (e.g., 30, 60) - Infer if possible.
- - distance: number | null (e.g., 5, 3.1) - Infer if mentioned.
- - distance_unit: string | null ("miles", "km") - Infer if mentioned.
-- 'log_measurement': User wants to log a body measurement or steps. Data should include an array of measurements:
- - measurements: Array of objects, each with:
-   - type: string ("weight", "neck", "waist", "hips", "steps", "custom") - Use "custom" for any measurement not in the standard list.
-   - value: number
-   - unit: string | null (e.g., "kg", "lbs", "cm", "inches", "steps") - Infer if possible, default to null for steps.
-   - name: string | null (required if type is "custom") - **Crucially, if the user mentions a custom category from the list provided, use its exact name here.**
-- 'log_water': User wants to log water intake. This intent should be prioritized when the user mentions "water" in conjunction with a quantity or a desire to log water. The AI should understand from the user's context that they are referring to drinking water. Data should include:
- - glasses_consumed: number (e.g., 1, 2) - Infer if possible, default to 1.
-- 'ask_question': User is asking a general question or seeking advice. Data is an empty object {}.
-- 'chat': User is engaging in casual conversation. Data is an empty object {}.
-
-If the intent is 'ask_question' or 'chat', also provide a 'response' field with a friendly and helpful text response. For logging intents, the 'response' field is optional and can be a simple confirmation or encouraging remark.
-
-If you cannot determine the intent or extract data with high confidence, default to 'ask_question' or 'chat' and provide a suitable response asking for clarification.
-
-Output format MUST be a JSON object with 'intent' (string) and 'data' (object) fields, and optionally 'entryDate' (string with relative term or date format). Do NOT include any other text outside the JSON object.
-
-Example JSON output for logging weight for yesterday:
-{"intent": "log_measurement", "data": {"measurements": [{"type": "weight", "value": 70, "unit": "kg"}]}, "entryDate": "yesterday"}
-
-Example JSON output for asking a question:
-{"intent": "ask_question", "data": {}, "response": "I can help with that! What's your question?"}
-
-Example JSON output for logging steps:
-{"intent": "log_measurement", "data": {"measurements": [{"type": "steps", "value": 10000, "unit": "steps"}]}}
-
-Example JSON output for logging food for today with detailed nutrition:
-{"intent": "log_food", "data": {"food_name": "apple", "quantity": 1, "unit": "piece", "meal_type": "snack", "calories": 95, "carbs": 25, "sugars": 19, "dietary_fiber": 4, "vitamin_c": 9}, "entryDate": "today"}
-
-Example JSON output for logging exercise:
-{"intent": "log_exercise", "data": {"exercise_name": "running", "duration_minutes": 30, "distance": 3, "distance_unit": "miles"}, "entryDate": "06-18"}
-
-Example JSON output for logging a custom measurement (e.g., Blood Sugar), using the exact name from the provided list:
-{"intent": "log_measurement", "data": {"measurements": [{"type": "custom", "name": "Blood Sugar", "value": 140, "unit": "mg/dL"}]}, "entryDate": "today"}
-
-Example JSON output for logging water:
-{"intent": "log_water", "data": {"glasses_consumed": 2}, "entryDate": "today"}
-
-Example JSON output for logging current weight:
-{"intent": "log_measurement", "data": {"measurements": [{"type": "weight", "value": 72, "unit": "kg"}]}}
-
-
-Be precise with data extraction and follow the JSON structure exactly.
-
-**Special Instruction: Food Option Generation**
-If you receive a request in the format "GENERATE_FOOD_OPTIONS:[food name] in [unit]", respond with a JSON array of 2-3 realistic \`FoodOption\` objects for the specified food name.
-**Prioritize providing a \`serving_unit\` that matches the requested unit if it's a common and logical unit for that food.** If the requested unit is not common or logical for the food, provide a common and realistic serving unit (e.g., "g", "piece", "serving"). Each \`FoodOption\` should include:
-- name: string (e.g., "\`Apple (medium)\`", "\`Cooked Rice (per cup)\`")
-- calories: number (estimated)
-- protein: number (estimated)
-- carbs: number (estimated)
-- fat: number (estimated)
-- serving_size: number (e.g., 1, 100, 0.5) - This MUST be a numeric value representing the quantity.
-- serving_unit: string (e.g., "\`piece\`", "\`g\`", "\`cup\`", "\`oz\`") - This MUST be the unit string only, without any numeric quantity.
-
-Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
-[
-  {"\`name\`": "\`Apple (medium)\`", "\`calories\`": 95, "\`protein\`": 0.5, "\`carbs\`": 25, "\`fat\`": 0.3, "\`serving_size\`": 1, "\`serving_unit\`": "\`piece\`"},
-  {"\`name\`": "\`Apple (100g)\`", "\`calories\`": 52, "\`protein\`": 0.3, "\`carbs\`": 14, "\`fat\`": 0.2, "\`serving_size\`": 100, "\`serving_unit\`": "\`g\`"}
-]
-`;
-
-    const messagesForAI = [{ role: 'system', content: systemPromptContent }];
-    // Add user messages
-    messagesForAI.push(...messages.filter((msg) => msg.role === 'user')); // Assuming 'messages' from frontend only contains user messages
+    // Add remaining user/assistant messages (do not filter out assistant!)
+    messagesForAI.push(...messages.filter((msg: any) => msg.role !== 'system'));
 
     // For Google AI
     const cleanSystemPrompt = systemPromptContent
       .replace(/[^\w\s\-.,!?:;()[\]{}'"]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .substring(0, 1000);
+      .substring(0, 15000);
 
     switch (aiService.service_type) {
       case 'openai':
@@ -597,6 +553,7 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
               };
             })
             .filter((content) => content.parts.length > 0),
+          systemInstruction: undefined as any
         };
 
         if (googleBody.contents.length === 0) {
@@ -779,7 +736,64 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         content = data.message?.content || 'No response from AI service';
         break;
     }
-    return { content };
+    log('info', `[AI RAW RESPONSE] ${content}`);
+
+    let responseText = content;
+    let intent = null;
+    let intentData = null;
+    let entryDate = null;
+
+    try {
+      // Clean content from markdown code blocks if AI wrapped JSON
+      const cleanContent = content
+        .replace(/```json\s?/g, '')
+        .replace(/\s?```/g, '')
+        .trim();
+      const parsed = JSON.parse(cleanContent);
+      responseText = parsed.response || parsed.responseText || content;
+      intent = parsed.intent || null;
+      intentData = parsed.data || null;
+      entryDate = parsed.entryDate || parsed.entry_date || null;
+
+      // Robust fallback: if 'intent' exists but 'data' is missing, try pulling from root
+      if (intent && !intentData) {
+        const {
+          intent: _i,
+          response: _r,
+          responseText: _rt,
+          entryDate: _ed,
+          entry_date: _ed2,
+          ...dataAtRoot
+        } = parsed;
+        if (Object.keys(dataAtRoot).length > 0) {
+          intentData = dataAtRoot;
+          log(
+            'info',
+            `[AI RESPONSE] Extracted intentData from root because 'data' key was missing: ${JSON.stringify(intentData)}`
+          );
+        }
+      }
+    } catch (e) {
+      log(
+        'info',
+        'AI response is not JSON or could not be parsed, treating as plain text.'
+      );
+    }
+
+    log(
+      'info',
+      `[AI RESPONSE] Parsed intent: ${intent}, data keys: ${intentData ? Object.keys(intentData).join(', ') : 'none'}`
+    );
+    if (intentData)
+      log('info', `[AI RESPONSE DATA] ${JSON.stringify(intentData)}`);
+
+    return {
+      content: responseText,
+      text: responseText,
+      intent,
+      data: intentData,
+      entryDate,
+    };
   } catch (error) {
     log(
       'error',
@@ -790,27 +804,11 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
   }
 }
 
-module.exports = {
-  handleAiServiceSettings,
-  getAiServiceSettings,
-  getActiveAiServiceSetting,
-  deleteAiServiceSetting,
-  clearOldChatHistory,
-  getSparkyChatHistory,
-  getSparkyChatHistoryEntry,
-  updateSparkyChatHistoryEntry,
-  deleteSparkyChatHistoryEntry,
-  clearAllSparkyChatHistory,
-  saveSparkyChatHistory,
-  processChatMessage,
-  processFoodOptionsRequest, // Add the new function to exports
-};
-
-async function processFoodOptionsRequest(
-  foodName,
-  unit,
-  authenticatedUserId,
-  serviceConfigId
+export async function processFoodOptionsRequest(
+  foodName: any,
+  unit: any,
+  authenticatedUserId: any,
+  serviceConfigId: any
 ) {
   // Changed serviceConfig to serviceConfigId
   try {
