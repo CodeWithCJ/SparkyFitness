@@ -126,7 +126,7 @@ Monorepo package at `../shared/` providing Zod schemas, TypeScript types, consta
 - **Exercise/workout types**: `ExerciseSessionResponse` (discriminated union: `IndividualSessionResponse | PresetSessionResponse`), `ExerciseHistoryResponse`, `CreatePresetSessionRequest`, `ExerciseEntryResponse`, `ExerciseEntrySetResponse`, `ActivityDetailResponse`, `Pagination`
 - **API schemas**: `dailySummaryResponseSchema`/`DailySummaryResponse` (aggregates goals + food entries + exercise sessions + water intake), `dailyGoalsResponseSchema`, `foodEntryResponseSchema`, `exerciseSessionResponseSchema`
 - **Constants**: `MEASUREMENT_PRECISION`/`getPrecision()` for decimal formatting, `CALORIE_CALCULATION_CONSTANTS`/`ACTIVITY_MULTIPLIERS` for step/calorie math
-- **Timezone utilities** (`shared/src/utils/timezone.ts`): `isDayString`, `addDays`, `compareDays`, `dayToPickerDate`, `pickerDateToDay` for day-string operations; `isValidTimeZone`, `todayInZone`, `instantToDay`, `userHourMinute`, `instantHourMinute`, `dayToUtcRange`, `dayRangeToUtcRange` for timezone-aware conversions
+- **Timezone utilities** (`shared/src/utils/timezone.ts`): `isDayString`, `addDays`, `compareDays`, `dayToPickerDate`, `localDateToDay` for day-string operations; `isValidTimeZone`, `todayInZone`, `instantToDay`, `userHourMinute`, `instantHourMinute`, `dayToUtcRange`, `dayRangeToUtcRange` for timezone-aware conversions
 
 ### Workout & Exercise Architecture
 

@@ -4,7 +4,7 @@ const {
   addDays,
   compareDays,
   dayToPickerDate,
-  pickerDateToDay,
+  localDateToDay,
   isValidTimeZone,
   todayInZone,
   instantToDay,
@@ -91,16 +91,16 @@ describe('compareDays', () => {
 });
 
 // ---------------------------------------------------------------------------
-// dayToPickerDate / pickerDateToDay
+// dayToPickerDate / localDateToDay
 // ---------------------------------------------------------------------------
-describe('dayToPickerDate / pickerDateToDay', () => {
+describe('dayToPickerDate / localDateToDay', () => {
   it('round-trips through picker date', () => {
     const day = '2024-06-15';
     const pickerDate = dayToPickerDate(day);
     expect(pickerDate.getFullYear()).toBe(2024);
     expect(pickerDate.getMonth()).toBe(5); // 0-indexed
     expect(pickerDate.getDate()).toBe(15);
-    expect(pickerDateToDay(pickerDate)).toBe(day);
+    expect(localDateToDay(pickerDate)).toBe(day);
   });
 });
 

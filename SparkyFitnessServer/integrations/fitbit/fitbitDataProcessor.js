@@ -6,7 +6,7 @@ const exerciseRepository = require('../../models/exercise');
 const activityDetailsRepository = require('../../models/activityDetailsRepository');
 const sleepRepository = require('../../models/sleepRepository');
 const { log } = require('../../config/logging');
-const { todayInZone } = require('@workspace/shared');
+const { localDateToDay, todayInZone } = require('@workspace/shared');
 
 // Conversion factors for en-US to Metric
 const LBS_TO_KG = 0.453592;
@@ -236,7 +236,6 @@ async function processFitbitTemperature(
     let tempVariation = entry.value.nightlyRelative;
 
     if (tempVariation !== undefined) {
-      
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
         categoryName: 'Skin Temperature Variation',
         value: tempVariation,
@@ -393,7 +392,6 @@ async function processFitbitCoreTemperature(
     let temp = entry.value;
 
     if (temp !== undefined) {
-      
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
         categoryName: 'Core Temperature',
         value: temp,
@@ -602,7 +600,7 @@ async function processFitbitActivities(
     }
 
     let distanceKm = activity.distance;
-    
+
     const entryData = {
       exercise_id: exercise.id,
       entry_date: entryDate,
@@ -663,7 +661,7 @@ async function processFitbitActivities(
         let dateKey = m.entry_date;
         // Handle different possible types for entry_date (Date object or string)
         if (dateKey instanceof Date) {
-          dateKey = dateKey.toISOString().split('T')[0];
+          dateKey = localDateToDay(dateKey);
         } else if (typeof dateKey === 'string' && dateKey.includes('T')) {
           dateKey = dateKey.split('T')[0];
         }

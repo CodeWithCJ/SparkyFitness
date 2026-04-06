@@ -3,7 +3,12 @@ const format = require('pg-format');
 const { log } = require('../config/logging');
 const workoutPresetRepository = require('./workoutPresetRepository');
 const { getExerciseById } = require('./exercise');
-const { addDays, compareDays, dayOfWeek } = require('@workspace/shared');
+const {
+  addDays,
+  compareDays,
+  dayOfWeek,
+  localDateToDay,
+} = require('@workspace/shared');
 
 async function createExerciseEntriesFromTemplate(templateId, userId, today) {
   log(
@@ -66,12 +71,12 @@ async function createExerciseEntriesFromTemplate(templateId, userId, today) {
     const startDay =
       typeof template.start_date === 'string'
         ? template.start_date.slice(0, 10)
-        : template.start_date.toISOString().slice(0, 10);
+        : localDateToDay(template.start_date);
     // If end_date is not provided, default to one year from start_date
     const endDay = template.end_date
       ? typeof template.end_date === 'string'
         ? template.end_date.slice(0, 10)
-        : template.end_date.toISOString().slice(0, 10)
+        : localDateToDay(template.end_date)
       : addDays(startDay, 365);
 
     log(

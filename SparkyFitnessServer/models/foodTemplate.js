@@ -3,7 +3,12 @@ const { log } = require('../config/logging');
 const format = require('pg-format');
 const foodEntryDb = require('./foodEntry');
 const foodEntryMealRepository = require('./foodEntryMealRepository');
-const { addDays, compareDays, dayOfWeek } = require('@workspace/shared');
+const {
+  addDays,
+  compareDays,
+  dayOfWeek,
+  localDateToDay,
+} = require('@workspace/shared');
 
 async function deleteFoodEntriesByMealPlanId(mealPlanId, userId) {
   const client = await getClient(userId); // User-specific operation
@@ -128,12 +133,12 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
     const startDay =
       typeof start_date === 'string'
         ? start_date.slice(0, 10)
-        : start_date.toISOString().slice(0, 10);
+        : localDateToDay(start_date);
     // If end_date is not provided, default to one year from start_date
     const endDay = end_date
       ? typeof end_date === 'string'
         ? end_date.slice(0, 10)
-        : end_date.toISOString().slice(0, 10)
+        : localDateToDay(end_date)
       : addDays(startDay, 365);
 
     // Start from today if template start_date is in the past
@@ -224,7 +229,7 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
       const dateStr =
         typeof entry.entry_date === 'string'
           ? entry.entry_date.slice(0, 10)
-          : entry.entry_date.toISOString().slice(0, 10);
+          : localDateToDay(entry.entry_date);
       const key = `${entry.food_id || entry.meal_id}-${entry.meal_type_id}-${dateStr}-${entry.variant_id}`;
       existingFoodEntries.add(key);
     });
