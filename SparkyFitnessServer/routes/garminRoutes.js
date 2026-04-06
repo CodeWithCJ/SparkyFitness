@@ -621,4 +621,43 @@ router.post('/sleep_data', authenticate, async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /integrations/garmin/sync/nutrition:
+ *   post:
+ *     summary: Manually sync daily nutrition to Garmin Connect
+ *     tags: [External Integrations]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               date: { type: 'string', format: 'date' }
+ *             required: [date]
+ *     responses:
+ *       200:
+ *         description: Nutrition sync result.
+ */
+router.post('/sync/nutrition', authenticate, async (req, res, next) => {
+  try {
+    const userId = req.userId;
+    const { date } = req.body;
+
+    if (!date || !DATE_FORMAT_REGEX.test(date)) {
+      return res
+        .status(400)
+        .json({ error: 'Valid date (YYYY-MM-DD) is required.' });
+    }
+
+    const result = await garminService.syncDailyNutritionToGarmin(userId, date);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;
