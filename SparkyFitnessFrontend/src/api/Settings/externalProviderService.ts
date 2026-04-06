@@ -340,8 +340,10 @@ export const fetchGarminStatus = async (): Promise<GarminStatusResponse> => {
 };
 
 export interface OAuthStatusResponse {
-  lastSyncAt: string;
-  tokenExpiresAt: string;
+  lastSyncAt?: string;
+  tokenExpiresAt?: string;
+  isLinked?: boolean;
+  lastUpdated?: string;
 }
 
 export const fetchWithingsStatus = async (
