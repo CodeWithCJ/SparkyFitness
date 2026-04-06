@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const authCoreRoutes = require('./auth/authCoreRoutes');
 const userProfileRoutes = require('./auth/userProfileRoutes');
 const familyAccessRoutes = require('./auth/familyAccessRoutes');
 const apiKeyRoutes = require('./auth/apiKeyRoutes');

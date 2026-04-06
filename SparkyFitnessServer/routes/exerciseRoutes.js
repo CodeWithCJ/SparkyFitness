@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const exerciseService = require('../services/exerciseService');
 const reportRepository = require('../models/reportRepository');
+const wgerService = require('../integrations/wger/wgerService');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');

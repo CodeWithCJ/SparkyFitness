@@ -4,8 +4,6 @@ const { log } = require('../config/logging');
 const {
   performBackup,
   performRestore,
-  applyRetentionPolicy,
-  ensureBackupDirectory,
   BACKUP_DIR,
 } = require('../services/backupService');
 const { authenticate, isAdmin } = require('../middleware/authMiddleware');
