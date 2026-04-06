@@ -4,6 +4,7 @@ const mealService = require('./mealService');
 const { log } = require('../config/logging');
 const mealTypeRepository = require('../models/mealType');
 const { sanitizeCustomNutrients } = require('../utils/foodUtils');
+const { syncDailyTotals } = require('./mfpSyncService');
 
 // Helper functions (already defined)
 function getGlycemicIndexValue(category) {
@@ -65,6 +66,8 @@ async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
       entryWithUser,
       actingUserId
     );
+    // Trigger MFP sync in background
+    syncDailyTotals(entryWithUser.user_id, entryWithUser.entry_date);
     return newEntry;
   } catch (error) {
     log(
@@ -233,6 +236,8 @@ async function updateFoodEntry(
     if (!updatedEntry) {
       throw new Error('Food entry not found or not authorized to update.');
     }
+    // Trigger MFP sync in background
+    syncDailyTotals(updatedEntry.user_id, updatedEntry.entry_date);
     return updatedEntry;
   } catch (error) {
     log(
@@ -262,6 +267,12 @@ async function deleteFoodEntry(authenticatedUserId, entryId) {
       );
     }
 
+    // Fetch entry details before deletion to know the date for sync
+    const entryDetails = await foodRepository.getFoodEntryById(
+      entryId,
+      authenticatedUserId
+    );
+
     const success = await foodRepository.deleteFoodEntry(
       entryId,
       authenticatedUserId
@@ -269,6 +280,11 @@ async function deleteFoodEntry(authenticatedUserId, entryId) {
     if (!success) {
       throw new Error('Food entry not found or not authorized to delete.');
     }
+
+    if (entryDetails) {
+      syncDailyTotals(entryDetails.user_id, entryDetails.entry_date);
+    }
+
     return true;
   } catch (error) {
     log(
@@ -488,6 +504,11 @@ async function copyFoodEntries(
       entriesToCreate,
       authenticatedUserId
     );
+
+    if (newEntries && newEntries.length > 0) {
+      syncDailyTotals(authenticatedUserId, targetDate);
+    }
+
     return newEntries;
   } catch (error) {
     log(
@@ -835,6 +856,9 @@ async function createFoodEntryMeal(
       );
     }
 
+    // Trigger MFP sync in background
+    syncDailyTotals(newFoodEntryMeal.user_id, newFoodEntryMeal.entry_date);
+
     return newFoodEntryMeal;
   } catch (error) {
     log(
@@ -1004,6 +1028,9 @@ async function updateFoodEntryMeal(
         `Recreated ${entriesToCreate.length} component food entries for food_entry_meal ${foodEntryMealId}.`
       );
     }
+
+    // Trigger MFP sync in background
+    syncDailyTotals(updatedFoodEntryMeal.user_id, updatedFoodEntryMeal.entry_date);
 
     return updatedFoodEntryMeal;
   } catch (error) {
@@ -1388,6 +1415,12 @@ async function deleteFoodEntryMeal(authenticatedUserId, foodEntryMealId) {
   try {
     // foodRepository.deleteFoodEntryComponentsByFoodEntryMealId will be called due to ON DELETE CASCADE
     // on the food_entries.food_entry_meal_id foreign key.
+    // Fetch meal details before deletion to know the date for sync
+    const mealDetails = await foodEntryMealRepository.getFoodEntryMealById(
+      foodEntryMealId,
+      authenticatedUserId
+    );
+
     const success = await foodEntryMealRepository.deleteFoodEntryMeal(
       foodEntryMealId,
       authenticatedUserId
@@ -1395,11 +1428,33 @@ async function deleteFoodEntryMeal(authenticatedUserId, foodEntryMealId) {
     if (!success) {
       throw new Error('Food entry meal not found or not authorized to delete.');
     }
+
+    if (mealDetails) {
+      syncDailyTotals(mealDetails.user_id, mealDetails.entry_date);
+    }
+
     return { message: 'Food entry meal deleted successfully.' };
   } catch (error) {
     log(
       'error',
       `Error deleting food entry meal ${foodEntryMealId} for user ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+async function getDailyNutritionByCategory(userId, date) {
+  try {
+    const summary = await foodRepository.getDailyNutritionByCategory(
+      userId,
+      date
+    );
+    return summary;
+  } catch (error) {
+    log(
+      'error',
+      `Error fetching daily nutrition by category for user ${userId} on ${date} in foodService:`,
       error
     );
     throw error;
@@ -1418,6 +1473,7 @@ module.exports = {
   copyAllFoodEntries,
   copyAllFoodEntriesFromYesterday,
   getDailyNutritionSummary,
+  getDailyNutritionByCategory, // New export
   createFoodEntryMeal, // New export
   updateFoodEntryMeal, // New export
   getFoodEntryMealWithComponents, // New export

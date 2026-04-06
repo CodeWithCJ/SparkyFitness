@@ -403,6 +403,7 @@ app.use('/api/custom-nutrients', customNutrientRoutes);
 app.use('/api/adaptive-tdee', adaptiveTdeeRoutes);
 app.use('/api/meal-types', mealTypeRoutes);
 app.use('/api/telegram', telegramRoutes);
+app.use('/api/telegram', telegramRoutes);
 
 // Swagger
 app.use(
@@ -623,6 +624,11 @@ applyMigrations()
       .catch((err) =>
         log('error', '[TELEGRAM BOT] Failed to initialize bot:', err)
       );
+
+    // Initialize Telegram Bot
+    telegramBotService.initialize().catch((err) =>
+      log('error', '[TELEGRAM BOT] Failed to initialize bot:', err)
+    );
 
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       const userRepository = require('./models/userRepository');
