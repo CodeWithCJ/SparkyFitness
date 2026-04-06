@@ -15,6 +15,7 @@ export const getSupportedLanguages = (): string[] => {
     'sl',
     'sv',
     'ta',
+    'uk',
   ];
 };
 
@@ -44,6 +45,8 @@ export const getLanguageDisplayName = (langCode: string): string => {
       return 'Svenska';
     case 'ta':
       return 'தமிழ்';
+    case 'uk':
+      return 'Українська';
     default:
       return langCode;
   }

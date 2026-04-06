@@ -307,6 +307,21 @@ export const handleManualSyncStrava = async (
   }
 };
 
+export const handleManualSyncMFP = async (
+  startDate?: string,
+  endDate?: string
+) => {
+  try {
+    await apiCall(`/integrations/myfitnesspal/sync`, {
+      method: 'POST',
+      body: JSON.stringify({ startDate, endDate }),
+    });
+  } catch (error: unknown) {
+    console.error('Error initiating manual MFP sync:', error);
+    throw error;
+  }
+};
+
 export const fetchBaseProviders = async (): Promise<ExternalDataProvider[]> => {
   return apiCall('/external-providers', {
     method: 'GET',
@@ -362,6 +377,10 @@ export const fetchHevyStatus = async (): Promise<HevyStatusResponse> => {
 
 export const fetchStravaStatus = async (): Promise<OAuthStatusResponse> => {
   return apiCall('/integrations/strava/status');
+};
+
+export const fetchMFPStatus = async (): Promise<OAuthStatusResponse> => {
+  return apiCall('/integrations/myfitnesspal/status');
 };
 
 export const getEnrichedProviders = async (): Promise<
@@ -427,6 +446,12 @@ export const getEnrichedProviders = async (): Promise<
               enriched.strava_last_sync_at = status.lastSyncAt;
               enriched.strava_token_expires = status.tokenExpiresAt;
             }
+            break;
+          }
+          case 'myfitnesspal': {
+            const status = await fetchMFPStatus();
+            enriched.has_token = status.isLinked;
+            enriched.last_sync_at = status.lastUpdated; // Standard field
             break;
           }
         }
