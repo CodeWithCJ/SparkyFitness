@@ -4,7 +4,6 @@ const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware'); // Import the new middleware
 const exerciseService = require('../services/exerciseService');
 const exerciseEntryService = require('../services/exerciseEntryService'); // New import for exercise entry service
-const workoutPresetService = require('../services/workoutPresetService'); // Import workoutPresetService
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -446,12 +445,7 @@ router.post(
  */
 router.post('/from-plan', authenticate, async (req, res, next) => {
   try {
-    const {
-      workout_plan_template_id,
-      workout_plan_assignment_id,
-      entry_date,
-      exercises,
-    } = req.body;
+    const { workout_plan_assignment_id, entry_date, exercises } = req.body;
     const loggedEntries = [];
     for (const exerciseData of exercises) {
       const newEntry = await exerciseService.createExerciseEntry(

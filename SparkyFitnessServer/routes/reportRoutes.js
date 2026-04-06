@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
-const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware'); // Import the new middleware
 const reportService = require('../services/reportService');
 
 /**

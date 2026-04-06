@@ -75,7 +75,7 @@ router.get('/settings', async (req, res) => {
             ? process.env.SPARKY_FITNESS_FRONTEND_URL
             : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`
         ).origin;
-      } catch (error) {
+      } catch {
         log(
           'warn',
           `[AUTH CORE] Invalid frontend URL for trusted origin: ${process.env.SPARKY_FITNESS_FRONTEND_URL}`

@@ -6,12 +6,6 @@ const checkPermissionMiddleware = require('../middleware/checkPermissionMiddlewa
 const foodService = require('../services/foodService');
 const { log } = require('../config/logging');
 const {
-  getFatSecretAccessToken,
-  foodNutrientCache,
-  CACHE_DURATION_MS,
-  FATSECRET_API_BASE_URL,
-} = require('../integrations/fatsecret/fatsecretService');
-const {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
 } = require('../integrations/openfoodfacts/openFoodFactsService');

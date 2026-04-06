@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../../middleware/authMiddleware');
-const { validationResult } = require('express-validator');
 const authService = require('../../services/authService');
 const multer = require('multer');
 const path = require('path');
@@ -20,7 +19,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const fileExtension = path.extname(file.originalname);
+    const fileExtension = pame(file.originalname);
     cb(null, req.userId + '-' + uniqueSuffix + fileExtension);
   },
 });

@@ -7,8 +7,6 @@ const measurementService = require('../services/measurementService'); // Import 
 const garminMeasurementMapping = require('../integrations/garminconnect/garminMeasurementMapping'); // Import the mapping
 const { log } = require('../config/logging');
 const moment = require('moment'); // Import moment for date manipulation
-const exerciseService = require('../services/exerciseService');
-const activityDetailsRepository = require('../models/activityDetailsRepository');
 const garminService = require('../services/garminService');
 
 router.use(express.json());

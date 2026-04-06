@@ -4,7 +4,6 @@ const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 const foodService = require('../services/foodService');
 const labelScanService = require('../services/labelScanService');
-const { log } = require('../config/logging');
 
 router.use(express.json());
 
