@@ -153,26 +153,36 @@ export async function executeFood(data: any, dateToUse: string, userId: string):
     const unit = data?.unit || data?.serving_unit || 'serving';
     const foodName = data?.food_name || data?.name || 'Unknown Food';
 
-    // 1. Search for existing food or create a quick log food
+    // Extract macros with aliases
+    const calories = Number(data?.calories ?? data?.kcal ?? data?.energy ?? data?.kilocalories) || 0;
+    const protein = Number(data?.protein ?? data?.proteins) || 0;
+    const carbs = Number(data?.carbs ?? data?.carbohydrates) || 0;
+    const fat = Number(data?.fat ?? data?.fats) || 0;
+
+    log('info', `[INTENT] executeFood: ${foodName}, macros identified: ${calories} kcal, ${protein}p, ${carbs}c, ${fat}f`);
+
+    // 1. Search for existing food
     let foodId = null;
     let variantId = null;
 
     const searchResults = await foodRepository.searchFoods(foodName, userId, false, true, false, 1);
-    if (searchResults && searchResults.length > 0) {
+    if (searchResults && searchResults.length > 0 && foodName !== 'Unknown Food') {
       foodId = searchResults[0].id;
       variantId = searchResults[0].default_variant?.id;
+      log('debug', `[INTENT] Found existing food: ${foodName} (ID: ${foodId})`);
     } else {
       // Create quick food with as much macro/micronutrient data as possible
+      log('debug', `[INTENT] Creating quick log food for: ${foodName}`);
       const newFood = await foodRepository.createFood({
         name: foodName,
         user_id: userId,
         brand: 'AI Log',
         is_custom: true,
         is_quick_food: true,
-        calories: Number(data?.calories) || 0,
-        protein: Number(data?.protein) || 0,
-        carbs: Number(data?.carbs) || 0,
-        fat: Number(data?.fat) || 0,
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fat: fat,
         saturated_fat: data?.saturated_fat ? Number(data.saturated_fat) : null,
         polyunsaturated_fat: data?.polyunsaturated_fat ? Number(data.polyunsaturated_fat) : null,
         monounsaturated_fat: data?.monounsaturated_fat ? Number(data.monounsaturated_fat) : null,
@@ -197,40 +207,45 @@ export async function executeFood(data: any, dateToUse: string, userId: string):
       return `❌ Помилка запису їжі: Не вдалося знайти або створити варіант порції для "${foodName}".`;
     }
 
+    // Create entry with potential estimates
     const entryData = {
       user_id: userId,
-      food_name: data?.food_name || 'Unknown Food',
+      food_name: foodName,
       meal_type: mealType,
       entry_date: dateToUse,
       quantity,
       unit,
       serving_size: quantity,
       serving_unit: unit,
-      calories: Number(data?.calories ?? data?.kcal ?? data?.energy) || null,
-      protein: Number(data?.protein) || null,
-      carbs: Number(data?.carbs) || null,
-      fat: Number(data?.fat) || null,
-      saturated_fat: data?.saturated_fat ? Number(data.saturated_fat) : null,
-      polyunsaturated_fat: data?.polyunsaturated_fat ? Number(data.polyunsaturated_fat) : null,
-      monounsaturated_fat: data?.monounsaturated_fat ? Number(data.monounsaturated_fat) : null,
-      trans_fat: data?.trans_fat ? Number(data.trans_fat) : null,
-      cholesterol: data?.cholesterol ? Number(data.cholesterol) : null,
-      sodium: data?.sodium ? Number(data.sodium) : null,
-      potassium: data?.potassium ? Number(data.potassium) : null,
-      dietary_fiber: data?.dietary_fiber ? Number(data.dietary_fiber) : null,
-      sugars: data?.sugars ? Number(data.sugars) : null,
-      vitamin_a: data?.vitamin_a ? Number(data.vitamin_a) : null,
-      vitamin_c: data?.vitamin_c ? Number(data.vitamin_c) : null,
-      calcium: data?.calcium ? Number(data.calcium) : null,
-      iron: data?.iron ? Number(data.iron) : null,
+      calories: calories || null,
+      protein: protein || null,
+      carbs: carbs || null,
+      fat: fat || null,
+      saturated_fat: Number(data?.saturated_fat ?? data?.sat_fat) || null,
+      polyunsaturated_fat: Number(data?.polyunsaturated_fat) || null,
+      monounsaturated_fat: Number(data?.monounsaturated_fat) || null,
+      trans_fat: Number(data?.trans_fat) || null,
+      cholesterol: Number(data?.cholesterol) || null,
+      sodium: Number(data?.sodium) || null,
+      potassium: Number(data?.potassium) || null,
+      dietary_fiber: Number(data?.dietary_fiber ?? data?.fiber) || null,
+      sugars: Number(data?.sugars ?? data?.sugar) || null,
+      vitamin_a: Number(data?.vitamin_a) || null,
+      vitamin_c: Number(data?.vitamin_c) || null,
+      calcium: Number(data?.calcium) || null,
+      iron: Number(data?.iron) || null,
       food_id: foodId,
       variant_id: variantId,
     };
 
     await foodEntryService.createFoodEntry(userId, userId, entryData);
 
-    const cal = entryData.calories ? ` (~${Math.round(entryData.calories)} ккал)` : '';
-    return `✅ Їжа записана: ${entryData.food_name} — ${quantity} ${unit}${cal} [${mealType}, ${dateToUse}]`;
+    const macrosDisplay = (protein || carbs || fat) 
+      ? `\n📊 <b>(P: ${Math.round(protein || 0)}g, C: ${Math.round(carbs || 0)}g, F: ${Math.round(fat || 0)}g)</b>` 
+      : '';
+    const calDisplay = calories ? ` (~${Math.round(calories)} ккал)` : '';
+    
+    return `✅ <b>Їжа записана: ${foodName} — ${quantity} ${unit}${calDisplay}</b>${macrosDisplay}\n⏰ [${mealType}, ${dateToUse}]`;
   } catch (e) {
     log('error', `[INTENT] Food error: ${e.message}`);
     return `❌ Помилка запису їжі: ${e.message}`;

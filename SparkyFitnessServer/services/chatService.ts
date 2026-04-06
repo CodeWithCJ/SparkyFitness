@@ -342,10 +342,11 @@ Date: ${todayInZone(chatTz)}.
 2. **Context:** Use [SYSTEM CONTEXT: RECENT PROGRESS] for insights. Don't ask for data already provided.
 3. **Dates:** Extract explicitly mentioned dates/times to the root 'entryDate' field ("today", "yesterday", "MM-DD", "YYYY-MM-DD"). Do NOT resolve relative dates to full dates. Omit if none.
 4. **Water is NOT Food:** NEVER log water under 'log_food'. ALWAYS use 'log_water'.
-5. **Images:**
+5. **Images & Unknown Foods:**
    - Extract food/exercise, estimate quantity, unit, and meal_type.
-   - **CRITICAL:** Always infer detailed nutrition based on the photo. Do not default to 0.
-   - **MISSING DATA:** If a photo lacks clear portion size (food) or duration (exercise), output 'ask_question' intent to clarify. Do NOT guess completely ambiguous sizes.
+   - **CRITICAL:** Always infer detailed nutrition based on the photo or your general knowledge if not in DB.
+   - **MAXIMAL DETAIL:** For 'log_food', you MUST provide 'calories', 'protein', 'carbs', 'fat' AND any inferable micros like 'sugars', 'dietary_fiber', 'sodium', 'potassium', 'cholesterol', 'saturated_fat', 'vitamin_a', 'vitamin_c', 'calcium', 'iron'.
+   - **MISSING DATA:** If a photo/text lacks clear portion size, output 'ask_question' intent to clarify. Do NOT guess completely ambiguous sizes.
 6. **Units & Custom Names:**
    - Convert counts ("2 apples") to unit "piece". Match user units ("g", "cup"). Infer if missing.
    - For custom measurements, strictly match names from this list: ${customCategoriesList}.
@@ -394,10 +395,9 @@ Schema: [{"name": "string", "calories": number, "protein": number, "carbs": numb
 
     // For Google AI
     const cleanSystemPrompt = systemPromptContent
-      .replace(/[^\w\s\-.,!?:;()\[\]{}'"]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .substring(0, 1000);
+      .substring(0, 15000);
 
     switch (aiService.service_type) {
       case 'openai':
@@ -728,6 +728,8 @@ Schema: [{"name": "string", "calories": number, "protein": number, "carbs": numb
         content = data.message?.content || 'No response from AI service';
         break;
     }
+    log('info', `[AI RAW RESPONSE] ${content}`);
+
     let responseText = content;
     let intent = null;
     let intentData = null;
@@ -736,23 +738,46 @@ Schema: [{"name": "string", "calories": number, "protein": number, "carbs": numb
     try {
       // Clean content from markdown code blocks if AI wrapped JSON
       const cleanContent = content
-        .replace(/```json\s?/, '')
-        .replace(/\s?```/, '')
+        .replace(/```json\s?/g, '')
+        .replace(/\s?```/g, '')
         .trim();
       const parsed = JSON.parse(cleanContent);
-      responseText = parsed.response || content;
+      responseText = parsed.response || parsed.responseText || content;
       intent = parsed.intent || null;
       intentData = parsed.data || null;
-      entryDate = parsed.entryDate || null;
+      entryDate = parsed.entryDate || parsed.entry_date || null;
+
+      // Robust fallback: if 'intent' exists but 'data' is missing, try pulling from root
+      if (intent && !intentData) {
+        const {
+          intent: _i,
+          response: _r,
+          responseText: _rt,
+          entryDate: _ed,
+          entry_date: _ed2,
+          ...dataAtRoot
+        } = parsed;
+        if (Object.keys(dataAtRoot).length > 0) {
+          intentData = dataAtRoot;
+          log(
+            'info',
+            `[AI RESPONSE] Extracted intentData from root because 'data' key was missing: ${JSON.stringify(intentData)}`
+          );
+        }
+      }
     } catch (e) {
       log(
-        'debug',
+        'info',
         'AI response is not JSON or could not be parsed, treating as plain text.'
       );
     }
 
-    log('debug', `[AI RESPONSE] Parsed intent: ${intent}, data keys: ${intentData ? Object.keys(intentData).join(', ') : 'none'}`);
-    if (intentData) log('debug', `[AI RESPONSE DATA] ${JSON.stringify(intentData)}`);
+    log(
+      'info',
+      `[AI RESPONSE] Parsed intent: ${intent}, data keys: ${intentData ? Object.keys(intentData).join(', ') : 'none'}`
+    );
+    if (intentData)
+      log('info', `[AI RESPONSE DATA] ${JSON.stringify(intentData)}`);
 
     return {
       content: responseText,
