@@ -3,6 +3,38 @@ import type { ExternalFoodItem, ExternalFoodVariant } from './externalFoods';
 import type { Meal } from './meals';
 import type { BarcodeFood } from '../services/api/externalFoodSearchApi';
 
+/** Convert a numeric value to a form-compatible string. Returns '' for null/undefined. */
+export const toFormString = (v: number | null | undefined): string =>
+  v != null ? String(v) : '';
+
+/** Parse an optional form string to a number. Returns undefined for empty strings. */
+export const parseOptional = (s: string): number | undefined =>
+  s === '' ? undefined : (parseFloat(s) || 0);
+
+/** Ordered list of extra nutrient fields for display and form conversion. */
+export const EXTRA_NUTRIENT_FIELDS = [
+  { key: 'fiber', label: 'Fiber', unit: 'g' },
+  { key: 'sugars', label: 'Sugars', unit: 'g' },
+  { key: 'saturatedFat', label: 'Saturated Fat', unit: 'g' },
+  { key: 'transFat', label: 'Trans Fat', unit: 'g' },
+  { key: 'cholesterol', label: 'Cholesterol', unit: 'mg' },
+  { key: 'sodium', label: 'Sodium', unit: 'mg' },
+  { key: 'potassium', label: 'Potassium', unit: 'mg' },
+  { key: 'calcium', label: 'Calcium', unit: 'mg' },
+  { key: 'iron', label: 'Iron', unit: 'mg' },
+  { key: 'vitaminA', label: 'Vitamin A', unit: 'mcg' },
+  { key: 'vitaminC', label: 'Vitamin C', unit: 'mg' },
+] as const;
+
+type ExtraNutrientKey = typeof EXTRA_NUTRIENT_FIELDS[number]['key'];
+
+/** Build a filtered display list from a camelCase nutrient source. */
+export function buildNutrientDisplayList(source: Partial<Record<ExtraNutrientKey, number>>) {
+  return EXTRA_NUTRIENT_FIELDS
+    .filter(({ key }) => source[key] != null)
+    .map(({ key, label, unit }) => ({ label, value: source[key]!, unit }));
+}
+
 export interface FoodInfoItem {
   id: string;
   name: string;
@@ -17,6 +49,13 @@ export interface FoodInfoItem {
   saturatedFat?: number;
   sodium?: number;
   sugars?: number;
+  transFat?: number;
+  potassium?: number;
+  calcium?: number;
+  iron?: number;
+  cholesterol?: number;
+  vitaminA?: number;
+  vitaminC?: number;
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];
   source: 'local' | 'external' | 'meal';
@@ -37,6 +76,13 @@ export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem 
   saturatedFat: item.default_variant.saturated_fat,
   sodium: item.default_variant.sodium,
   sugars: item.default_variant.sugars,
+  transFat: item.default_variant.trans_fat,
+  potassium: item.default_variant.potassium,
+  calcium: item.default_variant.calcium,
+  iron: item.default_variant.iron,
+  cholesterol: item.default_variant.cholesterol,
+  vitaminA: item.default_variant.vitamin_a,
+  vitaminC: item.default_variant.vitamin_c,
   variantId: item.default_variant.id,
   source: 'local',
   originalItem: item,
@@ -56,6 +102,13 @@ export const externalFoodItemToFoodInfo = (item: ExternalFoodItem): FoodInfoItem
   saturatedFat: item.saturated_fat,
   sodium: item.sodium,
   sugars: item.sugars,
+  transFat: item.trans_fat,
+  potassium: item.potassium,
+  calcium: item.calcium,
+  iron: item.iron,
+  cholesterol: item.cholesterol,
+  vitaminA: item.vitamin_a,
+  vitaminC: item.vitamin_c,
   externalVariants: item.variants,
   source: 'external',
   originalItem: item,
@@ -65,10 +118,19 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
   const scale = (food: Meal['foods'][number]) =>
     food.serving_size === 0 ? 0 : food.quantity / food.serving_size;
 
-  const calories = meal.foods.reduce((sum, f) => sum + f.calories * scale(f), 0);
-  const protein = meal.foods.reduce((sum, f) => sum + f.protein * scale(f), 0);
-  const carbs = meal.foods.reduce((sum, f) => sum + f.carbs * scale(f), 0);
-  const fat = meal.foods.reduce((sum, f) => sum + f.fat * scale(f), 0);
+  const sumField = (field: keyof Meal['foods'][number]) =>
+    meal.foods.reduce((sum, f) => {
+      const v = f[field];
+      return typeof v === 'number' ? sum + v * scale(f) : sum;
+    }, 0);
+
+  const calories = sumField('calories');
+  const protein = sumField('protein');
+  const carbs = sumField('carbs');
+  const fat = sumField('fat');
+
+  const hasField = (field: keyof Meal['foods'][number]) =>
+    meal.foods.some((f) => f[field] != null);
 
   return {
     id: meal.id,
@@ -80,6 +142,13 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
     protein: Math.round(protein),
     carbs: Math.round(carbs),
     fat: Math.round(fat),
+    transFat: hasField('trans_fat') ? Math.round(sumField('trans_fat')) : undefined,
+    potassium: hasField('potassium') ? Math.round(sumField('potassium')) : undefined,
+    calcium: hasField('calcium') ? Math.round(sumField('calcium')) : undefined,
+    iron: hasField('iron') ? Math.round(sumField('iron')) : undefined,
+    cholesterol: hasField('cholesterol') ? Math.round(sumField('cholesterol')) : undefined,
+    vitaminA: hasField('vitamin_a') ? Math.round(sumField('vitamin_a')) : undefined,
+    vitaminC: hasField('vitamin_c') ? Math.round(sumField('vitamin_c')) : undefined,
     source: 'meal',
     originalItem: meal,
   };

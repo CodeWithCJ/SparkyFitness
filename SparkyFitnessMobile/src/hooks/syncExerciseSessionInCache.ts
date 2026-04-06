@@ -1,8 +1,6 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import type { ExerciseHistoryResponse, ExerciseSessionResponse } from '@workspace/shared';
-import type { DailySummaryRawData } from './useDailySummary';
-import { normalizeDate } from '../utils/dateUtils';
-import { dailySummaryQueryKey, exerciseHistoryQueryKey } from './queryKeys';
+import { exerciseHistoryQueryKey } from './queryKeys';
 
 function replaceSession(
   sessions: ExerciseSessionResponse[],
@@ -52,28 +50,6 @@ export function syncExerciseSessionInCache(
       return {
         ...existing,
         pages: nextPages,
-      };
-    },
-  );
-
-  const entryDate = updatedSession.entry_date ? normalizeDate(updatedSession.entry_date) : undefined;
-  if (!entryDate) {
-    return;
-  }
-
-  queryClient.setQueryData<DailySummaryRawData>(
-    dailySummaryQueryKey(entryDate),
-    existing => {
-      if (!existing) return existing;
-
-      const nextSessions = replaceSession(existing.exerciseEntries, updatedSession);
-      if (nextSessions === existing.exerciseEntries) {
-        return existing;
-      }
-
-      return {
-        ...existing,
-        exerciseEntries: nextSessions,
       };
     },
   );

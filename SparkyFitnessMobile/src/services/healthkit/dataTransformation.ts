@@ -357,6 +357,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     const timezone: RecordTimezoneMetadata = Object.keys(tzMeta).length > 0
       ? tzMeta
       : { record_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+    const totalDistanceMeters = typeof rec.totalDistance === 'number' ? rec.totalDistance : 0;
 
     const exerciseSession: TransformedExerciseSession = {
       type: 'ExerciseSession',
@@ -370,7 +371,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       activityType: activityTypeName,
       title: activityTypeName,
       caloriesBurned: rec.totalEnergyBurned as number || 0,
-      distance: rec.totalDistance as number || 0,
+      distance: parseFloat((totalDistanceMeters / 1000).toFixed(2)),
       notes: 'Source: HealthKit',
       raw_data: record,
       sets: [{ set_number: 1, set_type: 'Working Set', duration: Math.round(durationInSeconds / 60) }],

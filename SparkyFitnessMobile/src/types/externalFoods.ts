@@ -10,6 +10,13 @@ export interface ExternalFoodVariant {
   sodium?: number;
   fiber?: number;
   sugars?: number;
+  trans_fat?: number;
+  potassium?: number;
+  calcium?: number;
+  iron?: number;
+  cholesterol?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
 }
 
 export interface ExternalFoodSearchPagination {
@@ -36,6 +43,13 @@ export interface ExternalFoodItem {
   sodium?: number;
   fiber?: number;
   sugars?: number;
+  trans_fat?: number;
+  potassium?: number;
+  calcium?: number;
+  iron?: number;
+  cholesterol?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
   serving_size: number;
   serving_unit: string;
   source: string;

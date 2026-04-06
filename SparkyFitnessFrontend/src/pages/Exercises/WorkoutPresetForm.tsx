@@ -648,7 +648,10 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        requireConfirmation
+        className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>
             {initialPreset

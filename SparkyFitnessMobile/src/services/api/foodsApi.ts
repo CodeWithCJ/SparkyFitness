@@ -54,6 +54,13 @@ export interface SaveFoodPayload {
   saturated_fat?: number;
   sodium?: number;
   sugars?: number;
+  trans_fat?: number;
+  potassium?: number;
+  calcium?: number;
+  iron?: number;
+  cholesterol?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
   is_custom?: boolean;
   is_quick_food?: boolean;
   is_default?: boolean;

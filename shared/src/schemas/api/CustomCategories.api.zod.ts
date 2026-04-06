@@ -1,7 +1,7 @@
 import {
   customCategoriesMutatorSchema,
   customCategoriesSchema,
-} from "../database/CustomCategories.zod";
+} from "../database/CustomCategories.zod.ts";
 import { z } from "zod";
 
 export const customCategoriesResponseSchema = customCategoriesSchema

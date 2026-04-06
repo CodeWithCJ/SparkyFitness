@@ -341,7 +341,7 @@ describe('transformHealthRecords', () => {
       expect((result[0] as TransformedExerciseSession).duration).toBe(1800);
     });
 
-    test('extracts calories and distance from record', () => {
+    test('extracts calories and converts distance to kilometers from record', () => {
       const records = [
         {
           startTime: '2024-01-15T08:00:00Z',
@@ -356,7 +356,7 @@ describe('transformHealthRecords', () => {
 
       const exerciseResult = result[0] as TransformedExerciseSession;
       expect(exerciseResult.caloriesBurned).toBe(500);
-      expect(exerciseResult.distance).toBe(5000);
+      expect(exerciseResult.distance).toBe(5);
       expect(exerciseResult.type).toBe('ExerciseSession');
       expect(exerciseResult.source).toBe('HealthKit');
     });

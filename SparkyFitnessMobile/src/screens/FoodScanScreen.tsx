@@ -10,7 +10,8 @@ import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
 import { useCSSVariable } from 'uniwind';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
-import { lookupBarcode, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
+import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
+import { toFormString } from '../types/foodInfo';
 
 type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 
@@ -44,7 +45,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
 
   const performBarcodeLookup = async (barcode: string) => {
     try {
-      const result = await lookupBarcode(barcode);
+      const result = await lookupBarcodeV2(barcode);
 
       if (!result.food) {
         setNotFoundBarcode(barcode);
@@ -64,6 +65,13 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           saturatedFat: dv.saturated_fat,
           sodium: dv.sodium,
           sugars: dv.sugars,
+          transFat: dv.trans_fat,
+          potassium: dv.potassium,
+          calcium: dv.calcium,
+          iron: dv.iron,
+          cholesterol: dv.cholesterol,
+          vitaminA: dv.vitamin_a,
+          vitaminC: dv.vitamin_c,
           variantId: dv.id,
           source: 'local',
           originalItem: result.food,
@@ -84,10 +92,17 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             protein: String(dv.protein),
             carbs: String(dv.carbs),
             fat: String(dv.fat),
-            fiber: dv.dietary_fiber != null ? String(dv.dietary_fiber) : '',
-            saturatedFat: dv.saturated_fat != null ? String(dv.saturated_fat) : '',
-            sodium: dv.sodium != null ? String(dv.sodium) : '',
-            sugars: dv.sugars != null ? String(dv.sugars) : '',
+            fiber: toFormString(dv.dietary_fiber),
+            saturatedFat: toFormString(dv.saturated_fat),
+            sodium: toFormString(dv.sodium),
+            sugars: toFormString(dv.sugars),
+            transFat: toFormString(dv.trans_fat),
+            potassium: toFormString(dv.potassium),
+            cholesterol: toFormString(dv.cholesterol),
+            calcium: toFormString(dv.calcium),
+            iron: toFormString(dv.iron),
+            vitaminA: toFormString(dv.vitamin_a),
+            vitaminC: toFormString(dv.vitamin_c),
           },
         });
       }
@@ -147,10 +162,17 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           protein: String(result.protein ?? ''),
           carbs: String(result.carbs ?? ''),
           fat: String(result.fat ?? ''),
-          fiber: result.fiber != null ? String(result.fiber) : '',
-          saturatedFat: result.saturated_fat != null ? String(result.saturated_fat) : '',
-          sodium: result.sodium != null ? String(result.sodium) : '',
-          sugars: result.sugars != null ? String(result.sugars) : '',
+          fiber: toFormString(result.fiber),
+          saturatedFat: toFormString(result.saturated_fat),
+          transFat: toFormString(result.trans_fat),
+          sodium: toFormString(result.sodium),
+          sugars: toFormString(result.sugars),
+          cholesterol: toFormString(result.cholesterol),
+          potassium: toFormString(result.potassium),
+          calcium: toFormString(result.calcium),
+          iron: toFormString(result.iron),
+          vitaminA: toFormString(result.vitamin_a),
+          vitaminC: toFormString(result.vitamin_c),
         },
         barcode: notFoundBarcode ?? undefined,
         providerType: 'label_scan',

@@ -1,4 +1,8 @@
-const { todayInZone, isValidTimeZone } = require('@workspace/shared');
+const {
+  todayInZone,
+  isValidTimeZone,
+  localDateToDay,
+} = require('@workspace/shared');
 
 /**
  * Calculate a user's age from their date of birth, respecting their timezone.
@@ -15,8 +19,7 @@ function userAge(dob, timezone = 'UTC') {
   const todayMonth = parseInt(today.slice(5, 7), 10);
   const todayDay = parseInt(today.slice(8, 10), 10);
 
-  const dobStr =
-    typeof dob === 'string' ? dob : new Date(dob).toISOString().slice(0, 10);
+  const dobStr = typeof dob === 'string' ? dob : localDateToDay(new Date(dob));
   const dobYear = parseInt(dobStr.slice(0, 4), 10);
   const dobMonth = parseInt(dobStr.slice(5, 7), 10);
   const dobDay = parseInt(dobStr.slice(8, 10), 10);

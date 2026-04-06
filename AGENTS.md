@@ -145,7 +145,7 @@ pnpm test
 ### Date, Day Strings, and Timezones
 
 - Prefer the shared helpers in `shared/src/utils/timezone.ts`, exported through `@workspace/shared`, for day-string and timezone-aware date logic.
-- Use `isDayString`, `addDays`, `compareDays`, `dayToPickerDate`, and `pickerDateToDay` for `YYYY-MM-DD` calendar-day strings.
+- Use `isDayString`, `addDays`, `compareDays`, `dayToPickerDate`, and `localDateToDay` for `YYYY-MM-DD` calendar-day strings.
 - Use `todayInZone`, `instantToDay`, `instantHourMinute`, `dayToUtcRange`, and `dayRangeToUtcRange` when a user's timezone matters.
 - On the server, load the user's timezone with `SparkyFitnessServer/utils/timezoneLoader.js` before deriving "today", bucketing timestamps by day, or building day-based query ranges.
 - Avoid ad hoc UTC date extraction such as `toISOString().split('T')[0]` for user-facing or business-logic dates. That pattern silently shifts dates near timezone boundaries and is not a substitute for timezone-aware day handling.

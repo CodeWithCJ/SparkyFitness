@@ -60,8 +60,8 @@ export function dayToPickerDate(day: string): Date {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
 
-/** Convert a local Date (from a date picker) to a YYYY-MM-DD string using local getters. */
-export function pickerDateToDay(date: Date): string {
+/** Convert a local Date to a YYYY-MM-DD string using local getters. */
+export function localDateToDay(date: Date): string {
   const y = date.getFullYear();
   const m = date.getMonth() + 1;
   const d = date.getDate();
