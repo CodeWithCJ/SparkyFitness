@@ -1,20 +1,19 @@
-const { log } = require('../../config/logging');
-const axios = require('axios');
+import { log } from '../../config/logging';
+import axios from 'axios';
 const externalProviderRepository = require('../../models/externalProviderRepository');
 const exerciseEntryRepository = require('../../models/exerciseEntry');
 const activityDetailsRepository = require('../../models/activityDetailsRepository');
 const exerciseRepository = require('../../models/exercise');
-const moment = require('moment');
-const {
+import moment from 'moment';
+import {
   encrypt,
-  decrypt,
   ENCRYPTION_KEY,
-} = require('../../security/encryption');
+} from '../../security/encryption';
 
 const GARMIN_MICROSERVICE_URL =
   process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
 
-async function garminLogin(userId, email, password) {
+export async function garminLogin(userId: string, email: string, password: string): Promise<any> {
   try {
     const response = await axios.post(
       `${GARMIN_MICROSERVICE_URL}/auth/garmin/login`,
@@ -25,7 +24,7 @@ async function garminLogin(userId, email, password) {
       }
     );
     return response.data; // Should contain tokens or MFA status
-  } catch (error) {
+  } catch (error: any) {
     log(
       'error',
       `Error during Garmin login for user ${userId}:`,
@@ -37,7 +36,7 @@ async function garminLogin(userId, email, password) {
   }
 }
 
-async function garminResumeLogin(userId, clientState, mfaCode) {
+export async function garminResumeLogin(userId: string, clientState: string, mfaCode: string): Promise<any> {
   try {
     const response = await axios.post(
       `${GARMIN_MICROSERVICE_URL}/auth/garmin/resume_login`,
@@ -48,7 +47,7 @@ async function garminResumeLogin(userId, clientState, mfaCode) {
       }
     );
     return response.data; // Should contain tokens
-  } catch (error) {
+  } catch (error: any) {
     log(
       'error',
       `Error during Garmin MFA for user ${userId}:`,
@@ -60,17 +59,12 @@ async function garminResumeLogin(userId, clientState, mfaCode) {
   }
 }
 
-async function handleGarminTokens(userId, tokensB64) {
+export async function handleGarminTokens(userId: string, tokensB64: string): Promise<any> {
   try {
-    // Decode the base64 tokens string to get the actual tokens object
-    // The tokensB64 is the full garth.dumps() output, which is a base64 encoded string of a JSON array.
-    // The Python microservice returns the full garth.dumps() output directly.
     const garthDump = tokensB64;
     const parsedGarthDump = JSON.parse(
       Buffer.from(garthDump, 'base64').toString('utf8')
     );
-    // garth.dumps() always returns a 2-element JSON array: [OAuth1Token, OAuth2Token].
-    // OAuth2Token (index 1) contains access_token, refresh_token, expires_at, etc.
     if (
       !Array.isArray(parsedGarthDump) ||
       parsedGarthDump.length < 2 ||
@@ -82,8 +76,11 @@ async function handleGarminTokens(userId, tokensB64) {
       );
     }
     const tokens = parsedGarthDump[1];
-    log('debug', 'handleGarminTokens: Parsed Garth Dump:', parsedGarthDump);
-    log('debug', 'handleGarminTokens: Extracted Tokens:', tokens);
+    log('debug', 'handleGarminTokens: Extracted Tokens (masked):', {
+      access_token: tokens.access_token ? tokens.access_token.substring(0, 10) + '...' : null,
+      refresh_token: tokens.refresh_token ? tokens.refresh_token.substring(0, 10) + '...' : null,
+      external_user_id: tokens.external_user_id
+    });
 
     log('debug', 'handleGarminTokens: Received Garth dump (masked):', {
       garth_dump_masked: garthDump ? `${garthDump.substring(0, 30)}...` : 'N/A',
@@ -107,14 +104,12 @@ async function handleGarminTokens(userId, tokensB64) {
       garth_dump_tag: encryptedGarthDump.tag,
     });
 
-    // Assuming 'external_user_id' is available in the tokens object or can be derived
-    const externalUserId = tokens.external_user_id || `garmin_user_${userId}`; // Placeholder
+    const externalUserId = tokens.external_user_id || `garmin_user_${userId}`;
     log(
       'debug',
       `handleGarminTokens: externalUserId determined as: ${externalUserId}`
     );
 
-    // Check if a Garmin provider entry already exists for this user
     const provider =
       await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
         userId,
@@ -123,28 +118,23 @@ async function handleGarminTokens(userId, tokensB64) {
 
     const updateData = {
       provider_name: 'garmin',
-      provider_type: 'garmin', // Changed to 'garmin' as per user's request
+      provider_type: 'garmin',
       user_id: userId,
       is_active: true,
-      base_url: 'https://connect.garmin.com', // Garmin Connect base URL
+      base_url: 'https://connect.garmin.com',
 
       encrypted_garth_dump: encryptedGarthDump.encryptedText,
       garth_dump_iv: encryptedGarthDump.iv,
       garth_dump_tag: encryptedGarthDump.tag,
 
-      // garth serialises the access token expiry as `expires_at` (Unix seconds).
-      // We prefer this over `refresh_token_expires_at` because the UI shows this
-      // date as "token expires at" — the access token (hours/days) is far more
-      // meaningful to surface than the refresh token expiry (typically months away).
-      // Fallback to refresh_token_expires_at only if expires_at is absent, which
-      // should not happen in normal garth dumps but guards against older token shapes.
       token_expires_at: (() => {
         const expiryTimestamp =
           tokens.expires_at || tokens.refresh_token_expires_at;
         return expiryTimestamp ? new Date(expiryTimestamp * 1000) : null;
       })(),
-      external_user_id: tokens.external_user_id || externalUserId, // Use external_user_id from tokens if available
+      external_user_id: tokens.external_user_id || externalUserId,
     };
+    
     log('debug', 'handleGarminTokens: Update data for provider (masked):', {
       provider_name: updateData.provider_name,
       provider_type: updateData.provider_type,
@@ -160,7 +150,6 @@ async function handleGarminTokens(userId, tokensB64) {
 
     let savedProvider;
     if (provider && provider.id) {
-      // Update existing provider entry
       savedProvider =
         await externalProviderRepository.updateExternalDataProvider(
           provider.id,
@@ -169,14 +158,13 @@ async function handleGarminTokens(userId, tokensB64) {
         );
       log('info', `Updated Garmin provider entry for user ${userId}.`);
     } else {
-      // Create new provider entry
       savedProvider =
         await externalProviderRepository.createExternalDataProvider(updateData);
       log('info', `Created new Garmin provider entry for user ${userId}.`);
     }
 
-    return savedProvider; // Return the created or updated provider object
-  } catch (error) {
+    return savedProvider;
+  } catch (error: any) {
     log(
       'error',
       `Error handling Garmin tokens for user ${userId}:`,
@@ -191,12 +179,12 @@ async function handleGarminTokens(userId, tokensB64) {
   }
 }
 
-async function syncGarminHealthAndWellness(
-  userId,
-  startDate,
-  endDate,
-  metricTypes
-) {
+export async function syncGarminHealthAndWellness(
+  userId: string,
+  startDate: string,
+  endDate: string,
+  metricTypes?: string[]
+): Promise<any> {
   try {
     const provider =
       await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
@@ -206,7 +194,7 @@ async function syncGarminHealthAndWellness(
     if (!provider || !provider.garth_dump) {
       throw new Error('Garmin tokens not found for this user.');
     }
-    const decryptedGarthDump = provider.garth_dump; // This is already decrypted by the repository
+    const decryptedGarthDump = provider.garth_dump;
     log(
       'debug',
       `syncGarminHealthAndWellness: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`
@@ -215,17 +203,17 @@ async function syncGarminHealthAndWellness(
       `${GARMIN_MICROSERVICE_URL}/data/health_and_wellness`,
       {
         user_id: userId,
-        tokens: decryptedGarthDump, // Decrypted, base64 encoded tokens string
+        tokens: decryptedGarthDump,
         start_date: startDate,
         end_date: endDate,
-        metric_types: metricTypes || [], // Pass an empty array if metricTypes is not provided
+        metric_types: metricTypes || [],
       },
       {
         timeout: 120000, // 2 minutes timeout
       }
     );
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     log(
       'error',
       `Error fetching Garmin health and wellness data for user ${userId} from ${startDate} to ${endDate}:`,
@@ -237,12 +225,12 @@ async function syncGarminHealthAndWellness(
   }
 }
 
-async function fetchGarminActivitiesAndWorkouts(
-  userId,
-  startDate,
-  endDate,
-  activityType
-) {
+export async function fetchGarminActivitiesAndWorkouts(
+  userId: string,
+  startDate: string,
+  endDate: string,
+  activityType?: string
+): Promise<any> {
   try {
     const provider =
       await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
@@ -268,17 +256,16 @@ async function fetchGarminActivitiesAndWorkouts(
         activity_type: activityType,
       },
       {
-        timeout: 120000, // 2 minutes timeout
+        timeout: 120000,
       }
     );
 
     log(
       'debug',
-      `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`,
-      response.data
+      `Received activities and workouts data from Garmin microservice for user ${userId} (${Array.isArray(response.data) ? response.data.length : 'non-array'} items).`
     );
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     log(
       'error',
       `Error fetching Garmin activities and workouts for user ${userId} from ${startDate} to ${endDate}:`,
@@ -289,11 +276,3 @@ async function fetchGarminActivitiesAndWorkouts(
     );
   }
 }
-
-module.exports = {
-  garminLogin,
-  garminResumeLogin,
-  handleGarminTokens,
-  syncGarminHealthAndWellness,
-  fetchGarminActivitiesAndWorkouts,
-};
