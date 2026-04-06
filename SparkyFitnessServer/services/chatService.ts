@@ -179,7 +179,10 @@ export async function updateSparkyChatHistoryEntry(
   updateData: any
 ) {
   try {
-    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id, authenticatedUserId);
+    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(
+      id,
+      authenticatedUserId
+    );
     if (!entryOwnerId) {
       throw new Error('Chat history entry not found.');
     }
@@ -214,7 +217,10 @@ export async function deleteSparkyChatHistoryEntry(
   id: string
 ) {
   try {
-    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id, authenticatedUserId);
+    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(
+      id,
+      authenticatedUserId
+    );
     if (!entryOwnerId) {
       throw new Error('Chat history entry not found.');
     }
@@ -338,7 +344,7 @@ Goal: Track food, exercise, measurements, and provide brief, actionable advice.
 Date: ${todayInZone(chatTz)}.
 
 **CORE RULES:**
-1. **Brevity & Style:** Keep responses concise. Use Telegram HTML formatting (<b>, <i>, <code>) and emojis in the 'response' field.
+1. **Brevity & Style:** Keep responses concise, friendly, and coaching-oriented. Use Telegram HTML formatting (<b>, <i>, <code>) and emojis in the 'response' field.
 2. **Context:** Use [SYSTEM CONTEXT: RECENT PROGRESS] for insights. Don't ask for data already provided.
 3. **Dates:** Extract explicitly mentioned dates/times to the root 'entryDate' field ("today", "yesterday", "MM-DD", "YYYY-MM-DD"). Do NOT resolve relative dates to full dates. Omit if none.
 4. **Water is NOT Food:** NEVER log water under 'log_food'. ALWAYS use 'log_water'.
@@ -350,7 +356,13 @@ Date: ${todayInZone(chatTz)}.
 6. **Units & Custom Names:**
    - Convert counts ("2 apples") to unit "piece". Match user units ("g", "cup"). Infer if missing.
    - For custom measurements, strictly match names from this list: ${customCategoriesList}.
-7. **History Requests:** If the user asks for historical data (e.g., "what did I eat", "last 10 workouts", "my recent meals") AND the data is NOT already provided in the SYSTEM UPDATE context, you MUST return the 'request_data' intent. Set 'response' to a brief waiting message like "Один момент! 🔍 Шукаю...". If the data IS provided, use 'chat' intent to summarize it.
+7. **History Requests:** If the user asks for historical data AND the data is NOT already provided in the SYSTEM UPDATE context, you MUST return the 'request_data' intent. Set 'response' to a brief waiting message. If the data IS provided, use 'chat' intent to summarize it.
+
+**PROACTIVE COACHING (CRITICAL):**
+1. **Evaluation:** After logging food or exercise, ALWAYS evaluate the current daily totals against the [USER NUTRITION PLAN] provided in the context.
+2. **Enforce Rules:** If a user logs a food that violates their specific rules (e.g., sweet oatmeal for breakfast, or drinking beer on a non-hiking day), gently point it out in the 'response' and explain WHY based on the plan rules.
+3. **Praise:** Praise them heavily for logging high-fiber foods (vegetables) or hitting protein targets.
+4. **Suggest:** Look at remaining macros. If protein is low at the end of the day, suggest specific foods from their plan (e.g., cottage cheese or fish).
 
 **OUTPUT FORMAT:**
 You MUST reply with a STRICT JSON object matching this schema:
@@ -363,18 +375,18 @@ You MUST reply with a STRICT JSON object matching this schema:
 }
 
 **INTENTS & DATA SCHEMAS:**
-- 'log_food': { food_name: string, quantity: number(default 1), unit: string("g"|"piece"|"cup"|etc), meal_type: string("breakfast"|"lunch"|"dinner"|"snacks"-infer from time), calories: number, protein: number, carbs: number, fat: number, ...[include any inferable micros like sugars, fiber, sodium, etc.], serving_size: number, serving_unit: string }
-- 'log_exercise': { exercise_name: string, duration_minutes: number|null, distance: number|null, distance_unit: string|null }
-- 'log_measurement': { measurements: [{ type: "weight"|"neck"|"waist"|"hips"|"steps"|"custom", value: number, unit: string|null, name: string|null (REQUIRED exact match if type="custom") }] }
-- 'log_water': { glasses_consumed: number(default 1) }
+- 'log_food': { food_name: string, quantity: number(default 1), unit: string, meal_type: string, calories: number, protein: number, carbs: number, fat: number, dietary_fiber: number, sugars: number, ...[include any inferable micros], serving_size: number, serving_unit: string }
+- 'log_exercise': { exercise_name: string, duration_minutes: number|null, distance: number|null, distance_unit: string|null, calories_burned: number|null }
+- 'log_measurement': { measurements: [{ type: "weight"|"neck"|"waist"|"hips"|"steps"|"custom", value: number, unit: string|null, name: string|null }] }
+- 'log_water': { glasses_consumed: number }
 - 'delete_measurement': { measurements: [{ type: string, value: number|null }] }
 - 'delete_food': { food_name: string|null }
-- 'request_data': { type: "food_history" | "exercise_history" | "measurements_history", days: "14" } // Use to fetch deep history not in context. 
-- 'ask_question' / 'chat': {} // Empty data object. MUST provide 'response'.
+- 'request_data': { type: "food_history" | "exercise_history" | "measurements_history", days: "14" }
+- 'ask_question' / 'chat': {}
 
 **SPECIAL COMMAND:**
-If input is "GENERATE_FOOD_OPTIONS:[food name] in [unit]", ignore standard JSON output and return ONLY a JSON array of 2-3 realistic options. Match requested unit if logical.
-Schema: [{"name": "string", "calories": number, "protein": number, "carbs": number, "fat": number, "serving_size": number, "serving_unit": "string (unit ONLY)"}]`;
+If input is "GENERATE_FOOD_OPTIONS:[food name] in [unit]", return ONLY a JSON array of 2-3 realistic options.
+Schema: [{"name": "string", "calories": number, "protein": number, "carbs": number, "fat": number, "serving_size": number, "serving_unit": "string"}]`;
     const messagesForAI: any[] = [];
 
     // Перевіряємо, чи є в переданому масиві messages повідомлення з role 'system'.
@@ -552,7 +564,7 @@ Schema: [{"name": "string", "calories": number, "protein": number, "carbs": numb
               };
             })
             .filter((content) => content.parts.length > 0),
-          systemInstruction: undefined as any
+          systemInstruction: undefined as any,
         };
 
         if (googleBody.contents.length === 0) {
