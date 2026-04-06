@@ -1,4 +1,4 @@
-import { ACTIVITY_MULTIPLIERS } from "../constants/calorieConstants.ts";
+import { ACTIVITY_MULTIPLIERS } from "../constants/calorieConstants";
 
 export type CalorieGoalAdjustmentMode =
   | "dynamic"

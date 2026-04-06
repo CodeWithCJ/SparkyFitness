@@ -54,8 +54,11 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
+    "@types/node-telegram-bot-api": "^0.64.14",
     "@types/pg": "^8.18.0",
+    "@types/supertest": "^7.2.0",
     "eslint": "^10.0.3",
     "eslint-plugin-n": "^17.23.2",
     "eslint-plugin-security": "^4.0.0",

@@ -96,7 +96,7 @@ export async function executeMeasurement(
             userId,
             name
           );
-        } catch (e) {
+        } catch (e: any) {
           log(
             'warn',
             `[INTENT] Could not find/create custom category "${name}": ${e.message}`
@@ -120,7 +120,7 @@ export async function executeMeasurement(
           failed.push(name);
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       log('error', `[INTENT] Measurement error for ${type}: ${e.message}`);
       failed.push(type);
     }
@@ -151,7 +151,7 @@ export async function executeWater(
 
     // Convert to ml
     const mlMap = { oz: 29.5735, cup: 240, glass: 240, ml: 1 };
-    const mlPerUnit = mlMap[unit] || 240;
+    const mlPerUnit = (mlMap as any)[unit] || 240;
     const totalMl = glassesOrMl * mlPerUnit;
 
     // upsertWaterIntake takes change_drinks (drinks count), not ml directly.
@@ -166,7 +166,7 @@ export async function executeWater(
       null
     );
     return `✅ Вода: ${Math.round(totalMl)} мл (${dateToUse})`;
-  } catch (e) {
+  } catch (e: any) {
     log('error', `[INTENT] Water error: ${e.message}`);
     return `❌ Помилка запису води: ${e.message}`;
   }
@@ -301,7 +301,7 @@ export async function executeFood(
     const calDisplay = calories ? ` (~${Math.round(calories)} ккал)` : '';
 
     return `✅ <b>Їжа записана: ${foodName} — ${quantity} ${unit}${calDisplay}</b>${macrosDisplay}\n⏰ [${mealType}, ${dateToUse}]`;
-  } catch (e) {
+  } catch (e: any) {
     log('error', `[INTENT] Food error: ${e.message}`);
     return `❌ Помилка запису їжі: ${e.message}`;
   }
@@ -333,7 +333,7 @@ export async function executeExercise(
         exerciseId = results[0].id;
         caloriesPerHour = results[0].calories_per_hour || 300;
       }
-    } catch (e) {
+    } catch (e: any) {
       log('warn', `[INTENT] Exercise search failed: ${e.message}`);
     }
 
@@ -350,7 +350,7 @@ export async function executeExercise(
         });
         exerciseId = newExercise.id;
         caloriesPerHour = newExercise.calories_per_hour || 300;
-      } catch (e) {
+      } catch (e: any) {
         log('warn', `[INTENT] Exercise create failed: ${e.message}`);
       }
     }
