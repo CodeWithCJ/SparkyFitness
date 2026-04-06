@@ -39,6 +39,7 @@
     "multer": "^2.0.2",
     "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
+    "node-telegram-bot-api": "^0.67.0",
     "nodemailer": "^8.0.2",
     "papaparse": "^5.5.3",
     "pg": "^8.17.1",
