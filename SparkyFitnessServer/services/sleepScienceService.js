@@ -4,6 +4,7 @@ const { loadUserTimezone } = require('../utils/timezoneLoader');
 const {
   instantHourMinute,
   dayOfWeek,
+  localDateToDay,
   userHourMinute,
 } = require('@workspace/shared');
 
@@ -184,9 +185,7 @@ function classifyDaysAutomatically(history, timezone = 'UTC') {
     if (wakeHour === null) continue;
 
     const dateStr =
-      typeof entry.date === 'string'
-        ? entry.date
-        : entry.date.toISOString().slice(0, 10);
+      typeof entry.date === 'string' ? entry.date : localDateToDay(entry.date);
     const dow = dayOfWeek(dateStr);
 
     if (!dayBuckets.has(dow)) dayBuckets.set(dow, []);
@@ -251,9 +250,7 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
     if (tst === null || tst < 3 || tst > 14) continue;
 
     const dateStr =
-      typeof entry.date === 'string'
-        ? entry.date
-        : entry.date.toISOString().slice(0, 10);
+      typeof entry.date === 'string' ? entry.date : localDateToDay(entry.date);
     const dow = dayOfWeek(dateStr);
     const dayType = dayClassification.get(dow) || 'workday';
 
@@ -360,9 +357,7 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
 
   // Determine data range
   const dates = history
-    .map((e) =>
-      typeof e.date === 'string' ? e.date : e.date.toISOString().slice(0, 10)
-    )
+    .map((e) => (typeof e.date === 'string' ? e.date : localDateToDay(e.date)))
     .sort();
   const dataStartDate = dates[0] || null;
   const dataEndDate = dates[dates.length - 1] || null;
@@ -446,9 +441,7 @@ function getDayOfWeekStats(history, classification, timezone = 'UTC') {
     if (wakeHour === null) continue;
 
     const dateStr =
-      typeof entry.date === 'string'
-        ? entry.date
-        : entry.date.toISOString().slice(0, 10);
+      typeof entry.date === 'string' ? entry.date : localDateToDay(entry.date);
     const dow = dayOfWeek(dateStr);
 
     if (!buckets.has(dow)) buckets.set(dow, []);
@@ -862,9 +855,7 @@ async function checkDataSufficiency(userId) {
   let freedayCount = 0;
   for (const entry of entriesWithTimestamps) {
     const dateStr =
-      typeof entry.date === 'string'
-        ? entry.date
-        : entry.date.toISOString().slice(0, 10);
+      typeof entry.date === 'string' ? entry.date : localDateToDay(entry.date);
     const dow = dayOfWeek(dateStr);
     if (dow === 0 || dow === 6) {
       freedayCount++;

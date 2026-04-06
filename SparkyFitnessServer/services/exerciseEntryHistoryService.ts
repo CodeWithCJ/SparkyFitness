@@ -1,4 +1,5 @@
 import {
+  localDateToDay,
   presetSessionResponseSchema,
   type PresetSessionResponse,
   type ActivityDetailResponse,
@@ -14,7 +15,7 @@ const { log } = require('../config/logging');
 /** Convert a pg date value to a YYYY-MM-DD string, or return null. */
 function _dateToString(value: unknown): string | null {
   if (value == null) return null;
-  if (value instanceof Date) return value.toISOString().split('T')[0];
+  if (value instanceof Date) return localDateToDay(value);
   return String(value);
 }
 

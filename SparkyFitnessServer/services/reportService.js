@@ -432,9 +432,8 @@ function calculateMuscleGroupRecovery(exerciseEntries) {
       ? JSON.parse(entry.exercises.primary_muscles || '[]')
       : [];
     muscles.forEach((muscle) => {
-      const entryDate = new Date(entry.entry_date);
-      if (!recoveryData[muscle] || entryDate > new Date(recoveryData[muscle])) {
-        recoveryData[muscle] = entryDate.toISOString().split('T')[0];
+      if (!recoveryData[muscle] || entry.entry_date > recoveryData[muscle]) {
+        recoveryData[muscle] = entry.entry_date;
       }
     });
   });
@@ -501,7 +500,7 @@ function calculatePrProgression(exerciseEntries) {
           reps > lastPr.maxReps
         ) {
           progression[entry.exercise_name].push({
-            date: new Date(entry.entry_date).toISOString().split('T')[0],
+            date: entry.entry_date,
             oneRM: oneRM,
             maxWeight: weight,
             maxReps: reps,
@@ -593,7 +592,7 @@ async function getExerciseDashboardData(
     const muscleGroupVolume = {}; // Stores total volume per muscle group
 
     exerciseEntries.forEach((entry) => {
-      totalWorkouts.add(new Date(entry.entry_date).toISOString().split('T')[0]); // Add unique dates
+      totalWorkouts.add(entry.entry_date); // Add unique dates
 
       if (entry.sets && entry.sets.length > 0) {
         entry.sets.forEach((set) => {
@@ -613,7 +612,7 @@ async function getExerciseDashboardData(
           ) {
             prData[entry.exercise_name] = {
               oneRM,
-              date: new Date(entry.entry_date).toISOString().split('T')[0],
+              date: entry.entry_date,
               weight,
               reps,
             };
@@ -632,7 +631,7 @@ async function getExerciseDashboardData(
               bestSetRepRange[entry.exercise_name][repRange] = {
                 weight,
                 reps,
-                date: new Date(entry.entry_date).toISOString().split('T')[0],
+                date: entry.entry_date,
               };
             }
           }
