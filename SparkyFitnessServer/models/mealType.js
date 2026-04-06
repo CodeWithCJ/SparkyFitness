@@ -175,7 +175,8 @@ async function deleteMealType(mealTypeId, userId) {
   } catch (error) {
     if (error.code === '23503') {
       throw new Error(
-        'Cannot delete this meal type because it contains food entries.'
+        'Cannot delete this meal type because it contains food entries.',
+        { cause: error }
       );
     }
     log('error', 'Error deleting meal type:', error);

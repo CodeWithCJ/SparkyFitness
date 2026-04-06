@@ -822,7 +822,7 @@ async function createFoodsInBulk(userId, foodDataArray) {
   `;
 
   const clientForDuplicateCheck = await getClient(userId);
-  let existingFoods = [];
+  let existingFoods;
   try {
     const { rows } = await clientForDuplicateCheck.query(
       // User-specific check for duplicates

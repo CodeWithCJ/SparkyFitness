@@ -1,5 +1,4 @@
 const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
 const exerciseDb = require('./exercise');
 const exerciseEntryDb = require('./exerciseEntry');
 const exerciseTemplateDb = require('./exerciseTemplate');

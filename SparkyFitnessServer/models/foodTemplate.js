@@ -1,7 +1,6 @@
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 const format = require('pg-format');
-const foodEntryDb = require('./foodEntry');
 const foodEntryMealRepository = require('./foodEntryMealRepository');
 const {
   addDays,

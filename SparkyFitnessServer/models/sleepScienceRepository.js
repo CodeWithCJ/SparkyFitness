@@ -1,5 +1,4 @@
 const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
 const { todayInZone, addDays } = require('@workspace/shared');
 
 /**
