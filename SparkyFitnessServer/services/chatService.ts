@@ -749,39 +749,49 @@ Schema: [{"name": "string", "calories": number, "protein": number, "carbs": numb
     let entryDate = null;
 
     try {
-      // Clean content from markdown code blocks if AI wrapped JSON
-      const cleanContent = content
-        .replace(/```json\s?/g, '')
-        .replace(/\s?```/g, '')
-        .trim();
-      const parsed = JSON.parse(cleanContent);
-      responseText = parsed.response || parsed.responseText || content;
-      intent = parsed.intent || null;
-      intentData = parsed.data || null;
-      entryDate = parsed.entryDate || parsed.entry_date || null;
+      // Improved JSON extraction: find first '{' and last '}' to handle potential preamble/postamble
+      const firstBrace = content.indexOf('{');
+      const lastBrace = content.lastIndexOf('}');
 
-      // Robust fallback: if 'intent' exists but 'data' is missing, try pulling from root
-      if (intent && !intentData) {
-        const {
-          intent: _i,
-          response: _r,
-          responseText: _rt,
-          entryDate: _ed,
-          entry_date: _ed2,
-          ...dataAtRoot
-        } = parsed;
-        if (Object.keys(dataAtRoot).length > 0) {
-          intentData = dataAtRoot;
-          log(
-            'info',
-            `[AI RESPONSE] Extracted intentData from root because 'data' key was missing: ${JSON.stringify(intentData)}`
-          );
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const potentialJson = content.substring(firstBrace, lastBrace + 1);
+        const parsed = JSON.parse(potentialJson);
+
+        responseText = parsed.response || parsed.responseText || content;
+        intent = parsed.intent || null;
+        intentData = parsed.data || null;
+        entryDate = parsed.entryDate || parsed.entry_date || null;
+
+        // Robust fallback: if 'intent' exists but 'data' is missing, try pulling from root
+        if (intent && !intentData) {
+          const {
+            intent: _i,
+            response: _r,
+            responseText: _rt,
+            entryDate: _ed,
+            entry_date: _ed2,
+            ...dataAtRoot
+          } = parsed;
+          if (Object.keys(dataAtRoot).length > 0) {
+            intentData = dataAtRoot;
+            log(
+              'info',
+              `[AI RESPONSE] Extracted intentData from root because 'data' key was missing: ${JSON.stringify(
+                intentData
+              )}`
+            );
+          }
         }
+      } else {
+        log(
+          'info',
+          'AI response does not contain braces, treating as plain text.'
+        );
       }
     } catch (e) {
       log(
         'info',
-        'AI response is not JSON or could not be parsed, treating as plain text.'
+        'AI response JSON parsing failed, treating as plain text.'
       );
     }
 
