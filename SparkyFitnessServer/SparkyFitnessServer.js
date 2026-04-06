@@ -400,12 +400,6 @@ app.use('/api/adaptive-tdee', adaptiveTdeeRoutes);
 app.use('/api/meal-types', mealTypeRoutes);
 app.use('/api/telegram', telegramRoutes);
 
-// Telegram Webhook handler
-app.post('/api/telegram/webhook', (req, res) => {
-  telegramBotService.handleUpdate(req.body);
-  res.sendStatus(200);
-});
-
 // Swagger
 app.use(
   '/api/api-docs/swagger',
@@ -589,9 +583,11 @@ applyMigrations()
     scheduleStravaSyncs();
 
     // Initialize Telegram Bot
-    telegramBotService.initialize().catch((err) =>
-      log('error', '[TELEGRAM BOT] Failed to initialize bot:', err)
-    );
+    telegramBotService
+      .initialize()
+      .catch((err) =>
+        log('error', '[TELEGRAM BOT] Failed to initialize bot:', err)
+      );
 
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       const userRepository = require('./models/userRepository');

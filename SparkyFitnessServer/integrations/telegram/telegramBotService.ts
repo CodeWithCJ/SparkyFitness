@@ -89,7 +89,7 @@ class TelegramBotService {
         `[TELEGRAM BOT] Bot active: ${settings.telegram_bot_name || 'SparkyFitnessBot'}`
       );
       this.setupHandlers();
-    } catch (error) {
+    } catch (error: any) {
       log('error', '[TELEGRAM BOT] Initialization error:', error);
     }
   }
@@ -425,7 +425,7 @@ class TelegramBotService {
             user,
             response.data,
             msg.text || '',
-            aiService.id,
+            aiService?.id || '',
             chatHistory
           );
         }
@@ -631,7 +631,7 @@ class TelegramBotService {
         snacks: [],
       };
 
-      todayFood.forEach((f) => {
+      todayFood.forEach((f: any) => {
         const type = f.meal_type || 'snacks';
         if (grouped[type]) grouped[type].push(f);
         else grouped.snacks.push(f);
@@ -797,7 +797,10 @@ class TelegramBotService {
     }
   }
 
-    private async buildContentParts(chatId: number, msg: TelegramBot.Message): Promise<any[] | null> {
+  private async buildContentParts(
+    chatId: number,
+    msg: TelegramBot.Message
+  ): Promise<any[] | null> {
     const parts: any[] = [];
     let hasMedia = false;
 
@@ -816,7 +819,7 @@ class TelegramBotService {
         if (base64Image) {
           parts.push({
             type: 'image_url',
-            image_url: { url: `data:image/jpeg;base64,${base64Image}` }
+            image_url: { url: `data:image/jpeg;base64,${base64Image}` },
           });
         }
       } catch (e: any) {
@@ -826,30 +829,38 @@ class TelegramBotService {
 
     // Handle voice/video notes/audio
     if (msg.voice || msg.audio || msg.video_note || msg.video || msg.document) {
-        hasMedia = true;
-        const fileId = msg.voice?.file_id || msg.audio?.file_id || msg.video_note?.file_id || msg.video?.file_id || msg.document?.file_id;
-        try {
-            const base64Data = await this.getFileBase64(fileId!);
-            if (base64Data) {
-                log('info', `[TELEGRAM BOT] Fetched media file of length ${base64Data.length}`);
-                // Для сучасних моделей (як-от Gemini 1.5 Pro) ми можемо відправити аудіо/відео через data url або inline_data
-                // Тут ми визначаємо mime-type для базових форматів, які підтримує Telegram
-                let mimeType = 'application/octet-stream';
-                if (msg.voice || msg.audio) mimeType = 'audio/ogg'; // Telegram voice notes are usually ogg
-                if (msg.video || msg.video_note) mimeType = 'video/mp4';
-                
-                parts.push({
-                    type: 'image_url', // Використовуємо image_url, бо наш chatService.ts перетворює його на inline_data для Gemini
-                    image_url: { url: `data:${mimeType};base64,${base64Data}` }
-                });
-            }
-        } catch (e: any) {
-             log('error', '[TELEGRAM BOT] Media fetch error:', e.message);
+      hasMedia = true;
+      const fileId =
+        msg.voice?.file_id ||
+        msg.audio?.file_id ||
+        msg.video_note?.file_id ||
+        msg.video?.file_id ||
+        msg.document?.file_id;
+      try {
+        const base64Data = await this.getFileBase64(fileId!);
+        if (base64Data) {
+          log(
+            'info',
+            `[TELEGRAM BOT] Fetched media file of length ${base64Data.length}`
+          );
+          // Для сучасних моделей (як-от Gemini 1.5 Pro) ми можемо відправити аудіо/відео через data url або inline_data
+          // Тут ми визначаємо mime-type для базових форматів, які підтримує Telegram
+          let mimeType = 'application/octet-stream';
+          if (msg.voice || msg.audio) mimeType = 'audio/ogg'; // Telegram voice notes are usually ogg
+          if (msg.video || msg.video_note) mimeType = 'video/mp4';
+
+          parts.push({
+            type: 'image_url', // Використовуємо image_url, бо наш chatService.ts перетворює його на inline_data для Gemini
+            image_url: { url: `data:${mimeType};base64,${base64Data}` },
+          });
         }
+      } catch (e: any) {
+        log('error', '[TELEGRAM BOT] Media fetch error:', e.message);
+      }
     }
 
     if (parts.length === 0 && !hasMedia) {
-        return null;
+      return null;
     }
 
     return parts.length > 0 ? parts : null;
@@ -860,10 +871,16 @@ class TelegramBotService {
     try {
       const file = await this.bot.getFile(fileId);
       const fileUrl = `https://api.telegram.org/file/bot${this.bot.token}/${file.file_path}`;
-      const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+      const response = await axios.get(fileUrl, {
+        responseType: 'arraybuffer',
+      });
       return Buffer.from(response.data, 'binary').toString('base64');
     } catch (e: any) {
-      log('error', '[TELEGRAM BOT] Error downloading file from Telegram:', e.message);
+      log(
+        'error',
+        '[TELEGRAM BOT] Error downloading file from Telegram:',
+        e.message
+      );
       return null;
     }
   }
@@ -902,13 +919,17 @@ ${extraContext}
       const tz = await loadUserTimezone(userId);
       const today = todayInZone(tz);
 
-      const [profile, prefs, goal, todayFoods, latestMeasurement] = await Promise.all([
-        userRepository.getUserProfile(userId),
-        preferenceRepository.getUserPreferences(userId),
-        goalRepository.getMostRecentGoalBeforeDate(userId, today),
-        foodEntry.getFoodEntriesByDate(userId, today),
-        measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(userId, today)
-      ]);
+      const [profile, prefs, goal, todayFoods, latestMeasurement] =
+        await Promise.all([
+          userRepository.getUserProfile(userId),
+          preferenceRepository.getUserPreferences(userId),
+          goalRepository.getMostRecentGoalBeforeDate(userId, today),
+          foodEntry.getFoodEntriesByDate(userId, today),
+          measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
+            userId,
+            today
+          ),
+        ]);
 
       if (!profile && !goal) return '';
 
@@ -936,15 +957,28 @@ ${extraContext}
           age,
           gender
         );
-        const multiplier = bmrService.ActivityMultiplier[prefs.activity_level] || 1.2;
+        const multiplier =
+          bmrService.ActivityMultiplier[prefs.activity_level] || 1.2;
         tdee = bmr * multiplier;
       }
 
       // Today's consumption (calories)
-      const caloriesConsumed = todayFoods.reduce((sum: number, f: any) => sum + Number(f.calories || 0), 0);
-      const proteinConsumed = todayFoods.reduce((sum: number, f: any) => sum + Number(f.protein || 0), 0);
-      const carbsConsumed = todayFoods.reduce((sum: number, f: any) => sum + Number(f.carbs || 0), 0);
-      const fatConsumed = todayFoods.reduce((sum: number, f: any) => sum + Number(f.fat || 0), 0);
+      const caloriesConsumed = todayFoods.reduce(
+        (sum: number, f: any) => sum + Number(f.calories || 0),
+        0
+      );
+      const proteinConsumed = todayFoods.reduce(
+        (sum: number, f: any) => sum + Number(f.protein || 0),
+        0
+      );
+      const carbsConsumed = todayFoods.reduce(
+        (sum: number, f: any) => sum + Number(f.carbs || 0),
+        0
+      );
+      const fatConsumed = todayFoods.reduce(
+        (sum: number, f: any) => sum + Number(f.fat || 0),
+        0
+      );
 
       const calGoal = Number(goal?.calories || 2000);
       const remaining = calGoal - caloriesConsumed;
@@ -955,17 +989,22 @@ ${extraContext}
       if (height) context += `- Height: ${height} cm\n`;
       if (bmr) context += `- Calculated BMR: ${Math.round(bmr)} kcal\n`;
       if (tdee) context += `- TDEE (Maintenance): ${Math.round(tdee)} kcal\n`;
-      
+
       context += `\nDAILY GOALS & PROGRESS (${today}):\n`;
       context += `- Daily Calorie Goal: ${calGoal} kcal\n`;
       context += `- Consumed Today: ${Math.round(caloriesConsumed)} kcal (${Math.round(proteinConsumed)}g P, ${Math.round(carbsConsumed)}g C, ${Math.round(fatConsumed)}g F)\n`;
       context += `- Remaining Budget: ${Math.round(remaining)} kcal\n`;
 
-      if (goal?.protein) context += `- Macronutrient Targets: ${goal.protein}g P, ${goal.carbs}g C, ${goal.fat}g F\n`;
+      if (goal?.protein)
+        context += `- Macronutrient Targets: ${goal.protein}g P, ${goal.carbs}g C, ${goal.fat}g F\n`;
 
       return context;
     } catch (e: any) {
-      log('error', '[TELEGRAM BOT] Error building nutrition context:', e.message);
+      log(
+        'error',
+        '[TELEGRAM BOT] Error building nutrition context:',
+        e.message
+      );
       return '';
     }
   }
@@ -1152,4 +1191,4 @@ ${extraContext}
   }
 }
 
-module.exports = new TelegramBotService();
+export default new TelegramBotService();

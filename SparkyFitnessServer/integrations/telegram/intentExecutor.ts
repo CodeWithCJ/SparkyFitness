@@ -16,7 +16,13 @@ import * as foodEntry from '../../models/foodEntry';
  * Execute a parsed AI intent for a given user.
  * Returns a user-facing confirmation string.
  */
-export async function executeIntent(intent: string, data: any, entryDate: string | null, userId: string, today: string): Promise<any> {
+export async function executeIntent(
+  intent: string,
+  data: any,
+  entryDate: string | null,
+  userId: string,
+  today: string
+): Promise<any> {
   const dateToUse = resolveDate(entryDate, today);
 
   switch (intent) {
@@ -54,8 +60,14 @@ export async function executeIntent(intent: string, data: any, entryDate: string
 /**
  * Log body measurements (weight, steps, waist, hips, neck, height).
  */
-export async function executeMeasurement(data: any, dateToUse: string, userId: string): Promise<string> {
-  const measurements = Array.isArray(data.measurements) ? data.measurements : [data];
+export async function executeMeasurement(
+  data: any,
+  dateToUse: string,
+  userId: string
+): Promise<string> {
+  const measurements = Array.isArray(data.measurements)
+    ? data.measurements
+    : [data];
   const confirmed = [];
   const failed = [];
 
@@ -79,9 +91,16 @@ export async function executeMeasurement(data: any, dateToUse: string, userId: s
         const name = m.name || type;
         let category = null;
         try {
-          category = await measurementService.getOrCreateCustomCategory(userId, userId, name);
+          category = await measurementService.getOrCreateCustomCategory(
+            userId,
+            userId,
+            name
+          );
         } catch (e) {
-          log('warn', `[INTENT] Could not find/create custom category "${name}": ${e.message}`);
+          log(
+            'warn',
+            `[INTENT] Could not find/create custom category "${name}": ${e.message}`
+          );
         }
 
         if (category && category.id) {
@@ -111,7 +130,7 @@ export async function executeMeasurement(data: any, dateToUse: string, userId: s
     return `❌ Не вдалося записати виміри.`;
   }
 
-  let msg = `✅ Записано (${dateToUse}):\n${confirmed.map(c => `  • ${c}`).join('\n')}`;
+  let msg = `✅ Записано (${dateToUse}):\n${confirmed.map((c) => `  • ${c}`).join('\n')}`;
   if (failed.length > 0) {
     msg += `\n⚠️ Помилка: ${failed.join(', ')}`;
   }
@@ -121,7 +140,11 @@ export async function executeMeasurement(data: any, dateToUse: string, userId: s
 /**
  * Log water intake. AI sends glasses_consumed or quantity in ml/glasses.
  */
-export async function executeWater(data: any, dateToUse: string, userId: string): Promise<string> {
+export async function executeWater(
+  data: any,
+  dateToUse: string,
+  userId: string
+): Promise<string> {
   try {
     const glassesOrMl = Number(data.glasses_consumed ?? data.quantity ?? 1);
     const unit = data.unit || 'glass';
@@ -135,7 +158,13 @@ export async function executeWater(data: any, dateToUse: string, userId: string)
     // We pass ml as "drinks" but with no container — service will use default (250ml/drink).
     // So we convert ml → drinks using default 250ml/drink.
     const drinks = totalMl / 250;
-    await measurementService.upsertWaterIntake(userId, userId, dateToUse, drinks, null);
+    await measurementService.upsertWaterIntake(
+      userId,
+      userId,
+      dateToUse,
+      drinks,
+      null
+    );
     return `✅ Вода: ${Math.round(totalMl)} мл (${dateToUse})`;
   } catch (e) {
     log('error', `[INTENT] Water error: ${e.message}`);
@@ -146,7 +175,11 @@ export async function executeWater(data: any, dateToUse: string, userId: string)
 /**
  * Log food entry with inline nutritional snapshot from AI.
  */
-export async function executeFood(data: any, dateToUse: string, userId: string): Promise<string> {
+export async function executeFood(
+  data: any,
+  dateToUse: string,
+  userId: string
+): Promise<string> {
   try {
     const mealType = normalizeMealType(data?.meal_type);
     const quantity = Number(data?.quantity ?? data?.qty ?? data?.amount) || 1;
@@ -154,19 +187,36 @@ export async function executeFood(data: any, dateToUse: string, userId: string):
     const foodName = data?.food_name || data?.name || 'Unknown Food';
 
     // Extract macros with aliases
-    const calories = Number(data?.calories ?? data?.kcal ?? data?.energy ?? data?.kilocalories) || 0;
+    const calories =
+      Number(
+        data?.calories ?? data?.kcal ?? data?.energy ?? data?.kilocalories
+      ) || 0;
     const protein = Number(data?.protein ?? data?.proteins) || 0;
     const carbs = Number(data?.carbs ?? data?.carbohydrates) || 0;
     const fat = Number(data?.fat ?? data?.fats) || 0;
 
-    log('info', `[INTENT] executeFood: ${foodName}, macros identified: ${calories} kcal, ${protein}p, ${carbs}c, ${fat}f`);
+    log(
+      'info',
+      `[INTENT] executeFood: ${foodName}, macros identified: ${calories} kcal, ${protein}p, ${carbs}c, ${fat}f`
+    );
 
     // 1. Search for existing food
     let foodId = null;
     let variantId = null;
 
-    const searchResults = await foodRepository.searchFoods(foodName, userId, false, true, false, 1);
-    if (searchResults && searchResults.length > 0 && foodName !== 'Unknown Food') {
+    const searchResults = await foodRepository.searchFoods(
+      foodName,
+      userId,
+      false,
+      true,
+      false,
+      1
+    );
+    if (
+      searchResults &&
+      searchResults.length > 0 &&
+      foodName !== 'Unknown Food'
+    ) {
       foodId = searchResults[0].id;
       variantId = searchResults[0].default_variant?.id;
       log('debug', `[INTENT] Found existing food: ${foodName} (ID: ${foodId})`);
@@ -184,8 +234,12 @@ export async function executeFood(data: any, dateToUse: string, userId: string):
         carbs: carbs,
         fat: fat,
         saturated_fat: data?.saturated_fat ? Number(data.saturated_fat) : null,
-        polyunsaturated_fat: data?.polyunsaturated_fat ? Number(data.polyunsaturated_fat) : null,
-        monounsaturated_fat: data?.monounsaturated_fat ? Number(data.monounsaturated_fat) : null,
+        polyunsaturated_fat: data?.polyunsaturated_fat
+          ? Number(data.polyunsaturated_fat)
+          : null,
+        monounsaturated_fat: data?.monounsaturated_fat
+          ? Number(data.monounsaturated_fat)
+          : null,
         trans_fat: data?.trans_fat ? Number(data.trans_fat) : null,
         cholesterol: data?.cholesterol ? Number(data.cholesterol) : null,
         sodium: data?.sodium ? Number(data.sodium) : null,
@@ -240,11 +294,12 @@ export async function executeFood(data: any, dateToUse: string, userId: string):
 
     await foodEntryService.createFoodEntry(userId, userId, entryData);
 
-    const macrosDisplay = (protein || carbs || fat) 
-      ? `\n📊 <b>(P: ${Math.round(protein || 0)}g, C: ${Math.round(carbs || 0)}g, F: ${Math.round(fat || 0)}g)</b>` 
-      : '';
+    const macrosDisplay =
+      protein || carbs || fat
+        ? `\n📊 <b>(P: ${Math.round(protein || 0)}g, C: ${Math.round(carbs || 0)}g, F: ${Math.round(fat || 0)}g)</b>`
+        : '';
     const calDisplay = calories ? ` (~${Math.round(calories)} ккал)` : '';
-    
+
     return `✅ <b>Їжа записана: ${foodName} — ${quantity} ${unit}${calDisplay}</b>${macrosDisplay}\n⏰ [${mealType}, ${dateToUse}]`;
   } catch (e) {
     log('error', `[INTENT] Food error: ${e.message}`);
@@ -255,7 +310,11 @@ export async function executeFood(data: any, dateToUse: string, userId: string):
 /**
  * Log exercise entry. Searches existing exercises, creates if not found.
  */
-export async function executeExercise(data: any, dateToUse: string, userId: string): Promise<string> {
+export async function executeExercise(
+  data: any,
+  dateToUse: string,
+  userId: string
+): Promise<string> {
   try {
     const name = data.exercise_name || 'Unknown Exercise';
     const duration = Number(data.duration_minutes) || 30;
@@ -265,7 +324,11 @@ export async function executeExercise(data: any, dateToUse: string, userId: stri
     let caloriesPerHour = 300;
 
     try {
-      const results = await exerciseService.searchExercises(userId, name, userId);
+      const results = await exerciseService.searchExercises(
+        userId,
+        name,
+        userId
+      );
       if (results && results.length > 0) {
         exerciseId = results[0].id;
         caloriesPerHour = results[0].calories_per_hour || 300;
@@ -307,7 +370,7 @@ export async function executeExercise(data: any, dateToUse: string, userId: stri
     });
 
     return `✅ Тренування: ${name} — ${duration} хв (~${caloriesBurned} ккал) [${dateToUse}]`;
-  } catch (e) {
+  } catch (e: any) {
     log('error', `[INTENT] Exercise error: ${e.message}`);
     return `❌ Помилка запису тренування: ${e.message}`;
   }
@@ -350,7 +413,11 @@ function estimateCaloriesPerHour(name: string): number {
  * Handle deletion intents.
  * These will return a state that causes the bot to show confirmation buttons.
  */
-export async function executeDeleteMeasurement(data: any, dateToUse: string, userId: string): Promise<any> {
+export async function executeDeleteMeasurement(
+  data: any,
+  dateToUse: string,
+  userId: string
+): Promise<any> {
   try {
     const { measurements = [] } = data;
     const itemsToDelete = Array.isArray(measurements) ? measurements : [data];
@@ -359,20 +426,26 @@ export async function executeDeleteMeasurement(data: any, dateToUse: string, use
     const matches = [];
     for (const m of itemsToDelete) {
       const type = m.type || 'weight';
-      const records = await measurementRepository.getCheckInMeasurementsByDateRange(userId, dateToUse, dateToUse);
-      
+      const records =
+        await measurementRepository.getCheckInMeasurementsByDateRange(
+          userId,
+          dateToUse,
+          dateToUse
+        );
+
       for (const rec of records) {
         if (rec[type] !== null) {
           // If a specific value was mentioned, match it
-          if (m.value && Math.abs(Number(rec[type]) - Number(m.value)) > 0.1) continue;
-          
+          if (m.value && Math.abs(Number(rec[type]) - Number(m.value)) > 0.1)
+            continue;
+
           matches.push({
             id: rec.id,
             type: 'measurement',
             subType: type,
             date: rec.entry_date,
             value: rec[type],
-            unit: m.unit || (type === 'weight' ? 'kg' : '')
+            unit: m.unit || (type === 'weight' ? 'kg' : ''),
           });
         }
       }
@@ -384,27 +457,35 @@ export async function executeDeleteMeasurement(data: any, dateToUse: string, use
 
     return {
       intent: 'confirm_deletion',
-      matches
+      matches,
     };
-  } catch (e) {
+  } catch (e: any) {
     log('error', `[INTENT] Delete measurement error: ${e.message}`);
     return `❌ Помилка при пошуку записів: ${e.message}`;
   }
 }
 
-export async function executeDeleteFood(data: any, dateToUse: string, userId: string): Promise<any> {
+export async function executeDeleteFood(
+  data: any,
+  dateToUse: string,
+  userId: string
+): Promise<any> {
   try {
     const foodName = data.food_name;
 
     const records = await foodEntry.getFoodEntriesByDate(userId, dateToUse);
     const matches = records
-      .filter(r => !foodName || r.food_name.toLowerCase().includes(foodName.toLowerCase()))
-      .map(r => ({
+      .filter(
+        (r: any) =>
+          !foodName ||
+          r.food_name.toLowerCase().includes(foodName.toLowerCase())
+      )
+      .map((r: any) => ({
         id: r.id,
         type: 'food',
         name: r.food_name,
         date: dateToUse,
-        calories: r.calories
+        calories: r.calories,
       }));
 
     if (matches.length === 0) {
@@ -413,12 +494,10 @@ export async function executeDeleteFood(data: any, dateToUse: string, userId: st
 
     return {
       intent: 'confirm_deletion',
-      matches
+      matches,
     };
-  } catch (e) {
+  } catch (e: any) {
     log('error', `[INTENT] Delete food error: ${e.message}`);
     return `❌ Помилка при пошуку їжі: ${e.message}`;
   }
 }
-
-

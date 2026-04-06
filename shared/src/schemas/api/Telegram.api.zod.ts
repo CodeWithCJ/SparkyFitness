@@ -26,6 +26,20 @@ export const TelegramWebhookSchema = z.object({
       length: z.number(),
       type: z.string(),
     })).optional(),
+    photo: z.array(z.object({
+      file_id: z.string(),
+      file_unique_id: z.string(),
+      width: z.number(),
+      height: z.number(),
+      file_size: z.number().optional(),
+    })).optional(),
+    voice: z.object({
+      file_id: z.string(),
+      file_unique_id: z.string(),
+      duration: z.number(),
+      mime_type: z.string().optional(),
+      file_size: z.number().optional(),
+    }).optional(),
   }).optional(),
   callback_query: z.object({
     id: z.string(),
@@ -43,4 +57,13 @@ export const TelegramWebhookSchema = z.object({
     }).optional(),
     data: z.string(),
   }).optional(),
+});
+
+export const telegramStatusResponseSchema = z.object({
+  isLinked: z.boolean(),
+  chatId: z.string().nullable(),
+});
+
+export const telegramLinkCodeResponseSchema = z.object({
+  code: z.string(),
 });
