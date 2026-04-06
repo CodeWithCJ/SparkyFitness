@@ -17,6 +17,8 @@ const SERVING_UNIT_ALIASES = {
   g: 'g',
   gram: 'g',
   grams: 'g',
+  г: 'g',
+  мл: 'ml',
   ml: 'ml',
   milliliter: 'ml',
   milliliters: 'ml',
@@ -367,28 +369,37 @@ function mapFatSecretSearchItem(item) {
   // FatSecret search descriptions look like:
   // "Per 100g - Calories: 165kcal | Fat: 3.57g | Carbs: 0.00g | Protein: 31.02g"
   // "Per 1 serving (28g) - Calories: 110kcal | Fat: 2.00g | Carbs: 15.00g | Protein: 7.00g"
+  // When language/region params are used, keywords are localized — so we extract nutrients
+  // by position (always in order: calories | fat | carbs | protein) rather than by keyword.
   const desc = item.food_description || '';
-  const calories = parseFloat(desc.match(/Calories:\s*([\d.]+)/)?.[1]) || 0;
-  const fat = parseFloat(desc.match(/Fat:\s*([\d.]+)/)?.[1]) || 0;
-  const carbs = parseFloat(desc.match(/Carbs:\s*([\d.]+)/)?.[1]) || 0;
-  const protein = parseFloat(desc.match(/Protein:\s*([\d.]+)/)?.[1]) || 0;
 
-  // Extract serving info from formats like:
-  //   "Per 100g - ..."           → 100 g
-  //   "Per 250ml - ..."          → 250 ml
-  //   "Per 1 serving (28g) - ..." → 28 g  (prefer metric in parentheses)
-  //   "Per 1 serving - ..."      → 1 serving
-  //   "Per 1 bar - ..."          → 1 bar
-  //   "Per 1/4 cup - ..."        → 0.25 cup
+  // Split on " - " to separate serving info from nutrient values
+  const dashIdx = desc.indexOf(' - ');
+  const servingPart = dashIdx >= 0 ? desc.slice(0, dashIdx).trim() : '';
+  const nutrientPart = dashIdx >= 0 ? desc.slice(dashIdx + 3) : '';
 
-  // 1. Try to find metric in parentheses: "Per ... (28g) -"
-  const parenMetricMatch = desc.match(/\(([\d.]+)(g|ml)\)\s*-/);
+  // Extract the 4 numeric values in order: calories (kcal/кКал), fat (g), carbs (g), protein (g)
+  const nutrientNums = [...nutrientPart.matchAll(/([\d.]+)/g)].map((m) =>
+    parseFloat(m[1])
+  );
+  const calories = nutrientNums[0] ?? 0;
+  const fat = nutrientNums[1] ?? 0;
+  const carbs = nutrientNums[2] ?? 0;
+  const protein = nutrientNums[3] ?? 0;
 
-  // 2. Try to find direct metric: "Per 100g -"
-  const directMetricMatch = desc.match(/^Per\s+([\d.]+)(g|ml)\s*-/);
+  // Extract serving info from servingPart (language-agnostic).
+  // Formats:  "Per 100g"  |  "100g"  |  "Per 1 serving (28g)"  |  "Per 1/4 cup"
+  // In localized versions the leading word may differ ("На", "Pro", etc.) — we ignore it.
 
-  // 3. Try to find household with potential fractions: "Per 1/4 cup -"
-  const householdMatch = desc.match(/^Per\s+([\d\s./]+)\s+(.+?)\s*-/);
+  // 1. Try to find metric in parentheses: "(28g)" or "(250ml)"
+  const parenMetricMatch = servingPart.match(/\(([\d.]+)\s*(g|г|ml|мл)\)\s*$/i);
+
+  // 2. Try to find direct metric at the end of servingPart: "100g" or "250 ml"
+  const directMetricMatch = servingPart.match(/([\d.]+)\s*(g|г|ml|мл)\s*$/i);
+
+  // 3. Try to find household: any leading number(s) followed by a unit word before end
+  //    Captures fractions like "1/4 cup" or "1 1/4 tbsp"
+  const householdMatch = servingPart.match(/([\d\s./]+)\s+(\S.+)$/);
 
   let servingSize, servingUnit;
 
