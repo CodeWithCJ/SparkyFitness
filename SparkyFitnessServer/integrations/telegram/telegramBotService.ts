@@ -42,6 +42,7 @@ interface TranslationSet {
   langSet: string;
   syncGarmin: string;
   syncMFP: string;
+  addWater: string;
   // ... more as needed
   [key: string]: string;
 }
@@ -255,6 +256,20 @@ class TelegramBotService {
         } catch (e: any) {
           this.bot!.sendMessage(chatId, `❌ Error: ${e.message}`);
         }
+        return;
+      }
+
+      if (msg.text === t.addWater) {
+        this.bot!.sendChatAction(chatId, 'typing').catch(() => {});
+        const today = todayInZone(user.timezone || 'UTC');
+        const intentResult = await executeIntent(
+          'log_water',
+          { quantity: 1, unit: 'glass' },
+          null,
+          user.id,
+          today
+        );
+        this.bot!.sendMessage(chatId, intentResult);
         return;
       }
 
@@ -1244,6 +1259,7 @@ ${extraContext}
         langSet: '✅ Language updated to English.',
         syncGarmin: 'Garmin Data Sync',
         syncMFP: 'Sync Nutrition to MyFitnessPal',
+        addWater: '+ 1🥛',
       },
       uk: {
         greeting: 'Привіт',
@@ -1262,6 +1278,7 @@ ${extraContext}
         langSet: '✅ Мову змінено на українську.',
         syncGarmin: 'Синхронізація Garmin',
         syncMFP: 'Синхронізувати з MyFitnessPal',
+        addWater: '+ 1🥛',
       },
       ru: {
         greeting: 'Привет',
@@ -1280,6 +1297,7 @@ ${extraContext}
         langSet: '✅ Язык изменен на русский.',
         syncGarmin: 'Синхронизация Garmin',
         syncMFP: 'Синхронизировать с MyFitnessPal',
+        addWater: '+ 1🥛',
       },
     };
     return dicts[lang] || dicts.en;
@@ -1293,6 +1311,7 @@ ${extraContext}
         keyboard: [
           [{ text: t.profile }, { text: t.diary }],
           [{ text: t.syncMenu }, { text: t.language }],
+          [{ text: t.addWater }],
         ],
         resize_keyboard: true,
       },
