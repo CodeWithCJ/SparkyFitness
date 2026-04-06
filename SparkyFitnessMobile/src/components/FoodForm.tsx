@@ -16,8 +16,15 @@ export interface FoodFormData {
   fat: string;
   fiber: string;
   saturatedFat: string;
+  transFat: string;
   sodium: string;
   sugars: string;
+  potassium: string;
+  cholesterol: string;
+  calcium: string;
+  iron: string;
+  vitaminA: string;
+  vitaminC: string;
 }
 
 export interface FoodFormProps {
@@ -46,8 +53,15 @@ const EMPTY_FORM: FoodFormData = {
   fat: '',
   fiber: '',
   saturatedFat: '',
+  transFat: '',
   sodium: '',
   sugars: '',
+  potassium: '',
+  cholesterol: '',
+  calcium: '',
+  iron: '',
+  vitaminA: '',
+  vitaminC: '',
 };
 
 const FoodForm: React.FC<FoodFormProps> = ({
@@ -72,8 +86,15 @@ const FoodForm: React.FC<FoodFormProps> = ({
     carbs: useRef<TextInput>(null),
     fiber: useRef<TextInput>(null),
     saturatedFat: useRef<TextInput>(null),
+    transFat: useRef<TextInput>(null),
     sodium: useRef<TextInput>(null),
     sugars: useRef<TextInput>(null),
+    potassium: useRef<TextInput>(null),
+    cholesterol: useRef<TextInput>(null),
+    calcium: useRef<TextInput>(null),
+    iron: useRef<TextInput>(null),
+    vitaminA: useRef<TextInput>(null),
+    vitaminC: useRef<TextInput>(null),
   };
 
   const focusField = (field: keyof typeof fieldRefs) => {
@@ -230,11 +251,24 @@ const FoodForm: React.FC<FoodFormProps> = ({
           {showMoreNutrients && (
             <>
               <View className="flex-row gap-3">
-                {renderNumericField('Saturated Fat', 'saturatedFat', 'g', false, 'sodium')}
-                {renderNumericField('Sodium', 'sodium', 'mg', false, 'sugars')}
+                {renderNumericField('Saturated Fat', 'saturatedFat', 'g', false, 'transFat')}
+                {renderNumericField('Trans Fat', 'transFat', 'g', false, 'sodium')}
               </View>
               <View className="flex-row gap-3">
-                {renderNumericField('Sugars', 'sugars', 'g')}
+                {renderNumericField('Sodium', 'sodium', 'mg', false, 'sugars')}
+                {renderNumericField('Sugars', 'sugars', 'g', false, 'cholesterol')}
+              </View>
+              <View className="flex-row gap-3">
+                {renderNumericField('Cholesterol', 'cholesterol', 'mg', false, 'potassium')}
+                {renderNumericField('Potassium', 'potassium', 'mg', false, 'calcium')}
+              </View>
+              <View className="flex-row gap-3">
+                {renderNumericField('Calcium', 'calcium', 'mg', false, 'iron')}
+                {renderNumericField('Iron', 'iron', 'mg', false, 'vitaminA')}
+              </View>
+              <View className="flex-row gap-3">
+                {renderNumericField('Vitamin A', 'vitaminA', 'mcg', false, 'vitaminC')}
+                {renderNumericField('Vitamin C', 'vitaminC', 'mg')}
               </View>
             </>
           )}

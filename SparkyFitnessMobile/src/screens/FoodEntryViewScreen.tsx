@@ -17,6 +17,7 @@ import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import { useProfile } from '../hooks/useProfile';
 import type { UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import type { FoodFormData } from '../components/FoodForm';
+import { toFormString, parseOptional, buildNutrientDisplayList } from '../types/foodInfo';
 import type { FoodVariantDetail } from '../types/foods';
 import type { FoodEntry } from '../types/foodEntries';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -81,6 +82,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
           saturatedFat: v.saturated_fat,
           sodium: v.sodium,
           sugars: v.sugars,
+          transFat: v.trans_fat,
+          potassium: v.potassium,
+          calcium: v.calcium,
+          iron: v.iron,
+          cholesterol: v.cholesterol,
+          vitaminA: v.vitamin_a,
+          vitaminC: v.vitamin_c,
         };
       }
     }
@@ -93,8 +101,15 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       fat: entry.fat ?? 0,
       fiber: entry.dietary_fiber,
       saturatedFat: entry.saturated_fat,
+      transFat: entry.trans_fat,
       sodium: entry.sodium,
       sugars: entry.sugars,
+      potassium: entry.potassium,
+      calcium: entry.calcium,
+      iron: entry.iron,
+      cholesterol: entry.cholesterol,
+      vitaminA: entry.vitamin_a,
+      vitaminC: entry.vitamin_c,
     };
   }, [variants, selectedVariantId, entry]);
 
@@ -107,10 +122,17 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       protein: parseFloat(adjustedValues.protein) || 0,
       carbs: parseFloat(adjustedValues.carbs) || 0,
       fat: parseFloat(adjustedValues.fat) || 0,
-      fiber: adjustedValues.fiber ? parseFloat(adjustedValues.fiber) : undefined,
-      saturatedFat: adjustedValues.saturatedFat ? parseFloat(adjustedValues.saturatedFat) : undefined,
-      sodium: adjustedValues.sodium ? parseFloat(adjustedValues.sodium) : undefined,
-      sugars: adjustedValues.sugars ? parseFloat(adjustedValues.sugars) : undefined,
+      fiber: parseOptional(adjustedValues.fiber),
+      saturatedFat: parseOptional(adjustedValues.saturatedFat),
+      sodium: parseOptional(adjustedValues.sodium),
+      sugars: parseOptional(adjustedValues.sugars),
+      transFat: parseOptional(adjustedValues.transFat),
+      potassium: parseOptional(adjustedValues.potassium),
+      calcium: parseOptional(adjustedValues.calcium),
+      iron: parseOptional(adjustedValues.iron),
+      cholesterol: parseOptional(adjustedValues.cholesterol),
+      vitaminA: parseOptional(adjustedValues.vitaminA),
+      vitaminC: parseOptional(adjustedValues.vitaminC),
     };
   }, [adjustedValues, activeVariant]);
 
@@ -194,10 +216,17 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         protein: String(displayValues.protein),
         carbs: String(displayValues.carbs),
         fat: String(displayValues.fat),
-        fiber: displayValues.fiber != null ? String(displayValues.fiber) : '',
-        saturatedFat: displayValues.saturatedFat != null ? String(displayValues.saturatedFat) : '',
-        sodium: displayValues.sodium != null ? String(displayValues.sodium) : '',
-        sugars: displayValues.sugars != null ? String(displayValues.sugars) : '',
+        fiber: toFormString(displayValues.fiber),
+        saturatedFat: toFormString(displayValues.saturatedFat),
+        sodium: toFormString(displayValues.sodium),
+        sugars: toFormString(displayValues.sugars),
+        transFat: toFormString(displayValues.transFat),
+        potassium: toFormString(displayValues.potassium),
+        calcium: toFormString(displayValues.calcium),
+        iron: toFormString(displayValues.iron),
+        cholesterol: toFormString(displayValues.cholesterol),
+        vitaminA: toFormString(displayValues.vitaminA),
+        vitaminC: toFormString(displayValues.vitaminC),
       },
     });
   };
@@ -253,6 +282,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
       payload.sodium = displayValues.sodium;
       payload.dietary_fiber = displayValues.fiber;
       payload.sugars = displayValues.sugars;
+      payload.trans_fat = displayValues.transFat;
+      payload.potassium = displayValues.potassium;
+      payload.calcium = displayValues.calcium;
+      payload.iron = displayValues.iron;
+      payload.cholesterol = displayValues.cholesterol;
+      payload.vitamin_a = displayValues.vitaminA;
+      payload.vitamin_c = displayValues.vitaminC;
     }
 
     // Nothing changed — just exit edit mode
@@ -305,19 +341,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     ? `1 serving · ${entry.serving_size} ${entry.unit} per serving`
     : `${servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2))} servings · ${entry.serving_size} ${entry.unit} per serving`;
 
-  const otherNutrients = isEditing
-    ? [
-        { label: 'Fiber', value: displayValues.fiber, unit: 'g' },
-        { label: 'Sugars', value: displayValues.sugars, unit: 'g' },
-        { label: 'Saturated Fat', value: displayValues.saturatedFat, unit: 'g' },
-        { label: 'Sodium', value: displayValues.sodium, unit: 'mg' },
-      ].filter((n) => n.value != null)
-    : [
-        { label: 'Fiber', value: entry.dietary_fiber, unit: 'g' },
-        { label: 'Sugars', value: entry.sugars, unit: 'g' },
-        { label: 'Saturated Fat', value: entry.saturated_fat, unit: 'g' },
-        { label: 'Sodium', value: entry.sodium, unit: 'mg' },
-      ].filter((n) => n.value != null);
+  const otherNutrients = buildNutrientDisplayList(displayValues);
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>

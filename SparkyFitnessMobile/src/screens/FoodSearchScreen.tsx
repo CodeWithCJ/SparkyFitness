@@ -16,7 +16,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import SegmentedControl from '../components/SegmentedControl';
 import { useServerConnection, useFoods, useFoodSearch, useMeals, useMealSearch, useExternalProviders, useExternalFoodSearch, usePreferences } from '../hooks';
-import { fetchFatSecretNutrients } from '../services/api/externalFoodSearchApi';
+import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
 import { FoodItem, TopFoodItem } from '../types/foods';
 import { ExternalFoodItem } from '../types/externalFoods';
 import { Meal } from '../types/meals';
@@ -120,7 +120,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (item.source === 'fatsecret' && selectedProvider) {
       setLoadingFoodId(item.id);
       try {
-        const detailed = await fetchFatSecretNutrients(item.id, selectedProvider);
+        const detailed = await fetchExternalFoodDetails('fatsecret', item.id, selectedProvider);
         showFoodInfo(externalFoodItemToFoodInfo(detailed));
       } catch {
         showFoodInfo(externalFoodItemToFoodInfo(item));

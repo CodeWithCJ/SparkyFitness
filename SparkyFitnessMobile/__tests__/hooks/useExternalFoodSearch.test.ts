@@ -1,21 +1,15 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useExternalFoodSearch } from '../../src/hooks/useExternalFoodSearch';
 import { externalFoodSearchQueryKey } from '../../src/hooks/queryKeys';
-import { searchOpenFoodFacts, searchUsda, searchFatSecret, searchMealie } from '../../src/services/api/externalFoodSearchApi';
+import { searchExternalFoods } from '../../src/services/api/externalFoodSearchApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 import type { PaginatedExternalFoodSearchResult } from '../../src/types/externalFoods';
 
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
-  searchOpenFoodFacts: jest.fn(),
-  searchUsda: jest.fn(),
-  searchFatSecret: jest.fn(),
-  searchMealie: jest.fn(),
+  searchExternalFoods: jest.fn(),
 }));
 
-const mockSearchOpenFoodFacts = searchOpenFoodFacts as jest.MockedFunction<typeof searchOpenFoodFacts>;
-const mockSearchUsda = searchUsda as jest.MockedFunction<typeof searchUsda>;
-const mockSearchFatSecret = searchFatSecret as jest.MockedFunction<typeof searchFatSecret>;
-const mockSearchMealie = searchMealie as jest.MockedFunction<typeof searchMealie>;
+const mockSearchExternalFoods = searchExternalFoods as jest.MockedFunction<typeof searchExternalFoods>;
 
 function makePaginatedResult(
   items: PaginatedExternalFoodSearchResult['items'],
@@ -50,7 +44,7 @@ describe('useExternalFoodSearch', () => {
       wrapper: createQueryWrapper(queryClient),
     });
 
-    expect(mockSearchOpenFoodFacts).not.toHaveBeenCalled();
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
   });
 
   test('does not fetch when enabled is false', () => {
@@ -59,11 +53,11 @@ describe('useExternalFoodSearch', () => {
       { wrapper: createQueryWrapper(queryClient) },
     );
 
-    expect(mockSearchOpenFoodFacts).not.toHaveBeenCalled();
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
   });
 
   test('fetches for openfoodfacts provider type', async () => {
-    mockSearchOpenFoodFacts.mockResolvedValue(
+    mockSearchExternalFoods.mockResolvedValue(
       makePaginatedResult([
         {
           id: '1',
@@ -86,7 +80,7 @@ describe('useExternalFoodSearch', () => {
     );
 
     await waitFor(() => {
-      expect(mockSearchOpenFoodFacts).toHaveBeenCalledWith('chicken', 1);
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('openfoodfacts', 'chicken', 1, undefined);
       expect(result.current.searchResults).toHaveLength(1);
     });
   });
@@ -101,7 +95,7 @@ describe('useExternalFoodSearch', () => {
       expect(result.current.searchResults).toEqual([]);
     });
 
-    expect(mockSearchOpenFoodFacts).not.toHaveBeenCalled();
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
   });
 
   test('isSearchActive is false when under 3 characters', () => {
@@ -114,7 +108,7 @@ describe('useExternalFoodSearch', () => {
   });
 
   test('handles search errors', async () => {
-    mockSearchOpenFoodFacts.mockRejectedValue(new Error('Network error'));
+    mockSearchExternalFoods.mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(
       () => useExternalFoodSearch('test', 'openfoodfacts'),
@@ -136,7 +130,7 @@ describe('useExternalFoodSearch', () => {
   });
 
   test('fetches for usda provider type with providerId', async () => {
-    mockSearchUsda.mockResolvedValue(
+    mockSearchExternalFoods.mockResolvedValue(
       makePaginatedResult([
         {
           id: '100',
@@ -159,14 +153,14 @@ describe('useExternalFoodSearch', () => {
     );
 
     await waitFor(() => {
-      expect(mockSearchUsda).toHaveBeenCalledWith('chicken', 'provider-1', 1);
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('usda', 'chicken', 1, 'provider-1');
       expect(result.current.searchResults).toHaveLength(1);
       expect(result.current.searchResults[0].source).toBe('usda');
     });
   });
 
   test('exposes hasNextPage and fetchNextPage', async () => {
-    mockSearchOpenFoodFacts.mockResolvedValue(
+    mockSearchExternalFoods.mockResolvedValue(
       makePaginatedResult(
         [
           {
@@ -198,7 +192,7 @@ describe('useExternalFoodSearch', () => {
   });
 
   test('flattens results from multiple pages', async () => {
-    mockSearchOpenFoodFacts
+    mockSearchExternalFoods
       .mockResolvedValueOnce(
         makePaginatedResult(
           [
@@ -259,7 +253,7 @@ describe('useExternalFoodSearch', () => {
   });
 
   test('fetches for fatsecret provider type with providerId', async () => {
-    mockSearchFatSecret.mockResolvedValue(
+    mockSearchExternalFoods.mockResolvedValue(
       makePaginatedResult([
         {
           id: 'fs-1',
@@ -282,14 +276,14 @@ describe('useExternalFoodSearch', () => {
     );
 
     await waitFor(() => {
-      expect(mockSearchFatSecret).toHaveBeenCalledWith('chicken', 'provider-fs', 1);
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('fatsecret', 'chicken', 1, 'provider-fs');
       expect(result.current.searchResults).toHaveLength(1);
       expect(result.current.searchResults[0].source).toBe('fatsecret');
     });
   });
 
   test('fetches for mealie provider type with providerId', async () => {
-    mockSearchMealie.mockResolvedValue(
+    mockSearchExternalFoods.mockResolvedValue(
       makePaginatedResult([
         {
           id: 'mealie-1',
@@ -312,7 +306,7 @@ describe('useExternalFoodSearch', () => {
     );
 
     await waitFor(() => {
-      expect(mockSearchMealie).toHaveBeenCalledWith('chicken', 'provider-mealie', 1);
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('mealie', 'chicken', 1, 'provider-mealie');
       expect(result.current.searchResults).toHaveLength(1);
       expect(result.current.searchResults[0].source).toBe('mealie');
     });
@@ -328,7 +322,7 @@ describe('useExternalFoodSearch', () => {
       expect(result.current.searchResults).toEqual([]);
     });
 
-    expect(mockSearchFatSecret).not.toHaveBeenCalled();
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
   });
 
   test('mealie returns empty when no providerId', async () => {
@@ -341,7 +335,29 @@ describe('useExternalFoodSearch', () => {
       expect(result.current.searchResults).toEqual([]);
     });
 
-    expect(mockSearchMealie).not.toHaveBeenCalled();
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+  });
+
+  test('reports tandoor as a supported provider', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'tandoor'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('tandoor returns empty when no providerId', async () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('chicken', 'tandoor'),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.searchResults).toEqual([]);
+    });
+
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
   });
 
   test('reports fatsecret as a supported provider', () => {

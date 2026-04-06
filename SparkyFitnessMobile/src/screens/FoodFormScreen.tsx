@@ -12,10 +12,8 @@ import { useMealTypes } from '../hooks';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { getMealTypeLabel } from '../constants/meals';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../utils/dateUtils';
+import { parseOptional } from '../types/foodInfo';
 import type { RootStackScreenProps } from '../types/navigation';
-
-const parseOptional = (s: string): number | undefined =>
-  s === '' ? undefined : (parseFloat(s) || 0);
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 
@@ -121,6 +119,13 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
         saturated_fat: parseOptional(data.saturatedFat),
         sodium: parseOptional(data.sodium),
         sugars: parseOptional(data.sugars),
+        trans_fat: parseOptional(data.transFat),
+        potassium: parseOptional(data.potassium),
+        calcium: parseOptional(data.calcium),
+        iron: parseOptional(data.iron),
+        cholesterol: parseOptional(data.cholesterol),
+        vitamin_a: parseOptional(data.vitaminA),
+        vitamin_c: parseOptional(data.vitaminC),
         is_custom: true,
         is_quick_food: !saveToDatabase,
         is_default: true,
