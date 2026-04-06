@@ -35,6 +35,7 @@ export interface ExternalDataProvider {
     | 'fitbit'
     | 'polar'
     | 'hevy'
+    | 'myfitnesspal'
     | 'strava';
   app_id: string | null;
   app_key: string | null;
