@@ -55,6 +55,8 @@ module.exports = [
         },
       ],
       'no-console': 'off', // Custom logging utility used
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-child-process': 'off',
       'prefer-const': 'warn',
       'no-var': 'warn',
       eqeqeq: ['warn', 'always'],
