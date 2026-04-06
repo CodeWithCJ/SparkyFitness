@@ -1,4 +1,5 @@
 const { log } = require('../config/logging');
+const moment = require('moment'); // Import moment
 const exerciseEntryRepository = require('../models/exerciseEntry');
 const exerciseRepository = require('../models/exercise');
 const activityDetailsRepository = require('../models/activityDetailsRepository');
@@ -8,7 +9,6 @@ const measurementService = require('./measurementService'); // Import measuremen
 const moodRepository = require('../models/moodRepository'); // Import moodRepository
 const garminConnectService = require('../integrations/garminconnect/garminConnectService');
 const garminMeasurementMapping = require('../integrations/garminconnect/garminMeasurementMapping');
-const moment = require('moment');
 const { loadUserTimezone } = require('../utils/timezoneLoader');
 const { todayInZone, addDays } = require('@workspace/shared');
 
@@ -840,10 +840,17 @@ async function syncGarminData(
       const dailyEntries = healthWellnessData.data[metric];
       if (Array.isArray(dailyEntries)) {
         for (const entry of dailyEntries) {
-          const calendarDateRaw = entry.date;
+          const calendarDateRaw = entry.calendarDate || entry.date;
           if (!calendarDateRaw) continue;
 
-          const calendarDate = moment(calendarDateRaw).format('YYYY-MM-DD');
+          let calendarDate;
+          try {
+            calendarDate = moment(calendarDateRaw).format('YYYY-MM-DD');
+          } catch (e) {
+            calendarDate = new Date(calendarDateRaw)
+              .toISOString()
+              .split('T')[0];
+          }
 
           for (const key in entry) {
             if (key === 'date') continue;
