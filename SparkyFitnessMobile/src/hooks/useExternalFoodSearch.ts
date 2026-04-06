@@ -13,15 +13,15 @@ const offRateLimiter = new RateLimiter(8, 60_000);
 export function useExternalFoodSearch(
   searchText: string,
   providerType: string,
-  options?: { enabled?: boolean; providerId?: string },
+  options?: { enabled?: boolean; providerId?: string; autoScale?: boolean },
 ) {
-  const { enabled = true, providerId } = options ?? {};
+  const { enabled = true, providerId, autoScale } = options ?? {};
   const debouncedSearch = useDebounce(searchText.trim(), 600);
   const isSearchActive = debouncedSearch.length >= 3;
   const isProviderSupported = SUPPORTED_PROVIDERS.has(providerType);
 
   const query = useInfiniteQuery({
-    queryKey: externalFoodSearchQueryKey(providerType, debouncedSearch, providerId),
+    queryKey: externalFoodSearchQueryKey(providerType, debouncedSearch, providerId, autoScale),
     queryFn: async ({ signal, pageParam }) => {
       if (providerType !== 'openfoodfacts' && !providerId) {
         return { items: [], pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false } };
@@ -29,7 +29,7 @@ export function useExternalFoodSearch(
       if (providerType === 'openfoodfacts') {
         await offRateLimiter.acquire(signal);
       }
-      return searchExternalFoods(providerType, debouncedSearch, pageParam, providerId);
+      return searchExternalFoods(providerType, debouncedSearch, pageParam, providerId, autoScale);
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
