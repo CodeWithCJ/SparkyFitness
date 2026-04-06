@@ -3,7 +3,6 @@ import { useAuth } from '@/hooks/useAuth';
 import type { Exercise } from '@/types/exercises';
 import { DataProvider } from '@/types/settings';
 import { useQueryClient } from '@tanstack/react-query';
-import { error } from 'console';
 import {
   useAddExerciseMutation,
   recentExercisesOptions,
@@ -17,6 +16,7 @@ import {
   useFreeExerciseDBEquipment,
 } from './useFreeExerciseDB';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { error } from '@/utils/logging';
 
 interface ExerciseSearchProps {
   showInternalTab?: boolean;
@@ -165,9 +165,11 @@ export function useExerciseSearchHook({
           searchTerm.trim().length === 0 &&
           equipmentFilter.length === 0 &&
           muscleGroupFilter.length === 0;
-        isBroadSearch
-          ? handleSearch('', true)
-          : handleSearch(searchTerm, false);
+        if (isBroadSearch) {
+          handleSearch('', true);
+        } else {
+          handleSearch(searchTerm, false);
+        }
       }
     }, 300);
     return () => clearTimeout(handler);
@@ -189,8 +191,10 @@ export function useExerciseSearchHook({
         setSelectedProviderId(exerciseProviders[0].id);
         setSelectedProviderType(exerciseProviders[0].provider_type);
       }
-    } catch (err) {}
-  }, [queryClient]);
+    } catch (err) {
+      error(loggingLevel, 'Error fetching exercises:', err);
+    }
+  }, [queryClient, loggingLevel]);
 
   useEffect(() => {
     if (searchSource === 'external') fetchProviders();

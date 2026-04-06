@@ -8,115 +8,46 @@ import {
 } from '@/constants/exercises';
 import { ExerciseCSVData } from '@/pages/Exercises/ExerciseImportCSV';
 
-export const parseCSV = (text: string): ExerciseCSVData[] => {
-  const lines = text.split('\n').filter((line) => line.trim() !== '');
-  if (lines.length < 2) return [];
+import Papa from 'papaparse';
 
-  // Regex to split CSV by commas, but not if the comma is inside double quotes.
-  // It also handles escaped double quotes within a quoted field.
-  const csvSplitRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
-
-  const parsedHeaders = lines[0]
-    ?.split(csvSplitRegex)
-    .map((header) => header.trim().replace(/^"|"$/g, ''));
-  const data: ExerciseCSVData[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i]?.split(csvSplitRegex).map((value) => {
-      // Remove surrounding quotes and unescape internal quotes
-      let trimmedValue = value.trim();
-      if (trimmedValue.startsWith('"') && trimmedValue.endsWith('"')) {
-        trimmedValue = trimmedValue
-          .substring(1, trimmedValue.length - 1)
-          .replace(/""/g, '"');
-      }
-      return trimmedValue;
-    });
-    const row: Partial<ExerciseCSVData> = { id: generateUniqueId() };
-
-    parsedHeaders?.forEach((header, index) => {
-      const value = values ? (values[index] ?? '') : '';
-      if (booleanFields.has(header)) {
-        row[header as keyof ExerciseCSVData] = value.toLowerCase() === 'true';
-      } else if (dropdownFields.has(header)) {
-        const normalizedValue = value.toLowerCase();
-        const options = dropdownOptions[header];
-        const matchingOption = options?.find(
-          (option) => option === normalizedValue
-        );
-        row[header as keyof ExerciseCSVData] = matchingOption || value;
-      } else if (arrayFields.has(header)) {
-        row[header as keyof ExerciseCSVData] = value; // Keep as comma-separated string for editing
-      } else if (!textFields.has(header) && !isNaN(parseFloat(value))) {
-        row[header as keyof ExerciseCSVData] = parseFloat(value);
-      } else {
-        row[header as keyof ExerciseCSVData] = value;
-      }
-    });
-    data.push(row as ExerciseCSVData);
-  }
-  return data;
-};
-
-export const parseCSVWithMapping = (
+export const parseCSV = (
   text: string,
-  mapping: Record<string, string>
+  mapping?: Record<string, string>
 ): ExerciseCSVData[] => {
-  const lines = text.split('\n').filter((line) => line.trim() !== '');
-  if (lines.length < 2) return [];
+  const { data, errors } = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+  });
+  if (errors.length) console.warn('PapaParse Errors:', errors);
 
-  const csvSplitRegex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
-
-  const parsedHeaders = lines[0]
-    ?.split(csvSplitRegex)
-    .map((header) => header.trim().replace(/^"|"$/g, ''));
-  const data: ExerciseCSVData[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i]?.split(csvSplitRegex).map((value) => {
-      let trimmedValue = value.trim();
-      if (trimmedValue.startsWith('"') && trimmedValue.endsWith('"')) {
-        trimmedValue = trimmedValue
-          .substring(1, trimmedValue.length - 1)
-          .replace(/""/g, '"');
-      }
-      return trimmedValue;
-    });
+  return data.map((rawRow) => {
     const row: Partial<ExerciseCSVData> = { id: generateUniqueId() };
+    const fields = mapping ? requiredHeaders : Object.keys(rawRow);
 
-    // Create a map from parsed header to index
-    const headerIndexMap: Record<string, number> = {};
-    parsedHeaders?.forEach((header, index) => {
-      headerIndexMap[header] = index;
-    });
+    fields.forEach((field) => {
+      const header = mapping ? mapping[field] : field;
+      const val = (rawRow[header as string] || '').trim();
+      const valLower = val.toLowerCase();
 
-    requiredHeaders.forEach((requiredHeader) => {
-      const fileHeader = mapping[requiredHeader];
-      const index = fileHeader ? headerIndexMap[fileHeader] : 0;
-      const value =
-        index !== undefined ? (values ? values[index] : '') || '' : '';
-
-      if (booleanFields.has(requiredHeader)) {
-        row[requiredHeader as keyof ExerciseCSVData] =
-          value.toLowerCase() === 'true';
-      } else if (dropdownFields.has(requiredHeader)) {
-        const normalizedValue = value.toLowerCase();
-        const options = dropdownOptions[requiredHeader];
-        const matchingOption = options?.find(
-          (option) => option === normalizedValue
-        );
-        row[requiredHeader as keyof ExerciseCSVData] = matchingOption || value;
-      } else if (arrayFields.has(requiredHeader)) {
-        row[requiredHeader as keyof ExerciseCSVData] = value;
-      } else if (!textFields.has(requiredHeader) && !isNaN(parseFloat(value))) {
-        row[requiredHeader as keyof ExerciseCSVData] = parseFloat(value);
+      if (booleanFields.has(field)) {
+        row[field as keyof ExerciseCSVData] = valLower === 'true';
+      } else if (dropdownFields.has(field)) {
+        row[field as keyof ExerciseCSVData] =
+          dropdownOptions[field]?.find((o) => o === valLower) || val;
+      } else if (
+        arrayFields.has(field) ||
+        textFields.has(field) ||
+        val === '' ||
+        isNaN(Number(val))
+      ) {
+        row[field as keyof ExerciseCSVData] = val;
       } else {
-        row[requiredHeader as keyof ExerciseCSVData] = value;
+        row[field as keyof ExerciseCSVData] = Number(val);
       }
     });
-    data.push(row as ExerciseCSVData);
-  }
-  return data;
+
+    return row as ExerciseCSVData;
+  });
 };
 
 export const generateUniqueId = () =>

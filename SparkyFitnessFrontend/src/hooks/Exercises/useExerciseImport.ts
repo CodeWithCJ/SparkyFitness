@@ -3,11 +3,8 @@ import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../use-toast';
 import { requiredHeaders } from '@/constants/exercises';
-import {
-  parseCSV,
-  generateUniqueId,
-  parseCSVWithMapping,
-} from '@/utils/exercises';
+import { parseCSV, generateUniqueId } from '@/utils/exercises';
+import Papa from 'papaparse';
 
 export function useExerciseImport(
   onSave: (data: Omit<ExerciseCSVData, 'id'>[]) => Promise<void>
@@ -45,16 +42,16 @@ export function useExerciseImport(
         return;
       }
 
-      const lines = text.split('\n');
-      const parsedFileHeaders = lines[0]
-        ?.split(',')
-        .map((h) => h.trim().replace(/^"|"$/g, ''));
-      const areHeadersValid =
-        requiredHeaders.length === parsedFileHeaders?.length &&
-        requiredHeaders.every(
-          (value, index) => value === parsedFileHeaders[index]
-        );
+      const { meta } = Papa.parse(text, {
+        header: true,
+        preview: 1,
+        skipEmptyLines: true,
+      });
+      const parsedFileHeaders = meta.fields || [];
 
+      const areHeadersValid = requiredHeaders.every((req) =>
+        parsedFileHeaders.includes(req)
+      );
       if (areHeadersValid) {
         const parsedData = parseCSV(text);
         const header = parsedData[0];
@@ -211,7 +208,7 @@ export function useExerciseImport(
   };
 
   const parseWithMapping = () => {
-    const parsedData = parseCSVWithMapping(rawCsvText, headerMapping);
+    const parsedData = parseCSV(rawCsvText, headerMapping);
     const header = parsedData[0];
     if (parsedData.length > 0 && header) {
       setHeaders(Object.keys(header).filter((key) => key !== 'id'));

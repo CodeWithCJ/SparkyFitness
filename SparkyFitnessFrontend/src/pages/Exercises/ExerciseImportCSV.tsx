@@ -180,7 +180,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                   {t(`exercise.exerciseImportCSV.${key}`, label)}
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {options.map((opt) => (
+                  {options?.map((opt) => (
                     <TooltipProvider key={opt}>
                       <Tooltip>
                         <TooltipTrigger asChild>

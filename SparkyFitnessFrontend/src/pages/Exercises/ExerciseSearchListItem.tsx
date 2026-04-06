@@ -17,11 +17,6 @@ interface ExerciseListItemProps {
   onAction: (exercise: Exercise) => void | Promise<void>;
   actionText: string;
   actionIcon?: ElementType;
-  t: (
-    key: string,
-    defaultText: string,
-    options?: Record<string, unknown>
-  ) => string;
 }
 
 export const ExerciseSearchListItem = ({

@@ -195,12 +195,12 @@ export const DROPDOWN_GUIDES = [
   {
     key: 'levelLabel',
     label: 'Level:',
-    options: ['beginner', 'intermediate', 'expert'],
+    options: dropdownOptions['level'],
   },
-  { key: 'forceLabel', label: 'Force:', options: ['pull', 'push', 'static'] },
+  { key: 'forceLabel', label: 'Force:', options: dropdownOptions['force'] },
   {
     key: 'mechanicLabel',
     label: 'Mechanic:',
-    options: ['isolation', 'compound'],
+    options: dropdownOptions['mechanic'],
   },
 ];

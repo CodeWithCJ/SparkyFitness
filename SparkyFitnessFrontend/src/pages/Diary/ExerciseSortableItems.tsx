@@ -68,7 +68,7 @@ export const SortableSetItem = React.memo(
           <div {...listeners}>
             <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-9 gap-2 flex-grow items-center">
+          <div className="grid grid-cols-1 md:grid-cols-9 gap-2 grow items-center">
             <div className="md:col-span-1">
               <Label>
                 {t('exercise.editExerciseEntryDialog.setLabel', 'Set')}

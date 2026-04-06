@@ -77,7 +77,6 @@ const ExerciseSearch = ({
             : t('exercise.exerciseSearch.selectButton', 'Select')
         }
         actionIcon={isAdd ? Plus : undefined}
-        t={t}
         onAction={async (ex: Exercise) => {
           if (isAdd) {
             const newEx = await handleAddExternalExercise(ex);
