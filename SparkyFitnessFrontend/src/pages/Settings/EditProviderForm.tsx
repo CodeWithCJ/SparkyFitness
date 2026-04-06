@@ -504,8 +504,8 @@ export const EditProviderForm = ({
                 <span className="font-medium">Connected to MyFitnessPal</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                Your MyFitnessPal account is connected. To reconnect with different
-                credentials, disconnect first and add a new provider.
+                Your MyFitnessPal account is connected. To reconnect with
+                different credentials, disconnect first and add a new provider.
               </p>
             </div>
           ) : (
@@ -541,10 +541,10 @@ export const EditProviderForm = ({
                 />
               </div>
               <p className="text-sm text-muted-foreground col-span-2">
-                <strong>How to find:</strong> Open MyFitnessPal in browser, press
-                F12 (Network tab), find a request to{' '}
-                <code>www.myfitnesspal.com</code>, and copy <code>Cookie</code> and{' '}
-                <code>x-csrf-token</code> from Request Headers.
+                <strong>How to find:</strong> Open MyFitnessPal in browser,
+                press F12 (Network tab), find a request to{' '}
+                <code>www.myfitnesspal.com</code>, and copy <code>Cookie</code>{' '}
+                and <code>x-csrf-token</code> from Request Headers.
               </p>
             </>
           )}

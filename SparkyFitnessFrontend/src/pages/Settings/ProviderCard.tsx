@@ -418,9 +418,15 @@ export const ProviderCard = ({
         )}
       </div>
 
-      {['fitbit', 'withings', 'polar', 'garmin', 'hevy', 'strava', 'myfitnesspal'].includes(
-        provider.provider_type
-      ) && (
+      {[
+        'fitbit',
+        'withings',
+        'polar',
+        'garmin',
+        'hevy',
+        'strava',
+        'myfitnesspal',
+      ].includes(provider.provider_type) && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-2 text-xs text-yellow-800 dark:text-yellow-200 mt-2 flex items-center gap-1">
           <strong>Note from CodewithCJ:</strong> I don't own{' '}
           {provider.provider_name} device/subscription.

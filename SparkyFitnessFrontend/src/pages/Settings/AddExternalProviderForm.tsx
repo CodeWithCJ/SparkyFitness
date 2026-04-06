@@ -285,8 +285,15 @@ const AddExternalProviderForm = ({
             }}
           />
           {newProvider.provider_type === 'myfitnesspal' && (
-            <div className="p-3 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400 border border-red-200" role="alert">
-              <span className="font-bold">⚠️ Strong Warning:</span> MyFitnessPal synchronization will <span className="underline">overwrite all manual entries</span> in your MFP diary for the synced day. This ensures idempotency and keeps SparkyFitness as the source of truth.
+            <div
+              className="p-3 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400 border border-red-200"
+              role="alert"
+            >
+              <span className="font-bold">⚠️ Strong Warning:</span> MyFitnessPal
+              synchronization will{' '}
+              <span className="underline">overwrite all manual entries</span> in
+              your MFP diary for the synced day. This ensures idempotency and
+              keeps SparkyFitness as the source of truth.
             </div>
           )}
           <div className="flex items-center space-x-2">
