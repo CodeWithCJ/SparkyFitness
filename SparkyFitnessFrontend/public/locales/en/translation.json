@@ -495,7 +495,11 @@
     "telegram_integration_description": "Log food and exercises directly from Telegram using AI.",
     "telegram_bot_token": "Telegram Bot Token",
     "telegram_bot_name": "Telegram Bot Name",
-    "telegram_webhook_url": "Telegram Webhook URL"
+    "telegram_webhook_url": "Telegram Webhook URL",
+    "edamam_app_id": "Edamam App ID",
+    "edamam_app_key": "Edamam App Key",
+    "fatsecret_client_id": "FatSecret Client ID",
+    "fatsecret_client_secret": "FatSecret Client Secret"
     },
     "nutrientDisplay": {
       "title": "Nutrient Display",
