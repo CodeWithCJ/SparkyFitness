@@ -1,9 +1,8 @@
-const { getClient, getSystemClient } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 const format = require('pg-format');
 const { log } = require('../config/logging');
 const exerciseRepository = require('./exercise');
 const activityDetailsRepository = require('./activityDetailsRepository');
-const exercisePresetEntryRepository = require('./exercisePresetEntryRepository');
 
 async function upsertExerciseEntryData(
   userId,
@@ -14,7 +13,7 @@ async function upsertExerciseEntryData(
 ) {
   log('info', 'upsertExerciseEntryData received date parameter:', date);
   const client = await getClient(userId);
-  let existingEntry = null;
+  let existingEntry;
   let exerciseName = 'Unknown Exercise'; // Default value
 
   try {
@@ -48,7 +47,8 @@ async function upsertExerciseEntryData(
       error
     );
     throw new Error(
-      `Failed to check existing active calories exercise entry or fetch exercise name: ${error.message}`
+      `Failed to check existing active calories exercise entry or fetch exercise name: ${error.message}`,
+      { cause: error }
     );
   } finally {
     client.release();
@@ -76,7 +76,8 @@ async function upsertExerciseEntryData(
     } catch (error) {
       log('error', 'Error updating active calories exercise entry:', error);
       throw new Error(
-        `Failed to update active calories exercise entry: ${error.message}`
+        `Failed to update active calories exercise entry: ${error.message}`,
+        { error: error }
       );
     } finally {
       updateClient.release();
@@ -106,7 +107,8 @@ async function upsertExerciseEntryData(
     } catch (error) {
       log('error', 'Error inserting active calories exercise entry:', error);
       throw new Error(
-        `Failed to insert active calories exercise entry: ${error.message}`
+        `Failed to insert active calories exercise entry: ${error.message}`,
+        { cause: error }
       );
     } finally {
       insertClient.release();
@@ -307,71 +309,6 @@ async function _updateExerciseEntryWithClient(
     mergedData.instructions = exercise.instructions;
     mergedData.images = exercise.images;
   }
-
-  const result = await client.query(
-    `UPDATE exercise_entries SET
-      exercise_id = $1,
-      duration_minutes = $2,
-      calories_burned = $3,
-      entry_date = $4,
-      notes = $5,
-      workout_plan_assignment_id = $6,
-      image_url = $7,
-      distance = $8,
-      avg_heart_rate = $9,
-      updated_by_user_id = $10,
-      exercise_name = $11,
-      calories_per_hour = $12,
-      category = $13,
-      source = $14,
-      source_id = $15,
-      force = $16,
-      level = $17,
-      mechanic = $18,
-      equipment = $19,
-      primary_muscles = $20,
-      secondary_muscles = $21,
-      instructions = $22,
-      images = $23,
-      sort_order = $24,
-      steps = $25,
-      updated_at = now()
-    WHERE id = $26 AND user_id = $27
-    RETURNING id`,
-    [
-      mergedData.exercise_id,
-      mergedData.duration_minutes,
-      mergedData.calories_burned,
-      mergedData.entry_date,
-      mergedData.notes,
-      mergedData.workout_plan_assignment_id,
-      mergedData.image_url,
-      mergedData.distance,
-      mergedData.avg_heart_rate,
-      updatedByUserId,
-      mergedData.exercise_name,
-      mergedData.calories_per_hour,
-      mergedData.category,
-      mergedData.source,
-      mergedData.source_id,
-      mergedData.force,
-      mergedData.level,
-      mergedData.mechanic,
-      mergedData.equipment ? JSON.stringify(mergedData.equipment) : null,
-      mergedData.primary_muscles
-        ? JSON.stringify(mergedData.primary_muscles)
-        : null,
-      mergedData.secondary_muscles
-        ? JSON.stringify(mergedData.secondary_muscles)
-        : null,
-      mergedData.instructions ? JSON.stringify(mergedData.instructions) : null,
-      mergedData.images ? JSON.stringify(mergedData.images) : null,
-      mergedData.sort_order || 0,
-      mergedData.steps || null,
-      id,
-      userId,
-    ]
-  );
 
   // Handle sets update
   if (updateData.sets !== undefined) {

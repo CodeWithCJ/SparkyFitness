@@ -1,5 +1,4 @@
 const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
 
 async function getGoalByDate(userId, selectedDate) {
   const client = await getClient(userId); // User-specific operation

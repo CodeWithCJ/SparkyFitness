@@ -1,7 +1,5 @@
 const { getClient } = require('../db/poolManager');
-const format = require('pg-format');
 const { log } = require('../config/logging');
-const workoutPresetRepository = require('./workoutPresetRepository');
 const { getExerciseById } = require('./exercise');
 const {
   addDays,

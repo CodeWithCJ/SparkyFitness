@@ -1,7 +1,7 @@
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
-async function upsertSleepEntry(userId, actingUserId, sleepEntryData) {
+async function upsertSleepEntry(userId, _actingUserId, sleepEntryData) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
@@ -176,8 +176,8 @@ async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
     await client.query('BEGIN');
 
     const { id } = sleepStageEventData; // Optional: if provided, attempt to update
-    let { stage_type, start_time, end_time, duration_in_seconds } =
-      sleepStageEventData;
+    const { stage_type, start_time, duration_in_seconds } = sleepStageEventData;
+    let { end_time } = sleepStageEventData;
 
     // Defense: If end_time is missing but duration and start_time are present, calculate it
     if (!end_time && start_time && duration_in_seconds) {
@@ -274,7 +274,7 @@ async function upsertSleepStageEvent(userId, entryId, sleepStageEventData) {
     }
 
     await client.query('COMMIT');
-    const { id: originalId, ...restOfData } = sleepStageEventData;
+    const { id: _originalId, ...restOfData } = sleepStageEventData;
     return { id: sleepStageEventId, ...restOfData };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -334,38 +334,6 @@ async function getSleepEntriesByUserIdAndDateRange(userId, startDate, endDate) {
     log(
       'error',
       `Error fetching sleep entries for user ${userId} from ${startDate} to ${endDate}: `,
-      error
-    );
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
-async function getAggregatedSleepStageDataByDateRange(
-  userId,
-  startDate,
-  endDate
-) {
-  const client = await getClient(userId);
-  try {
-    const query = `
-        SELECT
-        se.entry_date,
-            sse.stage_type,
-            SUM(sse.duration_in_seconds) AS total_duration_in_seconds
-            FROM sleep_entries se
-            JOIN sleep_entry_stages sse ON se.id = sse.entry_id
-            WHERE se.user_id = $1 AND se.entry_date BETWEEN $2 AND $3
-            GROUP BY se.entry_date, sse.stage_type
-            ORDER BY se.entry_date, sse.stage_type;
-        `;
-    const result = await client.query(query, [userId, startDate, endDate]);
-    return result.rows;
-  } catch (error) {
-    log(
-      'error',
-      `Error fetching aggregated sleep stage data for user ${userId} from ${startDate} to ${endDate}: `,
       error
     );
     throw error;
@@ -678,7 +646,6 @@ module.exports = {
   deleteSleepEntry,
   getSleepEntriesWithAllDetailsByUserIdAndDateRange,
   deleteSleepEntriesByEntrySourceAndDate,
-  getSleepEntriesWithAllDetailsByUserIdAndDateRange, // New export
 };
 
 async function getSleepEntriesWithAllDetailsByUserIdAndDateRange(
