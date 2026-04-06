@@ -484,7 +484,11 @@
       "milliliters": "Milliliters (ml)",
       "fluidOunces": "Fluid Ounces (oz)",
       "cups": "Cups",
-      "saveWaterDisplayUnit": "Save Water Display Unit"
+      "saveWaterDisplayUnit": "Save Water Display Unit",
+    "edamam_app_id": "Edamam App ID",
+    "edamam_app_key": "Edamam App Key",
+    "fatsecret_client_id": "FatSecret Client ID",
+    "fatsecret_client_secret": "FatSecret Client Secret"
     },
     "nutrientDisplay": {
       "title": "Nutrient Display",
