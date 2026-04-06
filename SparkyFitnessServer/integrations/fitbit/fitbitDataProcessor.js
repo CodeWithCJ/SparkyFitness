@@ -153,7 +153,7 @@ async function processFitbitWeight(
 
   for (const entry of data.weight) {
     const entryDate = entry.date;
-    let weight = entry.weight;
+    const weight = entry.weight;
 
     await measurementRepository.upsertCheckInMeasurements(
       userId,
@@ -233,7 +233,7 @@ async function processFitbitTemperature(
 
   for (const entry of data.tempSkin) {
     const entryDate = entry.dateTime;
-    let tempVariation = entry.value.nightlyRelative;
+    const tempVariation = entry.value.nightlyRelative;
 
     if (tempVariation !== undefined) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
@@ -389,7 +389,7 @@ async function processFitbitCoreTemperature(
   if (!data || !data.tempCore || data.tempCore.length === 0) return;
   for (const entry of data.tempCore) {
     const entryDate = entry.dateTime;
-    let temp = entry.value;
+    const temp = entry.value;
 
     if (temp !== undefined) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
@@ -532,7 +532,7 @@ async function processFitbitWater(
   }
 
   for (const entry of entries) {
-    let water = parseFloat(entry.value || 0);
+    const water = parseFloat(entry.value || 0);
     const entryDate = entry.dateTime;
 
     await measurementRepository.upsertWaterData(
@@ -599,7 +599,7 @@ async function processFitbitActivities(
       });
     }
 
-    let distanceKm = activity.distance;
+    const distanceKm = activity.distance;
 
     const entryData = {
       exercise_id: exercise.id,
