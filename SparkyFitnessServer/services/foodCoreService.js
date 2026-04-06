@@ -18,6 +18,10 @@ const {
   searchFatSecretByBarcode,
   mapFatSecretFood,
 } = require('../integrations/fatsecret/fatsecretService');
+const {
+  searchEdamamByBarcode,
+  mapEdamamSearchItem,
+} = require('../integrations/edamam/edamamService');
 
 async function searchFoods(
   authenticatedUserId,
@@ -829,6 +833,33 @@ async function lookupBarcode(barcode, userId, providerId) {
       }
     }
 
+    // Try Edamam if provider is configured
+    if (
+      provider?.provider_type === 'edamam' &&
+      provider.app_id &&
+      provider.app_key
+    ) {
+      try {
+        const edamamData = await searchEdamamByBarcode(
+          barcode,
+          provider.app_id,
+          provider.app_key
+        );
+        const items = edamamData?.parsed?.length
+          ? edamamData.parsed
+          : edamamData?.hints || [];
+        const hint = items[0];
+        if (hint) {
+          const mapped = mapEdamamSearchItem(hint);
+          if (mapped) {
+            return { source: 'edamam', food: mapped, barcode_raw: edamamData };
+          }
+        }
+      } catch (edamamError) {
+        log('warn', `Edamam barcode lookup failed for ${barcode}:`, edamamError);
+      }
+    }
+
     // Try OpenFoodFacts if it is the configured primary provider
     if (provider?.provider_type === 'openfoodfacts') {
       triedOpenFoodFacts = true;
@@ -857,7 +888,7 @@ async function lookupBarcode(barcode, userId, providerId) {
           `OpenFoodFacts barcode lookup failed for ${barcode}:`,
           error
         );
-      }
+    }
     }
 
     // Fall back to OpenFoodFacts if not already tried and user preference allows it
