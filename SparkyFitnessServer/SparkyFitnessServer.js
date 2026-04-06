@@ -89,7 +89,8 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const redoc = require('redoc-express');
 const swaggerSpecs = require('./config/swagger');
 const { createCorsOriginChecker } = require('./utils/corsHelper');
-const telegramBotService = require('./integrations/telegram/telegramBotService');
+const telegramBotService =
+  require('./integrations/telegram/telegramBotService').default;
 
 const app = express();
 app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
