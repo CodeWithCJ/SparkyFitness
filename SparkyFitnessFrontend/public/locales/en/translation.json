@@ -484,7 +484,18 @@
       "milliliters": "Milliliters (ml)",
       "fluidOunces": "Fluid Ounces (oz)",
       "cups": "Cups",
-      "saveWaterDisplayUnit": "Save Water Display Unit"
+      "saveWaterDisplayUnit": "Save Water Display Unit",
+      "telegram_status": "Telegram Bot Status",
+      "telegram_not_linked": "Not Linked",
+      "telegram_linked": "Linked (Chat ID: {{chatId}})",
+      "telegram_link_button": "Link Telegram Account",
+      "telegram_unlink_button": "Unlink Telegram",
+      "telegram_code_description": "Send this code to the bot to link your account:",
+      "telegram_get_code": "Generate Link Code",
+      "telegram_integration_description": "Log food and exercises directly from Telegram using AI.",
+      "telegram_bot_token": "Telegram Bot Token",
+      "telegram_bot_name": "Telegram Bot Name",
+      "telegram_webhook_url": "Telegram Webhook URL"
     },
     "nutrientDisplay": {
       "title": "Nutrient Display",
