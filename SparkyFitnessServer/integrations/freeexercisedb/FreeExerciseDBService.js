@@ -4,8 +4,6 @@ const { log } = require('../../config/logging'); // Import the log utility
 
 const GITHUB_RAW_BASE_URL =
   'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main';
-const GITHUB_API_BASE_URL =
-  'https://api.github.com/repos/yuhonas/free-exercise-db/contents';
 const EXERCISES_PATH = 'exercises'; // No leading slash for API
 
 // Initialize cache for GitHub API responses (e.g., 1 hour TTL)

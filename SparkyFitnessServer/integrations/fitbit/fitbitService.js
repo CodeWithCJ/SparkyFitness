@@ -1,7 +1,7 @@
 // SparkyFitnessServer/integrations/fitbit/fitbitService.js
 
 const axios = require('axios');
-const { getClient, getSystemClient } = require('../../db/poolManager');
+const { getSystemClient } = require('../../db/poolManager');
 const {
   encrypt,
   decrypt,

@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { getClient, getSystemClient } = require('../../db/poolManager'); // Use getClient for database connections
 const { log } = require('../../config/logging');
 const measurementService = require('../../services/measurementService'); // Import the new service
 const mobileHealthDataRoutes = require('./mobileHealthDataRoutes'); // Import the new mobile health data routes

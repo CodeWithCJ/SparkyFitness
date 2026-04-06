@@ -1,7 +1,5 @@
 const { log } = require('../config/logging');
 const userRepository = require('../models/userRepository'); // Import userRepository
-const { getClient, getSystemClient } = require('../db/poolManager'); // Import getClient and getSystemClient
-const { canAccessUserData } = require('../utils/permissionUtils');
 const { serializeSignedCookie } = require('better-call');
 
 const authenticate = async (req, res, next) => {

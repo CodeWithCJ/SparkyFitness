@@ -12,7 +12,6 @@ const withingsDataProcessor = require('./withingsDataProcessor'); // Import the 
 
 // Helper function to interpolate parameters into a SQL query for logging
 function interpolateQuery(sql, params) {
-  const i = 0;
   return sql.replace(/\$([0-9]+)/g, (match, p1) => {
     const index = parseInt(p1, 10) - 1;
     if (params[index] === undefined) {
@@ -33,7 +32,7 @@ const WITHINGS_API_BASE_URL = 'https://wbsapi.withings.net';
 const WITHINGS_ACCOUNT_BASE_URL = 'https://account.withings.com';
 
 // Function to construct the Withings authorization URL
-async function getAuthorizationUrl(userId, redirectUri) {
+async function getAuthorizationUrl(userId) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
@@ -66,7 +65,7 @@ async function getAuthorizationUrl(userId, redirectUri) {
 }
 
 // Function to exchange authorization code for access and refresh tokens
-async function exchangeCodeForTokens(userId, code, redirectUri, state) {
+async function exchangeCodeForTokens(userId, code, redirectUri) {
   const client = await getSystemClient();
   try {
     // Validate state parameter (implementation depends on where state is stored)
@@ -911,18 +910,6 @@ async function disconnectWithings(userId) {
   } finally {
     client.release();
   }
-}
-
-// Helper function to generate a random string for state parameter
-function generateRandomString(length) {
-  const characters =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  const charactersLength = characters.length;
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  return result;
 }
 
 async function getStatus(userId) {
