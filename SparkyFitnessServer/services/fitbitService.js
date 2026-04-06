@@ -105,8 +105,7 @@ async function syncFitbitData(
         await fitbitDataProcessor.processFitbitWeight(
           userId,
           userId,
-          responses['raw_weight'].data,
-          weightUnit
+          responses['raw_weight'].data
         );
       if (responses['raw_body_fat'])
         await fitbitDataProcessor.processFitbitBodyFat(
@@ -124,8 +123,7 @@ async function syncFitbitData(
         await fitbitDataProcessor.processFitbitTemperature(
           userId,
           userId,
-          responses['raw_temperature'].data,
-          temperatureUnit
+          responses['raw_temperature'].data
         );
       if (responses['raw_hrv'])
         await fitbitDataProcessor.processFitbitHRV(
@@ -177,8 +175,6 @@ async function syncFitbitData(
           userId,
           userId,
           responses['raw_activities_list'].data,
-          timezoneOffset,
-          distanceUnit,
           null // Pass null to skip the date safety filter during local replay
         );
       if (responses['raw_water'])
@@ -186,7 +182,6 @@ async function syncFitbitData(
           userId,
           userId,
           responses['raw_water'].data,
-          waterUnit,
           tz
         );
       if (responses['raw_cardio_fitness'])
@@ -199,8 +194,7 @@ async function syncFitbitData(
         await fitbitDataProcessor.processFitbitCoreTemperature(
           userId,
           userId,
-          responses['raw_core_temperature'].data,
-          temperatureUnit
+          responses['raw_core_temperature'].data
         );
 
       // Update last_sync_at
@@ -460,12 +454,7 @@ async function syncFitbitData(
     if (stepsData)
       await fitbitDataProcessor.processFitbitSteps(userId, userId, stepsData);
     if (weightData)
-      await fitbitDataProcessor.processFitbitWeight(
-        userId,
-        userId,
-        weightData,
-        weightUnit
-      );
+      await fitbitDataProcessor.processFitbitWeight(userId, userId, weightData);
     if (bodyFatData)
       await fitbitDataProcessor.processFitbitBodyFat(
         userId,
@@ -478,8 +467,7 @@ async function syncFitbitData(
       await fitbitDataProcessor.processFitbitTemperature(
         userId,
         userId,
-        tempData,
-        temperatureUnit
+        tempData
       );
     if (hrvData)
       await fitbitDataProcessor.processFitbitHRV(userId, userId, hrvData);
@@ -513,8 +501,6 @@ async function syncFitbitData(
         userId,
         userId,
         activitiesData,
-        timezoneOffset,
-        distanceUnit,
         startDate
       );
     if (waterData)
@@ -522,7 +508,6 @@ async function syncFitbitData(
         userId,
         userId,
         waterData,
-        waterUnit,
         tz
       );
     if (cardioFitnessData)
@@ -535,8 +520,7 @@ async function syncFitbitData(
       await fitbitDataProcessor.processFitbitCoreTemperature(
         userId,
         userId,
-        coreTempData,
-        temperatureUnit
+        coreTempData
       );
 
     // 4. Update last_sync_at

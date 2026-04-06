@@ -1,6 +1,6 @@
 const { log } = require('../config/logging');
 
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, _req, res, _next) => {
   log(
     'error',
     `Error caught by centralized handler: ${err.message}`,

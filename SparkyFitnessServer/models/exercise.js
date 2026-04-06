@@ -46,7 +46,7 @@ async function getOrCreateActiveCaloriesExercise(
 ) {
   const exerciseName = 'Active Calories';
   const client = await getClient(userId);
-  let exercise = null;
+  let exercise;
   try {
     const result = await client.query(
       'SELECT id FROM exercises WHERE name = $1',
@@ -56,7 +56,8 @@ async function getOrCreateActiveCaloriesExercise(
   } catch (error) {
     log('error', 'Error fetching active calories exercise:', error);
     throw new Error(
-      `Failed to retrieve active calories exercise: ${error.message}`
+      `Failed to retrieve active calories exercise: ${error.message}`,
+      { cause: error }
     );
   } finally {
     client.release();
@@ -68,7 +69,7 @@ async function getOrCreateActiveCaloriesExercise(
       `Creating default exercise: ${exerciseName} for user ${userId}`
     );
     const insertClient = await getClient(userId);
-    let newExercise = null;
+    let newExercise;
     try {
       const result = await insertClient.query(
         `INSERT INTO exercises (user_id, name, category, calories_per_hour, description, is_custom, shared_with_public, source)
@@ -88,7 +89,8 @@ async function getOrCreateActiveCaloriesExercise(
     } catch (createError) {
       log('error', 'Error creating active calories exercise:', createError);
       throw new Error(
-        `Failed to create active calories exercise: ${createError.message}`
+        `Failed to create active calories exercise: ${createError.message}`,
+        { cause: error }
       );
     } finally {
       insertClient.release();
@@ -244,9 +246,9 @@ async function getDistinctEquipment() {
         if (Array.isArray(equipmentList)) {
           equipmentList.forEach((item) => equipmentSet.add(item));
         }
-      } catch (e) {
+      } catch {
         // Fallback for non-JSON string
-        const equipment = row.equipment.replace(/[\[\]'"`]/g, ''); // Clean the string
+        const equipment = row.equipment.replace(/[[\]'"`]/g, '');
         const equipmentList = equipment
           .split(',')
           .map((item) => item.trim())
@@ -279,9 +281,9 @@ async function getDistinctMuscleGroups() {
             if (Array.isArray(muscleList)) {
               muscleList.forEach((item) => muscleGroupSet.add(item));
             }
-          } catch (e) {
+          } catch {
             // Fallback for non-JSON string
-            const muscles = row[field].replace(/[\[\]'"`]/g, ''); // Clean the string
+            const muscles = row[field].replace(/[[\]'"`]/g, '');
             const muscleList = muscles
               .split(',')
               .map((item) => item.trim())

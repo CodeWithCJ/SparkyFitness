@@ -8,13 +8,6 @@ const sleepRepository = require('../../models/sleepRepository');
 const { log } = require('../../config/logging');
 const { localDateToDay, todayInZone } = require('@workspace/shared');
 
-// Conversion factors for en-US to Metric
-const LBS_TO_KG = 0.453592;
-const IN_TO_CM = 2.54;
-const MILES_TO_KM = 1.60934;
-const FAHRENHEIT_TO_CELSIUS_OFFSET = 32;
-const FAHRENHEIT_TO_CELSIUS_FACTOR = 5 / 9;
-
 /**
  * Helper to parse Fitbit local time string with a provided offset
  * @param {string} localTimeStr - e.g. "2023-10-27T10:00:00.000"
@@ -56,7 +49,6 @@ async function processFitbitProfile(
 ) {
   if (!data || !data.user) return;
   const height = data.user.height;
-  const heightUnit = data.user.heightUnit;
 
   // Fitbit Profile API height is typically returned in Centimeters by default.
   // We will treat it as CM to avoid double-conversion issues.
@@ -140,12 +132,7 @@ async function processFitbitSteps(userId, createdByUserId, data) {
 /**
  * Process Fitbit weight data
  */
-async function processFitbitWeight(
-  userId,
-  createdByUserId,
-  data,
-  weightUnit = 'METRIC'
-) {
+async function processFitbitWeight(userId, createdByUserId, data) {
   if (!data || !data.weight || data.weight.length === 0) {
     log('info', `No Fitbit weight data to process for user ${userId}.`);
     return;
@@ -220,12 +207,7 @@ async function processFitbitSpO2(userId, createdByUserId, data) {
 /**
  * Process Fitbit skin temperature data
  */
-async function processFitbitTemperature(
-  userId,
-  createdByUserId,
-  data,
-  temperatureUnit = 'METRIC'
-) {
+async function processFitbitTemperature(userId, createdByUserId, data) {
   if (!data || !data.tempSkin || data.tempSkin.length === 0) {
     log('info', `No Fitbit temperature data to process for user ${userId}.`);
     return;
@@ -380,12 +362,7 @@ async function processFitbitCardioFitness(userId, createdByUserId, data) {
 /**
  * Process Fitbit Core Temperature data
  */
-async function processFitbitCoreTemperature(
-  userId,
-  createdByUserId,
-  data,
-  temperatureUnit = 'METRIC'
-) {
+async function processFitbitCoreTemperature(userId, createdByUserId, data) {
   if (!data || !data.tempCore || data.tempCore.length === 0) return;
   for (const entry of data.tempCore) {
     const entryDate = entry.dateTime;
@@ -506,7 +483,6 @@ async function processFitbitWater(
   userId,
   createdByUserId,
   data,
-  waterUnit = 'METRIC',
   timezone = 'UTC'
 ) {
   if (!data) return;
@@ -556,8 +532,6 @@ async function processFitbitActivities(
   userId,
   createdByUserId,
   data,
-  timezoneOffset = 0,
-  distanceUnit = 'METRIC',
   startDate = null
 ) {
   if (!data || !data.activities || data.activities.length === 0) return;

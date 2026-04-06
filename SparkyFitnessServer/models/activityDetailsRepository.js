@@ -1,16 +1,6 @@
 const { getClient } = require('../db/poolManager');
 const { log } = require('../config/logging');
 
-// Helper function to check if a string is valid JSON
-function isJsonString(str) {
-  try {
-    JSON.parse(str);
-  } catch (e) {
-    return false;
-  }
-  return true;
-}
-
 async function createActivityDetail(userId, detail) {
   const client = await getClient(userId);
   const {
@@ -27,7 +17,7 @@ async function createActivityDetail(userId, detail) {
   if (typeof detail_data === 'string') {
     try {
       processedDetailData = JSON.parse(detail_data);
-    } catch (e) {
+    } catch {
       processedDetailData = JSON.stringify(detail_data);
     }
   } else {
@@ -88,7 +78,8 @@ async function getActivityDetailsByEntryOrPresetId(
 
   if (entryId && presetEntryId) {
     throw new Error(
-      'Cannot query activity details by both entryId and presetEntryId simultaneously.'
+      'Cannot query activity details by both entryId and presetEntryId simultaneously.',
+      { cause: entryId }
     );
   }
 
@@ -120,7 +111,7 @@ async function getActivityDetailsByEntryOrPresetId(
       while (typeof row.detail_data === 'string') {
         try {
           row.detail_data = JSON.parse(row.detail_data);
-        } catch (e) {
+        } catch {
           // If parsing fails, it's just a plain string, so we break the loop.
           break;
         }
@@ -133,7 +124,9 @@ async function getActivityDetailsByEntryOrPresetId(
       `Failed to get activity details for entryId ${entryId} or presetEntryId ${presetEntryId}: ${error.message}`,
       { error }
     );
-    throw new Error(`Failed to get activity details: ${error.message}`);
+    throw new Error(`Failed to get activity details: ${error.message}`, {
+      cause: error,
+    });
   } finally {
     client.release();
   }
@@ -165,7 +158,7 @@ async function updateActivityDetail(userId, id, detail) {
       if (typeof detail_data === 'string') {
         try {
           return JSON.parse(detail_data);
-        } catch (e) {
+        } catch {
           return JSON.stringify(detail_data);
         }
       }
@@ -191,7 +184,9 @@ async function updateActivityDetail(userId, id, detail) {
       `Failed to update activity detail for id ${id}: ${error.message}`,
       { query, values, error }
     );
-    throw new Error(`Failed to update activity detail: ${error.message}`);
+    throw new Error(`Failed to update activity detail: ${error.message}`, {
+      cause: error,
+    });
   } finally {
     client.release();
   }
@@ -218,7 +213,9 @@ async function deleteActivityDetail(userId, id) {
       `Failed to delete activity detail with id ${id}: ${error.message}`,
       { error }
     );
-    throw new Error(`Failed to delete activity detail: ${error.message}`);
+    throw new Error(`Failed to delete activity detail: ${error.message}`, {
+      cause: error,
+    });
   } finally {
     client.release();
   }
@@ -252,7 +249,9 @@ async function deleteActivityDetailsByEntryIdAndProvider(
       `Failed to delete activity details for entry ID ${entryId} and provider ${providerName}: ${error.message}`,
       { error }
     );
-    throw new Error(`Failed to delete activity details: ${error.message}`);
+    throw new Error(`Failed to delete activity details: ${error.message}`, {
+      cause: error,
+    });
   } finally {
     client.release();
   }

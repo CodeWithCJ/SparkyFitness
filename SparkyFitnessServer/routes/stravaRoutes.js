@@ -43,9 +43,6 @@ router.post('/callback', async (req, res) => {
   try {
     const userId = req.userId;
     const { code } = req.body;
-    const redirectUri =
-      req.body.redirect_uri ||
-      `${process.env.SPARKY_FITNESS_FRONTEND_URL}/strava/callback`;
 
     if (!code) {
       return res.status(400).json({ error: 'Authorization code is required.' });
@@ -53,8 +50,7 @@ router.post('/callback', async (req, res) => {
 
     const result = await stravaIntegrationService.exchangeCodeForTokens(
       userId,
-      code,
-      redirectUri
+      code
     );
     res.json(result);
   } catch (error) {

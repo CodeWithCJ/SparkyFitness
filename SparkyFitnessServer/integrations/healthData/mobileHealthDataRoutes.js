@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { getClient, getSystemClient } = require('../../db/poolManager');
 const { log } = require('../../config/logging');
 const measurementService = require('../../services/measurementService');
 

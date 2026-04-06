@@ -19,7 +19,7 @@ function createOwnerPoolInstance() {
     connectionTimeoutMillis: 5000,
   });
 
-  newPool.on('error', (err, client) => {
+  newPool.on('error', (err) => {
     log('error', 'Unexpected error on idle owner client', err);
     process.exit(-1);
   });
@@ -39,7 +39,7 @@ function createAppPoolInstance() {
     connectionTimeoutMillis: 5000,
   });
 
-  newPool.on('error', (err, client) => {
+  newPool.on('error', (err) => {
     log('error', 'Unexpected error on idle app client', err);
     process.exit(-1);
   });

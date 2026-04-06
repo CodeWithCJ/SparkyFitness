@@ -46,7 +46,8 @@ class MealieService {
           );
         } catch (jsonError) {
           throw new Error(
-            `Search failed: ${response.status} ${response.statusText} - ${errorText}`
+            `Search failed: ${response.status} ${response.statusText} - ${errorText}`,
+            { cause: jsonError }
           );
         }
       }
