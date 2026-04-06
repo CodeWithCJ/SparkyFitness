@@ -295,6 +295,38 @@ const AddExternalProviderForm = ({
             <Label htmlFor="new_is_active">Activate this provider</Label>
           </div>
 
+          {[
+            'withings',
+            'garmin',
+            'fitbit',
+            'strava',
+            'polar',
+            'hevy',
+            'myfitnesspal',
+          ].includes(newProvider.provider_type || '') && (
+            <div className="space-y-2">
+              <Label htmlFor="new_sync_frequency">Sync Frequency</Label>
+              <Select
+                value={newProvider.sync_frequency || 'manual'}
+                onValueChange={(value) =>
+                  setNewProvider((prev) => ({
+                    ...prev,
+                    sync_frequency: value as 'hourly' | 'daily' | 'manual',
+                  }))
+                }
+              >
+                <SelectTrigger id="new_sync_frequency">
+                  <SelectValue placeholder="Select sync frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="hourly">Hourly</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <Button disabled={isAnyIntegrationPending} type="submit">
               <Save className="h-4 w-4 mr-2" />
