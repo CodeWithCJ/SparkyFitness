@@ -508,9 +508,11 @@ export async function searchExternalFoods(
   query: string,
   page: number,
   providerId?: string,
+  autoScale?: boolean,
 ): Promise<PaginatedExternalFoodSearchResult> {
   const params = new URLSearchParams({ query, page: String(page) });
   if (providerId) params.set('providerId', providerId);
+  if (autoScale !== undefined) params.set('autoScale', String(autoScale));
 
   const response = await apiFetch<V2SearchResponse>({
     endpoint: `/api/v2/foods/search/${providerType}?${params.toString()}`,

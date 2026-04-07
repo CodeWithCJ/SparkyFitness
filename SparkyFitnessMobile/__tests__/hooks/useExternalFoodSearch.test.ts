@@ -80,7 +80,7 @@ describe('useExternalFoodSearch', () => {
     );
 
     await waitFor(() => {
-      expect(mockSearchExternalFoods).toHaveBeenCalledWith('openfoodfacts', 'chicken', 1, undefined);
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('openfoodfacts', 'chicken', 1, undefined, undefined);
       expect(result.current.searchResults).toHaveLength(1);
     });
   });
@@ -153,7 +153,7 @@ describe('useExternalFoodSearch', () => {
     );
 
     await waitFor(() => {
-      expect(mockSearchExternalFoods).toHaveBeenCalledWith('usda', 'chicken', 1, 'provider-1');
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('usda', 'chicken', 1, 'provider-1', undefined);
       expect(result.current.searchResults).toHaveLength(1);
       expect(result.current.searchResults[0].source).toBe('usda');
     });
@@ -276,7 +276,7 @@ describe('useExternalFoodSearch', () => {
     );
 
     await waitFor(() => {
-      expect(mockSearchExternalFoods).toHaveBeenCalledWith('fatsecret', 'chicken', 1, 'provider-fs');
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('fatsecret', 'chicken', 1, 'provider-fs', undefined);
       expect(result.current.searchResults).toHaveLength(1);
       expect(result.current.searchResults[0].source).toBe('fatsecret');
     });
@@ -306,7 +306,7 @@ describe('useExternalFoodSearch', () => {
     );
 
     await waitFor(() => {
-      expect(mockSearchExternalFoods).toHaveBeenCalledWith('mealie', 'chicken', 1, 'provider-mealie');
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith('mealie', 'chicken', 1, 'provider-mealie', undefined);
       expect(result.current.searchResults).toHaveLength(1);
       expect(result.current.searchResults[0].source).toBe('mealie');
     });

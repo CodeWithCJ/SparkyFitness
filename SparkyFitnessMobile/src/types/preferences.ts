@@ -18,6 +18,8 @@ export interface UserPreferences {
   include_bmr_in_net_calories?: boolean;
   calorie_goal_adjustment_mode?: string;
   auto_scale_open_food_facts_imports?: boolean;
+  auto_scale_online_imports?: boolean;
+  barcode_fallback_open_food_facts?: boolean;
   exercise_calorie_percentage?: number;
   activity_level?: string;
   tdee_allow_negative_adjustment?: boolean;
@@ -27,4 +29,5 @@ export interface UserPreferences {
   timezone?: string | null;
   item_display_limit?: number;
   language?: string;
+  first_day_of_week?: number;
 }

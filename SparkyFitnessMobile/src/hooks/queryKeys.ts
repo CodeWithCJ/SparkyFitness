@@ -20,8 +20,8 @@ export const mealSearchQueryKey = (searchTerm: string) => ['mealSearch', searchT
 
 export const externalProvidersQueryKey = ['externalProviders'] as const;
 
-export const externalFoodSearchQueryKey = (providerType: string, searchTerm: string, providerId?: string) =>
-  ['externalFoodSearch', providerType, searchTerm, providerId] as const;
+export const externalFoodSearchQueryKey = (providerType: string, searchTerm: string, providerId?: string, autoScale?: boolean) =>
+  ['externalFoodSearch', providerType, searchTerm, providerId, autoScale] as const;
 
 export const mealTypesQueryKey = ['mealTypes'] as const;
 

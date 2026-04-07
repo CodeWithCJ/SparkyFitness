@@ -101,6 +101,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   } = useExternalFoodSearch(searchText, selectedProviderType, {
     enabled: isConnected && activeTab === 'online' && selectedProvider !== null,
     providerId: selectedProvider ?? undefined,
+    autoScale: preferences?.auto_scale_open_food_facts_imports,
   });
 
   useEffect(() => {
