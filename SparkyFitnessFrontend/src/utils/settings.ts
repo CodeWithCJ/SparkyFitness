@@ -13,6 +13,7 @@ export const providerRequirements: Record<string, string[]> = {
   strava: ['app_id', 'app_key'],
   usda: ['app_key'],
   hevy: ['app_key'],
+  myfitnesspal: ['app_id', 'app_key'],
 };
 
 export const validateProvider = (
@@ -47,6 +48,7 @@ export const getProviderTypes = () => [
   { value: 'strava', label: 'Strava' },
   { value: 'hevy', label: 'Hevy' },
   { value: 'usda', label: 'USDA' },
+  { value: 'myfitnesspal', label: 'MyFitnessPal (Garmin Sync)' },
 ];
 
 export const getInitials = (name: string | null) => {
@@ -71,6 +73,7 @@ export const getProviderCategory = (
     case 'mealie':
     case 'tandoor':
     case 'usda':
+    case 'myfitnesspal':
       return ['food'];
     case 'nutritionix':
       return ['food', 'exercise'];

@@ -26,6 +26,7 @@ import {
   useManualSyncGarminMutation,
   useManualSyncPolarMutation,
   useManualSyncStravaMutation,
+  useManualSyncMFPMutation,
   useSyncHevyMutation,
 } from '@/hooks/Integrations/useIntegrations';
 import {
@@ -95,6 +96,8 @@ export const ProviderCard = ({
     useManualSyncPolarMutation();
   const { mutate: handleManualSyncStrava, isPending: isSyncStravaPending } =
     useManualSyncStravaMutation();
+  const { mutate: handleManualSyncMFP, isPending: isSyncMFPPending } =
+    useManualSyncMFPMutation();
   const { mutate: syncHevyData, isPending: isSyncHevyPending } =
     useSyncHevyMutation();
 
@@ -133,6 +136,9 @@ export const ProviderCard = ({
           endDate,
         });
         break;
+      case 'myfitnesspal':
+        handleManualSyncMFP({ startDate, endDate });
+        break;
     }
   };
 
@@ -155,6 +161,7 @@ export const ProviderCard = ({
     isSyncPolarPending ||
     isSyncStravaPending ||
     isSyncHevyPending ||
+    isSyncMFPPending ||
     isToggleSharingPending;
 
   const handleToggleActive = async (providerId: string, isActive: boolean) => {
@@ -269,6 +276,15 @@ export const ProviderCard = ({
           lastSync: provider.hevy_last_sync_at,
           tokenExpires: null,
           hasToken: isLinked && provider.is_active,
+        };
+      case 'myfitnesspal':
+        return {
+          connect: null,
+          disconnect: null,
+          sync: () => setIsSyncDialogOpen(true),
+          lastSync: provider.last_sync_at,
+          tokenExpires: null,
+          hasToken: (provider.app_id || provider.app_key) && provider.is_active,
         };
       default:
         return null;
@@ -402,9 +418,15 @@ export const ProviderCard = ({
         )}
       </div>
 
-      {['fitbit', 'withings', 'polar', 'garmin', 'hevy', 'strava'].includes(
-        provider.provider_type
-      ) && (
+      {[
+        'fitbit',
+        'withings',
+        'polar',
+        'garmin',
+        'hevy',
+        'strava',
+        'myfitnesspal',
+      ].includes(provider.provider_type) && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-2 text-xs text-yellow-800 dark:text-yellow-200 mt-2 flex items-center gap-1">
           <strong>Note from CodewithCJ:</strong> I don't own{' '}
           {provider.provider_name} device/subscription.
