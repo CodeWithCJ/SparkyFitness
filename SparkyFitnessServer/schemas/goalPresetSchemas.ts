@@ -79,6 +79,6 @@ const UpdateGoalPresetFieldsSchema = z.object({
   custom_nutrients: z.record(z.string(), z.unknown()).nullable(),
 });
 
-export const UpdateGoalPresetBodySchema = UpdateGoalPresetFieldsSchema;
+export const UpdateGoalPresetBodySchema = UpdateGoalPresetFieldsSchema.loose();
 
 export type UpdateGoalPresetBody = z.infer<typeof UpdateGoalPresetBodySchema>;

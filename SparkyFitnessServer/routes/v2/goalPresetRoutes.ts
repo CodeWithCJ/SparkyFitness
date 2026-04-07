@@ -5,8 +5,8 @@ import {
   UpdateGoalPresetBodySchema,
 } from '../../schemas/goalPresetSchemas';
 
-const checkPermissionMiddleware = require('../../middleware/checkPermissionMiddleware');
-const goalPresetService = require('../../services/goalPresetService');
+import checkPermissionMiddleware = require('../../middleware/checkPermissionMiddleware');
+import goalPresetService = require('../../services/goalPresetService');
 
 const router = express.Router();
 
@@ -77,13 +77,6 @@ const getGoalPresetsHandler: RequestHandler = async (req, res, next) => {
     const presets = await goalPresetService.getGoalPresets(req.userId);
     res.status(200).json(presets);
   } catch (error: unknown) {
-    if (
-      error instanceof Error &&
-      error.message === 'A goal preset with this name already exists.'
-    ) {
-      res.status(409).json({ error: error.message });
-      return;
-    }
     next(error);
   }
 };

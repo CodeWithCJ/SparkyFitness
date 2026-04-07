@@ -25,8 +25,6 @@ app.use((req, res, next) => {
       req.userId = userIdMatch[1];
     }
   }
-  // Debug: log the userId
-  console.log('Debug - userId set to:', req.userId);
   next();
 });
 
