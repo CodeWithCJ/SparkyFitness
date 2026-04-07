@@ -2,6 +2,7 @@ const request = require('supertest');
 const express = require('express');
 const goalPresetService = require('../services/goalPresetService');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
+const { v4: uuidv4 } = require('uuid');
 
 // Import ES6 module
 const goalPresetRoutes = require('../routes/v2/goalPresetRoutes').default;
@@ -24,6 +25,8 @@ app.use((req, res, next) => {
       req.userId = userIdMatch[1];
     }
   }
+  // Debug: log the userId
+  console.log('Debug - userId set to:', req.userId);
   next();
 });
 
@@ -171,8 +174,9 @@ describe('Goal Preset Routes V2', () => {
 
   describe('GET /api/v2/goal-presets/:id', () => {
     it('should return a specific goal preset', async () => {
+      const presetId = '550e8400-e29b-41d4-a716-446655440000'; // Valid UUID format
       const preset = {
-        id: 'test-id',
+        id: presetId,
         preset_name: 'Test Preset',
         user_id: 'testUser',
         calories: 2000,
@@ -180,22 +184,23 @@ describe('Goal Preset Routes V2', () => {
       goalPresetService.getGoalPreset.mockResolvedValue(preset);
 
       const res = await request(app)
-        .get('/api/v2/goal-presets/test-id')
+        .get(`/api/v2/goal-presets/${presetId}`)
         .set('Cookie', ['userId=testUser']);
 
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(preset);
       expect(goalPresetService.getGoalPreset).toHaveBeenCalledWith(
-        'test-id',
+        presetId,
         'testUser'
       );
     });
 
     it('should return 404 for non-existent preset', async () => {
+      const nonExistentId = '550e8400-e29b-41d4-a716-446655440001'; // Valid UUID format
       goalPresetService.getGoalPreset.mockResolvedValue(null);
 
       const res = await request(app)
-        .get('/api/v2/goal-presets/non-existent-id')
+        .get(`/api/v2/goal-presets/${nonExistentId}`)
         .set('Cookie', ['userId=testUser']);
 
       expect(res.statusCode).toEqual(404);
@@ -214,8 +219,9 @@ describe('Goal Preset Routes V2', () => {
 
   describe('PUT /api/v2/goal-presets/:id', () => {
     it('should update a goal preset', async () => {
+      const presetId = '550e8400-e29b-41d4-a716-446655440002'; // Valid UUID format
       const updatedPreset = {
-        id: 'test-id',
+        id: presetId,
         preset_name: 'Updated Preset',
         user_id: 'testUser',
         calories: 2500,
@@ -223,7 +229,7 @@ describe('Goal Preset Routes V2', () => {
       goalPresetService.updateGoalPreset.mockResolvedValue(updatedPreset);
 
       const res = await request(app)
-        .put('/api/v2/goal-presets/test-id')
+        .put(`/api/v2/goal-presets/${presetId}`)
         .set('Cookie', ['userId=testUser'])
         .send({
           preset_name: 'Updated Preset',
@@ -260,7 +266,7 @@ describe('Goal Preset Routes V2', () => {
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual(updatedPreset);
       expect(goalPresetService.updateGoalPreset).toHaveBeenCalledWith(
-        'test-id',
+        presetId,
         'testUser',
         expect.objectContaining({
           preset_name: 'Updated Preset',
@@ -270,12 +276,13 @@ describe('Goal Preset Routes V2', () => {
     });
 
     it('should return 409 Conflict for duplicate preset name during update', async () => {
-      goalPresetService.updateGoalPreset.mockRejectedValue(
-        new Error('A goal preset with this name already exists.')
-      );
+      const presetId = '550e8400-e29b-41d4-a716-446655440006'; // Valid UUID format
+      const error = new Error('A goal preset with this name already exists.');
+      error.code = '23505'; // Set the PostgreSQL error code
+      goalPresetService.updateGoalPreset.mockRejectedValue(error);
 
       const res = await request(app)
-        .put('/api/v2/goal-presets/test-id')
+        .put(`/api/v2/goal-presets/${presetId}`)
         .set('Cookie', ['userId=testUser'])
         .send({
           preset_name: 'Duplicate Preset',
@@ -284,29 +291,29 @@ describe('Goal Preset Routes V2', () => {
           carbs: 250,
           fat: 83,
           water_goal_ml: 3000,
-          protein_percentage: null,
-          carbs_percentage: null,
-          fat_percentage: null,
-          saturated_fat: null,
-          polyunsaturated_fat: null,
-          monounsaturated_fat: null,
-          trans_fat: null,
-          cholesterol: null,
-          sodium: null,
-          potassium: null,
-          dietary_fiber: null,
-          sugars: null,
-          vitamin_a: null,
-          vitamin_c: null,
-          calcium: null,
-          iron: null,
-          target_exercise_calories_burned: null,
-          target_exercise_duration_minutes: null,
-          breakfast_percentage: null,
-          lunch_percentage: null,
-          dinner_percentage: null,
-          snacks_percentage: null,
-          custom_nutrients: null,
+          saturated_fat: 12,
+          polyunsaturated_fat: 6,
+          monounsaturated_fat: 9,
+          trans_fat: 0,
+          cholesterol: 350,
+          sodium: 2500,
+          potassium: 3800,
+          dietary_fiber: 30,
+          sugars: 60,
+          vitamin_a: 1000,
+          vitamin_c: 100,
+          calcium: 1500,
+          iron: 20,
+          target_exercise_calories_burned: 600,
+          target_exercise_duration_minutes: 75,
+          protein_percentage: 35,
+          carbs_percentage: 45,
+          fat_percentage: 20,
+          breakfast_percentage: 30,
+          lunch_percentage: 40,
+          dinner_percentage: 25,
+          snacks_percentage: 5,
+          custom_nutrients: {},
         });
 
       expect(res.statusCode).toEqual(409);
@@ -316,10 +323,11 @@ describe('Goal Preset Routes V2', () => {
     });
 
     it('should return 404 for non-existent preset', async () => {
+      const nonExistentId = '550e8400-e29b-41d4-a716-446655440003'; // Valid UUID format
       goalPresetService.updateGoalPreset.mockResolvedValue(null);
 
       const res = await request(app)
-        .put('/api/v2/goal-presets/non-existent-id')
+        .put(`/api/v2/goal-presets/${nonExistentId}`)
         .set('Cookie', ['userId=testUser'])
         .send({
           preset_name: 'Updated Preset',
@@ -371,8 +379,9 @@ describe('Goal Preset Routes V2', () => {
     });
 
     it('should return 400 for invalid request body', async () => {
+      const presetId = '550e8400-e29b-41d4-a716-446655440007'; // Valid UUID format
       const res = await request(app)
-        .put('/api/v2/goal-presets/test-id')
+        .put(`/api/v2/goal-presets/${presetId}`)
         .set('Cookie', ['userId=testUser'])
         .send({
           // Missing required preset_name
@@ -386,24 +395,26 @@ describe('Goal Preset Routes V2', () => {
 
   describe('DELETE /api/v2/goal-presets/:id', () => {
     it('should delete a goal preset', async () => {
+      const presetId = '550e8400-e29b-41d4-a716-446655440004'; // Valid UUID format
       goalPresetService.deleteGoalPreset.mockResolvedValue({ success: true });
 
       const res = await request(app)
-        .delete('/api/v2/goal-presets/test-id')
+        .delete(`/api/v2/goal-presets/${presetId}`)
         .set('Cookie', ['userId=testUser']);
 
       expect(res.statusCode).toEqual(200);
       expect(goalPresetService.deleteGoalPreset).toHaveBeenCalledWith(
-        'test-id',
+        presetId,
         'testUser'
       );
     });
 
     it('should return 404 for non-existent preset', async () => {
+      const nonExistentId = '550e8400-e29b-41d4-a716-446655440005'; // Valid UUID format
       goalPresetService.deleteGoalPreset.mockResolvedValue(null);
 
       const res = await request(app)
-        .delete('/api/v2/goal-presets/non-existent-id')
+        .delete(`/api/v2/goal-presets/${nonExistentId}`)
         .set('Cookie', ['userId=testUser']);
 
       expect(res.statusCode).toEqual(404);
