@@ -81,7 +81,7 @@ async function getActivityDetailsByEntryOrPresetId(
   if (entryId && presetEntryId) {
     throw new Error(
       'Cannot query activity details by both entryId and presetEntryId simultaneously.',
-      { cause: entryId }
+      { cause: { entryId, presetEntryId } }
     );
   }
 

@@ -447,7 +447,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
     const entryType = dataEntry.type || 'unknown';
     if (
       dataEntry.record_timezone ||
-      dataEntry.record_utc_offset_minutes !== null
+      (dataEntry.record_utc_offset_minutes !== null &&
+        dataEntry.record_utc_offset_minutes !== undefined)
     ) {
       tzMetadataByType[entryType] = (tzMetadataByType[entryType] || 0) + 1;
     } else {

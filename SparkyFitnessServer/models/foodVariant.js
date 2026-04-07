@@ -1,5 +1,4 @@
 const { getClient } = require('../db/poolManager');
-const foodDb = require('./food'); // Import foodDb to get food owner
 const { log } = require('../config/logging');
 const format = require('pg-format');
 const { sanitizeGlycemicIndex } = require('./food');
@@ -182,9 +181,6 @@ async function deleteFoodVariant(id, userId) {
 
 async function bulkCreateFoodVariants(variantsData, userId) {
   // For bulk create, we need the user_id of the food owner. Assuming all variants belong to the same food.
-  variantsData.length > 0
-    ? await foodDb.getFoodOwnerId(variantsData[0].food_id, userId)
-    : null;
   const client = await getClient(userId); // User-specific operation
   try {
     const query = `

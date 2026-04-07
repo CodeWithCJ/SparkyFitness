@@ -191,6 +191,20 @@ async function updateMealPlanTemplate(planId, planData) {
     await client.query('BEGIN');
 
     await client.query(
+      `UPDATE meal_plan_templates SET
+                plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5, updated_at = now()
+             WHERE id = $6 RETURNING *`,
+      [
+        planData.plan_name ?? '',
+        planData.description ?? '',
+        planData.start_date ?? new Date(),
+        planData.end_date,
+        planData.is_active ?? false,
+        planId,
+      ]
+    );
+
+    await client.query(
       'DELETE FROM meal_plan_template_assignments WHERE template_id = $1',
       [planId]
     );

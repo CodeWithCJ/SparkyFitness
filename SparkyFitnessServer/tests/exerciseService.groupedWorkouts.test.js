@@ -57,7 +57,7 @@ const calorieCalculationService = require('../services/CalorieCalculationService
 const { resolveExerciseIdToUuid } = require('../utils/uuidUtils');
 const {
   getGroupedExerciseSessionByIdWithClient,
-} = require('../services/exerciseEntryHistoryService.ts');
+} = require('../services/exerciseEntryHistoryService');
 const exerciseService = require('../services/exerciseService');
 
 describe('exerciseService grouped workouts', () => {

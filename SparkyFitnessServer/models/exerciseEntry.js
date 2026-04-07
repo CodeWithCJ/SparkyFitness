@@ -310,6 +310,71 @@ async function _updateExerciseEntryWithClient(
     mergedData.images = exercise.images;
   }
 
+  await client.query(
+    `UPDATE exercise_entries SET
+      exercise_id = $1,
+      duration_minutes = $2,
+      calories_burned = $3,
+      entry_date = $4,
+      notes = $5,
+      workout_plan_assignment_id = $6,
+      image_url = $7,
+      distance = $8,
+      avg_heart_rate = $9,
+      updated_by_user_id = $10,
+      exercise_name = $11,
+      calories_per_hour = $12,
+      category = $13,
+      source = $14,
+      source_id = $15,
+      force = $16,
+      level = $17,
+      mechanic = $18,
+      equipment = $19,
+      primary_muscles = $20,
+      secondary_muscles = $21,
+      instructions = $22,
+      images = $23,
+      sort_order = $24,
+      steps = $25,
+      updated_at = now()
+    WHERE id = $26 AND user_id = $27
+    RETURNING id`,
+    [
+      mergedData.exercise_id,
+      mergedData.duration_minutes,
+      mergedData.calories_burned,
+      mergedData.entry_date,
+      mergedData.notes,
+      mergedData.workout_plan_assignment_id,
+      mergedData.image_url,
+      mergedData.distance,
+      mergedData.avg_heart_rate,
+      updatedByUserId,
+      mergedData.exercise_name,
+      mergedData.calories_per_hour,
+      mergedData.category,
+      mergedData.source,
+      mergedData.source_id,
+      mergedData.force,
+      mergedData.level,
+      mergedData.mechanic,
+      mergedData.equipment ? JSON.stringify(mergedData.equipment) : null,
+      mergedData.primary_muscles
+        ? JSON.stringify(mergedData.primary_muscles)
+        : null,
+      mergedData.secondary_muscles
+        ? JSON.stringify(mergedData.secondary_muscles)
+        : null,
+      mergedData.instructions ? JSON.stringify(mergedData.instructions) : null,
+      mergedData.images ? JSON.stringify(mergedData.images) : null,
+      mergedData.sort_order || 0,
+      mergedData.steps || null,
+      id,
+      userId,
+    ]
+  );
+
   // Handle sets update
   if (updateData.sets !== undefined) {
     // Only modify sets if they are explicitly provided
@@ -552,10 +617,45 @@ async function getExerciseEntryOwnerId(id, userId) {
   }
 }
 
-async function updateExerciseEntry(id, userId, _actingUserId, updateData) {
+async function updateExerciseEntry(id, userId, actingUserId, updateData) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
+
+    await client.query(
+      `UPDATE exercise_entries SET
+        exercise_id = COALESCE($1, exercise_id),
+        duration_minutes = COALESCE($2, duration_minutes),
+        calories_burned = COALESCE($3, calories_burned),
+        entry_date = COALESCE($4, entry_date),
+        notes = COALESCE($5, notes),
+        workout_plan_assignment_id = COALESCE($6, workout_plan_assignment_id),
+        image_url = $7,
+        distance = COALESCE($8, distance),
+        avg_heart_rate = COALESCE($9, avg_heart_rate),
+        sort_order = COALESCE($10, sort_order),
+        exercise_name = COALESCE($11, exercise_name),
+        updated_by_user_id = $12,
+        updated_at = now()
+      WHERE id = $13 AND user_id = $14
+      RETURNING id`,
+      [
+        updateData.exercise_id,
+        updateData.duration_minutes || null,
+        updateData.calories_burned,
+        updateData.entry_date,
+        updateData.notes,
+        updateData.workout_plan_assignment_id || null,
+        updateData.image_url || null,
+        updateData.distance || null,
+        updateData.avg_heart_rate || null,
+        updateData.sort_order !== undefined ? updateData.sort_order : null,
+        updateData.exercise_name || null,
+        actingUserId,
+        id,
+        userId,
+      ]
+    );
 
     // Only modify sets if they are explicitly provided in the update
     if (updateData.sets !== undefined) {

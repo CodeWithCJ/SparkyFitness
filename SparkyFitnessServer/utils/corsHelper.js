@@ -12,16 +12,20 @@ function isPrivateNetworkAddress(hostname) {
 
   // Try to clean up port if present using URL parser
   // We prepend http:// to ensure it parses as a URL from a hostname string
-  // Check if it already has a protocol, if not add one
-  const urlStr = cleanHostname.match(/^[a-z]+:\/\//)
-    ? cleanHostname
-    : `http://${cleanHostname}`;
-  const url = new URL(urlStr);
-  cleanHostname = url.hostname;
+  try {
+    // Check if it already has a protocol, if not add one
+    const urlStr = cleanHostname.match(/^[a-z]+:\/\//)
+      ? cleanHostname
+      : `http://${cleanHostname}`;
+    const url = new URL(urlStr);
+    cleanHostname = url.hostname;
 
-  // Remove brackets for IPv6 [::1] -> ::1 as ipaddr.js expects raw address
-  if (cleanHostname.startsWith('[') && cleanHostname.endsWith(']')) {
-    cleanHostname = cleanHostname.slice(1, -1);
+    // Remove brackets for IPv6 [::1] -> ::1 as ipaddr.js expects raw address
+    if (cleanHostname.startsWith('[') && cleanHostname.endsWith(']')) {
+      cleanHostname = cleanHostname.slice(1, -1);
+    }
+  } catch {
+    // If URL parsing fails, proceed with original string
   }
 
   // Check localhost explicitly as it's not an IP address
@@ -104,18 +108,27 @@ function createCorsOriginChecker(
     }
 
     // 2. Private Network Check (Broad switch)
-    if (effectiveOrigin) {
-      const { hostname } = new URL(effectiveOrigin);
-      if (allowPrivateNetworks && isPrivateNetworkAddress(hostname)) {
-        return callback(null, true);
+    try {
+      if (effectiveOrigin) {
+        const { hostname } = new URL(effectiveOrigin);
+        if (allowPrivateNetworks && isPrivateNetworkAddress(hostname)) {
+          return callback(null, true);
+        }
       }
+    } catch {
+      /* ignore invalid origins */
     }
+
     // 3. Fallback: Check the Referer (Fixes HTTPS to HTTP IP failures)
     const referer = req?.headers?.referer;
     if (referer) {
-      const refOrigin = new URL(referer).origin;
-      if (allowedOrigins.includes(refOrigin)) {
-        return callback(null, true);
+      try {
+        const refOrigin = new URL(referer).origin;
+        if (allowedOrigins.includes(refOrigin)) {
+          return callback(null, true);
+        }
+      } catch {
+        /* ignore invalid referers */
       }
     }
 

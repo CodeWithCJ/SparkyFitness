@@ -16,7 +16,7 @@ const {
   UuidParamSchema,
   DateRangeParamSchema,
   CustomMeasurementsRangeParamSchema,
-} = require('../schemas/measurementSchemas.ts');
+} = require('../schemas/measurementSchemas');
 
 /**
  * @swagger

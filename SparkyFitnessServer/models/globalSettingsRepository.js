@@ -63,9 +63,26 @@ async function getGlobalSettings() {
   }
 }
 
-async function saveGlobalSettings() {
+async function saveGlobalSettings(settings) {
   const client = await getSystemClient(); // System-level operation
   try {
+    const allowUserAiConfig =
+      settings.allow_user_ai_config !== undefined
+        ? settings.allow_user_ai_config
+        : true;
+    await client.query(
+      `UPDATE global_settings
+             SET enable_email_password_login = $1, is_oidc_active = $2, mfa_mandatory = $3, allow_user_ai_config = COALESCE($4, allow_user_ai_config, true)
+             WHERE id = 1
+             RETURNING *`,
+      // Use 'is_mfa_mandatory' from the incoming settings from the frontend
+      [
+        settings.enable_email_password_login,
+        settings.is_oidc_active,
+        settings.is_mfa_mandatory,
+        allowUserAiConfig,
+      ]
+    );
     // Return the full truth (DB + ENV overrides)
     return await getGlobalSettings();
   } finally {

@@ -27,7 +27,6 @@ const authMiddleware = require('../middleware/authMiddleware'); // Import the en
 router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
   try {
     const userId = req.userId; // Assuming user ID is available from authentication
-    process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
     const authorizationUrl = await withingsService.getAuthorizationUrl(userId);
     res.json({ authUrl: authorizationUrl });
   } catch (error) {

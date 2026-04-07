@@ -22,7 +22,7 @@ const papa = require('papaparse');
 const {
   getGroupedExerciseSessionById,
   getGroupedExerciseSessionByIdWithClient,
-} = require('./exerciseEntryHistoryService.ts');
+} = require('./exerciseEntryHistoryService');
 
 async function getExercisesWithPagination(
   authenticatedUserId,
@@ -1125,6 +1125,15 @@ async function addFreeExerciseDBExerciseToUserExercises(
     if (!exerciseDetails) {
       throw new Error('Free-Exercise-DB exercise not found.');
     }
+
+    await Promise.all(
+      exerciseDetails.images.map(async (imagePath) => {
+        const imageUrl = freeExerciseDBService.getExerciseImageUrl(imagePath); // This now correctly forms the external URL
+        const exerciseIdFromPath = imagePath.split('/')[0]; // Extract exercise ID from path for download
+        await downloadImage(imageUrl, exerciseIdFromPath); // Download the image
+        return imagePath; // Store the original relative path in the database
+      })
+    );
 
     // Map free-exercise-db data to our generic Exercise model
     const exerciseData = {

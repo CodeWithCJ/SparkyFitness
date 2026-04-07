@@ -722,10 +722,12 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         if (hasImage) {
           throw new Error(
             `Image analysis is not supported for the selected AI service type: ${aiService.service_type}. Please select a multimodal model like Google Gemini in settings.`,
-            { cause: 'no image analysis available for this model' }
+            { cause: { serviceType: aiService.service_type } }
           );
         }
-        throw new Error(`Unsupported service type: ${aiService.service_type}`);
+        throw new Error(`Unsupported service type: ${aiService.service_type}`, {
+          cause: { serviceType: aiService.service_type },
+        });
       }
     }
 
