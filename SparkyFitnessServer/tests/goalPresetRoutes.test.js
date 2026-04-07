@@ -5,7 +5,7 @@ const checkPermissionMiddleware = require('../middleware/checkPermissionMiddlewa
 const { v4: uuidv4 } = require('uuid');
 
 // Import ES6 module
-const goalPresetRoutes = require('../routes/v2/goalPresetRoutes').default;
+const goalPresetRoutes = require('../routes/v2/goalPresetRoutes');
 
 // Mock middleware and service
 jest.mock('../services/goalPresetService');
