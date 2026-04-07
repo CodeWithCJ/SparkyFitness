@@ -62,7 +62,6 @@ const versionRoutes = require('./routes/versionRoutes');
 const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
 const customNutrientRoutes = require('./routes/customNutrientRoutes'); // Import custom nutrient routes
 const telegramRoutes = require('./routes/telegramRoutes');
-const mfpRoutes = require('./routes/mfpRoutes'); // Import MFP routes
 const { applyMigrations } = require('./utils/dbMigrations');
 const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
 const { grantPermissions } = require('./db/grantPermissions');
@@ -82,7 +81,6 @@ const garminService = require('./services/garminService'); // Import garminServi
 const fitbitService = require('./services/fitbitService'); // Import fitbitService
 const polarService = require('./services/polarService'); // Import polarService
 const stravaService = require('./services/stravaService'); // Import stravaService
-const mfpSyncService = require('./services/mfpSyncService'); // Import mfpSyncService
 const dailySummaryRoutes = require('./routes/dailySummaryRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const mealTypeRoutes = require('./routes/mealTypeRoutes');
@@ -385,7 +383,6 @@ app.use('/api/integrations/fitbit', fitbitRoutes);
 app.use('/api/integrations/polar', polarRoutes);
 app.use('/api/integrations/strava', stravaRoutes);
 app.use('/api/integrations/hevy', hevyRoutes);
-app.use('/api/integrations/myfitnesspal', mfpRoutes);
 app.use('/api/mood', moodRoutes);
 app.use('/api/fasting', fastingRoutes);
 app.use('/api/admin', adminRoutes);
@@ -559,35 +556,6 @@ const schedulePolarSyncs = async () => {
   });
 };
 
-// MyFitnessPal sync
-const scheduleMFPSyncs = async () => {
-  cron.schedule('0 * * * *', async () => {
-    try {
-      const mfpProviders =
-        await externalProviderRepository.getProvidersByType('myfitnesspal');
-      const today = new Date().toISOString().split('T')[0];
-
-      for (const provider of mfpProviders) {
-        if (provider.is_active && provider.sync_frequency !== 'manual') {
-          try {
-            await mfpSyncService.syncDailyTotals(provider.user_id, today);
-            await externalProviderRepository.updateProviderLastSync(
-              provider.id,
-              new Date()
-            );
-          } catch (error) {
-            console.error(
-              `[CRON] MFP sync failed for user ${provider.user_id}:`,
-              error
-            );
-          }
-        }
-      }
-    } catch (e) {
-      console.error('[CRON] scheduleMFPSyncs top-level error:', e);
-    }
-  });
-};
 
 applyMigrations()
   .then(applyRlsPolicies)
@@ -615,7 +583,6 @@ applyMigrations()
     scheduleFitbitSyncs();
     schedulePolarSyncs();
     scheduleStravaSyncs();
-    scheduleMFPSyncs();
 
     // Initialize Telegram Bot
     telegramBotService.initialize().catch((err) =>

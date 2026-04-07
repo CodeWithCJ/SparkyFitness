@@ -1,9 +1,9 @@
 import { log } from '../../config/logging';
 import axios from 'axios';
-const externalProviderRepository = require('../../models/externalProviderRepository');
-const exerciseEntryRepository = require('../../models/exerciseEntry');
-const activityDetailsRepository = require('../../models/activityDetailsRepository');
-const exerciseRepository = require('../../models/exercise');
+import * as externalProviderRepository from '../../models/externalProviderRepository';
+import * as exerciseEntryRepository from '../../models/exerciseEntry';
+import * as activityDetailsRepository from '../../models/activityDetailsRepository';
+import * as exerciseRepository from '../../models/exercise';
 import moment from 'moment';
 import {
   encrypt,

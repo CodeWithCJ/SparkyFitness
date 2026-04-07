@@ -12,40 +12,17 @@ import * as goalRepository from '../../models/goalRepository';
 import * as measurementRepository from '../../models/measurementRepository';
 import { executeIntent } from './intentExecutor';
 import axios from 'axios';
+import {
+  TranslationSet,
+  TelegramUser,
+  getTranslations,
+  getMainMenuKeyboard,
+  getDiaryMenuKeyboard,
+} from './telegramTranslations';
 const bmrService = require('../../services/bmrService');
 const { loadUserTimezone } = require('../../utils/timezoneLoader');
-import { todayInZone, addDays } from '@workspace/shared';
-import { syncDailyTotals } from '../../services/mfpSyncService';
+import { todayInZone, addDays, instantToDay } from '@workspace/shared';
 
-interface TelegramUser {
-  id: string;
-  name: string;
-  language: string;
-  telegram_chat_id: string;
-  timezone?: string;
-}
-
-interface TranslationSet {
-  greeting: string;
-  helpPrompt: string;
-  welcome: string;
-  noRecentActivities: string;
-  recentActivities: string;
-  todayLog: string;
-  macros: string;
-  profile: string;
-  language: string;
-  diary: string;
-  exercises: string;
-  syncMenu: string;
-  back: string;
-  langSet: string;
-  syncGarmin: string;
-  syncMFP: string;
-  addWater: string;
-  // ... more as needed
-  [key: string]: string;
-}
 
 /**
  * Service to manage Telegram Bot interactions.
@@ -53,7 +30,7 @@ interface TranslationSet {
  */
 class TelegramBotService {
   private bot: TelegramBot | null = null;
-  private activeNutritionSyncs: Set<number> = new Set();
+  private botToken: string | null = null;
   private activeGarminSyncs: Set<number> = new Set();
 
   constructor() {
@@ -63,10 +40,10 @@ class TelegramBotService {
   async initialize(): Promise<void> {
     try {
       const settings = await globalSettingsRepository.getGlobalSettings();
-      const token =
+      this.botToken =
         settings.telegram_bot_token || process.env.TELEGRAM_BOT_TOKEN;
 
-      if (!token) {
+      if (!this.botToken) {
         log(
           'info',
           '[TELEGRAM BOT] Bot token not configured. Telegram integration is inactive.'
@@ -81,13 +58,13 @@ class TelegramBotService {
           'info',
           `[TELEGRAM BOT] Initializing in WEBHOOK mode. URL: ${webhookUrl}`
         );
-        this.bot = new TelegramBot(token, { polling: false });
+        this.bot = new TelegramBot(this.botToken!, { polling: false });
         const fullWebhookUrl = `${webhookUrl.replace(/\/$/, '')}/api/telegram/webhook`;
         await this.bot.setWebHook(fullWebhookUrl);
         log('info', `[TELEGRAM BOT] Webhook registered: ${fullWebhookUrl}`);
       } else {
         log('info', '[TELEGRAM BOT] Initializing in POLLING mode.');
-        this.bot = new TelegramBot(token, { polling: true });
+        this.bot = new TelegramBot(this.botToken!, { polling: true });
       }
 
       log(
@@ -109,7 +86,7 @@ class TelegramBotService {
   private setupHandlers(): void {
     if (!this.bot) return;
 
-    this.bot.onText(/\/start( (.+))?/, async (msg: any, match: any) => {
+    this.bot.onText(/\/start( (.+))?/, async (msg, match) => {
       const chatId = msg.chat.id;
       const linkParam = match ? match[2] : null;
 
@@ -121,8 +98,8 @@ class TelegramBotService {
 
       if (user) {
         const lang = user.language;
-        const t = this.getTranslations(lang);
-        const keyboardOptions = this.getMainMenuKeyboard(t);
+        const t = getTranslations(lang);
+        const keyboardOptions = getMainMenuKeyboard(t);
 
         return this.bot!.sendMessage(
           chatId,
@@ -137,7 +114,7 @@ class TelegramBotService {
       );
     });
 
-    this.bot.onText(/\/(profile|профиль)/i, async (msg: any) => {
+    this.bot.onText(/\/(profile|профиль)/i, async (msg) => {
       const chatId = msg.chat.id;
       const user = await this.findUserAndLanguageByChatId(chatId);
       if (!user) return;
@@ -154,7 +131,7 @@ class TelegramBotService {
       }
     });
 
-    this.bot.onText(/\/(diary|дневник|щоденник)/i, async (msg: any) => {
+    this.bot.onText(/\/(diary|дневник|щоденник)/i, async (msg) => {
       const chatId = msg.chat.id;
       const user = await this.findUserAndLanguageByChatId(chatId);
       if (!user) return;
@@ -167,7 +144,7 @@ class TelegramBotService {
       );
     });
 
-    this.bot.onText(/\/(exercises|упражнения|вправи)/i, async (msg: any) => {
+    this.bot.onText(/\/(exercises|упражнения|вправи)/i, async (msg) => {
       const chatId = msg.chat.id;
       const user = await this.findUserAndLanguageByChatId(chatId);
       if (!user) return;
@@ -178,7 +155,7 @@ class TelegramBotService {
 
     this.bot.onText(
       /\/(sync|синхронизировать|синхронізувати)/i,
-      async (msg: any) => {
+      async (msg) => {
         const chatId = msg.chat.id;
         const user = await this.findUserAndLanguageByChatId(chatId);
         if (!user) return;
@@ -186,7 +163,7 @@ class TelegramBotService {
       }
     );
 
-    this.bot.on('message', async (msg: any) => {
+    this.bot.on('message', async (msg) => {
       if (msg.text && msg.text.startsWith('/')) return;
 
       const chatId = msg.chat.id;
@@ -235,7 +212,7 @@ class TelegramBotService {
         return this.bot!.sendMessage(
           chatId,
           t.welcome,
-          this.getMainMenuKeyboard(t)
+          getMainMenuKeyboard(t)
         );
       }
 
@@ -276,7 +253,7 @@ class TelegramBotService {
       await this.processMessage(chatId, user, msg);
     });
 
-    this.bot.on('callback_query', async (query: any) => {
+    this.bot.on('callback_query', async (query) => {
       const chatId = query.message?.chat.id;
       if (!chatId) return;
 
@@ -288,7 +265,7 @@ class TelegramBotService {
       if (action === 'setlang') {
         const newLang = type;
         await this.setLanguage(user.id, newLang);
-        const t = this.getTranslations(newLang);
+        const t = getTranslations(newLang);
 
         await this.bot!.deleteMessage(chatId, query.message!.message_id).catch(
           () => false
@@ -296,7 +273,7 @@ class TelegramBotService {
         await this.bot!.sendMessage(
           chatId,
           t.langSet,
-          this.getMainMenuKeyboard(t)
+          getMainMenuKeyboard(t)
         );
         return this.bot!.answerCallbackQuery(query.id).catch(() => {});
       } else if (action === 'sync') {
@@ -370,72 +347,6 @@ class TelegramBotService {
             ).catch(() => {});
           } finally {
             this.activeGarminSyncs.delete(chatId);
-          }
-          return this.bot!.answerCallbackQuery(query.id).catch(() => {});
-        } else if (type === 'mfp') {
-          if (this.activeNutritionSyncs.has(chatId)) {
-            return this.bot!.sendMessage(
-              chatId,
-              '⚠️ Синхронізація з MyFitnessPal вже триває. Будь ласка, зачекайте.'
-            ).catch(() => {});
-          }
-
-          this.activeNutritionSyncs.add(chatId);
-
-          const statusMsg = await (this.bot!.sendMessage(
-            chatId,
-            '🔄 Починаємо синхронізацію харчування з MyFitnessPal (за 7 днів)...',
-            { disable_notification: true }
-          ) as any);
-
-          try {
-            const tz = (user as any).timezone || 'UTC';
-            const today = todayInZone(tz);
-            let successCount = 0;
-            const totalDays = 7;
-
-            for (let i = 0; i < totalDays; i++) {
-              const currentDate = addDays(today, -i);
-              const dayNum = i + 1;
-
-              // Progress visual: [▓▓▓░░░░]
-              const filledBlocks = '▓'.repeat(dayNum);
-              const emptyBlocks = '░'.repeat(totalDays - dayNum);
-              const progressBar = `[${filledBlocks}${emptyBlocks}]`;
-
-              await this.bot!.editMessageText(
-                `⏳ Синхронізація MyFitnessPal...\n${progressBar} ${dayNum}/${totalDays}\n📅 Дата: ${currentDate}`,
-                {
-                  chat_id: chatId,
-                  message_id: statusMsg.message_id,
-                  disable_web_page_preview: true,
-                }
-              ).catch(() => {});
-
-              // MFP sync service
-              await syncDailyTotals(user.id, currentDate);
-              successCount++;
-
-              // Small delay for smooth UI feedback
-              await new Promise((resolve) => setTimeout(resolve, 300));
-            }
-
-            await this.bot!.editMessageText(
-              `✅ Синхронізація з MyFitnessPal завершена за ${successCount} днів!\n📊 Дані успішно оновлені.`,
-              {
-                chat_id: chatId,
-                message_id: statusMsg.message_id,
-              }
-            ).catch(() => {});
-          } catch (error: any) {
-            log('error', `[TELEGRAM BOT] MFP sync error: ${error.message}`);
-            await this.bot!.sendMessage(
-              chatId,
-              `❌ Помилка синхронізації MyFitnessPal: ${error.message}`,
-              { disable_notification: true }
-            ).catch(() => {});
-          } finally {
-            this.activeNutritionSyncs.delete(chatId);
           }
           return this.bot!.answerCallbackQuery(query.id).catch(() => {});
         }
@@ -512,7 +423,7 @@ class TelegramBotService {
       }
 
       const chatHistory = await chatRepository.getChatHistoryByUserId(user.id);
-      let exerciseSummary = await this.getExerciseSummary(user.id);
+      let exerciseSummary = await this.getExerciseSummary(user);
       let nutritionContext = await this.getUserNutritionContext(user.id);
       let extraContext = '';
 
@@ -636,7 +547,7 @@ class TelegramBotService {
           fetchedDataText = exercises
             .map((ex: any) => {
               const date = ex.entry_date
-                ? new Date(ex.entry_date).toISOString().split('T')[0]
+                ? instantToDay(ex.entry_date, (user as any).timezone || 'UTC')
                 : 'Unknown';
               return `- ${date}: ${ex.exercise_name || ex.name} (${ex.duration_minutes}m, ${Math.round(ex.calories)}kcal)`;
             })
@@ -848,7 +759,7 @@ class TelegramBotService {
         if (ex.entry_date) {
           const d = new Date(ex.entry_date);
           if (!isNaN(d.getTime())) {
-            dateStr = d.toISOString().split('T')[0];
+            dateStr = instantToDay(d, user.timezone || 'UTC');
           }
         }
 
@@ -1009,7 +920,7 @@ class TelegramBotService {
     if (!this.bot) return null;
     try {
       const file = await this.bot.getFile(fileId);
-      const fileUrl = `https://api.telegram.org/file/bot${(this.bot as any).token}/${file.file_path}`;
+      const fileUrl = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
       const response = await axios.get(fileUrl, {
         responseType: 'arraybuffer',
       });
@@ -1031,7 +942,7 @@ class TelegramBotService {
     extraContext: string = '',
     userPlan: string = ''
   ): string {
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayInZone(user.timezone || 'UTC');
     return `
 SYSTEM CONTEXT FOR SPARKY FITNESS AI (TELEGRAM):
 - Current Date: ${today}
@@ -1192,12 +1103,13 @@ ${extraContext}
     }
   }
 
-  private async getExerciseSummary(userId: string): Promise<string> {
+  private async getExerciseSummary(user: TelegramUser): Promise<string> {
     try {
-      const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0];
-      const endDate = new Date().toISOString().split('T')[0];
+      const userId = user.id;
+      const tz = user?.timezone || 'UTC';
+      const today = todayInZone(tz);
+      const startDate = addDays(today, -7);
+      const endDate = today;
       const exercises = await exerciseEntry.getExerciseEntriesByDateRange(
         userId,
         startDate,
@@ -1210,7 +1122,7 @@ ${extraContext}
       return exercises
         .map((ex: any) => {
           const date = ex.entry_date
-            ? new Date(ex.entry_date).toISOString().split('T')[0]
+            ? instantToDay(ex.entry_date, tz)
             : 'Unknown';
           return `- ${date}: ${ex.exercise_name || ex.name} (${ex.duration_minutes}m, ${ex.calories}kcal)`;
         })
@@ -1258,7 +1170,6 @@ ${extraContext}
         back: '⬅️ Back',
         langSet: '✅ Language updated to English.',
         syncGarmin: 'Garmin Data Sync',
-        syncMFP: 'Sync Nutrition to MyFitnessPal',
         addWater: '+ 1🥛',
       },
       uk: {
@@ -1277,7 +1188,6 @@ ${extraContext}
         back: '⬅️ Назад',
         langSet: '✅ Мову змінено на українську.',
         syncGarmin: 'Синхронізація Garmin',
-        syncMFP: 'Синхронізувати з MyFitnessPal',
         addWater: '+ 1🥛',
       },
       ru: {
@@ -1296,7 +1206,6 @@ ${extraContext}
         back: '⬅️ Назад',
         langSet: '✅ Язык изменен на русский.',
         syncGarmin: 'Синхронизация Garmin',
-        syncMFP: 'Синхронизировать с MyFitnessPal',
         addWater: '+ 1🥛',
       },
     };
@@ -1356,12 +1265,6 @@ ${extraContext}
         reply_markup: {
           inline_keyboard: [
             [{ text: t.syncGarmin, callback_data: 'sync:garmin' }],
-            [
-              {
-                text: t.syncMFP,
-                callback_data: 'sync:mfp',
-              },
-            ],
             [{ text: t.back, callback_data: 'main_menu' }],
           ],
         },
