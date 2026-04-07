@@ -72,7 +72,6 @@ export const getProviderCategory = (
       return ['exercise'];
     case 'fatsecret':
     case 'openfoodfacts':
-    case 'edamam':
     case 'mealie':
     case 'tandoor':
     case 'usda':
