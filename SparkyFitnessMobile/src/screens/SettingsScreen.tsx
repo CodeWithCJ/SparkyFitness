@@ -228,7 +228,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               onPress={() => navigation.navigate('FoodSettings')}
               activeOpacity={0.7}
             >
-              <Text className="text-base font-semibold text-text-primary">Food Settings</Text>
+              <Text className="text-base font-semibold text-text-primary">Food Search Settings</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </TouchableOpacity>
           )}

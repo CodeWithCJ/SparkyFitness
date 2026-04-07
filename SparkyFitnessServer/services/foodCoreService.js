@@ -735,17 +735,17 @@ async function lookupBarcode(barcode, userId, providerId) {
       return { source: 'local', food: localFood };
     }
 
+    // Load user preferences once for provider resolution, language, and auto-scale
+    const userPreferences = await preferenceService.getUserPreferences(
+      userId,
+      userId
+    );
+
     // Resolve the barcode provider (explicit param or user preference)
     let provider = null;
     try {
-      let resolvedProviderId = providerId;
-      if (!resolvedProviderId) {
-        const prefs = await preferenceService.getUserPreferences(
-          userId,
-          userId
-        );
-        resolvedProviderId = prefs?.default_barcode_provider_id;
-      }
+      const resolvedProviderId =
+        providerId || userPreferences?.default_barcode_provider_id;
       if (resolvedProviderId) {
         const details =
           await externalProviderService.getExternalDataProviderDetails(
@@ -763,6 +763,11 @@ async function lookupBarcode(barcode, userId, providerId) {
         providerError
       );
     }
+
+    const language = userPreferences?.language || 'en';
+    const autoScale =
+      userPreferences?.auto_scale_open_food_facts_imports ?? true;
+    let triedOpenFoodFacts = false;
 
     // Try FatSecret if provider is configured
     if (
@@ -827,39 +832,67 @@ async function lookupBarcode(barcode, userId, providerId) {
       }
     }
 
-    // Fall back to OpenFoodFacts (if user preference allows it)
-    const userPreferences = await preferenceService.getUserPreferences(
-      userId,
-      userId
-    );
-
-    if (userPreferences?.barcode_fallback_open_food_facts !== false) {
-      let offData;
-      const language = userPreferences?.language || 'en';
+    // Try OpenFoodFacts if it is the configured primary provider
+    if (provider?.provider_type === 'openfoodfacts') {
+      triedOpenFoodFacts = true;
       try {
-        offData = await searchOpenFoodFactsByBarcodeFields(
+        const offData = await searchOpenFoodFactsByBarcodeFields(
           barcode,
           undefined,
           language
         );
+        if (offData?.status === 1 && offData.product) {
+          const food = mapOpenFoodFactsProduct(offData.product, {
+            autoScale,
+            language,
+          });
+          if (food.name) {
+            return {
+              source: 'openfoodfacts',
+              food,
+              barcode_raw: offData.product,
+            };
+          }
+        }
+      } catch (error) {
+        log(
+          'warn',
+          `OpenFoodFacts barcode lookup failed for ${barcode}:`,
+          error
+        );
+      }
+    }
+
+    // Fall back to OpenFoodFacts if not already tried and user preference allows it
+    if (
+      !triedOpenFoodFacts &&
+      userPreferences?.barcode_fallback_open_food_facts !== false
+    ) {
+      try {
+        const offData = await searchOpenFoodFactsByBarcodeFields(
+          barcode,
+          undefined,
+          language
+        );
+        if (offData?.status === 1 && offData.product) {
+          const food = mapOpenFoodFactsProduct(offData.product, {
+            autoScale,
+            language,
+          });
+          if (food.name) {
+            return {
+              source: 'openfoodfacts',
+              food,
+              barcode_raw: offData.product,
+            };
+          }
+        }
       } catch (error) {
         log(
           'warn',
           `OpenFoodFacts lookup failed for barcode ${barcode}:`,
           error
         );
-        return { source: 'not_found', food: null };
-      }
-
-      if (offData?.status === 1 && offData.product) {
-        const food = mapOpenFoodFactsProduct(offData.product, { language });
-        if (food.name) {
-          return {
-            source: 'openfoodfacts',
-            food,
-            barcode_raw: offData.product,
-          };
-        }
       }
     }
 

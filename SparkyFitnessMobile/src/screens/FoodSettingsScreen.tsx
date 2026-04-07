@@ -10,6 +10,7 @@ import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExternalProviders } from '../hooks/useExternalProviders';
+import { BARCODE_PROVIDER_TYPES } from '../types/externalProviders';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { preferencesQueryKey } from '../hooks/queryKeys';
 import type { UserPreferences } from '../types/preferences';
@@ -28,10 +29,18 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
   const { providers } = useExternalProviders();
+  const { providers: barcodeProviders } = useExternalProviders({
+    filterSet: BARCODE_PROVIDER_TYPES,
+  });
 
   const providerOptions = useMemo(
     () => providers.map((p) => ({ label: p.provider_name, value: p.id })),
     [providers],
+  );
+
+  const barcodeProviderOptions = useMemo(
+    () => barcodeProviders.map((p) => ({ label: p.provider_name, value: p.id })),
+    [barcodeProviders],
   );
 
   const barcodeProviderId = preferences?.default_barcode_provider_id ?? '';
@@ -96,31 +105,13 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
           >
             <Icon name="chevron-back" size={22} color={accentPrimary} />
           </Button>
-          <Text className="text-2xl font-bold text-text-primary">Food Settings</Text>
-        </View>
-
-        {/* Default Barcode Provider */}
-        <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">Barcode Provider</Text>
-            <BottomSheetPicker
-              value={barcodeProviderId}
-              options={providerOptions}
-              onSelect={handleBarcodeProviderChange}
-              title="Barcode Provider"
-              placeholder="Default"
-              containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
-            />
-          </View>
-          <Text className="text-text-secondary text-sm mt-3">
-            Which provider is used when scanning barcodes.
-          </Text>
+          <Text className="text-2xl font-bold text-text-primary">Food Search Settings</Text>
         </View>
 
         {/* Default Online Search Provider */}
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">Default Search Provider</Text>
+            <Text className="text-base font-semibold text-text-primary">Default Food Source</Text>
             <BottomSheetPicker
               value={foodDataProviderId}
               options={providerOptions}
@@ -130,8 +121,8 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
               containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
             />
           </View>
-          <Text className="text-text-secondary text-sm mt-3">
-            Pre-selected provider on the Online tab when searching for foods.
+          <Text className="text-text-secondary text-sm mt-4">
+            Used when searching for foods by name.
           </Text>
         </View>
 
@@ -139,7 +130,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
             <Text className="text-base font-semibold text-text-primary flex-shrink">
-              Auto-Scale OpenFoodFacts
+              Adjust Open Food Facts Values
             </Text>
             <Switch
               onValueChange={handleAutoScaleToggle}
@@ -148,16 +139,30 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
               thumbColor="#FFFFFF"
             />
           </View>
-          <Text className="text-text-secondary text-sm mt-3">
-            Scale nutrition values from per-100g to the product's actual serving size.
+          <Text className="text-text-secondary text-sm mt-4">
+            Open Food Facts uses values per 100g. This converts them to the product’s serving size.
           </Text>
         </View>
 
-        {/* Barcode Fallback: Open Food Facts */}
+        {/* Barcode Scanning */}
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base font-semibold text-text-primary flex-shrink">
-              Barcode Fallback: Open Food Facts
+          <Text className="text-base font-semibold text-text-primary mb-3">Barcode Scanning</Text>
+
+          <View className="flex-row items-center justify-between">
+            <Text className="text-sm text-text-primary">Provider</Text>
+            <BottomSheetPicker
+              value={barcodeProviderId}
+              options={barcodeProviderOptions}
+              onSelect={handleBarcodeProviderChange}
+              title="Barcode Provider"
+              placeholder="Default"
+              containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
+            />
+          </View>
+
+          <View className="flex-row justify-between items-center mt-4">
+            <Text className="text-sm text-text-primary flex-shrink">
+              Retry with Open Food Facts
             </Text>
             <Switch
               onValueChange={handleBarcodeFallbackToggle}
@@ -166,8 +171,8 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
               thumbColor="#FFFFFF"
             />
           </View>
-          <Text className="text-text-secondary text-sm mt-3">
-            When a barcode scan returns no results, automatically retry using Open Food Facts.
+          <Text className="text-text-secondary text-sm mt-2">
+            If no result is found, try Open Food Facts automatically.
           </Text>
         </View>
       </ScrollView>
