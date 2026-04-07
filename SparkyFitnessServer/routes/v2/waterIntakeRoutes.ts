@@ -527,4 +527,4 @@ router.post('/water-intake', upsertWaterIntakeHandler);
 router.put('/water-intake/:id', updateWaterIntakeHandler);
 router.delete('/water-intake/:id', deleteWaterIntakeHandler);
 
-export default router;
+module.exports = router;
