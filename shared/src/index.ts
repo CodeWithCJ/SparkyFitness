@@ -8,7 +8,6 @@ export * from "./schemas/api/ExerciseEntries.api.zod";
 export * from "./schemas/api/FoodEntries.api.zod";
 export * from "./schemas/api/Pagination.api.zod";
 export * from "./schemas/api/SleepScience.api.zod";
-export * from "./schemas/api/Telegram.api.zod";
 export * from "./schemas/database/Account.zod";
 export * from "./schemas/database/AdminActivityLogs.zod";
 export * from "./schemas/database/AiServiceSettings.zod";
