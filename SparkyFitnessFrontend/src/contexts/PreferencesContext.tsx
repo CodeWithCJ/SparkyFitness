@@ -75,6 +75,7 @@ interface PreferencesContextType {
   loggingLevel: LoggingLevel;
   defaultFoodDataProviderId: string | null;
   defaultBarcodeProviderId: string | null;
+  barcodeFallbackOpenFoodFacts: boolean;
   timezone: string;
   foodDisplayLimit: number;
   itemDisplayLimit: number;
@@ -105,6 +106,7 @@ interface PreferencesContextType {
   setLoggingLevel: (level: LoggingLevel) => void;
   setDefaultFoodDataProviderId: (id: string | null) => void;
   setDefaultBarcodeProviderId: (id: string | null) => void;
+  setBarcodeFallbackOpenFoodFacts: (enabled: boolean) => void;
   setTimezone: (timezone: string) => void;
   setItemDisplayLimit: (limit: number) => void;
   setCalorieGoalAdjustmentMode: (mode: CalorieGoalAdjustmentMode) => void;
@@ -178,6 +180,7 @@ export interface DefaultPreferences {
   updated_at?: string;
   default_food_data_provider_id: string | null;
   default_barcode_provider_id: string | null;
+  barcode_fallback_open_food_facts: boolean;
   exercise_calorie_percentage: number;
   activity_level: ActivityLevel;
   tdee_allow_negative_adjustment: boolean;
@@ -229,6 +232,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [defaultBarcodeProviderId, setDefaultBarcodeProviderIdState] = useState<
     string | null
   >(null);
+  const [barcodeFallbackOpenFoodFacts, setBarcodeFallbackOpenFoodFactsState] =
+    useState<boolean>(false);
   const [timezone, setTimezoneState] = useState<string>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
@@ -573,6 +578,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setDefaultBarcodeProviderIdState(
           data.default_barcode_provider_id || null
         );
+        setBarcodeFallbackOpenFoodFactsState(
+          data.barcode_fallback_open_food_facts ?? false
+        );
         setTimezoneState(
           data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
         );
@@ -738,6 +746,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.defaultFoodDataProviderId ?? defaultFoodDataProviderId,
         default_barcode_provider_id:
           newPrefs?.defaultBarcodeProviderId ?? defaultBarcodeProviderId,
+        barcode_fallback_open_food_facts:
+          newPrefs?.barcodeFallbackOpenFoodFacts ??
+          barcodeFallbackOpenFoodFacts,
         timezone: newPrefs?.timezone ?? timezone,
         item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
         food_display_limit: foodDisplayLimit,
@@ -797,6 +808,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       autoClearHistory,
       defaultFoodDataProviderId,
       defaultBarcodeProviderId,
+      barcodeFallbackOpenFoodFacts,
       timezone,
       itemDisplayLimit,
       foodDisplayLimit,
@@ -887,6 +899,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const setDefaultBarcodeProviderId = useCallback((id: string | null) => {
     setDefaultBarcodeProviderIdState(id);
   }, []);
+
+  const setBarcodeFallbackOpenFoodFacts = useCallback(
+    (enabled: boolean) => {
+      setBarcodeFallbackOpenFoodFactsState(enabled);
+      saveAllPreferences({ barcodeFallbackOpenFoodFacts: enabled });
+    },
+    [saveAllPreferences]
+  );
 
   const setTimezone = useCallback((newTimezone: string) => {
     setTimezoneState(newTimezone);
@@ -991,6 +1011,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       loggingLevel,
       defaultFoodDataProviderId,
       defaultBarcodeProviderId,
+      barcodeFallbackOpenFoodFacts,
       timezone,
       itemDisplayLimit,
       foodDisplayLimit,
@@ -1021,6 +1042,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoggingLevel,
       setDefaultFoodDataProviderId,
       setDefaultBarcodeProviderId,
+      setBarcodeFallbackOpenFoodFacts,
       setTimezone,
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,
@@ -1062,6 +1084,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       loggingLevel,
       defaultFoodDataProviderId,
       defaultBarcodeProviderId,
+      barcodeFallbackOpenFoodFacts,
       timezone,
       itemDisplayLimit,
       foodDisplayLimit,
@@ -1092,6 +1115,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoggingLevel,
       setDefaultFoodDataProviderId,
       setDefaultBarcodeProviderId,
+      setBarcodeFallbackOpenFoodFacts,
       setTimezone,
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,
