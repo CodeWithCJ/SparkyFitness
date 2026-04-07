@@ -63,4 +63,3 @@ docker/docker_volume/
 
 # TypeScript
 *.tsbuildinfo
-pnpm-lock.yaml
