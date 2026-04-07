@@ -113,6 +113,81 @@ const EMPTY_PAGINATION = (page: number, pageSize: number) => ({
   hasMore: false,
 });
 
+function nullToUndefined<T>(value: T | null | undefined): T | undefined {
+  return value === null ? undefined : value;
+}
+
+function normalizeFoodVariantForResponse(variant: unknown): unknown {
+  if (!variant || typeof variant !== 'object' || Array.isArray(variant)) {
+    return variant;
+  }
+
+  const record = variant as Record<string, unknown>;
+
+  return {
+    ...record,
+    id: nullToUndefined(record.id as string | null | undefined),
+    saturated_fat: nullToUndefined(
+      record.saturated_fat as number | null | undefined
+    ),
+    polyunsaturated_fat: nullToUndefined(
+      record.polyunsaturated_fat as number | null | undefined
+    ),
+    monounsaturated_fat: nullToUndefined(
+      record.monounsaturated_fat as number | null | undefined
+    ),
+    trans_fat: nullToUndefined(record.trans_fat as number | null | undefined),
+    cholesterol: nullToUndefined(
+      record.cholesterol as number | null | undefined
+    ),
+    sodium: nullToUndefined(record.sodium as number | null | undefined),
+    potassium: nullToUndefined(record.potassium as number | null | undefined),
+    dietary_fiber: nullToUndefined(
+      record.dietary_fiber as number | null | undefined
+    ),
+    sugars: nullToUndefined(record.sugars as number | null | undefined),
+    vitamin_a: nullToUndefined(record.vitamin_a as number | null | undefined),
+    vitamin_c: nullToUndefined(record.vitamin_c as number | null | undefined),
+    calcium: nullToUndefined(record.calcium as number | null | undefined),
+    iron: nullToUndefined(record.iron as number | null | undefined),
+    glycemic_index: nullToUndefined(
+      record.glycemic_index as string | null | undefined
+    ),
+    custom_nutrients: nullToUndefined(
+      record.custom_nutrients as
+        | Record<string, string | number>
+        | null
+        | undefined
+    ),
+  };
+}
+
+function normalizeFoodForResponse(food: unknown): unknown {
+  if (!food || typeof food !== 'object' || Array.isArray(food)) {
+    return food;
+  }
+
+  const record = food as Record<string, unknown>;
+
+  return {
+    ...record,
+    id: nullToUndefined(record.id as string | null | undefined),
+    barcode: nullToUndefined(record.barcode as string | null | undefined),
+    provider_external_id: nullToUndefined(
+      record.provider_external_id as string | null | undefined
+    ),
+    provider_type: nullToUndefined(
+      record.provider_type as string | null | undefined
+    ),
+    default_variant: normalizeFoodVariantForResponse(record.default_variant),
+    variants: Array.isArray(record.variants)
+      ? record.variants.map((variant) =>
+          normalizeFoodVariantForResponse(variant)
+        )
+      : nullToUndefined(record.variants as unknown[] | null | undefined),
+  };
+}
+
 // --- Barcode endpoint ---
 
 const barcodeHandler: RequestHandler<{ barcode: string }> = async (
@@ -142,8 +217,13 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
       result.food.barcode = barcode;
     }
 
+    const normalizedResult = {
+      ...result,
+      food: result.food ? normalizeFoodForResponse(result.food) : null,
+    };
+
     // Validate and strip unknown keys (e.g. barcode_raw)
-    const response = BarcodeResponseSchema.parse(result);
+    const response = BarcodeResponseSchema.parse(normalizedResult);
     res.status(200).json(response);
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'ZodError') {
@@ -280,7 +360,11 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
       }
     }
 
-    const response = SearchResponseSchema.parse({ foods, pagination });
+    const normalizedFoods = foods.map((food) => normalizeFoodForResponse(food));
+    const response = SearchResponseSchema.parse({
+      foods: normalizedFoods,
+      pagination,
+    });
     res.status(200).json(response);
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'ZodError') {
@@ -406,7 +490,7 @@ const detailHandler: RequestHandler<{
       return;
     }
 
-    const response = NormalizedFoodSchema.parse(food);
+    const response = NormalizedFoodSchema.parse(normalizeFoodForResponse(food));
     res.status(200).json(response);
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'ZodError') {
