@@ -281,7 +281,8 @@ export async function _createExerciseEntryWithClient(
 ): Promise<any> {
   try {
     const syncDuplicateCheck = !!entryData.source_id;
-    const skipManualDuplicateCheck = ['HealthKit', 'Health Connect', 'Fitbit', 'Strava'].includes(entrySource);
+    const syncSources = ['HealthKit', 'Health Connect', 'Fitbit', 'Strava', 'garmin', 'Withings', 'Apple Health'];
+    const isSyncSource = syncSources.includes(entrySource);
 
     let existingEntryResult: any;
 
@@ -292,7 +293,17 @@ export async function _createExerciseEntryWithClient(
       );
     }
 
-    if (!existingEntryResult?.rows?.length && !exercisePresetEntryId && !skipManualDuplicateCheck && !syncDuplicateCheck) {
+    // Cross-source deduplication for sync sources:
+    // If no exact source/source_id match, look for an entry from ANY source on the same date/duration
+    if (!existingEntryResult?.rows?.length && isSyncSource && entryData.duration_minutes) {
+      existingEntryResult = await client.query(
+        'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND ABS(duration_minutes - $4) < 1.0',
+        [userId, entryData.exercise_id, entryData.entry_date, entryData.duration_minutes]
+      );
+    }
+
+    // Standard duplicate check for manual entries
+    if (!existingEntryResult?.rows?.length && !exercisePresetEntryId && !isSyncSource && !syncDuplicateCheck) {
       if (entryData.workout_plan_assignment_id) {
         existingEntryResult = await client.query(
           'SELECT id FROM exercise_entries WHERE user_id = $1 AND workout_plan_assignment_id = $2 AND entry_date = $3',
