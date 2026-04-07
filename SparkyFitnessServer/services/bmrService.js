@@ -64,7 +64,7 @@ function calculateBmr(
         return 9.247 * weight + 3.098 * height - 4.33 * age + 447.593;
       }
 
-    case BmrAlgorithm.KATCH_MCARDLE:
+    case BmrAlgorithm.KATCH_MCARDLE: {
       if (!weight || !bodyFatPercentage) {
         log(
           'warn',
@@ -74,8 +74,9 @@ function calculateBmr(
       }
       const lbmKatch = weight * (1 - bodyFatPercentage / 100);
       return 370 + 21.6 * lbmKatch;
+    }
 
-    case BmrAlgorithm.CUNNINGHAM:
+    case BmrAlgorithm.CUNNINGHAM: {
       if (!weight || !bodyFatPercentage) {
         log(
           'warn',
@@ -85,6 +86,7 @@ function calculateBmr(
       }
       const lbmCunningham = weight * (1 - bodyFatPercentage / 100);
       return 500 + 22 * lbmCunningham;
+    }
 
     case BmrAlgorithm.OXFORD:
       if (!weight || !height || !age || !gender)

@@ -11,8 +11,6 @@ const {
   addDays,
   dayRangeToUtcRange,
 } = require('@workspace/shared');
-const fs = require('fs');
-const path = require('path');
 
 // Configuration for data mocking/caching
 const WITHINGS_DATA_SOURCE =

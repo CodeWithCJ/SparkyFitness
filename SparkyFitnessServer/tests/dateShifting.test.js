@@ -67,7 +67,7 @@ describe('reportService: exercise report date conversions (TO_CHAR strings)', ()
 // ---------------------------------------------------------------------------
 describe('exerciseEntryHistoryService: _dateToString', () => {
   function _dateToString(value) {
-    if (value == null) return null;
+    if (value === null) return null;
     if (value instanceof Date) return localDateToDay(value);
     return String(value);
   }

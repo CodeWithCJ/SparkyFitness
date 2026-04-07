@@ -4,8 +4,7 @@ const exerciseEntryRepository = require('../models/exerciseEntry');
 const workoutPresetRepository = require('../models/workoutPresetRepository');
 const activityDetailsRepository = require('../models/activityDetailsRepository');
 const preferenceRepository = require('../models/preferenceRepository');
-const { v4: uuidv4 } = require('uuid');
-const { parseISO, isValid, format } = require('date-fns');
+const { parseISO, isValid } = require('date-fns');
 
 async function importExerciseEntriesFromCsv(
   authenticatedUserId,

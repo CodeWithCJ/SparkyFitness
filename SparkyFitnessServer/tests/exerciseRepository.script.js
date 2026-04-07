@@ -40,7 +40,7 @@ async function testRepository() {
     if (!inRepo) {
       log(`ERROR: ${func} is MISSING from exerciseRepository!`);
       fs.writeFileSync('test_repo_snapshot.log', output);
-      process.exit(1);
+      throw new Error(`Missing function: ${func}`);
     }
   });
 
@@ -54,7 +54,7 @@ async function testRepository() {
     if (inDb && !inRepo) {
       log(`ERROR: ${func} is in DB but MISSING from Repository!`);
       fs.writeFileSync('test_repo_snapshot.log', output);
-      process.exit(1);
+      throw new Error(`Missing repository function: ${func}`);
     }
   });
 
@@ -66,5 +66,5 @@ testRepository().catch((err) => {
   const errMsg = 'Test failed: ' + err.stack;
   console.error(errMsg);
   fs.appendFileSync('test_repo_snapshot.log', errMsg);
-  process.exit(1);
+  process.exitCode = 1;
 });

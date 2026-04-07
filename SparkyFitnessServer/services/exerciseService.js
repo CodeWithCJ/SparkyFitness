@@ -1,11 +1,10 @@
-const { getClient, getSystemClient } = require('../db/poolManager'); // Import the database connection pool
+const { getClient } = require('../db/poolManager'); // Import the database connection pool
 const exerciseRepository = require('../models/exerciseRepository');
 // Require concrete exercise and exerciseEntry modules directly to avoid circular export issues
 const exerciseDb = require('../models/exercise');
 const exerciseEntryDb = require('../models/exerciseEntry');
 const activityDetailsRepository = require('../models/activityDetailsRepository'); // New import
 const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepository'); // New import
-const userRepository = require('../models/userRepository');
 const preferenceRepository = require('../models/preferenceRepository');
 const workoutPresetRepository = require('../models/workoutPresetRepository'); // Added missing import
 const { v4: uuidv4 } = require('uuid'); // New import for UUID generation
@@ -18,15 +17,12 @@ const { downloadImage } = require('../utils/imageDownloader'); // Import image d
 const calorieCalculationService = require('./CalorieCalculationService'); // Import calorie calculation service
 const fs = require('fs'); // Import file system module
 const path = require('path'); // Import path module
-const { isValidUuid, resolveExerciseIdToUuid } = require('../utils/uuidUtils'); // Import uuidUtils
+const { resolveExerciseIdToUuid } = require('../utils/uuidUtils'); // Import uuidUtils
 const papa = require('papaparse');
 const {
   getGroupedExerciseSessionById,
   getGroupedExerciseSessionByIdWithClient,
-} = require('./exerciseEntryHistoryService');
-const {
-  checkFamilyAccessPermission,
-} = require('../models/familyAccessRepository');
+} = require('./exerciseEntryHistoryService.ts');
 
 async function getExercisesWithPagination(
   authenticatedUserId,
@@ -579,10 +575,7 @@ async function deleteExercise(
       exerciseEntriesCount,
       workoutPlansCount,
       workoutPresetsCount,
-      currentUserReferences,
       otherUserReferences,
-      isPubliclyShared,
-      familySharedUsers,
     } = deletionImpact;
 
     const totalReferences =
@@ -1132,16 +1125,6 @@ async function addFreeExerciseDBExerciseToUserExercises(
     if (!exerciseDetails) {
       throw new Error('Free-Exercise-DB exercise not found.');
     }
-
-    // Download images and update paths
-    const localImagePaths = await Promise.all(
-      exerciseDetails.images.map(async (imagePath) => {
-        const imageUrl = freeExerciseDBService.getExerciseImageUrl(imagePath); // This now correctly forms the external URL
-        const exerciseIdFromPath = imagePath.split('/')[0]; // Extract exercise ID from path for download
-        await downloadImage(imageUrl, exerciseIdFromPath); // Download the image
-        return imagePath; // Store the original relative path in the database
-      })
-    );
 
     // Map free-exercise-db data to our generic Exercise model
     const exerciseData = {

@@ -1,5 +1,4 @@
 const mealPlanTemplateRepository = require('../models/mealPlanTemplateRepository');
-const mealRepository = require('../models/mealRepository');
 const foodRepository = require('../models/foodRepository');
 const { log } = require('../config/logging');
 const { loadUserTimezone } = require('../utils/timezoneLoader');
@@ -50,7 +49,7 @@ async function createMealPlanTemplate(userId, planData) {
       `Error creating meal plan template for user ${userId}: ${error.message}`,
       error
     );
-    throw new Error('Failed to create meal plan template.');
+    throw new Error('Failed to create meal plan template.', { cause: error });
   }
 }
 
@@ -75,7 +74,7 @@ async function getMealPlanTemplates(userId) {
       `Error fetching meal plan templates for user ${userId}:`,
       error
     );
-    throw new Error('Failed to fetch meal plan templates.');
+    throw new Error('Failed to fetch meal plan templates.', { cause: error });
   }
 }
 
@@ -132,7 +131,7 @@ async function updateMealPlanTemplate(planId, userId, planData) {
       `Error updating meal plan template ${planId} for user ${userId}: ${error.message}`,
       error
     );
-    throw new Error('Failed to update meal plan template.');
+    throw new Error('Failed to update meal plan template.', { cause: error });
   }
 }
 
@@ -155,7 +154,7 @@ async function deleteMealPlanTemplate(planId, userId, currentClientDate) {
       `Error deleting meal plan template ${planId} for user ${userId}: ${error.message}`,
       error
     );
-    throw new Error('Failed to delete meal plan template.');
+    throw new Error('Failed to delete meal plan template.', { cause: error });
   }
 }
 

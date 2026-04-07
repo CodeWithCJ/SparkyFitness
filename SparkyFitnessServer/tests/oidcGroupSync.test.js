@@ -4,7 +4,7 @@ jest.mock('jose', () => ({
     if (parts.length < 2) return {};
     try {
       return JSON.parse(Buffer.from(parts[1], 'base64').toString());
-    } catch (e) {
+    } catch {
       return {};
     }
   }),

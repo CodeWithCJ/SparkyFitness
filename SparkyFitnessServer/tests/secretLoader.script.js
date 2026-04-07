@@ -34,5 +34,5 @@ if (
   );
 } else {
   console.error('\nFAILURE: Secrets not loaded as expected.');
-  process.exit(1);
+  throw new Error('Secrets not loaded as expected');
 }

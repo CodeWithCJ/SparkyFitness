@@ -63,7 +63,7 @@ async function createGoalPreset(userId, presetData) {
       throw new Error('A goal preset with this name already exists.');
     }
     log('error', `Error creating goal preset for user ${userId}:`, error);
-    throw new Error('Failed to create goal preset.');
+    throw new Error('Failed to create goal preset.', { cause: error });
   }
 }
 
@@ -73,7 +73,7 @@ async function getGoalPresets(userId) {
     return presets.map(mapDbToWaterGoalMl);
   } catch (error) {
     log('error', `Error fetching goal presets for user ${userId}:`, error);
-    throw new Error('Failed to fetch goal presets.');
+    throw new Error('Failed to fetch goal presets.', { cause: error });
   }
 }
 
@@ -90,7 +90,7 @@ async function getGoalPreset(presetId, userId) {
       `Error fetching goal preset ${presetId} for user ${userId}:`,
       error
     );
-    throw new Error('Failed to fetch goal preset.');
+    throw new Error('Failed to fetch goal preset.', { cause: error });
   }
 }
 
@@ -132,7 +132,7 @@ async function updateGoalPreset(presetId, userId, presetData) {
       `Error updating goal preset ${presetId} for user ${userId}:`,
       error
     );
-    throw new Error('Failed to update goal preset.');
+    throw new Error('Failed to update goal preset.', { cause: error });
   }
 }
 
@@ -149,7 +149,7 @@ async function deleteGoalPreset(presetId, userId) {
       `Error deleting goal preset ${presetId} for user ${userId}:`,
       error
     );
-    throw new Error('Failed to delete goal preset.');
+    throw new Error('Failed to delete goal preset.', { cause: error });
   }
 }
 

@@ -77,7 +77,7 @@ async function upsertExerciseEntryData(
       log('error', 'Error updating active calories exercise entry:', error);
       throw new Error(
         `Failed to update active calories exercise entry: ${error.message}`,
-        { error: error }
+        { cause: error }
       );
     } finally {
       updateClient.release();
@@ -552,45 +552,10 @@ async function getExerciseEntryOwnerId(id, userId) {
   }
 }
 
-async function updateExerciseEntry(id, userId, actingUserId, updateData) {
+async function updateExerciseEntry(id, userId, _actingUserId, updateData) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-
-    const result = await client.query(
-      `UPDATE exercise_entries SET
-        exercise_id = COALESCE($1, exercise_id),
-        duration_minutes = COALESCE($2, duration_minutes),
-        calories_burned = COALESCE($3, calories_burned),
-        entry_date = COALESCE($4, entry_date),
-        notes = COALESCE($5, notes),
-        workout_plan_assignment_id = COALESCE($6, workout_plan_assignment_id),
-        image_url = $7,
-        distance = COALESCE($8, distance),
-        avg_heart_rate = COALESCE($9, avg_heart_rate),
-        sort_order = COALESCE($10, sort_order),
-        exercise_name = COALESCE($11, exercise_name),
-        updated_by_user_id = $12,
-        updated_at = now()
-      WHERE id = $13 AND user_id = $14
-      RETURNING id`,
-      [
-        updateData.exercise_id,
-        updateData.duration_minutes || null,
-        updateData.calories_burned,
-        updateData.entry_date,
-        updateData.notes,
-        updateData.workout_plan_assignment_id || null,
-        updateData.image_url || null,
-        updateData.distance || null,
-        updateData.avg_heart_rate || null,
-        updateData.sort_order !== undefined ? updateData.sort_order : null,
-        updateData.exercise_name || null,
-        actingUserId,
-        id,
-        userId,
-      ]
-    );
 
     // Only modify sets if they are explicitly provided in the update
     if (updateData.sets !== undefined) {

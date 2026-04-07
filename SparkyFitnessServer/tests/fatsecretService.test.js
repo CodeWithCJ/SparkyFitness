@@ -1,5 +1,4 @@
 const {
-  mapFatSecretBarcodeProduct,
   mapFatSecretSearchItem,
 } = require('../integrations/fatsecret/fatsecretService');
 

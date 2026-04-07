@@ -9,7 +9,12 @@ loadSecrets();
 
 // Run pre-flight checks for essential environment variables
 const { runPreflightChecks } = require('./utils/preflightChecks');
-runPreflightChecks();
+try {
+  runPreflightChecks();
+} catch (error) {
+  process.exitCode = 1;
+  throw error;
+}
 
 const express = require('express');
 const cors = require('cors'); // Added this line
@@ -18,8 +23,8 @@ const { endPool } = require('./db/poolManager');
 const { log } = require('./config/logging');
 const { authenticate } = require('./middleware/authMiddleware');
 const foodRoutes = require('./routes/foodRoutes');
-const v2FoodRoutes = require('./routes/v2/foodRoutes');
-const v2ExerciseEntryRoutes = require('./routes/v2/exerciseEntryRoutes');
+const v2FoodRoutes = require('./routes/v2/foodRoutes.ts');
+const v2ExerciseEntryRoutes = require('./routes/v2/exerciseEntryRoutes.ts');
 const mealRoutes = require('./routes/mealRoutes');
 const foodEntryRoutes = require('./routes/foodEntryRoutes'); // Add this line
 const foodEntryMealRoutes = require('./routes/foodEntryMealRoutes'); // New: FoodEntryMeal routes
@@ -77,7 +82,7 @@ const garminService = require('./services/garminService'); // Import garminServi
 const fitbitService = require('./services/fitbitService'); // Import fitbitService
 const polarService = require('./services/polarService'); // Import polarService
 const stravaService = require('./services/stravaService'); // Import stravaService
-const dailySummaryRoutes = require('./routes/dailySummaryRoutes');
+const dailySummaryRoutes = require('./routes/dailySummaryRoutes.ts');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const mealTypeRoutes = require('./routes/mealTypeRoutes');
 const swaggerUi = require('swagger-ui-express');
@@ -608,13 +613,14 @@ applyMigrations()
         } catch (err) {
           log('error', 'Error closing database pools:', err);
         }
-        process.exit(0);
+        process.exitCode = 1;
       });
 
       // Force exit if graceful shutdown takes too long
       setTimeout(() => {
         log('error', 'Graceful shutdown timed out after 15s, forcing exit.');
-        process.exit(1);
+        process.exitCode =
+          process.exitCode === undefined ? 0 : process.exitCode;
       }, 15000).unref();
     };
 
@@ -623,7 +629,7 @@ applyMigrations()
   })
   .catch((error) => {
     console.error('Failed to start server:', error);
-    process.exit(1);
+    process.exitCode = 1;
   });
 
 app.use(errorHandler);

@@ -4,9 +4,6 @@ const { log } = require('../config/logging');
 const polarIntegrationService = require('../integrations/polar/polarService');
 const polarDataProcessor = require('../integrations/polar/polarDataProcessor');
 const { getSystemClient } = require('../db/poolManager');
-const moment = require('moment');
-const fs = require('fs');
-const path = require('path');
 
 const { loadRawBundle } = require('../utils/diagnosticLogger');
 

@@ -2,7 +2,6 @@ const request = require('supertest');
 const express = require('express');
 const globalSettingsRoutes = require('../routes/globalSettingsRoutes');
 const globalSettingsRepository = require('../models/globalSettingsRepository');
-const { isAdmin, authenticate } = require('../middleware/authMiddleware');
 
 // Mock dependencies
 jest.mock('../models/globalSettingsRepository', () => ({

@@ -14,7 +14,7 @@ async function createWeeklyGoalPlan(userId, planData) {
     return newPlan;
   } catch (error) {
     log('error', `Error creating weekly goal plan for user ${userId}:`, error);
-    throw new Error('Failed to create weekly goal plan.');
+    throw new Error('Failed to create weekly goal plan.', { cause: error });
   }
 }
 
@@ -25,7 +25,7 @@ async function getWeeklyGoalPlans(userId) {
     return plans;
   } catch (error) {
     log('error', `Error fetching weekly goal plans for user ${userId}:`, error);
-    throw new Error('Failed to fetch weekly goal plans.');
+    throw new Error('Failed to fetch weekly goal plans.', { cause: error });
   }
 }
 
@@ -42,7 +42,9 @@ async function getActiveWeeklyGoalPlan(userId, date) {
       `Error fetching active weekly goal plan for user ${userId} on date ${date}:`,
       error
     );
-    throw new Error('Failed to fetch active weekly goal plan.');
+    throw new Error('Failed to fetch active weekly goal plan.', {
+      cause: error,
+    });
   }
 }
 
@@ -63,7 +65,7 @@ async function updateWeeklyGoalPlan(planId, userId, planData) {
       `Error updating weekly goal plan ${planId} for user ${userId}:`,
       error
     );
-    throw new Error('Failed to update weekly goal plan.');
+    throw new Error('Failed to update weekly goal plan.', { cause: error });
   }
 }
 
@@ -80,7 +82,7 @@ async function deleteWeeklyGoalPlan(planId, userId) {
       `Error deleting weekly goal plan ${planId} for user ${userId}:`,
       error
     );
-    throw new Error('Failed to delete weekly goal plan.');
+    throw new Error('Failed to delete weekly goal plan.', { cause: error });
   }
 }
 

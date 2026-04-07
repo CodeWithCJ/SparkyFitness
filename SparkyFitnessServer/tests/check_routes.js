@@ -1,4 +1,4 @@
-const { auth } = require('./auth');
+const { auth } = require('../auth');
 
 async function checkRoutes() {
   console.log('Checking deleteAllExpiredApiKeys path...');

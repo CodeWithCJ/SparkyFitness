@@ -609,7 +609,6 @@ async function getEnergyCurve(userId) {
 
   // Circadian parameters
   const nadirHour = medianWakeHour - 2;
-  const acrophaseHour = nadirHour + 12;
 
   // Sleep debt
   const debtData = await calculateSleepDebt(userId);
