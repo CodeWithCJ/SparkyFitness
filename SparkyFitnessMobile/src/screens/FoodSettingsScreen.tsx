@@ -37,6 +37,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
   const barcodeProviderId = preferences?.default_barcode_provider_id ?? '';
   const foodDataProviderId = preferences?.default_food_data_provider_id ?? '';
   const autoScale = preferences?.auto_scale_open_food_facts_imports ?? true;
+  const barcodeFallback = preferences?.barcode_fallback_open_food_facts ?? true;
 
   const mutation = useMutation({
     mutationFn: (data: Partial<UserPreferences>) => updatePreferences(data),
@@ -71,6 +72,11 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
 
   const handleAutoScaleToggle = useCallback(
     (value: boolean) => mutation.mutate({ auto_scale_open_food_facts_imports: value }),
+    [mutation],
+  );
+
+  const handleBarcodeFallbackToggle = useCallback(
+    (value: boolean) => mutation.mutate({ barcode_fallback_open_food_facts: value }),
     [mutation],
   );
 
@@ -144,6 +150,24 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
           </View>
           <Text className="text-text-secondary text-sm mt-3">
             Scale nutrition values from per-100g to the product's actual serving size.
+          </Text>
+        </View>
+
+        {/* Barcode Fallback: Open Food Facts */}
+        <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base font-semibold text-text-primary flex-shrink">
+              Barcode Fallback: Open Food Facts
+            </Text>
+            <Switch
+              onValueChange={handleBarcodeFallbackToggle}
+              value={barcodeFallback}
+              trackColor={{ false: formDisabled, true: formEnabled }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          <Text className="text-text-secondary text-sm mt-3">
+            When a barcode scan returns no results, automatically retry using Open Food Facts.
           </Text>
         </View>
       </ScrollView>
