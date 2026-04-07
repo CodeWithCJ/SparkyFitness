@@ -2,6 +2,14 @@ import axios from 'axios';
 import { log } from '../../config/logging';
 import { getExternalDataProviderByUserIdAndProviderName } from '../../models/externalProviderRepository';
 
+/** Maximum concurrent DELETE requests during idempotency cleanup */
+const DELETE_CONCURRENCY = 5;
+
+interface MFPProvider {
+  app_id: string;
+  app_key: string;
+}
+
 export interface MFPCategoryData {
   calories: number;
   protein: number;
@@ -27,7 +35,7 @@ export async function pushNutritionToMFP(
     const mfpProvider = (await getExternalDataProviderByUserIdAndProviderName(
       userId,
       'myfitnesspal'
-    )) as any;
+    )) as MFPProvider | null;
 
     if (!mfpProvider || !mfpProvider.app_key) {
       log(
@@ -110,12 +118,12 @@ export async function pushNutritionToMFP(
       throw new Error(`Authentication failed: ${e.message}`);
     }
 
-    const authHeaders = {
+    const authHeaders: Record<string, string> = {
       ...baseHeaders,
       Authorization: `Bearer ${bearerToken}`,
       'mfp-client-id': 'mfp-main-js',
-      'mfp-user-id': mfpUserId ? String(mfpUserId) : undefined,
       Cookie: currentCookies,
+      ...(mfpUserId ? { 'mfp-user-id': String(mfpUserId) } : {}),
     };
 
     // Step 3: Idempotency - Delete *ANY* existing entries that look like automated syncs for this date
@@ -125,20 +133,20 @@ export async function pushNutritionToMFP(
       const discoveryUrl = `https://api.myfitnesspal.com/v2/diary?entry_date=${data.date}&types=diary_meal,food_entry`;
       let diaryResp;
       try {
-        diaryResp = await axios.get(discoveryUrl, {
-          headers: authHeaders as any,
-        });
-      } catch (e: any) {
+        diaryResp = await axios.get(discoveryUrl, { headers: authHeaders });
+      } catch (e: unknown) {
+        const err = e as {
+          response?: { status?: number; data?: unknown };
+          message?: string;
+        };
         log(
           'error',
-          `pushNutritionToMFP: Primary discovery failed with ${e.response?.status}: ${JSON.stringify(e.response?.data || e.message)}`
+          `pushNutritionToMFP: Primary discovery failed with ${err.response?.status}: ${JSON.stringify(err.response?.data || err.message)}`
         );
         // Fallback to minimal discovery
         diaryResp = await axios.get(
           `https://api.myfitnesspal.com/v2/diary?entry_date=${data.date}`,
-          {
-            headers: authHeaders as any,
-          }
+          { headers: authHeaders }
         );
       }
 
@@ -149,51 +157,64 @@ export async function pushNutritionToMFP(
           `pushNutritionToMFP: Discovery returned ${items.length} items for ${data.date}.`
         );
 
+        // Log all discovered items
         for (const item of items) {
-          // IMPORTANT: Some items have ID under 'id', others under 'item_id' or inside 'links'
           const itemId = item.id || item.item_id;
           const itemType = item.type;
           const itemName = item.food_name || item.diary_meal || 'Unnamed Entry';
-
           log(
             'info',
             `pushNutritionToMFP: [DISCOVERY] Found item: ID=${itemId}, Type=${itemType}, Name="${itemName}"`
           );
-
-          if (itemId) {
-            try {
-              log(
-                'info',
-                `pushNutritionToMFP: Attempting to DELETE item ${itemId}...`
-              );
-              const delResp = await axios.delete(
-                `https://api.myfitnesspal.com/v2/diary/${itemId}`,
-                {
-                  headers: authHeaders as any,
-                }
-              );
-              log(
-                'info',
-                `pushNutritionToMFP: Successfully deleted item ${itemId}. Status: ${delResp.status}`
-              );
-            } catch (e: any) {
-              log(
-                'warn',
-                `pushNutritionToMFP: Delete failed for item ${itemId}: ${e.message} (Payload: ${JSON.stringify(e.response?.data || {})})`
-              );
-            }
-          } else {
+          if (!itemId) {
             log(
               'info',
               `pushNutritionToMFP: [DEBUG] Item has NO ID at top level. Full structure: ${JSON.stringify(item)}`
             );
           }
         }
+
+        // Delete in parallel with a concurrency limit to avoid rate limiting
+        const itemsWithId = items.filter(
+          (item: Record<string, unknown>) => item.id || item.item_id
+        );
+        for (let i = 0; i < itemsWithId.length; i += DELETE_CONCURRENCY) {
+          const batch = itemsWithId.slice(i, i + DELETE_CONCURRENCY);
+          await Promise.all(
+            batch.map(async (item: Record<string, unknown>) => {
+              const itemId = item.id || item.item_id;
+              try {
+                log(
+                  'info',
+                  `pushNutritionToMFP: Attempting to DELETE item ${itemId}...`
+                );
+                const delResp = await axios.delete(
+                  `https://api.myfitnesspal.com/v2/diary/${itemId}`,
+                  { headers: authHeaders }
+                );
+                log(
+                  'info',
+                  `pushNutritionToMFP: Successfully deleted item ${itemId}. Status: ${delResp.status}`
+                );
+              } catch (e: unknown) {
+                const err = e as {
+                  message?: string;
+                  response?: { data?: unknown };
+                };
+                log(
+                  'warn',
+                  `pushNutritionToMFP: Delete failed for item ${itemId}: ${err.message} (Payload: ${JSON.stringify(err.response?.data || {})})`
+                );
+              }
+            })
+          );
+        }
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { message?: string };
       log(
         'warn',
-        `pushNutritionToMFP: Idempotency cleanup failed for user ${userId}: ${e.message}`
+        `pushNutritionToMFP: Idempotency cleanup failed for user ${userId}: ${err.message}`
       );
     }
 
@@ -209,7 +230,7 @@ export async function pushNutritionToMFP(
     for (const [categoryName, categoryData] of Object.entries(
       data.categories
     )) {
-      if (categoryData.calories <= 0) continue; // Skip empty categories
+      if (categoryData.calories < 0) continue; // Skip negative (invalid) categories only
 
       const mfpMealName = mealMapping[categoryName.toLowerCase()] || 'Snacks';
 
@@ -239,9 +260,7 @@ export async function pushNutritionToMFP(
       const finalResp = await axios.post(
         'https://api.myfitnesspal.com/v2/diary',
         payload,
-        {
-          headers: authHeaders as any,
-        }
+        { headers: authHeaders }
       );
 
       if (finalResp.status >= 400) {
@@ -259,11 +278,12 @@ export async function pushNutritionToMFP(
       date: data.date,
       responses: responses,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: unknown }; message?: string };
     log(
       'error',
       `pushNutritionToMFP: Final fatal error for user ${userId}:`,
-      error.response?.data || error.message
+      err.response?.data || err.message
     );
     throw error;
   }

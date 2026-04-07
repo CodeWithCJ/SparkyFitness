@@ -1,7 +1,13 @@
 import { log } from '../config/logging';
-import { pushNutritionToMFP } from '../integrations/myfitnesspal/myFitnessPalService';
+import {
+  pushNutritionToMFP,
+  MFPCategoryData,
+} from '../integrations/myfitnesspal/myFitnessPalService';
 
 // In-memory lock to prevent multiple concurrent syncs for the same user and date.
+// NOTE: This lock is local to the current process. In a horizontally-scaled
+// deployment (multiple server instances) a distributed lock (e.g. Redis or a
+// database advisory lock) would be required to provide the same guarantee.
 const activeSyncs = new Set<string>();
 
 /**
@@ -12,10 +18,17 @@ const activeSyncs = new Set<string>();
  * @param date - The date to sync (YYYY-MM-DD).
  * @returns The result of the sync operation.
  */
+interface SyncResult {
+  status: 'success' | 'skipped' | 'error';
+  date: string;
+  reason?: string;
+  message?: string;
+}
+
 export async function syncDailyTotals(
   userId: string,
   date: string
-): Promise<any> {
+): Promise<SyncResult> {
   const lockKey = `${userId}:${date}`;
   if (activeSyncs.has(lockKey)) {
     log(
@@ -46,19 +59,28 @@ export async function syncDailyTotals(
     }
 
     // 2. Map SparkyFitness categories to MFP expected format
-    const mfpData: any = {
+    const mfpData = {
       date: date,
-      categories: {},
+      categories: {} as Record<string, MFPCategoryData>,
     };
 
-    const categoriesData = categories as Record<string, any>;
+    const categoriesData = categories as Record<
+      string,
+      {
+        calories: number;
+        protein: number;
+        fat: number;
+        carbohydrate?: number;
+        carbs?: number;
+      }
+    >;
     for (const name in categoriesData) {
       const row = categoriesData[name];
       mfpData.categories[name] = {
         calories: row.calories,
         protein: row.protein,
         fat: row.fat,
-        carbohydrate: row.carbohydrate || row.carbs,
+        carbohydrate: row.carbohydrate ?? row.carbs ?? 0,
       };
     }
 
@@ -70,13 +92,14 @@ export async function syncDailyTotals(
       `mfpSyncService: Successfully synced categorized totals for user ${userId} on ${date}`
     );
     return { status: 'success', date, ...result };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
     log(
       'error',
       `mfpSyncService: Failed to sync totals for user ${userId} on ${date}:`,
-      error.message
+      message
     );
-    return { status: 'error', date, message: error.message };
+    return { status: 'error', date, message };
   } finally {
     activeSyncs.delete(lockKey);
   }
