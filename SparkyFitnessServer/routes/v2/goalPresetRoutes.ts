@@ -77,6 +77,13 @@ const getGoalPresetsHandler: RequestHandler = async (req, res, next) => {
     const presets = await goalPresetService.getGoalPresets(req.userId);
     res.status(200).json(presets);
   } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.message === 'A goal preset with this name already exists.'
+    ) {
+      res.status(409).json({ error: error.message });
+      return;
+    }
     next(error);
   }
 };
@@ -186,6 +193,13 @@ const updateGoalPresetHandler: RequestHandler = async (req, res, next) => {
     }
     res.status(200).json(updatedPreset);
   } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.message === 'A goal preset with this name already exists.'
+    ) {
+      res.status(409).json({ error: error.message });
+      return;
+    }
     next(error);
   }
 };
