@@ -209,6 +209,8 @@ Tests in `__tests__/` mirror source structure (`hooks/`, `services/`). Mocks in 
 
 When writing or modifying tests, run the FULL test suite (not just new tests) to catch mock pollution and regressions in existing tests. Never introduce global mocks without checking for side effects on other test files.
 
+When fixing a bug that could have been caught by a test, write a regression test that reproduces the bug and verifies the fix.
+
 ### Testing Android Code on macOS
 
 Jest loads `.ios.ts` by default. Use explicit require for Android:
