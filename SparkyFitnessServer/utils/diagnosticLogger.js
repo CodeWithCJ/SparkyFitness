@@ -36,15 +36,22 @@ function logRawResponse(provider, dataType, data) {
     // we should still allow merging IF the file was updated very recently (e.g. within the last 1 minute).
     // Otherwise, start fresh.
     if (fs.existsSync(filePath)) {
-      const stats = fs.statSync(filePath);
-      const now = new Date();
-      const lastModified = new Date(stats.mtime);
-      const diffInSeconds = (now - lastModified) / 1000;
+      try {
+        const stats = fs.statSync(filePath);
+        const now = new Date();
+        const lastModified = new Date(stats.mtime);
+        const diffInSeconds = (now - lastModified) / 1000;
 
-      // If updated within the last 60 seconds, it's likely the same sync process
-      if (diffInSeconds < 60) {
-        const existingData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        bundle = { ...bundle, ...existingData };
+        // If updated within the last 60 seconds, it's likely the same sync process
+        if (diffInSeconds < 60) {
+          const existingData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          bundle = { ...bundle, ...existingData };
+        }
+      } catch (err) {
+        console.error(
+          `Failed to read or parse existing file at ${filePath}:`,
+          err.message
+        );
       }
     }
 

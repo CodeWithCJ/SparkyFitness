@@ -23,8 +23,8 @@ const { endPool } = require('./db/poolManager');
 const { log } = require('./config/logging');
 const { authenticate } = require('./middleware/authMiddleware');
 const foodRoutes = require('./routes/foodRoutes');
-const v2FoodRoutes = require('./routes/v2/foodRoutes.ts');
-const v2ExerciseEntryRoutes = require('./routes/v2/exerciseEntryRoutes.ts');
+const v2FoodRoutes = require('./routes/v2/foodRoutes');
+const v2ExerciseEntryRoutes = require('./routes/v2/exerciseEntryRoutes');
 const mealRoutes = require('./routes/mealRoutes');
 const foodEntryRoutes = require('./routes/foodEntryRoutes'); // Add this line
 const foodEntryMealRoutes = require('./routes/foodEntryMealRoutes'); // New: FoodEntryMeal routes
@@ -80,7 +80,7 @@ const garminService = require('./services/garminService'); // Import garminServi
 const fitbitService = require('./services/fitbitService'); // Import fitbitService
 const polarService = require('./services/polarService'); // Import polarService
 const stravaService = require('./services/stravaService'); // Import stravaService
-const dailySummaryRoutes = require('./routes/dailySummaryRoutes.ts');
+const dailySummaryRoutes = require('./routes/dailySummaryRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const mealTypeRoutes = require('./routes/mealTypeRoutes');
 const swaggerUi = require('swagger-ui-express');
@@ -615,8 +615,8 @@ applyMigrations()
       // Force exit if graceful shutdown takes too long
       setTimeout(() => {
         log('error', 'Graceful shutdown timed out after 15s, forcing exit.');
-        process.exitCode =
-          process.exitCode === undefined ? 0 : process.exitCode;
+        // eslint-disable-next-line n/no-process-exit
+        process.exit(0);
       }, 15000).unref();
     };
 

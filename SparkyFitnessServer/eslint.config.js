@@ -32,6 +32,16 @@ module.exports = [
       n,
       security,
     },
+    settings: {
+      'import/resolver': {
+        node: {
+          extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        },
+      },
+      n: {
+        tryExtensions: ['.js', '.json', '.node', '.ts', '.tsx'],
+      },
+    },
     rules: {
       // Recommended rules from @eslint/js
       ...js.configs.recommended.rules,
