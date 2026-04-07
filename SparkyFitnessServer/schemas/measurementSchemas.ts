@@ -170,7 +170,7 @@ export type DateParam = z.infer<typeof DateParamSchema>;
 
 export const UuidParamSchema = z
   .object({
-    id: requiredLegacyString('id'),
+    id: z.string().uuid(),
   })
   .loose();
 
