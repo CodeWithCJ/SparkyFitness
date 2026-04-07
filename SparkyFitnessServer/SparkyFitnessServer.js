@@ -89,7 +89,8 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const redoc = require('redoc-express');
 const swaggerSpecs = require('./config/swagger');
 const { createCorsOriginChecker } = require('./utils/corsHelper');
-const telegramBotService = require('./integrations/telegram/telegramBotService');
+const telegramBotService =
+  require('./integrations/telegram/telegramBotService').default;
 
 const app = express();
 app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
@@ -589,9 +590,11 @@ applyMigrations()
     scheduleStravaSyncs();
 
     // Initialize Telegram Bot
-    telegramBotService.initialize().catch((err) =>
-      log('error', '[TELEGRAM BOT] Failed to initialize bot:', err)
-    );
+    telegramBotService
+      .initialize()
+      .catch((err) =>
+        log('error', '[TELEGRAM BOT] Failed to initialize bot:', err)
+      );
 
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       const userRepository = require('./models/userRepository');
