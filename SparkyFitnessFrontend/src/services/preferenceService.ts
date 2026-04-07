@@ -43,6 +43,7 @@ export interface UserPreferences {
   item_display_limit: number;
   default_food_data_provider_id: string | null;
   default_barcode_provider_id: string | null;
+  barcode_fallback_open_food_facts: boolean;
 }
 
 export const updateUserPreferences = async (

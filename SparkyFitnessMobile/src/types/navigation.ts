@@ -41,6 +41,8 @@ export type RootStackParamList = {
   ActivityDetail: { session: IndividualSessionResponse };
   Logs: undefined;
   Sync: undefined;
+  CalorieSettings: undefined;
+  FoodSettings: undefined;
 };
 
 declare global {

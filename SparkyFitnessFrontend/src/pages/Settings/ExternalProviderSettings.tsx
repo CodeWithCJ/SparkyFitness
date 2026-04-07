@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 
 import { Database } from 'lucide-react';
 import AddExternalProviderForm from './AddExternalProviderForm';
@@ -74,6 +75,8 @@ const ExternalProviderSettings = () => {
   const {
     defaultBarcodeProviderId,
     setDefaultBarcodeProviderId,
+    barcodeFallbackOpenFoodFacts,
+    setBarcodeFallbackOpenFoodFacts,
     saveAllPreferences,
   } = usePreferences();
   const { data: providers = [] } = useExternalProviders(user?.activeUserId);
@@ -125,29 +128,41 @@ const ExternalProviderSettings = () => {
             )}
 
             {barcodeProviders.length > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="barcode-provider">
-                  Default Barcode Provider
-                </Label>
-                <Select
-                  value={defaultBarcodeProviderId ?? ''}
-                  onValueChange={(value) => {
-                    const id = value || null;
-                    setDefaultBarcodeProviderId(id);
-                    saveAllPreferences({ defaultBarcodeProviderId: id });
-                  }}
-                >
-                  <SelectTrigger id="barcode-provider">
-                    <SelectValue placeholder="Select a barcode provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {barcodeProviders.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.provider_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex items-end gap-6">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="barcode-provider">
+                    Default Barcode Provider
+                  </Label>
+                  <Select
+                    value={defaultBarcodeProviderId ?? ''}
+                    onValueChange={(value) => {
+                      const id = value || null;
+                      setDefaultBarcodeProviderId(id);
+                      saveAllPreferences({ defaultBarcodeProviderId: id });
+                    }}
+                  >
+                    <SelectTrigger id="barcode-provider">
+                      <SelectValue placeholder="Select a barcode provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {barcodeProviders.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.provider_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col items-center gap-2 pb-0.5">
+                  <Label htmlFor="barcode-fallback-off">
+                    Open Food Facts Fallback
+                  </Label>
+                  <Switch
+                    id="barcode-fallback-off"
+                    checked={barcodeFallbackOpenFoodFacts}
+                    onCheckedChange={setBarcodeFallbackOpenFoodFacts}
+                  />
+                </div>
               </div>
             )}
 
