@@ -190,8 +190,9 @@ describe('Water Intake Routes (v2)', () => {
 
       const res = await request(app)
         .post('/api/v2/measurements/water-intake')
-        .send({ entry_date: '2023-01-01', change_drinks: 1 });
+        .send({ entry_date: '2023-01-01', change_drinks: 1, container_id: null });
 
+      // The route should catch the Forbidden error and return 403
       expect(res.statusCode).toBe(403);
       expect(res.body.error).toMatch(/^Forbidden/);
     });
