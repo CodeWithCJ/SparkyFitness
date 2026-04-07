@@ -100,7 +100,6 @@ const getWaterIntakeEntryHandler: RequestHandler = async (req, res, next) => {
     }
     const { id } = paramResult.data;
     const entry = await measurementService.getWaterIntakeEntryById(
-      req.originalUserId || req.userId,
       req.userId,
       id
     );
