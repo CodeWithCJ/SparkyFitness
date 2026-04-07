@@ -214,6 +214,7 @@ describe('Water Intake Routes (v2)', () => {
       expect(res.body).toEqual(updated);
       expect(measurementService.updateWaterIntake).toHaveBeenCalledWith(
         'test-user-id',
+        'test-user-id',
         VALID_UUID,
         expect.objectContaining({ water_ml: 300 })
       );
@@ -273,6 +274,7 @@ describe('Water Intake Routes (v2)', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual(result);
       expect(measurementService.deleteWaterIntake).toHaveBeenCalledWith(
+        'test-user-id',
         'test-user-id',
         VALID_UUID
       );
