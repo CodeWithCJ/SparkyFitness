@@ -24,14 +24,14 @@ const modeOptions = [
   { label: 'Fixed Goal', value: 'fixed' },
   { label: 'Percentage Earn-Back', value: 'percentage' },
   { label: 'Device Projection', value: 'tdee' },
-] as const;
+];
 
 const activityLevelOptions = [
   { label: 'Sedentary (x1.2)', value: 'not_much' },
   { label: 'Lightly Active (x1.375)', value: 'light' },
   { label: 'Moderately Active (x1.55)', value: 'moderate' },
   { label: 'Very Active (x1.725)', value: 'heavy' },
-] as const;
+];
 
 function normalizePreferences(prefs: UserPreferences | undefined) {
   const raw = prefs?.calorie_goal_adjustment_mode;
@@ -187,7 +187,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
             <Text className="text-base font-semibold text-text-primary">Calorie Mode</Text>
             <BottomSheetPicker
               value={normalized.mode}
-              options={[...modeOptions]}
+              options={modeOptions}
               onSelect={handleModeChange}
               title="Adjustment Mode"
               containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
@@ -202,10 +202,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
         <Animated.View className="bg-surface rounded-xl p-4 mb-4 shadow-sm" layout={optionsLayout}>
           {/* Percentage Input */}
           {showPercentage && (
-            <Animated.View
-              
-              layout={optionsLayout}
-            >
+            <Animated.View layout={optionsLayout}>
               <Text className="text-base font-semibold text-text-primary mb-2">
                 Exercise Calories Applied
               </Text>
@@ -226,15 +223,12 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
 
           {/* Activity Level */}
           {showActivityLevel && (
-            <Animated.View
-              
-              layout={optionsLayout}
-            >
+            <Animated.View layout={optionsLayout}>
               <View className="flex-row items-center justify-between">
                 <Text className="text-base font-semibold text-text-primary">Activity Level</Text>
                 <BottomSheetPicker
                   value={normalized.activityLevel}
-                  options={[...activityLevelOptions]}
+                  options={activityLevelOptions}
                   onSelect={handleActivityLevelChange}
                   title="Activity Level"
                   containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
@@ -254,10 +248,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
 
           {/* Negative Adjustment Toggle */}
           {showNegativeAdjustment && (
-            <Animated.View
-              
-              layout={optionsLayout}
-            >
+            <Animated.View layout={optionsLayout}>
               <View className="flex-row justify-between items-center">
                 <Text className="text-base font-semibold text-text-primary">Allow Negative Adjustment</Text>
                 <Switch
