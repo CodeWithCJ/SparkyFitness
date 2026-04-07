@@ -116,6 +116,7 @@ function _buildExerciseEntryWithSnapshot(
       id: entryData.exercise_id as string,
       name: exercise_name as string,
       category: (category as string) ?? null,
+      source: (source as string) ?? null,
       images: _parseJsonArray(images),
       primary_muscles: _parseJsonArray(primary_muscles),
       secondary_muscles: _parseJsonArray(secondary_muscles),
