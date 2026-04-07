@@ -857,7 +857,6 @@ async function getDailyNutritionByCategory(userId, date) {
     client.release();
   }
 }
-
 async function deleteFoodEntryComponentsByFoodEntryMealId(
   foodEntryMealId,
   userId
@@ -886,10 +885,10 @@ module.exports = {
   getFoodEntriesByDate,
   getFoodEntriesByDateAndMealType,
   getFoodEntriesByDateRange,
-  getDailyNutritionByCategory, // New function export
   getFoodEntryByDetails,
   bulkCreateFoodEntries,
   getFoodEntryById,
   getFoodEntryComponentsByFoodEntryMealId,
   deleteFoodEntryComponentsByFoodEntryMealId,
+  getDailyNutritionByCategory,
 };

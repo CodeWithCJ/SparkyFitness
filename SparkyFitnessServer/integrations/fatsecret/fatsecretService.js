@@ -378,14 +378,61 @@ function mapFatSecretSearchItem(item) {
   const servingPart = dashIdx >= 0 ? desc.slice(0, dashIdx).trim() : '';
   const nutrientPart = dashIdx >= 0 ? desc.slice(dashIdx + 3) : '';
 
-  // Extract the 4 numeric values in order: calories (kcal/кКал), fat (g), carbs (g), protein (g)
+  // Parse nutrients by label first (language-independent label pattern: word(s) followed by colon and value)
+  // Labels in English: "Calories", "Fat", "Carbs", "Protein"
+  // Labels in other languages may differ, so fall back to positional parsing when labels not found.
+  const labelPattern =
+    /([A-Za-zА-Яа-яÀ-öØ-ÿ\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]+[^:|]*?):\s*([\d.]+)/gi;
+  const labelMatches = [...nutrientPart.matchAll(labelPattern)];
+  const byLabel = {};
+  for (const m of labelMatches) {
+    byLabel[m[1].trim().toLowerCase()] = parseFloat(m[2]);
+  }
+
+  // Known label variants per nutrient (English + common localizations)
+  const CALORIE_LABELS = [
+    'calories',
+    'energy',
+    'калории',
+    'ккал',
+    'カロリー',
+    '칼로리',
+  ];
+  const FAT_LABELS = ['fat', 'жиры', '脂肪', '脂質', '지방'];
+  const CARB_LABELS = [
+    'carbs',
+    'carbohydrates',
+    'углеводы',
+    '碳水化合物',
+    '炭水化物',
+    '탄수화물',
+  ];
+  const PROTEIN_LABELS = [
+    'protein',
+    'proteins',
+    'белки',
+    '蛋白质',
+    'タンパク質',
+    '단백질',
+  ];
+
+  const findByLabels = (labels) => {
+    for (const lbl of labels) {
+      const found = Object.entries(byLabel).find(([k]) => k.includes(lbl));
+      if (found) return found[1];
+    }
+    return null;
+  };
+
+  // Positional fallback: extract all numeric values in order
   const nutrientNums = [...nutrientPart.matchAll(/([\d.]+)/g)].map((m) =>
     parseFloat(m[1])
   );
-  const calories = nutrientNums[0] ?? 0;
-  const fat = nutrientNums[1] ?? 0;
-  const carbs = nutrientNums[2] ?? 0;
-  const protein = nutrientNums[3] ?? 0;
+
+  const calories = findByLabels(CALORIE_LABELS) ?? nutrientNums[0] ?? 0;
+  const fat = findByLabels(FAT_LABELS) ?? nutrientNums[1] ?? 0;
+  const carbs = findByLabels(CARB_LABELS) ?? nutrientNums[2] ?? 0;
+  const protein = findByLabels(PROTEIN_LABELS) ?? nutrientNums[3] ?? 0;
 
   // Extract serving info from servingPart (language-agnostic).
   // Formats:  "Per 100g"  |  "100g"  |  "Per 1 serving (28g)"  |  "Per 1/4 cup"

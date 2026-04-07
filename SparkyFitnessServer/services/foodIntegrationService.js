@@ -7,6 +7,7 @@ const {
 } = require('../integrations/fatsecret/fatsecretService');
 const MealieService = require('../integrations/mealie/mealieService'); // Import MealieService
 const TandoorService = require('../integrations/tandoor/tandoorService'); // Import TandoorService
+const EdamamService = require('../integrations/edamam/edamamService');
 
 // Maps user language codes to FatSecret language+region pairs.
 // Only languages confirmed by FatSecret localization docs are listed.
@@ -194,7 +195,6 @@ async function getMealieFoodDetails(slug, baseUrl, apiKey, userId, providerId) {
     throw error;
   }
 }
-
 module.exports = {
   searchFatSecretFoods,
   getFatSecretNutrients,
@@ -202,6 +202,8 @@ module.exports = {
   getMealieFoodDetails,
   searchTandoorFoods,
   getTandoorFoodDetails,
+  searchEdamamFoods,
+  getEdamamFoodDetails,
 };
 
 async function searchTandoorFoods(query, baseUrl, apiKey, userId, providerId) {
@@ -254,6 +256,88 @@ async function getTandoorFoodDetails(id, baseUrl, apiKey, userId, providerId) {
       `Error getting Tandoor food details for id ${id} for user ${userId}:`,
       error
     );
+    throw error;
+  }
+}
+async function searchEdamamFoods(query, appId, appKey, page = 1) {
+  log(
+    'debug',
+    `searchEdamamFoods: query: ${query}, appId: ${appId}, page: ${page}`
+  );
+  try {
+    const data = await EdamamService.searchEdamamByQuery(
+      query,
+      appId,
+      appKey,
+      page
+    );
+    const hints = data.hints || [];
+
+    // Map each hint to app format
+    const foods = hints.map(EdamamService.mapEdamamSearchItem).filter(Boolean);
+
+    const pageSize = 20;
+    const totalCount = data.count != null ? data.count : foods.length;
+    const hasMore = data._links?.next != null || totalCount > page * pageSize;
+
+    return {
+      items: foods,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        hasMore,
+      },
+    };
+  } catch (error) {
+    log('error', `Error searching Edamam foods:`, error);
+    throw error;
+  }
+}
+
+async function getEdamamFoodDetails(foodId, appId, appKey) {
+  log('debug', `getEdamamFoodDetails: foodId: ${foodId}, appId: ${appId}`);
+  try {
+    // To get full measures/weights, we need to call the nutrients POST endpoint.
+    // However, the parser hints already contain the basic nutrients for 100g.
+    // Optimal way to get measures is either re-parsing or calling /nutrients with foodId.
+    const url = `${EdamamService.EDAMAM_NUTRIENTS_URL}?${new URLSearchParams({
+      app_id: appId,
+      app_key: appKey,
+    })}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        ingredients: [
+          {
+            quantity: 100,
+            measureURI:
+              'http://www.edamam.com/ontologies/edamam.owl#Measure_gram',
+            foodId: foodId,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      log('error', 'Edamam nutrients API error:', text);
+      throw new Error(`Edamam API error: ${text}`);
+    }
+
+    const data = await response.json();
+    const food = data.ingredients?.[0]?.parsed?.[0]?.food;
+    if (!food) return null;
+
+    // Measures are in data.measures
+    return EdamamService.mapEdamamFood(food, data.measures);
+  } catch (error) {
+    log('error', `Error getting Edamam food details: ${foodId}`, error);
     throw error;
   }
 }

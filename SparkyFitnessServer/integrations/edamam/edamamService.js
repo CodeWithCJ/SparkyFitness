@@ -120,26 +120,39 @@ function mapEdamamFood(food, measuresData, selectedMeasure) {
   };
 }
 
-async function searchEdamamByQuery(query, appId, appKey) {
+async function searchEdamamByQuery(query, appId, appKey, page = 1) {
+  const pageSize = 20;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize;
+
   const url = `${EDAMAM_PARSER_URL}?${new URLSearchParams({
     app_id: appId,
     app_key: appKey,
     ingr: query,
     'nutrition-type': 'logging',
+    from: String(from),
+    to: String(to),
   })}`;
   log('info', `Edamam Search URL: ${url.replace(appKey, '***')}`);
 
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    const text = await response.text();
-    log('error', 'Edamam search API error:', text);
-    throw new Error(`Edamam API error (${response.status}): ${text}`);
+    if (!response.ok) {
+      const text = await response.text();
+      log('error', 'Edamam search API error:', text);
+      throw new Error(`Edamam API error (${response.status}): ${text}`);
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return response.json();
 }
 
 async function searchEdamamByBarcode(barcode, appId, appKey) {
@@ -151,18 +164,25 @@ async function searchEdamamByBarcode(barcode, appId, appKey) {
   })}`;
   log('info', `Edamam Barcode URL: ${url.replace(appKey, '***')}`);
 
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json' },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
 
-  if (!response.ok) {
-    if (response.status === 404) return null;
-    const text = await response.text();
-    log('error', 'Edamam barcode API error:', text);
-    throw new Error(`Edamam barcode API error (${response.status}): ${text}`);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      const text = await response.text();
+      log('error', 'Edamam barcode API error:', text);
+      throw new Error(`Edamam barcode API error (${response.status}): ${text}`);
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return response.json();
 }
 
 module.exports = {
