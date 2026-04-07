@@ -28,6 +28,7 @@ import {
   fetchGarminStatus,
   GarminMfaPayload,
   resumeGarminLogin,
+  handleManualSyncMFP,
 } from '@/api/Settings/externalProviderService';
 import { garminKeys } from '@/api/keys/integrations';
 import { externalProviderKeys } from '@/api/keys/settings';
@@ -288,6 +289,19 @@ export const useManualSyncStravaMutation = () => {
     },
   });
 };
+
+export const useManualSyncMFPMutation = () => {
+  const invalidateSyncData = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ startDate, endDate }: SyncVariables) =>
+      handleManualSyncMFP(startDate, endDate),
+    onSuccess: () => {
+      invalidateSyncData();
+    },
+  });
+};
+
 export interface GarminStatusResponse {
   isLinked: boolean;
   lastUpdated: string | null;

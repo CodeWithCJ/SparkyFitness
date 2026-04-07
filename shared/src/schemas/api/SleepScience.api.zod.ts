@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { dailySleepNeedSchema } from "../database/DailySleepNeed.zod.ts";
+import { dailySleepNeedSchema } from "../database/DailySleepNeed.zod";
 
 // DailyNeedData: extends DB schema, with date/method/confidence as API-only fields
 export const dailyNeedResponseSchema = dailySleepNeedSchema

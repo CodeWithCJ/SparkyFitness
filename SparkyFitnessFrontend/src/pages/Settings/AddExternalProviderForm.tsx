@@ -284,6 +284,18 @@ const AddExternalProviderForm = ({
               });
             }}
           />
+          {newProvider.provider_type === 'myfitnesspal' && (
+            <div
+              className="p-3 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400 border border-red-200"
+              role="alert"
+            >
+              <span className="font-bold">⚠️ Strong Warning:</span> MyFitnessPal
+              synchronization will{' '}
+              <span className="underline">overwrite all manual entries</span> in
+              your MFP diary for the synced day. This ensures idempotency and
+              keeps SparkyFitness as the source of truth.
+            </div>
+          )}
           <div className="flex items-center space-x-2">
             <Switch
               id="new_is_active"
@@ -294,6 +306,38 @@ const AddExternalProviderForm = ({
             />
             <Label htmlFor="new_is_active">Activate this provider</Label>
           </div>
+
+          {[
+            'withings',
+            'garmin',
+            'fitbit',
+            'strava',
+            'polar',
+            'hevy',
+            'myfitnesspal',
+          ].includes(newProvider.provider_type || '') && (
+            <div className="space-y-2">
+              <Label htmlFor="new_sync_frequency">Sync Frequency</Label>
+              <Select
+                value={newProvider.sync_frequency || 'manual'}
+                onValueChange={(value) =>
+                  setNewProvider((prev) => ({
+                    ...prev,
+                    sync_frequency: value as 'hourly' | 'daily' | 'manual',
+                  }))
+                }
+              >
+                <SelectTrigger id="new_sync_frequency">
+                  <SelectValue placeholder="Select sync frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="hourly">Hourly</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex gap-2">
             <Button disabled={isAnyIntegrationPending} type="submit">
