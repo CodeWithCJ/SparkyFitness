@@ -6,18 +6,18 @@ import {
   UuidParamSchema,
 } from '../../schemas/measurementSchemas';
 
-const checkPermissionMiddleware = require('../../middleware/checkPermissionMiddleware');
-const onBehalfOfMiddleware = require('../../middleware/onBehalfOfMiddleware');
-const measurementService = require('../../services/measurementService');
+import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware';
+import onBehalfOfMiddleware from '../../middleware/onBehalfOfMiddleware';
+import measurementService from '../../services/measurementService';
 
 const router = express.Router();
 
-router.use(checkPermissionMiddleware('checkin'));
 router.use(onBehalfOfMiddleware);
+router.use(checkPermissionMiddleware('checkin'));
 
 /**
  * @swagger
- * /v2/measurements/water-intake/entry/{id}:
+ * /api/v2/measurements/water-intake/entry/{id}:
  *   get:
  *     summary: Get a water intake entry by ID
  *     tags: [Wellness & Metrics]
@@ -30,6 +30,7 @@ router.use(onBehalfOfMiddleware);
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: The unique identifier of the water intake entry.
  *       - in: header
  *         name: x-on-behalf-of-user-id
  *         schema:
@@ -37,13 +38,55 @@ router.use(onBehalfOfMiddleware);
  *         description: Target user ID for family access.
  *     responses:
  *       200:
- *         description: Water intake entry.
+ *         description: Water intake entry retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   format: uuid
+ *                 water_ml:
+ *                   type: number
+ *                 entry_date:
+ *                   type: string
+ *                   format: date
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
  *       400:
- *         description: Validation error.
+ *         description: Validation error - invalid UUID format.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Validation error"
+ *                 details:
+ *                   type: object
  *       403:
- *         description: Forbidden.
+ *         description: Forbidden - user doesn't have permission.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Forbidden: access denied."
  *       404:
  *         description: Water intake entry not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Water intake entry not found."
  */
 const getWaterIntakeEntryHandler: RequestHandler = async (req, res, next) => {
   try {
@@ -78,7 +121,7 @@ const getWaterIntakeEntryHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * @swagger
- * /v2/measurements/water-intake/{date}:
+ * /api/v2/measurements/water-intake/{date}:
  *   get:
  *     summary: Get water intake for a date
  *     tags: [Wellness & Metrics]
@@ -99,11 +142,47 @@ const getWaterIntakeEntryHandler: RequestHandler = async (req, res, next) => {
  *         description: Target user ID for family access.
  *     responses:
  *       200:
- *         description: Water intake data for the date.
+ *         description: Water intake data retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     format: uuid
+ *                   water_ml:
+ *                     type: number
+ *                   entry_date:
+ *                     type: string
+ *                     format: date
+ *                   created_at:
+ *                     type: string
+ *                     format: date-time
  *       400:
- *         description: Validation error.
+ *         description: Validation error - invalid date format.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Validation error"
+ *                 details:
+ *                   type: object
  *       403:
- *         description: Forbidden.
+ *         description: Forbidden - user doesn't have permission.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Forbidden: access denied."
  */
 const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
   try {
@@ -133,7 +212,7 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * @swagger
- * /v2/measurements/water-intake:
+ * /api/v2/measurements/water-intake:
  *   post:
  *     summary: Upsert a water intake entry
  *     tags: [Wellness & Metrics]
@@ -156,18 +235,58 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
  *               entry_date:
  *                 type: string
  *                 format: date
+ *                 description: Date of water intake in YYYY-MM-DD format.
+ *                 example: "2023-01-01"
  *               change_drinks:
  *                 type: number
+ *                 description: Number of drinks to add (positive) or remove (negative).
+ *                 example: 1
  *               container_id:
  *                 type: number
  *                 nullable: true
+ *                 description: Optional container ID for tracking.
+ *                 example: 1
  *     responses:
  *       200:
  *         description: Water intake entry upserted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   format: uuid
+ *                 water_ml:
+ *                   type: number
+ *                 entry_date:
+ *                   type: string
+ *                   format: date
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
  *       400:
- *         description: Validation error.
+ *         description: Validation error - missing required fields or invalid data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid request body"
+ *                 details:
+ *                   type: object
  *       403:
- *         description: Forbidden.
+ *         description: Forbidden - user doesn't have permission.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Forbidden: access denied."
  */
 const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
   try {
@@ -199,7 +318,7 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * @swagger
- * /v2/measurements/water-intake/{id}:
+ * /api/v2/measurements/water-intake/{id}:
  *   put:
  *     summary: Update a water intake entry
  *     tags: [Wellness & Metrics]
@@ -212,6 +331,7 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
  *         schema:
  *           type: string
  *           format: uuid
+ *         description: The unique identifier of the water intake entry.
  *       - in: header
  *         name: x-on-behalf-of-user-id
  *         schema:
@@ -225,20 +345,68 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
  *             properties:
  *               water_ml:
  *                 type: number
+ *                 description: Updated water amount in milliliters.
+ *                 example: 250
  *               entry_date:
  *                 type: string
  *                 format: date
+ *                 description: Updated date in YYYY-MM-DD format.
+ *                 example: "2023-01-01"
  *               source:
  *                 type: string
+ *                 description: Source of the update (e.g., 'manual', 'garmin').
+ *                 example: "manual"
  *     responses:
  *       200:
  *         description: Water intake entry updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   format: uuid
+ *                 water_ml:
+ *                   type: number
+ *                 entry_date:
+ *                   type: string
+ *                   format: date
+ *                 updated_at:
+ *                   type: string
+ *                   format: date-time
  *       400:
- *         description: Validation error.
+ *         description: Validation error - invalid UUID or request body.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Validation error"
+ *                 details:
+ *                   type: object
  *       403:
- *         description: Forbidden.
+ *         description: Forbidden - user doesn't have permission.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Forbidden: access denied."
  *       404:
  *         description: Water intake entry not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Water intake entry not found."
  */
 const updateWaterIntakeHandler: RequestHandler = async (req, res, next) => {
   try {
@@ -263,6 +431,7 @@ const updateWaterIntakeHandler: RequestHandler = async (req, res, next) => {
 
     const updatedEntry = await measurementService.updateWaterIntake(
       req.userId,
+      req.originalUserId || req.userId,
       id,
       bodyResult.data
     );
@@ -288,7 +457,7 @@ const updateWaterIntakeHandler: RequestHandler = async (req, res, next) => {
 
 /**
  * @swagger
- * /v2/measurements/water-intake/{id}:
+ * /api/v2/measurements/water-intake/{id}:
  *   delete:
  *     summary: Delete a water intake entry
  *     tags: [Wellness & Metrics]
@@ -325,7 +494,11 @@ const deleteWaterIntakeHandler: RequestHandler = async (req, res, next) => {
       return;
     }
     const { id } = paramResult.data;
-    const result = await measurementService.deleteWaterIntake(req.userId, id);
+    const result = await measurementService.deleteWaterIntake(
+      req.userId,
+      req.originalUserId || req.userId,
+      id
+    );
     res.status(200).json(result);
   } catch (error: unknown) {
     if (error instanceof Error) {
