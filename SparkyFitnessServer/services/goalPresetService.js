@@ -124,6 +124,9 @@ async function updateGoalPreset(presetId, userId, presetData) {
     );
     return updatedPreset;
   } catch (error) {
+    if (error.code === '23505') {
+      throw new Error('A goal preset with this name already exists.');
+    }
     log(
       'error',
       `Error updating goal preset ${presetId} for user ${userId}:`,
