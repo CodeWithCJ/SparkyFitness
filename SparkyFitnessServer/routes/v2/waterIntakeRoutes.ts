@@ -123,6 +123,10 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
     );
     res.status(200).json(waterData);
   } catch (error: unknown) {
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      res.status(403).json({ error: error.message });
+      return;
+    }
     next(error);
   }
 };
