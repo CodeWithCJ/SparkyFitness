@@ -183,11 +183,13 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
             error.name === 'BodyTimeoutError'
           ) {
             throw new Error(
-              `Ollama label scan request timed out after ${timeout}ms.`
+              `Ollama label scan request timed out after ${timeout}ms.`,
+              { cause: error }
             );
           }
           throw new Error(
-            `AI service API call error: 502 - Ollama fetch error: ${error.message}`
+            `AI service API call error: 502 - Ollama fetch error: ${error.message}`,
+            { cause: error }
           );
         } finally {
           ollamaAgent.destroy();

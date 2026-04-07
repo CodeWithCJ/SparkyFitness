@@ -61,7 +61,9 @@ async function createActivityDetail(userId, detail) {
       `Failed to create activity detail for entry ID ${exercise_entry_id || exercise_preset_entry_id}: ${error.message}`,
       { query, values, error }
     );
-    throw new Error(`Failed to create activity detail: ${error.message}`);
+    throw new Error(`Failed to create activity detail: ${error.message}`, {
+      cause: error,
+    });
   } finally {
     client.release();
   }

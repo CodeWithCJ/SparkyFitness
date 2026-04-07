@@ -1,5 +1,4 @@
 const TandoorService = require('../integrations/tandoor/tandoorService');
-const { log } = require('../config/logging');
 
 jest.mock('../config/logging', () => ({
   log: jest.fn(),

@@ -2,10 +2,6 @@ const request = require('supertest');
 const express = require('express');
 const mealRoutes = require('../routes/mealRoutes');
 const mealService = require('../services/mealService');
-const {
-  authenticateToken,
-  authorizeAccess,
-} = require('../middleware/authMiddleware');
 const errorHandler = require('../middleware/errorHandler');
 const { v4: uuidv4 } = require('uuid');
 
@@ -20,11 +16,9 @@ jest.mock('../middleware/authMiddleware', () => ({
     req.userId = 'testUserId';
     next();
   }),
-  authorizeAccess: jest.fn(
-    (permission, getTargetUserId) => (req, res, next) => {
-      next();
-    }
-  ),
+  authorizeAccess: jest.fn(() => (req, res, next) => {
+    next();
+  }),
 }));
 
 const app = express();

@@ -5,8 +5,8 @@ const fsp = require('fs').promises; // Use fsp for promise-based fs operations
 const zlib = require('zlib');
 const { pipeline } = require('stream/promises');
 const { log } = require('../config/logging');
-const { getRawOwnerPool, endPool, resetPool } = require('../db/poolManager');
 const backupSettingsRepository = require('../models/backupSettingsRepository');
+const { endPool, resetPool } = require('../db/poolManager');
 // const { configureSessionMiddleware } = require('../SparkyFitnessServer'); // Removed to fix circular dependency
 
 const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, '../backup');

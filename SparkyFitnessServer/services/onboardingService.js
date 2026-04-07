@@ -13,7 +13,7 @@ async function processOnboardingData(userId, data) {
     log('info', `Successfully processed onboarding for user: ${userId}`);
   } catch (error) {
     log('error', `Error processing onboarding data for user ${userId}:`, error);
-    throw new Error('Failed to save onboarding data.');
+    throw new Error('Failed to save onboarding data.', { cause: error });
   }
 }
 
@@ -52,7 +52,7 @@ async function resetOnboardingStatus(userId) {
       `Error resetting onboarding status for user ${userId}:`,
       error
     );
-    throw new Error('Failed to reset onboarding status.');
+    throw new Error('Failed to reset onboarding status.', { cause: error });
   }
 }
 

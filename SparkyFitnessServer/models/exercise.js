@@ -90,7 +90,7 @@ async function getOrCreateActiveCaloriesExercise(
       log('error', 'Error creating active calories exercise:', createError);
       throw new Error(
         `Failed to create active calories exercise: ${createError.message}`,
-        { cause: error }
+        { cause: createError }
       );
     } finally {
       insertClient.release();

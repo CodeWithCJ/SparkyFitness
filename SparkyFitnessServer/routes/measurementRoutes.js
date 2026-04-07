@@ -239,11 +239,12 @@ router.post(
 
     // Check permission if explicitly management for another user
     if (user_id && user_id !== req.userId) {
-      await require('../utils/permissionUtils').canAccessUserData(
-        user_id,
-        'checkin',
-        req.authenticatedUserId || req.userId
-      ); // Corrected to 'checkin'
+      const hasPermission =
+        await require('../utils/permissionUtils').canAccessUserData(
+          user_id,
+          'checkin',
+          req.authenticatedUserId || req.userId
+        ); // Corrected to 'checkin'
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
 
@@ -617,11 +618,12 @@ router.get(
 
     // Permission check if explicit userId is provided
     if (userId && userId !== req.userId) {
-      await require('../utils/permissionUtils').canAccessUserData(
-        userId,
-        'checkin',
-        req.authenticatedUserId || req.userId
-      ); // Corrected to 'checkin'
+      const hasPermission =
+        await require('../utils/permissionUtils').canAccessUserData(
+          userId,
+          'checkin',
+          req.authenticatedUserId || req.userId
+        ); // Corrected to 'checkin'
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
 

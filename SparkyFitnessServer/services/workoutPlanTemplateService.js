@@ -79,7 +79,9 @@ async function createWorkoutPlanTemplate(userId, planData) {
       `Error creating workout plan template for user ${userId}: ${error.message}`,
       error
     );
-    throw new Error('Failed to create workout plan template.');
+    throw new Error('Failed to create workout plan template.', {
+      cause: error,
+    });
   }
 }
 
@@ -198,7 +200,9 @@ async function updateWorkoutPlanTemplate(userId, templateId, updateData) {
       `Error updating workout plan template ${templateId} for user ${userId}: ${error.message}`,
       error
     );
-    throw new Error('Failed to update workout plan template.');
+    throw new Error('Failed to update workout plan template.', {
+      cause: error,
+    });
   }
 }
 
@@ -248,7 +252,9 @@ async function deleteWorkoutPlanTemplate(userId, templateId) {
       `Error deleting workout plan template ${templateId} for user ${userId}: ${error.message}`,
       error
     );
-    throw new Error('Failed to delete workout plan template.');
+    throw new Error('Failed to delete workout plan template.', {
+      cause: error,
+    });
   }
 }
 

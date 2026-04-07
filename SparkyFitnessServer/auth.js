@@ -347,7 +347,7 @@ const auth = betterAuth({
             return [...cleanOrigins, originHeader, refOrigin].filter(Boolean);
           }
         } catch (e) {
-          /* invalid referer */
+          throw new Error('Invalid referrer', { cause: e });
         }
       }
     }
@@ -370,7 +370,7 @@ const auth = betterAuth({
             return [...cleanOrigins, originHeader, url.origin].filter(Boolean);
           }
         } catch (e) {
-          /* invalid url */
+          throw new Error('Invalid url', { cause: e });
         }
       }
     }

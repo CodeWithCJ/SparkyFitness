@@ -333,7 +333,7 @@ router.delete('/:id', async (req, res, next) => {
     log('info', `User ${userId} deleted FoodEntryMeal ${id}`);
     res.status(204).send(); // No content
   } catch (err) {
-    log('error', `Error deleting FoodEntryMeal ${id}: ${err.message}`, err);
+    log('error', `Error deleting FoodEntryMeal: ${err.message}`, err);
     next(err);
   }
 });

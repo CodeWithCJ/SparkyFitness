@@ -1,10 +1,5 @@
 const externalProviderRepository = require('../models/externalProviderRepository');
 const { log } = require('../config/logging');
-const {
-  checkFamilyAccessPermission,
-} = require('../models/familyAccessRepository');
-
-// Privacy status is now driven by external_provider_types.is_strictly_private in the database.
 
 async function getExternalDataProviders(userId) {
   try {

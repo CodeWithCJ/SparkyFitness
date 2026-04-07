@@ -38,37 +38,6 @@ async function canAccessUserData(
   // Check if authenticated user has family access with the required permission
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
-    const queryText = `SELECT access_permissions
-       FROM family_access fa
-       WHERE fa.family_user_id = $1
-         AND fa.owner_user_id = $2
-         AND fa.is_active = TRUE
-         AND (fa.access_end_date IS NULL OR fa.access_end_date > NOW())`;
-
-    // First, just check if ANY row exists and what it looks like
-    const debugResult = await client.query(queryText, [
-      authenticatedUserId,
-      targetUserId,
-    ]);
-    //console.log(`[DEBUG] Family Access Check: Auth=${authenticatedUserId}, Owner=${targetUserId}, Permission=${permissionType}`);
-    //console.log(`[DEBUG] Rows Found: ${debugResult.rowCount}`);
-    if (debugResult.rowCount > 0) {
-      //console.log(`[DEBUG] Row Permissions:`, JSON.stringify(debugResult.rows[0].access_permissions));
-
-      // Manual check in JS to verify logic
-      const perms = debugResult.rows[0].access_permissions;
-      const normalizedPerm = permissionType.replace(/ /g, '_'); // Just in case
-      const hasDirect =
-        perms[permissionType] === true || perms[normalizedPerm] === true;
-      const hasManageDiary =
-        perms['can_manage_diary'] === true ||
-        perms['can manage diary'] === true; // Handle both
-
-      //console.log(`[DEBUG] JS Check: Direct=${hasDirect}, ManageDiary=${hasManageDiary}`);
-    } else {
-      console.log('[DEBUG] No active family access row found matching IDs.');
-    }
-
     const result = await client.query(
       `SELECT 1
        FROM family_access fa

@@ -7,8 +7,6 @@ const { getSystemClient } = require('../db/poolManager');
 const { loadRawBundle } = require('../utils/diagnosticLogger');
 const { loadUserTimezone } = require('../utils/timezoneLoader');
 const { todayInZone, addDays } = require('@workspace/shared');
-const fs = require('fs');
-const path = require('path');
 
 // Configuration for data mocking/caching
 const FITBIT_DATA_SOURCE =
@@ -73,12 +71,6 @@ async function syncFitbitData(
       // 1. Extract Unit Preferences and Timezone from Profil/Responses if available
       const profileResponse = responses['raw_profile']?.data;
       const timezoneOffset = profileResponse?.user?.offsetFromUTCMillis || 0;
-      const weightUnit = profileResponse?.user?.weightUnit || 'METRIC';
-      const distanceUnit = profileResponse?.user?.distanceUnit || 'METRIC';
-      const waterUnit = profileResponse?.user?.waterUnit || 'METRIC';
-      const temperatureUnit =
-        profileResponse?.user?.temperatureUnit || 'METRIC';
-
       // 2. Process all raw items from bundle
       log('debug', `[fitbitService] Processing raw data for ${userId}...`);
       if (responses['raw_profile'])
@@ -236,10 +228,6 @@ async function syncFitbitData(
       accessToken
     );
     const timezoneOffset = profileData?.user?.offsetFromUTCMillis || 0;
-    const weightUnit = profileData?.user?.weightUnit || 'METRIC';
-    const distanceUnit = profileData?.user?.distanceUnit || 'METRIC';
-    const waterUnit = profileData?.user?.waterUnit || 'METRIC';
-    const temperatureUnit = profileData?.user?.temperatureUnit || 'METRIC';
 
     // 2. Fetch all other data sequentially to avoid 429 Resource Exhausted errors
     const safeFetch = async (fetchFn, name) => {

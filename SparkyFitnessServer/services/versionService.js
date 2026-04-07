@@ -34,7 +34,7 @@ async function getLatestGitHubRelease() {
     };
   } catch (error) {
     console.error('Error fetching latest GitHub release:', error);
-    throw new Error('Failed to fetch latest GitHub release');
+    throw new Error('Failed to fetch latest GitHub release', { cause: error });
   }
 }
 

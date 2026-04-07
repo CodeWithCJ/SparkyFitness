@@ -12,20 +12,16 @@ function isPrivateNetworkAddress(hostname) {
 
   // Try to clean up port if present using URL parser
   // We prepend http:// to ensure it parses as a URL from a hostname string
-  try {
-    // Check if it already has a protocol, if not add one
-    const urlStr = cleanHostname.match(/^[a-z]+:\/\//)
-      ? cleanHostname
-      : `http://${cleanHostname}`;
-    const url = new URL(urlStr);
-    cleanHostname = url.hostname;
+  // Check if it already has a protocol, if not add one
+  const urlStr = cleanHostname.match(/^[a-z]+:\/\//)
+    ? cleanHostname
+    : `http://${cleanHostname}`;
+  const url = new URL(urlStr);
+  cleanHostname = url.hostname;
 
-    // Remove brackets for IPv6 [::1] -> ::1 as ipaddr.js expects raw address
-    if (cleanHostname.startsWith('[') && cleanHostname.endsWith(']')) {
-      cleanHostname = cleanHostname.slice(1, -1);
-    }
-  } catch (err) {
-    // If URL parsing fails, proceed with original string
+  // Remove brackets for IPv6 [::1] -> ::1 as ipaddr.js expects raw address
+  if (cleanHostname.startsWith('[') && cleanHostname.endsWith(']')) {
+    cleanHostname = cleanHostname.slice(1, -1);
   }
 
   // Check localhost explicitly as it's not an IP address
@@ -51,7 +47,7 @@ function isPrivateNetworkAddress(hostname) {
         return true;
       }
     }
-  } catch (err) {
+  } catch {
     // If not a valid IP address, ipaddr.parse throws an error.
     // In this context, that means it's a non-IP hostname (like a public domain),
     // so we return false as it's not a private network address.
@@ -81,7 +77,7 @@ function createCorsOriginChecker(
       // Validate URL format
       const url = new URL(configuredFrontendUrl);
       allowedOrigins.push(url.origin);
-    } catch (err) {
+    } catch {
       console.warn(`Invalid configured frontend URL: ${configuredFrontendUrl}`);
     }
   }
@@ -94,7 +90,7 @@ function createCorsOriginChecker(
       try {
         const url = new URL(origin);
         allowedOrigins.push(url.origin);
-      } catch (err) {
+      } catch {
         console.warn(`Invalid extra trusted origin: ${origin}`);
       }
     });
@@ -108,27 +104,18 @@ function createCorsOriginChecker(
     }
 
     // 2. Private Network Check (Broad switch)
-    try {
-      if (effectiveOrigin) {
-        const { hostname } = new URL(effectiveOrigin);
-        if (allowPrivateNetworks && isPrivateNetworkAddress(hostname)) {
-          return callback(null, true);
-        }
+    if (effectiveOrigin) {
+      const { hostname } = new URL(effectiveOrigin);
+      if (allowPrivateNetworks && isPrivateNetworkAddress(hostname)) {
+        return callback(null, true);
       }
-    } catch (e) {
-      /* ignore invalid origins */
     }
-
     // 3. Fallback: Check the Referer (Fixes HTTPS to HTTP IP failures)
     const referer = req?.headers?.referer;
     if (referer) {
-      try {
-        const refOrigin = new URL(referer).origin;
-        if (allowedOrigins.includes(refOrigin)) {
-          return callback(null, true);
-        }
-      } catch (e) {
-        /* ignore invalid referers */
+      const refOrigin = new URL(referer).origin;
+      if (allowedOrigins.includes(refOrigin)) {
+        return callback(null, true);
       }
     }
 

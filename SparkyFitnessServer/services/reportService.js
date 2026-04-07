@@ -6,7 +6,6 @@ const preferenceRepository = require('../models/preferenceRepository');
 const bmrService = require('./bmrService');
 const sleepAnalyticsService = require('./sleepAnalyticsService'); // Import sleepAnalyticsService
 const customNutrientService = require('./customNutrientService');
-const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
 const { log } = require('../config/logging');
 const { addDays, compareDays, todayInZone } = require('@workspace/shared');
 const { userAge } = require('../utils/dateHelpers');
@@ -598,7 +597,6 @@ async function getExerciseDashboardData(
         entry.sets.forEach((set) => {
           const weight = parseFloat(set.weight) || 0;
           const reps = parseInt(set.reps) || 0;
-          const duration = parseFloat(set.duration) || 0;
 
           // Calculate total volume and reps
           totalVolume += weight * reps;

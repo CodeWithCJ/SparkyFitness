@@ -85,7 +85,9 @@ async function sendPasswordResetEmail(toEmail, resetUrl) {
     if (error.responseCode) {
       log('error', `SMTP Response Code: ${error.responseCode}`);
     }
-    throw new Error(`Failed to send password reset email: ${error.message}`);
+    throw new Error(`Failed to send password reset email: ${error.message}`, {
+      cause: error,
+    });
   }
 }
 
@@ -148,9 +150,13 @@ async function sendEmailMfaCode(toEmail, code) {
       log('error', `SMTP Response: ${error.response}`);
     }
     if (error.responseCode) {
-      log('error', `SMTP Response Code: ${error.responseCode}`);
+      log('error', `SMTP Response Code: ${error.responseCode}`, {
+        cause: error,
+      });
     }
-    throw new Error(`Failed to send email MFA code: ${error.message}`);
+    throw new Error(`Failed to send email MFA code: ${error.message}`, {
+      cause: error,
+    });
   }
 }
 
@@ -215,6 +221,8 @@ async function sendMagicLinkEmail(toEmail, magicLinkUrl) {
     if (error.responseCode) {
       log('error', `SMTP Response Code: ${error.responseCode}`);
     }
-    throw new Error(`Failed to send magic link email: ${error.message}`);
+    throw new Error(`Failed to send magic link email: ${error.message}`, {
+      cause: error,
+    });
   }
 }

@@ -39,7 +39,9 @@ function runPreflightChecks() {
       'error',
       `FATAL: Missing mandatory env vars: ${missingMandatory.join(', ')}`
     );
-    process.exit(1);
+    throw new Error(
+      'Preflight checks failed: Missing mandatory environment variables.'
+    );
   }
 
   // Handle BETTER_AUTH_SECRET as a soft requirement

@@ -25,7 +25,7 @@ const app = express();
 app.use(express.json());
 app.use('/food-crud', foodCrudRoutes);
 // Error handler so 500s return JSON instead of HTML
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   res.status(500).json({ error: err.message });
 });
 

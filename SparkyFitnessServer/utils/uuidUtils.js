@@ -1,5 +1,4 @@
 const exerciseRepository = require('../models/exerciseRepository');
-const { log } = require('../config/logging');
 
 // Helper function to validate UUID
 const isValidUuid = (uuid) => {
