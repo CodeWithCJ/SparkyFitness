@@ -89,8 +89,7 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const redoc = require('redoc-express');
 const swaggerSpecs = require('./config/swagger');
 const { createCorsOriginChecker } = require('./utils/corsHelper');
-const telegramBotService =
-  require('./integrations/telegram/telegramBotService').default;
+const telegramBotService = require('./integrations/telegram/telegramBotService');
 
 const app = express();
 app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
@@ -401,6 +400,12 @@ app.use('/api/adaptive-tdee', adaptiveTdeeRoutes);
 app.use('/api/meal-types', mealTypeRoutes);
 app.use('/api/telegram', telegramRoutes);
 
+// Telegram Webhook handler
+app.post('/api/telegram/webhook', (req, res) => {
+  telegramBotService.handleUpdate(req.body);
+  res.sendStatus(200);
+});
+
 // Swagger
 app.use(
   '/api/api-docs/swagger',
@@ -555,7 +560,6 @@ const schedulePolarSyncs = async () => {
     }
   });
 };
-
 
 applyMigrations()
   .then(applyRlsPolicies)
