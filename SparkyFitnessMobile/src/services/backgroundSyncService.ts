@@ -1,7 +1,7 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
-import { addLog } from './LogService';
+import { addLog, _flushBuffer } from './LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import {
   loadHealthPreference,
@@ -137,6 +137,12 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
     }
   }
   enabledMetricCount = enabledMetrics.length;
+  addLog(`[Background Sync] Found ${enabledMetricCount} enabled metrics`, 'INFO');
+
+  if (enabledMetricCount === 0) {
+    await addLog('[Background Sync] No metrics enabled — nothing to sync', 'INFO');
+    return;
+  }
 
   const results = await runTasksInBatches(
     enabledMetrics,
@@ -182,7 +188,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
   const inaccessibleCount = getDatabaseInaccessibleCount();
 
   if (inaccessibleCount > 0 && allData.length === 0) {
-    addLog(
+    await addLog(
       `[Background Sync] Device appears locked — ${inaccessibleCount} HealthKit query(s) returned database inaccessible ` +
       `(${enabledMetricCount} metric(s) enabled). Skipping timestamp update; will retry next cycle.`,
       'WARNING'
@@ -212,9 +218,9 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
       await saveLastSyncedTime();
     }
 
-    addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'SUCCESS');
+    await addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'SUCCESS');
   } else {
-    addLog(`[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'DEBUG');
+    await addLog(`[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
   }
 };
 
@@ -222,10 +228,14 @@ TaskManager.defineTask(BACKGROUND_TASK_NAME, async () => {
   addLog('[Background Sync] Task invoked by OS', 'INFO');
   try {
     await performBackgroundSync(BACKGROUND_TASK_NAME);
+    // Flush logs before returning — iOS may suspend the app immediately after
+    // the task completes, before the 5-second flush timer fires.
+    await _flushBuffer();
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Background Sync] Task failed: ${message}`, 'ERROR');
+    await addLog(`[Background Sync] Task failed: ${message}`, 'ERROR');
+    await _flushBuffer();
     return BackgroundTask.BackgroundTaskResult.Failed;
   }
 });
