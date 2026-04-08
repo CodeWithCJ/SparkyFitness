@@ -15,6 +15,7 @@ import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import ServerConfigModal from '../components/ServerConfigModal';
 import * as Application from 'expo-application';
 import Icon from '../components/Icon';
+import { SectionErrorBoundary } from '../components/ScreenErrorBoundary';
 import { shareDiagnosticReport, sanitizeQueryKey } from '../services/diagnosticReportService';
 import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
@@ -202,77 +203,79 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             checkServerConnection={() => refetchConnection().then((result) => !!result.data)}
           />
 
-          <TouchableOpacity
-            className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-            onPress={() => navigation.navigate('Sync')}
-            activeOpacity={0.7}
-          >
-            <Text className="text-base font-semibold text-text-primary">Sync</Text>
-            <Icon name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
-
-          {isConnected && (
+          <SectionErrorBoundary sectionName="Settings">
             <TouchableOpacity
               className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-              onPress={() => navigation.navigate('CalorieSettings')}
+              onPress={() => navigation.navigate('Sync')}
               activeOpacity={0.7}
             >
-              <Text className="text-base font-semibold text-text-primary">Calorie Settings</Text>
+              <Text className="text-base font-semibold text-text-primary">Sync</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </TouchableOpacity>
-          )}
 
-          {isConnected && (
+            {isConnected && (
+              <TouchableOpacity
+                className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+                onPress={() => navigation.navigate('CalorieSettings')}
+                activeOpacity={0.7}
+              >
+                <Text className="text-base font-semibold text-text-primary">Calorie Settings</Text>
+                <Icon name="chevron-forward" size={20} color="#999" />
+              </TouchableOpacity>
+            )}
+
+            {isConnected && (
+              <TouchableOpacity
+                className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+                onPress={() => navigation.navigate('FoodSettings')}
+                activeOpacity={0.7}
+              >
+                <Text className="text-base font-semibold text-text-primary">Food Search Settings</Text>
+                <Icon name="chevron-forward" size={20} color="#999" />
+              </TouchableOpacity>
+            )}
+
+            <AppearanceSettings />
             <TouchableOpacity
               className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-              onPress={() => navigation.navigate('FoodSettings')}
+              onPress={() => navigation.navigate('Logs')}
               activeOpacity={0.7}
             >
-              <Text className="text-base font-semibold text-text-primary">Food Search Settings</Text>
+              <Text className="text-base font-semibold text-text-primary">View Logs</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </TouchableOpacity>
-          )}
+            <TouchableOpacity
+              className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+              onPress={handleShareDiagnosticReport}
+              activeOpacity={0.7}
+              disabled={isSharing}
+            >
+              <Text className="text-base font-semibold text-text-primary">Share Diagnostic Report</Text>
+              {isSharing ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <Icon name="share" size={20} color="#999" />
+              )}
+            </TouchableOpacity>
+            <Text className="text-text-secondary text-sm px-2 mb-4 mt-2">
+              Exports a local diagnostic report (app version, sync status, logs).{'\n'}
+              No personal health or food data is included. Nothing is sent automatically.
+            </Text>
 
-          <AppearanceSettings />
-          <TouchableOpacity
-            className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-            onPress={() => navigation.navigate('Logs')}
-            activeOpacity={0.7}
-          >
-            <Text className="text-base font-semibold text-text-primary">View Logs</Text>
-            <Icon name="chevron-forward" size={20} color="#999" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            className="bg-surface rounded-xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-            onPress={handleShareDiagnosticReport}
-            activeOpacity={0.7}
-            disabled={isSharing}
-          >
-            <Text className="text-base font-semibold text-text-primary">Share Diagnostic Report</Text>
-            {isSharing ? (
-              <ActivityIndicator size="small" />
-            ) : (
-              <Icon name="share" size={20} color="#999" />
-            )}
-          </TouchableOpacity>
-          <Text className="text-text-secondary text-sm px-2 mb-4 mt-2">
-            Exports a local diagnostic report (app version, sync status, logs).{'\n'}
-            No personal health or food data is included. Nothing is sent automatically.
-          </Text>
-
-          {__DEV__ &&
-            (Constants.expoConfig?.extra?.APP_VARIANT === 'development' ||
-              Constants.expoConfig?.extra?.APP_VARIANT === 'dev') && (
-              <DevTools />
-            )}
+            {__DEV__ &&
+              (Constants.expoConfig?.extra?.APP_VARIANT === 'development' ||
+                Constants.expoConfig?.extra?.APP_VARIANT === 'dev') && (
+                <DevTools />
+              )}
 
 
-          <View className="items-center z-100">
-            <Button variant="ghost" onPress={() => setShowPrivacyModal(true)} className="p-0 mb-2">
-              Privacy Policy
-            </Button>
-            <Text className="text-text-muted">Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
-          </View>
+            <View className="items-center z-100">
+              <Button variant="ghost" onPress={() => setShowPrivacyModal(true)} className="p-0 mb-2">
+                Privacy Policy
+              </Button>
+              <Text className="text-text-muted">Version {Application.nativeApplicationVersion} ({Application.nativeBuildVersion})</Text>
+            </View>
+          </SectionErrorBoundary>
         </View>
       </ScrollView>
 

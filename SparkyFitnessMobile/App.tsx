@@ -56,12 +56,38 @@ import type { RootStackParamList, TabParamList } from './src/types/navigation';
 import AddSheet, { type AddSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
 import CustomTabBar from './src/components/CustomTabBar';
+import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 const EmptyScreen = () => null;
+
+// Tab screens — no Go Back (tab bar provides navigation)
+const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
+const SafeDiary = withErrorBoundary(DiaryScreen, 'Diary');
+const SafeWorkouts = withErrorBoundary(WorkoutsScreen, 'Workouts');
+
+// Onboarding — no Go Back (initial route for new users)
+const SafeOnboarding = withErrorBoundary(OnboardingScreen, 'Onboarding');
+
+// Stack screens — with Go Back
+const SafeFoodSearch = withErrorBoundary(FoodSearchScreen, 'FoodSearch', { canGoBack: true });
+const SafeFoodEntryAdd = withErrorBoundary(FoodEntryAddScreen, 'FoodEntryAdd', { canGoBack: true });
+const SafeFoodForm = withErrorBoundary(FoodFormScreen, 'FoodForm', { canGoBack: true });
+const SafeFoodScan = withErrorBoundary(FoodScanScreen, 'FoodScan', { canGoBack: true });
+const SafeFoodEntryView = withErrorBoundary(FoodEntryViewScreen, 'FoodEntryView', { canGoBack: true });
+const SafeExerciseSearch = withErrorBoundary(ExerciseSearchScreen, 'ExerciseSearch', { canGoBack: true });
+const SafePresetSearch = withErrorBoundary(PresetSearchScreen, 'PresetSearch', { canGoBack: true });
+const SafeWorkoutAdd = withErrorBoundary(WorkoutAddScreen, 'WorkoutAdd', { canGoBack: true });
+const SafeActivityAdd = withErrorBoundary(ActivityAddScreen, 'ActivityAdd', { canGoBack: true });
+const SafeWorkoutDetail = withErrorBoundary(WorkoutDetailScreen, 'WorkoutDetail', { canGoBack: true });
+const SafeActivityDetail = withErrorBoundary(ActivityDetailScreen, 'ActivityDetail', { canGoBack: true });
+const SafeLogs = withErrorBoundary(LogScreen, 'Logs', { canGoBack: true });
+const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
+const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
+const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
 
 function AppContent() {
   const { theme } = useUniwind();
@@ -312,7 +338,7 @@ function AppContent() {
         <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
           <Stack.Screen
             name="Onboarding"
-            component={OnboardingScreen}
+            component={SafeOnboarding}
             options={{ gestureEnabled: false }}
           />
           <Stack.Screen name="Tabs" options={{ gestureEnabled: false }}>
@@ -324,8 +350,8 @@ function AppContent() {
                 }}
                 tabBar={(props) => <CustomTabBar {...props} />}
               >
-                <Tab.Screen name="Dashboard" component={DashboardScreen} />
-                <Tab.Screen name="Diary" component={DiaryScreen} />
+                <Tab.Screen name="Dashboard" component={SafeDashboard} />
+                <Tab.Screen name="Diary" component={SafeDiary} />
                 <Tab.Screen
                   name="Add"
                   component={EmptyScreen}
@@ -337,14 +363,14 @@ function AppContent() {
                     },
                   })}
                 />
-                <Tab.Screen name="Workouts" component={WorkoutsScreen} />
+                <Tab.Screen name="Workouts" component={SafeWorkouts} />
                 <Tab.Screen name="Settings" component={SettingsScreen} />
               </Tab.Navigator>
             )}
           </Stack.Screen>
           <Stack.Screen
             name="FoodSearch"
-            component={FoodSearchScreen}
+            component={SafeFoodSearch}
             options={{
               presentation: 'modal',
               headerShown: false,
@@ -354,7 +380,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="FoodEntryAdd"
-            component={FoodEntryAddScreen}
+            component={SafeFoodEntryAdd}
             options={{
               presentation: 'modal',
               headerShown: false,
@@ -364,7 +390,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="FoodForm"
-            component={FoodFormScreen}
+            component={SafeFoodForm}
             options={{
               presentation: 'modal',
               headerShown: false,
@@ -374,7 +400,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="FoodScan"
-            component={FoodScanScreen}
+            component={SafeFoodScan}
             options={{
               presentation: 'modal',
               headerShown: false,
@@ -384,7 +410,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="FoodEntryView"
-            component={FoodEntryViewScreen}
+            component={SafeFoodEntryView}
             options={{
               headerShown: false,
               gestureEnabled: true,
@@ -393,7 +419,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="ExerciseSearch"
-            component={ExerciseSearchScreen}
+            component={SafeExerciseSearch}
             options={{
               headerShown: false,
               presentation: 'modal',
@@ -401,7 +427,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="PresetSearch"
-            component={PresetSearchScreen}
+            component={SafePresetSearch}
             options={{
               headerShown: false,
               gestureEnabled: true,
@@ -410,7 +436,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="WorkoutAdd"
-            component={WorkoutAddScreen}
+            component={SafeWorkoutAdd}
             options={{
               headerShown: false,
               gestureEnabled: true,
@@ -419,7 +445,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="ActivityAdd"
-            component={ActivityAddScreen}
+            component={SafeActivityAdd}
             options={{
               headerShown: false,
               gestureEnabled: true,
@@ -428,7 +454,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="WorkoutDetail"
-            component={WorkoutDetailScreen}
+            component={SafeWorkoutDetail}
             options={{
               headerShown: false,
               gestureEnabled: true,
@@ -437,7 +463,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="ActivityDetail"
-            component={ActivityDetailScreen}
+            component={SafeActivityDetail}
             options={{
               headerShown: false,
               gestureEnabled: true,
@@ -446,7 +472,7 @@ function AppContent() {
           />
           <Stack.Screen
             name="Logs"
-            component={LogScreen}
+            component={SafeLogs}
             options={{
               headerShown: true,
               title: 'Logs',
@@ -455,21 +481,21 @@ function AppContent() {
           />
           <Stack.Screen
             name="Sync"
-            component={SyncScreen}
+            component={SafeSync}
             options={{
               headerShown: false,
             }}
           />
           <Stack.Screen
             name="CalorieSettings"
-            component={CalorieSettingsScreen}
+            component={SafeCalorieSettings}
             options={{
               headerShown: false,
             }}
           />
           <Stack.Screen
             name="FoodSettings"
-            component={FoodSettingsScreen}
+            component={SafeFoodSettings}
             options={{
               headerShown: false,
             }}
