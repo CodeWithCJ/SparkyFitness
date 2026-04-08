@@ -58,7 +58,8 @@ class TandoorService {
           );
         } catch (jsonError) {
           throw new Error(
-            `Search failed: ${response.status} ${response.statusText} - ${errorText}`
+            `Search failed: ${response.status} ${response.statusText} - ${errorText}`,
+            { cause: jsonError }
           );
         }
       }
@@ -85,7 +86,7 @@ class TandoorService {
           'debug',
           `Tandoor search response type: ${topType}, keys: ${JSON.stringify(keys)}`
         );
-      } catch (e) {
+      } catch {
         log('debug', 'Tandoor search response could not be inspected');
       }
 

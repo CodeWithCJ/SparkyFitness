@@ -1,15 +1,7 @@
 const { log } = require('../../config/logging');
 const axios = require('axios');
 const externalProviderRepository = require('../../models/externalProviderRepository');
-const exerciseEntryRepository = require('../../models/exerciseEntry');
-const activityDetailsRepository = require('../../models/activityDetailsRepository');
-const exerciseRepository = require('../../models/exercise');
-const moment = require('moment');
-const {
-  encrypt,
-  decrypt,
-  ENCRYPTION_KEY,
-} = require('../../security/encryption');
+const { encrypt, ENCRYPTION_KEY } = require('../../security/encryption');
 
 const GARMIN_MICROSERVICE_URL =
   process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
@@ -32,7 +24,8 @@ async function garminLogin(userId, email, password) {
       error.response ? error.response.data : error.message
     );
     throw new Error(
-      `Failed to login to Garmin: ${error.response ? error.response.data.detail : error.message}`
+      `Failed to login to Garmin: ${error.response ? error.response.data.detail : error.message}`,
+      { cause: error }
     );
   }
 }
@@ -55,7 +48,8 @@ async function garminResumeLogin(userId, clientState, mfaCode) {
       error.response ? error.response.data : error.message
     );
     throw new Error(
-      `Failed to complete Garmin MFA: ${error.response ? error.response.data.detail : error.message}`
+      `Failed to complete Garmin MFA: ${error.response ? error.response.data.detail : error.message}`,
+      { cause: error }
     );
   }
 }
@@ -187,7 +181,7 @@ async function handleGarminTokens(userId, tokensB64) {
       errorMessage =
         'Failed to handle Garmin tokens: Encryption key (SPARKY_FITNESS_API_ENCRYPTION_KEY) has an invalid length. Expected 64 hex characters or 44 Base64 characters. Update your environment variable and try again.';
     }
-    throw new Error(errorMessage);
+    throw new Error(errorMessage, { cause: error });
   }
 }
 
@@ -232,7 +226,8 @@ async function syncGarminHealthAndWellness(
       error.response ? error.response.data : error.message
     );
     throw new Error(
-      `Failed to fetch Garmin health and wellness data: ${error.response ? error.response.data.detail : error.message}`
+      `Failed to fetch Garmin health and wellness data: ${error.response ? error.response.data.detail : error.message}`,
+      { cause: error }
     );
   }
 }
@@ -285,7 +280,8 @@ async function fetchGarminActivitiesAndWorkouts(
       error.response ? error.response.data : error.message
     );
     throw new Error(
-      `Failed to fetch Garmin activities and workouts: ${error.response ? error.response.data.detail : error.message}`
+      `Failed to fetch Garmin activities and workouts: ${error.response ? error.response.data.detail : error.message}`,
+      { cause: error }
     );
   }
 }

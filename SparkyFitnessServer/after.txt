@@ -1,0 +1,31 @@
+      ✕ should reject requests with no origin for security (2 ms)
+      ✕ should allow up to 3 requests per 10 seconds on /sign-in/email (2 ms)
+      ✕ should block the 4th request on /sign-in/email
+      ✕ should apply the same limit to /sign-up/email
+      ✕ should allow many requests since it falls under the global 100/60s limit
+      ✕ should allow up to 100 requests per minute on uncustomized paths
+      ✕ should block the 101st request on uncustomized paths (1 ms)
+      ✕ should track limits independently for different IPs
+      ✕ returns a water intake entry by ID (13 ms)
+      ✕ returns 404 when entry does not exist (6 ms)
+      ✕ returns 403 when access is forbidden (1 ms)
+      ✕ updates a water intake entry and returns 200 (1 ms)
+      ✕ returns 404 when entry does not exist (2 ms)
+      ✕ returns 404 with not authorized message (1 ms)
+      ✕ returns 403 when access is forbidden (1 ms)
+      ✕ deletes a water intake entry and returns 200 (2 ms)
+      ✕ returns 404 when entry does not exist (1 ms)
+      ✕ returns 404 with not authorized message (1 ms)
+      ✕ returns 403 when access is forbidden (1 ms)
+        ✕ should accept request with omitted container_id (5 ms)
+      ✕ should pass userId to repository functions (1 ms)
+      ✕ should pass userId to repository functions (1 ms)
+      ✕ should pass userId to repository functions
+    ✕ logs timezone fallback by type (2 ms)
+    ✕ accepts preset-based create payloads (156 ms)
+    ✕ accepts freeform inline create payloads (148 ms)
+    ✕ rejects create payloads that provide both workout sources (133 ms)
+    ✕ rejects create payloads that provide neither workout source (95 ms)
+    ✕ rejects empty exercise arrays (74 ms)
+    ✕ accepts nullable fields in update payloads (71 ms)
+    ✕ rejects empty update payloads (70 ms)

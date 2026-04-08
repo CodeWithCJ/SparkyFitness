@@ -66,13 +66,11 @@ async function getGlobalSettings() {
 async function saveGlobalSettings(settings) {
   const client = await getSystemClient(); // System-level operation
   try {
-    // Default allow_user_ai_config to true if not provided
     const allowUserAiConfig =
       settings.allow_user_ai_config !== undefined
         ? settings.allow_user_ai_config
         : true;
-
-    const result = await client.query(
+    await client.query(
       `UPDATE global_settings
              SET enable_email_password_login = $1, is_oidc_active = $2, mfa_mandatory = $3, allow_user_ai_config = COALESCE($4, allow_user_ai_config, true)
              WHERE id = 1

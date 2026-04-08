@@ -1,11 +1,10 @@
 const preferenceRepository = require('../models/preferenceRepository');
-const userRepository = require('../models/userRepository');
 const { log } = require('../config/logging');
 const { isValidTimeZone } = require('@workspace/shared');
 
 async function validateTimezone(preferenceData) {
   if (
-    preferenceData.timezone != null &&
+    preferenceData.timezone !== null &&
     !isValidTimeZone(preferenceData.timezone)
   ) {
     throw Object.assign(

@@ -1,5 +1,4 @@
 const { log } = require('../../config/logging');
-const { normalizeBarcode } = require('../../utils/foodUtils');
 
 // Cache tokens by scope
 const tokensByScope = new Map();
@@ -182,7 +181,8 @@ async function getFatSecretAccessToken(
       error
     );
     throw new Error(
-      'Network error during FatSecret authentication. Please try again.'
+      'Network error during FatSecret authentication. Please try again.',
+      { cause: error }
     );
   }
 }

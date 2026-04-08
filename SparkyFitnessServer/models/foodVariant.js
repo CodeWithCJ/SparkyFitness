@@ -1,11 +1,9 @@
 const { getClient } = require('../db/poolManager');
-const foodDb = require('./food'); // Import foodDb to get food owner
 const { log } = require('../config/logging');
 const format = require('pg-format');
 const { sanitizeGlycemicIndex } = require('./food');
 
 async function createFoodVariant(variantData, userId) {
-  const foodOwnerId = await foodDb.getFoodOwnerId(variantData.food_id, userId);
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -95,7 +93,6 @@ async function getFoodVariantsByFoodId(foodId, userId) {
 
 async function updateFoodVariant(id, variantData, userId) {
   // For update operations, we need the user_id of the food owner to ensure RLS is applied correctly.
-  const foodOwnerId = await foodDb.getFoodOwnerId(variantData.food_id, userId);
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -170,7 +167,6 @@ async function updateFoodVariant(id, variantData, userId) {
 
 async function deleteFoodVariant(id, userId) {
   // For delete operations, we need the user_id of the food owner to ensure RLS is applied correctly.
-  const foodOwnerId = await foodDb.getFoodOwnerId(id, userId); // Assuming 'id' here is the variant ID
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -185,10 +181,6 @@ async function deleteFoodVariant(id, userId) {
 
 async function bulkCreateFoodVariants(variantsData, userId) {
   // For bulk create, we need the user_id of the food owner. Assuming all variants belong to the same food.
-  const foodOwnerId =
-    variantsData.length > 0
-      ? await foodDb.getFoodOwnerId(variantsData[0].food_id, userId)
-      : null;
   const client = await getClient(userId); // User-specific operation
   try {
     const query = `

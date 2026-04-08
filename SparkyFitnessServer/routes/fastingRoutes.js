@@ -6,7 +6,6 @@ const { log } = require('../config/logging');
 const { loadUserTimezone } = require('../utils/timezoneLoader');
 const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
-const { canAccessUserData } = require('../utils/permissionUtils');
 
 /**
  * @swagger
@@ -191,7 +190,7 @@ router.post('/start', async (req, res) => {
 
 router.post('/end', async (req, res) => {
   const userId = req.userId;
-  const { id, start_time, end_time, weight, mood } = req.body; // mood: { value, notes }
+  const { id, start_time, end_time, mood } = req.body; // mood: { value, notes }
 
   if (!id || !end_time) {
     return res.status(400).json({ error: 'Fast ID and end time are required' });
@@ -212,7 +211,7 @@ router.post('/end', async (req, res) => {
         .json({ error: 'start_time must be before end_time' });
     }
 
-    if (mood && mood.value != null) {
+    if (mood && mood.value !== null) {
       // Create mood entry, but we will not store mood_entry_id on fasting_logs (separate table only)
       await moodRepository.createOrUpdateMoodEntry(
         userId,

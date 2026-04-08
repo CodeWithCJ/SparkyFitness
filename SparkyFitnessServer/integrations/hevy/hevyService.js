@@ -1,15 +1,7 @@
 // SparkyFitnessServer/integrations/hevy/hevyService.js
-
-const fs = require('fs');
-const path = require('path');
-const moment = require('moment');
 const axios = require('axios');
-const { getClient, getSystemClient } = require('../../db/poolManager');
-const {
-  encrypt,
-  decrypt,
-  ENCRYPTION_KEY,
-} = require('../../security/encryption');
+const { getSystemClient } = require('../../db/poolManager');
+const { decrypt, ENCRYPTION_KEY } = require('../../security/encryption');
 const { log } = require('../../config/logging');
 const { loadRawBundle } = require('../../utils/diagnosticLogger');
 const hevyDataProcessor = require('./hevyDataProcessor');

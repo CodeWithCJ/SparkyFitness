@@ -8,8 +8,9 @@ const measurementService = require('./measurementService'); // Import measuremen
 const moodRepository = require('../models/moodRepository'); // Import moodRepository
 const garminConnectService = require('../integrations/garminconnect/garminConnectService');
 const garminMeasurementMapping = require('../integrations/garminconnect/garminMeasurementMapping');
+const moment = require('moment');
 const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { todayInZone, instantToDay, addDays } = require('@workspace/shared');
+const { todayInZone, addDays } = require('@workspace/shared');
 
 async function processActivitiesAndWorkouts(
   userId,
@@ -221,7 +222,6 @@ async function processGarminWorkoutSession(
 
   // Data from sessionData should already be parsed objects if coming from the microservice
   const details = sessionData.details || {};
-  const hrInTimezones = sessionData.hr_in_timezones || [];
   const activityDetailMetrics = details.activityDetailMetrics || [];
   const metricDescriptors = details.metricDescriptors || [];
 
@@ -279,7 +279,6 @@ async function processGarminWorkoutSession(
     const groupedExercises = [];
     let currentGroup = null;
     let totalActiveDurationSeconds = 0;
-    let lastActiveSet = null; // To store the last active set for assigning rest time
     const activeSetsWithStartAndEndTimes = []; // Store active sets with their calculated start and end times
 
     // First pass to group sets by exercise and calculate total active duration
@@ -385,7 +384,6 @@ async function processGarminWorkoutSession(
             if (!currentGroup.endTime || setEndTime > currentGroup.endTime) {
               currentGroup.endTime = setEndTime;
             }
-            lastActiveSet = currentSet; // Store this active set for potential rest time assignment
 
             // Store active set details for later rest time calculation
             activeSetsWithStartAndEndTimes.push({

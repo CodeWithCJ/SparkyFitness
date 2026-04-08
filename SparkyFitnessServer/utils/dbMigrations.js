@@ -75,7 +75,7 @@ async function applyMigrations() {
     log('info', 'Permissions granted to application user.');
   } catch (error) {
     log('error', 'Error applying migrations:', error);
-    process.exit(1); // Exit if migrations fail
+    throw error;
   } finally {
     client.release();
   }

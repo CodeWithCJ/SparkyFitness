@@ -1,7 +1,5 @@
 const chatService = require('../services/chatService');
 const chatRepository = require('../models/chatRepository');
-const userRepository = require('../models/userRepository');
-const measurementRepository = require('../models/measurementRepository');
 const { log } = require('../config/logging');
 
 // Mock dependencies

@@ -13,7 +13,7 @@ async function applyRlsPolicies() {
     log('info', 'Successfully applied all RLS policies.');
   } catch (error) {
     log('error', 'Error applying RLS policies:', error);
-    process.exit(1); // Exit if RLS policies cannot be applied
+    throw error;
   } finally {
     client.release();
   }

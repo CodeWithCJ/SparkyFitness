@@ -3,7 +3,6 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware'); // Import the new middleware
 const measurementService = require('../services/measurementService');
-const waterContainerRepository = require('../models/waterContainerRepository'); // Import waterContainerRepository
 const { log } = require('../config/logging');
 const {
   UpsertWaterIntakeBodySchema,
@@ -57,7 +56,7 @@ router.post(
     if (rawBody.startsWith('[') && rawBody.endsWith(']')) {
       try {
         healthDataArray = JSON.parse(rawBody);
-      } catch (e) {
+      } catch {
         return res.status(400).json({ error: 'Invalid JSON array format.' });
       }
     } else if (rawBody.includes('}{')) {
@@ -81,7 +80,7 @@ router.post(
     } else {
       try {
         healthDataArray.push(JSON.parse(rawBody));
-      } catch (e) {
+      } catch {
         return res.status(400).json({ error: 'Invalid single JSON format.' });
       }
     }
@@ -240,11 +239,12 @@ router.post(
 
     // Check permission if explicitly management for another user
     if (user_id && user_id !== req.userId) {
-      const hasPermission = await canAccessUserData(
-        user_id,
-        'checkin',
-        req.authenticatedUserId || req.userId
-      ); // Corrected to 'checkin'
+      const hasPermission =
+        await require('../utils/permissionUtils').canAccessUserData(
+          user_id,
+          'checkin',
+          req.authenticatedUserId || req.userId
+        ); // Corrected to 'checkin'
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
 
@@ -618,11 +618,12 @@ router.get(
 
     // Permission check if explicit userId is provided
     if (userId && userId !== req.userId) {
-      const hasPermission = await canAccessUserData(
-        userId,
-        'checkin',
-        req.authenticatedUserId || req.userId
-      ); // Corrected to 'checkin'
+      const hasPermission =
+        await require('../utils/permissionUtils').canAccessUserData(
+          userId,
+          'checkin',
+          req.authenticatedUserId || req.userId
+        ); // Corrected to 'checkin'
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
 

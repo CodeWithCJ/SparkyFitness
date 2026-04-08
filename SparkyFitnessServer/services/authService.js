@@ -1,10 +1,8 @@
 const bcrypt = require('bcrypt');
 
 const { v4: uuidv4 } = require('uuid');
-const crypto = require('crypto');
 const userRepository = require('../models/userRepository');
 const familyAccessRepository = require('../models/familyAccessRepository');
-const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
 const { log } = require('../config/logging');
 const { canAccessUserData } = require('../utils/permissionUtils');
 

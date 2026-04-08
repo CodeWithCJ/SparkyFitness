@@ -1,9 +1,8 @@
-const { getClient, getSystemClient } = require('../db/poolManager');
+const { getClient } = require('../db/poolManager');
 const format = require('pg-format');
 const { log } = require('../config/logging');
 const exerciseRepository = require('./exercise');
 const activityDetailsRepository = require('./activityDetailsRepository');
-const exercisePresetEntryRepository = require('./exercisePresetEntryRepository');
 
 async function upsertExerciseEntryData(
   userId,
@@ -14,7 +13,7 @@ async function upsertExerciseEntryData(
 ) {
   log('info', 'upsertExerciseEntryData received date parameter:', date);
   const client = await getClient(userId);
-  let existingEntry = null;
+  let existingEntry;
   let exerciseName = 'Unknown Exercise'; // Default value
 
   try {
@@ -48,7 +47,8 @@ async function upsertExerciseEntryData(
       error
     );
     throw new Error(
-      `Failed to check existing active calories exercise entry or fetch exercise name: ${error.message}`
+      `Failed to check existing active calories exercise entry or fetch exercise name: ${error.message}`,
+      { cause: error }
     );
   } finally {
     client.release();
@@ -76,7 +76,8 @@ async function upsertExerciseEntryData(
     } catch (error) {
       log('error', 'Error updating active calories exercise entry:', error);
       throw new Error(
-        `Failed to update active calories exercise entry: ${error.message}`
+        `Failed to update active calories exercise entry: ${error.message}`,
+        { cause: error }
       );
     } finally {
       updateClient.release();
@@ -106,7 +107,8 @@ async function upsertExerciseEntryData(
     } catch (error) {
       log('error', 'Error inserting active calories exercise entry:', error);
       throw new Error(
-        `Failed to insert active calories exercise entry: ${error.message}`
+        `Failed to insert active calories exercise entry: ${error.message}`,
+        { cause: error }
       );
     } finally {
       insertClient.release();
@@ -308,7 +310,7 @@ async function _updateExerciseEntryWithClient(
     mergedData.images = exercise.images;
   }
 
-  const result = await client.query(
+  await client.query(
     `UPDATE exercise_entries SET
       exercise_id = $1,
       duration_minutes = $2,
@@ -620,7 +622,7 @@ async function updateExerciseEntry(id, userId, actingUserId, updateData) {
   try {
     await client.query('BEGIN');
 
-    const result = await client.query(
+    await client.query(
       `UPDATE exercise_entries SET
         exercise_id = COALESCE($1, exercise_id),
         duration_minutes = COALESCE($2, duration_minutes),

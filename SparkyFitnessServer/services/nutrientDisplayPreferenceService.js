@@ -303,7 +303,7 @@ async function resetNutrientDisplayPreference(userId, viewGroup, platform) {
 
   const allNutrientsDynamic = await getAllNutrients(userId);
 
-  let defaultVisibleNutrients = [];
+  let defaultVisibleNutrients;
   if (viewGroup === 'summary' || viewGroup === 'quick_info') {
     defaultVisibleNutrients = defaultNutrients; // Use the smaller default set for these
   } else {

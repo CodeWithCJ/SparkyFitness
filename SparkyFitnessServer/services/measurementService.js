@@ -152,7 +152,6 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   cycling_ftp: 'W',
 };
 const userRepository = require('../models/userRepository');
-const exerciseRepository = require('../models/exerciseRepository'); // For active calories
 const sleepRepository = require('../models/sleepRepository'); // Import sleepRepository
 // require concrete modules to avoid circular export issues for exercise functions used at runtime
 const exerciseDb = require('../models/exercise');
@@ -236,7 +235,7 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
   }
 
   if (
-    entry.record_utc_offset_minutes != null &&
+    entry.record_utc_offset_minutes !== null &&
     typeof entry.record_utc_offset_minutes === 'number'
   ) {
     return {
@@ -406,7 +405,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       timestamp,
       source = 'manual',
       dataType,
-      measurementType,
     } = dataEntry; // Added source and dataType with default
 
     // Check for required fields. Note: 'value' is not required for complex types like SleepSession, Stress, Workout.
@@ -432,10 +430,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       continue;
     }
 
-    let parsedDate;
-    let entryTimestamp = null;
-    let entryHour = null;
-
     const resolved = resolveHealthEntryDate(dataEntry, tz);
     if (!resolved) {
       const dateToParse = date || dataEntry.entry_date || timestamp;
@@ -453,15 +447,16 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
     const entryType = dataEntry.type || 'unknown';
     if (
       dataEntry.record_timezone ||
-      dataEntry.record_utc_offset_minutes != null
+      (dataEntry.record_utc_offset_minutes !== null &&
+        dataEntry.record_utc_offset_minutes !== undefined)
     ) {
       tzMetadataByType[entryType] = (tzMetadataByType[entryType] || 0) + 1;
     } else {
       tzFallbackByType[entryType] = (tzFallbackByType[entryType] || 0) + 1;
     }
-    parsedDate = resolved.parsedDate;
-    entryTimestamp = resolved.entryTimestamp;
-    entryHour = resolved.entryHour;
+    const parsedDate = resolved.parsedDate;
+    const entryTimestamp = resolved.entryTimestamp;
+    const entryHour = resolved.entryHour;
 
     try {
       let result;
@@ -470,7 +465,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       // Handle specific types first, then fall back to custom measurements
       switch (type) {
         case 'step':
-        case 'steps':
+        case 'steps': {
           const stepValue = parseInt(value, 10);
           if (isNaN(stepValue) || !Number.isInteger(stepValue)) {
             errors.push({
@@ -487,7 +482,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
-        case 'water':
+        }
+        case 'water': {
           const waterValue = parseInt(value, 10);
           if (isNaN(waterValue) || !Number.isInteger(waterValue)) {
             errors.push({
@@ -505,9 +501,10 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
+        }
         case 'Active Calories':
         case 'active_calories':
-        case 'ActiveCaloriesBurned':
+        case 'ActiveCaloriesBurned': {
           const activeCaloriesValue = parseFloat(value);
           if (isNaN(activeCaloriesValue) || activeCaloriesValue < 0) {
             errors.push({
@@ -531,8 +528,9 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
+        }
         case 'weight':
-        case 'body_fat_percentage':
+        case 'body_fat_percentage': {
           const numericValue = parseFloat(value);
           if (isNaN(numericValue) || numericValue <= 0) {
             errors.push({
@@ -550,7 +548,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
-        case 'SleepSession':
+        }
+        case 'SleepSession': {
           try {
             const stageEvents = isHealthConnectSleepSource(source)
               ? sanitizeHealthConnectSleepStageEvents(dataEntry.stage_events)
@@ -603,8 +602,9 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             });
           }
           break;
-        case 'Stress':
-          // Map incoming stress data to the existing custom measurement system
+        }
+        // Map incoming stress data to the existing custom measurement system
+        case 'Stress': {
           try {
             const stressCategory = await getOrCreateCustomCategory(
               userId,
@@ -645,8 +645,9 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             });
           }
           break;
+        }
         case 'ExerciseSession':
-        case 'Workout':
+        case 'Workout': {
           // Redirect to processMobileHealthData logic or duplicate it here?
           // Since processMobileHealthData has the logic, let's just use the same logic here
           // OR call processMobileHealthData for a single entry?
@@ -718,7 +719,9 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             });
           }
           break;
-        case 'sleep_entry': // Handle structured sleep entry data (legacy/web)
+        }
+        case 'sleep_entry': {
+          // Handle structured sleep entry data (legacy/web)
           try {
             const sleepEntryResult = await processSleepEntry(
               userId,
@@ -742,7 +745,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             });
           }
           break;
-        default:
+        }
+        default: {
           // Handle as custom measurement
           // Use unit from payload (e.g. HealthConnect sends "unit") or default so UI does not show "N/A"
           const unitFromPayload = dataEntry.unit ?? dataEntry.measurementType;
@@ -801,6 +805,7 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
+        }
       }
     } catch (error) {
       log(
@@ -896,8 +901,8 @@ async function processMobileHealthData(
     }
 
     let parsedDate;
-    let entryTimestamp = null;
-    let entryHour = null;
+    let entryTimestamp;
+    let entryHour;
 
     try {
       const dateObj = new Date(timestamp);
@@ -919,7 +924,7 @@ async function processMobileHealthData(
     try {
       let result;
       switch (type) {
-        case 'water':
+        case 'water': {
           const waterValue = parseInt(value, 10);
           if (isNaN(waterValue) || !Number.isInteger(waterValue)) {
             errors.push({
@@ -937,7 +942,8 @@ async function processMobileHealthData(
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
-        case 'Stress':
+        }
+        case 'Stress': {
           // Map incoming stress data to the existing custom measurement system
           const stressCategory = await getOrCreateCustomCategory(
             userId,
@@ -967,7 +973,8 @@ async function processMobileHealthData(
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
-        case 'SleepSession':
+        }
+        case 'SleepSession': {
           const sleepEntryData = {
             entry_date: parsedDate,
             bedtime: bedtime ? new Date(bedtime) : new Date(timestamp),
@@ -991,8 +998,9 @@ async function processMobileHealthData(
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
+        }
         case 'ExerciseSession':
-        case 'Workout':
+        case 'Workout': {
           // Create/update exercises and exercise entries
           const exerciseName = activityType || `${source} Exercise`;
           let exercise = await exerciseDb.findExerciseByNameAndUserId(
@@ -1046,7 +1054,8 @@ async function processMobileHealthData(
             data: exerciseEntry,
           });
           break;
-        default:
+        }
+        default: {
           // Route unknown types through the custom measurement system
           // (mirrors processHealthData default case)
           const unitFromPayload =
@@ -1094,6 +1103,7 @@ async function processMobileHealthData(
           );
           processedResults.push({ type, status: 'success', data: result });
           break;
+        }
       }
     } catch (error) {
       log(
@@ -1695,12 +1705,7 @@ async function getCustomMeasurementsByDateRange(
   }
 }
 
-async function calculateSleepScore(
-  sleepEntryData,
-  stageEvents,
-  age = null,
-  gender = null
-) {
+async function calculateSleepScore(sleepEntryData, stageEvents, age = null) {
   const { duration_in_seconds, time_asleep_in_seconds } = sleepEntryData;
 
   if (!duration_in_seconds || duration_in_seconds <= 0) return 0;
@@ -1864,15 +1869,17 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
     `[processSleepEntry] Received sleepEntryData: ${JSON.stringify(sleepEntryData)}`
   );
   try {
-    let {
-      stage_events,
+    let stage_events = sleepEntryData.stage_events;
+
+    const {
+      stage_events: _stage_events,
       entry_date,
       bedtime,
       wake_time,
       duration_in_seconds,
-      time_asleep_in_seconds,
+      time_asleep_in_seconds: _time_asleep_in_seconds,
       source,
-      sleep_score: incomingSleepScore,
+      sleep_score: _incomingSleepScore,
       deep_sleep_seconds,
       light_sleep_seconds,
       rem_sleep_seconds,
@@ -1982,8 +1989,7 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
       bedtime,
       wake_time,
       duration_in_seconds,
-      sleep_score: incomingSleepScore,
-      entry_date, // Extract entry_date
+      entry_date,
       ...entryDetails
     } = updateData;
 

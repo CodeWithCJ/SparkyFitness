@@ -463,24 +463,6 @@ async function deleteCustomCategory(id, userId) {
   }
 }
 
-async function getCheckInMeasurementOwnerId(id, userId) {
-  // This function is problematic if 'id' is not the primary key
-  log(
-    'warn',
-    `[measurementRepository] getCheckInMeasurementOwnerId called with id: ${id}. This function might be problematic if 'id' is not the primary key for check_in_measurements.`
-  );
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
-  try {
-    const result = await client.query(
-      'SELECT user_id FROM check_in_measurements WHERE id = $1 AND user_id = $2',
-      [id, userId]
-    );
-    return result.rows[0]?.user_id;
-  } finally {
-    client.release();
-  }
-}
-
 async function getCustomCategoryOwnerId(id, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {

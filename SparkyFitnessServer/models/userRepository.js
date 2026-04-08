@@ -1,5 +1,4 @@
 const { getClient, getSystemClient } = require('../db/poolManager');
-const { log } = require('../config/logging'); // Import log
 
 async function createUser(userId, email, hashedPassword, full_name) {
   const client = await getSystemClient(); // System client for user creation
@@ -298,7 +297,7 @@ async function updateUserOidcLink(linkId, newOidcSub) {
   }
 }
 
-async function updatePasswordResetToken(userId, token, expires) {
+async function updatePasswordResetToken() {
   const client = await getSystemClient();
   try {
     // Legacy support: Better Auth uses its own system.

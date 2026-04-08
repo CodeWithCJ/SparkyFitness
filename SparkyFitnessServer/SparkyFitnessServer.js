@@ -9,16 +9,19 @@ loadSecrets();
 
 // Run pre-flight checks for essential environment variables
 const { runPreflightChecks } = require('./utils/preflightChecks');
-runPreflightChecks();
+try {
+  runPreflightChecks();
+} catch (error) {
+  process.exitCode = 1;
+  throw error;
+}
 
 const express = require('express');
 const cors = require('cors'); // Added this line
 const cookieParser = require('cookie-parser');
-const { getRawOwnerPool, endPool } = require('./db/poolManager');
+const { endPool } = require('./db/poolManager');
 const { log } = require('./config/logging');
-const { getDefaultModel } = require('./ai/config');
 const { authenticate } = require('./middleware/authMiddleware');
-const onBehalfOfMiddleware = require('./middleware/onBehalfOfMiddleware'); // Import the new middleware
 const foodRoutes = require('./routes/foodRoutes');
 const v2FoodRoutes = require('./routes/v2/foodRoutes');
 const v2ExerciseEntryRoutes = require('./routes/v2/exerciseEntryRoutes');
@@ -64,7 +67,6 @@ const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboard
 const customNutrientRoutes = require('./routes/customNutrientRoutes'); // Import custom nutrient routes
 const { applyMigrations } = require('./utils/dbMigrations');
 const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
-const { grantPermissions } = require('./db/grantPermissions');
 const waterContainerRoutes = require('./routes/waterContainerRoutes');
 const waterIntakeRoutesV2 = require('./routes/v2/waterIntakeRoutes');
 const backupRoutes = require('./routes/backupRoutes'); // Import backup routes
@@ -76,8 +78,6 @@ const {
   applyRetentionPolicy,
 } = require('./services/backupService'); // Import backup service
 const externalProviderRepository = require('./models/externalProviderRepository'); // Import externalProviderRepository
-const withingsService = require('./integrations/withings/withingsService'); // Import withingsService
-const garminConnectService = require('./integrations/garminconnect/garminConnectService'); // Import garminConnectService
 const garminService = require('./services/garminService'); // Import garminService
 const fitbitService = require('./services/fitbitService'); // Import fitbitService
 const polarService = require('./services/polarService'); // Import polarService
@@ -86,7 +86,6 @@ const dailySummaryRoutes = require('./routes/dailySummaryRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const mealTypeRoutes = require('./routes/mealTypeRoutes');
 const swaggerUi = require('swagger-ui-express');
-const swaggerJsdoc = require('swagger-jsdoc');
 const redoc = require('redoc-express');
 const swaggerSpecs = require('./config/swagger');
 const { createCorsOriginChecker } = require('./utils/corsHelper');
@@ -119,7 +118,7 @@ app.use(
     const origin = req.header('Origin');
     originChecker(
       origin,
-      (err, allowed) => {
+      (_err, allowed) => {
         callback(null, {
           origin: allowed,
           methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -191,7 +190,7 @@ app.use(async (req, res, next) => {
 });
 
 // Log all incoming requests - AFTER auth to see what falls through
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   log(
     'info',
     `Incoming request: ${req.method} ${req.originalUrl} (Path: ${req.path})`
@@ -244,7 +243,7 @@ app.get(
     '/api/uploads/exercises/:exerciseId/:imageFileName',
     '/uploads/exercises/:exerciseId/:imageFileName',
   ],
-  async (req, res, next) => {
+  async (req, res, _next) => {
     const { exerciseId, imageFileName } = req.params;
     const localImagePath = path.join(
       __dirname,
@@ -330,7 +329,7 @@ app.use((req, res, next) => {
 });
 
 // Test route
-app.get('/api/ping', (req, res) =>
+app.get('/api/ping', (_req, res) =>
   res.json({ status: 'ok', time: new Date().toISOString() })
 );
 
@@ -410,8 +409,8 @@ app.get(
   '/api/api-docs/redoc',
   redoc({ title: 'API Docs', specUrl: '/api/api-docs/json' })
 );
-app.get('/api/api-docs/json', (req, res) => res.json(swaggerSpecs));
-app.get('/api/api-docs', (req, res) => res.redirect('/api/api-docs/swagger'));
+app.get('/api/api-docs/json', (_req, res) => res.json(swaggerSpecs));
+app.get('/api/api-docs', (_req, res) => res.redirect('/api/api-docs/swagger'));
 
 // Backup scheduling
 const scheduleBackups = async () => {
@@ -614,12 +613,14 @@ applyMigrations()
         } catch (err) {
           log('error', 'Error closing database pools:', err);
         }
+        // eslint-disable-next-line n/no-process-exit
         process.exit(0);
       });
 
       // Force exit if graceful shutdown takes too long
       setTimeout(() => {
         log('error', 'Graceful shutdown timed out after 15s, forcing exit.');
+        // eslint-disable-next-line n/no-process-exit
         process.exit(1);
       }, 15000).unref();
     };
@@ -629,7 +630,7 @@ applyMigrations()
   })
   .catch((error) => {
     console.error('Failed to start server:', error);
-    process.exit(1);
+    process.exitCode = 1;
   });
 
 app.use(errorHandler);

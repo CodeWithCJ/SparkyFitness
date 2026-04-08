@@ -48,7 +48,10 @@ function logRawResponse(provider, dataType, data) {
           bundle = { ...bundle, ...existingData };
         }
       } catch (err) {
-        // Fallback to fresh bundle on error
+        console.error(
+          `Failed to read or parse existing file at ${filePath}:`,
+          err.message
+        );
       }
     }
 

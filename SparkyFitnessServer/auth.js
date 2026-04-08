@@ -1,11 +1,9 @@
 const { betterAuth } = require('better-auth');
-const os = require('os');
 
 const { APIError } = require('better-auth/api');
 const { Pool } = require('pg');
 const { log } = require('./config/logging');
 const bcrypt = require('bcrypt');
-const { v4: uuidv4 } = require('uuid');
 const { syncUserGroups } = require('./utils/oidcGroupSync');
 const userRepository = require('./models/userRepository');
 const { resolveTwoFactorDisableUserUpdate } = require('./utils/twoFactorState');
@@ -191,7 +189,7 @@ const auth = betterAuth({
   emailAndPassword: {
     enabled: process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN !== 'true',
     requireEmailVerification: false,
-    sendResetPassword: async ({ user, url }, request) => {
+    sendResetPassword: async ({ user, url }) => {
       await sendPasswordResetEmail(user.email, url);
     },
     password: {
@@ -349,7 +347,7 @@ const auth = betterAuth({
             return [...cleanOrigins, originHeader, refOrigin].filter(Boolean);
           }
         } catch (e) {
-          /* invalid referer */
+          throw new Error('Invalid referrer', { cause: e });
         }
       }
     }
@@ -372,7 +370,7 @@ const auth = betterAuth({
             return [...cleanOrigins, originHeader, url.origin].filter(Boolean);
           }
         } catch (e) {
-          /* invalid url */
+          throw new Error('Invalid url', { cause: e });
         }
       }
     }
@@ -590,13 +588,13 @@ const auth = betterAuth({
 
   plugins: [
     require('better-auth/plugins').emailOTP({
-      async sendVerificationOTP({ user, otp }, request) {
+      async sendVerificationOTP({ user, otp }) {
         await sendEmailMfaCode(user.email, otp);
       },
     }),
     require('better-auth/plugins').magicLink({
       expiresIn: 900, // 15 minutes (matches email template)
-      sendMagicLink: async ({ email, url, token }, request) => {
+      sendMagicLink: async ({ email, url }) => {
         await sendMagicLinkEmail(email, url);
       },
     }),
@@ -625,7 +623,7 @@ const auth = betterAuth({
         },
       },
       otpOptions: {
-        async sendOTP({ user, otp }, request) {
+        async sendOTP({ user, otp }) {
           await sendEmailMfaCode(user.email, otp);
         },
       },

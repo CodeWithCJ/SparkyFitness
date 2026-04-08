@@ -27,13 +27,7 @@ const authMiddleware = require('../middleware/authMiddleware'); // Import the en
 router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
   try {
     const userId = req.userId; // Assuming user ID is available from authentication
-    const baseUrl =
-      process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
-    const redirectUri = `${baseUrl}/withings/callback`;
-    const authorizationUrl = await withingsService.getAuthorizationUrl(
-      userId,
-      redirectUri
-    );
+    const authorizationUrl = await withingsService.getAuthorizationUrl(userId);
     res.json({ authUrl: authorizationUrl });
   } catch (error) {
     log('error', `Error initiating Withings authorization: ${error.message}`);
@@ -94,8 +88,7 @@ router.post('/callback', async (req, res) => {
     const tokenExchangeResult = await withingsService.exchangeCodeForTokens(
       userId,
       code,
-      `${process.env.SPARKY_FITNESS_FRONTEND_URL}/withings/callback`,
-      state
+      `${process.env.SPARKY_FITNESS_FRONTEND_URL}/withings/callback`
     );
 
     if (tokenExchangeResult.success) {

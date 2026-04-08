@@ -731,7 +731,6 @@ async function upsertCustomMeasurementLogic(
   const {
     categoryName,
     value,
-    unit,
     entryDate,
     entryHour,
     entryTimestamp,

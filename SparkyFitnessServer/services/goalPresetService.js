@@ -35,13 +35,16 @@ function calculateGramsFromPercentages(
 async function createGoalPreset(userId, presetData) {
   try {
     // If percentages are provided, calculate grams.
-    // Use != null (loose) to treat both null and undefined as "not provided".
     // Also guard calories — without it the multiplication produces NaN.
     if (
-      presetData.calories != null &&
-      presetData.protein_percentage != null &&
-      presetData.carbs_percentage != null &&
-      presetData.fat_percentage != null
+      presetData.calories !== null &&
+      presetData.calories !== undefined &&
+      presetData.protein_percentage !== null &&
+      presetData.protein_percentage !== undefined &&
+      presetData.carbs_percentage !== null &&
+      presetData.carbs_percentage !== undefined &&
+      presetData.fat_percentage !== null &&
+      presetData.fat_percentage !== undefined
     ) {
       const { protein_grams, carbs_grams, fat_grams } =
         calculateGramsFromPercentages(
@@ -60,10 +63,12 @@ async function createGoalPreset(userId, presetData) {
     return newPreset;
   } catch (error) {
     if (error.code === '23505') {
-      throw new Error('A goal preset with this name already exists.');
+      throw new Error('A goal preset with this name already exists.', {
+        cause: error,
+      });
     }
     log('error', `Error creating goal preset for user ${userId}:`, error);
-    throw new Error('Failed to create goal preset.');
+    throw new Error('Failed to create goal preset.', { cause: error });
   }
 }
 
@@ -73,7 +78,7 @@ async function getGoalPresets(userId) {
     return presets.map(mapDbToWaterGoalMl);
   } catch (error) {
     log('error', `Error fetching goal presets for user ${userId}:`, error);
-    throw new Error('Failed to fetch goal presets.');
+    throw new Error('Failed to fetch goal presets.', { cause: error });
   }
 }
 
@@ -90,20 +95,23 @@ async function getGoalPreset(presetId, userId) {
       `Error fetching goal preset ${presetId} for user ${userId}:`,
       error
     );
-    throw new Error('Failed to fetch goal preset.');
+    throw new Error('Failed to fetch goal preset.', { cause: error });
   }
 }
 
 async function updateGoalPreset(presetId, userId, presetData) {
   try {
     // If percentages are provided, calculate grams.
-    // Use != null (loose) to treat both null and undefined as "not provided".
     // Also guard calories — without it the multiplication produces NaN.
     if (
-      presetData.calories != null &&
-      presetData.protein_percentage != null &&
-      presetData.carbs_percentage != null &&
-      presetData.fat_percentage != null
+      presetData.calories !== null &&
+      presetData.calories !== undefined &&
+      presetData.protein_percentage !== null &&
+      presetData.protein_percentage !== undefined &&
+      presetData.carbs_percentage !== null &&
+      presetData.carbs_percentage !== undefined &&
+      presetData.fat_percentage !== null &&
+      presetData.fat_percentage !== undefined
     ) {
       const { protein_grams, carbs_grams, fat_grams } =
         calculateGramsFromPercentages(
@@ -125,14 +133,16 @@ async function updateGoalPreset(presetId, userId, presetData) {
     return updatedPreset;
   } catch (error) {
     if (error.code === '23505') {
-      throw new Error('A goal preset with this name already exists.');
+      throw new Error('A goal preset with this name already exists.', {
+        cause: error,
+      });
     }
     log(
       'error',
       `Error updating goal preset ${presetId} for user ${userId}:`,
       error
     );
-    throw new Error('Failed to update goal preset.');
+    throw new Error('Failed to update goal preset.', { cause: error });
   }
 }
 
@@ -149,7 +159,7 @@ async function deleteGoalPreset(presetId, userId) {
       `Error deleting goal preset ${presetId} for user ${userId}:`,
       error
     );
-    throw new Error('Failed to delete goal preset.');
+    throw new Error('Failed to delete goal preset.', { cause: error });
   }
 }
 

@@ -192,7 +192,7 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
   try {
     await client.query('BEGIN');
 
-    const templateResult = await client.query(
+    await client.query(
       `UPDATE workout_plan_templates SET
                 plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5, updated_at = now()
              WHERE id = $6 AND user_id = $7 RETURNING *`,
@@ -206,7 +206,6 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
         userId,
       ]
     );
-    const updatedTemplate = templateResult.rows[0];
 
     // Instead of deleting and recreating, we will update the assignments
     if (updateData.assignments) {

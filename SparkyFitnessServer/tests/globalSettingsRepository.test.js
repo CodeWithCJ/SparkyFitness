@@ -1,6 +1,5 @@
 const globalSettingsRepository = require('../models/globalSettingsRepository');
 const { getSystemClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
 
 // Mock dependencies
 jest.mock('../db/poolManager', () => ({

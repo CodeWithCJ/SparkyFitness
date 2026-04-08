@@ -24,7 +24,7 @@ function isPrivateNetworkAddress(hostname) {
     if (cleanHostname.startsWith('[') && cleanHostname.endsWith(']')) {
       cleanHostname = cleanHostname.slice(1, -1);
     }
-  } catch (err) {
+  } catch {
     // If URL parsing fails, proceed with original string
   }
 
@@ -51,7 +51,7 @@ function isPrivateNetworkAddress(hostname) {
         return true;
       }
     }
-  } catch (err) {
+  } catch {
     // If not a valid IP address, ipaddr.parse throws an error.
     // In this context, that means it's a non-IP hostname (like a public domain),
     // so we return false as it's not a private network address.
@@ -81,7 +81,7 @@ function createCorsOriginChecker(
       // Validate URL format
       const url = new URL(configuredFrontendUrl);
       allowedOrigins.push(url.origin);
-    } catch (err) {
+    } catch {
       console.warn(`Invalid configured frontend URL: ${configuredFrontendUrl}`);
     }
   }
@@ -94,7 +94,7 @@ function createCorsOriginChecker(
       try {
         const url = new URL(origin);
         allowedOrigins.push(url.origin);
-      } catch (err) {
+      } catch {
         console.warn(`Invalid extra trusted origin: ${origin}`);
       }
     });
@@ -115,7 +115,7 @@ function createCorsOriginChecker(
           return callback(null, true);
         }
       }
-    } catch (e) {
+    } catch {
       /* ignore invalid origins */
     }
 
@@ -127,7 +127,7 @@ function createCorsOriginChecker(
         if (allowedOrigins.includes(refOrigin)) {
           return callback(null, true);
         }
-      } catch (e) {
+      } catch {
         /* ignore invalid referers */
       }
     }

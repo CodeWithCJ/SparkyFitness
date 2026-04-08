@@ -8,7 +8,6 @@ const {
   isValidTimeZone,
   todayInZone,
   instantToDay,
-  userHourMinute,
   instantHourMinute,
   instantToDayWithOffset,
   instantHourMinuteWithOffset,

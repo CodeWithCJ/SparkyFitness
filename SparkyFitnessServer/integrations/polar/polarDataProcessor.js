@@ -36,7 +36,7 @@ const parsePolarToUTC = (timeStr) => {
 
   // If it's a naive timestamp string (no Z or offset), append Z to force it to be treated as UTC
   // Polar's activity and exercise docs state these naive strings are UTC.
-  if (timeStr.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/)) {
+  if (timeStr.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?$/)) {
     return new Date(`${timeStr}Z`).toISOString();
   }
 
@@ -341,7 +341,7 @@ async function upsertCustomMeasurementLogic(
   createdByUserId,
   customMeasurement
 ) {
-  const { categoryName, value, unit, entryDate, entryTimestamp, frequency } =
+  const { categoryName, value, entryDate, entryTimestamp, frequency } =
     customMeasurement;
 
   const categories = await measurementRepository.getCustomCategories(userId);
@@ -598,7 +598,7 @@ async function processPolarNightlyRecharge(
  */
 function iso8601ToSeconds(duration) {
   if (!duration) return 0;
-  const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
+  const regex = /^PT(?:(\d{1,5})H)?(?:(\d{1,5})M)?(?:(\d{1,5})S)?$/;
   const matches = duration.match(regex);
   if (!matches) return 0;
   const hours = parseInt(matches[1] || 0);

@@ -49,7 +49,7 @@ async function getAuthorizationUrl(userId, redirectUri) {
 /**
  * Exchange authorization code for access and refresh tokens
  */
-async function exchangeCodeForTokens(userId, code, redirectUri) {
+async function exchangeCodeForTokens(userId, code) {
   const client = await getSystemClient();
   try {
     const providerResult = await client.query(

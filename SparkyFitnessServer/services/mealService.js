@@ -3,6 +3,8 @@ const foodRepository = require('../models/foodRepository');
 const foodEntryRepository = require('../models/foodEntry');
 const mealPlanTemplateRepository = require('../models/mealPlanTemplateRepository');
 const mealPlanTemplateService = require('./mealPlanTemplateService'); // Import the service
+const mealTypeRepository = require('../models/mealType');
+
 const { log } = require('../config/logging');
 
 // --- Meal Template Service Functions ---

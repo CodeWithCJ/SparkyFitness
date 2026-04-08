@@ -222,10 +222,7 @@ async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
       mealFoodsCount,
       mealPlansCount,
       mealPlanTemplateAssignmentsCount,
-      currentUserReferences,
       otherUserReferences,
-      isPubliclyShared,
-      familySharedUsers,
     } = deletionImpact;
 
     const totalReferences =

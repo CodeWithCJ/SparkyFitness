@@ -1,8 +1,6 @@
 const request = require('supertest');
 const express = require('express');
 const goalPresetService = require('../services/goalPresetService');
-const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
-const { v4: uuidv4 } = require('uuid');
 
 // Import ES6 module
 const goalPresetRoutes = require('../routes/v2/goalPresetRoutes');

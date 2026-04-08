@@ -3,7 +3,6 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 const foodEntryService = require('../services/foodEntryService');
-const { log } = require('../config/logging');
 
 router.use(express.json());
 

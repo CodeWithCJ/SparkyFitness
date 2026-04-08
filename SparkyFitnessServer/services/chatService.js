@@ -1,5 +1,4 @@
 const chatRepository = require('../models/chatRepository');
-const userRepository = require('../models/userRepository');
 const measurementRepository = require('../models/measurementRepository');
 const { log } = require('../config/logging');
 const { getDefaultModel } = require('../ai/config');
@@ -22,7 +21,7 @@ async function handleAiServiceSettings(
       if (!result) {
         throw new Error('AI service setting not found.');
       }
-      const { encrypted_api_key, api_key_iv, api_key_tag, ...safeSetting } =
+      const { _encrypted_api_key, _api_key_iv, _api_key_tag, ...safeSetting } =
         result;
       return {
         message: 'AI service settings saved successfully.',
@@ -440,7 +439,7 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
 
     // For Google AI
     const cleanSystemPrompt = systemPromptContent
-      .replace(/[^\w\s\-.,!?:;()\[\]{}'"]/g, ' ')
+      .replace(/[^\w\s\-.,!?:;()[\]{}'"]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
       .substring(0, 1000);
@@ -530,7 +529,7 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         }
         break;
 
-      case 'google':
+      case 'google': {
         const googleBody = {
           contents: messagesForAI
             .map((msg) => {
@@ -634,11 +633,11 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
           throw new Error('Fetch did not return a response object.');
         }
         break;
-
-      case 'ollama':
-        // For Ollama, extract only the text content from the last user message
-        // and send it as a string. Ollama does not support multimodal input
-        // in the same way as other providers.
+      }
+      // For Ollama, extract only the text content from the last user message
+      // and send it as a string. Ollama does not support multimodal input
+      // in the same way as other providers.
+      case 'ollama': {
         const ollamaMessages = messagesForAI.map((msg) => {
           let contentString = '';
           if (Array.isArray(msg.content)) {
@@ -697,21 +696,24 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
             error.name === 'BodyTimeoutError'
           ) {
             throw new Error(
-              `Ollama chat request timed out after ${timeout}ms due to undici timeout.`
+              `Ollama chat request timed out after ${timeout}ms due to undici timeout.`,
+              { cause: error }
             );
           }
           // For network-level errors (ECONNREFUSED, ENOTFOUND, etc.) surface a 502-style error so the route returns JSON
           // Prefix with a recognizable token so the router can map to an appropriate HTTP status
           throw new Error(
-            `AI service API call error: 502 - Ollama fetch error: ${error.message}`
+            `AI service API call error: 502 - Ollama fetch error: ${error.message}`,
+            { cause: error }
           );
         } finally {
           // Destroy the agent to prevent resource leaks
           ollamaAgent.destroy();
         }
         break;
+      }
 
-      default:
+      default: {
         const hasImage = messagesForAI.some(
           (msg) =>
             Array.isArray(msg.content) &&
@@ -719,10 +721,14 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         );
         if (hasImage) {
           throw new Error(
-            `Image analysis is not supported for the selected AI service type: ${aiService.service_type}. Please select a multimodal model like Google Gemini in settings.`
+            `Image analysis is not supported for the selected AI service type: ${aiService.service_type}. Please select a multimodal model like Google Gemini in settings.`,
+            { cause: { serviceType: aiService.service_type } }
           );
         }
-        throw new Error(`Unsupported service type: ${aiService.service_type}`);
+        throw new Error(`Unsupported service type: ${aiService.service_type}`, {
+          cause: { serviceType: aiService.service_type },
+        });
+      }
     }
 
     if (!response.ok) {
@@ -930,7 +936,7 @@ async function processFoodOptionsRequest(
         }
         break;
 
-      case 'google':
+      case 'google': {
         const googleBodyFoodOptions = {
           contents: messages
             .map((msg) => {
@@ -948,7 +954,7 @@ async function processFoodOptionsRequest(
         }
 
         const cleanSystemPromptFoodOptions = systemPrompt
-          .replace(/[^\w\s\-.,!?:;()\[\]{}'"]/g, ' ')
+          .replace(/[^\w\s\-.,!?:;()[\]{}'"]/g, ' ')
           .replace(/\s+/g, ' ')
           .trim()
           .substring(0, 1000);
@@ -984,9 +990,10 @@ async function processFoodOptionsRequest(
           throw new Error('Fetch did not return a response object.');
         }
         break;
+      }
 
-      case 'ollama':
-        // For Ollama, extract only the text content from the messages
+      // For Ollama, extract only the text content from the messages
+      case 'ollama': {
         const ollamaMessagesFoodOptions = messages.map((msg) => {
           let contentString = '';
           if (Array.isArray(msg.content)) {
@@ -1038,17 +1045,20 @@ async function processFoodOptionsRequest(
             error.name === 'BodyTimeoutError'
           ) {
             throw new Error(
-              `Ollama food options request timed out after ${timeoutFoodOptions}ms due to undici timeout.`
+              `Ollama food options request timed out after ${timeoutFoodOptions}ms due to undici timeout.`,
+              { cause: error }
             );
           }
           throw new Error(
-            `AI service API call error: 502 - Ollama fetch error: ${error.message}`
+            `AI service API call error: 502 - Ollama fetch error: ${error.message}`,
+            { cause: error }
           );
         } finally {
           // Destroy the agent to prevent resource leaks
           ollamaAgentFoodOptions.destroy();
         }
         break;
+      }
 
       default:
         throw new Error(

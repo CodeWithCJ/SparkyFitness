@@ -1,8 +1,7 @@
 const workoutPresetRepository = require('../models/workoutPresetRepository');
 const exerciseRepository = require('../models/exerciseRepository');
 const preferenceRepository = require('../models/preferenceRepository');
-const { log } = require('../config/logging');
-const { isValidUuid, resolveExerciseIdToUuid } = require('../utils/uuidUtils'); // Import uuidUtils
+const { resolveExerciseIdToUuid } = require('../utils/uuidUtils');
 
 async function createWorkoutPreset(userId, presetData) {
   // Validate and resolve exercise_ids

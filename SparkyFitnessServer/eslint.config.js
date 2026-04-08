@@ -32,6 +32,16 @@ module.exports = [
       n,
       security,
     },
+    settings: {
+      'import/resolver': {
+        node: {
+          extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        },
+      },
+      n: {
+        tryExtensions: ['.js', '.json', '.node', '.ts', '.tsx'],
+      },
+    },
     rules: {
       // Recommended rules from @eslint/js
       ...js.configs.recommended.rules,
@@ -55,6 +65,8 @@ module.exports = [
         },
       ],
       'no-console': 'off', // Custom logging utility used
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-child-process': 'off',
       'prefer-const': 'warn',
       'no-var': 'warn',
       eqeqeq: ['warn', 'always'],

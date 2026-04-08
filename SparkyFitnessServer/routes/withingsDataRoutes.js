@@ -5,7 +5,6 @@ const router = express.Router();
 const { log } = require('../config/logging');
 const { authenticate } = require('../middleware/authMiddleware');
 const measurementRepository = require('../models/measurementRepository');
-const externalProviderRepository = require('../models/externalProviderRepository');
 
 /**
  * @swagger
