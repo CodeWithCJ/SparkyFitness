@@ -395,6 +395,7 @@ export const ProviderCard = ({
               'tandoor',
               'nutritionix',
               'fatsecret',
+              'edamam',
               'withings',
             ].includes(provider.provider_type) &&
             ` - App Key: ${provider.app_key.substring(0, 4)}...`}

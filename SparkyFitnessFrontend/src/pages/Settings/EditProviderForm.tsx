@@ -129,7 +129,8 @@ export const EditProviderForm = ({
         </>
       )}
       {(editData.provider_type === 'nutritionix' ||
-        editData.provider_type === 'fatsecret') && (
+        editData.provider_type === 'fatsecret' ||
+        editData.provider_type === 'edamam') && (
         <>
           <div>
             <Label>App ID</Label>
@@ -194,6 +195,20 @@ export const EditProviderForm = ({
             className="text-blue-500 underline"
           >
             Fatsecret Platform Dashboard
+          </a>
+          .
+        </p>
+      )}
+      {editData.provider_type === 'edamam' && (
+        <p className="text-sm text-muted-foreground col-span-2">
+          Get your App ID and App Key from the{' '}
+          <a
+            href="https://developer.edamam.com/admin/applications"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline"
+          >
+            Edamam Developer Portal
           </a>
           .
         </p>
