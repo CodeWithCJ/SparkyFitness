@@ -8,8 +8,8 @@ interface DailySummaryApiResponse {
   foodEntries: FoodEntry[];
   exerciseSessions: ExerciseSessionResponse[];
   waterIntake: number;
-  stepCalories: number;
-  calorieBalance: CalorieBalance;
+  stepCalories?: number;
+  calorieBalance?: CalorieBalance;
 }
 
 export const fetchDailySummary = (date: string): Promise<DailySummaryApiResponse> =>
