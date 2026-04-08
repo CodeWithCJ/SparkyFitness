@@ -65,7 +65,6 @@ const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
 const versionRoutes = require('./routes/versionRoutes');
 const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
 const customNutrientRoutes = require('./routes/customNutrientRoutes'); // Import custom nutrient routes
-const telegramRoutes = require('./routes/telegramRoutes');
 const { applyMigrations } = require('./utils/dbMigrations');
 const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
 const waterContainerRoutes = require('./routes/waterContainerRoutes');
@@ -90,7 +89,6 @@ const swaggerUi = require('swagger-ui-express');
 const redoc = require('redoc-express');
 const swaggerSpecs = require('./config/swagger');
 const { createCorsOriginChecker } = require('./utils/corsHelper');
-const telegramBotService = require('./integrations/telegram/telegramBotService');
 
 const app = express();
 app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
@@ -311,7 +309,6 @@ app.use((req, res, next) => {
     '/api/uploads',
     '/uploads',
     '/api/ping',
-    '/api/telegram/webhook',
   ];
 
   const isPublic = publicRoutes.some((route) => {
@@ -401,13 +398,7 @@ app.use('/api/review', reviewRoutes);
 app.use('/api/custom-nutrients', customNutrientRoutes);
 app.use('/api/adaptive-tdee', adaptiveTdeeRoutes);
 app.use('/api/meal-types', mealTypeRoutes);
-app.use('/api/telegram', telegramRoutes);
-
-// Telegram Webhook handler
-app.post('/api/telegram/webhook', (req, res) => {
-  telegramBotService.handleUpdate(req.body);
-  res.sendStatus(200);
-});
+app.use('/api/meal-types', mealTypeRoutes);
 
 // Swagger
 app.use(
@@ -590,11 +581,6 @@ applyMigrations()
     scheduleFitbitSyncs();
     schedulePolarSyncs();
     scheduleStravaSyncs();
-
-    // Initialize Telegram Bot
-    telegramBotService.initialize().catch((err) =>
-      log('error', '[TELEGRAM BOT] Failed to initialize bot:', err)
-    );
 
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       const userRepository = require('./models/userRepository');
