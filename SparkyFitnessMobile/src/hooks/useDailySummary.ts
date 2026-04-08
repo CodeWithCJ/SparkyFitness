@@ -57,14 +57,16 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
       const remainingCalories = calorieGoal - netCalories;
 
       // If calorieBalance is not provided by the API (old server version), we calculate it here to
-      // ensure the UI has consistent data to work with
+      // ensure the UI has consistent data to work with. Uses fixed-mode logic (goal - eaten) to
+      // match the server default, with rounding and clamping to match computeCalorieBalance output.
+      const fallbackRemaining = calorieGoal - caloriesConsumed;
       const resolvedCalorieBalance: CalorieBalance = calorieBalance ?? {
-        eaten: caloriesConsumed,
-        burned: caloriesBurned,
-        remaining: remainingCalories,
-        goal: calorieGoal,
-        net: netCalories,
-        progress: calorieGoal > 0 ? (caloriesConsumed / calorieGoal) * 100 : 0,
+        eaten: Math.round(caloriesConsumed),
+        burned: Math.round(caloriesBurned),
+        remaining: Math.round(fallbackRemaining),
+        goal: Math.round(calorieGoal),
+        net: Math.round(netCalories),
+        progress: calorieGoal > 0 ? Math.max(0, Math.round((caloriesConsumed / calorieGoal) * 100)) : 0,
         bmr: 0,
         exerciseSource: 'none',
       };
