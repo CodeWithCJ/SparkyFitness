@@ -23,7 +23,7 @@ export interface DailySummaryRawData {
   exerciseEntries: ExerciseSessionResponse[];
   waterIntake: WaterIntake;
   stepCalories: number;
-  calorieBalance: CalorieBalance;
+  calorieBalance?: CalorieBalance;
 }
 
 interface UseDailySummaryOptions {
@@ -55,6 +55,19 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
       const exerciseMinutes = exerciseStats.durationMinutes;
       const netCalories = caloriesConsumed - caloriesBurned;
       const remainingCalories = calorieGoal - netCalories;
+
+      // If calorieBalance is not provided by the API (old server version), we calculate it here to
+      // ensure the UI has consistent data to work with
+      const resolvedCalorieBalance: CalorieBalance = calorieBalance ?? {
+        eaten: caloriesConsumed,
+        burned: caloriesBurned,
+        remaining: remainingCalories,
+        goal: calorieGoal,
+        net: netCalories,
+        progress: calorieGoal > 0 ? (caloriesConsumed / calorieGoal) * 100 : 0,
+        bmr: 0,
+        exerciseSource: 'none',
+      };
 
       return {
         date,
@@ -89,7 +102,7 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         waterGoal: goals.water_goal_ml ?? 2500,
         foodEntries,
         exerciseEntries,
-        calorieBalance,
+        calorieBalance: resolvedCalorieBalance,
       };
     },
     enabled,
