@@ -48,7 +48,8 @@ export interface Food {
     | 'fatsecret'
     | 'mealie'
     | 'tandoor'
-    | 'usda';
+    | 'usda'
+    | 'edamam';
   default_variant?: FoodVariant;
   variants?: FoodVariant[];
   is_quick_food?: boolean;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,6 +69,10 @@ export type ExternalResultWrapper =
     }
   | {
       provider_type: 'tandoor';
+      food: Food;
+    }
+  | {
+      provider_type: 'edamam';
       food: Food;
     };
 
@@ -153,11 +157,21 @@ const EnhancedFoodSearch = ({
   const foods = searchData?.searchResults || [];
   const loading = isFetchingRecent || isFetchingSearch || isOnlineLoading;
 
-  const selectedFoodDataProvider =
-    manualProviderId ||
-    defaultFoodDataProviderId ||
-    foodDataProviders[0]?.id ||
-    null;
+  const selectedFoodDataProviderId = useMemo(() => {
+    const id = manualProviderId || defaultFoodDataProviderId;
+    if (id && foodDataProviders.find((p) => p.id === id)) {
+      return id;
+    }
+    return (
+      foodDataProviders.find(
+        (p) => getProviderCategory(p).includes('food') && p.is_active
+      )?.id || null
+    );
+  }, [manualProviderId, defaultFoodDataProviderId, foodDataProviders]);
+
+  const selectedFoodDataProvider = foodDataProviders.find(
+    (p) => p.id === selectedFoodDataProviderId
+  );
 
   // Barcode provider: prefer explicit user selection, then the dedicated barcode
   // provider preference (set in External Provider Settings → Default Barcode Provider),
@@ -358,6 +372,17 @@ const EnhancedFoodSearch = ({
         }))
       );
     },
+    edamam: async (term, id) => {
+      const data = await queryClient.fetchQuery(
+        searchFoodsV2Options('edamam', term, id)
+      );
+      setExternalResults(
+        data.foods.map((food: Food) => ({
+          provider_type: 'edamam' as const,
+          food,
+        }))
+      );
+    },
   };
 
   const handleSearch = async () => {
@@ -374,19 +399,48 @@ const EnhancedFoodSearch = ({
       await handleMealSearch(searchTerm);
     } else if (activeTab === 'online') {
       setHasOnlineSearchBeenPerformed(true);
-      const provider = foodDataProviders.find(
-        (p) => p.id === selectedFoodDataProvider
-      );
 
-      if (provider && searchHandlers[provider.provider_type]) {
+      const provider = selectedFoodDataProvider;
+      const providerType = provider?.provider_type?.toLowerCase()?.trim();
+
+      console.group('Food Search Diagnostics');
+      console.log('Selected Provider ID:', selectedFoodDataProviderId);
+      console.log('Found Provider:', provider);
+      console.log('Provider Type:', providerType);
+      console.log('Available Handlers:', Object.keys(searchHandlers));
+      console.log('Search Term:', searchTerm);
+      console.groupEnd();
+
+      if (provider && providerType && searchHandlers[providerType]) {
         setSearchProviderId(provider.id);
-        const searchHandler = searchHandlers[provider.provider_type];
-        if (searchHandler)
-          await searchHandler(searchTerm, provider.id, provider);
+        const searchHandler = searchHandlers[providerType];
+        if (searchHandler) {
+          try {
+            await searchHandler(searchTerm, provider.id, provider);
+          } catch (error) {
+            console.error('Search handler error:', error);
+            toast({
+              title: t('common.error'),
+              description: t(
+                'enhancedFoodSearch.searchError',
+                'Failed to perform search.'
+              ),
+              variant: 'destructive',
+            });
+          }
+        }
       } else {
+        const errorDetail = !provider
+          ? 'Provider not found in list'
+          : !providerType
+            ? 'Provider type is missing'
+            : !searchHandlers[providerType]
+              ? `No handler for type: ${providerType}`
+              : 'Unknown error';
+
         toast({
           title: t('common.error'),
-          description: 'Provider not supported',
+          description: `Provider not supported (${errorDetail})`,
           variant: 'destructive',
         });
       }
@@ -422,7 +476,9 @@ const EnhancedFoodSearch = ({
 
   const handleExternalFoodEdit = async (food: Food) => {
     const needsDetailFetch =
-      (food.provider_type === 'fatsecret' || food.provider_type === 'usda') &&
+      (food.provider_type === 'fatsecret' ||
+        food.provider_type === 'usda' ||
+        food.provider_type === 'edamam') &&
       food.provider_external_id;
 
     if (needsDetailFetch) {
@@ -560,7 +616,7 @@ const EnhancedFoodSearch = ({
         </Button>
         {activeTab === 'online' && (
           <Select
-            value={selectedFoodDataProvider || ''}
+            value={selectedFoodDataProviderId || ''}
             onValueChange={(value) => {
               setManualProviderId(value);
               setDefaultFoodDataProviderId(value);

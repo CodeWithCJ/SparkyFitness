@@ -75,7 +75,6 @@ export const getProviderCategory = (
     case 'mealie':
     case 'tandoor':
     case 'usda':
-    case 'myfitnesspal':
       return ['food'];
     case 'nutritionix':
       return ['food', 'exercise'];

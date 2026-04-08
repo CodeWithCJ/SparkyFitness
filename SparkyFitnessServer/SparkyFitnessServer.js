@@ -66,7 +66,7 @@ const versionRoutes = require('./routes/versionRoutes');
 const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
 const customNutrientRoutes = require('./routes/customNutrientRoutes'); // Import custom nutrient routes
 const telegramRoutes = require('./routes/telegramRoutes');
-const mfpRoutes = require('./routes/mfpRoutes'); // Import MFP routes
+const mfpRoutes = require('./routes/mfpRoutes');
 const { applyMigrations } = require('./utils/dbMigrations');
 const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
 const waterContainerRoutes = require('./routes/waterContainerRoutes');
@@ -85,6 +85,7 @@ const fitbitService = require('./services/fitbitService'); // Import fitbitServi
 const polarService = require('./services/polarService'); // Import polarService
 const stravaService = require('./services/stravaService'); // Import stravaService
 const mfpSyncService = require('./services/mfpSyncService'); // Import mfpSyncService
+const telegramBotService = require('./integrations/telegram/telegramBotService');
 const dailySummaryRoutes = require('./routes/dailySummaryRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const mealTypeRoutes = require('./routes/mealTypeRoutes');
@@ -92,8 +93,6 @@ const swaggerUi = require('swagger-ui-express');
 const redoc = require('redoc-express');
 const swaggerSpecs = require('./config/swagger');
 const { createCorsOriginChecker } = require('./utils/corsHelper');
-const telegramBotService =
-  require('./integrations/telegram/telegramBotService').default;
 
 const app = express();
 app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
@@ -314,7 +313,6 @@ app.use((req, res, next) => {
     '/api/uploads',
     '/uploads',
     '/api/ping',
-    '/api/telegram/webhook',
   ];
 
   const isPublic = publicRoutes.some((route) => {
@@ -406,7 +404,7 @@ app.use('/api/custom-nutrients', customNutrientRoutes);
 app.use('/api/adaptive-tdee', adaptiveTdeeRoutes);
 app.use('/api/meal-types', mealTypeRoutes);
 app.use('/api/telegram', telegramRoutes);
-
+app.use('/api/integrations/myfitnesspal', mfpRoutes);
 
 // Swagger
 app.use(
@@ -622,11 +620,9 @@ applyMigrations()
     scheduleMFPSyncs();
 
     // Initialize Telegram Bot
-    telegramBotService
-      .initialize()
-      .catch((err) =>
-        log('error', '[TELEGRAM BOT] Failed to initialize bot:', err)
-      );
+    telegramBotService.initialize().catch((err) => {
+      log('error', 'Failed to initialize Telegram bot:', err);
+    });
 
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       const userRepository = require('./models/userRepository');
