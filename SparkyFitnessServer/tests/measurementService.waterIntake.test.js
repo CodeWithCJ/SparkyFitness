@@ -132,6 +132,7 @@ describe('Measurement Service - Water Intake', () => {
 
       const result = await measurementService.updateWaterIntake(
         mockUserId,
+        mockUserId,
         mockEntryId,
         mockUpdateData
       );
@@ -158,6 +159,7 @@ describe('Measurement Service - Water Intake', () => {
       await expect(
         measurementService.updateWaterIntake(
           mockUserId,
+          mockUserId,
           mockEntryId,
           mockUpdateData
         )
@@ -176,6 +178,7 @@ describe('Measurement Service - Water Intake', () => {
 
       await expect(
         measurementService.updateWaterIntake(
+          mockUserId,
           mockUserId,
           mockEntryId,
           mockUpdateData
@@ -199,6 +202,7 @@ describe('Measurement Service - Water Intake', () => {
 
       await expect(
         measurementService.updateWaterIntake(
+          mockUserId,
           mockUserId,
           mockEntryId,
           mockUpdateData
@@ -224,6 +228,7 @@ describe('Measurement Service - Water Intake', () => {
 
       const result = await measurementService.deleteWaterIntake(
         mockUserId,
+        mockUserId,
         mockEntryId
       );
 
@@ -244,7 +249,11 @@ describe('Measurement Service - Water Intake', () => {
       measurementRepository.getWaterIntakeEntryOwnerId.mockResolvedValue(null);
 
       await expect(
-        measurementService.deleteWaterIntake(mockUserId, mockEntryId)
+        measurementService.deleteWaterIntake(
+          mockUserId,
+          mockUserId,
+          mockEntryId
+        )
       ).rejects.toThrow('Water intake entry not found.');
     });
 
@@ -258,7 +267,11 @@ describe('Measurement Service - Water Intake', () => {
       );
 
       await expect(
-        measurementService.deleteWaterIntake(mockUserId, mockEntryId)
+        measurementService.deleteWaterIntake(
+          mockUserId,
+          mockUserId,
+          mockEntryId
+        )
       ).rejects.toThrow(
         'Forbidden: You do not have permission to delete this water intake entry.'
       );
@@ -291,6 +304,7 @@ describe('Measurement Service - Water Intake', () => {
 
       const result = await measurementService.updateWaterIntake(
         mockUserId,
+        mockUserId,
         mockEntryId,
         mockUpdateData
       );
@@ -316,6 +330,7 @@ describe('Measurement Service - Water Intake', () => {
 
       await expect(
         measurementService.updateWaterIntake(
+          mockUserId,
           mockUserId,
           mockEntryId,
           mockUpdateData

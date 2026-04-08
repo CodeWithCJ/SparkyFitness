@@ -1,7 +1,7 @@
 const { execFileSync } = require('child_process');
 
 const SHARED_SCHEMA_FILE =
-  '/Users/andrew/Documents/js/SparkyFitness/shared/src/schemas/api/ExerciseEntries.api.zod.ts';
+  '../../shared/src/schemas/api/ExerciseEntries.api.zod.ts';
 
 function runSchema(schemaName, payload) {
   const script = `

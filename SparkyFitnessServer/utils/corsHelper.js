@@ -132,9 +132,9 @@ function createCorsOriginChecker(
       }
     }
 
-    // 4. Default: Allow requests with no headers (e.g., local curl/mobile apps)
+    // 4. Default: Reject requests with no headers for maximum security
     if (!effectiveOrigin && !referer) {
-      return callback(null, true);
+      return callback(null, false);
     }
 
     // 5. Reject if no match found
