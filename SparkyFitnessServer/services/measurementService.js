@@ -1243,8 +1243,10 @@ async function upsertWaterIntake(
 
 async function getWaterIntakeEntryById(authenticatedUserId, id) {
   try {
-    const entryOwnerId =
-      await measurementRepository.getWaterIntakeEntryOwnerId(id);
+    const entryOwnerId = await measurementRepository.getWaterIntakeEntryOwnerId(
+      id,
+      authenticatedUserId
+    );
     if (!entryOwnerId) {
       throw new Error('Water intake entry not found.');
     }
@@ -1260,10 +1262,17 @@ async function getWaterIntakeEntryById(authenticatedUserId, id) {
   }
 }
 
-async function updateWaterIntake(authenticatedUserId, id, updateData) {
+async function updateWaterIntake(
+  authenticatedUserId,
+  actingUserId,
+  id,
+  updateData
+) {
   try {
-    const entryOwnerId =
-      await measurementRepository.getWaterIntakeEntryOwnerId(id);
+    const entryOwnerId = await measurementRepository.getWaterIntakeEntryOwnerId(
+      id,
+      authenticatedUserId
+    );
     if (!entryOwnerId) {
       throw new Error('Water intake entry not found.');
     }
@@ -1275,6 +1284,7 @@ async function updateWaterIntake(authenticatedUserId, id, updateData) {
     const updatedEntry = await measurementRepository.updateWaterIntake(
       id,
       authenticatedUserId,
+      actingUserId,
       updateData
     );
     if (!updatedEntry) {
@@ -1286,17 +1296,19 @@ async function updateWaterIntake(authenticatedUserId, id, updateData) {
   } catch (error) {
     log(
       'error',
-      `Error updating water intake entry ${id} by ${authenticatedUserId}:`,
+      `Error updating water intake entry ${id} by ${authenticatedUserId} on behalf of ${actingUserId}:`,
       error
     );
     throw error;
   }
 }
 
-async function deleteWaterIntake(authenticatedUserId, id) {
+async function deleteWaterIntake(authenticatedUserId, actingUserId, id) {
   try {
-    const entryOwnerId =
-      await measurementRepository.getWaterIntakeEntryOwnerId(id);
+    const entryOwnerId = await measurementRepository.getWaterIntakeEntryOwnerId(
+      id,
+      authenticatedUserId
+    );
     if (!entryOwnerId) {
       throw new Error('Water intake entry not found.');
     }
@@ -1307,7 +1319,8 @@ async function deleteWaterIntake(authenticatedUserId, id) {
     }
     const success = await measurementRepository.deleteWaterIntake(
       id,
-      authenticatedUserId
+      authenticatedUserId,
+      actingUserId
     );
     if (!success) {
       throw new Error('Water intake entry not found.');
@@ -1316,7 +1329,7 @@ async function deleteWaterIntake(authenticatedUserId, id) {
   } catch (error) {
     log(
       'error',
-      `Error deleting water intake entry ${id} by ${authenticatedUserId}:`,
+      `Error deleting water intake entry ${id} by ${authenticatedUserId} on behalf of ${actingUserId}:`,
       error
     );
     throw error;

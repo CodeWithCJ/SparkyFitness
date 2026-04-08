@@ -65,6 +65,7 @@ const { applyMigrations } = require('./utils/dbMigrations');
 const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
 const { grantPermissions } = require('./db/grantPermissions');
 const waterContainerRoutes = require('./routes/waterContainerRoutes');
+const waterIntakeRoutesV2 = require('./routes/v2/waterIntakeRoutes');
 const backupRoutes = require('./routes/backupRoutes'); // Import backup routes
 const errorHandler = require('./middleware/errorHandler'); // Import the new error handler
 const reviewRoutes = require('./routes/reviewRoutes');
@@ -386,6 +387,7 @@ app.use('/api/admin/auth', (req, res, next) =>
   require('./routes/adminAuthRoutes')(req, res, next)
 );
 app.use('/api/water-containers', waterContainerRoutes);
+app.use('/api/v2/measurements', waterIntakeRoutesV2);
 app.use('/api/workout-presets', require('./routes/workoutPresetRoutes'));
 app.use(
   '/api/workout-plan-templates',
