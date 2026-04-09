@@ -15,6 +15,7 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
   const handleAddExercise = useCallback((exercise: Exercise) => {
     const { exerciseClientId, setClientId } = actions.addExercise(exercise);
     setActiveSetKey(`${exerciseClientId}:${setClientId}`);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property; spreading `actions` would break memoization
   }, [actions.addExercise]);
 
   const handleRemoveExercise = useCallback(
@@ -34,6 +35,7 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
         doRemove();
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property
     [actions.removeExercise],
   );
 
@@ -42,6 +44,7 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
     if (newSetId) {
       setActiveSetKey(`${exerciseClientId}:${newSetId}`);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property
   }, [actions.addSet]);
 
   const activateSet = useCallback((setKey: string, field: 'weight' | 'reps') => {

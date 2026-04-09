@@ -1,10 +1,10 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, InputAccessoryView, Platform } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, TouchableOpacity, InputAccessoryView, Platform } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useCSSVariable } from 'uniwind';
-import FormInput from './FormInput';
 import Button from './ui/Button';
 import Icon from './Icon';
+import StepperInput from './StepperInput';
 
 interface EditableSetRowProps {
   exerciseClientId: string;
@@ -33,7 +33,6 @@ function EditableSetRow({
   reps,
   setNumber,
   isActive,
-  initialFocusField = 'weight',
   weightUnit,
   nextSetKey,
   onActivateSet,
@@ -43,7 +42,6 @@ function EditableSetRow({
   onAddSet,
   isLastSet,
 }: EditableSetRowProps) {
-  const repsInputRef = useRef<TextInput>(null);
   const [dangerColor, accentPrimary, chromeBg, chromeBorder] = useCSSVariable([
     '--color-bg-danger',
     '--color-accent-primary',
@@ -51,14 +49,7 @@ function EditableSetRow({
     '--color-chrome-border',
   ]) as [string, string, string, string];
 
-  const [focusedField, setFocusedField] = useState<'weight' | 'reps' | null>(initialFocusField);
   const setKey = `${exerciseClientId}:${setClientId}`;
-
-  useEffect(() => {
-    if (isActive) {
-      setFocusedField(initialFocusField);
-    }
-  }, [initialFocusField, isActive]);
 
   const handleActivateWeight = useCallback(() => {
     onActivateSet(setKey, 'weight');
@@ -76,6 +67,18 @@ function EditableSetRow({
     onUpdateSetField(exerciseClientId, setClientId, 'reps', value);
   }, [exerciseClientId, onUpdateSetField, setClientId]);
 
+  const handleStepWeight = useCallback((direction: number) => {
+    const current = parseFloat(weight) || 0;
+    const next = Math.max(0, current + direction * 5);
+    handleUpdateWeight(String(next));
+  }, [weight, handleUpdateWeight]);
+
+  const handleStepReps = useCallback((direction: number) => {
+    const current = parseInt(reps, 10) || 0;
+    const next = Math.max(0, current + direction);
+    handleUpdateReps(String(next));
+  }, [reps, handleUpdateReps]);
+
   const handleRemove = useCallback(() => {
     onRemoveSet(exerciseClientId, setClientId);
   }, [exerciseClientId, onRemoveSet, setClientId]);
@@ -89,78 +92,36 @@ function EditableSetRow({
   }, [exerciseClientId, nextSetKey, onActivateSet, onAddSet]);
 
   if (isActive) {
-    const weightAccessoryId = `set-weight-${setClientId}`;
-    const repsAccessoryId = `set-reps-${setClientId}`;
-    const renderAccessory = (nativeID: string, actionLabel: string | null, onAction?: () => void) => (
-      <InputAccessoryView nativeID={nativeID}>
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            backgroundColor: chromeBg,
-            borderTopWidth: 1,
-            borderTopColor: chromeBorder,
-          }}
-        >
-          <TouchableOpacity onPress={onDeactivate} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
-              Done
-            </Text>
-          </TouchableOpacity>
-          {actionLabel && onAction && (
-            <TouchableOpacity onPress={onAction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
-                {actionLabel}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </InputAccessoryView>
-    );
+    const accessoryId = `set-${setClientId}`;
 
     return (
       <>
         <View className="flex-row items-center py-3">
           <Text className="text-base text-text-muted w-10 text-center">{setNumber}</Text>
           <View className="flex-1 items-center">
-            <FormInput
-              style={[
-                { width: 100, textAlign: 'center', paddingTop: 8, paddingBottom: 8, paddingLeft: 8, paddingRight: 8, fontSize: 16 },
-                focusedField === 'weight' && { borderColor: accentPrimary, borderWidth: 1.5 },
-              ]}
+            <StepperInput
+              compact
               value={weight}
               onChangeText={handleUpdateWeight}
-              placeholder="0"
+              onIncrement={() => handleStepWeight(1)}
+              onDecrement={() => handleStepWeight(-1)}
               keyboardType="decimal-pad"
-              returnKeyType="next"
-              autoFocus={initialFocusField === 'weight'}
-              selectTextOnFocus
-              onFocus={() => setFocusedField('weight')}
-              onBlur={() => setFocusedField(null)}
-              onSubmitEditing={() => repsInputRef.current?.focus()}
-              {...(Platform.OS === 'ios' && { inputAccessoryViewID: weightAccessoryId })}
+              inputProps={{
+                ...(Platform.OS === 'ios' && { inputAccessoryViewID: accessoryId }),
+              }}
             />
           </View>
           <View className="flex-1 items-center">
-            <FormInput
-              ref={repsInputRef}
-              style={[
-                { width: 80, textAlign: 'center', paddingTop: 8, paddingBottom: 8, paddingLeft: 8, paddingRight: 8, fontSize: 16 },
-                focusedField === 'reps' && { borderColor: accentPrimary, borderWidth: 1.5 },
-              ]}
+            <StepperInput
+              compact
               value={reps}
               onChangeText={handleUpdateReps}
-              placeholder="0"
+              onIncrement={() => handleStepReps(1)}
+              onDecrement={() => handleStepReps(-1)}
               keyboardType="number-pad"
-              returnKeyType="done"
-              autoFocus={initialFocusField === 'reps'}
-              onFocus={() => setFocusedField('reps')}
-              onBlur={() => setFocusedField(null)}
-              onSubmitEditing={handleAdvance}
-              {...(Platform.OS === 'ios' && { inputAccessoryViewID: repsAccessoryId })}
+              inputProps={{
+                ...(Platform.OS === 'ios' && { inputAccessoryViewID: accessoryId }),
+              }}
             />
           </View>
           <Button
@@ -173,10 +134,31 @@ function EditableSetRow({
           </Button>
         </View>
         {Platform.OS === 'ios' && (
-          <>
-            {renderAccessory(weightAccessoryId, 'Next', () => repsInputRef.current?.focus())}
-            {renderAccessory(repsAccessoryId, isLastSet ? 'Next Set' : 'Next', handleAdvance)}
-          </>
+          <InputAccessoryView nativeID={accessoryId}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                backgroundColor: chromeBg,
+                borderTopWidth: 1,
+                borderTopColor: chromeBorder,
+              }}
+            >
+              <TouchableOpacity onPress={onDeactivate} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
+                  Done
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleAdvance} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
+                  {isLastSet ? 'Next Set' : 'Next'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </InputAccessoryView>
         )}
       </>
     );

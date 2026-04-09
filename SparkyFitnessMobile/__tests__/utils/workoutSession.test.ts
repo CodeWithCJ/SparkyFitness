@@ -6,11 +6,22 @@ import {
   getFirstImage,
   getSessionCalories,
   getWorkoutSummary,
+  buildSessionSubtitle,
+  calculateExerciseStats,
+  calculateCaloriesBurned,
+  calculateActiveCalories,
+  calculateOtherExerciseCalories,
+  calculateExerciseDuration,
+  buildExercisesPayload,
 } from '../../src/utils/workoutSession';
 import type { ExerciseSessionResponse } from '@workspace/shared';
+import type { WorkoutDraftExercise } from '../../src/types/drafts';
 
 type IndividualSession = Extract<ExerciseSessionResponse, { type: 'individual' }>;
 type PresetSession = Extract<ExerciseSessionResponse, { type: 'preset' }>;
+
+/** Format a number the same way the source does (runtime-locale toLocaleString). */
+const fmt = (n: number) => n.toLocaleString();
 
 const makeIndividual = (overrides?: Partial<IndividualSession>): IndividualSession => ({
   type: 'individual',
@@ -334,6 +345,580 @@ describe('workoutSession', () => {
         exercise_snapshot: null as any,
       });
       expect(getWorkoutSummary(session).name).toBe('Unknown exercise');
+    });
+  });
+
+  describe('buildSessionSubtitle', () => {
+    describe('preset sessions', () => {
+      it('shows exercise count and sets', () => {
+        const session = makePreset({
+          exercises: [
+            {
+              exercise_id: 'ex-1',
+              exercise_snapshot: null as any,
+              sets: [{ weight: null, reps: null }],
+              calories_burned: 0,
+              duration_minutes: 0,
+            } as any,
+            {
+              exercise_id: 'ex-2',
+              exercise_snapshot: null as any,
+              sets: [{ weight: null, reps: null }, { weight: null, reps: null }],
+              calories_burned: 0,
+              duration_minutes: 0,
+            } as any,
+          ],
+        });
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('2 exercises · 3 sets');
+      });
+
+      it('shows singular "exercise" for one exercise', () => {
+        const session = makePreset({
+          exercises: [
+            {
+              exercise_id: 'ex-1',
+              exercise_snapshot: null as any,
+              sets: [{ weight: 50, reps: 10 }],
+              calories_burned: 0,
+              duration_minutes: 0,
+            } as any,
+          ],
+        });
+        expect(buildSessionSubtitle(session, 30, 100)).toContain('1 exercise');
+      });
+
+      it('includes volume in kg when sets have weight and reps', () => {
+        const session = makePreset({
+          exercises: [
+            {
+              exercise_id: 'ex-1',
+              exercise_snapshot: null as any,
+              sets: [
+                { weight: 100, reps: 5 },  // 500 kg
+                { weight: 80, reps: 8 },   // 640 kg
+              ],
+              calories_burned: 0,
+              duration_minutes: 0,
+            } as any,
+          ],
+        });
+        // 500 + 640 = 1140 kg
+        expect(buildSessionSubtitle(session, 60, 300)).toBe(`1 exercise · 2 sets · ${fmt(1140)} kg`);
+      });
+
+      it('converts volume to lbs when weightUnit is lbs', () => {
+        const session = makePreset({
+          exercises: [
+            {
+              exercise_id: 'ex-1',
+              exercise_snapshot: null as any,
+              sets: [{ weight: 100, reps: 10 }], // 1000 kg volume
+              calories_burned: 0,
+              duration_minutes: 0,
+            } as any,
+          ],
+        });
+        const result = buildSessionSubtitle(session, 60, 300, 'lbs');
+        expect(result).toContain('lbs');
+        // 1000 kg * 2.20462 ≈ 2205 lbs
+        expect(result).toContain(`${fmt(2205)}`);
+      });
+
+      it('omits volume when all weights are zero or null', () => {
+        const session = makePreset({
+          exercises: [
+            {
+              exercise_id: 'ex-1',
+              exercise_snapshot: null as any,
+              sets: [{ weight: 0, reps: 10 }, { weight: null, reps: 5 }],
+              calories_burned: 0,
+              duration_minutes: 0,
+            } as any,
+          ],
+        });
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 2 sets');
+      });
+
+      it('omits sets count when no sets exist', () => {
+        const session = makePreset({
+          exercises: [
+            {
+              exercise_id: 'ex-1',
+              exercise_snapshot: null as any,
+              sets: [],
+              calories_burned: 0,
+              duration_minutes: 0,
+            } as any,
+          ],
+        });
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise');
+      });
+    });
+
+    describe('individual with multiple sets', () => {
+      it('shows sets count with duration and calories', () => {
+        const session = makeIndividual({
+          sets: [
+            { weight: null, reps: null },
+            { weight: null, reps: null },
+            { weight: null, reps: null },
+          ] as any,
+        });
+        expect(buildSessionSubtitle(session, 45, 200)).toBe('3 sets · 45 min · 200 Cal');
+      });
+
+      it('includes volume when sets have weight and reps', () => {
+        const session = makeIndividual({
+          sets: [
+            { weight: 60, reps: 10 },  // 600 kg
+            { weight: 60, reps: 8 },   // 480 kg
+          ] as any,
+        });
+        // 1080 kg total
+        expect(buildSessionSubtitle(session, 30, 150)).toBe(`2 sets · ${fmt(1080)} kg · 30 min · 150 Cal`);
+      });
+
+      it('converts volume to lbs', () => {
+        const session = makeIndividual({
+          sets: [
+            { weight: 50, reps: 10 },  // 500 kg
+            { weight: 50, reps: 10 },  // 500 kg
+          ] as any,
+        });
+        const result = buildSessionSubtitle(session, 20, 100, 'lbs');
+        // 1000 kg * 2.20462 ≈ 2205 lbs
+        expect(result).toBe(`2 sets · ${fmt(2205)} lbs · 20 min · 100 Cal`);
+      });
+
+      it('omits volume when weights are zero', () => {
+        const session = makeIndividual({
+          sets: [
+            { weight: 0, reps: 10 },
+            { weight: 0, reps: 10 },
+          ] as any,
+        });
+        expect(buildSessionSubtitle(session, 30, 200)).toBe('2 sets · 30 min · 200 Cal');
+      });
+
+      it('omits duration when zero', () => {
+        const session = makeIndividual({
+          sets: [
+            { weight: 40, reps: 10 },
+            { weight: 40, reps: 10 },
+          ] as any,
+        });
+        // 800 kg volume
+        expect(buildSessionSubtitle(session, 0, 150)).toBe('2 sets · 800 kg · 150 Cal');
+      });
+
+      it('omits calories when zero', () => {
+        const session = makeIndividual({
+          sets: [
+            { weight: null, reps: null },
+            { weight: null, reps: null },
+          ] as any,
+        });
+        expect(buildSessionSubtitle(session, 20, 0)).toBe('2 sets · 20 min');
+      });
+
+      it('shows only set count when volume, duration, and calories are all zero', () => {
+        const session = makeIndividual({
+          sets: [
+            { weight: 0, reps: 0 },
+            { weight: null, reps: null },
+          ] as any,
+        });
+        expect(buildSessionSubtitle(session, 0, 0)).toBe('2 sets');
+      });
+    });
+
+    describe('individual activity (single or no sets)', () => {
+      it('shows duration and calories', () => {
+        const session = makeIndividual();
+        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 300 Cal');
+      });
+
+      it('includes distance in km', () => {
+        const session = makeIndividual({ distance: 5.5 });
+        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 5.5 km · 300 Cal');
+      });
+
+      it('converts distance to miles', () => {
+        const session = makeIndividual({ distance: 10 }); // 10 km
+        const result = buildSessionSubtitle(session, 60, 500, 'kg', 'miles');
+        // 10 km * 0.621371 ≈ 6.2 mi
+        expect(result).toBe('1h · 6.2 mi · 500 Cal');
+      });
+
+      it('omits distance when null', () => {
+        const session = makeIndividual({ distance: null });
+        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 Cal');
+      });
+
+      it('omits distance when zero', () => {
+        const session = makeIndividual({ distance: 0 });
+        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 Cal');
+      });
+
+      it('omits duration when zero', () => {
+        const session = makeIndividual();
+        expect(buildSessionSubtitle(session, 0, 300)).toBe('300 Cal');
+      });
+
+      it('omits calories when zero', () => {
+        const session = makeIndividual();
+        expect(buildSessionSubtitle(session, 30, 0)).toBe('30 min');
+      });
+
+      it('returns empty string when all values are zero/null', () => {
+        const session = makeIndividual({ distance: null });
+        expect(buildSessionSubtitle(session, 0, 0)).toBe('');
+      });
+
+      it('shows set/volume info for a single-set strength session', () => {
+        const session = makeIndividual({
+          sets: [{ weight: 100, reps: 10 }] as any,
+          distance: 5,
+        });
+        // Single set still enters the sets branch — weight 100 * reps 10 = 1000 kg volume
+        expect(buildSessionSubtitle(session, 30, 200)).toBe(`1 set · ${fmt(1000)} kg · 30 min · 200 Cal`);
+      });
+    });
+  });
+
+  describe('calculateExerciseStats', () => {
+    it('returns zeros for empty array', () => {
+      expect(calculateExerciseStats([])).toEqual({
+        caloriesBurned: 0,
+        activeCalories: 0,
+        otherExerciseCalories: 0,
+        durationMinutes: 0,
+      });
+    });
+
+    it('accumulates preset session calories and duration', () => {
+      const sessions = [
+        makePreset({
+          total_duration_minutes: 45,
+          exercises: [
+            { exercise_id: 'ex-1', calories_burned: 200, duration_minutes: 20, sets: [] } as any,
+            { exercise_id: 'ex-2', calories_burned: 150, duration_minutes: 25, sets: [] } as any,
+          ],
+        }),
+      ];
+      const stats = calculateExerciseStats(sessions);
+      expect(stats.caloriesBurned).toBe(350);
+      expect(stats.otherExerciseCalories).toBe(350);
+      expect(stats.activeCalories).toBe(0);
+      expect(stats.durationMinutes).toBe(45);
+    });
+
+    it('accumulates individual session calories and duration', () => {
+      const sessions = [
+        makeIndividual({ calories_burned: 300, duration_minutes: 30 }),
+        makeIndividual({ calories_burned: 200, duration_minutes: 20 }),
+      ];
+      const stats = calculateExerciseStats(sessions);
+      expect(stats.caloriesBurned).toBe(500);
+      expect(stats.otherExerciseCalories).toBe(500);
+      expect(stats.activeCalories).toBe(0);
+      expect(stats.durationMinutes).toBe(50);
+    });
+
+    it('separates Active Calories entries from other exercises', () => {
+      const sessions = [
+        makeIndividual({
+          calories_burned: 400,
+          duration_minutes: 0,
+          exercise_snapshot: {
+            id: 'ac-1',
+            name: 'Active Calories',
+            category: 'Cardio',
+            calories_per_hour: 0,
+            source: 'system',
+          },
+        }),
+        makeIndividual({ calories_burned: 300, duration_minutes: 30 }),
+      ];
+      const stats = calculateExerciseStats(sessions);
+      expect(stats.caloriesBurned).toBe(700);
+      expect(stats.activeCalories).toBe(400);
+      expect(stats.otherExerciseCalories).toBe(300);
+      expect(stats.durationMinutes).toBe(30);
+    });
+
+    it('does not count Active Calories duration', () => {
+      const sessions = [
+        makeIndividual({
+          calories_burned: 500,
+          duration_minutes: 60,
+          exercise_snapshot: {
+            id: 'ac-1',
+            name: 'Active Calories',
+            category: 'Cardio',
+            calories_per_hour: 0,
+            source: 'system',
+          },
+        }),
+      ];
+      const stats = calculateExerciseStats(sessions);
+      expect(stats.durationMinutes).toBe(0);
+    });
+
+    it('handles mixed preset and individual sessions', () => {
+      const sessions: ExerciseSessionResponse[] = [
+        makePreset({
+          total_duration_minutes: 60,
+          exercises: [
+            { exercise_id: 'ex-1', calories_burned: 250, duration_minutes: 30, sets: [] } as any,
+          ],
+        }),
+        makeIndividual({ calories_burned: 300, duration_minutes: 30 }),
+        makeIndividual({
+          calories_burned: 150,
+          duration_minutes: 0,
+          exercise_snapshot: {
+            id: 'ac-1',
+            name: 'Active Calories',
+            category: 'Cardio',
+            calories_per_hour: 0,
+            source: 'system',
+          },
+        }),
+      ];
+      const stats = calculateExerciseStats(sessions);
+      expect(stats.caloriesBurned).toBe(700);
+      expect(stats.activeCalories).toBe(150);
+      expect(stats.otherExerciseCalories).toBe(550);
+      expect(stats.durationMinutes).toBe(90);
+    });
+
+    it('handles individual session with null duration_minutes', () => {
+      const session = makeIndividual({
+        calories_burned: 100,
+        duration_minutes: null as any,
+      });
+      const stats = calculateExerciseStats([session]);
+      expect(stats.durationMinutes).toBe(0);
+    });
+
+    it('handles individual session with null calories_burned', () => {
+      const session = makeIndividual({
+        calories_burned: null as any,
+        duration_minutes: 30,
+      });
+      const stats = calculateExerciseStats([session]);
+      expect(stats.caloriesBurned).toBe(0);
+      expect(stats.otherExerciseCalories).toBe(0);
+    });
+
+    it('does not match partial "Active Calories" names', () => {
+      const sessions = [
+        makeIndividual({
+          calories_burned: 200,
+          duration_minutes: 20,
+          exercise_snapshot: {
+            id: 'ex-1',
+            name: 'Active Calories Estimate',
+            category: 'Cardio',
+            calories_per_hour: 0,
+            source: 'system',
+          },
+        }),
+      ];
+      const stats = calculateExerciseStats(sessions);
+      // Should NOT be counted as activeCalories — name doesn't exactly match
+      expect(stats.activeCalories).toBe(0);
+      expect(stats.otherExerciseCalories).toBe(200);
+      expect(stats.durationMinutes).toBe(20);
+    });
+
+    it('handles session with null exercise_snapshot (not Active Calories)', () => {
+      const session = makeIndividual({
+        calories_burned: 100,
+        duration_minutes: 15,
+        exercise_snapshot: null as any,
+      });
+      const stats = calculateExerciseStats([session]);
+      expect(stats.activeCalories).toBe(0);
+      expect(stats.otherExerciseCalories).toBe(100);
+      expect(stats.durationMinutes).toBe(15);
+    });
+
+    it('handles Active Calories entry with null calories_burned', () => {
+      const session = makeIndividual({
+        calories_burned: null as any,
+        duration_minutes: 0,
+        exercise_snapshot: {
+          id: 'ac-1',
+          name: 'Active Calories',
+          category: 'Cardio',
+          calories_per_hour: 0,
+          source: 'system',
+        },
+      });
+      const stats = calculateExerciseStats([session]);
+      expect(stats.activeCalories).toBe(0);
+      expect(stats.caloriesBurned).toBe(0);
+    });
+  });
+
+  describe('convenience wrappers', () => {
+    const sessions: ExerciseSessionResponse[] = [
+      makePreset({
+        total_duration_minutes: 60,
+        exercises: [
+          { exercise_id: 'ex-1', calories_burned: 200, duration_minutes: 30, sets: [] } as any,
+        ],
+      }),
+      makeIndividual({ calories_burned: 300, duration_minutes: 30 }),
+      makeIndividual({
+        calories_burned: 100,
+        duration_minutes: 0,
+        exercise_snapshot: {
+          id: 'ac-1',
+          name: 'Active Calories',
+          category: 'Cardio',
+          calories_per_hour: 0,
+          source: 'system',
+        },
+      }),
+    ];
+
+    it('calculateCaloriesBurned returns total across all sessions', () => {
+      expect(calculateCaloriesBurned(sessions)).toBe(600);
+    });
+
+    it('calculateActiveCalories returns only Active Calories entries', () => {
+      expect(calculateActiveCalories(sessions)).toBe(100);
+    });
+
+    it('calculateOtherExerciseCalories excludes Active Calories', () => {
+      expect(calculateOtherExerciseCalories(sessions)).toBe(500);
+    });
+
+    it('calculateExerciseDuration excludes Active Calories duration', () => {
+      expect(calculateExerciseDuration(sessions)).toBe(90);
+    });
+  });
+
+  describe('buildExercisesPayload', () => {
+    const makeDraftExercise = (overrides?: Partial<WorkoutDraftExercise>): WorkoutDraftExercise => ({
+      clientId: 'c1',
+      exerciseId: 'ex-1',
+      exerciseName: 'Bench Press',
+      exerciseCategory: 'Strength',
+      images: [],
+      sets: [],
+      ...overrides,
+    });
+
+    it('maps exercises with sort_order from array index', () => {
+      const exercises = [
+        makeDraftExercise({ exerciseId: 'ex-1' }),
+        makeDraftExercise({ exerciseId: 'ex-2' }),
+      ];
+      const payload = buildExercisesPayload(exercises, 'kg');
+      expect(payload[0].exercise_id).toBe('ex-1');
+      expect(payload[0].sort_order).toBe(0);
+      expect(payload[1].exercise_id).toBe('ex-2');
+      expect(payload[1].sort_order).toBe(1);
+    });
+
+    it('sets duration_minutes to 0 for each exercise', () => {
+      const payload = buildExercisesPayload([makeDraftExercise()], 'kg');
+      expect(payload[0].duration_minutes).toBe(0);
+    });
+
+    it('maps sets with 1-based set_number', () => {
+      const exercise = makeDraftExercise({
+        sets: [
+          { clientId: 's1', weight: '100', reps: '10' },
+          { clientId: 's2', weight: '90', reps: '8' },
+        ],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg');
+      expect(payload[0].sets[0].set_number).toBe(1);
+      expect(payload[0].sets[1].set_number).toBe(2);
+    });
+
+    it('passes weight as-is in kg when unit is kg', () => {
+      const exercise = makeDraftExercise({
+        sets: [{ clientId: 's1', weight: '100', reps: '10' }],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg');
+      expect(payload[0].sets[0].weight).toBe(100);
+      expect(payload[0].sets[0].reps).toBe(10);
+    });
+
+    it('converts weight from lbs to kg when unit is lbs', () => {
+      const exercise = makeDraftExercise({
+        sets: [{ clientId: 's1', weight: '225', reps: '5' }],
+      });
+      const payload = buildExercisesPayload([exercise], 'lbs');
+      // 225 lbs * 0.45359237 ≈ 102.06
+      expect(payload[0].sets[0].weight).toBeCloseTo(102.058, 1);
+      expect(payload[0].sets[0].reps).toBe(5);
+    });
+
+    it('returns null for weight when value is not a number', () => {
+      const exercise = makeDraftExercise({
+        sets: [{ clientId: 's1', weight: '', reps: '10' }],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg');
+      expect(payload[0].sets[0].weight).toBeNull();
+    });
+
+    it('returns null for reps when value is not a number', () => {
+      const exercise = makeDraftExercise({
+        sets: [{ clientId: 's1', weight: '100', reps: '' }],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg');
+      expect(payload[0].sets[0].reps).toBeNull();
+    });
+
+    it('returns null for both when both are empty strings', () => {
+      const exercise = makeDraftExercise({
+        sets: [{ clientId: 's1', weight: '', reps: '' }],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg');
+      expect(payload[0].sets[0].weight).toBeNull();
+      expect(payload[0].sets[0].reps).toBeNull();
+    });
+
+    it('returns null for non-numeric strings', () => {
+      const exercise = makeDraftExercise({
+        sets: [{ clientId: 's1', weight: 'abc', reps: 'xyz' }],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg');
+      expect(payload[0].sets[0].weight).toBeNull();
+      expect(payload[0].sets[0].reps).toBeNull();
+    });
+
+    it('handles decimal weight strings', () => {
+      const exercise = makeDraftExercise({
+        sets: [{ clientId: 's1', weight: '62.5', reps: '8' }],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg');
+      expect(payload[0].sets[0].weight).toBe(62.5);
+    });
+
+    it('truncates decimal reps via parseInt', () => {
+      const exercise = makeDraftExercise({
+        sets: [{ clientId: 's1', weight: '100', reps: '8.7' }],
+      });
+      const payload = buildExercisesPayload([exercise], 'kg');
+      expect(payload[0].sets[0].reps).toBe(8);
+    });
+
+    it('returns empty array for empty exercises', () => {
+      expect(buildExercisesPayload([], 'kg')).toEqual([]);
+    });
+
+    it('handles exercise with empty sets array', () => {
+      const exercise = makeDraftExercise({ sets: [] });
+      const payload = buildExercisesPayload([exercise], 'kg');
+      expect(payload[0].sets).toEqual([]);
     });
   });
 });

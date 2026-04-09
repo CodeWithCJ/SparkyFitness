@@ -156,3 +156,42 @@ describe('foodCoreService.createFood', () => {
     ).rejects.toThrow('Database error');
   });
 });
+
+describe('foodCoreService.updateFood', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should not overwrite shared_with_public when only updating name and brand', async () => {
+    foodRepository.getFoodOwnerId.mockResolvedValue(TEST_USER_ID);
+    foodRepository.updateFood.mockResolvedValue({
+      id: 'food-123',
+      name: 'Updated Name',
+      brand: 'Updated Brand',
+      shared_with_public: true,
+    });
+
+    await foodCoreService.updateFood(TEST_USER_ID, 'food-123', {
+      name: 'Updated Name',
+      brand: 'Updated Brand',
+    });
+
+    const passedData = foodRepository.updateFood.mock.calls[0][2];
+    expect(passedData.shared_with_public).toBeUndefined();
+  });
+
+  it('should pass through shared_with_public when explicitly provided', async () => {
+    foodRepository.getFoodOwnerId.mockResolvedValue(TEST_USER_ID);
+    foodRepository.updateFood.mockResolvedValue({
+      id: 'food-123',
+      shared_with_public: false,
+    });
+
+    await foodCoreService.updateFood(TEST_USER_ID, 'food-123', {
+      shared_with_public: false,
+    });
+
+    const passedData = foodRepository.updateFood.mock.calls[0][2];
+    expect(passedData.shared_with_public).toBe(false);
+  });
+});

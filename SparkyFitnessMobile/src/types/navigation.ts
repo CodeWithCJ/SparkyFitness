@@ -23,7 +23,7 @@ export type RootStackParamList = {
   FoodEntryView: { entry: FoodEntry; adjustedValues?: FoodFormData };
   FoodForm:
     | { mode: 'create-food'; date?: string; initialFood?: Partial<FoodFormData>; barcode?: string; providerType?: string }
-    | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string };
+    | { mode: 'adjust-entry-nutrition'; initialValues: Partial<FoodFormData>; returnTo: 'FoodEntryAdd' | 'FoodEntryView'; returnKey: string; foodId?: string; variantId?: string; customNutrients?: Record<string, string | number> | null };
   FoodScan: { date?: string } | undefined;
   ExerciseSearch: { returnKey: string };
   PresetSearch: { date?: string } | undefined;

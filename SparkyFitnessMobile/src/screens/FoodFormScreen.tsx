@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { View, TouchableOpacity, Platform, Text, TextInput, Switch } from 'react-native';
+import { View, TouchableOpacity, Platform, Text, Switch } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { CommonActions, StackActions } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
+import StepperInput from '../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -13,6 +15,8 @@ import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { getMealTypeLabel } from '../constants/meals';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { parseOptional } from '../types/foodInfo';
+import { updateFoodVariant, updateFood } from '../services/api/foodsApi';
+import { foodVariantsQueryKey, foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
@@ -203,31 +207,13 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
           {/* Amount */}
           <View>
             <View className="flex-row items-center">
-              <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
-                <TouchableOpacity
-                  onPress={() => adjustQuantity(-1)}
-                  className="w-10 h-10 items-center justify-center border-r border-border-subtle"
-                  activeOpacity={0.7}
-                >
-                  <Icon name="remove" size={20} color={accentColor} />
-                </TouchableOpacity>
-                <TextInput
-                  value={quantityText}
-                  onChangeText={updateQuantityText}
-                  onBlur={clampQuantity}
-                  keyboardType="decimal-pad"
-                  selectTextOnFocus
-                  className="text-text-primary text-base text-center w-14 h-10"
-                  style={{ fontSize: 20, lineHeight: 22 }}
-                />
-                <TouchableOpacity
-                  onPress={() => adjustQuantity(1)}
-                  className="w-10 h-10 items-center justify-center border-l border-border-subtle"
-                  activeOpacity={0.7}
-                >
-                  <Icon name="add" size={20} color={accentColor} />
-                </TouchableOpacity>
-              </View>
+              <StepperInput
+                value={quantityText}
+                onChangeText={updateQuantityText}
+                onBlur={clampQuantity}
+                onDecrement={() => adjustQuantity(-1)}
+                onIncrement={() => adjustQuantity(1)}
+              />
               <Text className="text-text-primary text-base font-medium ml-2">
                 {formServingUnit}
               </Text>
@@ -259,9 +245,13 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
 }
 
 function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionParams; navigation: FoodFormScreenProps['navigation'] }) {
-  const { initialValues, returnKey } = params;
+  const { initialValues, returnKey, foodId, variantId, customNutrients } = params;
   const insets = useSafeAreaInsets();
-  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
+  const [accentColor, formEnabled, formDisabled] = useCSSVariable(['--color-accent-primary', '--color-form-enabled', '--color-form-disabled']) as [string, string, string];
+  const queryClient = useQueryClient();
+
+  const canUpdateVariant = !!(foodId && variantId && customNutrients !== undefined);
+  const [updateFoodToggle, setUpdateFoodToggle] = useState(false);
 
   const handleSubmit = (data: FoodFormData) => {
     if (!data.name.trim()) {
@@ -272,6 +262,50 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
       Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
       return;
     }
+
+    if (updateFoodToggle && canUpdateVariant) {
+      const invalidateCaches = () => {
+        void queryClient.invalidateQueries({ queryKey: foodVariantsQueryKey(foodId) });
+        void queryClient.invalidateQueries({ queryKey: foodsQueryKey });
+        void queryClient.invalidateQueries({ queryKey: ['foodSearch'] });
+      };
+      const onError = () => {
+        Toast.show({ type: 'error', text1: 'Could not update food' });
+      };
+
+      void updateFoodVariant(variantId, {
+        food_id: foodId,
+        serving_size: parseFloat(data.servingSize) || 0,
+        serving_unit: data.servingUnit || 'serving',
+        calories: parseFloat(data.calories) || 0,
+        protein: parseFloat(data.protein) || 0,
+        carbs: parseFloat(data.carbs) || 0,
+        fat: parseFloat(data.fat) || 0,
+        dietary_fiber: parseOptional(data.fiber),
+        saturated_fat: parseOptional(data.saturatedFat),
+        sodium: parseOptional(data.sodium),
+        sugars: parseOptional(data.sugars),
+        trans_fat: parseOptional(data.transFat),
+        potassium: parseOptional(data.potassium),
+        calcium: parseOptional(data.calcium),
+        iron: parseOptional(data.iron),
+        cholesterol: parseOptional(data.cholesterol),
+        vitamin_a: parseOptional(data.vitaminA),
+        vitamin_c: parseOptional(data.vitaminC),
+        custom_nutrients: customNutrients || undefined,
+      }).then(invalidateCaches).catch(onError);
+
+      // Update name/brand on the parent food record if changed
+      const nameChanged = data.name !== initialValues.name;
+      const brandChanged = data.brand !== initialValues.brand;
+      if (nameChanged || brandChanged) {
+        const foodPayload: { name?: string; brand?: string } = {};
+        if (nameChanged) foodPayload.name = data.name;
+        if (brandChanged) foodPayload.brand = data.brand || '';
+        void updateFood(foodId, foodPayload).then(invalidateCaches).catch(onError);
+      }
+    }
+
     navigation.dispatch({
       ...CommonActions.setParams({ adjustedValues: data }),
       source: returnKey,
@@ -298,7 +332,21 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         onSubmit={handleSubmit}
         initialValues={initialValues}
         submitLabel="Update Values"
-      />
+      >
+        {canUpdateVariant && (
+          <View className="bg-surface rounded-xl p-4 shadow-sm">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-text-secondary text-base">Save nutrition for future use</Text>
+              <Switch
+                value={updateFoodToggle}
+                onValueChange={setUpdateFoodToggle}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </View>
+        )}
+      </FoodForm>
     </View>
   );
 }

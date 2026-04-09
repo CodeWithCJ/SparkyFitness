@@ -81,3 +81,56 @@ export const saveFood = async (food: SaveFoodPayload): Promise<FoodItem> => {
   });
 };
 
+export interface UpdateFoodVariantPayload {
+  food_id: string;
+  serving_size: number;
+  serving_unit: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  dietary_fiber?: number;
+  saturated_fat?: number;
+  sodium?: number;
+  sugars?: number;
+  trans_fat?: number;
+  potassium?: number;
+  calcium?: number;
+  iron?: number;
+  cholesterol?: number;
+  vitamin_a?: number;
+  vitamin_c?: number;
+  custom_nutrients?: Record<string, string | number>;
+}
+
+/**
+ * Updates a food variant's nutrition values.
+ */
+export const updateFoodVariant = async (variantId: string, payload: UpdateFoodVariantPayload): Promise<FoodVariantDetail> => {
+  return apiFetch<FoodVariantDetail>({
+    endpoint: `/api/foods/food-variants/${variantId}`,
+    serviceName: 'Foods API',
+    operation: 'update food variant',
+    method: 'PUT',
+    body: payload,
+  });
+};
+
+export interface UpdateFoodPayload {
+  name?: string;
+  brand?: string;
+}
+
+/**
+ * Updates a food item's metadata (name, brand).
+ */
+export const updateFood = async (foodId: string, payload: UpdateFoodPayload): Promise<FoodItem> => {
+  return apiFetch<FoodItem>({
+    endpoint: `/api/foods/${foodId}`,
+    serviceName: 'Foods API',
+    operation: 'update food',
+    method: 'PUT',
+    body: payload,
+  });
+};
+

@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import Button from './ui/Button';
 import {
   BottomSheetModal,
@@ -9,7 +9,7 @@ import {
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import { useUniwind, useCSSVariable } from 'uniwind';
-import Icon from './Icon';
+import StepperInput from './StepperInput';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
 
@@ -27,11 +27,10 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
   const [entry, setEntry] = useState<FoodEntry | null>(null);
   const [quantityText, setQuantityText] = useState('0');
   const { theme } = useUniwind();
-  const [surfaceBg, textMuted, accentColor] = useCSSVariable([
+  const [surfaceBg, textMuted] = useCSSVariable([
     '--color-surface',
     '--color-text-muted',
-    '--color-accent-primary',
-  ]) as [string, string, string];
+  ]) as [string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
 
   const quantity = parseFloat(quantityText) || 0;
@@ -136,31 +135,14 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
             {/* Quantity stepper */}
             <View className="items-center mb-5">
               <View className="flex-row items-center">
-                <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
-                  <TouchableOpacity
-                    onPress={() => adjustQuantity(-1)}
-                    className="w-12 h-12 items-center justify-center border-r border-border-subtle"
-                    activeOpacity={0.7}
-                  >
-                    <Icon name="remove" size={20} color={accentColor} />
-                  </TouchableOpacity>
-                  <BottomSheetTextInput
-                    value={quantityText}
-                    onChangeText={updateQuantityText}
-                    onBlur={clampQuantity}
-                    keyboardType="decimal-pad"
-                    selectTextOnFocus
-                    className="text-text-primary text-center w-16 h-12"
-                    style={{ fontSize: 20, lineHeight: 22 }}
-                  />
-                  <TouchableOpacity
-                    onPress={() => adjustQuantity(1)}
-                    className="w-12 h-12 items-center justify-center border-l border-border-subtle"
-                    activeOpacity={0.7}
-                  >
-                    <Icon name="add" size={20} color={accentColor} />
-                  </TouchableOpacity>
-                </View>
+                <StepperInput
+                  value={quantityText}
+                  onChangeText={updateQuantityText}
+                  onBlur={clampQuantity}
+                  onDecrement={() => adjustQuantity(-1)}
+                  onIncrement={() => adjustQuantity(1)}
+                  InputComponent={BottomSheetTextInput}
+                />
                 <Text className="text-text-secondary text-lg ml-3">{entry.unit}</Text>
               </View>
             </View>

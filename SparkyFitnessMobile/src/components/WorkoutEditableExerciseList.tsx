@@ -113,7 +113,7 @@ function WorkoutEditableExerciseList({
           activeOpacity={0.6}
         >
           <Icon name="add-circle" size={20} color={accentPrimary} />
-          <Text className="text-base font-medium ml-2" style={{ color: accentPrimary }}>
+          <Text className="text-lg font-medium ml-2" style={{ color: accentPrimary }}>
             Add Exercise
           </Text>
         </TouchableOpacity>

@@ -140,12 +140,20 @@ function getUsdaNutrientValue(nutrients: UsdaFoodNutrient[], nutrientId: number)
   return nutrients.find((n) => n.nutrientId === nutrientId)?.value ?? 0;
 }
 
+/** Title-case a string only if it looks like ALL CAPS (e.g. USDA data). */
+function autoTitleCase(text: string): string {
+  if (text !== text.toUpperCase()) return text;
+  return text
+    .toLowerCase()
+    .replace(/(?:^|\s|[-/(])\S/g, (ch) => ch.toUpperCase());
+}
+
 export function transformUsdaFoodItem(item: UsdaFoodSearchItem): ExternalFoodItem {
   const n = item.foodNutrients;
   return {
     id: String(item.fdcId),
-    name: item.description,
-    brand: item.brandOwner || null,
+    name: autoTitleCase(item.description),
+    brand: item.brandOwner ? autoTitleCase(item.brandOwner) : null,
     calories: Math.round(getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.ENERGY)),
     protein: Math.round(getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.PROTEIN)),
     carbs: Math.round(getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.CARBS)),

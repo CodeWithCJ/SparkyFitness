@@ -325,6 +325,34 @@ describe('externalFoodSearchApi', () => {
 
         expect(transformUsdaFoodItem(item).id).toBe('42');
       });
+
+      test('title-cases ALL CAPS name and brand', () => {
+        const item = {
+          fdcId: 1,
+          description: 'CHICKEN BREAST, GRILLED',
+          brandOwner: 'TYSON FOODS INC.',
+          foodNutrients: [],
+        };
+
+        const result = transformUsdaFoodItem(item);
+
+        expect(result.name).toBe('Chicken Breast, Grilled');
+        expect(result.brand).toBe('Tyson Foods Inc.');
+      });
+
+      test('preserves mixed-case name and brand', () => {
+        const item = {
+          fdcId: 1,
+          description: 'Blueberries, raw',
+          brandOwner: 'Nature Brand',
+          foodNutrients: [],
+        };
+
+        const result = transformUsdaFoodItem(item);
+
+        expect(result.name).toBe('Blueberries, raw');
+        expect(result.brand).toBe('Nature Brand');
+      });
     });
 
     describe('searchUsda', () => {

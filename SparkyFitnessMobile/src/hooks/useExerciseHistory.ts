@@ -70,6 +70,7 @@ export function useExerciseHistory(
     if (query.hasNextPage && !query.isFetching) {
       void query.fetchNextPage();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- spreading `query` causes infinite re-renders; stable sub-properties are sufficient
   }, [query.fetchNextPage, query.hasNextPage, query.isFetching]);
 
   useRefetchOnFocus(refetch, enabled);
