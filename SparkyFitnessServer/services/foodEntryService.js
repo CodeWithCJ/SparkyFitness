@@ -643,6 +643,10 @@ async function copyAllFoodEntriesFromYesterday(
   }
 }
 
+async function getDailyNutritionByCategory(userId, date) {
+  return await foodRepository.getDailyNutritionByCategory(userId, date);
+}
+
 async function getDailyNutritionSummary(userId, date) {
   try {
     const summary = await foodRepository.getDailyNutritionSummary(userId, date);
@@ -1418,6 +1422,7 @@ module.exports = {
   copyAllFoodEntries,
   copyAllFoodEntriesFromYesterday,
   getDailyNutritionSummary,
+  getDailyNutritionByCategory,
   createFoodEntryMeal, // New export
   updateFoodEntryMeal, // New export
   getFoodEntryMealWithComponents, // New export

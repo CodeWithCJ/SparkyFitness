@@ -457,6 +457,41 @@ async function updateFoodEntry(
   }
 }
 
+async function getDailyNutritionByCategory(userId, date) {
+  const client = await getClient(userId);
+  try {
+    const query = `
+      SELECT 
+        mt.name as category,
+        SUM(fe.calories) as calories,
+        SUM(fe.protein) as protein,
+        SUM(fe.carbs) as carbohydrate,
+        SUM(fe.fat) as fat
+      FROM food_entries fe
+      JOIN meal_types mt ON fe.meal_type_id = mt.id
+      WHERE fe.user_id = $1 AND fe.entry_date = $2
+      GROUP BY mt.name
+    `;
+    const result = await client.query(query, [userId, date]);
+
+    const categories = {};
+    result.rows.forEach((row) => {
+      categories[row.category.toLowerCase()] = {
+        calories: parseFloat(row.calories) || 0,
+        protein: parseFloat(row.protein) || 0,
+        carbohydrate: parseFloat(row.carbohydrate) || 0,
+        fat: parseFloat(row.fat) || 0,
+      };
+    });
+    return categories;
+  } catch (error) {
+    log('error', 'Error in getDailyNutritionByCategory:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function getFoodEntriesByDate(userId, selectedDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -824,6 +859,7 @@ module.exports = {
   getFoodEntryOwnerId,
   updateFoodEntry,
   deleteFoodEntry,
+  getDailyNutritionByCategory,
   getFoodEntriesByDate,
   getFoodEntriesByDateAndMealType,
   getFoodEntriesByDateRange,

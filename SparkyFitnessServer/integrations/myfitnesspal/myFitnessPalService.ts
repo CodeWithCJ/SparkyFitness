@@ -22,128 +22,122 @@ export interface MFPNutritionData {
   categories: { [key: string]: MFPCategoryData };
 }
 
+interface MFPSession {
+  authHeaders: Record<string, string>;
+  mfpUserId: string;
+}
+
 /**
- * Pushes nutrition data to MyFitnessPal directly via HTTP.
- * Mimics the logic previously held in the Garmin microservice, but enhanced for multiple categories.
+ * Internal helper to authenticate with MyFitnessPal and get a session.
+ */
+async function getMFPSession(userId: string): Promise<MFPSession | null> {
+  const mfpProvider = (await getExternalDataProviderByUserIdAndProviderName(
+    userId,
+    'myfitnesspal'
+  )) as MFPProvider | null;
+
+  if (!mfpProvider || !mfpProvider.app_key) {
+    return null;
+  }
+
+  const cookiesStr = mfpProvider.app_key;
+  const initialCsrfToken = mfpProvider.app_id || '';
+  let currentCookies = cookiesStr;
+
+  const baseHeaders = {
+    accept: 'application/json, text/plain, */*',
+    'accept-language': 'ru,uk;q=0.9,en-US;q=0.8,en;q=0.7',
+    'content-type': 'application/json',
+    origin: 'https://www.myfitnesspal.com',
+    referer: 'https://www.myfitnesspal.com/ru/food/diary',
+    'user-agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
+    'x-requested-with': 'XMLHttpRequest',
+  };
+
+  // 1. Fetch CSRF
+  let freshCsrfToken = initialCsrfToken;
+  try {
+    const csrfResp = await axios.get(
+      'https://www.myfitnesspal.com/api/auth/csrf',
+      {
+        headers: { ...baseHeaders, Cookie: currentCookies },
+      }
+    );
+    if (csrfResp.data && csrfResp.data.csrfToken) {
+      freshCsrfToken = csrfResp.data.csrfToken;
+    }
+    const setCookie = csrfResp.headers['set-cookie'];
+    if (setCookie) {
+      const newCookies = setCookie.map((c) => c.split(';')[0]).join('; ');
+      currentCookies = `${currentCookies}; ${newCookies}`;
+    }
+  } catch (e: any) {
+    log('warn', `MFP getSession: CSRF fetch fallback for ${userId}: ${e.message}`);
+  }
+
+  // 2. Fetch Bearer Token
+  let bearerToken = '';
+  let mfpUserId = '';
+  try {
+    const authResp = await axios.get(
+      'https://www.myfitnesspal.com/user/auth_token',
+      {
+        headers: {
+          ...baseHeaders,
+          Cookie: currentCookies,
+          'x-csrf-token': freshCsrfToken,
+          'csrf-token': freshCsrfToken,
+          'mfp-client-id': 'mfp-main-js',
+        },
+      }
+    );
+
+    if (authResp.data && authResp.data.access_token) {
+      bearerToken = authResp.data.access_token;
+      mfpUserId = authResp.data.user_id;
+    } else {
+      throw new Error('Access token missing.');
+    }
+  } catch (e: any) {
+    log('error', `MFP getSession: Auth failed for ${userId}: ${e.message}`);
+    throw new Error(`Authentication failed: ${e.message}`);
+  }
+
+  return {
+    authHeaders: {
+      ...baseHeaders,
+      Authorization: `Bearer ${bearerToken}`,
+      'mfp-client-id': 'mfp-main-js',
+      Cookie: currentCookies,
+      ...(mfpUserId ? { 'mfp-user-id': String(mfpUserId) } : {}),
+    },
+    mfpUserId: String(mfpUserId),
+  };
+}
+
+/**
+ * Pushes nutrition data to MyFitnessPal.
  */
 export async function pushNutritionToMFP(
   userId: string,
   data: MFPNutritionData
 ) {
   try {
-    // 1. Get MFP credentials from external providers
-    const mfpProvider = (await getExternalDataProviderByUserIdAndProviderName(
-      userId,
-      'myfitnesspal'
-    )) as MFPProvider | null;
-
-    if (!mfpProvider || !mfpProvider.app_key) {
-      log(
-        'info',
-        `pushNutritionToMFP: No MyFitnessPal provider or cookies found for user ${userId}. Skipping MFP sync.`
-      );
+    const session = await getMFPSession(userId);
+    if (!session) {
+      log('info', `pushNutritionToMFP: No credentials for ${userId}. Skipping.`);
       return null;
     }
+    const { authHeaders } = session;
 
-    const cookiesStr = mfpProvider.app_key;
-    const initialCsrfToken = mfpProvider.app_id || '';
-
-    // Cookie Helper: Parse initial cookies and manage session
-    let currentCookies = cookiesStr;
-
-    const baseHeaders = {
-      accept: 'application/json, text/plain, */*',
-      'accept-language': 'ru,uk;q=0.9,en-US;q=0.8,en;q=0.7',
-      'content-type': 'application/json',
-      origin: 'https://www.myfitnesspal.com',
-      referer: 'https://www.myfitnesspal.com/ru/food/diary',
-      'user-agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36',
-      'x-requested-with': 'XMLHttpRequest',
-    };
-
-    // Step 1: Fetch fresh CSRF Token & Update Cookies
-    let freshCsrfToken = initialCsrfToken;
+    // Idempotency - Delete existing entries
     try {
-      const csrfResp = await axios.get(
-        'https://www.myfitnesspal.com/api/auth/csrf',
-        {
-          headers: { ...baseHeaders, Cookie: currentCookies },
-        }
-      );
-      if (csrfResp.data && csrfResp.data.csrfToken) {
-        freshCsrfToken = csrfResp.data.csrfToken;
-      }
-      // Update cookies if server sent new ones
-      const setCookie = csrfResp.headers['set-cookie'];
-      if (setCookie) {
-        const newCookies = setCookie.map((c) => c.split(';')[0]).join('; ');
-        currentCookies = `${currentCookies}; ${newCookies}`;
-      }
-    } catch (e: any) {
-      log(
-        'warn',
-        `pushNutritionToMFP: CSRF fetch fallback for user ${userId}: ${e.message}`
-      );
-    }
-
-    // Step 2: Fetch Bearer Token
-    let bearerToken = '';
-    let mfpUserId = '';
-    try {
-      const authResp = await axios.get(
-        'https://www.myfitnesspal.com/user/auth_token',
-        {
-          headers: {
-            ...baseHeaders,
-            Cookie: currentCookies,
-            'x-csrf-token': freshCsrfToken,
-            'csrf-token': freshCsrfToken,
-            'mfp-client-id': 'mfp-main-js',
-          },
-        }
-      );
-
-      if (authResp.data && authResp.data.access_token) {
-        bearerToken = authResp.data.access_token;
-        mfpUserId = authResp.data.user_id;
-      } else {
-        throw new Error('Access token missing in response.');
-      }
-    } catch (e: any) {
-      log(
-        'error',
-        `pushNutritionToMFP: Auth failed for user ${userId}: ${e.message}`
-      );
-      throw new Error(`Authentication failed: ${e.message}`);
-    }
-
-    const authHeaders: Record<string, string> = {
-      ...baseHeaders,
-      Authorization: `Bearer ${bearerToken}`,
-      'mfp-client-id': 'mfp-main-js',
-      Cookie: currentCookies,
-      ...(mfpUserId ? { 'mfp-user-id': String(mfpUserId) } : {}),
-    };
-
-    // Step 3: Idempotency - Delete *ANY* existing entries that look like automated syncs for this date
-    try {
-      // Broaden discovery. If v2/diary with types fails, we'll try a fallback.
-      // We suspect 'water' or 'exercise' might be causing the 400.
       const discoveryUrl = `https://api.myfitnesspal.com/v2/diary?entry_date=${data.date}&types=diary_meal,food_entry`;
       let diaryResp;
       try {
         diaryResp = await axios.get(discoveryUrl, { headers: authHeaders });
-      } catch (e: unknown) {
-        const err = e as {
-          response?: { status?: number; data?: unknown };
-          message?: string;
-        };
-        log(
-          'error',
-          `pushNutritionToMFP: Primary discovery failed with ${err.response?.status}: ${JSON.stringify(err.response?.data || err.message)}`
-        );
-        // Fallback to minimal discovery
+      } catch (e: any) {
         diaryResp = await axios.get(
           `https://api.myfitnesspal.com/v2/diary?entry_date=${data.date}`,
           { headers: authHeaders }
@@ -152,88 +146,37 @@ export async function pushNutritionToMFP(
 
       if (diaryResp.data && Array.isArray(diaryResp.data.items)) {
         const items = diaryResp.data.items;
-        log(
-          'info',
-          `pushNutritionToMFP: Discovery returned ${items.length} items for ${data.date}.`
-        );
-
-        // Log all discovered items
-        for (const item of items) {
-          const itemId = item.id || item.item_id;
-          const itemType = item.type;
-          const itemName = item.food_name || item.diary_meal || 'Unnamed Entry';
-          log(
-            'info',
-            `pushNutritionToMFP: [DISCOVERY] Found item: ID=${itemId}, Type=${itemType}, Name="${itemName}"`
-          );
-          if (!itemId) {
-            log(
-              'info',
-              `pushNutritionToMFP: [DEBUG] Item has NO ID at top level. Full structure: ${JSON.stringify(item)}`
-            );
-          }
-        }
-
-        // Delete in parallel with a concurrency limit to avoid rate limiting
-        const itemsWithId = items.filter(
-          (item: Record<string, unknown>) => item.id || item.item_id
-        );
+        const itemsWithId = items.filter((item: any) => item.id || item.item_id);
         for (let i = 0; i < itemsWithId.length; i += DELETE_CONCURRENCY) {
           const batch = itemsWithId.slice(i, i + DELETE_CONCURRENCY);
           await Promise.all(
-            batch.map(async (item: Record<string, unknown>) => {
+            batch.map(async (item: any) => {
               const itemId = item.id || item.item_id;
               try {
-                log(
-                  'info',
-                  `pushNutritionToMFP: Attempting to DELETE item ${itemId}...`
-                );
-                const delResp = await axios.delete(
-                  `https://api.myfitnesspal.com/v2/diary/${itemId}`,
-                  { headers: authHeaders }
-                );
-                log(
-                  'info',
-                  `pushNutritionToMFP: Successfully deleted item ${itemId}. Status: ${delResp.status}`
-                );
-              } catch (e: unknown) {
-                const err = e as {
-                  message?: string;
-                  response?: { data?: unknown };
-                };
-                log(
-                  'warn',
-                  `pushNutritionToMFP: Delete failed for item ${itemId}: ${err.message} (Payload: ${JSON.stringify(err.response?.data || {})})`
-                );
-              }
+                await axios.delete(`https://api.myfitnesspal.com/v2/diary/${itemId}`, {
+                  headers: authHeaders,
+                });
+              } catch (e) {}
             })
           );
         }
       }
-    } catch (e: unknown) {
-      const err = e as { message?: string };
-      log(
-        'warn',
-        `pushNutritionToMFP: Idempotency cleanup failed for user ${userId}: ${err.message}`
-      );
+    } catch (e: any) {
+      log('warn', `pushNutritionToMFP: Cleanup failed for user ${userId}: ${e.message}`);
     }
 
-    // Step 4: Map and Push categories
+    // Push categories
     const responses = [];
-    const mealMapping: { [key: string]: string } = {
+    const mealMapping: Record<string, string> = {
       breakfast: 'Breakfast',
       lunch: 'Lunch',
       dinner: 'Dinner',
       snacks: 'Snacks',
     };
 
-    for (const [categoryName, categoryData] of Object.entries(
-      data.categories
-    )) {
-      if (categoryData.calories < 0) continue; // Skip negative (invalid) categories only
-
+    for (const [categoryName, categoryData] of Object.entries(data.categories)) {
+      if (categoryData.calories < 0) continue;
       const mfpMealName = mealMapping[categoryName.toLowerCase()] || 'Snacks';
-
       const payload = {
         items: [
           {
@@ -241,10 +184,7 @@ export async function pushNutritionToMFP(
             date: data.date,
             meal_name: mfpMealName,
             nutritional_contents: {
-              energy: {
-                unit: 'calories',
-                value: Math.round(categoryData.calories),
-              },
+              energy: { unit: 'calories', value: Math.round(categoryData.calories) },
               carbohydrates: Number(categoryData.carbohydrate),
               fat: Number(categoryData.fat),
               protein: Number(categoryData.protein),
@@ -253,38 +193,71 @@ export async function pushNutritionToMFP(
         ],
       };
 
-      log(
-        'info',
-        `pushNutritionToMFP: Pushing ${mfpMealName} total for ${data.date}: ${categoryData.calories} kcal`
-      );
-      const finalResp = await axios.post(
-        'https://api.myfitnesspal.com/v2/diary',
-        payload,
-        { headers: authHeaders }
-      );
-
-      if (finalResp.status >= 400) {
-        log(
-          'error',
-          `pushNutritionToMFP: MFP API rejected ${mfpMealName} sync: ${JSON.stringify(finalResp.data)}`
-        );
-      } else {
-        responses.push(finalResp.data);
-      }
+      const finalResp = await axios.post('https://api.myfitnesspal.com/v2/diary', payload, {
+        headers: authHeaders,
+      });
+      if (finalResp.status < 400) responses.push(finalResp.data);
     }
 
-    return {
-      status: 'success',
-      date: data.date,
-      responses: responses,
+    return { status: 'success', date: data.date, responses };
+  } catch (error: any) {
+    log('error', `pushNutritionToMFP: Fatal error for user ${userId}:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Pushes water intake to MyFitnessPal.
+ */
+export async function pushWaterToMFP(
+  userId: string,
+  date: string,
+  milliliters: number
+) {
+  try {
+    const session = await getMFPSession(userId);
+    if (!session) return null;
+    const { authHeaders } = session;
+
+    log('info', `pushWaterToMFP: Pushing ${milliliters}ml water for ${userId} on ${date}`);
+
+    // Idempotency: DELETE existing water entries for this date
+    try {
+      const discoveryResp = await axios.get(
+        `https://api.myfitnesspal.com/v2/diary?entry_date=${date}&types=water_entry`,
+        { headers: authHeaders }
+      );
+      if (discoveryResp.data && Array.isArray(discoveryResp.data.items)) {
+        for (const item of discoveryResp.data.items) {
+          const itemId = item.id || item.item_id;
+          if (itemId) {
+            await axios.delete(`https://api.myfitnesspal.com/v2/diary/${itemId}`, {
+              headers: authHeaders,
+            });
+          }
+        }
+      }
+    } catch (e: any) {
+      log('warn', `pushWaterToMFP: Cleanup failed: ${e.message}`);
+    }
+
+    const payload = {
+      items: [
+        {
+          type: 'water_entry',
+          date: date,
+          milliliters: Math.round(milliliters),
+        },
+      ],
     };
-  } catch (error: unknown) {
-    const err = error as { response?: { data?: unknown }; message?: string };
-    log(
-      'error',
-      `pushNutritionToMFP: Final fatal error for user ${userId}:`,
-      err.response?.data || err.message
-    );
+
+    const resp = await axios.post('https://api.myfitnesspal.com/v2/diary', payload, {
+      headers: authHeaders,
+    });
+
+    return resp.data;
+  } catch (error: any) {
+    log('error', `pushWaterToMFP: Error for user ${userId}:`, error.message);
     throw error;
   }
 }
