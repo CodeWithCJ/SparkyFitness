@@ -1,6 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
+import EditableSetRow from '../components/EditableSetRow';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,10 +22,12 @@ import { syncExerciseSessionInCache } from '../hooks/syncExerciseSessionInCache'
 import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
-import { distanceFromKm } from '../utils/unitConversions';
+import { distanceFromKm, weightFromKg, weightToKg } from '../utils/unitConversions';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
+import type { WorkoutDraftSet } from '../types/drafts';
+import type { ExerciseEntrySetResponse } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'ActivityDetail'>;
 
@@ -35,6 +39,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { preferences } = usePreferences();
   const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+  const weightUnit = (preferences?.default_weight_unit as 'kg' | 'lbs') ?? 'kg';
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
@@ -69,6 +74,19 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeField, setActiveField] = useState<EditableField | null>(null);
 
+  // --- Set editing state ---
+  // The UI only edits weight/reps, but the server stores sets as a JSONB column
+  // that gets fully replaced on PUT. We keep the original server sets so we can
+  // merge edited weight/reps back in without losing fields like rest_time, rpe, etc.
+  const SET_CLIENT_ID_PREFIX = 'activity';
+  const nextSetIdRef = useRef(0);
+  const originalSetsRef = useRef<Map<string, ExerciseEntrySetResponse>>(new Map());
+  const [draftSets, setDraftSets] = useState<WorkoutDraftSet[]>([]);
+  const [activeSetKey, setActiveSetKey] = useState<string | null>(null);
+  const [activeSetField, setActiveSetField] = useState<'weight' | 'reps'>('weight');
+  const hasSets = session.sets.length > 1
+    || session.sets.some(s => s.weight != null || s.reps != null);
+
   const {
     state: formState,
     setName,
@@ -85,18 +103,85 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const startEditing = () => {
     populate(session, distanceUnit);
     setActiveField(null);
+    const originals = new Map<string, ExerciseEntrySetResponse>();
+    const converted = session.sets.map((set, i) => {
+      const clientId = `set-${i}`;
+      originals.set(clientId, set);
+      return {
+        clientId,
+        weight: set.weight != null
+          ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
+          : '',
+        reps: set.reps != null ? String(set.reps) : '',
+      };
+    });
+    originalSetsRef.current = originals;
+    setDraftSets(converted);
+    nextSetIdRef.current = session.sets.length;
     setIsEditing(true);
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
     setActiveField(null);
+    setDraftSets([]);
+    setActiveSetKey(null);
+    originalSetsRef.current.clear();
   };
+
+  // --- Set editing callbacks ---
+  const addDraftSet = useCallback((_exerciseId?: string) => {
+    const id = `set-${nextSetIdRef.current++}`;
+    setDraftSets(prev => {
+      const lastSet = prev[prev.length - 1];
+      return [...prev, { clientId: id, weight: lastSet?.weight ?? '', reps: lastSet?.reps ?? '' }];
+    });
+    setActiveSetKey(`${SET_CLIENT_ID_PREFIX}:${id}`);
+    setActiveSetField('weight');
+  }, []);
+
+  const removeDraftSet = useCallback((_exerciseId: string, setClientId: string) => {
+    setDraftSets(prev => prev.filter(s => s.clientId !== setClientId));
+    setActiveSetKey(null);
+  }, []);
+
+  const updateDraftSetField = useCallback((_exerciseId: string, setClientId: string, field: 'weight' | 'reps', value: string) => {
+    setDraftSets(prev => prev.map(s => s.clientId === setClientId ? { ...s, [field]: value } : s));
+  }, []);
+
+  const activateSet = useCallback((key: string, field: 'weight' | 'reps') => {
+    setActiveSetKey(key);
+    setActiveSetField(field);
+  }, []);
+
+  const deactivateSet = useCallback(() => {
+    setActiveSetKey(null);
+  }, []);
 
   const handleSave = async () => {
     if (!submission.exerciseId) return;
 
     const dateChanged = submission.entryDate !== normalizedDate;
+
+    const setsPayload = draftSets.map((set, index) => {
+      const w = parseFloat(set.weight);
+      const r = parseInt(set.reps, 10);
+      const original = originalSetsRef.current.get(set.clientId);
+      return {
+        ...(original && {
+          id: original.id,
+          set_type: original.set_type,
+          duration: original.duration,
+          rest_time: original.rest_time,
+          notes: original.notes,
+          rpe: original.rpe,
+        }),
+        set_type: original?.set_type ?? 'Working Set',
+        set_number: index + 1,
+        weight: isNaN(w) ? null : weightToKg(w, weightUnit),
+        reps: isNaN(r) ? null : r,
+      };
+    });
 
     const payload = {
       exercise_id: submission.exerciseId,
@@ -107,6 +192,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       distance: submission.distanceKm,
       avg_heart_rate: submission.avgHeartRate,
       notes: submission.notes,
+      sets: setsPayload,
     };
 
     try {
@@ -128,6 +214,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       setSession(updatedSession);
       setIsEditing(false);
       setActiveField(null);
+      setDraftSets([]);
+      setActiveSetKey(null);
+      originalSetsRef.current.clear();
     } catch (error) {
       addLog(`Failed to save activity: ${error}`, 'ERROR');
       Toast.show({ type: 'error', text1: 'Failed to save activity', text2: 'Please try again.' });
@@ -466,6 +555,93 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Stats grid */}
         {renderStatsGrid()}
+
+        {/* Sets section */}
+        {isEditing ? (
+          draftSets.length > 0 || hasSets ? (
+            <>
+              <Divider />
+              <View className="py-4">
+                <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
+                {draftSets.length > 0 && (
+                  <Animated.View layout={LinearTransition.duration(300)}>
+                    <View className="flex-row items-center py-1 mb-1">
+                      <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
+                      <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
+                      <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+                      <View style={{ width: 18 }} />
+                    </View>
+                    {draftSets.map((set, index) => {
+                      const setKey = `${SET_CLIENT_ID_PREFIX}:${set.clientId}`;
+                      const nextSet = draftSets[index + 1];
+                      return (
+                        <Animated.View
+                          key={set.clientId}
+                          entering={FadeIn.duration(200)}
+                          exiting={FadeOut.duration(150)}
+                          layout={LinearTransition.duration(300)}
+                        >
+                          <EditableSetRow
+                            exerciseClientId={SET_CLIENT_ID_PREFIX}
+                            setClientId={set.clientId}
+                            weight={set.weight}
+                            reps={set.reps}
+                            setNumber={index + 1}
+                            isActive={activeSetKey === setKey}
+                            initialFocusField={activeSetKey === setKey ? activeSetField : undefined}
+                            weightUnit={weightUnit}
+                            nextSetKey={nextSet ? `${SET_CLIENT_ID_PREFIX}:${nextSet.clientId}` : null}
+                            onActivateSet={activateSet}
+                            onDeactivate={deactivateSet}
+                            onUpdateSetField={updateDraftSetField}
+                            onRemoveSet={removeDraftSet}
+                            onAddSet={addDraftSet}
+                            isLastSet={index === draftSets.length - 1}
+                          />
+                        </Animated.View>
+                      );
+                    })}
+                  </Animated.View>
+                )}
+                <TouchableOpacity
+                  className="flex-row items-center justify-center py-3"
+                  onPress={() => addDraftSet()}
+                  activeOpacity={0.6}
+                >
+                  <Icon name="add" size={18} color={accentPrimary} />
+                  <Text className="text-base font-medium ml-1" style={{ color: accentPrimary }}>
+                    Add Set
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : null
+        ) : hasSets ? (
+          <>
+            <Divider />
+            <View className="py-4">
+              <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
+              <View className="flex-row py-1 mb-1">
+                <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
+                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
+                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+              </View>
+              {session.sets.map(set => {
+                const displayWeight = set.weight != null
+                  ? `${parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1))} ${weightUnit}`
+                  : '\u2014';
+                const displayReps = set.reps != null ? String(set.reps) : '\u2014';
+                return (
+                  <View key={set.id} className="flex-row py-1.5">
+                    <Text className="text-sm text-text-muted w-10 text-center">{set.set_number}</Text>
+                    <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
+                    <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        ) : null}
 
         {/* Notes section */}
         {(isEditing || session.notes) && (
