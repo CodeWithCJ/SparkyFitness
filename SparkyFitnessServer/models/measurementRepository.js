@@ -1,8 +1,6 @@
-//console.log('DEBUG: Loading measurementRepository.js');
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const { CALORIE_CALCULATION_CONSTANTS } = require('@workspace/shared');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import { CALORIE_CALCULATION_CONSTANTS } from '@workspace/shared';
 // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
 const ALLOWED_CHECK_IN_COLUMNS = [
   'weight',
@@ -13,10 +11,8 @@ const ALLOWED_CHECK_IN_COLUMNS = [
   'height',
   'body_fat_percentage',
 ];
-
 // Tolerance in milliliters for matching historical manual records with incoming sync data
 const WATER_ADOPTION_TOLERANCE_ML = 5;
-
 async function upsertStepData(userId, actingUserId, value, date) {
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
@@ -24,7 +20,6 @@ async function upsertStepData(userId, actingUserId, value, date) {
       'SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2',
       [userId, date]
     );
-
     let result;
     if (existingRecord.rows.length > 0) {
       const updateResult = await client.query(
@@ -44,7 +39,6 @@ async function upsertStepData(userId, actingUserId, value, date) {
     client.release();
   }
 }
-
 async function upsertWaterData(
   userId,
   actingUserId,
@@ -61,7 +55,6 @@ async function upsertWaterData(
         'SELECT id FROM water_intake WHERE user_id = $1 AND entry_date = $2 AND source = $3',
         [userId, date, source]
       );
-
       if (existingSourceRecord.rows.length === 0) {
         // SMART ADOPTION: Look for a manual record within a tolerance (handles rounding differences)
         const matchingManualRecord = await client.query(
@@ -71,7 +64,6 @@ async function upsertWaterData(
            LIMIT 1`,
           [userId, date, waterMl, WATER_ADOPTION_TOLERANCE_ML]
         );
-
         if (matchingManualRecord.rows.length > 0) {
           log(
             'info',
@@ -91,7 +83,6 @@ async function upsertWaterData(
         }
       }
     }
-
     // 2. Standard atomic upsert by source
     const query = `
       INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
@@ -109,13 +100,11 @@ async function upsertWaterData(
     client.release();
   }
 }
-
 async function getWaterIntakeByDate(userId, date, source = null) {
   const client = await getClient(userId);
   try {
     let query;
     let values;
-
     if (source) {
       query =
         'SELECT * FROM water_intake WHERE user_id = $1 AND entry_date = $2 AND source = $3';
@@ -126,14 +115,12 @@ async function getWaterIntakeByDate(userId, date, source = null) {
         'SELECT SUM(water_ml) as water_ml FROM water_intake WHERE user_id = $1 AND entry_date = $2';
       values = [userId, date];
     }
-
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {
     client.release();
   }
 }
-
 async function getWaterIntakeEntryById(id, userId) {
   const client = await getClient(userId);
   try {
@@ -146,7 +133,6 @@ async function getWaterIntakeEntryById(id, userId) {
     client.release();
   }
 }
-
 async function getWaterIntakeEntryOwnerId(id, userId) {
   const client = await getClient(userId);
   try {
@@ -159,7 +145,6 @@ async function getWaterIntakeEntryOwnerId(id, userId) {
     client.release();
   }
 }
-
 async function updateWaterIntake(id, userId, actingUserId, updateData) {
   const client = await getClient(actingUserId);
   try {
@@ -186,7 +171,6 @@ async function updateWaterIntake(id, userId, actingUserId, updateData) {
     client.release();
   }
 }
-
 async function deleteWaterIntake(id, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -199,7 +183,6 @@ async function deleteWaterIntake(id, userId) {
     client.release();
   }
 }
-
 async function upsertCheckInMeasurements(
   userId,
   actingUserId,
@@ -214,7 +197,6 @@ async function upsertCheckInMeasurements(
     // Filter out 'id' from measurements to prevent it from being upserted into numeric columns
     const filteredMeasurements = { ...measurements };
     delete filteredMeasurements.id;
-
     // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
     const measurementKeys = Object.keys(filteredMeasurements).filter((key) => {
       if (!ALLOWED_CHECK_IN_COLUMNS.includes(key)) {
@@ -225,18 +207,15 @@ async function upsertCheckInMeasurements(
       }
       return true;
     });
-
     if (measurementKeys.length === 0) {
       // If no measurements are provided, and no existing record, there's nothing to do.
       // If there's an existing record, we don't update it if no new measurements are provided.
       return null; // Return null if no measurements to update/insert
     }
-
     const existingRecord = await client.query(
       'SELECT * FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2',
       [userId, entryDate]
     );
-
     if (existingRecord.rows.length > 0) {
       const id = existingRecord.rows[0].id;
       const fields = measurementKeys
@@ -272,14 +251,12 @@ async function upsertCheckInMeasurements(
       ];
       query = `INSERT INTO check_in_measurements (${cols.join(', ')}) VALUES (${placeholders}) RETURNING *`;
     }
-
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {
     client.release();
   }
 }
-
 async function getCheckInMeasurementsByDate(userId, date) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -292,7 +269,6 @@ async function getCheckInMeasurementsByDate(userId, date) {
     client.release();
   }
 }
-
 async function getLatestCheckInMeasurementsOnOrBeforeDate(userId, date) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -308,7 +284,6 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(userId, date) {
     client.release();
   }
 }
-
 async function updateCheckInMeasurements(
   userId,
   actingUserId,
@@ -325,7 +300,6 @@ async function updateCheckInMeasurements(
     const fieldsToUpdate = Object.keys(updateData)
       .filter((key) => ALLOWED_CHECK_IN_COLUMNS.includes(key))
       .map((key, index) => `${key} = $${index + 1}`);
-
     if (fieldsToUpdate.length === 0) {
       log(
         'warn',
@@ -333,21 +307,17 @@ async function updateCheckInMeasurements(
       );
       return null;
     }
-
     // Correctly construct the values array: first the values for the SET clause, then actingUserId (for audit), then userId, then entryDate
     const updateValues = Object.keys(updateData)
       .filter((key) => ALLOWED_CHECK_IN_COLUMNS.includes(key))
       .map((key) => updateData[key]);
-
     const values = [...updateValues, actingUserId, userId, entryDate];
-
     // Add updated_by_user_id to update query
     const query = `
       UPDATE check_in_measurements
       SET ${fieldsToUpdate.join(', ')}, updated_at = now(), updated_by_user_id = $${fieldsToUpdate.length + 1}
       WHERE user_id = $${fieldsToUpdate.length + 2} AND entry_date = $${fieldsToUpdate.length + 3}
       RETURNING *`;
-
     log('debug', `[measurementRepository] Executing query: ${query}`);
     log(
       'debug',
@@ -370,7 +340,6 @@ async function updateCheckInMeasurements(
     client.release();
   }
 }
-
 async function deleteCheckInMeasurements(id, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -383,7 +352,6 @@ async function deleteCheckInMeasurements(id, userId) {
     client.release();
   }
 }
-
 async function getCustomCategories(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -396,7 +364,6 @@ async function getCustomCategories(userId) {
     client.release();
   }
 }
-
 async function createCustomCategory(categoryData) {
   const client = await getClient(categoryData.created_by_user_id); // User-specific operation, using created_by_user_id for RLS context
   try {
@@ -418,7 +385,6 @@ async function createCustomCategory(categoryData) {
     client.release();
   }
 }
-
 async function updateCustomCategory(id, userId, actingUserId, updateData) {
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
@@ -449,7 +415,6 @@ async function updateCustomCategory(id, userId, actingUserId, updateData) {
     client.release();
   }
 }
-
 async function deleteCustomCategory(id, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -462,7 +427,6 @@ async function deleteCustomCategory(id, userId) {
     client.release();
   }
 }
-
 async function getCustomCategoryOwnerId(id, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -475,7 +439,6 @@ async function getCustomCategoryOwnerId(id, userId) {
     client.release();
   }
 }
-
 async function getCustomMeasurementEntries(userId, limit, orderBy, filterObj) {
   // Renamed filter to filterObj
   const client = await getClient(userId); // User-specific operation
@@ -497,7 +460,6 @@ async function getCustomMeasurementEntries(userId, limit, orderBy, filterObj) {
     let paramIndex = 2;
     // RLS will handle filtering by user_id, but we keep it here for explicit filtering
     // in case RLS is disabled or for clarity.
-
     if (filterObj) {
       if (filterObj.category_id) {
         query += ` AND cm.category_id = $${paramIndex}`;
@@ -520,7 +482,6 @@ async function getCustomMeasurementEntries(userId, limit, orderBy, filterObj) {
         }
       }
     }
-
     if (orderBy) {
       const [field, order] = orderBy.split('.');
       const allowedFields = ['entry_timestamp', 'value'];
@@ -531,20 +492,17 @@ async function getCustomMeasurementEntries(userId, limit, orderBy, filterObj) {
     } else {
       query += ' ORDER BY cm.entry_timestamp DESC';
     }
-
     if (limit) {
       query += ` LIMIT $${paramIndex}`;
       queryParams.push(parseInt(limit, 10));
       paramIndex++;
     }
-
     const result = await client.query(query, queryParams);
     return result.rows;
   } finally {
     client.release();
   }
 }
-
 async function getCustomMeasurementEntriesByDate(userId, date) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -568,7 +526,6 @@ async function getCustomMeasurementEntriesByDate(userId, date) {
     client.release();
   }
 }
-
 async function getCheckInMeasurementsByDateRange(userId, startDate, endDate) {
   log(
     'info',
@@ -589,7 +546,6 @@ async function getCheckInMeasurementsByDateRange(userId, startDate, endDate) {
     client.release();
   }
 }
-
 async function getCustomMeasurementsByDateRange(
   userId,
   categoryId,
@@ -602,22 +558,18 @@ async function getCustomMeasurementsByDateRange(
     let query =
       'SELECT category_id, entry_date AS date, entry_hour AS hour, value, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4';
     const queryParams = [userId, categoryId, startDate, endDate];
-
     if (source) {
       query += ' AND source = $5';
       queryParams.push(source);
     }
-
     query +=
       ' ORDER BY custom_measurements.entry_date, custom_measurements.entry_timestamp';
-
     const result = await client.query(query, queryParams);
     return result.rows;
   } finally {
     client.release();
   }
 }
-
 async function upsertCustomMeasurement(
   userId,
   actingUserId,
@@ -634,11 +586,9 @@ async function upsertCustomMeasurement(
   try {
     let query;
     let values;
-
     // Normalize entry_hour and entry_timestamp for 'Daily' frequency to prevent duplicates
     let normalizedEntryHour = entryHour;
     let normalizedEntryTimestamp = entryTimestamp;
-
     if (frequency === 'Daily') {
       normalizedEntryHour = 0; // Set hour to 0 for daily measurements
       // Normalize timestamp to the beginning of the day
@@ -646,7 +596,6 @@ async function upsertCustomMeasurement(
       dateObj.setUTCHours(0, 0, 0, 0);
       normalizedEntryTimestamp = dateObj.toISOString();
     }
-
     // For 'Unlimited' and 'All' frequencies, always insert a new entry.
     // For 'Daily' and 'Hourly', check for existing entries to update.
     if (frequency === 'Unlimited' || frequency === 'All') {
@@ -674,7 +623,6 @@ async function upsertCustomMeasurement(
         WHERE user_id = $1 AND category_id = $2 AND entry_date = $3 AND source = $4
       `;
       const existingEntryValues = [userId, categoryId, entryDate, source];
-
       if (frequency === 'Hourly' && normalizedEntryHour !== null) {
         existingEntryQuery += ` AND entry_hour = $${existingEntryValues.length + 1}`;
         existingEntryValues.push(normalizedEntryHour);
@@ -683,12 +631,10 @@ async function upsertCustomMeasurement(
         // and we should ensure we're only looking for entries without an hour or with hour 0
         existingEntryQuery += ' AND (entry_hour IS NULL OR entry_hour = 0)';
       }
-
       const existingEntry = await client.query(
         existingEntryQuery,
         existingEntryValues
       );
-
       if (existingEntry.rows.length > 0) {
         // Update existing entry with updated_by_user_id
         const id = existingEntry.rows[0].id;
@@ -726,14 +672,12 @@ async function upsertCustomMeasurement(
         ];
       }
     }
-
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {
     client.release();
   }
 }
-
 async function deleteCustomMeasurement(id, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -746,7 +690,6 @@ async function deleteCustomMeasurement(id, userId) {
     client.release();
   }
 }
-
 /**
  * Compute step calories for a user on a given date.
  * Background steps = total check-in steps minus steps already logged in exercise sessions.
@@ -776,7 +719,6 @@ async function getStepCaloriesForDate(userId, date, sessions) {
         [userId]
       ),
     ]);
-
     const totalSteps = parseInt(checkInResult.rows[0]?.steps ?? '0', 10) || 0;
     const weightKg =
       parseFloat(weightResult.rows[0]?.weight) ||
@@ -784,7 +726,6 @@ async function getStepCaloriesForDate(userId, date, sessions) {
     const heightCm =
       parseFloat(heightResult.rows[0]?.height) ||
       CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
-
     const activitySteps = sessions.reduce((sum, s) => {
       if (s.type === 'preset') {
         return (
@@ -810,8 +751,80 @@ async function getStepCaloriesForDate(userId, date, sessions) {
     client.release();
   }
 }
-
-module.exports = {
+async function getLatestMeasurement(userId) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `SELECT weight FROM check_in_measurements
+       WHERE user_id = $1 AND weight IS NOT NULL
+       ORDER BY entry_date DESC, updated_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+async function getCustomMeasurementOwnerId(id, userId) {
+  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+  try {
+    const result = await client.query(
+      'SELECT user_id FROM custom_measurements WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    return result.rows[0]?.user_id;
+  } finally {
+    client.release();
+  }
+}
+async function getMostRecentMeasurement(userId, measurementType) {
+  // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic column names
+  if (!ALLOWED_CHECK_IN_COLUMNS.includes(measurementType)) {
+    throw new Error(`Invalid measurement type requested: ${measurementType}`);
+  }
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `SELECT ${measurementType} FROM check_in_measurements
+       WHERE user_id = $1 AND ${measurementType} IS NOT NULL
+       ORDER BY entry_date DESC, updated_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+    return result.rows[0];
+  } finally {
+    client.release();
+  }
+}
+export { upsertStepData };
+export { upsertWaterData };
+export { getWaterIntakeByDate };
+export { getWaterIntakeEntryById };
+export { getWaterIntakeEntryOwnerId };
+export { updateWaterIntake };
+export { deleteWaterIntake };
+export { upsertCheckInMeasurements };
+export { getCheckInMeasurementsByDate };
+export { updateCheckInMeasurements };
+export { deleteCheckInMeasurements };
+export { getCustomCategories };
+export { createCustomCategory };
+export { updateCustomCategory };
+export { deleteCustomCategory };
+export { getCustomMeasurementEntries };
+export { getCustomMeasurementEntriesByDate };
+export { getCheckInMeasurementsByDateRange };
+export { getCustomMeasurementsByDateRange };
+export { getCustomCategoryOwnerId };
+export { upsertCustomMeasurement };
+export { deleteCustomMeasurement };
+export { getCustomMeasurementOwnerId };
+export { getLatestMeasurement };
+export { getLatestCheckInMeasurementsOnOrBeforeDate };
+export { getMostRecentMeasurement };
+export { getStepCaloriesForDate };
+export default {
   upsertStepData,
   upsertWaterData,
   getWaterIntakeByDate,
@@ -840,53 +853,3 @@ module.exports = {
   getMostRecentMeasurement,
   getStepCaloriesForDate,
 };
-
-async function getLatestMeasurement(userId) {
-  const client = await getClient(userId); // User-specific operation
-  try {
-    const result = await client.query(
-      `SELECT weight FROM check_in_measurements
-       WHERE user_id = $1 AND weight IS NOT NULL
-       ORDER BY entry_date DESC, updated_at DESC
-       LIMIT 1`,
-      [userId]
-    );
-    return result.rows[0];
-  } finally {
-    client.release();
-  }
-}
-
-async function getCustomMeasurementOwnerId(id, userId) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
-  try {
-    const result = await client.query(
-      'SELECT user_id FROM custom_measurements WHERE id = $1 AND user_id = $2',
-      [id, userId]
-    );
-    return result.rows[0]?.user_id;
-  } finally {
-    client.release();
-  }
-}
-
-async function getMostRecentMeasurement(userId, measurementType) {
-  // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic column names
-  if (!ALLOWED_CHECK_IN_COLUMNS.includes(measurementType)) {
-    throw new Error(`Invalid measurement type requested: ${measurementType}`);
-  }
-
-  const client = await getClient(userId); // User-specific operation
-  try {
-    const result = await client.query(
-      `SELECT ${measurementType} FROM check_in_measurements
-       WHERE user_id = $1 AND ${measurementType} IS NOT NULL
-       ORDER BY entry_date DESC, updated_at DESC
-       LIMIT 1`,
-      [userId]
-    );
-    return result.rows[0];
-  } finally {
-    client.release();
-  }
-}

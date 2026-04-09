@@ -1,6 +1,5 @@
-const { getClient } = require('../db/poolManager');
-const { todayInZone, addDays } = require('@workspace/shared');
-
+import { getClient } from '../db/poolManager.js';
+import { todayInZone, addDays } from '@workspace/shared';
 /**
  * Get sleep history for calculations
  * @param {string} userId
@@ -46,7 +45,6 @@ async function getSleepHistory(userId, days = 90, timezone = 'UTC') {
     client.release();
   }
 }
-
 /**
  * Get user's sleep science profile
  * @param {string} userId
@@ -74,7 +72,6 @@ async function getSleepProfile(userId) {
     client.release();
   }
 }
-
 /**
  * Update baseline sleep need in profile
  * @param {string} userId
@@ -108,7 +105,6 @@ async function updateBaselineSleepNeed(userId, params) {
     client.release();
   }
 }
-
 /**
  * Save MCTQ calculation record
  * @param {string} userId
@@ -147,7 +143,6 @@ async function saveCalculation(userId, data) {
     client.release();
   }
 }
-
 /**
  * Upsert day classification cache
  * @param {string} userId
@@ -180,7 +175,6 @@ async function upsertDayClassification(userId, dayOfWeek, data) {
     client.release();
   }
 }
-
 /**
  * Get day classifications for user
  * @param {string} userId
@@ -201,7 +195,6 @@ async function getDayClassifications(userId) {
     client.release();
   }
 }
-
 /**
  * Get MCTQ stats from view
  * @param {string} userId
@@ -219,7 +212,6 @@ async function getMCTQStats(userId) {
     client.release();
   }
 }
-
 /**
  * Get latest calculation record
  * @param {string} userId
@@ -240,7 +232,6 @@ async function getLatestCalculation(userId) {
     client.release();
   }
 }
-
 /**
  * Upsert daily sleep need
  * @param {string} userId
@@ -285,7 +276,6 @@ async function upsertDailyNeed(userId, targetDate, breakdown) {
     client.release();
   }
 }
-
 /**
  * Get daily need for date
  * @param {string} userId
@@ -305,8 +295,17 @@ async function getDailyNeed(userId, targetDate) {
     client.release();
   }
 }
-
-module.exports = {
+export { getSleepHistory };
+export { getSleepProfile };
+export { updateBaselineSleepNeed };
+export { saveCalculation };
+export { upsertDayClassification };
+export { getDayClassifications };
+export { getMCTQStats };
+export { getLatestCalculation };
+export { upsertDailyNeed };
+export { getDailyNeed };
+export default {
   getSleepHistory,
   getSleepProfile,
   updateBaselineSleepNeed,

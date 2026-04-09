@@ -1,24 +1,21 @@
-const express = require('express');
-const router = express.Router();
-const {
+import express from 'express';
+import {
   createMealType,
   getAllMealTypes,
   getMealTypeById,
   updateMealType,
   deleteMealType,
-} = require('../models/mealType');
-const { log } = require('../config/logging');
-const { authenticate } = require('../middleware/authMiddleware');
-
+} from '../models/mealType.js';
+import { log } from '../config/logging.js';
+import { authenticate } from '../middleware/authMiddleware.js';
+const router = express.Router();
 router.use(authenticate);
-
 /**
  * @swagger
  * tags:
  *   name: Nutrition & Meals
  *   description: Food database, meal planning, meal types, and nutritional tracking.
  */
-
 /**
  * @swagger
  * /meal-types:
@@ -52,7 +49,6 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch meal types' });
   }
 });
-
 /**
  * @swagger
  * /meal-types/{id}:
@@ -88,20 +84,16 @@ router.get('/:id', async (req, res) => {
   try {
     const userId = req.userId;
     const { id } = req.params;
-
     const mealType = await getMealTypeById(id, userId);
-
     if (!mealType) {
       return res.status(404).json({ error: 'Meal type not found' });
     }
-
     res.status(200).json(mealType);
   } catch (error) {
     log('error', `Route GET /meal-types/${req.params.id} error:`, error);
     res.status(500).json({ error: 'Failed to fetch meal type' });
   }
 });
-
 /**
  * @swagger
  * /meal-types:
@@ -147,24 +139,19 @@ router.post('/', async (req, res) => {
   try {
     const userId = req.userId;
     const { name, sort_order } = req.body;
-
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
     }
-
     const newMealType = await createMealType({ name, sort_order }, userId);
     res.status(201).json(newMealType);
   } catch (error) {
     log('error', 'Route POST /meal-types error:', error);
-
     if (error.message.includes('already exists')) {
       return res.status(409).json({ error: error.message });
     }
-
     res.status(500).json({ error: 'Failed to create meal type' });
   }
 });
-
 /**
  * @swagger
  * /meal-types/{id}:
@@ -223,28 +210,23 @@ router.put('/:id', async (req, res) => {
     const userId = req.userId;
     const { id } = req.params;
     const { name, sort_order, is_visible, show_in_quick_log } = req.body;
-
     const updatedMealType = await updateMealType(
       id,
       { name, sort_order, is_visible, show_in_quick_log },
       userId
     );
-
     res.status(200).json(updatedMealType);
   } catch (error) {
     log('error', `Route PUT /meal-types/${req.params.id} error:`, error);
-
     if (error.message.includes('system default')) {
       return res.status(403).json({ error: error.message });
     }
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
-
     res.status(500).json({ error: 'Failed to update meal type' });
   }
 });
-
 /**
  * @swagger
  * /meal-types/{id}:
@@ -280,28 +262,22 @@ router.delete('/:id', async (req, res) => {
   try {
     const userId = req.userId;
     const { id } = req.params;
-
     const deleted = await deleteMealType(id, userId);
-
     if (!deleted) {
       return res
         .status(404)
         .json({ error: 'Meal type not found or cannot be deleted' });
     }
-
     res.status(200).json({ message: 'Meal type deleted successfully' });
   } catch (error) {
     log('error', `Route DELETE /meal-types/${req.params.id} error:`, error);
-
     if (error.message.includes('system default')) {
       return res.status(403).json({ error: error.message });
     }
     if (error.message.includes('contains food entries')) {
       return res.status(409).json({ error: error.message });
     }
-
     res.status(500).json({ error: 'Failed to delete meal type' });
   }
 });
-
-module.exports = router;
+export default router;

@@ -1,7 +1,6 @@
-const { getClient, getSystemClient } = require('../db/poolManager');
-const { encrypt, decrypt, ENCRYPTION_KEY } = require('../security/encryption');
-const { log } = require('../config/logging');
-
+import { getClient, getSystemClient } from '../db/poolManager.js';
+import { encrypt, decrypt, ENCRYPTION_KEY } from '../security/encryption.js';
+import { log } from '../config/logging.js';
 async function getExternalDataProviders(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -23,7 +22,6 @@ async function getExternalDataProviders(userId) {
     client.release();
   }
 }
-
 async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
   // Use a user-scoped client so RLS policies (based on app.user_id) are applied for the viewer
   const client = await getClient(viewerUserId);
@@ -48,7 +46,6 @@ async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
         let decryptedAppId = null;
         let decryptedAppKey = null;
         let decryptedGarthDump = null;
-
         if (row.encrypted_app_id && row.app_id_iv && row.app_id_tag) {
           try {
             decryptedAppId = await decrypt(
@@ -94,7 +91,6 @@ async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
             );
           }
         }
-
         return {
           id: row.id,
           provider_name: row.provider_name,
@@ -119,7 +115,6 @@ async function getExternalDataProvidersByUserId(viewerUserId, targetUserId) {
     client.release();
   }
 }
-
 async function createExternalDataProvider(providerData) {
   const client = await getClient(providerData.user_id); // User-specific operation
   try {
@@ -142,7 +137,6 @@ async function createExternalDataProvider(providerData) {
       garth_dump_iv,
       garth_dump_tag,
     } = providerData;
-
     let encryptedAppId = null;
     let appIdIv = null;
     let appIdTag = null;
@@ -152,7 +146,6 @@ async function createExternalDataProvider(providerData) {
       appIdIv = encrypted.iv;
       appIdTag = encrypted.tag;
     }
-
     let encryptedAppKey = null;
     let appKeyIv = null;
     let appKeyTag = null;
@@ -162,7 +155,6 @@ async function createExternalDataProvider(providerData) {
       appKeyIv = encrypted.iv;
       appKeyTag = encrypted.tag;
     }
-
     const result = await client.query(
       `INSERT INTO external_data_providers (
         provider_name, provider_type, user_id, is_active, base_url, shared_with_public,
@@ -241,7 +233,6 @@ async function updateExternalDataProvider(id, userId, updateData) {
       appKeyIv = encryptedKey.iv;
       appKeyTag = encryptedKey.tag;
     }
-
     const result = await client.query(
       `UPDATE external_data_providers SET
         provider_name = COALESCE($1, provider_name),
@@ -292,7 +283,6 @@ async function updateExternalDataProvider(id, userId, updateData) {
     client.release();
   }
 }
-
 async function getExternalDataProviderById(providerId) {
   const client = await getSystemClient(); // System-level operation
   try {
@@ -311,11 +301,9 @@ async function getExternalDataProviderById(providerId) {
     );
     const data = result.rows[0];
     if (!data) return null;
-
     let decryptedAppId = null;
     let decryptedAppKey = null;
     let decryptedGarthDump = null;
-
     if (data.encrypted_app_id && data.app_id_iv && data.app_id_tag) {
       try {
         decryptedAppId = await decrypt(
@@ -361,7 +349,6 @@ async function getExternalDataProviderById(providerId) {
         );
       }
     }
-
     return {
       id: data.id,
       provider_name: data.provider_name,
@@ -382,7 +369,6 @@ async function getExternalDataProviderById(providerId) {
     client.release();
   }
 }
-
 async function getExternalDataProviderByUserIdAndProviderName(
   userId,
   providerName
@@ -413,11 +399,9 @@ async function getExternalDataProviderByUserIdAndProviderName(
       );
       return null;
     }
-
     let decryptedAppId = null;
     let decryptedAppKey = null;
     let decryptedGarthDump = null;
-
     if (data.encrypted_app_id && data.app_id_iv && data.app_id_tag) {
       try {
         decryptedAppId = await decrypt(
@@ -458,7 +442,6 @@ async function getExternalDataProviderByUserIdAndProviderName(
         log('error', 'Error decrypting garth_dump for provider:', data.id, e);
       }
     }
-
     return {
       id: data.id,
       provider_name: data.provider_name,
@@ -480,7 +463,6 @@ async function getExternalDataProviderByUserIdAndProviderName(
     client.release();
   }
 }
-
 async function checkExternalDataProviderOwnership(providerId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -493,7 +475,6 @@ async function checkExternalDataProviderOwnership(providerId, userId) {
     client.release();
   }
 }
-
 async function deleteExternalDataProvider(id, userId) {
   // Use a user-scoped client so RLS will prevent unauthorized deletions
   const client = await getClient(userId);
@@ -507,20 +488,6 @@ async function deleteExternalDataProvider(id, userId) {
     client.release();
   }
 }
-
-module.exports = {
-  getExternalDataProviders,
-  getExternalDataProvidersByUserId, // now accepts (viewerUserId, targetUserId)
-  createExternalDataProvider,
-  updateExternalDataProvider,
-  getExternalDataProviderById,
-  checkExternalDataProviderOwnership,
-  deleteExternalDataProvider,
-  getExternalDataProviderByUserIdAndProviderName,
-  updateProviderLastSync, // Add the new function to exports
-  getProvidersByType, // Add the new function to exports
-};
-
 async function updateProviderLastSync(providerId, lastSyncAt) {
   const client = await getSystemClient(); // System-level operation as it's updating a provider record directly
   try {
@@ -536,7 +503,6 @@ async function updateProviderLastSync(providerId, lastSyncAt) {
     client.release();
   }
 }
-
 async function getProvidersByType(providerType) {
   const client = await getSystemClient(); // System-level operation to fetch all providers of a type
   try {
@@ -558,3 +524,25 @@ async function getProvidersByType(providerType) {
     client.release();
   }
 }
+export { getExternalDataProviders };
+export { getExternalDataProvidersByUserId };
+export { createExternalDataProvider };
+export { updateExternalDataProvider };
+export { getExternalDataProviderById };
+export { checkExternalDataProviderOwnership };
+export { deleteExternalDataProvider };
+export { getExternalDataProviderByUserIdAndProviderName };
+export { updateProviderLastSync };
+export { getProvidersByType };
+export default {
+  getExternalDataProviders,
+  getExternalDataProvidersByUserId,
+  createExternalDataProvider,
+  updateExternalDataProvider,
+  getExternalDataProviderById,
+  checkExternalDataProviderOwnership,
+  deleteExternalDataProvider,
+  getExternalDataProviderByUserIdAndProviderName,
+  updateProviderLastSync,
+  getProvidersByType,
+};

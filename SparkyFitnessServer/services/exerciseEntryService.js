@@ -1,11 +1,10 @@
-const { log } = require('../config/logging');
-const exerciseRepository = require('../models/exercise');
-const exerciseEntryRepository = require('../models/exerciseEntry');
-const workoutPresetRepository = require('../models/workoutPresetRepository');
-const activityDetailsRepository = require('../models/activityDetailsRepository');
-const preferenceRepository = require('../models/preferenceRepository');
-const { parseISO, isValid } = require('date-fns');
-
+import { log } from '../config/logging.js';
+import exerciseRepository from '../models/exercise.js';
+import exerciseEntryRepository from '../models/exerciseEntry.js';
+import workoutPresetRepository from '../models/workoutPresetRepository.js';
+import activityDetailsRepository from '../models/activityDetailsRepository.js';
+import preferenceRepository from '../models/preferenceRepository.js';
+import { parseISO, isValid } from 'date-fns';
 async function importExerciseEntriesFromCsv(
   authenticatedUserId,
   actingUserId,
@@ -15,12 +14,10 @@ async function importExerciseEntriesFromCsv(
   const updatedCount = 0;
   let failedCount = 0;
   const failedEntries = [];
-
   for (const entryGroup of entries) {
     try {
       // 1. Validate and use the already formatted date
       const entryDate = entryGroup.entry_date;
-
       // Ensure the date string is valid by attempting to parse it as ISO.
       // The frontend now sends yyyy-MM-dd, which is a valid ISO subset.
       if (!isValid(parseISO(entryDate))) {
@@ -28,7 +25,6 @@ async function importExerciseEntriesFromCsv(
           `Invalid date: ${entryDate}. Expected yyyy-MM-dd format.`
         );
       }
-
       // 2. Lookup or Create Exercise
       let exercise = await exerciseRepository.findExerciseByNameAndUserId(
         entryGroup.exercise_name,
@@ -81,14 +77,12 @@ async function importExerciseEntriesFromCsv(
         );
         exercise = await exerciseRepository.createExercise(newExerciseData);
       }
-
       // 3. Lookup or Create Workout Preset (if preset_name is provided)
       // 3. Convert Distance and Weight based on user preferences and process sets
       const preferences =
         await preferenceRepository.getUserPreferences(authenticatedUserId);
       const distanceUnit = preferences?.default_distance_unit || 'km'; // Default to km
       const weightUnit = preferences?.default_weight_unit || 'kg'; // Default to kg
-
       let distanceInKm = entryGroup.distance;
       if (distanceInKm !== undefined && distanceInKm !== null) {
         if (distanceUnit === 'miles') {
@@ -97,7 +91,6 @@ async function importExerciseEntriesFromCsv(
           distanceInKm = parseFloat(distanceInKm);
         }
       }
-
       const setsWithConvertedWeight = entryGroup.sets.map((set) => {
         let weightInKg = set.weight;
         if (weightInKg !== undefined && weightInKg !== null) {
@@ -114,13 +107,11 @@ async function importExerciseEntriesFromCsv(
           rest_time: set.rest_time_sec, // Map frontend rest_time_sec to backend rest_time
         };
       });
-
       // Calculate total duration from sets
       const totalDurationMinutes = setsWithConvertedWeight.reduce(
         (sum, set) => sum + (set.duration || 0) + (set.rest_time || 0) / 60,
         0
       );
-
       // 4. Lookup or Create Workout Preset (if preset_name is provided)
       let workoutPresetId = null; // Initialize workoutPresetId once
       if (entryGroup.preset_name) {
@@ -165,7 +156,6 @@ async function importExerciseEntriesFromCsv(
         }
         workoutPresetId = workoutPreset.id;
       }
-
       // 5. Create Exercise Entry
       const newEntry = await exerciseEntryRepository.createExerciseEntry(
         authenticatedUserId,
@@ -183,7 +173,6 @@ async function importExerciseEntriesFromCsv(
         actingUserId,
         'CSV_Import'
       ); // Add source and actingUserId
-
       // 6. Create Activity Details
       if (
         entryGroup.activity_details &&
@@ -214,14 +203,12 @@ async function importExerciseEntriesFromCsv(
       failedEntries.push({ entry: entryGroup, reason: error.message });
     }
   }
-
   if (failedEntries.length > 0) {
     const error = new Error('Some entries failed to import.');
     error.status = 409; // Conflict or Partial Content
     error.details = { createdCount, updatedCount, failedCount, failedEntries };
     throw error;
   }
-
   return {
     message: 'Historical exercise entries imported successfully.',
     created: createdCount,
@@ -229,7 +216,7 @@ async function importExerciseEntriesFromCsv(
     failed: failedCount,
   };
 }
-
-module.exports = {
+export { importExerciseEntriesFromCsv };
+export default {
   importExerciseEntriesFromCsv,
 };

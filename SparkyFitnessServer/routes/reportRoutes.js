@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import reportService from '../services/reportService.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const reportService = require('../services/reportService');
-
 /**
  * @swagger
  * /reports:
@@ -31,22 +31,19 @@ const reportService = require('../services/reportService');
 router.get('/', authenticate, async (req, res, next) => {
   const { userId, startDate, endDate } = req.query;
   const targetUserId = userId || req.userId;
-
   if (!targetUserId || !startDate || !endDate) {
     return res.status(400).json({
       error:
         'Target User ID (explicit or context), start date, and end date are required.',
     });
   }
-
   // Permission check only if explicit userId is provided that is different from req.userId
   if (userId && userId !== req.userId) {
-    const hasPermission =
-      await require('../utils/permissionUtils').canAccessUserData(
-        userId,
-        'reports',
-        req.authenticatedUserId || req.userId
-      );
+    const hasPermission = await { canAccessUserData }.canAccessUserData(
+      userId,
+      'reports',
+      req.authenticatedUserId || req.userId
+    );
     if (!hasPermission) {
       return res.status(403).json({
         error:
@@ -54,7 +51,6 @@ router.get('/', authenticate, async (req, res, next) => {
       });
     }
   }
-
   try {
     const reportData = await reportService.getReportsData(
       req.userId,
@@ -70,7 +66,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /reports/mini-nutrition-trends:
@@ -99,21 +94,18 @@ router.get('/', authenticate, async (req, res, next) => {
 router.get('/mini-nutrition-trends', authenticate, async (req, res, next) => {
   const { userId, startDate, endDate } = req.query;
   const targetUserId = userId || req.userId;
-
   if (!targetUserId || !startDate || !endDate) {
     return res.status(400).json({
       error: 'Target User ID, start date, and end date are required.',
     });
   }
-
   // Permission check if explicit userId provided
   if (userId && userId !== req.userId) {
-    const hasPermission =
-      await require('../utils/permissionUtils').canAccessUserData(
-        userId,
-        'reports',
-        req.authenticatedUserId || req.userId
-      );
+    const hasPermission = await { canAccessUserData }.canAccessUserData(
+      userId,
+      'reports',
+      req.authenticatedUserId || req.userId
+    );
     if (!hasPermission) {
       return res.status(403).json({
         error:
@@ -121,7 +113,6 @@ router.get('/mini-nutrition-trends', authenticate, async (req, res, next) => {
       });
     }
   }
-
   try {
     const formattedResults = await reportService.getMiniNutritionTrends(
       req.userId,
@@ -137,7 +128,6 @@ router.get('/mini-nutrition-trends', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /reports/nutrition-trends-with-goals:
@@ -169,21 +159,18 @@ router.get(
   async (req, res, next) => {
     const { userId, startDate, endDate } = req.query;
     const targetUserId = userId || req.userId;
-
     if (!targetUserId || !startDate || !endDate) {
       return res.status(400).json({
         error: 'Target User ID, start date, and end date are required.',
       });
     }
-
     // Permission check if explicit userId provided
     if (userId && userId !== req.userId) {
-      const hasPermission =
-        await require('../utils/permissionUtils').canAccessUserData(
-          userId,
-          'reports',
-          req.authenticatedUserId || req.userId
-        );
+      const hasPermission = await { canAccessUserData }.canAccessUserData(
+        userId,
+        'reports',
+        req.authenticatedUserId || req.userId
+      );
       if (!hasPermission) {
         return res.status(403).json({
           error:
@@ -191,7 +178,6 @@ router.get(
         });
       }
     }
-
     try {
       const formattedResults = await reportService.getNutritionTrendsWithGoals(
         req.userId,
@@ -208,7 +194,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /reports/exercise-dashboard:
@@ -246,21 +231,18 @@ router.get(
 router.get('/exercise-dashboard', authenticate, async (req, res, next) => {
   const { userId, startDate, endDate, equipment, muscle, exercise } = req.query;
   const targetUserId = userId || req.userId;
-
   if (!targetUserId || !startDate || !endDate) {
     return res.status(400).json({
       error: 'Target User ID, start date, and end date are required.',
     });
   }
-
   // Permission check if explicit userId provided
   if (userId && userId !== req.userId) {
-    const hasPermission =
-      await require('../utils/permissionUtils').canAccessUserData(
-        userId,
-        'reports',
-        req.authenticatedUserId || req.userId
-      );
+    const hasPermission = await { canAccessUserData }.canAccessUserData(
+      userId,
+      'reports',
+      req.authenticatedUserId || req.userId
+    );
     if (!hasPermission) {
       return res.status(403).json({
         error:
@@ -268,7 +250,6 @@ router.get('/exercise-dashboard', authenticate, async (req, res, next) => {
       });
     }
   }
-
   try {
     const dashboardData = await reportService.getExerciseDashboardData(
       req.userId,
@@ -287,5 +268,4 @@ router.get('/exercise-dashboard', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

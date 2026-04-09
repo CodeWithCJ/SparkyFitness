@@ -1,12 +1,9 @@
-// SparkyFitnessServer/integrations/strava/stravaDataProcessor.js
-
-const { log } = require('../../config/logging');
-const exerciseRepository = require('../../models/exercise');
-const exerciseEntryRepository = require('../../models/exerciseEntry');
-const activityDetailsRepository = require('../../models/activityDetailsRepository');
-const measurementRepository = require('../../models/measurementRepository');
-const { todayInZone, instantToDay } = require('@workspace/shared');
-
+import { log } from '../../config/logging.js';
+import exerciseRepository from '../../models/exercise.js';
+import exerciseEntryRepository from '../../models/exerciseEntry.js';
+import activityDetailsRepository from '../../models/activityDetailsRepository.js';
+import measurementRepository from '../../models/measurementRepository.js';
+import { todayInZone, instantToDay } from '@workspace/shared';
 /**
  * Map Strava sport_type to a general exercise category
  */
@@ -61,10 +58,8 @@ function mapSportTypeToCategory(sportType) {
     Wheelchair: 'Cardio',
     Workout: 'Other',
   };
-
   return categoryMap[sportType] || 'Other';
 }
-
 /**
  * Process Strava activities and create exercise entries
  * @param {number} userId - User ID
@@ -82,14 +77,12 @@ async function processStravaActivities(
   timezone = 'UTC'
 ) {
   if (!activities || activities.length === 0) return;
-
   for (const activity of activities) {
     try {
       // Extract entry date from start_date_local (e.g., "2024-01-15T07:30:00Z")
       const entryDate = activity.start_date_local
         ? activity.start_date_local.substring(0, 10)
         : instantToDay(activity.start_date, timezone);
-
       // Safety filter
       if (startDate && entryDate < startDate) {
         log(
@@ -98,11 +91,9 @@ async function processStravaActivities(
         );
         continue;
       }
-
       const exerciseName = activity.name || 'Strava Activity';
       const sportType = activity.sport_type || activity.type || 'Workout';
       const category = mapSportTypeToCategory(sportType);
-
       // Find or create exercise by name
       let exercise = await exerciseRepository.findExerciseByNameAndUserId(
         exerciseName,
@@ -118,18 +109,15 @@ async function processStravaActivities(
           shared_with_public: false,
         });
       }
-
       // Unit conversions
       // Strava: distance in meters -> convert to km
       const distanceKm = activity.distance
         ? parseFloat((activity.distance / 1000).toFixed(2))
         : null;
-
       // Strava: moving_time in seconds -> convert to minutes
       const durationMinutes = activity.moving_time
         ? Math.round(activity.moving_time / 60)
         : 0;
-
       // Strava SummaryActivity often lacks calories, but DetailedActivity (if available) has it.
       // Default to 0 to satisfy the NOT NULL constraint in the database.
       const detailedActivity = detailedActivities[activity.id];
@@ -137,7 +125,6 @@ async function processStravaActivities(
         (detailedActivity && detailedActivity.calories) ||
         activity.calories ||
         0;
-
       const entryData = {
         exercise_id: exercise.id,
         entry_date: entryDate,
@@ -157,19 +144,16 @@ async function processStravaActivities(
           },
         ],
       };
-
       const newEntry = await exerciseEntryRepository.createExerciseEntry(
         userId,
         entryData,
         createdByUserId,
         'Strava'
       );
-
       // Store detailed activity data (GPS, laps, splits, segments) if available
       if (newEntry && newEntry.id) {
         const detailedActivity = detailedActivities[activity.id];
         const detailData = detailedActivity || activity;
-
         await activityDetailsRepository.createActivityDetail(userId, {
           exercise_entry_id: newEntry.id,
           provider_name: 'Strava',
@@ -178,7 +162,6 @@ async function processStravaActivities(
           created_by_user_id: createdByUserId,
         });
       }
-
       log(
         'info',
         `[stravaDataProcessor] Processed activity "${exerciseName}" (${sportType}) for user ${userId} on ${entryDate}`
@@ -192,7 +175,6 @@ async function processStravaActivities(
     }
   }
 }
-
 /**
  * Process Strava athlete weight and store as check-in measurement
  * @param {number} userId - User ID
@@ -206,18 +188,15 @@ async function processStravaAthleteWeight(
   timezone = 'UTC'
 ) {
   if (!athlete || !athlete.weight || athlete.weight <= 0) return;
-
   try {
     const entryDate = todayInZone(timezone);
     const measurementsToUpsert = { weight: athlete.weight }; // Already in kg
-
     await measurementRepository.upsertCheckInMeasurements(
       userId,
       createdByUserId,
       entryDate,
       measurementsToUpsert
     );
-
     log(
       'info',
       `[stravaDataProcessor] Upserted Strava weight (${athlete.weight}kg) for user ${userId} on ${entryDate}`
@@ -229,8 +208,10 @@ async function processStravaAthleteWeight(
     );
   }
 }
-
-module.exports = {
+export { processStravaActivities };
+export { processStravaAthleteWeight };
+export { mapSportTypeToCategory };
+export default {
   processStravaActivities,
   processStravaAthleteWeight,
   mapSportTypeToCategory,

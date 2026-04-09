@@ -1,19 +1,15 @@
-const axios = require('axios');
-const NodeCache = require('node-cache'); // For caching GitHub API responses
-const { log } = require('../../config/logging'); // Import the log utility
-
+import axios from 'axios';
+import NodeCache from 'node-cache';
+import { log } from '../../config/logging.js';
 const GITHUB_RAW_BASE_URL =
   'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main';
 const EXERCISES_PATH = 'exercises'; // No leading slash for API
-
 // Initialize cache for GitHub API responses (e.g., 1 hour TTL)
 const githubCache = new NodeCache({ stdTTL: 3600 });
-
 class FreeExerciseDBService {
   constructor() {
     this.exerciseList = []; // To store a list of available exercise IDs/names
   }
-
   /**
    * Fetches a single exercise by its ID (filename without .json).
    * @param {string} exerciseId - The ID of the exercise (e.g., "Air_Bike").
@@ -22,14 +18,12 @@ class FreeExerciseDBService {
   async getExerciseById(exerciseId) {
     const cacheKey = `exercise_${exerciseId}`;
     let exercise = githubCache.get(cacheKey);
-
     if (exercise) {
       console.log(
         `[FreeExerciseDBService] Cache hit for exercise: ${exerciseId}`
       );
       return exercise;
     }
-
     try {
       const url = `${GITHUB_RAW_BASE_URL}/${EXERCISES_PATH}/${exerciseId}.json`;
       console.log(`[FreeExerciseDBService] Fetching exercise from: ${url}`);
@@ -51,7 +45,6 @@ class FreeExerciseDBService {
       return null;
     }
   }
-
   async searchExercises(
     query,
     equipmentFilter = [],
@@ -61,14 +54,12 @@ class FreeExerciseDBService {
   ) {
     const cacheKey = `search_exercises_${query}_${equipmentFilter.join(',')}_${muscleGroupFilter.join(',')}_${limit}_${offset}`;
     const cachedResults = githubCache.get(cacheKey);
-
     if (cachedResults) {
       console.log(
         `[FreeExerciseDBService] Cache hit for search query: ${query}, equipment: ${equipmentFilter}, muscles: ${muscleGroupFilter}, limit: ${limit}, offset: ${offset}`
       );
       return cachedResults;
     }
-
     try {
       const exercisesJsonUrl =
         'https://api.github.com/repos/yuhonas/free-exercise-db/contents/dist/exercises.json';
@@ -79,7 +70,6 @@ class FreeExerciseDBService {
         headers: { Accept: 'application/vnd.github.raw+json' },
       });
       const allExercises = response.data;
-
       const filteredExercises = allExercises.filter((exercise) => {
         const matchesQuery =
           !query || exercise.name.toLowerCase().includes(query.toLowerCase());
@@ -101,13 +91,11 @@ class FreeExerciseDBService {
             ));
         return matchesQuery && matchesEquipment && matchesMuscleGroup;
       });
-
       const totalCount = filteredExercises.length;
       const paginatedExercises = filteredExercises.slice(
         offset,
         offset + limit
       );
-
       const result = { exercises: paginatedExercises, totalCount };
       githubCache.set(cacheKey, result);
       return result;
@@ -119,7 +107,6 @@ class FreeExerciseDBService {
       return { exercises: [], totalCount: 0 };
     }
   }
-
   getExerciseImageUrl(imagePath) {
     // The imagePath from the exercise JSON is relative to the exercise file,
     // e.g., "3_4_Sit-Up/0.jpg".
@@ -132,5 +119,5 @@ class FreeExerciseDBService {
     return imageUrl;
   }
 }
-
-module.exports = new FreeExerciseDBService();
+const freeExerciseDBService = new FreeExerciseDBService();
+export default freeExerciseDBService;

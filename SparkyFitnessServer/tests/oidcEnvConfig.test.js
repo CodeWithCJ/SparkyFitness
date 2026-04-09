@@ -1,8 +1,6 @@
-const { getEnvOidcConfig } = require('../utils/oidcEnvConfig');
-
+import { getEnvOidcConfig } from '../utils/oidcEnvConfig.js';
 describe('oidcEnvConfig', () => {
   const originalEnv = process.env;
-
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
@@ -21,24 +19,20 @@ describe('oidcEnvConfig', () => {
     delete process.env.SPARKY_FITNESS_OIDC_USERINFO_SIGNED_ALG;
     delete process.env.SPARKY_FITNESS_OIDC_TIMEOUT;
   });
-
   afterAll(() => {
     process.env = originalEnv;
   });
-
   describe('getEnvOidcConfig', () => {
     it('should return null if required env vars are missing', () => {
       process.env.SPARKY_FITNESS_OIDC_ISSUER_URL = 'http://issuer.com';
       // Missing others
       expect(getEnvOidcConfig()).toBeNull();
     });
-
     it('should return config with default scope if not provided', () => {
       process.env.SPARKY_FITNESS_OIDC_ISSUER_URL = 'http://issuer.com/';
       process.env.SPARKY_FITNESS_OIDC_CLIENT_ID = 'test-client';
       process.env.SPARKY_FITNESS_OIDC_CLIENT_SECRET = 'test-secret';
       process.env.SPARKY_FITNESS_OIDC_PROVIDER_SLUG = 'test-slug';
-
       const config = getEnvOidcConfig();
       expect(config).toEqual(
         expect.objectContaining({
@@ -51,14 +45,12 @@ describe('oidcEnvConfig', () => {
         })
       );
     });
-
     it('should use SPARKY_FITNESS_OIDC_SCOPE if provided', () => {
       process.env.SPARKY_FITNESS_OIDC_ISSUER_URL = 'http://issuer.com';
       process.env.SPARKY_FITNESS_OIDC_CLIENT_ID = 'test-client';
       process.env.SPARKY_FITNESS_OIDC_CLIENT_SECRET = 'test-secret';
       process.env.SPARKY_FITNESS_OIDC_PROVIDER_SLUG = 'test-slug';
       process.env.SPARKY_FITNESS_OIDC_SCOPE = 'openid custom-scope';
-
       const config = getEnvOidcConfig();
       expect(config.scope).toBe('openid custom-scope');
     });
@@ -74,7 +66,6 @@ describe('oidcEnvConfig', () => {
       process.env.SPARKY_FITNESS_OIDC_ID_TOKEN_SIGNED_ALG = 'ES256';
       process.env.SPARKY_FITNESS_OIDC_USERINFO_SIGNED_ALG = 'RS256';
       process.env.SPARKY_FITNESS_OIDC_TIMEOUT = '45000';
-
       const config = getEnvOidcConfig();
       expect(config).toEqual(
         expect.objectContaining({
@@ -94,7 +85,6 @@ describe('oidcEnvConfig', () => {
       process.env.SPARKY_FITNESS_OIDC_CLIENT_SECRET = 'test-secret';
       process.env.SPARKY_FITNESS_OIDC_PROVIDER_SLUG = 'test-slug';
       process.env.SPARKY_FITNESS_OIDC_TIMEOUT = 'invalid-number';
-
       const config = getEnvOidcConfig();
       expect(config.timeout).toBe(30000);
     });

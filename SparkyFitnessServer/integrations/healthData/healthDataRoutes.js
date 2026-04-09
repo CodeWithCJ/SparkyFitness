@@ -1,20 +1,16 @@
-const express = require('express');
+import express from 'express';
+import { log } from '../../config/logging.js';
+import measurementService from '../../services/measurementService.js';
+import mobileHealthDataRoutes from './mobileHealthDataRoutes.js';
+import { loadUserTimezone } from '../../utils/timezoneLoader.js';
+import { instantToDay } from '@workspace/shared';
+import sleepRepository from '../../models/sleepRepository.js';
 const router = express.Router();
-const { log } = require('../../config/logging');
-const measurementService = require('../../services/measurementService'); // Import the new service
-const mobileHealthDataRoutes = require('./mobileHealthDataRoutes'); // Import the new mobile health data routes
-const { loadUserTimezone } = require('../../utils/timezoneLoader');
-const { instantToDay } = require('@workspace/shared');
-
-const sleepRepository = require('../../models/sleepRepository'); // Import sleepRepository
-
 // Mount the new mobile health data routes
 router.use('/mobile_data', mobileHealthDataRoutes);
-
 // Endpoint for receiving health data
 router.post('/', async (req, res, next) => {
   let healthDataArray = [];
-
   // req.body should already be parsed as JSON by express.json() middleware in SparkyFitnessServer.js
   if (Array.isArray(req.body)) {
     healthDataArray = req.body;
@@ -26,14 +22,12 @@ router.post('/', async (req, res, next) => {
       error: 'Invalid request body format. Expected JSON object or array.',
     });
   }
-
   // Log the incoming health data JSON
   log(
     'info',
     'Incoming health data JSON:',
     JSON.stringify(healthDataArray, null, 2)
   );
-
   try {
     const result = await measurementService.processHealthData(
       healthDataArray,
@@ -49,7 +43,6 @@ router.post('/', async (req, res, next) => {
     next(error);
   }
 });
-
 // Endpoint for manual sleep entry (API Key authenticated)
 router.post('/sleep/manual_entry', async (req, res, next) => {
   try {
@@ -60,7 +53,6 @@ router.post('/sleep/manual_entry', async (req, res, next) => {
           'Missing required fields: bedtime, wake_time, or duration_in_seconds.',
       });
     }
-
     const tz = await loadUserTimezone(req.userId);
     const sleepEntryData = {
       entry_date: instantToDay(bedtime, tz), // Derive date from bedtime in user's timezone
@@ -69,7 +61,6 @@ router.post('/sleep/manual_entry', async (req, res, next) => {
       duration_in_seconds: duration_in_seconds,
       source: 'manual',
     };
-
     const result = await measurementService.processSleepEntry(
       req.userId,
       req.userId,
@@ -81,7 +72,6 @@ router.post('/sleep/manual_entry', async (req, res, next) => {
     next(error);
   }
 });
-
 // Endpoint for fetching sleep entries (API Key authenticated)
 router.get('/data/sleep_entries', async (req, res, next) => {
   try {
@@ -91,7 +81,6 @@ router.get('/data/sleep_entries', async (req, res, next) => {
         error: 'Missing required query parameters: startDate and endDate.',
       });
     }
-
     const sleepEntries =
       await sleepRepository.getSleepEntriesByUserIdAndDateRange(
         req.userId,
@@ -104,5 +93,4 @@ router.get('/data/sleep_entries', async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

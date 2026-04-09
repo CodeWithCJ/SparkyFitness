@@ -1,6 +1,5 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 /**
  * Creates a new custom meal type for a specific user.
  * @param {Object} data - { name: string, sort_order: number }
@@ -9,14 +8,11 @@ const { log } = require('../config/logging');
 async function createMealType(data, userId) {
   log(
     'info',
-    `createMealType in mealType.js: data: ${JSON.stringify(
-      data
-    )}, userId: ${userId}`
+    `createMealType in mealType.js: data: ${JSON.stringify(data)}, userId: ${userId}`
   );
   const client = await getClient(userId);
   try {
     const sortOrder = data.sort_order !== undefined ? data.sort_order : 100;
-
     const result = await client.query(
       `INSERT INTO meal_types (name, user_id, sort_order, is_visible)
        VALUES ($1, $2, $3, TRUE)
@@ -31,7 +27,6 @@ async function createMealType(data, userId) {
     client.release();
   }
 }
-
 /**
  * Fetches all available meal types for a user.
  * This includes System Defaults (user_id is NULL) AND User Custom types.
@@ -62,7 +57,6 @@ async function getAllMealTypes(userId) {
     client.release();
   }
 }
-
 /**
  * Fetches a single meal type by ID.
  * Ensures the user has access to it (it's either theirs or a system default).
@@ -87,13 +81,10 @@ async function getMealTypeById(mealTypeId, userId) {
     client.release();
   }
 }
-
 async function updateMealType(mealTypeId, data, userId) {
   log(
     'info',
-    `updateMealType in mealType.js: id: ${mealTypeId}, data: ${JSON.stringify(
-      data
-    )}`
+    `updateMealType in mealType.js: id: ${mealTypeId}, data: ${JSON.stringify(data)}`
   );
   const client = await getClient(userId);
   try {
@@ -111,7 +102,6 @@ async function updateMealType(mealTypeId, data, userId) {
         [userId, mealTypeId, data.is_visible, data.show_in_quick_log]
       );
     }
-
     if (data.name !== undefined || data.sort_order !== undefined) {
       const updateResult = await client.query(
         `UPDATE meal_types 
@@ -122,7 +112,6 @@ async function updateMealType(mealTypeId, data, userId) {
          RETURNING *`,
         [data.name, data.sort_order, mealTypeId, userId]
       );
-
       if (updateResult.rows.length === 0) {
         const check = await client.query(
           'SELECT 1 FROM meal_types WHERE id = $1 AND user_id IS NULL',
@@ -136,9 +125,7 @@ async function updateMealType(mealTypeId, data, userId) {
         throw new Error('Meal type not found or access denied.');
       }
     }
-
     await client.query('COMMIT');
-
     return await getMealTypeById(mealTypeId, userId);
   } catch (error) {
     await client.query('ROLLBACK');
@@ -148,7 +135,6 @@ async function updateMealType(mealTypeId, data, userId) {
     client.release();
   }
 }
-
 async function deleteMealType(mealTypeId, userId) {
   log('info', `deleteMealType in mealType.js: id: ${mealTypeId}`);
   const client = await getClient(userId);
@@ -159,7 +145,6 @@ async function deleteMealType(mealTypeId, userId) {
        RETURNING id`,
       [mealTypeId, userId]
     );
-
     if (result.rowCount === 0) {
       const checkSystem = await client.query(
         'SELECT id FROM meal_types WHERE id = $1 AND user_id IS NULL',
@@ -170,7 +155,6 @@ async function deleteMealType(mealTypeId, userId) {
       }
       return false;
     }
-
     return true;
   } catch (error) {
     if (error.code === '23503') {
@@ -185,8 +169,12 @@ async function deleteMealType(mealTypeId, userId) {
     client.release();
   }
 }
-
-module.exports = {
+export { createMealType };
+export { getAllMealTypes };
+export { getMealTypeById };
+export { updateMealType };
+export { deleteMealType };
+export default {
   createMealType,
   getAllMealTypes,
   getMealTypeById,

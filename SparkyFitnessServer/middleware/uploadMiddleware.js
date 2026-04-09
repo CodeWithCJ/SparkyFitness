@@ -1,6 +1,5 @@
-const multer = require('multer');
-const path = require('path');
-
+import multer from 'multer';
+import path from 'path';
 /**
  * Creates a multer upload middleware with a given storage configuration.
  * @param {object} storage - A multer storage engine configuration.
@@ -16,7 +15,6 @@ const createUploadMiddleware = (storage) => {
         path.extname(file.originalname).toLowerCase()
       );
       const mimetype = filetypes.test(file.mimetype);
-
       if (mimetype && extname) {
         return cb(null, true);
       } else {
@@ -24,8 +22,9 @@ const createUploadMiddleware = (storage) => {
       }
     },
   });
-
   return upload;
 };
-
-module.exports = { createUploadMiddleware };
+export { createUploadMiddleware };
+export default {
+  createUploadMiddleware,
+};

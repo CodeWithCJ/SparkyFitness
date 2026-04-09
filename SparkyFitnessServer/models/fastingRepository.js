@@ -1,6 +1,5 @@
-const { getClient } = require('../db/poolManager');
-const { dayRangeToUtcRange } = require('@workspace/shared');
-
+import { getClient } from '../db/poolManager.js';
+import { dayRangeToUtcRange } from '@workspace/shared';
 async function createFastingLog(userId, startTime, targetEndTime, fastingType) {
   const client = await getClient(userId);
   try {
@@ -15,7 +14,6 @@ async function createFastingLog(userId, startTime, targetEndTime, fastingType) {
     client.release();
   }
 }
-
 async function endFast(id, userId, endTime, durationMinutes, startTime) {
   const client = await getClient(userId);
   try {
@@ -23,7 +21,6 @@ async function endFast(id, userId, endTime, durationMinutes, startTime) {
     const setParts = [];
     const values = [];
     let idx = 1;
-
     setParts.push(`end_time = $${idx++}`);
     values.push(endTime);
     setParts.push(`duration_minutes = $${idx++}`);
@@ -35,19 +32,16 @@ async function endFast(id, userId, endTime, durationMinutes, startTime) {
     }
     setParts.push("status = 'COMPLETED'");
     setParts.push('updated_at = NOW()');
-
     const whereIdPos = idx++;
     const whereUserPos = idx++;
     const query = `UPDATE fasting_logs SET ${setParts.join(', ')} WHERE id = $${whereIdPos} AND user_id = $${whereUserPos} RETURNING *`;
     values.push(id, userId);
-
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {
     client.release();
   }
 }
-
 async function getFastingById(id, userId) {
   const client = await getClient(userId);
   try {
@@ -60,7 +54,6 @@ async function getFastingById(id, userId) {
     client.release();
   }
 }
-
 async function getCurrentFast(userId) {
   const client = await getClient(userId);
   try {
@@ -81,7 +74,6 @@ async function getCurrentFast(userId) {
     client.release();
   }
 }
-
 async function getFastingHistory(userId, limit = 50, offset = 0) {
   const client = await getClient(userId);
   try {
@@ -115,7 +107,6 @@ async function updateFast(id, userId, updates) {
     let query = 'UPDATE fasting_logs SET updated_at = NOW()';
     const values = [];
     let paramIndex = 1;
-
     if (start_time !== undefined) {
       query += `, start_time = $${paramIndex++}`;
       values.push(start_time);
@@ -140,17 +131,14 @@ async function updateFast(id, userId, updates) {
       query += `, fasting_type = $${paramIndex++}`;
       values.push(fasting_type);
     }
-
     query += ` WHERE id = $${paramIndex++} AND user_id = $${paramIndex++} RETURNING *`;
     values.push(id, userId);
-
     const result = await client.query(query, values);
     return result.rows[0];
   } finally {
     client.release();
   }
 }
-
 async function getFastingStats(userId) {
   const client = await getClient(userId);
   try {
@@ -171,7 +159,6 @@ async function getFastingStats(userId) {
     client.release();
   }
 }
-
 // Get fasting logs within a date range (inclusive). Returns completed fasts only.
 async function getFastingLogsByDateRange(
   userId,
@@ -197,8 +184,15 @@ async function getFastingLogsByDateRange(
     client.release();
   }
 }
-
-module.exports = {
+export { createFastingLog };
+export { endFast };
+export { getFastingById };
+export { getCurrentFast };
+export { getFastingHistory };
+export { updateFast };
+export { getFastingStats };
+export { getFastingLogsByDateRange };
+export default {
   createFastingLog,
   endFast,
   getFastingById,

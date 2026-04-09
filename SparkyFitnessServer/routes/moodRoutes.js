@@ -1,9 +1,8 @@
-const express = require('express');
+import express from 'express';
+import moodRepository from '../models/moodRepository.js';
+import { authenticate } from '../middleware/authMiddleware.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
 const router = express.Router();
-const moodRepository = require('../models/moodRepository');
-const { authenticate } = require('../middleware/authMiddleware');
-const { canAccessUserData } = require('../utils/permissionUtils');
-
 /**
  * @swagger
  * /mood:
@@ -49,11 +48,9 @@ router.post('/', authenticate, async (req, res, next) => {
   try {
     const { mood_value, notes, entry_date } = req.body;
     const userId = req.userId;
-
     if (mood_value === null) {
       return res.status(400).json({ message: 'Mood value is required.' });
     }
-
     const newMoodEntry = await moodRepository.createOrUpdateMoodEntry(
       userId,
       mood_value,
@@ -65,7 +62,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /mood:
@@ -117,13 +113,11 @@ router.get('/', authenticate, async (req, res, next) => {
   try {
     const { userId, startDate, endDate } = req.query;
     const targetUserId = userId || req.userId;
-
     if (!startDate || !endDate) {
       return res
         .status(400)
         .json({ message: 'Start date and end date are required.' });
     }
-
     // Check permission if accessing another user's data
     if (userId && userId !== req.userId) {
       const hasPermission = await canAccessUserData(
@@ -138,7 +132,6 @@ router.get('/', authenticate, async (req, res, next) => {
         });
       }
     }
-
     const moodEntries = await moodRepository.getMoodEntriesByUserId(
       targetUserId,
       startDate,
@@ -149,7 +142,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /mood/{id}:
@@ -187,7 +179,6 @@ router.get('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /mood/date/{entryDate}:
@@ -212,7 +203,6 @@ router.get('/date/:entryDate', authenticate, async (req, res, next) => {
     const { entryDate } = req.params;
     const { userId } = req.query;
     const targetUserId = userId || req.userId;
-
     // Check permission if accessing another user's data
     if (userId && userId !== req.userId) {
       const hasPermission = await canAccessUserData(
@@ -227,7 +217,6 @@ router.get('/date/:entryDate', authenticate, async (req, res, next) => {
         });
       }
     }
-
     const moodEntry = await moodRepository.getMoodEntryByDate(
       targetUserId,
       entryDate
@@ -240,7 +229,6 @@ router.get('/date/:entryDate', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /mood/{id}:
@@ -285,7 +273,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /mood/{id}:
@@ -322,5 +309,4 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

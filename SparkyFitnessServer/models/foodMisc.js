@@ -1,5 +1,4 @@
-const { getClient, getSystemClient } = require('../db/poolManager');
-
+import { getClient, getSystemClient } from '../db/poolManager.js';
 async function getFoodDataProviderById(providerId) {
   const client = await getSystemClient(); // System-level operation
   try {
@@ -12,10 +11,8 @@ async function getFoodDataProviderById(providerId) {
     client.release();
   }
 }
-
 async function getRecentFoods(userId, limit, mealType) {
   const client = await getClient(userId); // User-specific operation
-
   const queryParams = [userId];
   let mealTypeCondition = '';
   if (mealType) {
@@ -23,7 +20,6 @@ async function getRecentFoods(userId, limit, mealType) {
     mealTypeCondition = `AND (LOWER(mt.name) = LOWER($${queryParams.length}) OR fe.meal_type_id::text = $${queryParams.length})`;
   }
   queryParams.push(limit);
-
   try {
     const result = await client.query(
       `WITH RecentFoodEntries AS (
@@ -83,10 +79,8 @@ async function getRecentFoods(userId, limit, mealType) {
     client.release();
   }
 }
-
 async function getTopFoods(userId, limit, mealType) {
   const client = await getClient(userId); // User-specific operation
-
   const queryParams = [userId];
   let mealTypeCondition = '';
   if (mealType) {
@@ -94,7 +88,6 @@ async function getTopFoods(userId, limit, mealType) {
     mealTypeCondition = `AND (LOWER(mt.name) = LOWER($${queryParams.length}) OR fe.meal_type_id::text = $${queryParams.length})`;
   }
   queryParams.push(limit);
-
   try {
     const result = await client.query(
       `WITH TopFoodEntries AS (
@@ -155,7 +148,6 @@ async function getTopFoods(userId, limit, mealType) {
     client.release();
   }
 }
-
 async function getDailyNutritionSummary(userId, date) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -190,7 +182,6 @@ async function getDailyNutritionSummary(userId, date) {
     client.release();
   }
 }
-
 async function getFoodsNeedingReview(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -220,7 +211,6 @@ async function getFoodsNeedingReview(userId) {
     client.release();
   }
 }
-
 async function updateFoodEntriesSnapshot(
   userId,
   foodId,
@@ -291,7 +281,6 @@ async function updateFoodEntriesSnapshot(
     client.release();
   }
 }
-
 async function clearUserIgnoredUpdate(userId, variantId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -304,8 +293,14 @@ async function clearUserIgnoredUpdate(userId, variantId) {
     client.release();
   }
 }
-
-module.exports = {
+export { getFoodDataProviderById };
+export { getRecentFoods };
+export { getTopFoods };
+export { getDailyNutritionSummary };
+export { getFoodsNeedingReview };
+export { updateFoodEntriesSnapshot };
+export { clearUserIgnoredUpdate };
+export default {
   getFoodDataProviderById,
   getRecentFoods,
   getTopFoods,

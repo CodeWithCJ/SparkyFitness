@@ -1,22 +1,15 @@
-// SparkyFitnessServer/integrations/polar/polarService.js
-
-const axios = require('axios');
-const crypto = require('crypto');
-const { getClient, getSystemClient } = require('../../db/poolManager');
-const {
-  encrypt,
-  decrypt,
-  ENCRYPTION_KEY,
-} = require('../../security/encryption');
-const { log } = require('../../config/logging');
-const polarDataProcessor = require('./polarDataProcessor');
-const { loadUserTimezone } = require('../../utils/timezoneLoader');
-const { todayInZone, addDays } = require('@workspace/shared');
-
+import axios from 'axios';
+import crypto from 'crypto';
+import { getClient, getSystemClient } from '../../db/poolManager.js';
+import { encrypt, decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
+import { log } from '../../config/logging.js';
+import polarDataProcessor from './polarDataProcessor.js';
+import { loadUserTimezone } from '../../utils/timezoneLoader.js';
+import { todayInZone, addDays } from '@workspace/shared';
+import { logRawResponse } from '../../utils/diagnosticLogger.js';
 const POLAR_AUTH_URL = 'https://flow.polar.com/oauth2/authorization';
 const POLAR_TOKEN_URL = 'https://polarremote.com/v2/oauth2/token';
 const POLAR_API_BASE_URL = 'https://www.polaraccesslink.com/v3';
-
 /**
  * Construct the Polar authorization URL.
  */
@@ -32,13 +25,10 @@ async function getAuthorizationUrl(userId, redirectUri, providerId) {
           text: "SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE user_id = $1 AND provider_type = 'polar'",
           values: [userId],
         };
-
     const result = await client.query(query.text, query.values);
-
     if (result.rows.length === 0) {
       throw new Error('Polar client credentials not found for user.');
     }
-
     const { encrypted_app_id, app_id_iv, app_id_tag } = result.rows[0];
     const clientId = await decrypt(
       encrypted_app_id,
@@ -46,10 +36,8 @@ async function getAuthorizationUrl(userId, redirectUri, providerId) {
       app_id_tag,
       ENCRYPTION_KEY
     );
-
     const scope = 'accesslink.read_all';
     const state = crypto.randomBytes(16).toString('hex');
-
     // Store state in DB for validation during callback
     const updateQuery = providerId
       ? {
@@ -60,15 +48,12 @@ async function getAuthorizationUrl(userId, redirectUri, providerId) {
           text: "UPDATE external_data_providers SET oauth_state = $1 WHERE user_id = $2 AND provider_type = 'polar'",
           values: [state, userId],
         };
-
     await client.query(updateQuery.text, updateQuery.values);
-
     return `${POLAR_AUTH_URL}?response_type=code&client_id=${clientId}&scope=${scope}&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   } finally {
     client.release();
   }
 }
-
 /**
  * Exchange authorization code for tokens.
  */
@@ -94,16 +79,13 @@ async function exchangeCodeForTokens(
                        WHERE oauth_state = $1 AND user_id = $2 AND provider_type = 'polar'`,
           values: [state, userId],
         };
-
     const providerResult = await client.query(
       providerQuery.text,
       providerQuery.values
     );
-
     if (providerResult.rows.length === 0) {
       throw new Error('Polar client credentials not found for user.');
     }
-
     const {
       id: finalProviderId,
       encrypted_app_id,
@@ -114,7 +96,6 @@ async function exchangeCodeForTokens(
       app_key_tag,
       oauth_state: storedState,
     } = providerResult.rows[0];
-
     // Validate state to prevent CSRF
     if (!storedState || storedState !== state) {
       log(
@@ -123,7 +104,6 @@ async function exchangeCodeForTokens(
       );
       throw new Error('Invalid OAuth state. Potential CSRF attack.');
     }
-
     const clientId = await decrypt(
       encrypted_app_id,
       app_id_iv,
@@ -136,11 +116,9 @@ async function exchangeCodeForTokens(
       app_key_tag,
       ENCRYPTION_KEY
     );
-
     const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString(
       'base64'
     );
-
     const response = await axios.post(
       POLAR_TOKEN_URL,
       `grant_type=authorization_code&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`,
@@ -152,16 +130,13 @@ async function exchangeCodeForTokens(
         },
       }
     );
-
     const { access_token, expires_in, x_user_id } = response.data;
-
     const encryptedAccess = await encrypt(access_token, ENCRYPTION_KEY);
     // Polar AccessLink tokens are long-lived and don't typically include a refresh token.
     // However, if the API ever provides one, we should store it. For now, we'll store a placeholder.
     const encryptedRefresh = await encrypt('no_refresh_token', ENCRYPTION_KEY); // Placeholder
     const expiresAt = new Date(Date.now() + (expires_in || 0) * 1000);
     const polarUserId = x_user_id;
-
     // Clear oauth_state after use and update tokens
     await client.query(
       `UPDATE external_data_providers
@@ -181,7 +156,6 @@ async function exchangeCodeForTokens(
         finalProviderId,
       ]
     );
-
     // Polar AccessLink. Check if user is already registered.
     try {
       // Try to fetch user info first. If this succeeds, the user is already registered.
@@ -200,12 +174,10 @@ async function exchangeCodeForTokens(
       // Note: Docs say 204 No Content if not found, or 404?
       // Docs say: "204 No Content when user with given userId is not found."
       // But getting a 401/403 here might mean the token is valid but user not linked?
-
       log(
         'info',
         `User ${x_user_id} lookup status: ${getError.response ? getError.response.status : getError.message}. Proceeding to registration.`
       );
-
       const inputBody = `<register><member-id>${userId}</member-id></register>`;
       try {
         await axios.post(`${POLAR_API_BASE_URL}/users`, inputBody, {
@@ -244,7 +216,6 @@ async function exchangeCodeForTokens(
         }
       }
     }
-
     return { success: true, externalUserId: x_user_id };
   } catch (error) {
     log('error', `Error exchanging Polar code for tokens: ${error.message}`);
@@ -253,7 +224,6 @@ async function exchangeCodeForTokens(
     client.release();
   }
 }
-
 /**
  * Check for available notifications (Basic Auth).
  * Lists users who have new data available.
@@ -274,9 +244,7 @@ async function checkNotifications(userId, providerId) {
                        WHERE user_id = $1 AND provider_type = 'polar'`,
           values: [userId],
         };
-
     const result = await client.query(query.text, query.values);
-
     if (result.rows.length === 0) {
       log(
         'warn',
@@ -284,7 +252,6 @@ async function checkNotifications(userId, providerId) {
       );
       return null;
     }
-
     const {
       encrypted_app_id,
       app_id_iv,
@@ -306,11 +273,9 @@ async function checkNotifications(userId, providerId) {
       app_key_tag,
       ENCRYPTION_KEY
     );
-
     const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString(
       'base64'
     );
-
     log(
       'info',
       `Checking Polar notifications for user ${userId} (Polar ID: ${external_user_id})...`
@@ -321,17 +286,14 @@ async function checkNotifications(userId, providerId) {
         Accept: 'application/json',
       },
     });
-
     // Response: { "available-user-data": [ { "user-id": 123, "data-type": "EXERCISE", ... } ] }
     const availableData = response.data['available-user-data'] || [];
     log('info', `[Polar] Notifications found: ${availableData.length}.`);
-
     // Filter for our user
     // external_user_id is stored as string in DB but might be number in API response?
     const userNotifications = availableData.filter(
       (n) => String(n['user-id']) === String(external_user_id)
     );
-
     if (userNotifications.length > 0) {
       log(
         'info',
@@ -343,7 +305,6 @@ async function checkNotifications(userId, providerId) {
         '[Polar] No pending notifications found specifically for this user.'
       );
     }
-
     return userNotifications;
   } catch (error) {
     log(
@@ -355,7 +316,6 @@ async function checkNotifications(userId, providerId) {
     client.release();
   }
 }
-
 /**
  * Get a valid access token and external user ID.
  */
@@ -375,13 +335,10 @@ async function getValidAccessToken(userId, providerId) {
                        WHERE user_id = $1 AND provider_type = 'polar'`,
           values: [userId],
         };
-
     const providerResult = await client.query(query.text, query.values);
-
     if (providerResult.rows.length === 0) {
       throw new Error('Polar provider not configured for user.');
     }
-
     const {
       encrypted_access_token,
       access_token_iv,
@@ -394,14 +351,12 @@ async function getValidAccessToken(userId, providerId) {
       access_token_tag,
       ENCRYPTION_KEY
     );
-
     // Note: Polar AccessLink access tokens are valid for life unless revoked.
     return { accessToken, externalUserId: external_user_id };
   } finally {
     client.release();
   }
 }
-
 /**
  * Create a transaction for a specific resource type.
  */
@@ -432,7 +387,6 @@ async function createTransaction(userId, externalUserId, accessToken, type) {
     throw error;
   }
 }
-
 /**
  * Commit a transaction.
  */
@@ -460,7 +414,6 @@ async function commitTransaction(
     return false;
   }
 }
-
 /**
  * Fetch Polar Physical Info.
  */
@@ -474,12 +427,9 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
       'physical_information'
     );
     if (!transaction) return [];
-
     const transactionId = transaction['transaction-id'];
     const resourceUrls = transaction['physical-informations'] || [];
-
     const results = [];
-
     // 2. Fetch Data
     for (const url of resourceUrls) {
       try {
@@ -489,7 +439,6 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
             Accept: 'application/json',
           },
         });
-        const { logRawResponse } = require('../../utils/diagnosticLogger');
         // Use a unique key based on the resource URL or a timestamp to avoid overwriting
         const resourceId = url.split('/').pop();
         logRawResponse(
@@ -505,7 +454,6 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
         );
       }
     }
-
     // 3. Commit Transaction
     if (transactionId) {
       await commitTransaction(
@@ -516,7 +464,6 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
         transactionId
       );
     }
-
     return results;
   } catch (error) {
     log(
@@ -526,7 +473,6 @@ async function fetchPhysicalInfo(userId, externalUserId, accessToken) {
     return [];
   }
 }
-
 /**
  * Fetch recent Polar Physical Info using List API.
  */
@@ -545,10 +491,7 @@ async function fetchRecentPhysicalInfo(userId, accessToken) {
         },
       }
     );
-
-    const { logRawResponse } = require('../../utils/diagnosticLogger');
     logRawResponse('polar', 'raw_physical_info_list', response.data);
-
     const physicalInfo = response.data['physical-informations'] || [];
     log(
       'info',
@@ -563,7 +506,6 @@ async function fetchRecentPhysicalInfo(userId, accessToken) {
     return [];
   }
 }
-
 /**
  * Fetch Polar Exercises.
  */
@@ -577,11 +519,9 @@ async function fetchExercises(userId, externalUserId, accessToken) {
       'exercise'
     );
     if (!transaction) return [];
-
     const transactionId = transaction['transaction-id'];
     const resourceUrls = transaction['exercises'] || [];
     const results = [];
-
     // 2. Fetch Data
     for (const url of resourceUrls) {
       try {
@@ -591,7 +531,6 @@ async function fetchExercises(userId, externalUserId, accessToken) {
             Accept: 'application/json',
           },
         });
-        const { logRawResponse } = require('../../utils/diagnosticLogger');
         const exerciseId = response.data.id || url.split('/').pop();
         logRawResponse(
           'polar',
@@ -610,7 +549,6 @@ async function fetchExercises(userId, externalUserId, accessToken) {
         log('error', `Error fetching exercise resource ${url}: ${err.message}`);
       }
     }
-
     // 3. Commit Transaction
     if (transactionId) {
       await commitTransaction(
@@ -621,7 +559,6 @@ async function fetchExercises(userId, externalUserId, accessToken) {
         'exercise'
       );
     }
-
     return results;
   } catch (error) {
     log(
@@ -631,7 +568,6 @@ async function fetchExercises(userId, externalUserId, accessToken) {
     return [];
   }
 }
-
 /**
  * Fetch recent exercises using the List API (last 30 days).
  * Use this for initial sync or manual sync to get data even if no new notification exists.
@@ -652,10 +588,7 @@ async function fetchRecentExercises(userId, accessToken) {
         },
       }
     );
-
-    const { logRawResponse } = require('../../utils/diagnosticLogger');
     logRawResponse('polar', 'raw_exercises_recent', response.data);
-
     const exercises = response.data || [];
     log(
       'info',
@@ -670,7 +603,6 @@ async function fetchRecentExercises(userId, accessToken) {
     return [];
   }
 }
-
 /**
  * Fetch new Daily Activity data (steps, calories) using Transaction API.
  */
@@ -684,14 +616,11 @@ async function fetchDailyActivity(userId, externalUserId, accessToken) {
       'activity'
     );
     if (!transaction) return [];
-
     const transactionId = transaction['transaction-id'];
     const resourceUrls = transaction['activity-log'] || []; // Check key in docs: 'activity-log' usually?
     // Docs for 'activity-transactions' response say:
     // "resource-uri": "...", "user-id": ..., "transaction-id": ..., "activity-log": ["url1", "url2"]
-
     const results = [];
-
     // 2. Fetch Data
     for (const url of resourceUrls) {
       try {
@@ -701,7 +630,6 @@ async function fetchDailyActivity(userId, externalUserId, accessToken) {
             Accept: 'application/json',
           },
         });
-        const { logRawResponse } = require('../../utils/diagnosticLogger');
         const activityId = url.split('/').pop();
         logRawResponse(
           'polar',
@@ -716,7 +644,6 @@ async function fetchDailyActivity(userId, externalUserId, accessToken) {
         );
       }
     }
-
     // 3. Commit Transaction
     if (transactionId) {
       await commitTransaction(
@@ -727,7 +654,6 @@ async function fetchDailyActivity(userId, externalUserId, accessToken) {
         transactionId
       );
     }
-
     return results;
   } catch (error) {
     log(
@@ -737,7 +663,6 @@ async function fetchDailyActivity(userId, externalUserId, accessToken) {
     return [];
   }
 }
-
 /**
  * Fetch recent Daily Activity data using List API (last 28 days).
  */
@@ -747,14 +672,11 @@ async function fetchRecentDailyActivity(userId, accessToken) {
       'info',
       `Fetching recent Polar daily activity (List API) for user ${userId}...`
     );
-
     // Calculate date range: Last 28 days (max allowed by API)
     const tz = await loadUserTimezone(userId);
     const to = todayInZone(tz);
     const from = addDays(to, -28);
-
     log('debug', `Requesting Polar activity from ${from} to ${to}`);
-
     const response = await axios.get(
       `${POLAR_API_BASE_URL}/users/activities/?from=${from}&to=${to}`,
       {
@@ -764,10 +686,7 @@ async function fetchRecentDailyActivity(userId, accessToken) {
         },
       }
     );
-
-    const { logRawResponse } = require('../../utils/diagnosticLogger');
     logRawResponse('polar', 'raw_activity_list', response.data);
-
     const activities = response.data || [];
     log(
       'info',
@@ -782,7 +701,6 @@ async function fetchRecentDailyActivity(userId, accessToken) {
     return [];
   }
 }
-
 /**
  * Fetch Polar User Profile (for weight/height).
  */
@@ -801,7 +719,6 @@ async function fetchUserProfile(userId, externalUserId, accessToken) {
         },
       }
     );
-    const { logRawResponse } = require('../../utils/diagnosticLogger');
     logRawResponse('polar', 'raw_user_profile', response.data);
     return response.data;
   } catch (error) {
@@ -812,7 +729,6 @@ async function fetchUserProfile(userId, externalUserId, accessToken) {
     return null;
   }
 }
-
 /**
  * Fetch recent Sleep data using List API (last 28 days).
  */
@@ -828,10 +744,7 @@ async function fetchRecentSleepData(userId, accessToken) {
         Accept: 'application/json',
       },
     });
-
-    const { logRawResponse } = require('../../utils/diagnosticLogger');
     logRawResponse('polar', 'raw_sleep', response.data);
-
     const sleepData = response.data.nights || [];
     log(
       'info',
@@ -846,7 +759,6 @@ async function fetchRecentSleepData(userId, accessToken) {
     return [];
   }
 }
-
 /**
  * Fetch recent Nightly Recharge data using List API (last 28 days).
  */
@@ -865,10 +777,7 @@ async function fetchRecentNightlyRecharge(userId, accessToken) {
         },
       }
     );
-
-    const { logRawResponse } = require('../../utils/diagnosticLogger');
     logRawResponse('polar', 'raw_nightly_recharge', response.data);
-
     const rechargeData = response.data.recharges || [];
     log(
       'info',
@@ -883,7 +792,6 @@ async function fetchRecentNightlyRecharge(userId, accessToken) {
     return [];
   }
 }
-
 /**
  * Fetch and process Polar data.
  * @deprecated Use services/polarService.js for orchestration and mock data support.
@@ -894,7 +802,6 @@ async function fetchAndProcessPolarData(userId, createdByUserId) {
     '[polarIntegrationService] fetchAndProcessPolarData is deprecated. Use services/polarService.js instead.'
   );
   const accessToken = await getValidAccessToken(userId);
-
   const physicalInfo = await fetchPhysicalInfo(userId, accessToken);
   if (physicalInfo) {
     await polarDataProcessor.processPolarPhysicalInfo(
@@ -903,7 +810,6 @@ async function fetchAndProcessPolarData(userId, createdByUserId) {
       physicalInfo
     );
   }
-
   const exercises = await fetchExercises(userId, accessToken);
   if (exercises) {
     await polarDataProcessor.processPolarExercises(
@@ -912,10 +818,8 @@ async function fetchAndProcessPolarData(userId, createdByUserId) {
       exercises
     );
   }
-
   return { success: true };
 }
-
 /**
  * Disconnect Polar account.
  */
@@ -937,9 +841,7 @@ async function disconnectPolar(userId, providerId) {
                        WHERE user_id = $1 AND provider_type = 'polar'`,
           values: [userId],
         };
-
     await client.query(query.text, query.values);
-
     log(
       'info',
       `Polar account disconnected for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ''}`
@@ -955,7 +857,6 @@ async function disconnectPolar(userId, providerId) {
     client.release();
   }
 }
-
 async function getStatus(userId, providerId) {
   const client = await getClient(userId);
   try {
@@ -972,13 +873,10 @@ async function getStatus(userId, providerId) {
                        WHERE user_id = $1 AND provider_type = 'polar'`,
           values: [userId],
         };
-
     const result = await client.query(query.text, query.values);
-
     if (result.rows.length === 0) {
       return { connected: false, lastSyncAt: null, tokenExpiresAt: null };
     }
-
     const { last_sync_at, token_expires_at, is_active } = result.rows[0];
     return {
       connected: is_active,
@@ -989,8 +887,23 @@ async function getStatus(userId, providerId) {
     client.release();
   }
 }
-
-module.exports = {
+export { getAuthorizationUrl };
+export { exchangeCodeForTokens };
+export { fetchPhysicalInfo };
+export { fetchRecentPhysicalInfo };
+export { fetchExercises };
+export { fetchRecentExercises };
+export { fetchDailyActivity };
+export { fetchRecentDailyActivity };
+export { fetchRecentSleepData };
+export { fetchRecentNightlyRecharge };
+export { fetchUserProfile };
+export { checkNotifications };
+export { fetchAndProcessPolarData };
+export { disconnectPolar };
+export { getStatus };
+export { getValidAccessToken };
+export default {
   getAuthorizationUrl,
   exchangeCodeForTokens,
   fetchPhysicalInfo,

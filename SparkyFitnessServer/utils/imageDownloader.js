@@ -1,10 +1,13 @@
-const axios = require('axios');
-const fs = require('fs'); // Import fs for createWriteStream
-const fsp = require('fs').promises; // Import fs.promises as fsp
-const path = require('path');
+import axios from 'axios';
+import fs from 'fs';
+import { promises } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+const fsp = { promises }.promises; // Import fs.promises as fsp
 const UPLOADS_DIR = path.join(__dirname, '../uploads/exercises'); // Relative to SparkyFitnessServer
-
 /**
  * Ensures the upload directory exists.
  */
@@ -18,7 +21,6 @@ async function ensureUploadsDir() {
     throw error;
   }
 }
-
 /**
  * Downloads an image from a URL and saves it locally.
  * @param {string} imageUrl - The URL of the image to download.
@@ -27,11 +29,9 @@ async function ensureUploadsDir() {
  */
 async function downloadImage(imageUrl, exerciseId) {
   await ensureUploadsDir();
-
   const imageFileName = path.basename(imageUrl);
   const exerciseUploadDir = path.join(UPLOADS_DIR, exerciseId);
   const localImagePath = path.join(exerciseUploadDir, imageFileName);
-
   try {
     await fsp.mkdir(exerciseUploadDir, { recursive: true });
     const response = await axios({
@@ -39,10 +39,8 @@ async function downloadImage(imageUrl, exerciseId) {
       url: imageUrl,
       responseType: 'stream',
     });
-
     const writer = fs.createWriteStream(localImagePath);
     response.data.pipe(writer);
-
     return new Promise((resolve, reject) => {
       writer.on('finish', () =>
         resolve(`/uploads/exercises/${exerciseId}/${imageFileName}`)
@@ -57,7 +55,7 @@ async function downloadImage(imageUrl, exerciseId) {
     throw error;
   }
 }
-
-module.exports = {
+export { downloadImage };
+export default {
   downloadImage,
 };

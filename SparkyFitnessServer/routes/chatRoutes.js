@@ -1,9 +1,8 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import chatService from '../services/chatService.js';
+import globalSettingsRepository from '../models/globalSettingsRepository.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const chatService = require('../services/chatService');
-const globalSettingsRepository = require('../models/globalSettingsRepository');
-
 /**
  * @swagger
  * /chat:
@@ -49,7 +48,6 @@ const globalSettingsRepository = require('../models/globalSettingsRepository');
  */
 router.post('/', authenticate, async (req, res, next) => {
   const { messages, service_config_id, action, service_data } = req.body;
-
   try {
     if (action === 'save_ai_service_settings') {
       // Check if user AI config is allowed
@@ -60,7 +58,6 @@ router.post('/', authenticate, async (req, res, next) => {
             'Per-user AI service configuration is disabled. Please use the global AI service settings configured by your administrator.',
         });
       }
-
       // Only allow user-specific settings (not public)
       if (service_data && service_data.is_public) {
         return res.status(403).json({
@@ -68,7 +65,6 @@ router.post('/', authenticate, async (req, res, next) => {
             'Only administrators can create or modify global AI service settings.',
         });
       }
-
       // Validate required fields before hitting the database
       if (!service_data) {
         return res.status(400).json({ error: 'service_data is required.' });
@@ -86,7 +82,6 @@ router.post('/', authenticate, async (req, res, next) => {
             .json({ error: 'service_data.service_name is required.' });
         }
       }
-
       const result = await chatService.handleAiServiceSettings(
         action,
         service_data,
@@ -94,7 +89,6 @@ router.post('/', authenticate, async (req, res, next) => {
       );
       return res.status(200).json(result);
     }
-
     const { content } = await chatService.processChatMessage(
       messages,
       service_config_id,
@@ -135,7 +129,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /chat/clear-old-history:
@@ -158,7 +151,6 @@ router.post('/clear-old-history', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /chat/ai-service-settings:
@@ -181,14 +173,12 @@ router.get('/ai-service-settings', authenticate, async (req, res, next) => {
       req.userId,
       req.userId
     );
-
     // If user AI config is disabled, only return global settings
     const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
     if (!isAllowed) {
       const publicOnly = settings.filter((s) => s.is_public);
       return res.status(200).json(publicOnly);
     }
-
     res.status(200).json(settings);
   } catch (error) {
     if (error.message.startsWith('Forbidden')) {
@@ -197,7 +187,6 @@ router.get('/ai-service-settings', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /chat/ai-service-settings/active:
@@ -239,7 +228,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /chat/ai-service-settings/{id}:
@@ -284,7 +272,6 @@ router.delete(
             'Per-user AI service configuration is disabled. Please use the global AI service settings configured by your administrator.',
         });
       }
-
       // Verify the setting is user-specific (not global) before deletion
       const settings = await chatService.getAiServiceSettings(
         req.userId,
@@ -296,7 +283,6 @@ router.delete(
           error: 'Only administrators can delete global AI service settings.',
         });
       }
-
       const result = await chatService.deleteAiServiceSetting(req.userId, id);
       res.status(200).json(result);
     } catch (error) {
@@ -310,7 +296,6 @@ router.delete(
     }
   }
 );
-
 /**
  * @swagger
  * /chat/sparky-chat-history:
@@ -341,7 +326,6 @@ router.get('/sparky-chat-history', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /chat/sparky-chat-history/entry/{id}:
@@ -393,7 +377,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /chat/sparky-chat-history/{id}:
@@ -455,7 +438,6 @@ router.put('/sparky-chat-history/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /chat/sparky-chat-history/{id}:
@@ -513,7 +495,6 @@ router.delete(
     }
   }
 );
-
 /**
  * @swagger
  * /chat/clear-all-history:
@@ -541,7 +522,6 @@ router.post('/clear-all-history', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /chat/save-history:
@@ -595,7 +575,6 @@ router.post('/save-history', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /chat/food-options:
@@ -665,5 +644,4 @@ router.post('/food-options', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

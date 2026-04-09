@@ -1,11 +1,8 @@
-// SparkyFitnessServer/routes/hevyRoutes.js
-
-const express = require('express');
+import express from 'express';
+import hevyService from '../integrations/hevy/hevyService.js';
+import { log } from '../config/logging.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 const router = express.Router();
-const hevyService = require('../integrations/hevy/hevyService');
-const { log } = require('../config/logging');
-const authMiddleware = require('../middleware/authMiddleware');
-
 /**
  * @swagger
  * /api/integrations/hevy/sync:
@@ -20,12 +17,10 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
     const { providerId, startDate, endDate } = req.body;
     const fullSync =
       req.query.fullSync === 'true' || req.body.fullSync === true;
-
     log(
       'info',
       `[hevyRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
     );
-
     const result = await hevyService.syncHevyData(
       userId,
       createdByUserId,
@@ -37,7 +32,6 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
     res.status(200).json(result);
   } catch (error) {
     log('error', `Error initiating manual Hevy sync: ${error.message}`);
-
     // Check for 401 Unauthorized from Hevy API
     if (error.message.includes('401')) {
       return res.status(401).json({
@@ -45,14 +39,12 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
         error: error.message,
       });
     }
-
     res.status(500).json({
       message: 'Error initiating manual Hevy sync',
       error: error.message,
     });
   }
 });
-
 /**
  * @swagger
  * /api/integrations/hevy/status:
@@ -72,5 +64,4 @@ router.get('/status', authMiddleware.authenticate, async (req, res) => {
       .json({ message: 'Error getting Hevy status', error: error.message });
   }
 });
-
-module.exports = router;
+export default router;

@@ -1,5 +1,4 @@
-const { getClient, getSystemClient } = require('../db/poolManager');
-
+import { getClient, getSystemClient } from '../db/poolManager.js';
 async function canAccessUserData(
   targetUserId,
   permissionType,
@@ -9,7 +8,6 @@ async function canAccessUserData(
   if (targetUserId === authenticatedUserId) {
     return true;
   }
-
   // Check if target and authenticated user are effectively the same (same email)
   const systemClient = await getSystemClient();
   try {
@@ -19,7 +17,6 @@ async function canAccessUserData(
         (SELECT email FROM "user" WHERE id = $2) as auth_email`,
       [targetUserId, authenticatedUserId]
     );
-
     const emails = emailCheckResult.rows[0];
     if (
       emails &&
@@ -34,7 +31,6 @@ async function canAccessUserData(
   } finally {
     systemClient.release();
   }
-
   // Check if authenticated user has family access with the required permission
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
@@ -86,7 +82,7 @@ async function canAccessUserData(
     client.release();
   }
 }
-
-module.exports = {
+export { canAccessUserData };
+export default {
   canAccessUserData,
 };

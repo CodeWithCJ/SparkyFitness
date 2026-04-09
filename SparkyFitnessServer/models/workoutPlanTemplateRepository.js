@@ -1,12 +1,10 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const format = require('pg-format');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import format from 'pg-format';
 async function createWorkoutPlanTemplate(planData) {
   const client = await getClient(planData.user_id); // User-specific operation
   try {
     await client.query('BEGIN');
-
     const insertTemplateQuery = `
             INSERT INTO workout_plan_templates (user_id, plan_name, description, start_date, end_date, is_active)
             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
@@ -18,13 +16,11 @@ async function createWorkoutPlanTemplate(planData) {
       planData.end_date,
       planData.is_active ?? false,
     ];
-
     const templateResult = await client.query(
       insertTemplateQuery,
       templateValues
     );
     const newTemplate = templateResult.rows[0];
-
     if (planData.assignments && planData.assignments.length > 0) {
       for (const a of planData.assignments) {
         const assignmentResult = await client.query(
@@ -38,7 +34,6 @@ async function createWorkoutPlanTemplate(planData) {
             a.sort_order || 0,
           ]
         );
-
         if (a.exercise_id && a.sets && a.sets.length > 0) {
           const newAssignmentId = assignmentResult.rows[0].id;
           const setsValues = a.sets.map((set) => [
@@ -59,7 +54,6 @@ async function createWorkoutPlanTemplate(planData) {
         }
       }
     }
-
     await client.query('COMMIT');
     const finalQuery = `
             SELECT
@@ -105,7 +99,6 @@ async function createWorkoutPlanTemplate(planData) {
     client.release();
   }
 }
-
 async function getWorkoutPlanTemplatesByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -146,7 +139,6 @@ async function getWorkoutPlanTemplatesByUserId(userId) {
     client.release();
   }
 }
-
 async function getWorkoutPlanTemplateById(templateId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -186,12 +178,10 @@ async function getWorkoutPlanTemplateById(templateId, userId) {
     client.release();
   }
 }
-
 async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
-
     await client.query(
       `UPDATE workout_plan_templates SET
                 plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5, updated_at = now()
@@ -206,7 +196,6 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
         userId,
       ]
     );
-
     // Instead of deleting and recreating, we will update the assignments
     if (updateData.assignments) {
       // First, get the existing assignments
@@ -217,7 +206,6 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
       const existingAssignmentIds = existingAssignmentsResult.rows.map(
         (r) => r.id
       );
-
       // Then, get the new assignment ids (filtering only numeric ones)
       const newAssignmentIds = updateData.assignments
         .map((a) => a.id)
@@ -230,7 +218,6 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
             Number.isInteger(Number(id))
         )
         .map((id) => Number(id));
-
       // Delete any assignments that are no longer in the plan
       const assignmentsToDelete = existingAssignmentIds.filter(
         (id) => !newAssignmentIds.includes(id)
@@ -241,7 +228,6 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
           [assignmentsToDelete]
         );
       }
-
       // Now, update or insert the assignments
       for (const a of updateData.assignments) {
         // Only treat numeric IDs as existing database assignments
@@ -319,7 +305,6 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
         }
       }
     }
-
     await client.query('COMMIT');
     const finalQuery = `
             SELECT
@@ -365,7 +350,6 @@ async function updateWorkoutPlanTemplate(templateId, userId, updateData) {
     client.release();
   }
 }
-
 async function deleteWorkoutPlanTemplate(templateId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -385,7 +369,6 @@ async function deleteWorkoutPlanTemplate(templateId, userId) {
     client.release();
   }
 }
-
 async function getWorkoutPlanTemplateOwnerId(templateId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -398,7 +381,6 @@ async function getWorkoutPlanTemplateOwnerId(templateId, userId) {
     client.release();
   }
 }
-
 async function getActiveWorkoutPlanForDate(userId, date) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -441,8 +423,14 @@ async function getActiveWorkoutPlanForDate(userId, date) {
     client.release();
   }
 }
-
-module.exports = {
+export { createWorkoutPlanTemplate };
+export { getWorkoutPlanTemplatesByUserId };
+export { getWorkoutPlanTemplateById };
+export { updateWorkoutPlanTemplate };
+export { deleteWorkoutPlanTemplate };
+export { getWorkoutPlanTemplateOwnerId };
+export { getActiveWorkoutPlanForDate };
+export default {
   createWorkoutPlanTemplate,
   getWorkoutPlanTemplatesByUserId,
   getWorkoutPlanTemplateById,

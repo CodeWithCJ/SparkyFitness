@@ -1,14 +1,12 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import foodEntryService from '../services/foodEntryService.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
-const foodEntryService = require('../services/foodEntryService');
-
 router.use(express.json());
-
 // Apply diary permission check to all food entry routes
 router.use(checkPermissionMiddleware('diary'));
-
 /**
  * @swagger
  * /food-entries:
@@ -43,12 +41,11 @@ router.post(
       // Check if creating for another user (explicitly requested)
       const targetUserId = req.body.user_id || req.userId;
       if (req.body.user_id && req.body.user_id !== req.userId) {
-        const hasPermission =
-          await require('../utils/permissionUtils').canAccessUserData(
-            req.body.user_id,
-            'diary',
-            req.originalUserId || req.userId
-          );
+        const hasPermission = await { canAccessUserData }.canAccessUserData(
+          req.body.user_id,
+          'diary',
+          req.originalUserId || req.userId
+        );
         if (!hasPermission) {
           return res.status(403).json({
             error:
@@ -70,7 +67,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /food-entries/copy:
@@ -139,7 +135,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /food-entries/copy-yesterday:
@@ -197,7 +192,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /food-entries/copy-all:
@@ -253,7 +247,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /food-entries/copy-all-yesterday:
@@ -301,7 +294,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /food-entries/{id}:
@@ -367,7 +359,6 @@ router.put(
     }
   }
 );
-
 /**
  * @swagger
  * /food-entries/{id}:
@@ -418,7 +409,6 @@ router.delete(
     }
   }
 );
-
 /**
  * @swagger
  * /food-entries:
@@ -457,22 +447,18 @@ router.get(
     if (!selectedDate) {
       return res.status(400).json({ error: 'Selected date is required.' });
     }
-
     // Determine target user
     const targetUserId = userId || req.userId;
-
     try {
       // Permission check if explicit userId is provided that differs from req.userId
       if (userId && userId !== req.userId) {
-        const hasPermission =
-          await require('../utils/permissionUtils').canAccessUserData(
-            userId,
-            'diary',
-            req.originalUserId || req.userId
-          );
+        const hasPermission = await { canAccessUserData }.canAccessUserData(
+          userId,
+          'diary',
+          req.originalUserId || req.userId
+        );
         if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
       }
-
       const entries = await foodEntryService.getFoodEntriesByDate(
         req.userId,
         targetUserId,
@@ -487,7 +473,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /food-entries/by-date/{date}:
@@ -527,22 +512,18 @@ router.get(
     if (!date) {
       return res.status(400).json({ error: 'Date is required.' });
     }
-
     // Determine target user
     const targetUserId = userId || req.userId;
-
     try {
       // Permission check if accessing another user's data
       if (targetUserId !== req.userId) {
-        const hasPermission =
-          await require('../utils/permissionUtils').canAccessUserData(
-            targetUserId,
-            'diary',
-            req.originalUserId || req.userId
-          );
+        const hasPermission = await { canAccessUserData }.canAccessUserData(
+          targetUserId,
+          'diary',
+          req.originalUserId || req.userId
+        );
         if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
       }
-
       const entries = await foodEntryService.getFoodEntriesByDate(
         req.userId,
         targetUserId,
@@ -557,7 +538,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /food-entries/range/{startDate}/{endDate}:
@@ -621,7 +601,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /food-entries/nutrition/today:
@@ -677,5 +656,4 @@ router.get(
     }
   }
 );
-
-module.exports = router;
+export default router;

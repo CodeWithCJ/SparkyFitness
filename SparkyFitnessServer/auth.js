@@ -1,20 +1,24 @@
-const { betterAuth } = require('better-auth');
-
-const { APIError } = require('better-auth/api');
-const { Pool } = require('pg');
-const { log } = require('./config/logging');
-const bcrypt = require('bcrypt');
-const { syncUserGroups } = require('./utils/oidcGroupSync');
-const userRepository = require('./models/userRepository');
-const { resolveTwoFactorDisableUserUpdate } = require('./utils/twoFactorState');
-const {
+import { betterAuth } from 'better-auth';
+import { APIError } from 'better-auth/api';
+import pg from 'pg';
+import { log } from './config/logging.js';
+import bcrypt from 'bcrypt';
+import { syncUserGroups } from './utils/oidcGroupSync.js';
+import userRepository from './models/userRepository.js';
+import { resolveTwoFactorDisableUserUpdate } from './utils/twoFactorState.js';
+import {
   sendPasswordResetEmail,
   sendMagicLinkEmail,
   sendEmailMfaCode,
-} = require('./services/emailService');
-const {
-  createDefaultNutrientPreferencesForUser,
-} = require('./services/nutrientDisplayPreferenceService');
+} from './services/emailService.js';
+import { createDefaultNutrientPreferencesForUser } from './services/nutrientDisplayPreferenceService.js';
+import { isPrivateNetworkAddress } from './utils/corsHelper.js';
+import { apiKey } from '@better-auth/api-key';
+import { v4 } from 'uuid';
+import { emailOTP, magicLink, admin, twoFactor } from 'better-auth/plugins';
+import { sso } from '@better-auth/sso';
+import { passkey } from '@better-auth/passkey';
+const { Pool } = pg;
 /**
  * Gathers and cleans origins from environment variables.
  * @returns {string[]} An array of cleaned origin strings.
@@ -23,17 +27,14 @@ function getBaseTrustedOrigins() {
   const primary = process.env.SPARKY_FITNESS_FRONTEND_URL;
   const rawExtras = process.env.SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS;
   const origins = [primary];
-
   if (rawExtras) {
     const extras = rawExtras.split(',').map((o) => o.trim());
     origins.push(...extras);
   }
-
   return [...new Set(origins)]
     .filter(Boolean)
     .map((url) => url.replace(/\/$/, ''));
 }
-
 /**
  * Extracts Origin and Referer headers consistently across different Better Auth request objects.
  * @param {Request|Object} request - The incoming request object.
@@ -44,15 +45,11 @@ function extractRequestHeaders(request) {
     typeof request?.headers?.get === 'function'
       ? request.headers.get(name)
       : request?.headers?.[name];
-
   return {
     origin: getHeader('origin') || null,
     referer: getHeader('referer') || null,
   };
 }
-
-const { isPrivateNetworkAddress } = require('./utils/corsHelper');
-
 // Create a dedicated pool for Better Auth
 /*
 console.log("DEBUG: Initializing Better Auth Pool with:", {
@@ -63,7 +60,6 @@ console.log("DEBUG: Initializing Better Auth Pool with:", {
     password: process.env.SPARKY_FITNESS_DB_PASSWORD ? "****" : "MISSING"
 });
 */
-
 const authPool = new Pool({
   user: process.env.SPARKY_FITNESS_DB_USER,
   host: process.env.SPARKY_FITNESS_DB_HOST,
@@ -71,22 +67,18 @@ const authPool = new Pool({
   password: process.env.SPARKY_FITNESS_DB_PASSWORD,
   port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
 });
-
 // Persistent array reference for trusted providers
 // Mutation of this array will be visible to Better Auth since it holds the reference
 const dynamicTrustedProviders = [];
-
 // Function to sync trusted providers from database
 async function syncTrustedProviders() {
   try {
-    // Use lazy require to avoid circular dependency with oidcProviderRepository
-    const oidcProviderRepository = require('./models/oidcProviderRepository');
+    const repoPath = './models/oidcProviderRepository.js';
+    const { default: oidcProviderRepository } = await import(repoPath);
     const providers = await oidcProviderRepository.getActiveOidcProviderIds();
-
     // Update the array without changing the reference
     dynamicTrustedProviders.length = 0;
     dynamicTrustedProviders.push(...providers);
-
     console.log(
       '[AUTH] Synced trusted SSO providers for auto-linking:',
       dynamicTrustedProviders
@@ -97,11 +89,9 @@ async function syncTrustedProviders() {
     return dynamicTrustedProviders;
   }
 }
-
 // Initial sync on startup - deferred to SparkyFitnessServer.js after migrations
 // syncTrustedProviders().catch(err => console.error('[AUTH] Startup sync failed:', err));
-
-const apiKeyPlugin = require('@better-auth/api-key').apiKey({
+const apiKeyPlugin = apiKey({
   enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
   rateLimit: {
     enabled: true,
@@ -147,7 +137,6 @@ const apiKeyPlugin = require('@better-auth/api-key').apiKey({
     },
   },
 });
-
 const auth = betterAuth({
   database: authPool,
   secret: Buffer.from(process.env.BETTER_AUTH_SECRET, 'base64'),
@@ -157,7 +146,6 @@ const auth = betterAuth({
       value: Buffer.from(process.env.BETTER_AUTH_SECRET, 'base64'),
     },
   ],
-
   // Base URL configuration - MUST use public frontend URL for OIDC to work
   baseURL:
     process.env.BETTER_AUTH_URL ||
@@ -165,7 +153,6 @@ const auth = betterAuth({
       ? process.env.SPARKY_FITNESS_FRONTEND_URL
       : `https://${process.env.SPARKY_FITNESS_FRONTEND_URL}`
     )?.replace(/\/$/, '') + '/api/auth',
-
   onAPIError: {
     errorURL: new URL(
       '/error',
@@ -175,16 +162,13 @@ const auth = betterAuth({
       )?.replace(/\/$/, '') + '/'
     ).toString(),
   },
-
   basePath: '/api/auth',
-
   // Rate limiting for auth endpoints
   rateLimit: {
     enabled: true,
     window: 60,
     max: 100,
   },
-
   // Email/Password authentication
   emailAndPassword: {
     enabled: process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN !== 'true',
@@ -202,7 +186,6 @@ const auth = betterAuth({
       },
     },
   },
-
   // Session configuration
   session: {
     expiresIn: 60 * 60 * 24 * 30, // 30 days
@@ -220,7 +203,6 @@ const auth = betterAuth({
       updatedAt: 'updated_at',
     },
   },
-
   // Advanced session options
   advanced: {
     cookiePrefix: 'sparky',
@@ -236,10 +218,9 @@ const auth = betterAuth({
       enabled: false,
     },
     database: {
-      generateId: () => require('uuid').v4(),
+      generateId: () => v4(),
     },
   },
-
   user: {
     fields: {
       id: 'id',
@@ -301,7 +282,6 @@ const auth = betterAuth({
       updatedAt: 'updated_at',
     },
   },
-
   verification: {
     fields: {
       id: 'id',
@@ -310,28 +290,24 @@ const auth = betterAuth({
       updatedAt: 'updated_at',
     },
   },
-
   // Trust proxy (for Docker/Nginx deployments)
   // NOTE: Better Auth calls this with the raw Request object directly (not a context wrapper)
   trustedOrigins: (request) => {
     const cleanOrigins = getBaseTrustedOrigins();
     const { origin: originHeader, referer: refererHeader } =
       extractRequestHeaders(request);
-
     // Identify if this is a non-primary origin (IP, extra domain, etc.) or null
     const primaryUrl = process.env.SPARKY_FITNESS_FRONTEND_URL;
     const isExtraOrigin =
       (originHeader && !originHeader.includes(primaryUrl)) ||
       (refererHeader && !refererHeader.includes(primaryUrl)) ||
       originHeader === 'null';
-
     if (isExtraOrigin) {
       log(
         'debug',
         `[AUTH] Verifying Origin: ${originHeader}, Referer: ${refererHeader}`
       );
     }
-
     // 1. Primary Check: If Origin is missing/null (HTTPS -> HTTP call), trust based on Referer
     if (!originHeader || originHeader === 'null') {
       if (refererHeader) {
@@ -351,7 +327,6 @@ const auth = betterAuth({
         }
       }
     }
-
     // 2. Private Network Check (if enabled)
     const isPrivateEnabled = process.env.ALLOW_PRIVATE_NETWORK_CORS === 'true';
     if (isPrivateEnabled) {
@@ -374,14 +349,11 @@ const auth = betterAuth({
         }
       }
     }
-
     if (isExtraOrigin && originHeader && !cleanOrigins.includes(originHeader)) {
       log('warn', `[AUTH] Rejecting Untrusted Origin: ${originHeader}`);
     }
-
     return cleanOrigins;
   },
-
   databaseHooks: {
     user: {
       create: {
@@ -390,7 +362,6 @@ const auth = betterAuth({
             'debug',
             `[AUTH] user.create.before hook triggered. Path: ${ctx.path}`
           );
-
           // 1. MASTER TOGGLE: Global signup blockade
           if (process.env.SPARKY_FITNESS_DISABLE_SIGNUP === 'true') {
             log(
@@ -401,30 +372,29 @@ const auth = betterAuth({
               message: 'Signups are currently disabled by the administrator.',
             });
           }
-
           // 2. PER-PROVIDER TOGGLE: SSO auto_register check
           // SSO callback paths are /sso/callback/[providerId]
           if (ctx.path.includes('/sso/callback/')) {
             // Better Auth might use :providerId in ctx.path, so we check ctx.params or the request URL
             let providerId = ctx.params?.providerId;
-
             // Fallback: Extract from the actual request URL if template is used in ctx.path
             if (!providerId || providerId === ':providerId') {
               const url = new URL(ctx.request.url, 'http://localhost');
               const pathParts = url.pathname.split('/');
               providerId = pathParts[pathParts.length - 1];
             }
-
             log(
               'info',
               `[AUTH] Verifying auto-register for SSO provider: ${providerId} (Original Path: ${ctx.path})`
             );
-
             try {
-              const oidcProviderRepository = require('./models/oidcProviderRepository');
+              const repoPath = './models/oidcProviderRepository.js';
+              const { default: oidcProviderRepository } = await import(
+                repoPath
+              );
+
               const provider =
                 await oidcProviderRepository.getOidcProviderById(providerId);
-
               if (provider) {
                 log(
                   'debug',
@@ -436,7 +406,6 @@ const auth = betterAuth({
                   `[AUTH] No provider found in DB for ID: ${providerId}`
                 );
               }
-
               if (provider && provider.auto_register === false) {
                 log(
                   'info',
@@ -453,7 +422,6 @@ const auth = betterAuth({
               log('error', '[AUTH] Error during auto_register check:', error);
             }
           }
-
           return { data: user };
         },
         after: async (user) => {
@@ -468,10 +436,8 @@ const auth = betterAuth({
               user.name || user.email.split('@')[0],
               user.image
             );
-
             // Also initialize default nutrient preferences
             await createDefaultNutrientPreferencesForUser(user.id);
-
             log('info', `[AUTH] Hook: Initialization complete for ${user.id}`);
           } catch (error) {
             log(
@@ -490,11 +456,9 @@ const auth = betterAuth({
             ctx,
             userRepository.findUserById
           );
-
           if (!data) {
             return;
           }
-
           log(
             'info',
             '[AUTH] Preserving email MFA while Better Auth disables TOTP.'
@@ -544,21 +508,20 @@ const auth = betterAuth({
             `[AUTH] Hook: Session created for user ${session.userId}. Checking group sync.`
           );
           try {
-            const oidcProviderRepository = require('./models/oidcProviderRepository');
-
             // Get all accounts for this user to find the OIDC provider used
             const client = await authPool.connect();
+            const repoPath = './models/oidcProviderRepository.js';
+            const { default: oidcProviderRepository } = await import(repoPath);
+
             try {
               const { rows: accounts } = await client.query(
                 'SELECT provider_id FROM "account" WHERE user_id = $1 AND provider_id LIKE \'oidc-%\'',
                 [session.userId]
               );
-
               for (const acc of accounts) {
                 const providerId = acc.provider_id.replace('oidc-', '');
                 const provider =
                   await oidcProviderRepository.getOidcProviderById(providerId);
-
                 if (provider && provider.admin_group) {
                   log(
                     'info',
@@ -585,21 +548,20 @@ const auth = betterAuth({
       },
     },
   },
-
   plugins: [
-    require('better-auth/plugins').emailOTP({
+    emailOTP({
       async sendVerificationOTP({ user, otp }) {
         await sendEmailMfaCode(user.email, otp);
       },
     }),
-    require('better-auth/plugins').magicLink({
+    magicLink({
       expiresIn: 900, // 15 minutes (matches email template)
       sendMagicLink: async ({ email, url }) => {
         await sendMagicLinkEmail(email, url);
       },
     }),
-    require('better-auth/plugins').admin(),
-    require('better-auth/plugins').twoFactor({
+    admin(),
+    twoFactor({
       issuer:
         process.env.NODE_ENV === 'production'
           ? 'SparkyFitness'
@@ -628,7 +590,7 @@ const auth = betterAuth({
         },
       },
     }),
-    require('@better-auth/sso').sso({
+    sso({
       modelName: 'sso_provider', // Map to my snake_case table
       trustEmailVerified: true, // Trust that OIDC provider emails are verified
       disableImplicitSignUp: false, // Allow implicit sign-up for OIDC users
@@ -644,7 +606,7 @@ const auth = betterAuth({
         updatedAt: 'updated_at',
       },
     }),
-    require('@better-auth/passkey').passkey({
+    passkey({
       schema: {
         passkey: {
           modelName: 'passkey',
@@ -668,7 +630,6 @@ const auth = betterAuth({
     apiKeyPlugin,
   ],
 });
-
 /**
  * Proactive session cleanup
  * Deletes expired sessions from the database to maintain performance.
@@ -693,5 +654,11 @@ async function cleanupSessions() {
     client.release();
   }
 }
-
-module.exports = { auth, syncTrustedProviders, cleanupSessions };
+export { auth };
+export { syncTrustedProviders };
+export { cleanupSessions };
+export default {
+  auth,
+  syncTrustedProviders,
+  cleanupSessions,
+};

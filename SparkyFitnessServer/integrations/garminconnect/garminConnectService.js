@@ -1,11 +1,9 @@
-const { log } = require('../../config/logging');
-const axios = require('axios');
-const externalProviderRepository = require('../../models/externalProviderRepository');
-const { encrypt, ENCRYPTION_KEY } = require('../../security/encryption');
-
+import { log } from '../../config/logging.js';
+import axios from 'axios';
+import externalProviderRepository from '../../models/externalProviderRepository.js';
+import { encrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 const GARMIN_MICROSERVICE_URL =
   process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
-
 async function garminLogin(userId, email, password) {
   try {
     const response = await axios.post(
@@ -29,7 +27,6 @@ async function garminLogin(userId, email, password) {
     );
   }
 }
-
 async function garminResumeLogin(userId, clientState, mfaCode) {
   try {
     const response = await axios.post(
@@ -53,7 +50,6 @@ async function garminResumeLogin(userId, clientState, mfaCode) {
     );
   }
 }
-
 async function handleGarminTokens(userId, tokensB64) {
   try {
     // Decode the base64 tokens string to get the actual tokens object
@@ -78,7 +74,6 @@ async function handleGarminTokens(userId, tokensB64) {
     const tokens = parsedGarthDump[1];
     log('debug', 'handleGarminTokens: Parsed Garth Dump:', parsedGarthDump);
     log('debug', 'handleGarminTokens: Extracted Tokens:', tokens);
-
     log('debug', 'handleGarminTokens: Received Garth dump (masked):', {
       garth_dump_masked: garthDump ? `${garthDump.substring(0, 30)}...` : 'N/A',
       access_token_masked: tokens.access_token
@@ -90,7 +85,6 @@ async function handleGarminTokens(userId, tokensB64) {
       expires_at: tokens.expires_at,
       external_user_id: tokens.external_user_id,
     });
-
     // Encrypt the entire Garth dump
     const encryptedGarthDump = await encrypt(garthDump, ENCRYPTION_KEY);
     log('debug', 'handleGarminTokens: Encrypted Garth Dump:', {
@@ -100,32 +94,27 @@ async function handleGarminTokens(userId, tokensB64) {
       garth_dump_iv: encryptedGarthDump.iv,
       garth_dump_tag: encryptedGarthDump.tag,
     });
-
     // Assuming 'external_user_id' is available in the tokens object or can be derived
     const externalUserId = tokens.external_user_id || `garmin_user_${userId}`; // Placeholder
     log(
       'debug',
       `handleGarminTokens: externalUserId determined as: ${externalUserId}`
     );
-
     // Check if a Garmin provider entry already exists for this user
     const provider =
       await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
         userId,
         'garmin'
       );
-
     const updateData = {
       provider_name: 'garmin',
       provider_type: 'garmin', // Changed to 'garmin' as per user's request
       user_id: userId,
       is_active: true,
       base_url: 'https://connect.garmin.com', // Garmin Connect base URL
-
       encrypted_garth_dump: encryptedGarthDump.encryptedText,
       garth_dump_iv: encryptedGarthDump.iv,
       garth_dump_tag: encryptedGarthDump.tag,
-
       // garth serialises the access token expiry as `expires_at` (Unix seconds).
       // We prefer this over `refresh_token_expires_at` because the UI shows this
       // date as "token expires at" — the access token (hours/days) is far more
@@ -151,7 +140,6 @@ async function handleGarminTokens(userId, tokensB64) {
       token_expires_at: updateData.token_expires_at,
       external_user_id: updateData.external_user_id,
     });
-
     let savedProvider;
     if (provider && provider.id) {
       // Update existing provider entry
@@ -168,7 +156,6 @@ async function handleGarminTokens(userId, tokensB64) {
         await externalProviderRepository.createExternalDataProvider(updateData);
       log('info', `Created new Garmin provider entry for user ${userId}.`);
     }
-
     return savedProvider; // Return the created or updated provider object
   } catch (error) {
     log(
@@ -184,7 +171,6 @@ async function handleGarminTokens(userId, tokensB64) {
     throw new Error(errorMessage, { cause: error });
   }
 }
-
 async function syncGarminHealthAndWellness(
   userId,
   startDate,
@@ -231,7 +217,6 @@ async function syncGarminHealthAndWellness(
     );
   }
 }
-
 async function fetchGarminActivitiesAndWorkouts(
   userId,
   startDate,
@@ -252,7 +237,6 @@ async function fetchGarminActivitiesAndWorkouts(
       'debug',
       `fetchGarminActivitiesAndWorkouts: Sending decrypted Garth dump (masked) to microservice: ${decryptedGarthDump ? decryptedGarthDump.substring(0, 30) + '...' : 'N/A'}`
     );
-
     const response = await axios.post(
       `${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`,
       {
@@ -266,7 +250,6 @@ async function fetchGarminActivitiesAndWorkouts(
         timeout: 120000, // 2 minutes timeout
       }
     );
-
     log(
       'debug',
       `Raw activities and workouts data from Garmin microservice for user ${userId} from ${startDate} to ${endDate}:`,
@@ -285,8 +268,12 @@ async function fetchGarminActivitiesAndWorkouts(
     );
   }
 }
-
-module.exports = {
+export { garminLogin };
+export { garminResumeLogin };
+export { handleGarminTokens };
+export { syncGarminHealthAndWellness };
+export { fetchGarminActivitiesAndWorkouts };
+export default {
   garminLogin,
   garminResumeLogin,
   handleGarminTokens,

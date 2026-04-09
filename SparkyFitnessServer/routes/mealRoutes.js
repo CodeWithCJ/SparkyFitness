@@ -1,13 +1,10 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import mealService from '../services/mealService.js';
+import { log } from '../config/logging.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const mealService = require('../services/mealService');
-const { log } = require('../config/logging');
-
 router.use(express.json());
-
 // --- Meal Plan Routes ---
-
 /**
  * @swagger
  * /meals/plan:
@@ -68,7 +65,6 @@ router.post('/plan', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/plan:
@@ -118,7 +114,6 @@ router.get('/plan', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/plan/{id}:
@@ -191,7 +186,6 @@ router.put('/plan/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/plan/{id}:
@@ -227,9 +221,7 @@ router.delete('/plan/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // --- Meal Template Routes ---
-
 /**
  * @swagger
  * /meals:
@@ -287,7 +279,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals:
@@ -322,7 +313,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/search:
@@ -356,7 +346,6 @@ router.get('/search', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/{id}:
@@ -395,7 +384,6 @@ router.get('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/{id}:
@@ -470,7 +458,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/{id}:
@@ -509,7 +496,6 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/{id}/deletion-impact:
@@ -555,9 +541,7 @@ router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // --- Logging Meal Plan to Food Entries ---
-
 /**
  * @swagger
  * /meals/plan/{id}/log-to-diary:
@@ -618,7 +602,6 @@ router.post('/plan/:id/log-to-diary', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/plan/log-day-to-diary:
@@ -673,7 +656,6 @@ router.post('/plan/log-day-to-diary', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/needs-review:
@@ -697,7 +679,6 @@ router.get('/needs-review', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/update-snapshot:
@@ -741,7 +722,6 @@ router.post('/update-snapshot', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meals/create-meal-from-diary:
@@ -812,5 +792,4 @@ router.post('/create-meal-from-diary', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

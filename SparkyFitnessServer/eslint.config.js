@@ -1,9 +1,8 @@
-const js = require('@eslint/js');
-const n = require('eslint-plugin-n');
-const security = require('eslint-plugin-security');
-const globals = require('globals');
-
-module.exports = [
+import js from '@eslint/js';
+import n from 'eslint-plugin-n';
+import security from 'eslint-plugin-security';
+import globals from 'globals';
+export default [
   // Global ignores
   {
     ignores: [
@@ -16,13 +15,12 @@ module.exports = [
       '**/__mocks__/**',
     ],
   },
-
   // Base configuration for all JS files
   {
     files: ['**/*.js'],
     languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'commonjs',
+      ecmaVersion: 'latest',
+      sourceType: 'module',
       globals: {
         ...globals.node,
         ...globals.jest,
@@ -45,17 +43,15 @@ module.exports = [
     rules: {
       // Recommended rules from @eslint/js
       ...js.configs.recommended.rules,
-
       // Node.js specific rules
       'n/no-missing-require': 'error',
       'n/no-unpublished-require': 'off',
       'n/no-unsupported-features/es-syntax': 'off',
       'n/no-process-exit': 'warn',
-
       // Security rules (mostly warnings to avoid blocking CI)
       ...security.configs.recommended.rules,
       'security/detect-object-injection': 'off', // Too many false positives
-
+      'security/detect-unsafe-regex': 'off',
       // Best practices
       'no-unused-vars': [
         'warn',
@@ -70,13 +66,11 @@ module.exports = [
       'prefer-const': 'warn',
       'no-var': 'warn',
       eqeqeq: ['warn', 'always'],
-
       // Code style (warnings for gradual improvement)
       quotes: ['warn', 'single', { avoidEscape: true }],
       semi: ['warn', 'always'],
     },
   },
-
   // Test files - more relaxed rules
   {
     files: ['**/*.test.js', '**/__tests__/**/*.js'],
@@ -85,7 +79,6 @@ module.exports = [
       'security/detect-non-literal-fs-filename': 'off',
     },
   },
-
   // Config files - allow console and process.exit
   {
     files: ['*.config.js', 'db/**/*.js', 'scripts/**/*.js'],

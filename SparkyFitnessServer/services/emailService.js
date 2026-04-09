@@ -1,6 +1,5 @@
-const nodemailer = require('nodemailer');
-const { log } = require('../config/logging');
-
+import nodemailer from 'nodemailer';
+import { log } from '../config/logging.js';
 // Configure your email transporter
 // You will need to replace this with your actual email service provider details.
 // Example using Gmail:
@@ -11,7 +10,6 @@ const { log } = require('../config/logging');
 //     pass: process.env.EMAIL_PASS, // Your email password or app-specific password
 //   },
 // });
-
 // Example using SMTP:
 const transporter = nodemailer.createTransport({
   host: process.env.SPARKY_FITNESS_EMAIL_HOST, // e.g., 'smtp.sendgrid.net'
@@ -22,7 +20,6 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SPARKY_FITNESS_EMAIL_PASS, // Your SMTP password
   },
 });
-
 async function sendPasswordResetEmail(toEmail, resetUrl) {
   log(
     'info',
@@ -32,7 +29,6 @@ async function sendPasswordResetEmail(toEmail, resetUrl) {
     'debug',
     `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`
   );
-
   if (!transporter.options.host || !transporter.options.auth.user) {
     log(
       'warn',
@@ -55,7 +51,6 @@ async function sendPasswordResetEmail(toEmail, resetUrl) {
     `);
     return false; // Indicate that the email was not actually sent
   }
-
   try {
     await transporter.sendMail({
       from:
@@ -90,20 +85,12 @@ async function sendPasswordResetEmail(toEmail, resetUrl) {
     });
   }
 }
-
-module.exports = {
-  sendPasswordResetEmail,
-  sendEmailMfaCode,
-  sendMagicLinkEmail,
-};
-
 async function sendEmailMfaCode(toEmail, code) {
   log('info', `Attempting to send email MFA code to ${toEmail}`);
   log(
     'debug',
     `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`
   );
-
   if (!transporter.options.host || !transporter.options.auth.user) {
     log(
       'warn',
@@ -124,7 +111,6 @@ async function sendEmailMfaCode(toEmail, code) {
     `);
     return false;
   }
-
   try {
     await transporter.sendMail({
       from:
@@ -159,7 +145,6 @@ async function sendEmailMfaCode(toEmail, code) {
     });
   }
 }
-
 async function sendMagicLinkEmail(toEmail, magicLinkUrl) {
   log(
     'info',
@@ -169,7 +154,6 @@ async function sendMagicLinkEmail(toEmail, magicLinkUrl) {
     'debug',
     `Email Transporter Config: Host=${transporter.options.host}, Port=${transporter.options.port}, Secure=${transporter.options.secure}, User=${transporter.options.auth.user ? 'configured' : 'not configured'}`
   );
-
   if (!transporter.options.host || !transporter.options.auth.user) {
     log(
       'warn',
@@ -192,7 +176,6 @@ async function sendMagicLinkEmail(toEmail, magicLinkUrl) {
     `);
     return false;
   }
-
   try {
     await transporter.sendMail({
       from:
@@ -226,3 +209,11 @@ async function sendMagicLinkEmail(toEmail, magicLinkUrl) {
     });
   }
 }
+export { sendPasswordResetEmail };
+export { sendEmailMfaCode };
+export { sendMagicLinkEmail };
+export default {
+  sendPasswordResetEmail,
+  sendEmailMfaCode,
+  sendMagicLinkEmail,
+};

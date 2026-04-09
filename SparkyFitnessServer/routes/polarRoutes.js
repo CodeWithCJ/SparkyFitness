@@ -1,12 +1,9 @@
-// SparkyFitnessServer/routes/polarRoutes.js
-
-const express = require('express');
+import express from 'express';
+import polarIntegrationService from '../integrations/polar/polarService.js';
+import polarService from '../services/polarService.js';
+import { log } from '../config/logging.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 const router = express.Router();
-const polarIntegrationService = require('../integrations/polar/polarService');
-const polarService = require('../services/polarService');
-const { log } = require('../config/logging');
-const authMiddleware = require('../middleware/authMiddleware');
-
 /**
  * @swagger
  * /integrations/polar/authorize:
@@ -52,7 +49,6 @@ router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /integrations/polar/callback:
@@ -90,13 +86,11 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
     const baseUrl =
       process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
     const redirectUri = `${baseUrl}/polar/callback`;
-
     if (!code) {
       return res
         .status(400)
         .json({ message: 'Authorization code not received.' });
     }
-
     const result = await polarIntegrationService.exchangeCodeForTokens(
       userId,
       code,
@@ -104,7 +98,6 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
       redirectUri,
       providerId
     );
-
     if (result.success) {
       res.status(200).json({ message: 'Polar account linked successfully.' });
     } else {
@@ -118,7 +111,6 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /integrations/polar/sync:
@@ -170,7 +162,6 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /integrations/polar/disconnect:
@@ -212,7 +203,6 @@ router.post('/disconnect', authMiddleware.authenticate, async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /integrations/polar/status:
@@ -261,5 +251,4 @@ router.get('/status', authMiddleware.authenticate, async (req, res) => {
       .json({ message: 'Error getting Polar status', error: error.message });
   }
 });
-
-module.exports = router;
+export default router;

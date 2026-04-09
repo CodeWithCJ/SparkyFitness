@@ -1,6 +1,5 @@
-const weeklyGoalPlanRepository = require('../models/weeklyGoalPlanRepository');
-const { log } = require('../config/logging');
-
+import weeklyGoalPlanRepository from '../models/weeklyGoalPlanRepository.js';
+import { log } from '../config/logging.js';
 async function createWeeklyGoalPlan(userId, planData) {
   try {
     // Deactivate all other active plans for this user if the new plan is active
@@ -17,7 +16,6 @@ async function createWeeklyGoalPlan(userId, planData) {
     throw new Error('Failed to create weekly goal plan.', { cause: error });
   }
 }
-
 async function getWeeklyGoalPlans(userId) {
   try {
     const plans =
@@ -28,7 +26,6 @@ async function getWeeklyGoalPlans(userId) {
     throw new Error('Failed to fetch weekly goal plans.', { cause: error });
   }
 }
-
 async function getActiveWeeklyGoalPlan(userId, date) {
   try {
     const plan = await weeklyGoalPlanRepository.getActiveWeeklyGoalPlan(
@@ -47,7 +44,6 @@ async function getActiveWeeklyGoalPlan(userId, date) {
     });
   }
 }
-
 async function updateWeeklyGoalPlan(planId, userId, planData) {
   try {
     // Deactivate all other active plans for this user if this plan is being set to active
@@ -68,7 +64,6 @@ async function updateWeeklyGoalPlan(planId, userId, planData) {
     throw new Error('Failed to update weekly goal plan.', { cause: error });
   }
 }
-
 async function deleteWeeklyGoalPlan(planId, userId) {
   try {
     const deletedPlan = await weeklyGoalPlanRepository.deleteWeeklyGoalPlan(
@@ -85,8 +80,12 @@ async function deleteWeeklyGoalPlan(planId, userId) {
     throw new Error('Failed to delete weekly goal plan.', { cause: error });
   }
 }
-
-module.exports = {
+export { createWeeklyGoalPlan };
+export { getWeeklyGoalPlans };
+export { getActiveWeeklyGoalPlan };
+export { updateWeeklyGoalPlan };
+export { deleteWeeklyGoalPlan };
+export default {
   createWeeklyGoalPlan,
   getWeeklyGoalPlans,
   getActiveWeeklyGoalPlan,

@@ -1,22 +1,21 @@
-const express = require('express');
+import express from 'express';
+import { authenticate, isAdmin } from '../middleware/authMiddleware.js';
+import authService from '../services/authService.js';
+import globalSettingsRepository from '../models/globalSettingsRepository.js';
+import userRepository from '../models/userRepository.js';
+import { log } from '../config/logging.js';
+import expressValidator from 'express-validator';
 const router = express.Router();
-const { authenticate, isAdmin } = require('../middleware/authMiddleware');
-const authService = require('../services/authService');
-const globalSettingsRepository = require('../models/globalSettingsRepository');
-const userRepository = require('../models/userRepository');
-const { log } = require('../config/logging');
-const { body, validationResult } = require('express-validator');
+const { body, validationResult } = expressValidator;
 /**
  * @swagger
  * tags:
  *   name: Identity & Security
  *   description: User authentication, registration, profiles, MFA, family access, and API keys.
  */
-
 // All admin auth routes require authentication and admin privileges
 router.use(authenticate);
 router.use(isAdmin);
-
 /**
  * @swagger
  * /admin/auth/settings/mfa-mandatory:
@@ -52,7 +51,6 @@ router.get('/settings/mfa-mandatory', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/auth/settings/mfa-mandatory:
@@ -119,7 +117,6 @@ router.put(
     }
   }
 );
-
 /**
  * @swagger
  * /admin/auth/users/{userId}/mfa/reset:
@@ -162,7 +159,6 @@ router.post('/users/:userId/mfa/reset', async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-
     await authService.resetUserMfa(req.userId, userId);
     res.status(200).json({ message: `MFA for user ${userId} has been reset.` });
   } catch (error) {
@@ -174,5 +170,4 @@ router.post('/users/:userId/mfa/reset', async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

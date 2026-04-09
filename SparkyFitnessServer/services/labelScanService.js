@@ -1,31 +1,27 @@
-const chatRepository = require('../models/chatRepository');
-const { log } = require('../config/logging');
-const { Agent } = require('undici');
-const { getDefaultVisionModel } = require('../ai/config');
-
+import chatRepository from '../models/chatRepository.js';
+import { log } from '../config/logging.js';
+import undici from 'undici';
+import { getDefaultVisionModel } from '../ai/config.js';
+const { Agent } = undici;
 async function extractNutritionFromLabel(base64Image, mimeType, userId) {
   try {
     const setting = await chatRepository.getActiveAiServiceSetting(userId);
     if (!setting) {
       return { success: false, error: 'No AI service configured' };
     }
-
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       setting.id,
       userId
     );
-
     if (aiService.service_type !== 'ollama' && !aiService.api_key) {
       return {
         success: false,
         error: 'API key missing for selected AI service.',
       };
     }
-
     const model =
       aiService.model_name || getDefaultVisionModel(aiService.service_type);
     const apiKey = aiService.api_key;
-
     const prompt =
       'Extract the nutrition facts from this food label image. ' +
       'Return a JSON object with these fields: ' +
@@ -39,9 +35,7 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
       'serving_size should be a number. ' +
       'Use null for any field not visible on the label. ' +
       'Return only the JSON object, no other text.';
-
     let response;
-
     switch (aiService.service_type) {
       case 'google':
         response = await fetch(
@@ -73,7 +67,6 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
           }
         );
         break;
-
       case 'openai':
       case 'openai_compatible':
       case 'mistral':
@@ -92,7 +85,6 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
                   : aiService.service_type === 'openrouter'
                     ? 'https://openrouter.ai/api/v1/chat/completions'
                     : aiService.custom_url;
-
         response = await fetch(url, {
           method: 'POST',
           headers: {
@@ -124,7 +116,6 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
         });
         break;
       }
-
       case 'anthropic':
         response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -155,7 +146,6 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
           }),
         });
         break;
-
       case 'ollama': {
         const timeout = aiService.timeout || 120000;
         const ollamaAgent = new Agent({
@@ -196,14 +186,12 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
         }
         break;
       }
-
       default:
         return {
           success: false,
           error: `Unsupported service type: ${aiService.service_type}`,
         };
     }
-
     if (!response.ok) {
       const errorBody = await response.text();
       log(
@@ -215,10 +203,8 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
         error: `AI service returned status ${response.status}`,
       };
     }
-
     const data = await response.json();
     let content;
-
     switch (aiService.service_type) {
       case 'google':
         content = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -238,14 +224,11 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
         content = data.message?.content;
         break;
     }
-
     if (!content) {
       return { success: false, error: 'No content in AI response' };
     }
-
     // Strip markdown code fences if present
     content = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-
     const nutrition = JSON.parse(content);
     return { success: true, nutrition };
   } catch (error) {
@@ -257,7 +240,7 @@ async function extractNutritionFromLabel(base64Image, mimeType, userId) {
     return { success: false, error: error.message };
   }
 }
-
-module.exports = {
+export { extractNutritionFromLabel };
+export default {
   extractNutritionFromLabel,
 };

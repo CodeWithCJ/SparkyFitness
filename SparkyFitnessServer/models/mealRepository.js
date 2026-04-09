@@ -1,12 +1,9 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const format = require('pg-format');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import format from 'pg-format';
 // --- Helpers ---
-
 async function attachFoodsToMeals(client, meals) {
   if (meals.length === 0) return meals;
-
   const mealIds = meals.map((m) => m.id);
   const mealFoodsResult = await client.query(
     `SELECT mf.id, mf.meal_id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
@@ -21,27 +18,21 @@ async function attachFoodsToMeals(client, meals) {
      WHERE mf.meal_id = ANY($1::uuid[])`,
     [mealIds]
   );
-
   const foodsByMealId = {};
   for (const food of mealFoodsResult.rows) {
     if (!foodsByMealId[food.meal_id]) foodsByMealId[food.meal_id] = [];
     foodsByMealId[food.meal_id].push(food);
   }
-
   for (const meal of meals) {
     meal.foods = foodsByMealId[meal.id] || [];
   }
-
   return meals;
 }
-
 // --- Meal Template CRUD Operations ---
-
 async function createMeal(mealData) {
   const client = await getClient(mealData.user_id); // User-specific operation
   try {
     await client.query('BEGIN');
-
     const mealResult = await client.query(
       `INSERT INTO meals (user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, now(), now()) RETURNING id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at`,
@@ -55,7 +46,6 @@ async function createMeal(mealData) {
       ]
     );
     const newMeal = mealResult.rows[0];
-
     if (mealData.foods && mealData.foods.length > 0) {
       const mealFoodsValues = mealData.foods.map((food) => [
         newMeal.id,
@@ -72,7 +62,6 @@ async function createMeal(mealData) {
       );
       await client.query(mealFoodsQuery);
     }
-
     await client.query('COMMIT');
     return newMeal;
   } catch (error) {
@@ -83,7 +72,6 @@ async function createMeal(mealData) {
     client.release();
   }
 }
-
 async function getMeals(userId, filter = 'all') {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -92,7 +80,6 @@ async function getMeals(userId, filter = 'all') {
       FROM meals
       WHERE 1=1`; // Start with a true condition to easily append AND clauses
     const queryParams = [];
-
     if (filter === 'mine') {
       query += ' AND user_id = $1';
       queryParams.push(userId);
@@ -102,12 +89,9 @@ async function getMeals(userId, filter = 'all') {
       queryParams.push(userId);
     }
     // For 'family' and 'public' filters, separate functions will be called in mealService
-
     query += ' ORDER BY name ASC';
-
     const result = await client.query(query, queryParams);
     const meals = result.rows;
-
     // For each meal, fetch its associated foods
     for (const meal of meals) {
       const mealFoodsResult = await client.query(
@@ -125,13 +109,11 @@ async function getMeals(userId, filter = 'all') {
       );
       meal.foods = mealFoodsResult.rows;
     }
-
     return meals;
   } finally {
     client.release();
   }
 }
-
 async function searchMeals(searchTerm, userId, limit = null) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -141,15 +123,12 @@ async function searchMeals(searchTerm, userId, limit = null) {
       WHERE name ILIKE '%' || $1 || '%'
       ORDER BY name ASC`;
     const queryParams = [searchTerm];
-
     if (limit !== null) {
       query += ' LIMIT $3';
       queryParams.push(limit);
     }
-
     const result = await client.query(query, queryParams);
     const meals = result.rows;
-
     // For each meal, fetch its associated foods
     for (const meal of meals) {
       const mealFoodsResult = await client.query(
@@ -172,7 +151,6 @@ async function searchMeals(searchTerm, userId, limit = null) {
     client.release();
   }
 }
-
 async function getMealById(mealId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -182,7 +160,6 @@ async function getMealById(mealId, userId) {
       [mealId]
     );
     const meal = mealResult.rows[0];
-
     if (meal) {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
@@ -204,12 +181,10 @@ async function getMealById(mealId, userId) {
     client.release();
   }
 }
-
 async function updateMeal(mealId, userId, updateData) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
-
     const result = await client.query(
       `UPDATE meals SET
         name = COALESCE($1, name),
@@ -230,11 +205,9 @@ async function updateMeal(mealId, userId, updateData) {
       ]
     );
     const updatedMeal = result.rows[0];
-
     if (updatedMeal && updateData.foods !== undefined) {
       // Delete existing meal_foods for this meal
       await client.query('DELETE FROM meal_foods WHERE meal_id = $1', [mealId]);
-
       // Insert new meal_foods
       if (updateData.foods.length > 0) {
         const mealFoodsValues = updateData.foods.map((food) => [
@@ -253,7 +226,6 @@ async function updateMeal(mealId, userId, updateData) {
         await client.query(mealFoodsQuery);
       }
     }
-
     await client.query('COMMIT');
     return updatedMeal;
   } catch (error) {
@@ -264,7 +236,6 @@ async function updateMeal(mealId, userId, updateData) {
     client.release();
   }
 }
-
 async function deleteMeal(mealId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -284,9 +255,7 @@ async function deleteMeal(mealId, userId) {
     client.release();
   }
 }
-
 // --- Meal Plan CRUD Operations ---
-
 async function createMealPlanEntry(planData) {
   const client = await getClient(planData.user_id); // User-specific operation
   try {
@@ -299,7 +268,6 @@ async function createMealPlanEntry(planData) {
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
       else throw new Error(`Invalid meal type: ${planData.meal_type}`);
     }
-
     const result = await client.query(
       `INSERT INTO meal_plans (user_id, meal_id, food_id, variant_id, quantity, unit, plan_date, meal_type_id, is_template, template_name, day_of_week, meal_plan_template_id, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now()) RETURNING *`,
@@ -326,7 +294,6 @@ async function createMealPlanEntry(planData) {
     client.release();
   }
 }
-
 async function getMealPlanEntries(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -369,7 +336,6 @@ async function getMealPlanEntries(userId, startDate, endDate) {
     client.release();
   }
 }
-
 async function updateMealPlanEntry(planId, userId, updateData) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -381,7 +347,6 @@ async function updateMealPlanEntry(planId, userId, updateData) {
       );
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
     }
-
     const result = await client.query(
       `UPDATE meal_plans SET
         meal_id = COALESCE($1, meal_id),
@@ -421,7 +386,6 @@ async function updateMealPlanEntry(planId, userId, updateData) {
     client.release();
   }
 }
-
 async function deleteMealPlanEntry(planId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -437,7 +401,6 @@ async function deleteMealPlanEntry(planId, userId) {
     client.release();
   }
 }
-
 async function getMealPlanEntryById(planId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -467,9 +430,7 @@ async function getMealPlanEntryById(planId, userId) {
     client.release();
   }
 }
-
 // --- Helper for logging meal plan to food entries ---
-
 async function createFoodEntryFromMealPlan(entryData) {
   const client = await getClient(entryData.user_id); // User-specific operation
   try {
@@ -482,7 +443,6 @@ async function createFoodEntryFromMealPlan(entryData) {
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
       else throw new Error(`Invalid meal type: ${entryData.meal_type}`);
     }
-
     const result = await client.query(
       `INSERT INTO food_entries (user_id, food_id, meal_type_id, quantity, unit, entry_date, variant_id, meal_plan_id, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now()) RETURNING *`,
@@ -505,7 +465,6 @@ async function createFoodEntryFromMealPlan(entryData) {
     client.release();
   }
 }
-
 async function deleteMealPlanEntriesByTemplateId(templateId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -525,7 +484,6 @@ async function deleteMealPlanEntriesByTemplateId(templateId, userId) {
     client.release();
   }
 }
-
 async function getRecentMeals(userId, limit = null) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -534,15 +492,12 @@ async function getRecentMeals(userId, limit = null) {
       FROM meals
       ORDER BY updated_at DESC`;
     const queryParams = [];
-
     if (limit !== null) {
       query += ' LIMIT $2';
       queryParams.push(limit);
     }
-
     const result = await client.query(query, queryParams);
     const meals = result.rows;
-
     for (const meal of meals) {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
@@ -564,7 +519,6 @@ async function getRecentMeals(userId, limit = null) {
     client.release();
   }
 }
-
 async function getTopMeals(userId, limit = null) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -578,15 +532,12 @@ async function getTopMeals(userId, limit = null) {
       GROUP BY m.id
       ORDER BY food_count DESC, m.created_at DESC`;
     const queryParams = [];
-
     if (limit !== null) {
       query += ' LIMIT $2';
       queryParams.push(limit);
     }
-
     const result = await client.query(query, queryParams);
     const meals = result.rows;
-
     for (const meal of meals) {
       const mealFoodsResult = await client.query(
         `SELECT mf.id, mf.food_id, mf.variant_id, mf.quantity, mf.unit,
@@ -608,7 +559,6 @@ async function getTopMeals(userId, limit = null) {
     client.release();
   }
 }
-
 async function getMealOwnerId(mealId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -621,7 +571,6 @@ async function getMealOwnerId(mealId, userId) {
     client.release();
   }
 }
-
 async function getMealsNeedingReview(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -650,7 +599,6 @@ async function getMealsNeedingReview(userId) {
     client.release();
   }
 }
-
 async function updateMealEntriesSnapshot(userId, mealId, newSnapshotData) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -667,7 +615,6 @@ async function updateMealEntriesSnapshot(userId, mealId, newSnapshotData) {
     client.release();
   }
 }
-
 async function clearUserIgnoredUpdate(userId, variantId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -680,7 +627,6 @@ async function clearUserIgnoredUpdate(userId, variantId) {
     client.release();
   }
 }
-
 async function getMealDeletionImpact(mealId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -691,12 +637,10 @@ async function getMealDeletionImpact(mealId, userId) {
        WHERE mpta.meal_id = $1`,
       [mealId]
     );
-
     const usage = {
       usedByOtherUsers: false,
       usedByCurrentUser: false,
     };
-
     for (const row of result.rows) {
       if (row.user_id !== userId) {
         usage.usedByOtherUsers = true;
@@ -704,13 +648,11 @@ async function getMealDeletionImpact(mealId, userId) {
         usage.usedByCurrentUser = true;
       }
     }
-
     return usage;
   } finally {
     client.release();
   }
 }
-
 async function deleteMealPlanEntriesByMealId(mealId, userId) {
   const client = await getClient(userId);
   try {
@@ -727,7 +669,6 @@ async function deleteMealPlanEntriesByMealId(mealId, userId) {
     client.release();
   }
 }
-
 async function getMealPlanOwnerId(mealPlanId) {
   const client = await getClient(mealPlanId); // User-specific operation (RLS will handle access)
   try {
@@ -740,22 +681,19 @@ async function getMealPlanOwnerId(mealPlanId) {
     client.release();
   }
 }
-
 async function getPublicMeals(userId) {
   const client = await getClient(userId); // User-specific operation for RLS
   try {
-    const result = await client.query(
-      `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at
+    const result =
+      await client.query(`SELECT id, user_id, name, description, is_public, serving_size, serving_unit, created_at, updated_at
        FROM meals
        WHERE is_public = TRUE
-       ORDER BY name ASC`
-    );
+       ORDER BY name ASC`);
     return attachFoodsToMeals(client, result.rows);
   } finally {
     client.release();
   }
 }
-
 async function getFamilyMeals(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -776,8 +714,31 @@ async function getFamilyMeals(userId) {
     client.release();
   }
 }
-
-module.exports = {
+export { createMeal };
+export { getMeals };
+export { getMealById };
+export { updateMeal };
+export { deleteMeal };
+export { createMealPlanEntry };
+export { getMealPlanEntries };
+export { getMealPlanEntryById };
+export { updateMealPlanEntry };
+export { deleteMealPlanEntry };
+export { deleteMealPlanEntriesByTemplateId };
+export { createFoodEntryFromMealPlan };
+export { getMealOwnerId };
+export { getMealPlanOwnerId };
+export { searchMeals };
+export { getRecentMeals };
+export { getTopMeals };
+export { getPublicMeals };
+export { getFamilyMeals };
+export { getMealDeletionImpact };
+export { deleteMealPlanEntriesByMealId };
+export { getMealsNeedingReview };
+export { updateMealEntriesSnapshot };
+export { clearUserIgnoredUpdate };
+export default {
   createMeal,
   getMeals,
   getMealById,
@@ -795,8 +756,8 @@ module.exports = {
   searchMeals,
   getRecentMeals,
   getTopMeals,
-  getPublicMeals, // New export
-  getFamilyMeals, // New export
+  getPublicMeals,
+  getFamilyMeals,
   getMealDeletionImpact,
   deleteMealPlanEntriesByMealId,
   getMealsNeedingReview,

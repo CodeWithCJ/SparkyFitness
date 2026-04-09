@@ -17,7 +17,6 @@ function getDefaultModel(serviceType) {
       return 'gpt-3.5-turbo';
   }
 }
-
 function getDefaultVisionModel(serviceType) {
   switch (serviceType) {
     case 'openai':
@@ -39,8 +38,9 @@ function getDefaultVisionModel(serviceType) {
       return 'gpt-4o-mini';
   }
 }
-
-module.exports = {
+export { getDefaultModel };
+export { getDefaultVisionModel };
+export default {
   getDefaultModel,
   getDefaultVisionModel,
 };

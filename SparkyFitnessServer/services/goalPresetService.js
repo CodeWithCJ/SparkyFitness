@@ -1,6 +1,5 @@
-const goalPresetRepository = require('../models/goalPresetRepository');
-const { log } = require('../config/logging');
-
+import goalPresetRepository from '../models/goalPresetRepository.js';
+import { log } from '../config/logging.js';
 // Convert water_goal_ml to the correct repository field name
 function mapWaterGoalMlToDb(presetData) {
   const { water_goal_ml, ...rest } = presetData;
@@ -9,7 +8,6 @@ function mapWaterGoalMlToDb(presetData) {
     water_goal: water_goal_ml,
   };
 }
-
 // Convert water_goal repository field name to water_goal_ml
 function mapDbToWaterGoalMl(presetData) {
   const { water_goal, ...rest } = presetData;
@@ -18,7 +16,6 @@ function mapDbToWaterGoalMl(presetData) {
     water_goal_ml: water_goal,
   };
 }
-
 // Helper function to calculate grams from percentages
 function calculateGramsFromPercentages(
   calories,
@@ -31,7 +28,6 @@ function calculateGramsFromPercentages(
   const fat_grams = (calories * (fat_percentage / 100)) / 9;
   return { protein_grams, carbs_grams, fat_grams };
 }
-
 async function createGoalPreset(userId, presetData) {
   try {
     // If percentages are provided, calculate grams.
@@ -57,7 +53,6 @@ async function createGoalPreset(userId, presetData) {
       presetData.carbs = carbs_grams;
       presetData.fat = fat_grams;
     }
-
     const dbPresetData = mapWaterGoalMlToDb({ ...presetData, user_id: userId });
     const newPreset = await goalPresetRepository.createGoalPreset(dbPresetData);
     return newPreset;
@@ -71,7 +66,6 @@ async function createGoalPreset(userId, presetData) {
     throw new Error('Failed to create goal preset.', { cause: error });
   }
 }
-
 async function getGoalPresets(userId) {
   try {
     const presets = await goalPresetRepository.getGoalPresetsByUserId(userId);
@@ -81,7 +75,6 @@ async function getGoalPresets(userId) {
     throw new Error('Failed to fetch goal presets.', { cause: error });
   }
 }
-
 async function getGoalPreset(presetId, userId) {
   try {
     const preset = await goalPresetRepository.getGoalPresetById(
@@ -98,7 +91,6 @@ async function getGoalPreset(presetId, userId) {
     throw new Error('Failed to fetch goal preset.', { cause: error });
   }
 }
-
 async function updateGoalPreset(presetId, userId, presetData) {
   try {
     // If percentages are provided, calculate grams.
@@ -124,7 +116,6 @@ async function updateGoalPreset(presetId, userId, presetData) {
       presetData.carbs = carbs_grams;
       presetData.fat = fat_grams;
     }
-
     const dbPresetData = mapWaterGoalMlToDb({ ...presetData, user_id: userId });
     const updatedPreset = await goalPresetRepository.updateGoalPreset(
       presetId,
@@ -145,7 +136,6 @@ async function updateGoalPreset(presetId, userId, presetData) {
     throw new Error('Failed to update goal preset.', { cause: error });
   }
 }
-
 async function deleteGoalPreset(presetId, userId) {
   try {
     const deletedPreset = await goalPresetRepository.deleteGoalPreset(
@@ -162,8 +152,12 @@ async function deleteGoalPreset(presetId, userId) {
     throw new Error('Failed to delete goal preset.', { cause: error });
   }
 }
-
-module.exports = {
+export { createGoalPreset };
+export { getGoalPresets };
+export { getGoalPreset };
+export { updateGoalPreset };
+export { deleteGoalPreset };
+export default {
   createGoalPreset,
   getGoalPresets,
   getGoalPreset,

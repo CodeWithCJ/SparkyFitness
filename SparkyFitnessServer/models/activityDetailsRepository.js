@@ -1,6 +1,5 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 async function createActivityDetail(userId, detail) {
   const client = await getClient(userId);
   const {
@@ -12,7 +11,6 @@ async function createActivityDetail(userId, detail) {
     created_by_user_id,
     updated_by_user_id,
   } = detail;
-
   let processedDetailData;
   if (typeof detail_data === 'string') {
     try {
@@ -23,7 +21,6 @@ async function createActivityDetail(userId, detail) {
   } else {
     processedDetailData = detail_data;
   }
-
   const query = `
         INSERT INTO exercise_entry_activity_details (
             exercise_entry_id,
@@ -37,7 +34,6 @@ async function createActivityDetail(userId, detail) {
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *;
     `;
-
   const values = [
     exercise_entry_id,
     exercise_preset_entry_id,
@@ -47,7 +43,6 @@ async function createActivityDetail(userId, detail) {
     created_by_user_id,
     updated_by_user_id,
   ];
-
   try {
     const result = await client.query(query, values);
     log(
@@ -68,7 +63,6 @@ async function createActivityDetail(userId, detail) {
     client.release();
   }
 }
-
 async function getActivityDetailsByEntryOrPresetId(
   userId,
   entryId = null,
@@ -77,14 +71,12 @@ async function getActivityDetailsByEntryOrPresetId(
   const client = await getClient(userId);
   let query;
   let values;
-
   if (entryId && presetEntryId) {
     throw new Error(
       'Cannot query activity details by both entryId and presetEntryId simultaneously.',
       { cause: { entryId, presetEntryId } }
     );
   }
-
   if (entryId) {
     query = `
             SELECT eead.*
@@ -104,7 +96,6 @@ async function getActivityDetailsByEntryOrPresetId(
   } else {
     throw new Error('Either entryId or presetEntryId must be provided.');
   }
-
   try {
     const result = await client.query(query, values);
     return result.rows.map((row) => {
@@ -133,12 +124,10 @@ async function getActivityDetailsByEntryOrPresetId(
     client.release();
   }
 }
-
 async function updateActivityDetail(userId, id, detail) {
   const client = await getClient(userId);
   const { provider_name, detail_type, detail_data, updated_by_user_id } =
     detail;
-
   const query = `
         UPDATE exercise_entry_activity_details
         SET
@@ -152,7 +141,6 @@ async function updateActivityDetail(userId, id, detail) {
                OR exercise_preset_entry_id IN (SELECT id FROM exercise_preset_entries WHERE user_id = $6))
         RETURNING *;
     `;
-
   const values = [
     provider_name,
     detail_type,
@@ -170,7 +158,6 @@ async function updateActivityDetail(userId, id, detail) {
     id,
     userId,
   ];
-
   try {
     const result = await client.query(query, values);
     if (result.rowCount === 0) {
@@ -193,7 +180,6 @@ async function updateActivityDetail(userId, id, detail) {
     client.release();
   }
 }
-
 async function deleteActivityDetail(userId, id) {
   const client = await getClient(userId);
   const query = `
@@ -222,7 +208,6 @@ async function deleteActivityDetail(userId, id) {
     client.release();
   }
 }
-
 async function deleteActivityDetailsByEntryIdAndProvider(
   userId,
   entryId,
@@ -258,8 +243,12 @@ async function deleteActivityDetailsByEntryIdAndProvider(
     client.release();
   }
 }
-
-module.exports = {
+export { createActivityDetail };
+export { getActivityDetailsByEntryOrPresetId };
+export { updateActivityDetail };
+export { deleteActivityDetail };
+export { deleteActivityDetailsByEntryIdAndProvider };
+export default {
   createActivityDetail,
   getActivityDetailsByEntryOrPresetId,
   updateActivityDetail,

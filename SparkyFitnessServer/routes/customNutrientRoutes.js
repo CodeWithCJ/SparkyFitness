@@ -1,19 +1,16 @@
-const express = require('express');
+import express from 'express';
+import customNutrientService from '../services/customNutrientService.js';
+import { authenticate } from '../middleware/authMiddleware.js';
+import { log } from '../config/logging.js';
 const router = express.Router();
-const customNutrientService = require('../services/customNutrientService');
-const { authenticate } = require('../middleware/authMiddleware');
-const { log } = require('../config/logging');
-
 // Apply authentication middleware to all routes
 router.use(authenticate);
-
 /**
  * @swagger
  * tags:
  *   name: Nutrition & Meals
  *   description: Food database, meal planning, meal types, and nutritional tracking.
  */
-
 /**
  * @swagger
  * components:
@@ -49,7 +46,6 @@ router.use(authenticate);
  *         - name
  *         - unit
  */
-
 /**
  * @swagger
  * /custom-nutrients:
@@ -103,7 +99,6 @@ router.post('/', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /custom-nutrients:
@@ -141,7 +136,6 @@ router.get('/', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /custom-nutrients/{id}:
@@ -193,7 +187,6 @@ router.get('/:id', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /custom-nutrients/{id}:
@@ -262,7 +255,6 @@ router.put('/:id', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /custom-nutrients/{id}:
@@ -321,5 +313,4 @@ router.delete('/:id', async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

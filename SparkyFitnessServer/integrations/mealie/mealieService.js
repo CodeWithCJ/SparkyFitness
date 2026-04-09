@@ -1,6 +1,5 @@
-const { log } = require('../../config/logging');
+import { log } from '../../config/logging.js';
 // Using native fetch (standard in Node 22+)
-
 class MealieService {
   constructor(baseUrl, apiKey) {
     if (
@@ -14,18 +13,15 @@ class MealieService {
     }
     this.accessToken = apiKey; // Directly use the provided API key as the access token
   }
-
   async searchRecipes(query, page = 1, options = {}) {
     if (!this.accessToken) {
       throw new Error('Mealie API key not provided.');
     }
-
     const perPage = 10;
     const url = new URL(`${this.baseUrl}/api/recipes`);
     url.searchParams.append('queryFilter', `name LIKE "%${query}%"`);
     url.searchParams.append('perPage', perPage);
     url.searchParams.append('page', page);
-
     try {
       const response = await fetch(url.toString(), {
         method: 'GET',
@@ -35,7 +31,6 @@ class MealieService {
           ...options.headers,
         },
       });
-
       if (!response.ok) {
         const errorText = await response.text();
         log('error', `Mealie API Error Response (Raw): ${errorText}`);
@@ -51,7 +46,6 @@ class MealieService {
           );
         }
       }
-
       const data = await response.json();
       log(
         'debug',
@@ -74,15 +68,12 @@ class MealieService {
       };
     }
   }
-
   async getRecipeDetails(slug, options = {}) {
     // Added options parameter
     if (!this.accessToken) {
       throw new Error('Mealie API key not provided.');
     }
-
     const url = `${this.baseUrl}/api/recipes/${slug}`;
-
     try {
       const response = await fetch(url, {
         method: 'GET',
@@ -92,14 +83,12 @@ class MealieService {
           ...options.headers, // Apply custom headers
         },
       });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
           `Get recipe details failed: ${response.status} ${response.statusText} - ${errorData.detail}`
         );
       }
-
       const data = await response.json();
       log('debug', `Successfully retrieved details for recipe: ${slug}`);
       return data;
@@ -121,7 +110,6 @@ class MealieService {
     const nutrition = mealieRecipe.nutrition || {};
     const defaultServing = mealieRecipe.recipeServings || 1;
     const servingUnit = mealieRecipe.recipeYield || 'serving';
-
     return {
       food: {
         name: mealieRecipe.name,
@@ -160,5 +148,4 @@ class MealieService {
     };
   }
 }
-
-module.exports = MealieService;
+export default MealieService;

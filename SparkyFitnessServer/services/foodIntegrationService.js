@@ -1,13 +1,12 @@
-const { log } = require('../config/logging');
-const {
+import { log } from '../config/logging.js';
+import {
   getFatSecretAccessToken,
   foodNutrientCache,
   CACHE_DURATION_MS,
   FATSECRET_API_BASE_URL,
-} = require('../integrations/fatsecret/fatsecretService');
-const MealieService = require('../integrations/mealie/mealieService'); // Import MealieService
-const TandoorService = require('../integrations/tandoor/tandoorService'); // Import TandoorService
-
+} from '../integrations/fatsecret/fatsecretService.js';
+import MealieService from '../integrations/mealie/mealieService.js';
+import TandoorService from '../integrations/tandoor/tandoorService.js';
 async function searchFatSecretFoods(query, clientId, clientSecret, page = 1) {
   try {
     const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
@@ -26,13 +25,11 @@ async function searchFatSecretFoods(query, clientId, clientSecret, page = 1) {
         Accept: 'application/json',
       },
     });
-
     if (!response.ok) {
       const errorText = await response.text();
       log('error', 'FatSecret Food Search API error:', errorText);
       throw new Error(`FatSecret API error: ${errorText}`);
     }
-
     const data = await response.json();
     const foods = data.foods || {};
     const totalCount = Number(foods.total_results || 0);
@@ -56,7 +53,6 @@ async function searchFatSecretFoods(query, clientId, clientSecret, page = 1) {
     throw error;
   }
 }
-
 async function getFatSecretNutrients(foodId, clientId, clientSecret) {
   try {
     // Check cache first
@@ -65,7 +61,6 @@ async function getFatSecretNutrients(foodId, clientId, clientSecret) {
       log('info', `Returning cached data for foodId: ${foodId}`);
       return cachedData.data;
     }
-
     const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
     const nutrientsUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams({
       method: 'food.get.v4',
@@ -81,13 +76,11 @@ async function getFatSecretNutrients(foodId, clientId, clientSecret) {
         Accept: 'application/json',
       },
     });
-
     if (!response.ok) {
       const errorText = await response.text();
       log('error', 'FatSecret Food Get API error:', errorText);
       throw new Error(`FatSecret API error: ${errorText}`);
     }
-
     const data = await response.json();
     // Store in cache
     foodNutrientCache.set(foodId, {
@@ -104,7 +97,6 @@ async function getFatSecretNutrients(foodId, clientId, clientSecret) {
     throw error;
   }
 }
-
 async function searchMealieFoods(
   query,
   baseUrl,
@@ -121,15 +113,12 @@ async function searchMealieFoods(
     const mealieService = new MealieService(baseUrl, apiKey, providerId);
     const { items: searchResults, pagination } =
       await mealieService.searchRecipes(query, page);
-
     // Concurrently fetch details for all recipes
     const detailedRecipes = await Promise.all(
       searchResults.map((recipe) => mealieService.getRecipeDetails(recipe.slug))
     );
-
     // Filter out any null results (e.g., if a recipe detail fetch failed)
     const validRecipes = detailedRecipes.filter((recipe) => recipe !== null);
-
     const mappedFoods = validRecipes.map((recipe) => {
       const { food, variant } = mealieService.mapMealieRecipeToSparkyFood(
         recipe,
@@ -141,14 +130,12 @@ async function searchMealieFoods(
         variants: [variant],
       };
     });
-
     return { items: mappedFoods, pagination };
   } catch (error) {
     log('error', `Error searching Mealie foods for user ${userId}:`, error);
     throw error;
   }
 }
-
 async function getMealieFoodDetails(slug, baseUrl, apiKey, userId, providerId) {
   log(
     'debug',
@@ -170,16 +157,6 @@ async function getMealieFoodDetails(slug, baseUrl, apiKey, userId, providerId) {
     throw error;
   }
 }
-
-module.exports = {
-  searchFatSecretFoods,
-  getFatSecretNutrients,
-  searchMealieFoods,
-  getMealieFoodDetails,
-  searchTandoorFoods,
-  getTandoorFoodDetails,
-};
-
 async function searchTandoorFoods(query, baseUrl, apiKey, userId, providerId) {
   log(
     'debug',
@@ -188,13 +165,10 @@ async function searchTandoorFoods(query, baseUrl, apiKey, userId, providerId) {
   try {
     const tandoorService = new TandoorService(baseUrl, apiKey);
     const searchResults = await tandoorService.searchRecipes(query);
-
     const detailedRecipes = await Promise.all(
       searchResults.map((recipe) => tandoorService.getRecipeDetails(recipe.id)) // Tandoor uses 'id' for details
     );
-
     const validRecipes = detailedRecipes.filter((recipe) => recipe !== null);
-
     return validRecipes.map((recipe) => {
       const { food, variant } = tandoorService.mapTandoorRecipeToSparkyFood(
         recipe,
@@ -211,7 +185,6 @@ async function searchTandoorFoods(query, baseUrl, apiKey, userId, providerId) {
     throw error;
   }
 }
-
 async function getTandoorFoodDetails(id, baseUrl, apiKey, userId, providerId) {
   log(
     'debug',
@@ -233,3 +206,17 @@ async function getTandoorFoodDetails(id, baseUrl, apiKey, userId, providerId) {
     throw error;
   }
 }
+export { searchFatSecretFoods };
+export { getFatSecretNutrients };
+export { searchMealieFoods };
+export { getMealieFoodDetails };
+export { searchTandoorFoods };
+export { getTandoorFoodDetails };
+export default {
+  searchFatSecretFoods,
+  getFatSecretNutrients,
+  searchMealieFoods,
+  getMealieFoodDetails,
+  searchTandoorFoods,
+  getTandoorFoodDetails,
+};

@@ -1,5 +1,5 @@
-const { getClient } = require('../db/poolManager');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 async function createOrUpdateMoodEntry(userId, moodValue, notes, entryDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -18,7 +18,6 @@ async function createOrUpdateMoodEntry(userId, moodValue, notes, entryDate) {
     client.release();
   }
 }
-
 async function getMoodEntriesByUserId(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -45,7 +44,6 @@ async function getMoodEntriesByUserId(userId, startDate, endDate) {
     client.release();
   }
 }
-
 async function getMoodEntryById(moodEntryId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -60,7 +58,6 @@ async function getMoodEntryById(moodEntryId, userId) {
     client.release();
   }
 }
-
 async function updateMoodEntry(moodEntryId, userId, moodValue, notes) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -78,7 +75,6 @@ async function updateMoodEntry(moodEntryId, userId, moodValue, notes) {
     client.release();
   }
 }
-
 async function deleteMoodEntry(moodEntryId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -91,9 +87,6 @@ async function deleteMoodEntry(moodEntryId, userId) {
     client.release();
   }
 }
-
-const { log } = require('../config/logging');
-
 async function getMoodEntryByDate(userId, entryDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -125,8 +118,13 @@ async function getMoodEntryByDate(userId, entryDate) {
     client.release();
   }
 }
-
-module.exports = {
+export { createOrUpdateMoodEntry };
+export { getMoodEntriesByUserId };
+export { getMoodEntryById };
+export { updateMoodEntry };
+export { deleteMoodEntry };
+export { getMoodEntryByDate };
+export default {
   createOrUpdateMoodEntry,
   getMoodEntriesByUserId,
   getMoodEntryById,

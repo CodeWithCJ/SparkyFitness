@@ -5,33 +5,33 @@ import {
   SearchResponseSchema,
 } from '../../schemas/foodSchemas';
 
-const { log } = require('../../config/logging');
-const checkPermissionMiddleware = require('../../middleware/checkPermissionMiddleware');
-const foodCoreService = require('../../services/foodCoreService');
-const externalProviderService = require('../../services/externalProviderService');
-const preferenceService = require('../../services/preferenceService');
-const {
+import { log } from '../../config/logging.js';
+import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
+import foodCoreService from '../../services/foodCoreService.js';
+import externalProviderService from '../../services/externalProviderService.js';
+import preferenceService from '../../services/preferenceService.js';
+import {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
   mapOpenFoodFactsProduct,
-} = require('../../integrations/openfoodfacts/openFoodFactsService');
-const {
+} from '../../integrations/openfoodfacts/openFoodFactsService.js';
+import {
   searchUsdaFoods,
   getUsdaFoodDetails,
   mapUsdaBarcodeProduct,
-} = require('../../integrations/usda/usdaService');
-const {
+} from '../../integrations/usda/usdaService.js';
+import {
   mapFatSecretFood,
   mapFatSecretSearchItem,
-} = require('../../integrations/fatsecret/fatsecretService');
-const {
+} from '../../integrations/fatsecret/fatsecretService.js';
+import {
   searchFatSecretFoods,
   getFatSecretNutrients,
   searchMealieFoods,
   getMealieFoodDetails,
   searchTandoorFoods,
   getTandoorFoodDetails,
-} = require('../../services/foodIntegrationService');
+} from '../../services/foodIntegrationService.js';
 
 const router = express.Router();
 
@@ -136,7 +136,11 @@ async function resolveProviderCredentials(
     }
   }
 
-  return details;
+  return {
+    app_id: details.app_id ?? undefined,
+    app_key: details.app_key ?? undefined,
+    base_url: details.base_url ?? undefined,
+  };
 }
 
 const EMPTY_PAGINATION = (page: number, pageSize: number) => ({

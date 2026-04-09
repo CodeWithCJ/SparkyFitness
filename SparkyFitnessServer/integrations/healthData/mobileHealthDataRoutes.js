@@ -1,12 +1,10 @@
-const express = require('express');
+import express from 'express';
+import { log } from '../../config/logging.js';
+import measurementService from '../../services/measurementService.js';
 const router = express.Router();
-const { log } = require('../../config/logging');
-const measurementService = require('../../services/measurementService');
-
 // Endpoint for receiving mobile health data
 router.post('/mobile_data', async (req, res, next) => {
   let mobileHealthDataArray = [];
-
   if (Array.isArray(req.body)) {
     mobileHealthDataArray = req.body;
   } else if (typeof req.body === 'object' && req.body !== null) {
@@ -21,13 +19,11 @@ router.post('/mobile_data', async (req, res, next) => {
       error: 'Invalid request body format. Expected JSON object or array.',
     });
   }
-
   log(
     'info',
     'Incoming mobile health data JSON:',
     JSON.stringify(mobileHealthDataArray, null, 2)
   );
-
   try {
     const result = await measurementService.processMobileHealthData(
       mobileHealthDataArray,
@@ -43,5 +39,4 @@ router.post('/mobile_data', async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

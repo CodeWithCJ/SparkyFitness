@@ -1,10 +1,9 @@
-const express = require('express');
+import express from 'express';
+import { log } from '../config/logging.js';
+import { isAdmin } from '../middleware/authMiddleware.js';
+import oidcLogoUpload from '../middleware/oidcLogoUpload.js';
+import oidcProviderRepository from '../models/oidcProviderRepository.js';
 const router = express.Router();
-const { log } = require('../config/logging');
-const { isAdmin } = require('../middleware/authMiddleware');
-const oidcLogoUpload = require('../middleware/oidcLogoUpload');
-const oidcProviderRepository = require('../models/oidcProviderRepository');
-
 /**
  * @swagger
  * /admin/oidc-settings:
@@ -20,7 +19,6 @@ router.get('/', isAdmin, async (req, res) => {
     res.status(500).json({ message: 'Error retrieving OIDC providers' });
   }
 });
-
 /**
  * @swagger
  * /admin/oidc-settings/{id}:
@@ -44,7 +42,6 @@ router.get('/:id', isAdmin, async (req, res) => {
     res.status(500).json({ message: 'Error retrieving OIDC provider' });
   }
 });
-
 /**
  * @swagger
  * /admin/oidc-settings:
@@ -65,7 +62,6 @@ router.post('/', isAdmin, async (req, res) => {
       .json({ message: 'Error creating OIDC provider: ' + error.message });
   }
 });
-
 /**
  * @swagger
  * /admin/oidc-settings/{id}:
@@ -84,7 +80,6 @@ router.put('/:id', isAdmin, async (req, res) => {
       .json({ message: 'Error updating OIDC provider: ' + error.message });
   }
 });
-
 /**
  * @swagger
  * /admin/oidc-settings/{id}:
@@ -100,7 +95,6 @@ router.delete('/:id', isAdmin, async (req, res) => {
     res.status(500).json({ message: 'Error deleting OIDC provider' });
   }
 });
-
 /**
  * @swagger
  * /admin/oidc-settings/{id}/logo:
@@ -116,11 +110,9 @@ router.post(
     if (!req.file) {
       return res.status(400).json({ message: 'No logo file uploaded.' });
     }
-
     try {
       const logoUrl = `/uploads/oidc/${req.file.filename}`;
       const success = await oidcProviderRepository.setProviderLogo(id, logoUrl);
-
       if (success) {
         res
           .status(200)
@@ -134,5 +126,4 @@ router.post(
     }
   }
 );
-
-module.exports = router;
+export default router;

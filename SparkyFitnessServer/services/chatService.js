@@ -1,11 +1,11 @@
-const chatRepository = require('../models/chatRepository');
-const measurementRepository = require('../models/measurementRepository');
-const { log } = require('../config/logging');
-const { getDefaultModel } = require('../ai/config');
-const { Agent } = require('undici'); // Import Agent from undici
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { todayInZone } = require('@workspace/shared');
-
+import chatRepository from '../models/chatRepository.js';
+import measurementRepository from '../models/measurementRepository.js';
+import { log } from '../config/logging.js';
+import { getDefaultModel } from '../ai/config.js';
+import undici from 'undici';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { todayInZone } from '@workspace/shared';
+const { Agent } = undici; // Import Agent from undici
 async function handleAiServiceSettings(
   action,
   serviceData,
@@ -39,7 +39,6 @@ async function handleAiServiceSettings(
     throw error;
   }
 }
-
 async function getAiServiceSettings(authenticatedUserId, targetUserId) {
   try {
     const settings =
@@ -54,7 +53,6 @@ async function getAiServiceSettings(authenticatedUserId, targetUserId) {
     return []; // Return empty array on error
   }
 }
-
 async function getActiveAiServiceSetting(authenticatedUserId, targetUserId) {
   try {
     const setting =
@@ -76,7 +74,6 @@ async function getActiveAiServiceSetting(authenticatedUserId, targetUserId) {
     return null; // Return null on error
   }
 }
-
 async function deleteAiServiceSetting(authenticatedUserId, id) {
   try {
     // Verify that the setting belongs to the authenticated user before deleting
@@ -104,7 +101,6 @@ async function deleteAiServiceSetting(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function clearOldChatHistory(authenticatedUserId) {
   try {
     await chatRepository.clearOldChatHistory(authenticatedUserId);
@@ -118,7 +114,6 @@ async function clearOldChatHistory(authenticatedUserId) {
     throw error;
   }
 }
-
 async function getSparkyChatHistory(authenticatedUserId, targetUserId) {
   try {
     const history = await chatRepository.getChatHistoryByUserId(targetUserId);
@@ -132,7 +127,6 @@ async function getSparkyChatHistory(authenticatedUserId, targetUserId) {
     throw error;
   }
 }
-
 async function getSparkyChatHistoryEntry(authenticatedUserId, id) {
   try {
     const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(
@@ -156,7 +150,6 @@ async function getSparkyChatHistoryEntry(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function updateSparkyChatHistoryEntry(
   authenticatedUserId,
   id,
@@ -192,7 +185,6 @@ async function updateSparkyChatHistoryEntry(
     throw error;
   }
 }
-
 async function deleteSparkyChatHistoryEntry(authenticatedUserId, id) {
   try {
     const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id);
@@ -221,7 +213,6 @@ async function deleteSparkyChatHistoryEntry(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function clearAllSparkyChatHistory(authenticatedUserId) {
   try {
     await chatRepository.clearAllChatHistory(authenticatedUserId);
@@ -235,7 +226,6 @@ async function clearAllSparkyChatHistory(authenticatedUserId) {
     throw error;
   }
 }
-
 async function saveSparkyChatHistory(authenticatedUserId, historyData) {
   try {
     // Ensure the history is saved for the authenticated user
@@ -251,7 +241,6 @@ async function saveSparkyChatHistory(authenticatedUserId, historyData) {
     throw error;
   }
 }
-
 async function processChatMessage(
   messages,
   serviceConfigId,
@@ -265,7 +254,6 @@ async function processChatMessage(
       // Check if serviceConfigId is provided
       throw new Error('AI service configuration ID is missing.');
     }
-
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       serviceConfigId,
       authenticatedUserId
@@ -273,23 +261,19 @@ async function processChatMessage(
     if (!aiService) {
       throw new Error('AI service setting not found for the provided ID.');
     }
-
     // Log which source was used
     const source = aiService.source || 'unknown';
     log(
       'info',
       `Processing chat message for user ${authenticatedUserId} using AI service from ${source} (ID: ${serviceConfigId})`
     );
-
     // Ensure API key is present, unless it's Ollama
     if (aiService.service_type !== 'ollama' && !aiService.api_key) {
       throw new Error('API key missing for selected AI service.');
     }
-
     let response;
     const model =
       aiService.model_name || getDefaultModel(aiService.service_type);
-
     // Comprehensive system prompt from old Supabase Edge Function
     // Fetch user's custom categories to provide context to the AI
     const [customCategories, chatTz] = await Promise.all([
@@ -305,7 +289,6 @@ async function processChatMessage(
             )
             .join('\n')
         : 'None';
-
     const systemPromptContent = `You are Sparky, an AI nutrition and wellness coach. Your primary goal is to help users track their food, exercise, and measurements, and provide helpful advice and motivation based on their data and general health knowledge.
 
 The current date is ${todayInZone(chatTz)}.
@@ -432,18 +415,15 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
   {"\`name\`": "\`Apple (100g)\`", "\`calories\`": 52, "\`protein\`": 0.3, "\`carbs\`": 14, "\`fat\`": 0.2, "\`serving_size\`": 100, "\`serving_unit\`": "\`g\`"}
 ]
 `;
-
     const messagesForAI = [{ role: 'system', content: systemPromptContent }];
     // Add user messages
     messagesForAI.push(...messages.filter((msg) => msg.role === 'user')); // Assuming 'messages' from frontend only contains user messages
-
     // For Google AI
     const cleanSystemPrompt = systemPromptContent
       .replace(/[^\w\s\-.,!?:;()[\]{}'"]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
       .substring(0, 1000);
-
     switch (aiService.service_type) {
       case 'openai':
       case 'openai_compatible':
@@ -498,12 +478,10 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
             }),
           }
         );
-
         if (!response) {
           throw new Error('Fetch did not return a response object.');
         }
         break;
-
       case 'anthropic':
         log(
           'debug',
@@ -523,12 +501,10 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
             system: systemPromptContent,
           }),
         });
-
         if (!response) {
           throw new Error('Fetch did not return a response object.');
         }
         break;
-
       case 'google': {
         const googleBody = {
           contents: messagesForAI
@@ -598,19 +574,16 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
             })
             .filter((content) => content.parts.length > 0),
         };
-
         if (googleBody.contents.length === 0) {
           throw new Error(
             'No valid content (text or image) found to send to Google AI.'
           );
         }
-
         if (cleanSystemPrompt && cleanSystemPrompt.length > 0) {
           googleBody.systemInstruction = {
             parts: [{ text: cleanSystemPrompt }],
           };
         }
-
         if (!aiService.api_key) {
           throw new Error('API key missing for Google AI service.');
         }
@@ -628,7 +601,6 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
             body: JSON.stringify(googleBody),
           }
         );
-
         if (!response) {
           throw new Error('Fetch did not return a response object.');
         }
@@ -661,16 +633,13 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
           }
           return { role: msg.role, content: contentString };
         });
-
         const timeout = aiService.timeout || 1200000; // Default to 1200 seconds (20 minutes)
         log('info', `Ollama chat request timeout set to ${timeout}ms`);
-
         // Create an undici Agent with the desired timeouts
         const ollamaAgent = new Agent({
           headersTimeout: timeout,
           bodyTimeout: timeout,
         });
-
         try {
           log(
             'debug',
@@ -712,7 +681,6 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         }
         break;
       }
-
       default: {
         const hasImage = messagesForAI.some(
           (msg) =>
@@ -730,7 +698,6 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         });
       }
     }
-
     if (!response.ok) {
       const errorBody = await response.text();
       log(
@@ -741,7 +708,6 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         `AI service API call error: ${response.status} - ${response.statusText}`
       );
     }
-
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       const errorBody = await response.text();
@@ -753,10 +719,8 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
         `AI service returned non-JSON response. Expected application/json but got ${contentType}. Raw Body: ${errorBody.substring(0, 200)}...`
       );
     }
-
     const data = await response.json();
     let content = '';
-
     switch (aiService.service_type) {
       case 'openai':
       case 'openai_compatible':
@@ -789,23 +753,6 @@ Example JSON output for "GENERATE_FOOD_OPTIONS:apple":
     throw error;
   }
 }
-
-module.exports = {
-  handleAiServiceSettings,
-  getAiServiceSettings,
-  getActiveAiServiceSetting,
-  deleteAiServiceSetting,
-  clearOldChatHistory,
-  getSparkyChatHistory,
-  getSparkyChatHistoryEntry,
-  updateSparkyChatHistoryEntry,
-  deleteSparkyChatHistoryEntry,
-  clearAllSparkyChatHistory,
-  saveSparkyChatHistory,
-  processChatMessage,
-  processFoodOptionsRequest, // Add the new function to exports
-};
-
 async function processFoodOptionsRequest(
   foodName,
   unit,
@@ -818,7 +765,6 @@ async function processFoodOptionsRequest(
       // Check if serviceConfigId is provided
       throw new Error('AI service configuration ID is missing.');
     }
-
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       serviceConfigId,
       authenticatedUserId
@@ -826,30 +772,24 @@ async function processFoodOptionsRequest(
     if (!aiService) {
       throw new Error('AI service setting not found for the provided ID.');
     }
-
     // Log which source was used
     const source = aiService.source || 'unknown';
     log(
       'info',
       `Processing food options request for user ${authenticatedUserId} using AI service from ${source} (ID: ${serviceConfigId})`
     );
-
     // Ensure API key is present, unless it's Ollama
     if (aiService.service_type !== 'ollama' && !aiService.api_key) {
       throw new Error('API key missing for selected AI service.');
     }
-
     const systemPrompt = `You are Sparky, an AI nutrition and wellness coach. Your task is to generate minimum 3 realistic food options in JSON format when requested. Respond ONLY with a JSON array of FoodOption objects, including detailed nutritional information (calories, protein, carbs, fat, saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron). **CRITICAL: Always provide estimated nutritional details for each food option. Do NOT default to 0 for any nutritional field if an estimation can be made.** Do NOT include any other text.
 **CRITICAL: When a unit is specified in the request (e.g., 'GENERATE_FOOD_OPTIONS:apple in piece'), ensure the \`serving_unit\` in the generated \`FoodOption\` objects matches the requested unit exactly, if it's a common and logical unit for that food. If not, provide a common and realistic serving unit.**`;
-
     const messages = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `GENERATE_FOOD_OPTIONS:${foodName} in ${unit}` },
     ];
-
     const model =
       aiService.model_name || getDefaultModel(aiService.service_type);
-
     let response;
     switch (aiService.service_type) {
       case 'openai':
@@ -905,12 +845,10 @@ async function processFoodOptionsRequest(
             }),
           }
         );
-
         if (!response) {
           throw new Error('Fetch did not return a response object.');
         }
         break;
-
       case 'anthropic':
         log(
           'debug',
@@ -930,12 +868,10 @@ async function processFoodOptionsRequest(
             system: systemPrompt,
           }),
         });
-
         if (!response) {
           throw new Error('Fetch did not return a response object.');
         }
         break;
-
       case 'google': {
         const googleBodyFoodOptions = {
           contents: messages
@@ -948,17 +884,14 @@ async function processFoodOptionsRequest(
             })
             .filter((content) => content.parts[0].text.trim() !== ''),
         };
-
         if (googleBodyFoodOptions.contents.length === 0) {
           throw new Error('No valid content found to send to Google AI.');
         }
-
         const cleanSystemPromptFoodOptions = systemPrompt
           .replace(/[^\w\s\-.,!?:;()[\]{}'"]/g, ' ')
           .replace(/\s+/g, ' ')
           .trim()
           .substring(0, 1000);
-
         if (
           cleanSystemPromptFoodOptions &&
           cleanSystemPromptFoodOptions.length > 0
@@ -967,7 +900,6 @@ async function processFoodOptionsRequest(
             parts: [{ text: cleanSystemPromptFoodOptions }],
           };
         }
-
         if (!aiService.api_key) {
           throw new Error('API key missing for Google AI service.');
         }
@@ -985,13 +917,11 @@ async function processFoodOptionsRequest(
             body: JSON.stringify(googleBodyFoodOptions),
           }
         );
-
         if (!response) {
           throw new Error('Fetch did not return a response object.');
         }
         break;
       }
-
       // For Ollama, extract only the text content from the messages
       case 'ollama': {
         const ollamaMessagesFoodOptions = messages.map((msg) => {
@@ -1008,19 +938,16 @@ async function processFoodOptionsRequest(
           }
           return { role: msg.role, content: contentString };
         });
-
         const timeoutFoodOptions = aiService.timeout || 1200000; // Default to 1200 seconds (20 minutes)
         log(
           'info',
           `Ollama food options request timeout set to ${timeoutFoodOptions}ms`
         );
-
         // Create an undici Agent with the desired timeouts
         const ollamaAgentFoodOptions = new Agent({
           headersTimeout: timeoutFoodOptions,
           bodyTimeout: timeoutFoodOptions,
         });
-
         try {
           log(
             'debug',
@@ -1059,13 +986,11 @@ async function processFoodOptionsRequest(
         }
         break;
       }
-
       default:
         throw new Error(
           `Unsupported service type for food options generation: ${aiService.service_type}`
         );
     }
-
     if (!response.ok) {
       const errorBody = await response.text();
       log(
@@ -1076,7 +1001,6 @@ async function processFoodOptionsRequest(
         `AI service API call error: ${response.status} - ${response.statusText}`
       );
     }
-
     const contentTypeFoodOptions = response.headers.get('content-type');
     if (
       !contentTypeFoodOptions ||
@@ -1091,10 +1015,8 @@ async function processFoodOptionsRequest(
         `AI service returned non-JSON response for food options. Expected application/json but got ${contentTypeFoodOptions}. Raw Body: ${errorBody.substring(0, 200)}...`
       );
     }
-
     const data = await response.json();
     let content = '';
-
     switch (aiService.service_type) {
       case 'openai':
       case 'openai_compatible':
@@ -1127,3 +1049,31 @@ async function processFoodOptionsRequest(
     throw error;
   }
 }
+export { handleAiServiceSettings };
+export { getAiServiceSettings };
+export { getActiveAiServiceSetting };
+export { deleteAiServiceSetting };
+export { clearOldChatHistory };
+export { getSparkyChatHistory };
+export { getSparkyChatHistoryEntry };
+export { updateSparkyChatHistoryEntry };
+export { deleteSparkyChatHistoryEntry };
+export { clearAllSparkyChatHistory };
+export { saveSparkyChatHistory };
+export { processChatMessage };
+export { processFoodOptionsRequest };
+export default {
+  handleAiServiceSettings,
+  getAiServiceSettings,
+  getActiveAiServiceSetting,
+  deleteAiServiceSetting,
+  clearOldChatHistory,
+  getSparkyChatHistory,
+  getSparkyChatHistoryEntry,
+  updateSparkyChatHistoryEntry,
+  deleteSparkyChatHistoryEntry,
+  clearAllSparkyChatHistory,
+  saveSparkyChatHistory,
+  processChatMessage,
+  processFoodOptionsRequest,
+};

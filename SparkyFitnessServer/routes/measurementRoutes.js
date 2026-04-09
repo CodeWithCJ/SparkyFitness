@@ -1,10 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware'); // Import the new middleware
-const measurementService = require('../services/measurementService');
-const { log } = require('../config/logging');
-const {
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import measurementService from '../services/measurementService.js';
+import { log } from '../config/logging.js';
+import {
   UpsertWaterIntakeBodySchema,
   UpdateWaterIntakeBodySchema,
   UpsertCheckInBodySchema,
@@ -16,8 +15,9 @@ const {
   UuidParamSchema,
   DateRangeParamSchema,
   CustomMeasurementsRangeParamSchema,
-} = require('../schemas/measurementSchemas');
-
+} from '../schemas/measurementSchemas.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
+const router = express.Router();
 /**
  * @swagger
  * /measurements/health-data:
@@ -52,7 +52,6 @@ router.post(
   async (req, res, next) => {
     const rawBody = req.body;
     let healthDataArray = [];
-
     if (rawBody.startsWith('[') && rawBody.endsWith(']')) {
       try {
         healthDataArray = JSON.parse(rawBody);
@@ -84,7 +83,6 @@ router.post(
         return res.status(400).json({ error: 'Invalid single JSON format.' });
       }
     }
-
     try {
       const result = await measurementService.processHealthData(
         healthDataArray,
@@ -101,7 +99,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/water-intake/{date}:
@@ -154,18 +151,15 @@ router.get(
     const { date } = paramResult.data;
     const { userId } = req.query;
     const targetUserId = userId || req.userId;
-
     // Permission check if explicit userId is provided
     if (userId && userId !== req.userId) {
-      const hasPermission =
-        await require('../utils/permissionUtils').canAccessUserData(
-          userId,
-          'diary',
-          req.authenticatedUserId || req.userId
-        ); // Assuming diary permission covers water log
+      const hasPermission = await { canAccessUserData }.canAccessUserData(
+        userId,
+        'diary',
+        req.authenticatedUserId || req.userId
+      ); // Assuming diary permission covers water log
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
-
     try {
       const waterData = await measurementService.getWaterIntake(
         req.userId,
@@ -181,7 +175,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/water-intake:
@@ -234,20 +227,16 @@ router.post(
     }
     const { entry_date, change_drinks, container_id, user_id } =
       bodyResult.data;
-
     const targetUserId = user_id || req.userId;
-
     // Check permission if explicitly management for another user
     if (user_id && user_id !== req.userId) {
-      const hasPermission =
-        await require('../utils/permissionUtils').canAccessUserData(
-          user_id,
-          'checkin',
-          req.authenticatedUserId || req.userId
-        ); // Corrected to 'checkin'
+      const hasPermission = await { canAccessUserData }.canAccessUserData(
+        user_id,
+        'checkin',
+        req.authenticatedUserId || req.userId
+      ); // Corrected to 'checkin'
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
-
     try {
       const result = await measurementService.upsertWaterIntake(
         targetUserId,
@@ -265,7 +254,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/water-intake/entry/{id}:
@@ -314,7 +302,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/water-intake/{id}:
@@ -396,7 +383,6 @@ router.put(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/water-intake/{id}:
@@ -445,7 +431,6 @@ router.delete(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/check-in:
@@ -521,7 +506,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/check-in/latest-on-or-before-date:
@@ -569,7 +553,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/check-in/{date}:
@@ -613,20 +596,16 @@ router.get(
     }
     const { date } = paramResult.data;
     const { userId } = req.query; // Check query param
-
     const targetUserId = userId || req.userId;
-
     // Permission check if explicit userId is provided
     if (userId && userId !== req.userId) {
-      const hasPermission =
-        await require('../utils/permissionUtils').canAccessUserData(
-          userId,
-          'checkin',
-          req.authenticatedUserId || req.userId
-        ); // Corrected to 'checkin'
+      const hasPermission = await { canAccessUserData }.canAccessUserData(
+        userId,
+        'checkin',
+        req.authenticatedUserId || req.userId
+      ); // Corrected to 'checkin'
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
-
     try {
       const measurement = await measurementService.getCheckInMeasurements(
         req.originalUserId || req.userId,
@@ -642,7 +621,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/check-in/{id}:
@@ -714,7 +692,6 @@ router.put(
     if (!entry_date) {
       return res.status(400).json({ error: 'Entry date is required.' });
     }
-
     try {
       const existingMeasurement =
         await measurementService.getCheckInMeasurements(
@@ -722,13 +699,11 @@ router.put(
           req.userId,
           entry_date
         );
-
       if (!existingMeasurement || existingMeasurement.id !== id) {
         return res.status(404).json({
           error: 'Check-in measurement not found or not authorized to update.',
         });
       }
-
       const updatedMeasurement =
         await measurementService.updateCheckInMeasurements(
           req.userId,
@@ -751,7 +726,6 @@ router.put(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/check-in/{id}:
@@ -803,7 +777,6 @@ router.delete(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/custom-categories:
@@ -841,7 +814,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/custom-categories:
@@ -904,7 +876,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/custom-entries:
@@ -978,7 +949,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/custom-entries/{id}:
@@ -1030,7 +1000,6 @@ router.delete(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/custom-categories/{id}:
@@ -1112,7 +1081,6 @@ router.put(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/custom-categories/{id}:
@@ -1164,7 +1132,6 @@ router.delete(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/custom-entries/{date}:
@@ -1215,7 +1182,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/custom-entries:
@@ -1264,7 +1230,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/check-in-measurements-range/{startDate}/{endDate}:
@@ -1319,7 +1284,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/custom-measurements-range/{categoryId}/{startDate}/{endDate}:
@@ -1383,7 +1347,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /measurements/most-recent/{measurementType}:
@@ -1423,5 +1386,4 @@ router.get(
     }
   }
 );
-
-module.exports = router;
+export default router;

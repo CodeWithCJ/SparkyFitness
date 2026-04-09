@@ -1,5 +1,4 @@
-const fs = require('fs');
-
+import fs from 'fs';
 /**
  * Iterates through environment variables ending in _FILE,
  * reads the content of the file, and sets the corresponding
@@ -12,25 +11,20 @@ function loadSecrets() {
   // We use console.log here to avoid dependency on the logging module
   // which might rely on env vars we haven't loaded yet.
   console.log('[Secrets] Checking for secret files to load...');
-
   const envVars = Object.keys(process.env);
   let loadedCount = 0;
-
   envVars.forEach((key) => {
     if (key.endsWith('_FILE')) {
       const targetVar = key.slice(0, -5); // Remove '_FILE' suffix
       const filePath = process.env[key];
-
       // If the target variable is already set, skip (allow override via explicit env var)
       if (process.env[targetVar]) {
         // console.debug(`[Secrets] Ignoring ${key} because ${targetVar} is already set.`);
         return;
       }
-
       if (!filePath) {
         return;
       }
-
       try {
         if (fs.existsSync(filePath)) {
           const fileContent = fs.readFileSync(filePath, 'utf8').trim();
@@ -51,7 +45,6 @@ function loadSecrets() {
       }
     }
   });
-
   if (loadedCount > 0) {
     console.log(
       `[Secrets] Successfully loaded ${loadedCount} secrets from files.`
@@ -60,5 +53,7 @@ function loadSecrets() {
     console.log('[Secrets] No secrets loaded from files.');
   }
 }
-
-module.exports = { loadSecrets };
+export { loadSecrets };
+export default {
+  loadSecrets,
+};

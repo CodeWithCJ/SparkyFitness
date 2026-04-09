@@ -2,8 +2,9 @@
   "name": "sparkyfitnessserver",
   "version": "0.16.5.7",
   "main": "SparkyFitnessServer.js",
+  "type": "module",
   "scripts": {
-    "start": "nodemon SparkyFitnessServer.js",
+    "start": "nodemon --exec node --import tsx SparkyFitnessServer.js",
     "typecheck": "tsc --noEmit",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",

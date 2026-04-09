@@ -1,6 +1,7 @@
-const express = require('express');
-const request = require('supertest');
-
+import express from 'express';
+import request from 'supertest';
+import foodCoreService from '../services/foodCoreService.js';
+import foodRoutesV2 from '../routes/v2/foodRoutes.ts';
 jest.mock('../middleware/checkPermissionMiddleware', () =>
   jest.fn(() => (req, res, next) => next())
 );
@@ -36,10 +37,6 @@ jest.mock('../services/foodIntegrationService', () => ({
   searchTandoorFoods: jest.fn(),
   getTandoorFoodDetails: jest.fn(),
 }));
-
-const foodCoreService = require('../services/foodCoreService');
-const foodRoutesV2 = require('../routes/v2/foodRoutes.ts');
-
 const app = express();
 app.use(express.json());
 app.use((req, res, next) => {
@@ -51,15 +48,12 @@ app.use('/v2/foods', foodRoutesV2);
 app.use((err, req, res, _next) => {
   res.status(err.status || 500).json({ error: err.message });
 });
-
 describe('GET /v2/foods/barcode/:barcode', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
-
   it('returns a local barcode hit when optional fields are null', async () => {
     const barcode = '012345678901';
-
     foodCoreService.lookupBarcode.mockResolvedValue({
       source: 'local',
       food: {
@@ -98,9 +92,7 @@ describe('GET /v2/foods/barcode/:barcode', () => {
         variants: null,
       },
     });
-
     const res = await request(app).get(`/v2/foods/barcode/${barcode}`);
-
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({
       source: 'local',

@@ -1,19 +1,17 @@
-const express = require('express');
+import express from 'express';
+import sleepScienceService from '../services/sleepScienceService.js';
+import { log } from '../config/logging.js';
+import { authenticate } from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { todayInZone } from '@workspace/shared';
 const router = express.Router();
-const sleepScienceService = require('../services/sleepScienceService');
-const { log } = require('../config/logging');
-const { authenticate } = require('../middleware/authMiddleware');
-const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { todayInZone } = require('@workspace/shared');
-
 /**
  * @swagger
  * tags:
  *   name: SleepScience
  *   description: Sleep science endpoints (MCTQ, sleep debt, energy curve, chronotype)
  */
-
 /**
  * @swagger
  * /sleep-science/sleep-debt:
@@ -50,7 +48,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep-science/calculate-baseline:
@@ -93,7 +90,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep-science/mctq-stats:
@@ -129,7 +125,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep-science/daily-need:
@@ -173,7 +168,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep-science/energy-curve:
@@ -209,7 +203,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep-science/chronotype:
@@ -245,7 +238,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep-science/data-sufficiency:
@@ -281,5 +273,4 @@ router.get(
     }
   }
 );
-
-module.exports = router;
+export default router;

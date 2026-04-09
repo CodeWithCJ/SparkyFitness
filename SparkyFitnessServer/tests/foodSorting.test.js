@@ -1,17 +1,13 @@
-const { getFoodsWithPagination } = require('../models/food');
-const { v4: uuidv4 } = require('uuid');
-
+import { getFoodsWithPagination } from '../models/food.js';
+import { v4 as uuidv4 } from 'uuid';
+import { getClient } from '../db/poolManager.js';
 // Mock the poolManager.getClient function
 jest.mock('../db/poolManager', () => ({
   getClient: jest.fn(),
 }));
-
-const { getClient } = require('../db/poolManager');
-
 describe('food database sorting', () => {
   let mockClient;
   const userId = uuidv4();
-
   beforeEach(() => {
     mockClient = {
       query: jest.fn(),
@@ -20,14 +16,11 @@ describe('food database sorting', () => {
     getClient.mockResolvedValue(mockClient);
     mockClient.query.mockClear();
   });
-
   afterEach(() => {
     jest.clearAllMocks();
   });
-
   it('should construct a valid query when sorting by calories', async () => {
     mockClient.query.mockResolvedValue({ rows: [] });
-
     await getFoodsWithPagination(
       '', // searchTerm
       'all', // foodFilter
@@ -36,37 +29,27 @@ describe('food database sorting', () => {
       0, // offset
       'calories:desc' // sortBy
     );
-
     // Verify the query does NOT contain DISTINCT ON
     const lastCall = mockClient.query.mock.calls[0];
     const queryStr = lastCall[0];
-
     expect(queryStr).not.toContain('DISTINCT ON');
     expect(queryStr).toContain(
       'ORDER BY fv.calories DESC NULLS LAST, f.name ASC, f.id ASC'
     );
   });
-
   it('should construct a valid query when sorting by name', async () => {
     mockClient.query.mockResolvedValue({ rows: [] });
-
     await getFoodsWithPagination('', 'all', userId, 10, 0, 'name:asc');
-
     const lastCall = mockClient.query.mock.calls[0];
     const queryStr = lastCall[0];
-
     expect(queryStr).not.toContain('DISTINCT ON');
     expect(queryStr).toContain('ORDER BY f.name ASC, f.id ASC');
   });
-
   it('should fallback to default sort for invalid sortBy', async () => {
     mockClient.query.mockResolvedValue({ rows: [] });
-
     await getFoodsWithPagination('', 'all', userId, 10, 0, 'invalid:field');
-
     const lastCall = mockClient.query.mock.calls[0];
     const queryStr = lastCall[0];
-
     expect(queryStr).toContain('ORDER BY f.name ASC, f.id ASC');
   });
 });

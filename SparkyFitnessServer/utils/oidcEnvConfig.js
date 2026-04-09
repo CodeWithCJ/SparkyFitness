@@ -1,12 +1,5 @@
-/**
- * OIDC environment configuration.
- * When SPARKY_FITNESS_OIDC_ISSUER_URL, CLIENT_ID, CLIENT_SECRET, and PROVIDER_SLUG are set,
- * an OIDC provider is upserted at startup so env-based config works with the existing
- * sso_provider / Better Auth flow.
- */
-
-const { log } = require('../config/logging');
-
+import { log } from '../config/logging.js';
+import oidcProviderRepository from '../models/oidcProviderRepository.js';
 const ENV_ISSUER = 'SPARKY_FITNESS_OIDC_ISSUER_URL';
 const ENV_CLIENT_ID = 'SPARKY_FITNESS_OIDC_CLIENT_ID';
 const ENV_CLIENT_SECRET = 'SPARKY_FITNESS_OIDC_CLIENT_SECRET';
@@ -21,7 +14,6 @@ const ENV_ID_TOKEN_SIGNED_ALG = 'SPARKY_FITNESS_OIDC_ID_TOKEN_SIGNED_ALG';
 const ENV_USERINFO_SIGNED_ALG = 'SPARKY_FITNESS_OIDC_USERINFO_SIGNED_ALG';
 const ENV_TIMEOUT = 'SPARKY_FITNESS_OIDC_TIMEOUT';
 const ENV_ADMIN_GROUP = 'SPARKY_FITNESS_OIDC_ADMIN_GROUP';
-
 /**
  * Returns OIDC provider payload from env, or null if any required var is missing.
  * Issuer URL is normalized (no trailing slash).
@@ -41,11 +33,9 @@ function getEnvOidcConfig() {
   const timeout = process.env[ENV_TIMEOUT]?.trim();
   const autoRegister = process.env[ENV_AUTO_REGISTER]?.trim();
   const adminGroup = process.env[ENV_ADMIN_GROUP]?.trim();
-
   if (!issuer || !clientId || !clientSecret || !slug) {
     return null;
   }
-
   return {
     issuer_url: issuer.replace(/\/$/, ''),
     client_id: clientId,
@@ -65,7 +55,6 @@ function getEnvOidcConfig() {
     admin_group: adminGroup || null,
   };
 }
-
 /**
  * Upserts the env-configured OIDC provider into sso_provider and syncs Better Auth.
  * No-op if env config is incomplete. Safe to call on every startup.
@@ -75,12 +64,9 @@ async function upsertEnvOidcProvider() {
   if (!config) {
     return;
   }
-
-  const oidcProviderRepository = require('../models/oidcProviderRepository');
   const existing = await oidcProviderRepository.getOidcProviderById(
     config.provider_id
   );
-
   if (existing) {
     await oidcProviderRepository.updateOidcProvider(config.provider_id, config);
     log(
@@ -95,8 +81,9 @@ async function upsertEnvOidcProvider() {
     );
   }
 }
-
-module.exports = {
+export { getEnvOidcConfig };
+export { upsertEnvOidcProvider };
+export default {
   getEnvOidcConfig,
   upsertEnvOidcProvider,
 };

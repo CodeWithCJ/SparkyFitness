@@ -1,7 +1,6 @@
-const preferenceRepository = require('../models/preferenceRepository');
-const { log } = require('../config/logging');
-const { isValidTimeZone } = require('@workspace/shared');
-
+import preferenceRepository from '../models/preferenceRepository.js';
+import { log } from '../config/logging.js';
+import { isValidTimeZone } from '@workspace/shared';
 async function validateTimezone(preferenceData) {
   if (
     preferenceData.timezone !== null &&
@@ -13,14 +12,12 @@ async function validateTimezone(preferenceData) {
     );
   }
 }
-
 function getDefaultPreferences() {
   return {
     calorie_goal_adjustment_mode: 'dynamic',
     timezone: null,
   };
 }
-
 async function updateUserPreferences(
   authenticatedUserId,
   targetUserId,
@@ -47,7 +44,6 @@ async function updateUserPreferences(
     throw error;
   }
 }
-
 async function deleteUserPreferences(authenticatedUserId, targetUserId) {
   try {
     const success =
@@ -65,7 +61,6 @@ async function deleteUserPreferences(authenticatedUserId, targetUserId) {
     throw error;
   }
 }
-
 async function getUserPreferences(authenticatedUserId, targetUserId) {
   try {
     const preferences =
@@ -83,7 +78,6 @@ async function getUserPreferences(authenticatedUserId, targetUserId) {
     return getDefaultPreferences();
   }
 }
-
 async function bootstrapUserTimezone(
   authenticatedUserId,
   targetUserId,
@@ -95,13 +89,11 @@ async function bootstrapUserTimezone(
       targetUserId,
       timezone
     );
-
     if (!preferences) {
       throw new Error(
         'User preferences not found or not authorized to update.'
       );
     }
-
     return preferences;
   } catch (error) {
     log(
@@ -112,7 +104,6 @@ async function bootstrapUserTimezone(
     throw error;
   }
 }
-
 async function upsertUserPreferences(authenticatedUserId, preferenceData) {
   try {
     await validateTimezone(preferenceData);
@@ -133,8 +124,12 @@ async function upsertUserPreferences(authenticatedUserId, preferenceData) {
     throw error;
   }
 }
-
-module.exports = {
+export { updateUserPreferences };
+export { deleteUserPreferences };
+export { getUserPreferences };
+export { bootstrapUserTimezone };
+export { upsertUserPreferences };
+export default {
   updateUserPreferences,
   deleteUserPreferences,
   getUserPreferences,

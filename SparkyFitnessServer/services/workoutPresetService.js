@@ -1,8 +1,7 @@
-const workoutPresetRepository = require('../models/workoutPresetRepository');
-const exerciseRepository = require('../models/exerciseRepository');
-const preferenceRepository = require('../models/preferenceRepository');
-const { resolveExerciseIdToUuid } = require('../utils/uuidUtils');
-
+import workoutPresetRepository from '../models/workoutPresetRepository.js';
+import exerciseRepository from '../models/exerciseRepository.js';
+import preferenceRepository from '../models/preferenceRepository.js';
+import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 async function createWorkoutPreset(userId, presetData) {
   // Validate and resolve exercise_ids
   for (const ex of presetData.exercises) {
@@ -26,11 +25,9 @@ async function createWorkoutPreset(userId, presetData) {
   }
   return workoutPresetRepository.createWorkoutPreset(presetData);
 }
-
 async function getWorkoutPresets(userId, page, limit) {
   return workoutPresetRepository.getWorkoutPresets(userId, page, limit);
 }
-
 async function getWorkoutPresetById(userId, presetId) {
   const preset = await workoutPresetRepository.getWorkoutPresetById(
     presetId,
@@ -50,7 +47,6 @@ async function getWorkoutPresetById(userId, presetId) {
   }
   return preset;
 }
-
 async function updateWorkoutPreset(userId, presetId, updateData) {
   const ownerId = await workoutPresetRepository.getWorkoutPresetOwnerId(
     userId,
@@ -91,7 +87,6 @@ async function updateWorkoutPreset(userId, presetId, updateData) {
     updateData
   );
 }
-
 async function deleteWorkoutPreset(userId, presetId) {
   const ownerId = await workoutPresetRepository.getWorkoutPresetOwnerId(
     userId,
@@ -111,7 +106,6 @@ async function deleteWorkoutPreset(userId, presetId) {
   }
   return { message: 'Workout preset deleted successfully.' };
 }
-
 async function searchWorkoutPresets(searchTerm, userId, limit) {
   if (limit === null || limit === undefined) {
     const preferences = await preferenceRepository.getUserPreferences(userId);
@@ -123,8 +117,13 @@ async function searchWorkoutPresets(searchTerm, userId, limit) {
     limit
   );
 }
-
-module.exports = {
+export { createWorkoutPreset };
+export { getWorkoutPresets };
+export { getWorkoutPresetById };
+export { updateWorkoutPreset };
+export { deleteWorkoutPreset };
+export { searchWorkoutPresets };
+export default {
   createWorkoutPreset,
   getWorkoutPresets,
   getWorkoutPresetById,

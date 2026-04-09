@@ -1,11 +1,13 @@
-const path = require('path');
-const fs = require('fs');
-const { getSystemClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const { grantPermissions } = require('../db/grantPermissions'); // Import grantPermissions
+import path from 'path';
+import fs from 'fs';
+import { getSystemClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import { grantPermissions } from '../db/grantPermissions.js';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const migrationsDir = path.join(__dirname, '../db/migrations');
-
 async function applyMigrations() {
   const client = await getSystemClient();
   try {
@@ -13,7 +15,6 @@ async function applyMigrations() {
     const appUserRaw = process.env.SPARKY_FITNESS_APP_DB_USER;
     const appUserQuoted = `"${appUserRaw.replace(/"/g, '""')}"`;
     const appPassword = process.env.SPARKY_FITNESS_APP_DB_PASSWORD;
-
     // Ensure the application role exists
     const roleExistsResult = await client.query(
       'SELECT 1 FROM pg_roles WHERE rolname = $1',
@@ -28,7 +29,6 @@ async function applyMigrations() {
     } else {
       log('info', `Role ${appUserQuoted} already exists.`);
     }
-
     // Ensure the schema_migrations table exists
     await client.query(`
       CREATE SCHEMA IF NOT EXISTS system;
@@ -39,7 +39,6 @@ async function applyMigrations() {
       );
     `);
     log('info', 'Ensured schema_migrations table exists.');
-
     const appliedMigrationsResult = await client.query(
       'SELECT name FROM system.schema_migrations ORDER BY name'
     );
@@ -47,12 +46,10 @@ async function applyMigrations() {
       appliedMigrationsResult.rows.map((row) => row.name)
     );
     log('info', 'Applied migrations:', Array.from(appliedMigrations));
-
     const migrationFiles = fs
       .readdirSync(migrationsDir)
       .filter((file) => file.endsWith('.sql'))
       .sort();
-
     for (const file of migrationFiles) {
       if (!appliedMigrations.has(file)) {
         log('info', `Applying migration: ${file}`);
@@ -80,7 +77,7 @@ async function applyMigrations() {
     client.release();
   }
 }
-
-module.exports = {
+export { applyMigrations };
+export default {
   applyMigrations,
 };

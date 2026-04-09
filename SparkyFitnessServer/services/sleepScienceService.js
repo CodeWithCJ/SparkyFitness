@@ -1,42 +1,36 @@
-const sleepScienceRepository = require('../models/sleepScienceRepository');
-const { log } = require('../config/logging');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const {
+import sleepScienceRepository from '../models/sleepScienceRepository.js';
+import { log } from '../config/logging.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import {
   instantHourMinute,
   dayOfWeek,
   localDateToDay,
   userHourMinute,
-} = require('@workspace/shared');
-
-const {
+} from '@workspace/shared';
+import {
   DECAY_LAMBDA,
   DEFAULT_SLEEP_NEED_HOURS,
   DEBT_WINDOW_DAYS,
   DEBT_THRESHOLDS,
   MCTQ_CONFIG,
   CHRONOTYPE_BOUNDARIES,
-} = require('../constants/sleepScienceConstants');
-
+} from '../constants/sleepScienceConstants.js';
 // ==========================================
 // UTILITY FUNCTIONS
 // ==========================================
-
 function getDebtCategory(debtHours) {
   if (debtHours <= DEBT_THRESHOLDS.low.max) return 'low';
   if (debtHours <= DEBT_THRESHOLDS.moderate.max) return 'moderate';
   if (debtHours <= DEBT_THRESHOLDS.high.max) return 'high';
   return 'critical';
 }
-
 function calculateDayWeight(dayIndex) {
   return Math.exp(-DECAY_LAMBDA * dayIndex);
 }
-
 function calculatePaybackNights(debtHours) {
   if (debtHours <= 0) return 0;
   return Math.ceil(debtHours);
 }
-
 function median(values) {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -45,12 +39,10 @@ function median(values) {
     ? sorted[mid]
     : (sorted[mid - 1] + sorted[mid]) / 2;
 }
-
 function mean(values) {
   if (values.length === 0) return 0;
   return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
-
 function standardDeviation(values) {
   if (values.length < 2) return 0;
   const avg = mean(values);
@@ -59,7 +51,6 @@ function standardDeviation(values) {
     squaredDiffs.reduce((a, b) => a + b, 0) / (values.length - 1)
   );
 }
-
 function getWakeHour(entry, timezone = 'UTC') {
   if (!entry.sleepEndTimestampGMT) return null;
   const ts = Number(entry.sleepEndTimestampGMT);
@@ -67,7 +58,6 @@ function getWakeHour(entry, timezone = 'UTC') {
   const { hour, minute } = instantHourMinute(ts, timezone);
   return hour + minute / 60;
 }
-
 function getSleepHour(entry, timezone = 'UTC') {
   if (!entry.sleepStartTimestampGMT) return null;
   const ts = Number(entry.sleepStartTimestampGMT);
@@ -75,7 +65,6 @@ function getSleepHour(entry, timezone = 'UTC') {
   const { hour, minute } = instantHourMinute(ts, timezone);
   return hour + minute / 60;
 }
-
 function getTST(entry) {
   if (entry.timeAsleepHours) return Number(entry.timeAsleepHours);
   const deep = Number(entry.deepSleepMinutes) || 0;
@@ -85,26 +74,21 @@ function getTST(entry) {
   if (entry.sleepDurationHours) return Number(entry.sleepDurationHours);
   return null;
 }
-
 // ==========================================
 // SLEEP DEBT CALCULATION
 // ==========================================
-
 async function calculateSleepDebt(userId) {
   log('info', `Calculating sleep debt for user ${userId}`);
   const tz = await loadUserTimezone(userId);
-
   const profile = await sleepScienceRepository.getSleepProfile(userId);
   const sleepNeed = profile?.baseline_sleep_need
     ? Number(profile.baseline_sleep_need)
     : DEFAULT_SLEEP_NEED_HOURS;
-
   const history = await sleepScienceRepository.getSleepHistory(
     userId,
     DEBT_WINDOW_DAYS,
     tz
   );
-
   if (history.length === 0) {
     return {
       currentDebt: 0,
@@ -115,24 +99,19 @@ async function calculateSleepDebt(userId) {
       paybackTime: 0,
     };
   }
-
   let totalWeightedDebt = 0;
   let totalWeight = 0;
   const dailyBreakdown = [];
-
   for (let i = 0; i < history.length; i++) {
     const entry = history[i];
     const tst = getTST(entry);
     if (tst === null) continue;
-
     const weight = calculateDayWeight(i);
     const deviation = sleepNeed - tst;
     // Allow negative deviation (surplus) to reduce weighted debt
     const weightedDebt = deviation * weight;
-
     totalWeightedDebt += weightedDebt;
     totalWeight += weight;
-
     dailyBreakdown.push({
       date: entry.date,
       tst: Math.round(tst * 100) / 100,
@@ -141,13 +120,11 @@ async function calculateSleepDebt(userId) {
       weightedDebt: Math.round(weightedDebt * 100) / 100,
     });
   }
-
   // currentDebt can now be negative if user has a surplus
   const currentDebt =
     totalWeight > 0
       ? Math.round((totalWeightedDebt / totalWeight) * 100) / 100
       : 0;
-
   // Calculate 7-day trend
   const recent7 = dailyBreakdown.slice(0, 7);
   const older7 = dailyBreakdown.slice(7, 14);
@@ -162,7 +139,6 @@ async function calculateSleepDebt(userId) {
   const change7d = Math.round((recentAvgDebt - olderAvgDebt) * 100) / 100;
   const direction =
     change7d < -0.25 ? 'improving' : change7d > 0.25 ? 'worsening' : 'stable';
-
   return {
     currentDebt,
     debtCategory: getDebtCategory(currentDebt),
@@ -172,26 +148,20 @@ async function calculateSleepDebt(userId) {
     paybackTime: calculatePaybackNights(currentDebt),
   };
 }
-
 // ==========================================
 // MCTQ BASELINE CALCULATION
 // ==========================================
-
 function classifyDaysAutomatically(history, timezone = 'UTC') {
   const dayBuckets = new Map();
-
   for (const entry of history) {
     const wakeHour = getWakeHour(entry, timezone);
     if (wakeHour === null) continue;
-
     const dateStr =
       typeof entry.date === 'string' ? entry.date : localDateToDay(entry.date);
     const dow = dayOfWeek(dateStr);
-
     if (!dayBuckets.has(dow)) dayBuckets.set(dow, []);
     dayBuckets.get(dow).push(wakeHour);
   }
-
   const classification = new Map();
   for (const [dow, wakeHours] of dayBuckets) {
     if (wakeHours.length < 3) {
@@ -207,29 +177,24 @@ function classifyDaysAutomatically(history, timezone = 'UTC') {
         : 'workday'
     );
   }
-
   // Fill missing days with defaults
   for (let i = 0; i < 7; i++) {
     if (!classification.has(i)) {
       classification.set(i, i === 0 || i === 6 ? 'freeday' : 'workday');
     }
   }
-
   return classification;
 }
-
 async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
   log(
     'info',
     `Calculating MCTQ baseline for user ${userId}, window=${windowDays} days`
   );
-
   const history = await sleepScienceRepository.getSleepHistory(
     userId,
     windowDays,
     timezone
   );
-
   if (history.length < 14) {
     return {
       success: false,
@@ -237,30 +202,24 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
       message: `Only ${history.length} days available, need at least 14`,
     };
   }
-
   // Classify days
   const dayClassification = classifyDaysAutomatically(history, timezone);
-
   // Split history by day type
   const workdayEntries = [];
   const freedayEntries = [];
-
   for (const entry of history) {
     const tst = getTST(entry);
     if (tst === null || tst < 3 || tst > 14) continue;
-
     const dateStr =
       typeof entry.date === 'string' ? entry.date : localDateToDay(entry.date);
     const dow = dayOfWeek(dateStr);
     const dayType = dayClassification.get(dow) || 'workday';
-
     if (dayType === 'workday') {
       workdayEntries.push({ ...entry, tst });
     } else {
       freedayEntries.push({ ...entry, tst });
     }
   }
-
   // Confidence calculation
   let confidence = 'low';
   if (workdayEntries.length >= 40 && freedayEntries.length >= 16) {
@@ -268,7 +227,6 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
   } else if (workdayEntries.length >= 20 && freedayEntries.length >= 8) {
     confidence = 'medium';
   }
-
   if (
     workdayEntries.length < MCTQ_CONFIG.minWorkdaysForCalculation / 2 ||
     freedayEntries.length < MCTQ_CONFIG.minFreedaysForCalculation / 2
@@ -277,17 +235,14 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
       .map((e) => getTST(e))
       .filter((t) => t !== null && t >= 3 && t <= 14);
     let fallbackNeed = median(allTSTs);
-
     // Weighted pull toward default 8.25 if data is sparse
     const weight = Math.min(1, allTSTs.length / 30);
     fallbackNeed =
       fallbackNeed * weight + DEFAULT_SLEEP_NEED_HOURS * (1 - weight);
-
     fallbackNeed = Math.max(
       MCTQ_CONFIG.minSleepNeed,
       Math.min(MCTQ_CONFIG.maxSleepNeed - 1, fallbackNeed) // Cap at 9h for low confidence
     );
-
     await sleepScienceRepository.updateBaselineSleepNeed(userId, {
       baselineNeed: Math.round(fallbackNeed * 100) / 100,
       confidence: 'low',
@@ -296,7 +251,6 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
       sdFreeday: null,
       socialJetlag: null,
     });
-
     return {
       success: true,
       sleepNeedIdeal: Math.round(fallbackNeed * 100) / 100,
@@ -305,12 +259,10 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
       basedOnDays: allTSTs.length,
     };
   }
-
   // Calculate MCTQ
   const sdWorkday = mean(workdayEntries.map((e) => e.tst));
   const sdFreeday = mean(freedayEntries.map((e) => e.tst));
   const sdWeek = (5 * sdWorkday + 2 * sdFreeday) / 7;
-
   let sleepNeedIdeal;
   if (sdFreeday > sdWorkday) {
     // Standard MCTQ Correction
@@ -318,7 +270,6 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
   } else {
     sleepNeedIdeal = sdWeek;
   }
-
   // If low/medium confidence, pull toward 8.25 to avoid outliers
   if (confidence !== 'high') {
     const targetWeight = confidence === 'medium' ? 0.7 : 0.4;
@@ -326,12 +277,10 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
       sleepNeedIdeal * targetWeight +
       DEFAULT_SLEEP_NEED_HOURS * (1 - targetWeight);
   }
-
   sleepNeedIdeal = Math.max(
     MCTQ_CONFIG.minSleepNeed,
     Math.min(MCTQ_CONFIG.maxSleepNeed, sleepNeedIdeal)
   );
-
   // Mid-sleep point calculation - uses actual TST to find the true middle
   const getMidSleep = (entry) => {
     const start = getSleepHour(entry, timezone);
@@ -342,26 +291,22 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
     if (mid >= 24) mid -= 24;
     return mid;
   };
-
   const workdayMidSleeps = workdayEntries
     .map(getMidSleep)
     .filter((m) => m !== null);
   const freedayMidSleeps = freedayEntries
     .map(getMidSleep)
     .filter((m) => m !== null);
-
   const mswHour = workdayMidSleeps.length > 0 ? mean(workdayMidSleeps) : null;
   const msfHour = freedayMidSleeps.length > 0 ? mean(freedayMidSleeps) : null;
   const socialJetlag =
     mswHour !== null && msfHour !== null ? Math.abs(msfHour - mswHour) : null;
-
   // Determine data range
   const dates = history
     .map((e) => (typeof e.date === 'string' ? e.date : localDateToDay(e.date)))
     .sort();
   const dataStartDate = dates[0] || null;
   const dataEndDate = dates[dates.length - 1] || null;
-
   // Save to profile
   await sleepScienceRepository.updateBaselineSleepNeed(userId, {
     baselineNeed: Math.round(sleepNeedIdeal * 100) / 100,
@@ -372,7 +317,6 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
     socialJetlag:
       socialJetlag !== null ? Math.round(socialJetlag * 100) / 100 : null,
   });
-
   // Save calculation record
   const formatTimeFromHour = (h) => {
     if (h === null) return null;
@@ -380,7 +324,6 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
     const minutes = Math.round((h - hours) * 60);
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
   };
-
   await sleepScienceRepository.saveCalculation(userId, {
     method: 'mctq_corrected',
     calculatedNeed: Math.round(sleepNeedIdeal * 100) / 100,
@@ -399,7 +342,6 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
     dataStartDate,
     dataEndDate,
   });
-
   // Save day classifications
   const dayStats = getDayOfWeekStats(history, dayClassification, timezone);
   for (const stat of dayStats) {
@@ -414,7 +356,6 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
       }
     );
   }
-
   return {
     success: true,
     sleepNeedIdeal: Math.round(sleepNeedIdeal * 100) / 100,
@@ -432,22 +373,17 @@ async function calculateBaseline(userId, windowDays = 90, timezone = 'UTC') {
     dataEndDate,
   };
 }
-
 function getDayOfWeekStats(history, classification, timezone = 'UTC') {
   const buckets = new Map();
-
   for (const entry of history) {
     const wakeHour = getWakeHour(entry, timezone);
     if (wakeHour === null) continue;
-
     const dateStr =
       typeof entry.date === 'string' ? entry.date : localDateToDay(entry.date);
     const dow = dayOfWeek(dateStr);
-
     if (!buckets.has(dow)) buckets.set(dow, []);
     buckets.get(dow).push(wakeHour);
   }
-
   const stats = [];
   for (let dow = 0; dow < 7; dow++) {
     const wakeHours = buckets.get(dow) || [];
@@ -456,7 +392,6 @@ function getDayOfWeekStats(history, classification, timezone = 'UTC') {
       : dow === 0 || dow === 6
         ? 'freeday'
         : 'workday';
-
     stats.push({
       dayOfWeek: dow,
       meanWakeHour:
@@ -469,22 +404,17 @@ function getDayOfWeekStats(history, classification, timezone = 'UTC') {
       dayType,
     });
   }
-
   return stats;
 }
-
 // ==========================================
 // MCTQ STATS
 // ==========================================
-
 async function getMCTQStats(userId) {
   log('info', `Getting MCTQ stats for user ${userId}`);
-
   const profile = await sleepScienceRepository.getSleepProfile(userId);
   const latestCalc = await sleepScienceRepository.getLatestCalculation(userId);
   const dayClassifications =
     await sleepScienceRepository.getDayClassifications(userId);
-
   return {
     profile: profile
       ? {
@@ -515,25 +445,20 @@ async function getMCTQStats(userId) {
     })),
   };
 }
-
 // ==========================================
 // DAILY NEED (WHOOP-style decomposition)
 // ==========================================
-
 async function getDailyNeed(userId, targetDate) {
   log(
     'info',
     `Getting daily sleep need for user ${userId}, date=${targetDate}`
   );
-
   const profile = await sleepScienceRepository.getSleepProfile(userId);
   const baselineNeed = profile?.baseline_sleep_need
     ? Number(profile.baseline_sleep_need)
     : DEFAULT_SLEEP_NEED_HOURS;
-
   // Calculate sleep debt for strain/debt components
   const debtData = await calculateSleepDebt(userId);
-
   // Simple decomposition
   const strainAddition = 0; // Would need training data integration
   const debtAddition = Math.min(debtData.currentDebt * 0.25, 2.0);
@@ -545,7 +470,6 @@ async function getDailyNeed(userId, targetDate) {
       baselineNeed + strainAddition + debtAddition - napSubtraction
     )
   );
-
   const breakdown = {
     date: targetDate,
     baseline_need: baselineNeed,
@@ -560,23 +484,17 @@ async function getDailyNeed(userId, targetDate) {
     nap_minutes: 0,
     recovery_score_yesterday: null,
   };
-
   // Cache it
   await sleepScienceRepository.upsertDailyNeed(userId, targetDate, breakdown);
-
   return breakdown;
 }
-
 // ==========================================
 // ENERGY CURVE (Two-Process Model)
 // ==========================================
-
 async function getEnergyCurve(userId) {
   log('info', `Generating energy curve for user ${userId}`);
   const tz = await loadUserTimezone(userId);
-
   const history = await sleepScienceRepository.getSleepHistory(userId, 14, tz);
-
   if (history.length < 3) {
     return {
       success: false,
@@ -584,7 +502,6 @@ async function getEnergyCurve(userId) {
       message: 'Need at least 3 days of sleep data for energy curve',
     };
   }
-
   // Extract wake/sleep times for chronotype
   const wakeTimes = [];
   const sleepTimes = [];
@@ -594,7 +511,6 @@ async function getEnergyCurve(userId) {
     if (wh !== null) wakeTimes.push(wh);
     if (sh !== null) sleepTimes.push(sh);
   }
-
   if (wakeTimes.length < 3) {
     return {
       success: false,
@@ -602,32 +518,25 @@ async function getEnergyCurve(userId) {
       message: 'Need at least 3 days with wake/sleep timestamps',
     };
   }
-
   const medianWakeHour = median(wakeTimes);
   const medianSleepHour =
     sleepTimes.length > 0 ? median(sleepTimes) : medianWakeHour - 8;
-
   // Circadian parameters
   const nadirHour = medianWakeHour - 2;
-
   // Sleep debt
   const debtData = await calculateSleepDebt(userId);
   const debtPenaltyPercent = Math.min(debtData.currentDebt * 3, 30);
-
   // Generate 96 points (every 15 min)
   const now = new Date();
   const points = [];
   const startHour = 0;
-
   for (let i = 0; i < 96; i++) {
     const hour = startHour + i * 0.25;
     const time = new Date(now);
     time.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
-
     // Hours since wake
     let hoursAwake = hour - medianWakeHour;
     if (hoursAwake < 0) hoursAwake += 24;
-
     // Process S (homeostatic)
     const tauRise = 18.2;
     let processS;
@@ -645,7 +554,6 @@ async function getEnergyCurve(userId) {
       // During wake - rise
       processS = 1 - (1 - 0.1) * Math.exp(-hoursAwake / tauRise);
     }
-
     // Process C (circadian) - multi-harmonic
     const harmonics = [0.97, 0.22, 0.07, 0.03, 0.001];
     const phaseHours = hour - nadirHour;
@@ -657,29 +565,23 @@ async function getEnergyCurve(userId) {
     // Normalize to 0-1
     const maxC = harmonics.reduce((s, h) => s + Math.abs(h), 0);
     processC = (processC + maxC) / (2 * maxC);
-
     // Energy calculation
     let energy = Math.round(processC * 100 - processS * 40);
     energy = Math.max(15, Math.min(100, energy));
-
     // Apply debt penalty
     energy = Math.round(energy * (1 - debtPenaltyPercent / 100));
-
     // Determine zone
     const sleepH = (medianSleepHour + 24) % 24;
     const wakeH = (medianWakeHour + 24) % 24;
     const melatoninStart = (sleepH - 2 + 24) % 24;
-
     let inSleepWindow;
     if (sleepH < wakeH) {
       inSleepWindow = hour >= sleepH && hour < wakeH;
     } else {
       inSleepWindow = hour >= sleepH || hour < wakeH;
     }
-
     const prevEnergy = i > 0 ? points[i - 1].energy : energy;
     const isIncreasing = energy > prevEnergy;
-
     let zone;
     // Don't mark as sleep if already energy is climbing significantly (>30) or near wake time
     if (inSleepWindow && energy < 30 && !isIncreasing) {
@@ -694,7 +596,6 @@ async function getEnergyCurve(userId) {
       // Intermediate energy: rising or falling?
       zone = isIncreasing ? 'rising' : 'dip';
     }
-
     points.push({
       hour: Math.round(hour * 100) / 100,
       time: time.toISOString(),
@@ -704,13 +605,11 @@ async function getEnergyCurve(userId) {
       processC: Math.round(processC * 1000) / 1000,
     });
   }
-
   // Find current energy
   const { hour: nowHour, minute: nowMin } = userHourMinute(tz);
   const currentHour = nowHour + nowMin / 60;
   const currentIdx = Math.min(95, Math.round(currentHour * 4));
   const currentPoint = points[currentIdx];
-
   // Find next peak and dip
   let nextPeak = null;
   let nextDip = null;
@@ -731,7 +630,6 @@ async function getEnergyCurve(userId) {
     }
     if (nextPeak && nextDip) break;
   }
-
   return {
     success: true,
     points,
@@ -747,17 +645,13 @@ async function getEnergyCurve(userId) {
     sleepDebtPenalty: debtPenaltyPercent,
   };
 }
-
 // ==========================================
 // CHRONOTYPE
 // ==========================================
-
 async function getChronotype(userId) {
   log('info', `Getting chronotype for user ${userId}`);
   const tz = await loadUserTimezone(userId);
-
   const history = await sleepScienceRepository.getSleepHistory(userId, 30, tz);
-
   if (history.length < 7) {
     return {
       success: false,
@@ -765,17 +659,14 @@ async function getChronotype(userId) {
       message: `Only ${history.length} days available, need at least 7`,
     };
   }
-
   const wakeTimes = [];
   const sleepTimes = [];
-
   for (const entry of history) {
     const wh = getWakeHour(entry, tz);
     const sh = getSleepHour(entry, tz);
     if (wh !== null) wakeTimes.push(wh);
     if (sh !== null) sleepTimes.push(sh);
   }
-
   if (wakeTimes.length < 7) {
     return {
       success: false,
@@ -783,10 +674,8 @@ async function getChronotype(userId) {
       message: 'Need at least 7 days with wake timestamps',
     };
   }
-
   const medianWakeHour = median(wakeTimes);
   const medianSleepHour = sleepTimes.length > 0 ? median(sleepTimes) : null;
-
   // Classify
   let chronotype;
   if (medianWakeHour < CHRONOTYPE_BOUNDARIES.EARLY_BEFORE) {
@@ -796,12 +685,10 @@ async function getChronotype(userId) {
   } else {
     chronotype = 'intermediate';
   }
-
   // Circadian markers
   const nadirHour = medianWakeHour - 2;
   const acrophaseHour = nadirHour + 12;
   const melatoninStart = medianSleepHour !== null ? medianSleepHour - 2 : null;
-
   // Confidence
   let confidence;
   if (wakeTimes.length >= 14) {
@@ -811,7 +698,6 @@ async function getChronotype(userId) {
   } else {
     confidence = 'low';
   }
-
   // Format helpers
   const formatHour = (h) => {
     if (h === null) return null;
@@ -820,7 +706,6 @@ async function getChronotype(userId) {
     const minutes = Math.round((normalizedH - hours) * 60);
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   };
-
   return {
     success: true,
     chronotype,
@@ -834,21 +719,16 @@ async function getChronotype(userId) {
     confidence,
   };
 }
-
 // ==========================================
 // DATA SUFFICIENCY CHECK
 // ==========================================
-
 async function checkDataSufficiency(userId) {
   log('info', `Checking data sufficiency for user ${userId}`);
   const tz = await loadUserTimezone(userId);
-
   const history = await sleepScienceRepository.getSleepHistory(userId, 90, tz);
-
   const entriesWithTimestamps = history.filter(
     (e) => e.sleepStartTimestampGMT && e.sleepEndTimestampGMT
   );
-
   // Classify to count workdays/freedays
   let workdayCount = 0;
   let freedayCount = 0;
@@ -862,18 +742,15 @@ async function checkDataSufficiency(userId) {
       workdayCount++;
     }
   }
-
   const sufficient =
     workdayCount >= MCTQ_CONFIG.minWorkdaysForCalculation &&
     freedayCount >= MCTQ_CONFIG.minFreedaysForCalculation;
-
   let projectedConfidence = 'low';
   if (workdayCount >= 40 && freedayCount >= 16) {
     projectedConfidence = 'high';
   } else if (workdayCount >= 20 && freedayCount >= 8) {
     projectedConfidence = 'medium';
   }
-
   let recommendation;
   if (sufficient) {
     recommendation = 'Sufficient data available for MCTQ calculation.';
@@ -888,7 +765,6 @@ async function checkDataSufficiency(userId) {
     );
     recommendation = `Need ${workdaysNeeded} more workdays and ${freedaysNeeded} more free days of data.`;
   }
-
   return {
     sufficient,
     totalDays: history.length,
@@ -901,8 +777,14 @@ async function checkDataSufficiency(userId) {
     recommendation,
   };
 }
-
-module.exports = {
+export { calculateSleepDebt };
+export { calculateBaseline };
+export { getMCTQStats };
+export { getDailyNeed };
+export { getEnergyCurve };
+export { getChronotype };
+export { checkDataSufficiency };
+export default {
   calculateSleepDebt,
   calculateBaseline,
   getMCTQStats,

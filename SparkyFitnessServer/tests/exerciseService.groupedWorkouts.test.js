@@ -1,8 +1,16 @@
+import { getClient } from '../db/poolManager.js';
+import exerciseDb from '../models/exercise.js';
+import exerciseEntryDb from '../models/exerciseEntry.js';
+import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
+import workoutPresetRepository from '../models/workoutPresetRepository.js';
+import calorieCalculationService from '../services/CalorieCalculationService.js';
+import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
+import { getGroupedExerciseSessionByIdWithClient } from '../services/exerciseEntryHistoryService.js';
+import exerciseService from '../services/exerciseService.js';
 jest.mock('../db/poolManager', () => ({
   getClient: jest.fn(),
   getSystemClient: jest.fn(),
 }));
-
 jest.mock('../models/exerciseRepository', () => ({}));
 jest.mock('../models/exercise', () => ({
   getExerciseById: jest.fn(),
@@ -47,31 +55,16 @@ jest.mock('../services/exerciseEntryHistoryService', () => ({
   getGroupedExerciseSessionById: jest.fn(),
   getGroupedExerciseSessionByIdWithClient: jest.fn(),
 }));
-
-const { getClient } = require('../db/poolManager');
-const exerciseDb = require('../models/exercise');
-const exerciseEntryDb = require('../models/exerciseEntry');
-const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepository');
-const workoutPresetRepository = require('../models/workoutPresetRepository');
-const calorieCalculationService = require('../services/CalorieCalculationService');
-const { resolveExerciseIdToUuid } = require('../utils/uuidUtils');
-const {
-  getGroupedExerciseSessionByIdWithClient,
-} = require('../services/exerciseEntryHistoryService');
-const exerciseService = require('../services/exerciseService');
-
 describe('exerciseService grouped workouts', () => {
   const client = {
     query: jest.fn(),
     release: jest.fn(),
   };
-
   beforeEach(() => {
     jest.clearAllMocks();
     getClient.mockResolvedValue(client);
     client.query.mockResolvedValue({});
   });
-
   it('rolls back grouped workout creation when a child insert fails', async () => {
     workoutPresetRepository.getWorkoutPresetById.mockResolvedValue({
       id: 42,
@@ -102,7 +95,6 @@ describe('exerciseService grouped workouts', () => {
     exerciseEntryDb._createExerciseEntryWithClient.mockRejectedValue(
       new Error('child insert failed')
     );
-
     await expect(
       exerciseService.createGroupedWorkoutSession('user-1', 'actor-1', {
         workout_preset_id: 42,
@@ -110,13 +102,11 @@ describe('exerciseService grouped workouts', () => {
         source: 'manual',
       })
     ).rejects.toThrow('child insert failed');
-
     expect(client.query).toHaveBeenCalledWith('BEGIN');
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(client.query).not.toHaveBeenCalledWith('COMMIT');
     expect(client.release).toHaveBeenCalled();
   });
-
   it('propagates entry_date changes to existing child entries on header-only updates', async () => {
     getGroupedExerciseSessionByIdWithClient
       .mockResolvedValueOnce({
@@ -145,18 +135,15 @@ describe('exerciseService grouped workouts', () => {
         exercises: [],
         activity_details: [],
       });
-
     exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
       { id: 'preset-entry-1' }
     );
-
     const result = await exerciseService.updateGroupedWorkoutSession(
       'user-1',
       'actor-1',
       'preset-entry-1',
       { entry_date: '2026-03-13' }
     );
-
     expect(
       exerciseEntryDb.updateExerciseEntriesDateByPresetEntryIdWithClient
     ).toHaveBeenCalledWith(
@@ -169,7 +156,6 @@ describe('exerciseService grouped workouts', () => {
     expect(client.query).toHaveBeenCalledWith('COMMIT');
     expect(result.entry_date).toBe('2026-03-13');
   });
-
   it('rejects nested child edits for synced grouped workouts and rolls back', async () => {
     getGroupedExerciseSessionByIdWithClient.mockResolvedValue({
       type: 'preset',
@@ -187,7 +173,6 @@ describe('exerciseService grouped workouts', () => {
     exercisePresetEntryRepository.updateExercisePresetEntryWithClient.mockResolvedValue(
       { id: 'preset-entry-1' }
     );
-
     await expect(
       exerciseService.updateGroupedWorkoutSession(
         'user-1',
@@ -209,7 +194,6 @@ describe('exerciseService grouped workouts', () => {
       message:
         'Nested exercise editing is only supported for manual or sparky workouts.',
     });
-
     expect(
       exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient
     ).not.toHaveBeenCalled();

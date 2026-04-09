@@ -1,18 +1,13 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 async function createFoodEntryMeal(foodEntryMealData, createdByUserId) {
   log(
     'info',
-    `createFoodEntryMeal in foodEntryMealRepository: foodEntryMealData: ${JSON.stringify(
-      foodEntryMealData
-    )}, createdByUserId: ${createdByUserId}`
+    `createFoodEntryMeal in foodEntryMealRepository: foodEntryMealData: ${JSON.stringify(foodEntryMealData)}, createdByUserId: ${createdByUserId}`
   );
   const client = await getClient(createdByUserId);
-
   try {
     let mealTypeId = foodEntryMealData.meal_type_id;
-
     if (!mealTypeId && foodEntryMealData.meal_type) {
       const typeRes = await client.query(
         'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
@@ -24,7 +19,6 @@ async function createFoodEntryMeal(foodEntryMealData, createdByUserId) {
         throw new Error(`Invalid meal type: ${foodEntryMealData.meal_type}`);
       }
     }
-
     const result = await client.query(
       `INSERT INTO food_entry_meals (
                 user_id, meal_template_id, meal_type_id, entry_date, name, description,
@@ -53,7 +47,6 @@ async function createFoodEntryMeal(foodEntryMealData, createdByUserId) {
     client.release();
   }
 }
-
 async function updateFoodEntryMeal(
   foodEntryMealId,
   foodEntryMealData,
@@ -61,9 +54,7 @@ async function updateFoodEntryMeal(
 ) {
   log(
     'info',
-    `updateFoodEntryMeal in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, foodEntryMealData: ${JSON.stringify(
-      foodEntryMealData
-    )}, updatedByUserId: ${updatedByUserId}`
+    `updateFoodEntryMeal in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, foodEntryMealData: ${JSON.stringify(foodEntryMealData)}, updatedByUserId: ${updatedByUserId}`
   );
   const client = await getClient(updatedByUserId);
   log(
@@ -79,7 +70,6 @@ async function updateFoodEntryMeal(
       );
       if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
     }
-
     const result = await client.query(
       `UPDATE food_entry_meals SET
                 meal_template_id = $1,
@@ -120,7 +110,6 @@ async function updateFoodEntryMeal(
     client.release();
   }
 }
-
 async function getFoodEntryMealById(foodEntryMealId, userId) {
   log(
     'info',
@@ -161,7 +150,6 @@ async function getFoodEntryMealById(foodEntryMealId, userId) {
     client.release();
   }
 }
-
 async function getFoodEntryMealsByDate(userId, selectedDate) {
   log(
     'info',
@@ -203,7 +191,6 @@ async function getFoodEntryMealsByDate(userId, selectedDate) {
     client.release();
   }
 }
-
 async function deleteFoodEntryMeal(foodEntryMealId, userId) {
   log(
     'info',
@@ -229,8 +216,12 @@ async function deleteFoodEntryMeal(foodEntryMealId, userId) {
     client.release();
   }
 }
-
-module.exports = {
+export { createFoodEntryMeal };
+export { updateFoodEntryMeal };
+export { getFoodEntryMealById };
+export { getFoodEntryMealsByDate };
+export { deleteFoodEntryMeal };
+export default {
   createFoodEntryMeal,
   updateFoodEntryMeal,
   getFoodEntryMealById,

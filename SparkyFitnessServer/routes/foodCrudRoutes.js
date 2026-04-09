@@ -1,15 +1,12 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import foodService from '../services/foodService.js';
+import labelScanService from '../services/labelScanService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
-const foodService = require('../services/foodService');
-const labelScanService = require('../services/labelScanService');
-
 router.use(express.json());
-
 // Apply diary permission check to all food routes
 router.use(checkPermissionMiddleware('diary'));
-
 // AI-dedicated food search route to handle /api/foods/search
 /**
  * @swagger
@@ -54,11 +51,9 @@ router.use(checkPermissionMiddleware('diary'));
  */
 router.get('/search', authenticate, async (req, res, next) => {
   const { name, exactMatch, broadMatch, checkCustom } = req.query;
-
   if (!name) {
     return res.status(400).json({ error: 'Food name is required.' });
   }
-
   try {
     const foods = await foodService.searchFoods(
       req.userId,
@@ -79,7 +74,6 @@ router.get('/search', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // General food search route (should come before specific ID routes)
 /**
  * @swagger
@@ -134,7 +128,6 @@ router.get('/search', authenticate, async (req, res, next) => {
 router.get('/', authenticate, async (req, res, next) => {
   const { name, exactMatch, broadMatch, checkCustom, limit, mealType } =
     req.query;
-
   try {
     const result = await foodService.searchFoods(
       req.userId,
@@ -157,7 +150,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud:
@@ -193,7 +185,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/foods-paginated:
@@ -259,7 +250,6 @@ router.get('/foods-paginated', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/food-variants:
@@ -302,7 +292,6 @@ router.post('/food-variants', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/food-variants:
@@ -346,7 +335,6 @@ router.get('/food-variants', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/food-variants/bulk:
@@ -389,7 +377,6 @@ router.post('/food-variants/bulk', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/food-variants/{id}:
@@ -440,7 +427,6 @@ router.get('/food-variants/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/food-variants/{id}:
@@ -504,7 +490,6 @@ router.put('/food-variants/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/food-variants/{id}:
@@ -551,7 +536,6 @@ router.delete('/food-variants/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/barcode/{barcode}:
@@ -606,7 +590,6 @@ router.get('/barcode/:barcode', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 router.post('/scan-label', authenticate, async (req, res, next) => {
   const { image, mime_type } = req.body;
   if (!image || !mime_type) {
@@ -626,7 +609,6 @@ router.post('/scan-label', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/{foodId}:
@@ -674,7 +656,6 @@ router.get('/:foodId', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/{id}:
@@ -728,7 +709,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/{id}/deletion-impact:
@@ -772,7 +752,6 @@ router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/{id}:
@@ -841,7 +820,6 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/import-from-csv:
@@ -878,7 +856,6 @@ router.post('/import-from-csv', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/needs-review:
@@ -906,7 +883,6 @@ router.get('/needs-review', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-crud/update-snapshot:
@@ -949,5 +925,4 @@ router.post('/update-snapshot', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

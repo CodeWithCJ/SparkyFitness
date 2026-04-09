@@ -1,8 +1,7 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import goalPresetService from '../services/goalPresetService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const goalPresetService = require('../services/goalPresetService');
-
 /**
  * @swagger
  * /goal-presets:
@@ -32,7 +31,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /goal-presets:
@@ -59,7 +57,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /goal-presets/{id}:
@@ -97,7 +94,6 @@ router.get('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /goal-presets/{id}:
@@ -139,7 +135,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /goal-presets/{id}:
@@ -175,5 +170,4 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

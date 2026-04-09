@@ -1,13 +1,13 @@
-const goalService = require('./goalService');
-const foodEntryService = require('./foodEntryService');
-import { getExerciseEntriesByDateV2 } from './exerciseEntryHistoryService';
-const measurementRepository = require('../models/measurementRepository');
-const userRepository = require('../models/userRepository');
-const preferenceRepository = require('../models/preferenceRepository');
-const bmrService = require('./bmrService');
-const adaptiveTdeeService = require('./AdaptiveTdeeService');
-const { log } = require('../config/logging');
-const { userAge } = require('../utils/dateHelpers');
+import goalService from './goalService.js';
+import foodEntryService from './foodEntryService.js';
+import { getExerciseEntriesByDateV2 } from './exerciseEntryHistoryService.js';
+import measurementRepository from '../models/measurementRepository.js';
+import userRepository from '../models/userRepository.js';
+import preferenceRepository from '../models/preferenceRepository.js';
+import bmrService from './bmrService.js';
+import adaptiveTdeeService from './AdaptiveTdeeService.js';
+import { log } from '../config/logging.js';
+import { userAge } from '../utils/dateHelpers.js';
 import type {
   ExerciseSessionResponse,
   CalorieBalance,
@@ -99,7 +99,7 @@ function computeCalorieBalance(
 
   if (userProfile && userPreferences) {
     const tz = userPreferences.timezone || 'UTC';
-    const age = userAge(userProfile.date_of_birth, tz) ?? 30;
+    const age = userAge(userProfile.date_of_birth ?? '', tz) ?? 30;
     const gender = userProfile.gender || 'male';
     const bmrAlgorithm = userPreferences.bmr_algorithm || 'Mifflin-St Jeor';
     const weightKg =

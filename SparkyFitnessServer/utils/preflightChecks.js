@@ -1,6 +1,5 @@
-const crypto = require('crypto');
-const { log } = require('../config/logging');
-
+import crypto from 'crypto';
+import { log } from '../config/logging.js';
 function runPreflightChecks() {
   const mandatoryVars = {
     SPARKY_FITNESS_DB_HOST:
@@ -18,22 +17,18 @@ function runPreflightChecks() {
     SPARKY_FITNESS_API_ENCRYPTION_KEY:
       "Must be persistent to decrypt database data. Generate with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
   };
-
   const missingMandatory = Object.keys(mandatoryVars).filter(
     (varName) => !process.env[varName]
   );
-
   if (missingMandatory.length > 0) {
     console.error(
       '\x1b[31m%s\x1b[0m',
       'FATAL: Missing required environment variables!'
     );
     console.error('The server cannot start without the following settings:\n');
-
     missingMandatory.forEach((varName) => {
       console.error(`\x1b[33m${varName}\x1b[0m: ${mandatoryVars[varName]}`);
     });
-
     console.error('\nUpdate your .env file and restart the server.\n');
     log(
       'error',
@@ -43,12 +38,10 @@ function runPreflightChecks() {
       'Preflight checks failed: Missing mandatory environment variables.'
     );
   }
-
   // Handle BETTER_AUTH_SECRET as a soft requirement
   if (!process.env.BETTER_AUTH_SECRET) {
     const generatedSecret = crypto.randomBytes(32).toString('hex');
     process.env.BETTER_AUTH_SECRET = generatedSecret;
-
     console.warn(
       '\x1b[33m%s\x1b[0m',
       'WARNING: BETTER_AUTH_SECRET is not set!'
@@ -62,13 +55,11 @@ function runPreflightChecks() {
     console.warn(
       '------------------------------------------------------------------\n'
     );
-
     log('warn', 'BETTER_AUTH_SECRET was missing and auto-generated.');
   }
-
   log('info', 'Environment variable pre-flight checks passed successfully.');
 }
-
-module.exports = {
+export { runPreflightChecks };
+export default {
   runPreflightChecks,
 };

@@ -1,5 +1,4 @@
-const { getClient } = require('../db/poolManager');
-
+import { getClient } from '../db/poolManager.js';
 async function createWeeklyGoalPlan(planData) {
   const client = await getClient(planData.user_id); // User-specific operation
   try {
@@ -31,7 +30,6 @@ async function createWeeklyGoalPlan(planData) {
     client.release();
   }
 }
-
 async function getWeeklyGoalPlansByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -44,7 +42,6 @@ async function getWeeklyGoalPlansByUserId(userId) {
     client.release();
   }
 }
-
 async function getActiveWeeklyGoalPlan(userId, date) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -62,7 +59,6 @@ async function getActiveWeeklyGoalPlan(userId, date) {
     client.release();
   }
 }
-
 async function updateWeeklyGoalPlan(planId, planData) {
   const client = await getClient(planData.user_id); // User-specific operation
   try {
@@ -95,7 +91,6 @@ async function updateWeeklyGoalPlan(planId, planData) {
     client.release();
   }
 }
-
 async function deactivateAllWeeklyGoalPlans(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -108,7 +103,6 @@ async function deactivateAllWeeklyGoalPlans(userId) {
     client.release();
   }
 }
-
 async function deleteWeeklyGoalPlan(planId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -121,8 +115,13 @@ async function deleteWeeklyGoalPlan(planId, userId) {
     client.release();
   }
 }
-
-module.exports = {
+export { createWeeklyGoalPlan };
+export { getWeeklyGoalPlansByUserId };
+export { getActiveWeeklyGoalPlan };
+export { updateWeeklyGoalPlan };
+export { deactivateAllWeeklyGoalPlans };
+export { deleteWeeklyGoalPlan };
+export default {
   createWeeklyGoalPlan,
   getWeeklyGoalPlansByUserId,
   getActiveWeeklyGoalPlan,

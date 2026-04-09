@@ -1,10 +1,9 @@
-const sleepRepository = require('../models/sleepRepository');
-const userRepository = require('../models/userRepository');
-const { log } = require('../config/logging');
-const { calculateSleepScore } = require('./measurementService'); // Re-use existing sleep score calculation
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { userAge } = require('../utils/dateHelpers');
-
+import sleepRepository from '../models/sleepRepository.js';
+import userRepository from '../models/userRepository.js';
+import { log } from '../config/logging.js';
+import { calculateSleepScore } from './measurementService.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { userAge } from '../utils/dateHelpers.js';
 async function getSleepAnalytics(userId, startDate, endDate) {
   log(
     'info',
@@ -18,15 +17,12 @@ async function getSleepAnalytics(userId, startDate, endDate) {
         endDate
       );
     const userProfile = await userRepository.getUserProfile(userId);
-
     const tz = await loadUserTimezone(userId);
     const age = userProfile?.date_of_birth
       ? userAge(userProfile.date_of_birth, tz)
       : null;
     const gender = userProfile?.gender || null;
-
     const dailyAnalytics = {};
-
     for (const entry of sleepEntries) {
       const entryDate = entry.entry_date;
       if (!dailyAnalytics[entryDate]) {
@@ -49,13 +45,11 @@ async function getSleepAnalytics(userId, startDate, endDate) {
           sleepEfficiency: 0,
         };
       }
-
       dailyAnalytics[entryDate].totalSleepDuration +=
         entry.duration_in_seconds || 0;
       dailyAnalytics[entryDate].timeAsleep += entry.time_asleep_in_seconds || 0;
       dailyAnalytics[entryDate].bedtimes.push(new Date(entry.bedtime));
       dailyAnalytics[entryDate].wakeTimes.push(new Date(entry.wake_time));
-
       if (entry.stage_events && entry.stage_events.length > 0) {
         let inAwakePeriod = false;
         for (const stage of entry.stage_events) {
@@ -66,7 +60,6 @@ async function getSleepAnalytics(userId, startDate, endDate) {
           } else {
             dailyAnalytics[entryDate].stageDurations.unspecified += duration;
           }
-
           if (stage.stage_type === 'awake') {
             dailyAnalytics[entryDate].totalAwakeDuration += duration;
             if (!inAwakePeriod) {
@@ -93,7 +86,6 @@ async function getSleepAnalytics(userId, startDate, endDate) {
       // A more robust solution might average or sum scores.
       dailyAnalytics[entryDate].sleepScore = calculatedScore;
     }
-
     const analyticsResult = Object.values(dailyAnalytics).map((day) => {
       // Calculate sleep consistency (bedtime/wake time variability)
       // This is a simplified approach; more advanced methods might use standard deviation
@@ -105,13 +97,11 @@ async function getSleepAnalytics(userId, startDate, endDate) {
         (max, current) => (current > max ? current : max),
         day.wakeTimes[0]
       );
-
       // Sleep efficiency
       day.sleepEfficiency =
         day.totalSleepDuration > 0
           ? (day.timeAsleep / day.totalSleepDuration) * 100
           : 0;
-
       // Sleep stage percentages
       const totalStagesDuration =
         day.stageDurations.deep +
@@ -126,11 +116,9 @@ async function getSleepAnalytics(userId, startDate, endDate) {
             (day.stageDurations[stageType] / totalStagesDuration) * 100;
         }
       }
-
       // Sleep debt (example: assuming 8 hours optimal)
       const optimalSleepSeconds = 8 * 3600;
       const sleepDebt = (optimalSleepSeconds - day.totalSleepDuration) / 3600; // in hours
-
       return {
         date: day.date,
         totalSleepDuration: day.totalSleepDuration,
@@ -145,14 +133,13 @@ async function getSleepAnalytics(userId, startDate, endDate) {
         totalAwakeDuration: day.totalAwakeDuration,
       };
     });
-
     return analyticsResult;
   } catch (error) {
     log('error', `Error in getSleepAnalytics for user ${userId}:`, error);
     throw error;
   }
 }
-
-module.exports = {
+export { getSleepAnalytics };
+export default {
   getSleepAnalytics,
 };

@@ -1,5 +1,4 @@
 // Mappings for wger integration
-
 // Maps SparkyFitness muscle names to wger muscle names
 const muscleNameMap = {
   abdominals: ['Abs', 'Obliquus externus abdominis', 'Rectus abdominis'],
@@ -20,7 +19,6 @@ const muscleNameMap = {
   traps: ['Trapezius'],
   triceps: ['Triceps', 'Triceps brachii'],
 };
-
 // Maps SparkyFitness equipment names to wger equipment names
 const equipmentNameMap = {
   barbell: 'Barbell',
@@ -35,25 +33,21 @@ const equipmentNameMap = {
   bands: 'Resistance band',
   other: ['Other', 'Gym mat'],
 };
-
 // Maps wger level names to SparkyFitness level names
 const levelMap = {
   Beginner: 'beginner',
   Intermediate: 'intermediate',
   Expert: 'expert',
 };
-
 const forceMap = {
   static: 'static',
   pull: 'pull',
   push: 'push',
 };
-
 const mechanicMap = {
   isolation: 'isolation',
   compound: 'compound',
 };
-
 function createReverseMap(map) {
   const reverseMap = {};
   for (const key in map) {
@@ -64,8 +58,13 @@ function createReverseMap(map) {
   }
   return reverseMap;
 }
-
-module.exports = {
+export { muscleNameMap };
+export { equipmentNameMap };
+export { levelMap };
+export { forceMap };
+export { mechanicMap };
+export { createReverseMap };
+export default {
   muscleNameMap,
   equipmentNameMap,
   levelMap,

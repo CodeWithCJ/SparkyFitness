@@ -1,39 +1,31 @@
-// SparkyFitnessServer/integrations/polar/polarDataProcessor.js
-
-const measurementRepository = require('../../models/measurementRepository');
-const { log } = require('../../config/logging');
-const exerciseRepository = require('../../models/exercise');
-const exerciseEntryRepository = require('../../models/exerciseEntry');
-
+import measurementRepository from '../../models/measurementRepository.js';
+import { log } from '../../config/logging.js';
+import exerciseRepository from '../../models/exercise.js';
+import exerciseEntryRepository from '../../models/exerciseEntry.js';
+import sleepRepository from '../../models/sleepRepository.js';
 /**
  * Helper to get a value from a Polar object regardless of hyphen or underscore usage.
  */
 const getVal = (obj, key) => {
   if (!obj || !key) return undefined;
   if (obj[key] !== undefined) return obj[key];
-
   // Try alternative naming conventions (underscore vs hyphen)
   const underscored = key.replace(/-/g, '_');
   if (obj[underscored] !== undefined) return obj[underscored];
-
   const hyphenated = key.replace(/_/g, '-');
   if (obj[hyphenated] !== undefined) return obj[hyphenated];
-
   return undefined;
 };
-
 /**
  * Helper to safely parse a Polar timestamp into a UTC ISO string.
  * This is the standard way to store timestamps in SparkyFitness.
  */
 const parsePolarToUTC = (timeStr) => {
   if (!timeStr) return null;
-
   // Handle date-only strings by explicitly assuming UTC midnight
   if (timeStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
     return new Date(`${timeStr}T00:00:00Z`).toISOString();
   }
-
   // If it's a naive timestamp string (no Z or offset), append Z to force it to be treated as UTC
   // Polar's activity and exercise docs state these naive strings are UTC.
   if (
@@ -41,11 +33,9 @@ const parsePolarToUTC = (timeStr) => {
   ) {
     return new Date(`${timeStr}Z`).toISOString();
   }
-
   // Otherwise (if it has an offset or is a full ISO string), new Date() will handle it correctly
   return new Date(timeStr).toISOString();
 };
-
 /**
  * Maps Polar exercise types/names to SparkyFitness exercise entries.
  */
@@ -54,18 +44,15 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
   const exerciseList = Array.isArray(exercises)
     ? exercises
     : exercises.exercises || [];
-
   if (!exerciseList || exerciseList.length === 0) {
     log('info', `No Polar exercise data to process for user ${userId}.`);
     return;
   }
-
   // First, delete existing Polar exercise entries for the dates covered to avoid duplicates
   const processedDates = new Set();
   for (const exercise of exerciseList) {
     const startTime = getVal(exercise, 'start-time');
     if (!startTime) continue;
-
     const entryDate = startTime.split('T')[0]; // Literal Calendar Date
     if (!processedDates.has(entryDate)) {
       await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(
@@ -77,7 +64,6 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
       processedDates.add(entryDate);
     }
   }
-
   for (const exercise of exerciseList) {
     try {
       const exerciseId = getVal(exercise, 'id');
@@ -87,7 +73,6 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
       const distance = getVal(exercise, 'distance') ?? 0; // In meters
       const sport = getVal(exercise, 'sport');
       const detailedSportInfo = getVal(exercise, 'detailed-sport-info');
-
       if (!startTime) {
         log(
           'warn',
@@ -95,15 +80,12 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
         );
         continue;
       }
-
       const exerciseName = detailedSportInfo || sport || 'Polar Workout';
       const exerciseSourceId = `polar-workout-${exerciseId}`;
-
       let exerciseDef = await exerciseRepository.getExerciseBySourceAndSourceId(
         'Polar',
         exerciseSourceId
       );
-
       if (!exerciseDef) {
         // Search by name if source not found
         const searchResults = await exerciseRepository.searchExercises(
@@ -114,10 +96,8 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
           exerciseDef = searchResults[0];
         }
       }
-
       if (!exerciseDef) {
         const durationSeconds = duration ? iso8601ToSeconds(duration) : 0;
-
         const newExerciseData = {
           user_id: userId,
           name: exerciseName,
@@ -134,12 +114,10 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
         };
         exerciseDef = await exerciseRepository.createExercise(newExerciseData);
       }
-
       const entryDate = startTime.split('T')[0];
       const durationMinutes = duration
         ? Math.round(iso8601ToSeconds(duration) / 60)
         : 0;
-
       const exerciseEntryData = {
         exercise_id: exerciseDef.id,
         duration_minutes: durationMinutes,
@@ -158,7 +136,6 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
           },
         ],
       };
-
       await exerciseEntryRepository.createExerciseEntry(
         userId,
         exerciseEntryData,
@@ -178,7 +155,6 @@ async function processPolarExercises(userId, createdByUserId, exercises = []) {
     }
   }
 }
-
 /**
  * Processes Polar physical info (e.g., weight, height, RHR, VO2 Max).
  */
@@ -191,22 +167,16 @@ async function processPolarPhysicalInfo(
   const infoList = Array.isArray(physicalInfo)
     ? physicalInfo
     : physicalInfo['physical-informations'] || [];
-
   if (!infoList || infoList.length === 0) return;
-
   for (const info of infoList) {
     const created = getVal(info, 'created');
     if (!created) continue;
-
     const entryDate = created.split('T')[0];
     const measurementsToUpsert = {};
-
     const weight = getVal(info, 'weight');
     const height = getVal(info, 'height');
-
     if (weight) measurementsToUpsert.weight = weight;
     if (height) measurementsToUpsert.height = height;
-
     if (Object.keys(measurementsToUpsert).length > 0) {
       await measurementRepository.upsertCheckInMeasurements(
         userId,
@@ -219,7 +189,6 @@ async function processPolarPhysicalInfo(
         `Upserted Polar check-in measurements for user ${userId} on ${entryDate}.`
       );
     }
-
     // Process other physiological metrics as custom measurements
     const physiologicalMetrics = [
       {
@@ -253,7 +222,6 @@ async function processPolarPhysicalInfo(
         frequency: 'Daily',
       },
     ];
-
     for (const metric of physiologicalMetrics) {
       if (metric.value) {
         await upsertCustomMeasurementLogic(userId, createdByUserId, {
@@ -268,7 +236,6 @@ async function processPolarPhysicalInfo(
     }
   }
 }
-
 /**
  * Processes Polar daily activity data.
  */
@@ -277,18 +244,14 @@ async function processPolarActivity(userId, createdByUserId, activities = []) {
   const activityList = Array.isArray(activities)
     ? activities
     : activities.activities || [];
-
   if (!activityList || activityList.length === 0) return;
-
   for (const activity of activityList) {
     // Polar activity object might have 'date' (if simple summary) or 'start_time' (if detailed).
     let entryDate = getVal(activity, 'date');
     const startTime = getVal(activity, 'start-time');
-
     if (!entryDate && startTime) {
       entryDate = startTime.split('T')[0];
     }
-
     if (!entryDate) {
       log(
         'warn',
@@ -296,11 +259,9 @@ async function processPolarActivity(userId, createdByUserId, activities = []) {
       );
       continue;
     }
-
     const calories = getVal(activity, 'calories');
     const activeCalories = getVal(activity, 'active-calories');
     const steps = getVal(activity, 'steps') ?? getVal(activity, 'active-steps');
-
     // Polar daily activity often contains steps and calories
     if (calories || activeCalories || steps) {
       const metrics = [
@@ -318,7 +279,6 @@ async function processPolarActivity(userId, createdByUserId, activities = []) {
           frequency: 'Daily',
         },
       ];
-
       for (const metric of metrics) {
         if (metric.value !== undefined && metric.value !== null) {
           await upsertCustomMeasurementLogic(userId, createdByUserId, {
@@ -334,7 +294,6 @@ async function processPolarActivity(userId, createdByUserId, activities = []) {
     }
   }
 }
-
 /**
  * Helper to upsert custom measurements.
  */
@@ -345,10 +304,8 @@ async function upsertCustomMeasurementLogic(
 ) {
   const { categoryName, value, entryDate, entryTimestamp, frequency } =
     customMeasurement;
-
   const categories = await measurementRepository.getCustomCategories(userId);
   const category = categories.find((cat) => cat.name === categoryName);
-
   let categoryId;
   if (!category) {
     const newCategoryData = {
@@ -365,7 +322,6 @@ async function upsertCustomMeasurementLogic(
   } else {
     categoryId = category.id;
   }
-
   await measurementRepository.upsertCustomMeasurement(
     userId,
     createdByUserId,
@@ -379,7 +335,6 @@ async function upsertCustomMeasurementLogic(
     'Polar' // source
   );
 }
-
 /**
  * Processes Polar sleep data.
  */
@@ -388,14 +343,10 @@ async function processPolarSleep(userId, createdByUserId, sleepData = []) {
   const sleepNights = Array.isArray(sleepData)
     ? sleepData
     : sleepData.nights || [];
-
   if (!sleepNights || sleepNights.length === 0) {
     log('info', `No Polar sleep data to process for user ${userId}.`);
     return;
   }
-
-  const sleepRepository = require('../../models/sleepRepository');
-
   for (const night of sleepNights) {
     try {
       const entryDate = getVal(night, 'date');
@@ -403,7 +354,6 @@ async function processPolarSleep(userId, createdByUserId, sleepData = []) {
         getVal(night, 'sleep-start-time') || getVal(night, 'start-time');
       const endTime =
         getVal(night, 'sleep-end-time') || getVal(night, 'end-time');
-
       if (!entryDate || !startTime || !endTime) {
         log(
           'warn',
@@ -411,29 +361,23 @@ async function processPolarSleep(userId, createdByUserId, sleepData = []) {
         );
         continue;
       }
-
       // Summary stats - Polar uses seconds for these
       const lightSleepSec =
         getVal(night, 'light-sleep') ??
         (getVal(night, 'light-non-rem-sleep-duration') ?? 0) +
           (getVal(night, 'lighter-non-rem-sleep-duration') ?? 0);
-
       const deepSleepSec =
         getVal(night, 'deep-sleep') ??
         getVal(night, 'deep-non-rem-sleep-duration') ??
         0;
-
       const remSleepSec =
         getVal(night, 'rem-sleep') ?? getVal(night, 'rem-sleep-duration') ?? 0;
-
       const awakeSec =
         getVal(night, 'wake-duration') ??
         getVal(night, 'total-interruption-duration') ??
         0;
-
       const totalDurationSec =
         lightSleepSec + deepSleepSec + remSleepSec + awakeSec;
-
       const sleepEntryData = {
         entry_date: entryDate,
         bedtime: parsePolarToUTC(startTime),
@@ -447,13 +391,11 @@ async function processPolarSleep(userId, createdByUserId, sleepData = []) {
         rem_sleep_seconds: remSleepSec,
         awake_sleep_seconds: awakeSec,
       };
-
       const entry = await sleepRepository.upsertSleepEntry(
         userId,
         createdByUserId,
         sleepEntryData
       );
-
       // Process hypnogram (stages)
       const hypnogram = getVal(night, 'hypnogram');
       if (hypnogram && entry) {
@@ -461,33 +403,27 @@ async function processPolarSleep(userId, createdByUserId, sleepData = []) {
         const stagesArray = Array.isArray(hypnogram)
           ? hypnogram
           : Object.entries(hypnogram).map(([time, value]) => ({ time, value }));
-
         const sortedStages = stagesArray.sort((a, b) =>
           a.time.localeCompare(b.time)
         );
-
         for (let i = 0; i < sortedStages.length; i++) {
           const current = sortedStages[i];
           const stageCode = current.value;
           const timeStr = current.time;
-
           let stageType = 'light';
           if (stageCode === 0) stageType = 'awake';
           else if (stageCode === 1) stageType = 'rem';
           else if (stageCode === 4) stageType = 'deep';
           else if (stageCode === 6) stageType = 'awake'; // 6 is short interruption
           // Note: Stage 5 (Unknown) falls through to "light" sleep per review suggestion
-
           // Construct start time for this stage
           const stageStartTimeUTC = new Date(parsePolarToUTC(startTime));
           const [hours, minutes] = timeStr.split(':').map(Number);
-
           const startHours = stageStartTimeUTC.getHours();
           if (hours < startHours) {
             stageStartTimeUTC.setDate(stageStartTimeUTC.getDate() + 1);
           }
           stageStartTimeUTC.setHours(hours, minutes, 0, 0);
-
           let durationSec = 0;
           if (i < sortedStages.length - 1) {
             const nextTimeStr = sortedStages[i + 1].time;
@@ -500,7 +436,6 @@ async function processPolarSleep(userId, createdByUserId, sleepData = []) {
             const endDateUTC = new Date(parsePolarToUTC(endTime));
             durationSec = Math.round((endDateUTC - stageStartTimeUTC) / 1000);
           }
-
           if (durationSec > 0) {
             await sleepRepository.upsertSleepStageEvent(userId, entry.id, {
               stage_type: stageType,
@@ -513,7 +448,6 @@ async function processPolarSleep(userId, createdByUserId, sleepData = []) {
           }
         }
       }
-
       log(
         'info',
         `Processed Polar sleep entry for user ${userId} on ${entryDate}.`
@@ -526,7 +460,6 @@ async function processPolarSleep(userId, createdByUserId, sleepData = []) {
     }
   }
 }
-
 /**
  * Processes Polar nightly recharge data.
  */
@@ -539,13 +472,10 @@ async function processPolarNightlyRecharge(
   const rechargeList = Array.isArray(rechargeData)
     ? rechargeData
     : rechargeData.recharges || [];
-
   if (!rechargeList || rechargeList.length === 0) return;
-
   for (const recharge of rechargeList) {
     const entryDate = getVal(recharge, 'date');
     if (!entryDate) continue;
-
     // Custom measurements for recharge metrics
     const metrics = [
       {
@@ -579,7 +509,6 @@ async function processPolarNightlyRecharge(
         frequency: 'Daily',
       },
     ];
-
     for (const metric of metrics) {
       if (metric.value !== undefined && metric.value !== null) {
         await upsertCustomMeasurementLogic(userId, createdByUserId, {
@@ -594,7 +523,6 @@ async function processPolarNightlyRecharge(
     }
   }
 }
-
 /**
  * Helper to convert ISO 8601 duration string (e.g., PT1H30M15S) to seconds.
  */
@@ -609,8 +537,12 @@ function iso8601ToSeconds(duration) {
   const seconds = parseInt(matches[3] || 0);
   return hours * 3600 + minutes * 60 + seconds;
 }
-
-module.exports = {
+export { processPolarExercises };
+export { processPolarPhysicalInfo };
+export { processPolarActivity };
+export { processPolarSleep };
+export { processPolarNightlyRecharge };
+export default {
   processPolarExercises,
   processPolarPhysicalInfo,
   processPolarActivity,

@@ -1,9 +1,8 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../../middleware/authMiddleware.js';
+import authService from '../../services/authService.js';
+import { log } from '../../config/logging.js';
 const router = express.Router();
-const { authenticate } = require('../../middleware/authMiddleware');
-const authService = require('../../services/authService');
-const { log } = require('../../config/logging');
-
 /**
  * @swagger
  * /identity/users/accessible-users:
@@ -27,7 +26,6 @@ router.get('/users/accessible-users', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/access/can-access-user-data:
@@ -58,13 +56,11 @@ router.get(
   authenticate,
   async (req, res, next) => {
     const { targetUserId, permissionType } = req.query;
-
     if (!targetUserId || !permissionType) {
       return res
         .status(400)
         .json({ error: 'targetUserId and permissionType are required.' });
     }
-
     try {
       const canAccess = await authService.canAccessUserData(
         targetUserId,
@@ -77,7 +73,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /identity/access/check-family-access:
@@ -108,13 +103,11 @@ router.get(
   authenticate,
   async (req, res, next) => {
     const { ownerUserId, permission } = req.query;
-
     if (!ownerUserId || !permission) {
       return res
         .status(400)
         .json({ error: 'ownerUserId and permission are required.' });
     }
-
     try {
       const hasAccess = await authService.checkFamilyAccess(
         req.userId,
@@ -127,7 +120,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /identity/family-access:
@@ -180,7 +172,6 @@ router.get('/family-access', authenticate, async (req, res, next) => {
         message: 'Authenticated user ID not found.',
       });
     }
-
     const entries =
       await authService.getFamilyAccessEntries(authenticatedUserId);
     res.status(200).json(entries);
@@ -189,7 +180,6 @@ router.get('/family-access', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/family-access:
@@ -235,7 +225,6 @@ router.get('/family-access', authenticate, async (req, res, next) => {
  */
 router.post('/family-access', authenticate, async (req, res, next) => {
   const entryData = req.body;
-
   // Normalize access_permissions keys (replace spaces with underscores)
   if (entryData.access_permissions) {
     const normalizedPermissions = {};
@@ -244,7 +233,6 @@ router.post('/family-access', authenticate, async (req, res, next) => {
     }
     entryData.access_permissions = normalizedPermissions;
   }
-
   if (
     !entryData.family_user_id ||
     !entryData.family_email ||
@@ -255,7 +243,6 @@ router.post('/family-access', authenticate, async (req, res, next) => {
         'Family User ID, Family Email, and Access Permissions are required.',
     });
   }
-
   try {
     const newEntry = await authService.createFamilyAccessEntry(
       req.userId,
@@ -269,7 +256,6 @@ router.post('/family-access', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/family-access/{id}:
@@ -322,7 +308,6 @@ router.post('/family-access', authenticate, async (req, res, next) => {
 router.put('/family-access/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
   const updateData = req.body;
-
   // Normalize access_permissions keys (replace spaces with underscores)
   if (updateData.access_permissions) {
     const normalizedPermissions = {};
@@ -331,11 +316,9 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
     }
     updateData.access_permissions = normalizedPermissions;
   }
-
   if (!id) {
     return res.status(400).json({ error: 'Family Access ID is required.' });
   }
-
   try {
     const updatedEntry = await authService.updateFamilyAccessEntry(
       req.userId,
@@ -356,7 +339,6 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/family-access/{id}:
@@ -390,11 +372,9 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
  */
 router.delete('/family-access/:id', authenticate, async (req, res, next) => {
   const { id } = req.params;
-
   if (!id) {
     return res.status(400).json({ error: 'Family Access ID is required.' });
   }
-
   try {
     await authService.deleteFamilyAccessEntry(req.userId, id);
     res
@@ -413,5 +393,4 @@ router.delete('/family-access/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

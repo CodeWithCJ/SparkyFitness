@@ -1,6 +1,5 @@
-const { getClient, getSystemClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-
+import { getClient, getSystemClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 async function getExerciseById(id, userId) {
   const client = await getClient(userId);
   try {
@@ -26,7 +25,6 @@ async function getExerciseById(id, userId) {
     client.release();
   }
 }
-
 async function getExerciseOwnerId(id, userId) {
   const client = await getClient(userId);
   try {
@@ -39,7 +37,6 @@ async function getExerciseOwnerId(id, userId) {
     client.release();
   }
 }
-
 async function getOrCreateActiveCaloriesExercise(
   userId,
   source = 'Health Data'
@@ -62,7 +59,6 @@ async function getOrCreateActiveCaloriesExercise(
   } finally {
     client.release();
   }
-
   if (!exercise) {
     log(
       'info',
@@ -99,7 +95,6 @@ async function getOrCreateActiveCaloriesExercise(
   }
   return exercise.id;
 }
-
 async function getExercisesWithPagination(
   targetUserId,
   searchTerm,
@@ -115,21 +110,17 @@ async function getExercisesWithPagination(
     const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
-
     if (searchTerm) {
       whereClauses.push(`name ILIKE $${paramIndex}`);
       queryParams.push(`%${searchTerm}%`);
       paramIndex++;
     }
-
     if (categoryFilter && categoryFilter !== 'all') {
       whereClauses.push(`category = $${paramIndex}`);
       queryParams.push(categoryFilter);
       paramIndex++;
     }
-
     // RLS will handle ownership filtering
-
     if (equipmentFilter && equipmentFilter.length > 0) {
       whereClauses.push(
         `equipment::jsonb ?| ARRAY[${equipmentFilter.map((_, i) => `$${paramIndex + i}`).join(',')}]`
@@ -137,7 +128,6 @@ async function getExercisesWithPagination(
       queryParams.push(...equipmentFilter);
       paramIndex += equipmentFilter.length;
     }
-
     if (muscleGroupFilter && muscleGroupFilter.length > 0) {
       whereClauses.push(
         `(primary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}] OR secondary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}])`
@@ -146,7 +136,6 @@ async function getExercisesWithPagination(
       queryParams.push(...muscleGroupFilter); // Push twice for primary and secondary muscles
       paramIndex += muscleGroupFilter.length * 2;
     }
-
     const query = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
              primary_muscles, secondary_muscles, instructions, category, images,
@@ -158,7 +147,6 @@ async function getExercisesWithPagination(
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
     queryParams.push(limit, offset);
-
     const result = await client.query(query, queryParams);
     return result.rows.map((row) => {
       if (row.images) {
@@ -175,7 +163,6 @@ async function getExercisesWithPagination(
     client.release();
   }
 }
-
 async function countExercises(
   targetUserId,
   searchTerm,
@@ -189,21 +176,17 @@ async function countExercises(
     const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
-
     if (searchTerm) {
       whereClauses.push(`name ILIKE $${paramIndex}`);
       queryParams.push(`%${searchTerm}%`);
       paramIndex++;
     }
-
     if (categoryFilter && categoryFilter !== 'all') {
       whereClauses.push(`category = $${paramIndex}`);
       queryParams.push(categoryFilter);
       paramIndex++;
     }
-
     // RLS will handle ownership filtering
-
     if (equipmentFilter && equipmentFilter.length > 0) {
       whereClauses.push(
         `equipment::jsonb ?| ARRAY[${equipmentFilter.map((_, i) => `$${paramIndex + i}`).join(',')}]`
@@ -211,7 +194,6 @@ async function countExercises(
       queryParams.push(...equipmentFilter);
       paramIndex += equipmentFilter.length;
     }
-
     if (muscleGroupFilter && muscleGroupFilter.length > 0) {
       whereClauses.push(
         `(primary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}] OR secondary_muscles::jsonb ?| ARRAY[${muscleGroupFilter.map((_, i) => `$${paramIndex + i}`).join(',')}])`
@@ -220,7 +202,6 @@ async function countExercises(
       queryParams.push(...muscleGroupFilter); // Push twice for primary and secondary muscles
       paramIndex += muscleGroupFilter.length * 2;
     }
-
     const countQuery = `
       SELECT COUNT(*)
       FROM exercises
@@ -232,7 +213,6 @@ async function countExercises(
     client.release();
   }
 }
-
 async function getDistinctEquipment() {
   const client = await getSystemClient();
   try {
@@ -264,7 +244,6 @@ async function getDistinctEquipment() {
     client.release();
   }
 }
-
 async function getDistinctMuscleGroups() {
   const client = await getSystemClient();
   try {
@@ -272,7 +251,6 @@ async function getDistinctMuscleGroups() {
       "SELECT primary_muscles, secondary_muscles FROM exercises WHERE (primary_muscles IS NOT NULL AND primary_muscles <> '[]' AND primary_muscles <> '') OR (secondary_muscles IS NOT NULL AND secondary_muscles <> '[]' AND secondary_muscles <> '')"
     );
     const muscleGroupSet = new Set();
-
     result.rows.forEach((row) => {
       ['primary_muscles', 'secondary_muscles'].forEach((field) => {
         if (row[field]) {
@@ -301,7 +279,6 @@ async function getDistinctMuscleGroups() {
     client.release();
   }
 }
-
 async function searchExercises(
   name,
   userId,
@@ -313,13 +290,11 @@ async function searchExercises(
     const whereClauses = ['is_quick_exercise = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
-
     if (name) {
       whereClauses.push(`name ILIKE $${paramIndex}`);
       queryParams.push(`%${name}%`);
       paramIndex++;
     }
-
     if (equipmentFilter && equipmentFilter.length > 0) {
       whereClauses.push(
         `equipment::jsonb ?| ARRAY[${equipmentFilter.map((_, i) => `$${paramIndex + i}`).join(',')}]`
@@ -327,7 +302,6 @@ async function searchExercises(
       queryParams.push(...equipmentFilter);
       paramIndex += equipmentFilter.length;
     }
-
     if (muscleGroupFilter && muscleGroupFilter.length > 0) {
       const primaryMusclesPlaceholders = muscleGroupFilter
         .map((_, i) => `$${paramIndex + i}`)
@@ -342,7 +316,6 @@ async function searchExercises(
       queryParams.push(...muscleGroupFilter); // Push twice for primary and secondary muscles
       paramIndex += muscleGroupFilter.length * 2;
     }
-
     const finalQuery = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
@@ -364,20 +337,17 @@ async function searchExercises(
         }
         return [];
       };
-
       row.equipment = parseJsonbField('equipment');
       row.primary_muscles = parseJsonbField('primary_muscles');
       row.secondary_muscles = parseJsonbField('secondary_muscles');
       row.instructions = parseJsonbField('instructions');
       row.images = parseJsonbField('images');
-
       return row;
     });
   } finally {
     client.release();
   }
 }
-
 async function createExercise(exerciseData) {
   const client = await getClient(exerciseData.user_id);
   try {
@@ -425,7 +395,6 @@ async function createExercise(exerciseData) {
     client.release();
   }
 }
-
 async function updateExercise(id, userId, updateData) {
   const client = await getClient(userId);
   try {
@@ -481,7 +450,6 @@ async function updateExercise(id, userId, updateData) {
     client.release();
   }
 }
-
 async function deleteExercise(id, userId) {
   const client = await getClient(userId);
   try {
@@ -494,7 +462,6 @@ async function deleteExercise(id, userId) {
     client.release();
   }
 }
-
 async function getRecentExercises(userId, limit) {
   const client = await getClient(userId);
   try {
@@ -530,20 +497,17 @@ async function getRecentExercises(userId, limit) {
         }
         return [];
       };
-
       row.equipment = parseJsonbField('equipment');
       row.primary_muscles = parseJsonbField('primary_muscles');
       row.secondary_muscles = parseJsonbField('secondary_muscles');
       row.instructions = parseJsonbField('instructions');
       row.images = parseJsonbField('images');
-
       return row;
     });
   } finally {
     client.release();
   }
 }
-
 async function getTopExercises(userId, limit) {
   const client = await getClient(userId);
   try {
@@ -580,20 +544,17 @@ async function getTopExercises(userId, limit) {
         }
         return [];
       };
-
       row.equipment = parseJsonbField('equipment');
       row.primary_muscles = parseJsonbField('primary_muscles');
       row.secondary_muscles = parseJsonbField('secondary_muscles');
       row.instructions = parseJsonbField('instructions');
       row.images = parseJsonbField('images');
-
       return row;
     });
   } finally {
     client.release();
   }
 }
-
 async function getExerciseBySourceAndSourceId(source, sourceId) {
   const client = await getSystemClient();
   try {
@@ -619,7 +580,6 @@ async function getExerciseBySourceAndSourceId(source, sourceId) {
     client.release();
   }
 }
-
 async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
   const client = await getClient(authenticatedUserId);
   const systemClient = await getSystemClient();
@@ -630,13 +590,11 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
     );
     const isPubliclyShared =
       publicExerciseResult.rows[0]?.shared_with_public || false;
-
     const exerciseOwnerResult = await systemClient.query(
       'SELECT user_id FROM exercises WHERE id = $1',
       [exerciseId]
     );
     const exerciseOwnerId = exerciseOwnerResult.rows[0]?.user_id;
-
     const currentUserReferencesQueries = [
       client.query(
         'SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2',
@@ -666,12 +624,10 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
       currentUserReferencesResults[2].rows[0].count,
       10
     );
-
     const currentUserReferences =
       currentUserExerciseEntriesCount +
       currentUserWorkoutPlansCount +
       currentUserWorkoutPresetsCount;
-
     const otherUserReferencesQueries = [
       systemClient.query(
         'SELECT COUNT(*) FROM exercise_entries WHERE exercise_id = $1 AND user_id != $2',
@@ -701,12 +657,10 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
       otherUserReferencesResults[2].rows[0].count,
       10
     );
-
     const otherUserReferences =
       otherUserExerciseEntriesCount +
       otherUserWorkoutPlansCount +
       otherUserWorkoutPresetsCount;
-
     let familySharedUsers = [];
     if (exerciseOwnerId === authenticatedUserId) {
       const familyAccessResult = await client.query(
@@ -722,7 +676,6 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
         (row) => row.family_user_id
       );
     }
-
     return {
       exerciseEntriesCount:
         currentUserExerciseEntriesCount + otherUserExerciseEntriesCount,
@@ -741,12 +694,10 @@ async function getExerciseDeletionImpact(exerciseId, authenticatedUserId) {
     systemClient.release();
   }
 }
-
 async function deleteExerciseAndDependencies(exerciseId, userId) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-
     await client.query(
       'DELETE FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2',
       [exerciseId, userId]
@@ -755,7 +706,6 @@ async function deleteExerciseAndDependencies(exerciseId, userId) {
       'info',
       `Deleted exercise entries for exercise ${exerciseId} by user ${userId}`
     );
-
     await client.query(
       `
       DELETE FROM workout_plan_template_assignments wpta
@@ -770,7 +720,6 @@ async function deleteExerciseAndDependencies(exerciseId, userId) {
       'info',
       `Deleted workout plan exercises for exercise ${exerciseId} in plans by user ${userId}`
     );
-
     await client.query(
       `
       DELETE FROM workout_preset_exercises wpe
@@ -785,13 +734,11 @@ async function deleteExerciseAndDependencies(exerciseId, userId) {
       'info',
       `Deleted workout preset exercises for exercise ${exerciseId} in presets by user ${userId}`
     );
-
     const result = await client.query(
       'DELETE FROM exercises WHERE id = $1 AND user_id = $2 RETURNING id',
       [exerciseId, userId]
     );
     log('info', `Deleted exercise ${exerciseId} by user ${userId}`);
-
     await client.query('COMMIT');
     return result.rowCount > 0;
   } catch (error) {
@@ -806,7 +753,6 @@ async function deleteExerciseAndDependencies(exerciseId, userId) {
     client.release();
   }
 }
-
 async function findExerciseByNameAndUserId(name, userId) {
   const client = await getClient(userId);
   try {
@@ -832,7 +778,24 @@ async function findExerciseByNameAndUserId(name, userId) {
     client.release();
   }
 }
-module.exports = {
+export { getExerciseById };
+export { getExerciseOwnerId };
+export { getOrCreateActiveCaloriesExercise };
+export { getExercisesWithPagination };
+export { countExercises };
+export { getDistinctEquipment };
+export { getDistinctMuscleGroups };
+export { searchExercises };
+export { createExercise };
+export { updateExercise };
+export { deleteExercise };
+export { getRecentExercises };
+export { getTopExercises };
+export { getExerciseBySourceAndSourceId };
+export { getExerciseDeletionImpact };
+export { deleteExerciseAndDependencies };
+export { findExerciseByNameAndUserId };
+export default {
   getExerciseById,
   getExerciseOwnerId,
   getOrCreateActiveCaloriesExercise,

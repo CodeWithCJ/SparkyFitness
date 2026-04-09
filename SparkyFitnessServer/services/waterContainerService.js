@@ -1,8 +1,6 @@
-const waterContainerRepository = require('../models/waterContainerRepository');
-const { log } = require('../config/logging');
-
+import waterContainerRepository from '../models/waterContainerRepository.js';
+import { log } from '../config/logging.js';
 const VALID_UNITS = ['ml', 'oz', 'liter']; // Changed 'cup' to 'liter'
-
 function convertToMl(volume, unit) {
   if (!VALID_UNITS.includes(unit)) {
     throw new Error('Invalid unit for conversion.');
@@ -17,7 +15,6 @@ function convertToMl(volume, unit) {
       return volume;
   }
 }
-
 async function createWaterContainer(userId, containerData) {
   if (!VALID_UNITS.includes(containerData.unit)) {
     throw new Error('Invalid unit provided.');
@@ -34,7 +31,6 @@ async function createWaterContainer(userId, containerData) {
     throw error;
   }
 }
-
 async function getWaterContainersByUserId(userId) {
   try {
     return await waterContainerRepository.getWaterContainersByUserId(userId);
@@ -43,7 +39,6 @@ async function getWaterContainersByUserId(userId) {
     throw error;
   }
 }
-
 async function updateWaterContainer(id, userId, updateData) {
   if (updateData.unit && !VALID_UNITS.includes(updateData.unit)) {
     throw new Error('Invalid unit provided.');
@@ -79,7 +74,6 @@ async function updateWaterContainer(id, userId, updateData) {
     throw error;
   }
 }
-
 async function deleteWaterContainer(id, userId) {
   try {
     // Add authorization check if needed
@@ -100,7 +94,6 @@ async function deleteWaterContainer(id, userId) {
     throw error;
   }
 }
-
 async function setPrimaryWaterContainer(id, userId) {
   try {
     // Add authorization check if needed
@@ -114,7 +107,6 @@ async function setPrimaryWaterContainer(id, userId) {
     throw error;
   }
 }
-
 async function getPrimaryWaterContainerByUserId(userId) {
   try {
     return await waterContainerRepository.getPrimaryWaterContainerByUserId(
@@ -129,13 +121,19 @@ async function getPrimaryWaterContainerByUserId(userId) {
     throw error;
   }
 }
-
-module.exports = {
+export { createWaterContainer };
+export { getWaterContainersByUserId };
+export { updateWaterContainer };
+export { deleteWaterContainer };
+export { setPrimaryWaterContainer };
+export { getPrimaryWaterContainerByUserId };
+export { convertToMl };
+export default {
   createWaterContainer,
   getWaterContainersByUserId,
   updateWaterContainer,
   deleteWaterContainer,
   setPrimaryWaterContainer,
-  getPrimaryWaterContainerByUserId, // Export the new function
+  getPrimaryWaterContainerByUserId,
   convertToMl,
 };

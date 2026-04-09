@@ -1,9 +1,7 @@
-const familyAccessRepository = require('../models/familyAccessRepository');
-const { log } = require('../config/logging');
-
+import familyAccessRepository from '../models/familyAccessRepository.js';
+import { log } from '../config/logging.js';
 const onBehalfOfMiddleware = async (req, res, next) => {
   const onBehalfOfUserId = req.headers['x-on-behalf-of-user-id'];
-
   if (onBehalfOfUserId && req.userId) {
     // Ensure the authenticated user is not trying to act on behalf of themselves
     if (req.userId === onBehalfOfUserId) {
@@ -11,7 +9,6 @@ const onBehalfOfMiddleware = async (req, res, next) => {
       // No need to set originalUserId or change req.userId
       return next();
     }
-
     try {
       // Check if the authenticated user (req.userId) has family access to the onBehalfOfUserId
       // For the middleware, we check for any of the core permissions that would allow "viewing as"
@@ -21,7 +18,6 @@ const onBehalfOfMiddleware = async (req, res, next) => {
           onBehalfOfUserId,
           ['diary', 'checkin', 'reports']
         );
-
       if (hasAccess) {
         req.originalUserId = req.userId; // Store the actual authenticated user's ID
         req.userId = onBehalfOfUserId; // Set the userId to the one being acted on behalf of
@@ -52,5 +48,4 @@ const onBehalfOfMiddleware = async (req, res, next) => {
   }
   next();
 };
-
-module.exports = onBehalfOfMiddleware;
+export default onBehalfOfMiddleware;

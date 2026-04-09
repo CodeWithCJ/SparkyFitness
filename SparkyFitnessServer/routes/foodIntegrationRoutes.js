@@ -1,39 +1,34 @@
-const express = require('express');
-const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const preferenceService = require('../services/preferenceService');
-const externalProviderService = require('../services/externalProviderService');
-const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
-const foodService = require('../services/foodService');
-const { log } = require('../config/logging');
-const {
+import externalProviderService from('../services/externalProviderService');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import preferenceService from '../services/preferenceService.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import foodService from '../services/foodService.js';
+import { log } from '../config/logging.js';
+import {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
-} = require('../integrations/openfoodfacts/openFoodFactsService');
-const {
+} from '../integrations/openfoodfacts/openFoodFactsService.js';
+import {
   searchNutritionixFoods,
   getNutritionixNutrients,
   getNutritionixBrandedNutrients,
-} = require('../integrations/nutritionix/nutritionixService');
-const {
+} from '../integrations/nutritionix/nutritionixService.js';
+import {
   searchUsdaFoods,
   getUsdaFoodDetails,
   searchUsdaFoodsByBarcode,
-} = require('../integrations/usda/usdaService');
-
+} from '../integrations/usda/usdaService.js';
+const router = express.Router();
 router.use(express.json());
-
 // Apply diary permission check to all food routes
 router.use(checkPermissionMiddleware('diary'));
-
 // Middleware to get FatSecret API keys from Supabase - This middleware will be moved to a more generic place if needed for other providers
 router.use('/fatsecret', authenticate, async (req, res, next) => {
   const providerId = req.headers['x-provider-id'];
-
   if (!providerId) {
     return res.status(400).json({ error: 'Missing x-provider-id header' });
   }
-
   try {
     // This call will eventually go through the generic dataIntegrationService
     const providerDetails = await foodService.getFoodDataProviderDetails(
@@ -61,15 +56,12 @@ router.use('/fatsecret', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 router.use('/mealie', authenticate, async (req, res, next) => {
   const providerId = req.headers['x-provider-id'];
   log('debug', `foodRoutes: /mealie middleware: x-provider-id: ${providerId}`);
-
   if (!providerId) {
     return res.status(400).json({ error: 'Missing x-provider-id header' });
   }
-
   try {
     const providerDetails = await foodService.getFoodDataProviderDetails(
       req.userId,
@@ -96,7 +88,6 @@ router.use('/mealie', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // Middleware to get Tandoor API keys and base URL
 router.use('/tandoor', authenticate, async (req, res, next) => {
   req.providerId = req.headers['x-provider-id']; // Attach to req object
@@ -104,11 +95,9 @@ router.use('/tandoor', authenticate, async (req, res, next) => {
     'debug',
     `foodRoutes: /tandoor middleware: x-provider-id: ${req.providerId}`
   );
-
   if (!req.providerId) {
     return res.status(400).json({ error: 'Missing x-provider-id header' });
   }
-
   try {
     const providerDetails = await foodService.getFoodDataProviderDetails(
       req.userId,
@@ -125,7 +114,6 @@ router.use('/tandoor', authenticate, async (req, res, next) => {
         )
       );
     }
-
     // Guard against a common misconfiguration where the stored "app_key" is actually
     // a settings URL (e.g. "/settings/api") instead of the API token. Provide a
     // helpful error to the caller so the user can correct the stored provider details.
@@ -143,7 +131,6 @@ router.use('/tandoor', authenticate, async (req, res, next) => {
         )
       );
     }
-
     req.tandoorBaseUrl = providerDetails.base_url;
     req.tandoorApiKey = providerDetails.app_key;
     next();
@@ -154,15 +141,12 @@ router.use('/tandoor', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 router.use('/usda', authenticate, async (req, res, next) => {
   const providerId = req.headers['x-provider-id'];
   log('debug', `foodRoutes: /usda middleware: x-provider-id: ${providerId}`);
-
   if (!providerId) {
     return res.status(400).json({ error: 'Missing x-provider-id header' });
   }
-
   try {
     const providerDetails = await foodService.getFoodDataProviderDetails(
       req.userId,
@@ -184,7 +168,6 @@ router.use('/usda', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-integration/fatsecret/search:
@@ -221,13 +204,10 @@ router.use('/usda', authenticate, async (req, res, next) => {
 router.get('/fatsecret/search', authenticate, async (req, res, next) => {
   const { query } = req.query;
   const { clientId, clientSecret } = req;
-
   if (!query) {
     return res.status(400).json({ error: 'Missing search query' });
   }
-
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-
   try {
     const data = await foodService.searchFatSecretFoods(
       query,
@@ -240,7 +220,6 @@ router.get('/fatsecret/search', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-integration/fatsecret/nutrients:
@@ -270,11 +249,9 @@ router.get('/fatsecret/search', authenticate, async (req, res, next) => {
 router.get('/fatsecret/nutrients', authenticate, async (req, res, next) => {
   const { foodId } = req.query;
   const { clientId, clientSecret } = req;
-
   if (!foodId) {
     return res.status(400).json({ error: 'Missing foodId' });
   }
-
   try {
     const data = await foodService.getFatSecretNutrients(
       foodId,
@@ -286,7 +263,6 @@ router.get('/fatsecret/nutrients', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-integration/fatsecret/barcode/{barcode}:
@@ -319,11 +295,9 @@ router.get(
   async (req, res, next) => {
     const { barcode } = req.params;
     const { clientId, clientSecret } = req;
-
     if (!barcode) {
       return res.status(400).json({ error: 'Missing barcode' });
     }
-
     try {
       const data = await foodService.searchFatSecretByBarcode(
         barcode,
@@ -342,7 +316,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /food-integration/openfoodfacts/search:
@@ -399,7 +372,6 @@ router.get('/openfoodfacts/search', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-integration/openfoodfacts/barcode/{barcode}:
@@ -452,7 +424,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /food-integration/nutritionix/search:
@@ -493,7 +464,6 @@ router.get('/nutritionix/search', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-integration/nutritionix/nutrients:
@@ -534,7 +504,6 @@ router.get('/nutritionix/nutrients', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-integration/nutritionix/item:
@@ -573,7 +542,6 @@ router.get('/nutritionix/item', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // AI-dedicated food search route to handle /api/foods/search
 /**
  * @swagger
@@ -615,11 +583,9 @@ router.get('/mealie/search', authenticate, async (req, res, next) => {
     req.query.page !== undefined
       ? Math.max(1, parseInt(req.query.page, 10) || 1)
       : undefined;
-
   if (!query) {
     return res.status(400).json({ error: 'Missing search query' });
   }
-
   try {
     const data = await foodService.searchMealieFoods(
       query,
@@ -634,7 +600,6 @@ router.get('/mealie/search', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-integration/mealie/details:
@@ -664,11 +629,9 @@ router.get('/mealie/search', authenticate, async (req, res, next) => {
 router.get('/mealie/details', authenticate, async (req, res, next) => {
   const { slug } = req.query;
   const { mealieBaseUrl, mealieApiKey, userId } = req;
-
   if (!slug) {
     return res.status(400).json({ error: 'Missing food slug' });
   }
-
   try {
     const data = await foodService.getMealieFoodDetails(
       slug,
@@ -681,7 +644,6 @@ router.get('/mealie/details', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-integration/tandoor/search:
@@ -711,11 +673,9 @@ router.get('/mealie/details', authenticate, async (req, res, next) => {
 router.get('/tandoor/search', authenticate, async (req, res, next) => {
   const { query } = req.query;
   const { tandoorBaseUrl, tandoorApiKey, userId, providerId } = req;
-
   if (!query) {
     return res.status(400).json({ error: 'Missing search query' });
   }
-
   try {
     const data = await foodService.searchTandoorFoods(
       query,
@@ -729,7 +689,6 @@ router.get('/tandoor/search', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-integration/tandoor/details:
@@ -759,11 +718,9 @@ router.get('/tandoor/search', authenticate, async (req, res, next) => {
 router.get('/tandoor/details', authenticate, async (req, res, next) => {
   const { id } = req.query; // Tandoor uses 'id' for details
   const { tandoorBaseUrl, tandoorApiKey, userId, providerId } = req;
-
   if (!id) {
     return res.status(400).json({ error: 'Missing food id' });
   }
-
   try {
     const data = await foodService.getTandoorFoodDetails(
       id,
@@ -777,7 +734,6 @@ router.get('/tandoor/details', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /food-integration/usda/search:
@@ -821,17 +777,14 @@ router.get('/tandoor/details', authenticate, async (req, res, next) => {
 router.get('/usda/search', authenticate, async (req, res, next) => {
   const { query } = req.query;
   const { usdaApiKey } = req;
-
   if (!query) {
     return res.status(400).json({ error: 'Missing search query' });
   }
-
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const pageSize = Math.min(
     200,
     Math.max(1, parseInt(req.query.pageSize, 10) || 50)
   );
-
   try {
     const data = await searchUsdaFoods(query, usdaApiKey, page, pageSize);
     res.json(data);
@@ -839,15 +792,12 @@ router.get('/usda/search', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 router.get('/usda/barcode/:barcode', authenticate, async (req, res, next) => {
   const { barcode } = req.params;
   const { usdaApiKey } = req;
-
   if (!barcode) {
     return res.status(400).json({ error: 'Missing barcode' });
   }
-
   try {
     const data = await searchUsdaFoodsByBarcode(barcode, usdaApiKey);
     res.json(data);
@@ -884,11 +834,9 @@ router.get('/usda/barcode/:barcode', authenticate, async (req, res, next) => {
 router.get('/usda/details', authenticate, async (req, res, next) => {
   const { fdcId } = req.query;
   const { usdaApiKey } = req;
-
   if (!fdcId) {
     return res.status(400).json({ error: 'Missing FDC ID' });
   }
-
   try {
     const data = await getUsdaFoodDetails(fdcId, usdaApiKey);
     res.json(data);
@@ -896,5 +844,4 @@ router.get('/usda/details', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

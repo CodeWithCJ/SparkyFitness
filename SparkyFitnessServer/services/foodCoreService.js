@@ -1,24 +1,23 @@
-const foodRepository = require('../models/foodRepository');
-const preferenceService = require('./preferenceService');
-const externalProviderService = require('./externalProviderService');
-const { log } = require('../config/logging');
-const {
+import foodRepository from '../models/foodRepository.js';
+import preferenceService from './preferenceService.js';
+import externalProviderService from './externalProviderService.js';
+import { log } from '../config/logging.js';
+import {
   sanitizeCustomNutrients,
   normalizeBarcode,
-} = require('../utils/foodUtils');
-const {
+} from '../utils/foodUtils.js';
+import {
   searchOpenFoodFactsByBarcodeFields,
   mapOpenFoodFactsProduct,
-} = require('../integrations/openfoodfacts/openFoodFactsService');
-const {
+} from '../integrations/openfoodfacts/openFoodFactsService.js';
+import {
   searchUsdaFoodsByBarcode,
   mapUsdaBarcodeProduct,
-} = require('../integrations/usda/usdaService');
-const {
+} from '../integrations/usda/usdaService.js';
+import {
   searchFatSecretByBarcode,
   mapFatSecretFood,
-} = require('../integrations/fatsecret/fatsecretService');
-
+} from '../integrations/fatsecret/fatsecretService.js';
 async function searchFoods(
   authenticatedUserId,
   name,
@@ -33,7 +32,6 @@ async function searchFoods(
     if (targetUserId && targetUserId !== authenticatedUserId) {
       // Authorization check for targetUserId if needed
     }
-
     if (!name) {
       // If no search term, return recent and top foods
       const userPreferences = await preferenceService.getUserPreferences(
@@ -41,7 +39,6 @@ async function searchFoods(
         authenticatedUserId
       );
       const limit = userPreferences?.item_display_limit || limitFromRequest;
-
       const recentFoods = await foodRepository.getRecentFoods(
         authenticatedUserId,
         limit,
@@ -60,7 +57,6 @@ async function searchFoods(
         authenticatedUserId
       );
       const limit = userPreferences?.food_display_limit || limitFromRequest; // Use food_display_limit for search results
-
       const foods = await foodRepository.searchFoods(
         name,
         targetUserId || authenticatedUserId,
@@ -80,7 +76,6 @@ async function searchFoods(
     throw error;
   }
 }
-
 async function createFood(authenticatedUserId, foodData) {
   try {
     if (foodData.barcode) {
@@ -92,7 +87,6 @@ async function createFood(authenticatedUserId, foodData) {
         return existingFood;
       }
     }
-
     const newFood = await foodRepository.createFood({
       ...foodData,
       glycemic_index: foodData.glycemic_index || null,
@@ -108,7 +102,6 @@ async function createFood(authenticatedUserId, foodData) {
     throw error;
   }
 }
-
 async function getFoodById(authenticatedUserId, foodId) {
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(
@@ -128,7 +121,6 @@ async function getFoodById(authenticatedUserId, foodId) {
       }
       throw new Error('Food not found.');
     }
-
     const food = await foodRepository.getFoodById(foodId, authenticatedUserId);
     return food;
   } catch (error) {
@@ -140,7 +132,6 @@ async function getFoodById(authenticatedUserId, foodId) {
     throw error;
   }
 }
-
 async function updateFood(authenticatedUserId, foodId, foodData) {
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(
@@ -155,7 +146,6 @@ async function updateFood(authenticatedUserId, foodId, foodData) {
         'Forbidden: You do not have permission to update this food.'
       );
     }
-
     // Update the food's main details
     const updatedFood = await foodRepository.updateFood(foodId, foodOwnerId, {
       ...foodData,
@@ -164,7 +154,6 @@ async function updateFood(authenticatedUserId, foodId, foodData) {
     if (!updatedFood) {
       throw new Error('Food not found or not authorized to update.');
     }
-
     // The food_entries table now holds the snapshot of nutrient data.
     // Updating the food or its default variant directly will not affect existing food entries.
     // If a food's default variant is updated, existing food entries will retain their original snapshot.
@@ -180,7 +169,6 @@ async function updateFood(authenticatedUserId, foodId, foodData) {
     throw error;
   }
 }
-
 async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
   log(
     'info',
@@ -207,7 +195,6 @@ async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
         'Forbidden: You do not have permission to delete this food.'
       );
     }
-
     const deletionImpact = await foodRepository.getFoodDeletionImpact(
       foodId,
       authenticatedUserId
@@ -216,7 +203,6 @@ async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
       'info',
       `deleteFood: Deletion impact for food ${foodId}: ${JSON.stringify(deletionImpact)}`
     );
-
     const {
       foodEntriesCount,
       mealFoodsCount,
@@ -224,13 +210,11 @@ async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
       mealPlanTemplateAssignmentsCount,
       otherUserReferences,
     } = deletionImpact;
-
     const totalReferences =
       foodEntriesCount +
       mealFoodsCount +
       mealPlansCount +
       mealPlanTemplateAssignmentsCount;
-
     // Scenario 1: No references at all
     if (totalReferences === 0) {
       log(
@@ -246,7 +230,6 @@ async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
       }
       return { message: 'Food deleted permanently.', status: 'deleted' };
     }
-
     // Scenario 2: References only by the current user
     if (otherUserReferences === 0) {
       if (forceDelete) {
@@ -280,7 +263,6 @@ async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
         };
       }
     }
-
     // Scenario 3: References by other users
     if (otherUserReferences > 0) {
       log(
@@ -296,7 +278,6 @@ async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
         status: 'hidden',
       };
     }
-
     // Fallback for any unhandled cases (should not be reached)
     log(
       'warn',
@@ -319,7 +300,6 @@ async function deleteFood(authenticatedUserId, foodId, forceDelete = false) {
     throw error;
   }
 }
-
 async function getFoodsWithPagination(
   authenticatedUserId,
   searchTerm,
@@ -331,7 +311,6 @@ async function getFoodsWithPagination(
   try {
     const limit = parseInt(itemsPerPage, 10) || 10;
     const offset = ((parseInt(currentPage, 10) || 1) - 1) * limit;
-
     const [foods, totalCount] = await Promise.all([
       foodRepository.getFoodsWithPagination(
         searchTerm,
@@ -353,7 +332,6 @@ async function getFoodsWithPagination(
     throw error;
   }
 }
-
 async function createFoodVariant(authenticatedUserId, variantData) {
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(
@@ -386,7 +364,6 @@ async function createFoodVariant(authenticatedUserId, variantData) {
     throw error;
   }
 }
-
 async function getFoodVariantById(authenticatedUserId, variantId) {
   try {
     const variant = await foodRepository.getFoodVariantById(
@@ -413,7 +390,6 @@ async function getFoodVariantById(authenticatedUserId, variantId) {
     throw error;
   }
 }
-
 async function updateFoodVariant(authenticatedUserId, variantId, variantData) {
   try {
     const variant = await foodRepository.getFoodVariantById(
@@ -458,7 +434,6 @@ async function updateFoodVariant(authenticatedUserId, variantId, variantData) {
     throw error;
   }
 }
-
 async function deleteFoodVariant(authenticatedUserId, variantId) {
   try {
     const variant = await foodRepository.getFoodVariantById(
@@ -492,7 +467,6 @@ async function deleteFoodVariant(authenticatedUserId, variantId) {
     throw error;
   }
 }
-
 async function getFoodVariantsByFoodId(authenticatedUserId, foodId) {
   log(
     'info',
@@ -516,10 +490,8 @@ async function getFoodVariantsByFoodId(authenticatedUserId, foodId) {
       );
       return [];
     }
-
     // Authorization check: Ensure the authenticated user owns the food,
     // or if the food is public, allow access.
-
     const variants = await foodRepository.getFoodVariantsByFoodId(
       foodId,
       authenticatedUserId
@@ -538,7 +510,6 @@ async function getFoodVariantsByFoodId(authenticatedUserId, foodId) {
     throw error;
   }
 }
-
 async function bulkCreateFoodVariants(authenticatedUserId, variantsData) {
   try {
     const variantsToCreate = await Promise.all(
@@ -573,7 +544,6 @@ async function bulkCreateFoodVariants(authenticatedUserId, variantsData) {
     throw error;
   }
 }
-
 async function getFoodDeletionImpact(authenticatedUserId, foodId) {
   log(
     'info',
@@ -605,7 +575,6 @@ async function getFoodDeletionImpact(authenticatedUserId, foodId) {
     throw error;
   }
 }
-
 async function importFoodsInBulk(authenticatedUserId, foodDataArray) {
   try {
     if (!foodDataArray) {
@@ -629,7 +598,6 @@ async function importFoodsInBulk(authenticatedUserId, foodDataArray) {
     throw error;
   }
 }
-
 async function getFoodsNeedingReview(authenticatedUserId) {
   try {
     const foodsNeedingReview =
@@ -644,7 +612,6 @@ async function getFoodsNeedingReview(authenticatedUserId) {
     throw error;
   }
 }
-
 async function updateSnapshotForVariant(authenticatedUserId, food, variant) {
   const newSnapshotData = {
     food_name: food.name,
@@ -671,17 +638,14 @@ async function updateSnapshotForVariant(authenticatedUserId, food, variant) {
     glycemic_index: variant.glycemic_index,
     custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
   };
-
   await foodRepository.updateFoodEntriesSnapshot(
     authenticatedUserId,
     food.id,
     variant.id,
     newSnapshotData
   );
-
   await foodRepository.clearUserIgnoredUpdate(authenticatedUserId, variant.id);
 }
-
 async function updateFoodEntriesSnapshot(
   authenticatedUserId,
   foodId,
@@ -692,7 +656,6 @@ async function updateFoodEntriesSnapshot(
     if (!food) {
       throw new Error('Food not found.');
     }
-
     if (variantId) {
       // Single variant path
       const variant = await foodRepository.getFoodVariantById(
@@ -713,7 +676,6 @@ async function updateFoodEntriesSnapshot(
         await updateSnapshotForVariant(authenticatedUserId, food, variant);
       }
     }
-
     return { message: 'Food entries updated successfully.' };
   } catch (error) {
     log(
@@ -724,20 +686,17 @@ async function updateFoodEntriesSnapshot(
     throw error;
   }
 }
-
 async function lookupBarcode(barcode, userId, providerId) {
   try {
     const localFood = await foodRepository.findFoodByBarcode(barcode, userId);
     if (localFood) {
       return { source: 'local', food: localFood };
     }
-
     // Load user preferences once for provider resolution, language, and auto-scale
     const userPreferences = await preferenceService.getUserPreferences(
       userId,
       userId
     );
-
     // Resolve the barcode provider (explicit param or user preference)
     let provider = null;
     try {
@@ -760,12 +719,10 @@ async function lookupBarcode(barcode, userId, providerId) {
         providerError
       );
     }
-
     const language = userPreferences?.language || 'en';
     const autoScale =
       userPreferences?.auto_scale_open_food_facts_imports ?? true;
     let triedOpenFoodFacts = false;
-
     // Try FatSecret if provider is configured
     if (
       provider?.provider_type === 'fatsecret' &&
@@ -790,7 +747,6 @@ async function lookupBarcode(barcode, userId, providerId) {
         log('warn', `FatSecret barcode lookup failed for ${barcode}:`, fsError);
       }
     }
-
     // Try USDA if provider is configured
     if (provider?.provider_type === 'usda' && provider.app_key) {
       try {
@@ -804,7 +760,6 @@ async function lookupBarcode(barcode, userId, providerId) {
         } else if (barcode.length === 13 && barcode.startsWith('0')) {
           alternateBarcodes.push(barcode.slice(1));
         }
-
         let match = null;
         for (const searchBarcode of alternateBarcodes) {
           const usdaData = await searchUsdaFoodsByBarcode(
@@ -828,7 +783,6 @@ async function lookupBarcode(barcode, userId, providerId) {
         log('warn', `USDA barcode lookup failed for ${barcode}:`, usdaError);
       }
     }
-
     // Try OpenFoodFacts if it is the configured primary provider
     if (provider?.provider_type === 'openfoodfacts') {
       triedOpenFoodFacts = true;
@@ -861,7 +815,6 @@ async function lookupBarcode(barcode, userId, providerId) {
         );
       }
     }
-
     // Fall back to OpenFoodFacts if not already tried and user preference allows it
     if (
       !triedOpenFoodFacts &&
@@ -916,15 +869,33 @@ async function lookupBarcode(barcode, userId, providerId) {
         );
       }
     }
-
     return { source: 'not_found', food: null };
   } catch (error) {
     log('error', `Error looking up barcode ${barcode}:`, error);
     throw error;
   }
 }
-
-module.exports = {
+export { searchFoods };
+export { createFood };
+export { getFoodById };
+export { updateFood };
+export { deleteFood };
+export { getFoodsWithPagination };
+export { getFoodVariantById };
+export { createFoodVariant };
+export { updateFoodVariant };
+export { deleteFoodVariant };
+export { getFoodVariantsByFoodId };
+export { bulkCreateFoodVariants };
+export { getFoodDeletionImpact };
+export { importFoodsInBulk };
+export { getFoodsNeedingReview };
+export { updateFoodEntriesSnapshot };
+export { lookupBarcode };
+export { mapOpenFoodFactsProduct };
+export { mapFatSecretFood };
+export { mapUsdaBarcodeProduct };
+export default {
   searchFoods,
   createFood,
   getFoodById,
@@ -942,7 +913,6 @@ module.exports = {
   getFoodsNeedingReview,
   updateFoodEntriesSnapshot,
   lookupBarcode,
-  // Re-exported from integration services for backward compatibility
   mapOpenFoodFactsProduct,
   mapFatSecretFood,
   mapUsdaBarcodeProduct,

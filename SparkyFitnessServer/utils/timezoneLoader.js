@@ -1,6 +1,5 @@
-const { getUserPreferences } = require('../models/preferenceRepository');
-const { isValidTimeZone } = require('@workspace/shared');
-
+import { getUserPreferences } from '../models/preferenceRepository.js';
+import { isValidTimeZone } from '@workspace/shared';
 async function loadUserTimezone(userId) {
   try {
     const prefs = await getUserPreferences(userId);
@@ -11,5 +10,7 @@ async function loadUserTimezone(userId) {
     return 'UTC';
   }
 }
-
-module.exports = { loadUserTimezone };
+export { loadUserTimezone };
+export default {
+  loadUserTimezone,
+};

@@ -6,12 +6,10 @@ const LOG_LEVELS = {
   ERROR: 3,
   SILENT: 4,
 };
-
 // Get desired log level from environment variable, default to INFO
 const currentLogLevel =
   LOG_LEVELS[process.env.SPARKY_FITNESS_LOG_LEVEL?.trim().toUpperCase()] ||
   LOG_LEVELS.DEBUG; // Changed default to DEBUG for development
-
 // Custom logger function
 function log(level, message, ...args) {
   if (LOG_LEVELS[level.toUpperCase()] >= currentLogLevel) {
@@ -34,8 +32,9 @@ function log(level, message, ...args) {
     }
   }
 }
-
-module.exports = {
+export { log };
+export { LOG_LEVELS };
+export default {
   log,
   LOG_LEVELS,
 };

@@ -1,9 +1,8 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const { v4: uuidv4 } = require('uuid');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { todayInZone } = require('@workspace/shared');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import { v4 as uuidv4 } from 'uuid';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { todayInZone } from '@workspace/shared';
 class CustomNutrientService {
   /**
    * Creates a new custom nutrient for a user.
@@ -22,15 +21,16 @@ class CustomNutrientService {
         [id, userId, name, unit]
       );
       log('info', `Custom nutrient created: ${name} for user ${userId}`);
-
       // Automatically add to specific views (Food Database, Goal, Reports)
       try {
-        const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
+        const prefServicePath = './nutrientDisplayPreferenceService.js';
+        const { default: nutrientDisplayPreferenceService } = await import(
+          prefServicePath
+        );
         await nutrientDisplayPreferenceService.addNutrientToSpecificViews(
           userId,
           name
         );
-
         // Also add to goal_presets and future user_goals with 0 value
         // This ensures they show up in the goal editing and progress tracking
         await client.query(
@@ -39,7 +39,6 @@ class CustomNutrientService {
            WHERE user_id = $2`,
           [name, userId]
         );
-
         const tz = await loadUserTimezone(userId);
         const today = todayInZone(tz);
         await client.query(
@@ -55,13 +54,11 @@ class CustomNutrientService {
         );
         // We don't want to fail the whole creation if preference/goal update fails
       }
-
       return result.rows[0];
     } finally {
       client.release();
     }
   }
-
   /**
    * Retrieves all custom nutrients for a given user.
    * @param {string} userId - The ID of the user.
@@ -84,7 +81,6 @@ class CustomNutrientService {
       client.release();
     }
   }
-
   /**
    * Retrieves a specific custom nutrient by its ID for a given user.
    * @param {string} userId - The ID of the user.
@@ -104,7 +100,6 @@ class CustomNutrientService {
       client.release();
     }
   }
-
   /**
    * Updates an existing custom nutrient.
    * @param {string} userId - The ID of the user who owns the custom nutrient.
@@ -133,7 +128,6 @@ class CustomNutrientService {
       client.release();
     }
   }
-
   /**
    * Deletes a custom nutrient and cleans up its data across the system.
    * @param {string} userId - The ID of the user who owns the custom nutrient.
@@ -149,46 +143,41 @@ class CustomNutrientService {
         'SELECT name FROM user_custom_nutrients WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
-
       if (nutrientRes.rows.length === 0) {
         return false;
       }
-
       const nutrientName = nutrientRes.rows[0].name;
       log(
         'info',
         `Deleting custom nutrient "${nutrientName}" for user ${userId}. Delete history: ${deleteAllHistory}`
       );
-
       // Start transaction for atomic cleanup
       await client.query('BEGIN');
-
       // 2. Remove the definition
       await client.query(
         'DELETE FROM user_custom_nutrients WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
-
       // 3. Remove from UI Display Preferences (Always)
-      const nutrientDisplayPreferenceService = require('./nutrientDisplayPreferenceService');
+      const prefServicePath = './nutrientDisplayPreferenceService.js';
+      const { default: nutrientDisplayPreferenceService } = await import(
+        prefServicePath
+      );
       await nutrientDisplayPreferenceService.removeNutrientFromAllViews(
         userId,
         nutrientName
       );
-
       // 4. Remove from Goal Presets (Always)
       await client.query(
         'UPDATE goal_presets SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2',
         [nutrientName, userId]
       );
-
       // 5. Remove from Food Database (Always - standardizes the library)
       await client.query(
         `UPDATE food_variants SET custom_nutrients = custom_nutrients - $1 
          WHERE food_id IN (SELECT id FROM foods WHERE user_id = $2)`,
         [nutrientName, userId]
       );
-
       // 6. Remove from Future Goals (Always - date >= today)
       const tz = await loadUserTimezone(userId);
       const today = todayInZone(tz);
@@ -196,27 +185,23 @@ class CustomNutrientService {
         'UPDATE user_goals SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2 AND (goal_date >= $3 OR goal_date IS NULL)',
         [nutrientName, userId, today]
       );
-
       // 7. Optional: Remove from History (Diary Entries and Past Goals)
       if (deleteAllHistory) {
         log(
           'info',
           `Cleaning up historical data for nutrient "${nutrientName}" for user ${userId}`
         );
-
         // Remove from all Diary Entries
         await client.query(
           'UPDATE food_entries SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2',
           [nutrientName, userId]
         );
-
         // Remove from all Past Goals
         await client.query(
           'UPDATE user_goals SET custom_nutrients = custom_nutrients - $1 WHERE user_id = $2 AND goal_date < $3',
           [nutrientName, userId, today]
         );
       }
-
       await client.query('COMMIT');
       log(
         'info',
@@ -235,5 +220,4 @@ class CustomNutrientService {
     }
   }
 }
-
-module.exports = CustomNutrientService;
+export default CustomNutrientService;

@@ -1,5 +1,4 @@
-const { log } = require('../config/logging');
-
+import { log } from '../config/logging.js';
 const BmrAlgorithm = {
   MIFFLIN_ST_JEOR: 'Mifflin-St Jeor',
   REVISED_HARRIS_BENEDICT: 'Revised Harris-Benedict',
@@ -7,7 +6,6 @@ const BmrAlgorithm = {
   CUNNINGHAM: 'Cunningham',
   OXFORD: 'Oxford',
 };
-
 const ActivityMultiplier = {
   sedentary: 1.2,
   not_much: 1.2, // Map existing value
@@ -16,7 +14,6 @@ const ActivityMultiplier = {
   very_active: 1.725,
   extra_active: 1.9,
 };
-
 /**
  * Calculates Basal Metabolic Rate (BMR) using various algorithms.
  * @param {string} algorithm - The algorithm to use.
@@ -36,7 +33,6 @@ function calculateBmr(
   bodyFatPercentage
 ) {
   log('info', `Calculating BMR with ${algorithm} algorithm.`);
-
   switch (algorithm) {
     case BmrAlgorithm.MIFFLIN_ST_JEOR:
       if (!weight || !height || !age || !gender) {
@@ -49,7 +45,6 @@ function calculateBmr(
       return (
         10 * weight + 6.25 * height - 5 * age + (gender === 'male' ? 5 : -161)
       );
-
     case BmrAlgorithm.REVISED_HARRIS_BENEDICT:
       if (!weight || !height || !age || !gender) {
         log(
@@ -63,7 +58,6 @@ function calculateBmr(
       } else {
         return 9.247 * weight + 3.098 * height - 4.33 * age + 447.593;
       }
-
     case BmrAlgorithm.KATCH_MCARDLE: {
       if (!weight || !bodyFatPercentage) {
         log(
@@ -75,7 +69,6 @@ function calculateBmr(
       const lbmKatch = weight * (1 - bodyFatPercentage / 100);
       return 370 + 21.6 * lbmKatch;
     }
-
     case BmrAlgorithm.CUNNINGHAM: {
       if (!weight || !bodyFatPercentage) {
         log(
@@ -87,7 +80,6 @@ function calculateBmr(
       const lbmCunningham = weight * (1 - bodyFatPercentage / 100);
       return 500 + 22 * lbmCunningham;
     }
-
     case BmrAlgorithm.OXFORD:
       if (!weight || !height || !age || !gender)
         throw new Error('Oxford requires weight, height, age, and gender.');
@@ -99,14 +91,15 @@ function calculateBmr(
       } else {
         return 10.9 * weight + 677; // Simplified for adult females
       }
-
     default:
       log('error', `Unknown BMR algorithm: ${algorithm}`);
       throw new Error('Unknown BMR algorithm');
   }
 }
-
-module.exports = {
+export { BmrAlgorithm };
+export { ActivityMultiplier };
+export { calculateBmr };
+export default {
   BmrAlgorithm,
   ActivityMultiplier,
   calculateBmr,

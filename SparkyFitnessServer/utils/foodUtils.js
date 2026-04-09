@@ -9,7 +9,6 @@ function sanitizeCustomNutrients(customNutrients) {
   }
   return sanitized;
 }
-
 const SERVING_UNIT_ALIASES = {
   g: 'g',
   grm: 'g',
@@ -79,7 +78,6 @@ const SERVING_UNIT_ALIASES = {
   stick: 'stick',
   sticks: 'stick',
 };
-
 function normalizeServingUnit(unit) {
   if (!unit) return 'g';
   // Strip anything in parentheses at the end: "serving (237g)" -> "serving"
@@ -87,25 +85,23 @@ function normalizeServingUnit(unit) {
     .replace(/\s*\([^)]*\)\s*$/i, '')
     .toLowerCase()
     .trim();
-
   // Try exact match first
   if (SERVING_UNIT_ALIASES[clean]) return SERVING_UNIT_ALIASES[clean];
-
   // Try first word match (e.g., "cup pieces" -> "cup")
   const firstWord = clean.split(/\s+/)[0];
   if (SERVING_UNIT_ALIASES[firstWord]) return SERVING_UNIT_ALIASES[firstWord];
-
   return clean;
 }
-
 function normalizeBarcode(barcode) {
   if (typeof barcode === 'string' && barcode.length === 12) {
     return '0' + barcode;
   }
   return barcode;
 }
-
-module.exports = {
+export { sanitizeCustomNutrients };
+export { normalizeServingUnit };
+export { normalizeBarcode };
+export default {
   sanitizeCustomNutrients,
   normalizeServingUnit,
   normalizeBarcode,

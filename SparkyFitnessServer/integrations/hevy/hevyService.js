@@ -1,22 +1,19 @@
-// SparkyFitnessServer/integrations/hevy/hevyService.js
-const axios = require('axios');
-const { getSystemClient } = require('../../db/poolManager');
-const { decrypt, ENCRYPTION_KEY } = require('../../security/encryption');
-const { log } = require('../../config/logging');
-const { loadRawBundle } = require('../../utils/diagnosticLogger');
-const hevyDataProcessor = require('./hevyDataProcessor');
-const { loadUserTimezone } = require('../../utils/timezoneLoader');
-const { todayInZone, addDays, dayToUtcRange } = require('@workspace/shared');
-
+import axios from 'axios';
+import { getSystemClient } from '../../db/poolManager.js';
+import { decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
+import { log } from '../../config/logging.js';
+import { loadRawBundle } from '../../utils/diagnosticLogger.js';
+import hevyDataProcessor from './hevyDataProcessor.js';
+import { loadUserTimezone } from '../../utils/timezoneLoader.js';
+import { todayInZone, addDays, dayToUtcRange } from '@workspace/shared';
+import { logRawResponse } from '../../utils/diagnosticLogger.js';
 const HEVY_API_BASE_URL = 'https://api.hevyapp.com';
-
 // Configuration for data mocking/caching
 const HEVY_DATA_SOURCE = process.env.SPARKY_FITNESS_HEVY_DATA_SOURCE || 'hevy';
 log(
   'info',
   `[hevyService] Hevy data source configured to: ${HEVY_DATA_SOURCE}`
 );
-
 /**
  * Get the Hevy API key for a specific provider instance.
  * @param {string} userId - The Sparky Fitness user ID.
@@ -30,7 +27,6 @@ async function getHevyApiKey(userId, providerId) {
                  FROM external_data_providers
                  WHERE user_id = $1 AND provider_type = 'hevy'`;
     const params = [userId];
-
     if (providerId) {
       query += ' AND id = $2';
       params.push(providerId);
@@ -38,18 +34,14 @@ async function getHevyApiKey(userId, providerId) {
       // If no providerId, prefer active ones
       query += ' ORDER BY is_active DESC, created_at DESC LIMIT 1';
     }
-
     const result = await client.query(query, params);
-
     if (result.rows.length === 0) {
       throw new Error('Hevy provider not found.');
     }
-
     const { encrypted_app_key, app_key_iv, app_key_tag } = result.rows[0];
     if (!encrypted_app_key) {
       throw new Error('Hevy API key is missing for this provider.');
     }
-
     return await decrypt(
       encrypted_app_key,
       app_key_iv,
@@ -60,7 +52,6 @@ async function getHevyApiKey(userId, providerId) {
     client.release();
   }
 }
-
 /**
  * Helper to get a hevy provider ID for a user.
  * @param {string} userId
@@ -83,7 +74,6 @@ async function getHevyProviderId(userId) {
     client.release();
   }
 }
-
 /**
  * Fetch user info from Hevy.
  * @param {string} userId - The Sparky Fitness user ID.
@@ -95,7 +85,6 @@ async function getUserInfo(userId, providerId) {
     const response = await axios.get(`${HEVY_API_BASE_URL}/v1/user/info`, {
       headers: { 'api-key': apiKey },
     });
-    const { logRawResponse } = require('../../utils/diagnosticLogger');
     logRawResponse('hevy', 'raw_user_info', response.data);
     return response.data;
   } catch (error) {
@@ -106,7 +95,6 @@ async function getUserInfo(userId, providerId) {
     throw error;
   }
 }
-
 /**
  * Fetch workouts from Hevy.
  * @param {string} userId - The Sparky Fitness user ID.
@@ -121,7 +109,6 @@ async function getWorkouts(userId, page = 1, pageSize = 10, providerId) {
       headers: { 'api-key': apiKey },
       params: { page, page_size: pageSize },
     });
-    const { logRawResponse } = require('../../utils/diagnosticLogger');
     logRawResponse('hevy', 'raw_workouts_page', response.data);
     return response.data;
   } catch (error) {
@@ -132,7 +119,6 @@ async function getWorkouts(userId, page = 1, pageSize = 10, providerId) {
     throw error;
   }
 }
-
 /**
  * Fetch exercise templates from Hevy.
  * @param {string} userId - The Sparky Fitness user ID.
@@ -155,7 +141,6 @@ async function getExerciseTemplates(
         params: { page, page_size: pageSize },
       }
     );
-    const { logRawResponse } = require('../../utils/diagnosticLogger');
     logRawResponse('hevy', 'raw_exercise_templates_page', response.data);
     return response.data;
   } catch (error) {
@@ -166,7 +151,6 @@ async function getExerciseTemplates(
     throw error;
   }
 }
-
 /**
  * Synchronize Hevy data for a user.
  * @param {string} userId - The Sparky Fitness user ID.
@@ -186,31 +170,25 @@ async function syncHevyData(
   endDate = null
 ) {
   const tz = await loadUserTimezone(userId);
-
   log(
     'info',
     `Starting Hevy ${fullSync ? 'FULL' : 'INCREMENTAL'} synchronization for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}...`
   );
-
   if (HEVY_DATA_SOURCE === 'local') {
     log(
       'info',
       `[hevyService] Replaying Hevy sync from raw diagnostic bundle for user ${userId}`
     );
     const bundle = loadRawBundle('hevy');
-
     if (!bundle || !bundle.responses) {
       throw new Error(
         'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_HEVY_DATA_SOURCE unset (or set to "hevy") ' +
           'and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.'
       );
     }
-
     const responses = bundle.responses;
-
     try {
       log('debug', `[hevyService] Processing raw data for ${userId}...`);
-
       // 1. Process user info
       if (responses['raw_user_info']) {
         await hevyDataProcessor.processHevyUserInfo(
@@ -220,7 +198,6 @@ async function syncHevyData(
           tz
         );
       }
-
       // 2. Process workouts (Look for all pages)
       const allWorkouts = [];
       Object.keys(responses).forEach((key) => {
@@ -231,7 +208,6 @@ async function syncHevyData(
           }
         }
       });
-
       if (allWorkouts.length > 0) {
         await hevyDataProcessor.processHevyWorkouts(
           userId,
@@ -240,7 +216,6 @@ async function syncHevyData(
           tz
         );
       }
-
       // 3. Update last sync time
       const client = await getSystemClient();
       try {
@@ -253,7 +228,6 @@ async function syncHevyData(
       } finally {
         client.release();
       }
-
       log(
         'info',
         `[hevyService] Hevy sync from raw bundle completed for user ${userId}.`
@@ -273,14 +247,12 @@ async function syncHevyData(
       throw error;
     }
   }
-
   try {
     // Helper to safely fetch and log raw data without stopping the whole sync
     async function safeFetch(dataType, fetchFn) {
       try {
         const data = await fetchFn();
         if (data) {
-          const { logRawResponse } = require('../../utils/diagnosticLogger');
           logRawResponse('hevy', dataType, data);
         }
         return data;
@@ -292,26 +264,21 @@ async function syncHevyData(
         return null;
       }
     }
-
     // 1. Fetch EVERYTHING first (The Safe Phase)
     log('debug', '[hevyService] Phase 1: Capturing raw API responses...');
-
     const userInfoData = await safeFetch('raw_user_info', () =>
       getUserInfo(userId, providerId)
     );
-
     const allWorkouts = [];
     let currentPage = 1;
     let hasMore = true;
     const sevenDaysAgoStr = addDays(todayInZone(tz), -7);
     const { start: sevenDaysAgo } = dayToUtcRange(sevenDaysAgoStr, tz);
-
     while (hasMore) {
       const pageKey = `raw_workouts_page_${currentPage}`;
       const workoutPageData = await safeFetch(pageKey, () =>
         getWorkouts(userId, currentPage, 20, providerId)
       );
-
       if (
         !workoutPageData ||
         !workoutPageData.workouts ||
@@ -320,12 +287,9 @@ async function syncHevyData(
         hasMore = false;
         break;
       }
-
       const workouts = workoutPageData.workouts;
       allWorkouts.push(...workouts);
-
       const pageCount = workoutPageData.page_count || 1;
-
       // Decision to continue
       if (fullSync) {
         hasMore = currentPage < pageCount;
@@ -341,10 +305,8 @@ async function syncHevyData(
         }
       }
     }
-
     // 2. Process EVERYTHING second (The Action Phase)
     log('debug', '[hevyService] Phase 2: Processing captured data...');
-
     if (userInfoData) {
       await hevyDataProcessor.processHevyUserInfo(
         userId,
@@ -353,7 +315,6 @@ async function syncHevyData(
         tz
       );
     }
-
     if (allWorkouts.length > 0) {
       await hevyDataProcessor.processHevyWorkouts(
         userId,
@@ -362,9 +323,7 @@ async function syncHevyData(
         tz
       );
     }
-
     const totalProcessed = allWorkouts.length;
-
     // 3. Update last sync time
     const client = await getSystemClient();
     try {
@@ -377,7 +336,6 @@ async function syncHevyData(
     } finally {
       client.release();
     }
-
     log(
       'info',
       `Hevy synchronization completed for user ${userId}. Total processed: ${totalProcessed}`
@@ -395,7 +353,6 @@ async function syncHevyData(
     throw error;
   }
 }
-
 /**
  * Get status of Hevy integration for a user.
  * @param {string} userId - The Sparky Fitness user ID.
@@ -410,11 +367,9 @@ async function getStatus(userId) {
              WHERE user_id = $1 AND provider_type = 'hevy'`,
       [userId]
     );
-
     if (result.rows.length === 0) {
       return { connected: false, lastSyncAt: null };
     }
-
     const { is_active, last_sync_at } = result.rows[0];
     return {
       connected: is_active,
@@ -430,8 +385,12 @@ async function getStatus(userId) {
     client.release();
   }
 }
-
-module.exports = {
+export { getUserInfo };
+export { getWorkouts };
+export { getExerciseTemplates };
+export { syncHevyData };
+export { getStatus };
+export default {
   getUserInfo,
   getWorkouts,
   getExerciseTemplates,

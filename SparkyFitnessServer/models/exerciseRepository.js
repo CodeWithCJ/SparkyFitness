@@ -1,8 +1,8 @@
-const { getClient } = require('../db/poolManager');
-const exerciseDb = require('./exercise');
-const exerciseEntryDb = require('./exerciseEntry');
-const exerciseTemplateDb = require('./exerciseTemplate');
-
+import { getClient } from '../db/poolManager.js';
+import exerciseDb from './exercise.js';
+import exerciseEntryDb from './exerciseEntry.js';
+const templateDbPath = './exerciseTemplate.js';
+const { default: exerciseTemplateDb } = await import(templateDbPath);
 async function getExercisesNeedingReview(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -32,7 +32,6 @@ async function getExercisesNeedingReview(userId) {
     client.release();
   }
 }
-
 async function updateExerciseEntriesSnapshot(
   userId,
   exerciseId,
@@ -59,7 +58,6 @@ async function updateExerciseEntriesSnapshot(
     client.release();
   }
 }
-
 async function clearUserIgnoredUpdate(userId, variantId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -72,14 +70,19 @@ async function clearUserIgnoredUpdate(userId, variantId) {
     client.release();
   }
 }
-
-module.exports = {
+export const deleteExerciseAndDependencies =
+  exerciseDb.deleteExerciseAndDependencies;
+export const getExerciseDeletionImpact = exerciseDb.getExerciseDeletionImpact;
+export { getExercisesNeedingReview };
+export { updateExerciseEntriesSnapshot };
+export { clearUserIgnoredUpdate };
+export default {
   ...exerciseDb,
   ...exerciseEntryDb,
   ...exerciseTemplateDb,
   getExercisesNeedingReview,
   updateExerciseEntriesSnapshot,
   clearUserIgnoredUpdate,
-  deleteExerciseAndDependencies: exerciseDb.deleteExerciseAndDependencies,
-  getExerciseDeletionImpact: exerciseDb.getExerciseDeletionImpact,
+  deleteExerciseAndDependencies,
+  getExerciseDeletionImpact,
 };

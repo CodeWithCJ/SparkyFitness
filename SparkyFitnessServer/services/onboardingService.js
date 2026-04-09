@@ -1,6 +1,5 @@
-const onboardingRepository = require('../models/onboardingRepository');
-const { log } = require('../config/logging');
-
+import onboardingRepository from '../models/onboardingRepository.js';
+import { log } from '../config/logging.js';
 /**
  * Processes and saves the user's onboarding data.
  * @param {string} userId - The UUID of the user.
@@ -16,7 +15,6 @@ async function processOnboardingData(userId, data) {
     throw new Error('Failed to save onboarding data.', { cause: error });
   }
 }
-
 /**
  * Checks if a user has completed the onboarding process.
  * @param {string} userId - The UUID of the user.
@@ -25,18 +23,15 @@ async function processOnboardingData(userId, data) {
 async function checkOnboardingStatus(userId) {
   try {
     const statusRecord = await onboardingRepository.getOnboardingStatus(userId);
-
     if (!statusRecord) {
       return false;
     }
-
     return statusRecord.onboarding_complete;
   } catch (error) {
     log('error', `Error checking onboarding status for user ${userId}:`, error);
     return true;
   }
 }
-
 /**
  * Resets the onboarding completion status for a given user.
  * @param {string} userId - The UUID of the user.
@@ -55,8 +50,10 @@ async function resetOnboardingStatus(userId) {
     throw new Error('Failed to reset onboarding status.', { cause: error });
   }
 }
-
-module.exports = {
+export { processOnboardingData };
+export { checkOnboardingStatus };
+export { resetOnboardingStatus };
+export default {
   processOnboardingData,
   checkOnboardingStatus,
   resetOnboardingStatus,

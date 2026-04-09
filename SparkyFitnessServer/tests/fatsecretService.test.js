@@ -1,7 +1,5 @@
-const {
-  mapFatSecretSearchItem,
-} = require('../integrations/fatsecret/fatsecretService');
-
+import { mapFatSecretSearchItem } from '../integrations/fatsecret/fatsecretService.js';
+import { mapFatSecretFood } from '../integrations/fatsecret/fatsecretService.js';
 describe('FatSecret Service Mapping', () => {
   describe('mapFatSecretSearchItem', () => {
     it('should map metric description correctly', () => {
@@ -17,7 +15,6 @@ describe('FatSecret Service Mapping', () => {
       expect(result.default_variant.serving_unit).toBe('g');
       expect(result.default_variant.calories).toBe(165);
     });
-
     it('should map metric in parentheses correctly', () => {
       const item = {
         food_name: 'Test Food',
@@ -28,7 +25,6 @@ describe('FatSecret Service Mapping', () => {
       expect(result.default_variant.serving_size).toBe(28);
       expect(result.default_variant.serving_unit).toBe('g');
     });
-
     it('should map fractional household units', () => {
       const item = {
         food_name: 'Test Food',
@@ -39,7 +35,6 @@ describe('FatSecret Service Mapping', () => {
       expect(result.default_variant.serving_size).toBe(0.25);
       expect(result.default_variant.serving_unit).toBe('cup');
     });
-
     it('should map whole household units correctly', () => {
       const item = {
         food_name: 'Test Food',
@@ -50,7 +45,6 @@ describe('FatSecret Service Mapping', () => {
       expect(result.default_variant.serving_size).toBe(1);
       expect(result.default_variant.serving_unit).toBe('slice');
     });
-
     it('should map mixed fractions like 1 1/2 cups', () => {
       const item = {
         food_name: 'Test Food',
@@ -62,12 +56,7 @@ describe('FatSecret Service Mapping', () => {
       expect(result.default_variant.serving_unit).toBe('cup');
     });
   });
-
   describe('mapFatSecretFood', () => {
-    const {
-      mapFatSecretFood,
-    } = require('../integrations/fatsecret/fatsecretService');
-
     it('should map detailed food with multiple variants', () => {
       const data = {
         food: {
@@ -107,7 +96,6 @@ describe('FatSecret Service Mapping', () => {
       expect(result.name).toBe('Peanut Butter');
       expect(result.default_variant.serving_size).toBe(1);
       expect(result.default_variant.serving_unit).toBe('tbsp');
-
       expect(result.variants.length).toBe(4);
       expect(
         result.variants.some(
@@ -125,7 +113,6 @@ describe('FatSecret Service Mapping', () => {
         )
       ).toBe(true);
     });
-
     it('should parse Brand food serving_description for fractions', () => {
       const data = {
         food: {
@@ -149,7 +136,6 @@ describe('FatSecret Service Mapping', () => {
       expect(result.default_variant.serving_size).toBe(0.25);
       expect(result.default_variant.serving_unit).toBe('cup');
     });
-
     it('should split a single serving into household and metric variants', () => {
       const data = {
         food: {
@@ -170,10 +156,8 @@ describe('FatSecret Service Mapping', () => {
       };
       const result = mapFatSecretFood(data);
       expect(result.variants.length).toBe(2);
-
       const hh = result.variants.find((v) => v.serving_unit === 'cup');
       const m = result.variants.find((v) => v.serving_unit === 'g');
-
       expect(hh.serving_size).toBe(1);
       expect(hh.serving_unit).toBe('cup');
       expect(m.serving_size).toBe(237);

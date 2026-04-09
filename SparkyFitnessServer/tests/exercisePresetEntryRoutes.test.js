@@ -1,5 +1,8 @@
-const { z } = require('zod');
-
+import zod from 'zod';
+import exerciseService from '../services/exerciseService.js';
+import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
+import exercisePresetEntryRoutes from '../routes/exercisePresetEntryRoutes.js';
+const { z } = zod;
 const exerciseEntrySetRequestSchema = z
   .object({
     set_number: z.number().int().positive(),
@@ -12,7 +15,6 @@ const exerciseEntrySetRequestSchema = z
     rpe: z.number().nullable().optional(),
   })
   .strict();
-
 const presetSessionExerciseRequestSchema = z
   .object({
     exercise_id: z.string().uuid(),
@@ -22,7 +24,6 @@ const presetSessionExerciseRequestSchema = z
     sets: z.array(exerciseEntrySetRequestSchema).default([]),
   })
   .strict();
-
 const createPresetSessionRequestSchema = z
   .object({
     workout_preset_id: z.number().int().nullable().optional(),
@@ -38,7 +39,6 @@ const createPresetSessionRequestSchema = z
     const hasPresetId =
       data.workout_preset_id !== undefined && data.workout_preset_id !== null;
     const hasExercises = data.exercises !== undefined;
-
     if (hasPresetId === hasExercises) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -46,7 +46,6 @@ const createPresetSessionRequestSchema = z
           'Provide exactly one workout source: workout_preset_id or exercises.',
       });
     }
-
     if (!hasPresetId && !data.name) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -55,7 +54,6 @@ const createPresetSessionRequestSchema = z
       });
     }
   });
-
 const updatePresetSessionRequestSchema = z
   .object({
     name: z.string().min(1).optional(),
@@ -72,7 +70,6 @@ const updatePresetSessionRequestSchema = z
       data.notes !== undefined ||
       data.entry_date !== undefined ||
       data.exercises !== undefined;
-
     if (!hasAnyField) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -80,7 +77,6 @@ const updatePresetSessionRequestSchema = z
       });
     }
   });
-
 const presetSessionResponseSchema = z
   .object({
     type: z.literal('preset'),
@@ -151,33 +147,23 @@ const presetSessionResponseSchema = z
     ),
   })
   .strict();
-
 const mockShared = {
   createPresetSessionRequestSchema,
   updatePresetSessionRequestSchema,
   presetSessionResponseSchema,
 };
-
 jest.mock('@workspace/shared', () => mockShared);
-
 jest.mock('../services/exerciseService', () => ({
   createGroupedWorkoutSession: jest.fn(),
   getGroupedWorkoutSessionById: jest.fn(),
   updateGroupedWorkoutSession: jest.fn(),
 }));
-
 jest.mock('../models/exercisePresetEntryRepository', () => ({
   deleteExercisePresetEntry: jest.fn(),
 }));
-
 jest.mock('../config/logging', () => ({
   log: jest.fn(),
 }));
-
-const exerciseService = require('../services/exerciseService');
-const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepository');
-const exercisePresetEntryRoutes = require('../routes/exercisePresetEntryRoutes');
-
 function getRouteHandlers(method, path) {
   const layer = exercisePresetEntryRoutes.stack.find(
     (entry) =>
@@ -185,14 +171,11 @@ function getRouteHandlers(method, path) {
       entry.route.path === path &&
       entry.route.methods[method.toLowerCase()]
   );
-
   if (!layer) {
     throw new Error(`Route ${method.toUpperCase()} ${path} not found`);
   }
-
   return layer.route.stack.map((entry) => entry.handle);
 }
-
 async function invokeRoute(method, path, { body = {}, params = {} } = {}) {
   const handlers = getRouteHandlers(method, path);
   const req = {
@@ -201,11 +184,9 @@ async function invokeRoute(method, path, { body = {}, params = {} } = {}) {
     userId: '99999999-9999-4999-8999-999999999999',
     originalUserId: '99999999-9999-4999-8999-999999999999',
   };
-
   let statusCode = 200;
   let responseBody;
   let finished = false;
-
   const res = {
     status(code) {
       statusCode = code;
@@ -222,10 +203,8 @@ async function invokeRoute(method, path, { body = {}, params = {} } = {}) {
       return this;
     },
   };
-
   for (const handler of handlers) {
     let nextCalled = false;
-
     await new Promise((resolve, reject) => {
       const next = (error) => {
         nextCalled = true;
@@ -235,7 +214,6 @@ async function invokeRoute(method, path, { body = {}, params = {} } = {}) {
         }
         resolve();
       };
-
       try {
         const result = handler(req, res, next);
         Promise.resolve(result)
@@ -249,18 +227,15 @@ async function invokeRoute(method, path, { body = {}, params = {} } = {}) {
         reject(error);
       }
     });
-
     if (finished) {
       break;
     }
   }
-
   return {
     statusCode,
     body: responseBody,
   };
 }
-
 const groupedSessionFixture = presetSessionResponseSchema.parse({
   type: 'preset',
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -305,17 +280,14 @@ const groupedSessionFixture = presetSessionResponseSchema.parse({
   ],
   activity_details: [],
 });
-
 describe('exercisePresetEntryRoutes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
-
   it('creates a freeform grouped workout session', async () => {
     exerciseService.createGroupedWorkoutSession.mockResolvedValue(
       groupedSessionFixture
     );
-
     const response = await invokeRoute('post', '/', {
       body: {
         name: 'Morning Workout',
@@ -342,7 +314,6 @@ describe('exercisePresetEntryRoutes', () => {
         ],
       },
     });
-
     expect(response.statusCode).toBe(201);
     expect(response.body).toEqual(groupedSessionFixture);
     expect(exerciseService.createGroupedWorkoutSession).toHaveBeenCalledWith(
@@ -374,7 +345,6 @@ describe('exercisePresetEntryRoutes', () => {
       }
     );
   });
-
   it('rejects ambiguous create payloads', async () => {
     const response = await invokeRoute('post', '/', {
       body: {
@@ -388,21 +358,17 @@ describe('exercisePresetEntryRoutes', () => {
         ],
       },
     });
-
     expect(response.statusCode).toBe(400);
     expect(response.body.error).toBe('Invalid grouped workout payload.');
     expect(exerciseService.createGroupedWorkoutSession).not.toHaveBeenCalled();
   });
-
   it('returns a grouped workout session by id', async () => {
     exerciseService.getGroupedWorkoutSessionById.mockResolvedValue(
       groupedSessionFixture
     );
-
     const response = await invokeRoute('get', '/:id', {
       params: { id: groupedSessionFixture.id },
     });
-
     expect(response.statusCode).toBe(200);
     expect(response.body).toEqual(groupedSessionFixture);
     expect(exerciseService.getGroupedWorkoutSessionById).toHaveBeenCalledWith(
@@ -410,7 +376,6 @@ describe('exercisePresetEntryRoutes', () => {
       groupedSessionFixture.id
     );
   });
-
   it('surfaces 409 conflicts from grouped workout updates', async () => {
     const conflictError = new Error(
       'Nested exercise editing is only supported for manual or sparky workouts.'
@@ -419,7 +384,6 @@ describe('exercisePresetEntryRoutes', () => {
     exerciseService.updateGroupedWorkoutSession.mockRejectedValue(
       conflictError
     );
-
     const response = await invokeRoute('put', '/:id', {
       params: { id: groupedSessionFixture.id },
       body: {
@@ -433,23 +397,19 @@ describe('exercisePresetEntryRoutes', () => {
         ],
       },
     });
-
     expect(response.statusCode).toBe(409);
     expect(response.body).toEqual({
       message:
         'Nested exercise editing is only supported for manual or sparky workouts.',
     });
   });
-
   it('deletes grouped workout sessions', async () => {
     exercisePresetEntryRepository.deleteExercisePresetEntry.mockResolvedValue(
       true
     );
-
     const response = await invokeRoute('delete', '/:id', {
       params: { id: groupedSessionFixture.id },
     });
-
     expect(response.statusCode).toBe(204);
     expect(
       exercisePresetEntryRepository.deleteExercisePresetEntry

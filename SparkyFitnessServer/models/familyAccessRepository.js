@@ -1,5 +1,4 @@
-const { getClient } = require('../db/poolManager');
-
+import { getClient } from '../db/poolManager.js';
 async function checkFamilyAccessPermission(
   familyUserId,
   ownerUserId,
@@ -11,12 +10,10 @@ async function checkFamilyAccessPermission(
     const permissionsArray = Array.isArray(requiredPermissions)
       ? requiredPermissions
       : [requiredPermissions];
-
     // Construct the WHERE clause for permissions dynamically
     const permissionChecks = permissionsArray
       .map((_, index) => `(access_permissions->>$${3 + index})::boolean = TRUE`)
       .join(' OR ');
-
     const result = await client.query(
       `SELECT 1
        FROM family_access
@@ -32,7 +29,6 @@ async function checkFamilyAccessPermission(
     client.release();
   }
 }
-
 async function getFamilyAccessEntriesByOwner(ownerUserId) {
   const client = await getClient(ownerUserId); // User-specific operation
   try {
@@ -53,7 +49,6 @@ async function getFamilyAccessEntriesByOwner(ownerUserId) {
     client.release();
   }
 }
-
 async function getFamilyAccessEntriesByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -75,7 +70,6 @@ async function getFamilyAccessEntriesByUserId(userId) {
     client.release();
   }
 }
-
 async function createFamilyAccessEntry(
   ownerUserId,
   familyUserId,
@@ -103,7 +97,6 @@ async function createFamilyAccessEntry(
     client.release();
   }
 }
-
 async function updateFamilyAccessEntry(
   id,
   ownerUserId,
@@ -130,7 +123,6 @@ async function updateFamilyAccessEntry(
     client.release();
   }
 }
-
 async function deleteFamilyAccessEntry(id, ownerUserId) {
   const client = await getClient(ownerUserId); // User-specific operation
   try {
@@ -143,8 +135,13 @@ async function deleteFamilyAccessEntry(id, ownerUserId) {
     client.release();
   }
 }
-
-module.exports = {
+export { checkFamilyAccessPermission };
+export { getFamilyAccessEntriesByOwner };
+export { getFamilyAccessEntriesByUserId };
+export { createFamilyAccessEntry };
+export { updateFamilyAccessEntry };
+export { deleteFamilyAccessEntry };
+export default {
   checkFamilyAccessPermission,
   getFamilyAccessEntriesByOwner,
   getFamilyAccessEntriesByUserId,

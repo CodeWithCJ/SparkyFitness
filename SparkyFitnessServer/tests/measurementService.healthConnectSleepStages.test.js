@@ -1,3 +1,8 @@
+import measurementService from '../services/measurementService.js';
+import sleepRepository from '../models/sleepRepository.js';
+import userRepository from '../models/userRepository.js';
+import exerciseEntryDb from '../models/exerciseEntry.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 jest.mock('../models/measurementRepository');
 jest.mock('../models/userRepository');
 jest.mock('../models/exerciseRepository');
@@ -11,17 +16,9 @@ jest.mock('../utils/timezoneLoader', () => ({
 jest.mock('../config/logging', () => ({
   log: jest.fn(),
 }));
-
-const measurementService = require('../services/measurementService');
-const sleepRepository = require('../models/sleepRepository');
-const userRepository = require('../models/userRepository');
-const exerciseEntryDb = require('../models/exerciseEntry');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-
 describe('processHealthData Health Connect sleep stages', () => {
   const userId = 'user-hc-sleep';
   const actingUserId = 'user-hc-sleep';
-
   beforeEach(() => {
     jest.clearAllMocks();
     loadUserTimezone.mockResolvedValue('UTC');
@@ -39,7 +36,6 @@ describe('processHealthData Health Connect sleep stages', () => {
       .fn()
       .mockResolvedValue(undefined);
   });
-
   it('sanitizes staged Health Connect sleep events before generic sleep processing', async () => {
     const healthData = [
       {
@@ -102,13 +98,11 @@ describe('processHealthData Health Connect sleep stages', () => {
         ],
       },
     ];
-
     await measurementService.processHealthData(
       healthData,
       userId,
       actingUserId
     );
-
     expect(
       sleepRepository.deleteSleepEntriesByEntrySourceAndDate
     ).toHaveBeenCalledWith(
@@ -173,7 +167,6 @@ describe('processHealthData Health Connect sleep stages', () => {
       },
     ]);
   });
-
   it('accepts the legacy HealthConnect source spelling for staged sleep payloads', async () => {
     const healthData = [
       {
@@ -204,13 +197,11 @@ describe('processHealthData Health Connect sleep stages', () => {
         ],
       },
     ];
-
     await measurementService.processHealthData(
       healthData,
       userId,
       actingUserId
     );
-
     expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledWith(
       userId,
       actingUserId,

@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import waterContainerService from '../services/waterContainerService.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const waterContainerService = require('../services/waterContainerService');
-
 /**
  * @swagger
  * /water-containers:
@@ -32,7 +32,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /water-containers:
@@ -55,17 +54,14 @@ router.get('/', authenticate, async (req, res, next) => {
   try {
     const { userId } = req.query;
     const targetUserId = userId || req.userId;
-
     if (targetUserId !== req.userId) {
-      const hasPermission =
-        await require('../utils/permissionUtils').canAccessUserData(
-          targetUserId,
-          'diary',
-          req.userId
-        ); // Assuming diary permission allows viewing containers
+      const hasPermission = await { canAccessUserData }.canAccessUserData(
+        targetUserId,
+        'diary',
+        req.userId
+      ); // Assuming diary permission allows viewing containers
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
-
     const containers =
       await waterContainerService.getWaterContainersByUserId(targetUserId);
     res.status(200).json(containers);
@@ -73,7 +69,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /water-containers/{id}:
@@ -115,7 +110,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /water-containers/{id}:
@@ -149,7 +143,6 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /water-containers/{id}/set-primary:
@@ -185,7 +178,6 @@ router.put('/:id/set-primary', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /water-containers/primary:
@@ -202,17 +194,14 @@ router.get('/primary', authenticate, async (req, res, next) => {
   try {
     const { userId } = req.query;
     const targetUserId = userId || req.userId;
-
     if (targetUserId !== req.userId) {
-      const hasPermission =
-        await require('../utils/permissionUtils').canAccessUserData(
-          targetUserId,
-          'diary',
-          req.userId
-        );
+      const hasPermission = await { canAccessUserData }.canAccessUserData(
+        targetUserId,
+        'diary',
+        req.userId
+      );
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
-
     const primaryContainer =
       await waterContainerService.getPrimaryWaterContainerByUserId(
         targetUserId
@@ -235,5 +224,4 @@ router.get('/primary', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

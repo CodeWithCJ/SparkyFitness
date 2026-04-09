@@ -1,8 +1,7 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const format = require('pg-format');
-const { sanitizeCustomNutrients } = require('../utils/foodUtils');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import format from 'pg-format';
+import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 /**
  * @swagger
  * components:
@@ -112,17 +111,12 @@ const { sanitizeCustomNutrients } = require('../utils/foodUtils');
 async function createFoodEntry(entryData, createdByUserId) {
   log(
     'info',
-    `createFoodEntry in foodEntry.js: entryData: ${JSON.stringify(
-      entryData
-    )}, createdByUserId: ${createdByUserId}`
+    `createFoodEntry in foodEntry.js: entryData: ${JSON.stringify(entryData)}, createdByUserId: ${createdByUserId}`
   );
   const client = await getClient(createdByUserId); // User-specific operation
-
   try {
     await client.query('BEGIN');
-
     let mealTypeId = entryData.meal_type_id;
-
     if (!mealTypeId && entryData.meal_type) {
       const typeRes = await client.query(
         'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
@@ -134,7 +128,6 @@ async function createFoodEntry(entryData, createdByUserId) {
         throw new Error(`Invalid meal type: ${entryData.meal_type}`);
       }
     }
-
     let snapshot;
     // For individual food entries (food_id present), fetch snapshot from food/variant
     // For entries that are components of a logged meal (food_entry_meal_id present),
@@ -153,12 +146,10 @@ async function createFoodEntry(entryData, createdByUserId) {
         foodSnapshotQuery.rows[0].custom_nutrients =
           foodSnapshotQuery.rows[0].custom_nutrients || {};
       }
-
       if (foodSnapshotQuery.rows.length === 0) {
         throw new Error('Food or variant not found for snapshotting.');
       }
       snapshot = foodSnapshotQuery.rows[0];
-
       // Apply inline nutrition overrides if provided by the client.
       // The DB snapshot uses 'name'/'brand' keys while entryData uses 'food_name'/'brand_name'.
       const nutritionOverrideFields = [
@@ -226,7 +217,6 @@ async function createFoodEntry(entryData, createdByUserId) {
         custom_nutrients: entryData.custom_nutrients || {},
       };
     }
-
     // Insert the food entry with the snapshot data
     const result = await client.query(
       `INSERT INTO food_entries (
@@ -277,7 +267,6 @@ async function createFoodEntry(entryData, createdByUserId) {
         createdByUserId, // updated_by_user_id
       ]
     );
-
     await client.query('COMMIT');
     return result.rows[0];
   } catch (error) {
@@ -288,7 +277,6 @@ async function createFoodEntry(entryData, createdByUserId) {
     client.release();
   }
 }
-
 async function getFoodEntryById(entryId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -337,7 +325,6 @@ async function getFoodEntryById(entryId, userId) {
     client.release();
   }
 }
-
 async function getFoodEntryOwnerId(entryId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -350,7 +337,6 @@ async function getFoodEntryOwnerId(entryId, userId) {
     client.release();
   }
 }
-
 async function deleteFoodEntry(entryId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -371,7 +357,6 @@ async function updateFoodEntry(
   snapshotData
 ) {
   const client = await getClient(actingUserId); // User-specific operation
-
   let mealTypeId = entryData.meal_type_id;
   if (!mealTypeId && entryData.meal_type) {
     // If we are updating the meal type and only have the name
@@ -381,7 +366,6 @@ async function updateFoodEntry(
     );
     if (typeRes.rows.length > 0) mealTypeId = typeRes.rows[0].id;
   }
-
   try {
     const result = await client.query(
       `UPDATE food_entries SET
@@ -456,7 +440,6 @@ async function updateFoodEntry(
     client.release();
   }
 }
-
 async function getFoodEntriesByDate(userId, selectedDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -508,7 +491,6 @@ async function getFoodEntriesByDate(userId, selectedDate) {
     client.release();
   }
 }
-
 async function getFoodEntriesByDateAndMealType(userId, date, mealType) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -557,16 +539,13 @@ async function getFoodEntriesByDateAndMealType(userId, date, mealType) {
     );
     log(
       'debug',
-      `getFoodEntriesByDateAndMealType: Fetched entries for user ${userId}, date ${date}, mealType ${mealType}: ${JSON.stringify(
-        result.rows
-      )}`
+      `getFoodEntriesByDateAndMealType: Fetched entries for user ${userId}, date ${date}, mealType ${mealType}: ${JSON.stringify(result.rows)}`
     );
     return result.rows;
   } finally {
     client.release();
   }
 }
-
 async function getFoodEntriesByDateRange(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -617,7 +596,6 @@ async function getFoodEntriesByDateRange(userId, startDate, endDate) {
     client.release();
   }
 }
-
 async function getFoodEntryByDetails(
   userId,
   foodId,
@@ -648,13 +626,10 @@ async function getFoodEntryByDetails(
     client.release();
   }
 }
-
 async function bulkCreateFoodEntries(entriesData, authenticatedUserId) {
   log(
     'info',
-    `bulkCreateFoodEntries in foodEntry.js: entriesData: ${JSON.stringify(
-      entriesData
-    )}, authenticatedUserId: ${authenticatedUserId}`
+    `bulkCreateFoodEntries in foodEntry.js: entriesData: ${JSON.stringify(entriesData)}, authenticatedUserId: ${authenticatedUserId}`
   );
   // For bulk create, assuming all entries belong to the same user,
   // and the first entry's user_id can be used for RLS context.
@@ -698,7 +673,6 @@ async function bulkCreateFoodEntries(entriesData, authenticatedUserId) {
         custom_nutrients
       )
       VALUES %L RETURNING *`;
-
     const values = entriesData.map((entry) => [
       entry.user_id,
       entry.food_id,
@@ -736,7 +710,6 @@ async function bulkCreateFoodEntries(entriesData, authenticatedUserId) {
       entry.glycemic_index,
       entry.custom_nutrients || {},
     ]);
-
     const formattedQuery = format(query, values);
     const result = await client.query(formattedQuery);
     return result.rows;
@@ -744,7 +717,6 @@ async function bulkCreateFoodEntries(entriesData, authenticatedUserId) {
     client.release();
   }
 }
-
 async function getFoodEntryComponentsByFoodEntryMealId(
   foodEntryMealId,
   userId
@@ -798,7 +770,6 @@ async function getFoodEntryComponentsByFoodEntryMealId(
     client.release();
   }
 }
-
 async function deleteFoodEntryComponentsByFoodEntryMealId(
   foodEntryMealId,
   userId
@@ -818,8 +789,19 @@ async function deleteFoodEntryComponentsByFoodEntryMealId(
     client.release();
   }
 }
-
-module.exports = {
+export { createFoodEntry };
+export { getFoodEntryOwnerId };
+export { updateFoodEntry };
+export { deleteFoodEntry };
+export { getFoodEntriesByDate };
+export { getFoodEntriesByDateAndMealType };
+export { getFoodEntriesByDateRange };
+export { getFoodEntryByDetails };
+export { bulkCreateFoodEntries };
+export { getFoodEntryById };
+export { getFoodEntryComponentsByFoodEntryMealId };
+export { deleteFoodEntryComponentsByFoodEntryMealId };
+export default {
   createFoodEntry,
   getFoodEntryOwnerId,
   updateFoodEntry,

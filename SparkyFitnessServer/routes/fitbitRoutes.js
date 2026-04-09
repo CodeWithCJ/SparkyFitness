@@ -1,12 +1,9 @@
-// SparkyFitnessServer/routes/fitbitRoutes.js
-
-const express = require('express');
+import express from 'express';
+import fitbitIntegrationService from '../integrations/fitbit/fitbitService.js';
+import fitbitService from '../services/fitbitService.js';
+import { log } from '../config/logging.js';
+import authMiddleware from '../middleware/authMiddleware.js';
 const router = express.Router();
-const fitbitIntegrationService = require('../integrations/fitbit/fitbitService');
-const fitbitService = require('../services/fitbitService');
-const { log } = require('../config/logging');
-const authMiddleware = require('../middleware/authMiddleware');
-
 /**
  * @swagger
  * /integrations/fitbit/authorize:
@@ -38,7 +35,6 @@ router.get('/authorize', authMiddleware.authenticate, async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /integrations/fitbit/callback:
@@ -53,19 +49,16 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
     const baseUrl =
       process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080';
     const redirectUri = `${baseUrl}/fitbit/callback`;
-
     if (!code) {
       return res
         .status(400)
         .json({ message: 'Authorization code not received.' });
     }
-
     const result = await fitbitIntegrationService.exchangeCodeForTokens(
       userId,
       code,
       redirectUri
     );
-
     if (result.success) {
       res.status(200).json({ message: 'Fitbit account linked successfully.' });
     } else {
@@ -79,7 +72,6 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /integrations/fitbit/sync:
@@ -107,7 +99,6 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /integrations/fitbit/disconnect:
@@ -130,7 +121,6 @@ router.post('/disconnect', authMiddleware.authenticate, async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /integrations/fitbit/status:
@@ -150,5 +140,4 @@ router.get('/status', authMiddleware.authenticate, async (req, res) => {
       .json({ message: 'Error getting Fitbit status', error: error.message });
   }
 });
-
-module.exports = router;
+export default router;

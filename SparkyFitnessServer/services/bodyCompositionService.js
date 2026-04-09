@@ -1,4 +1,4 @@
-const { log } = require('../config/logging');
+import { log } from '../config/logging.js';
 
 /**
  * Calculates body fat percentage using the U.S. Navy method.

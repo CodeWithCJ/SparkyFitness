@@ -5,8 +5,8 @@ import {
   UpdateGoalPresetBodySchema,
 } from '../../schemas/goalPresetSchemas';
 
-import checkPermissionMiddleware = require('../../middleware/checkPermissionMiddleware');
-import goalPresetService = require('../../services/goalPresetService');
+import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
+import goalPresetService from '../../services/goalPresetService.js';
 
 const router = express.Router();
 

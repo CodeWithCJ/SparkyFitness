@@ -1,8 +1,7 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import workoutPresetService from '../services/workoutPresetService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const workoutPresetService = require('../services/workoutPresetService');
-
 /**
  * @swagger
  * /workout-presets:
@@ -41,7 +40,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /workout-presets:
@@ -101,7 +99,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /workout-presets/search:
@@ -151,7 +148,6 @@ router.get('/search', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /workout-presets/{id}:
@@ -202,7 +198,6 @@ router.get('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /workout-presets/{id}:
@@ -260,7 +255,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /workout-presets/{id}:
@@ -307,5 +301,4 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

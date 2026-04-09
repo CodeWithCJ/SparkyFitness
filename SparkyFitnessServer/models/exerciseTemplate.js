@@ -1,19 +1,19 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const { getExerciseById } = require('./exercise');
-const {
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import { getExerciseById } from './exercise.js';
+import {
   addDays,
   compareDays,
   dayOfWeek,
   localDateToDay,
-} = require('@workspace/shared');
-
+} from '@workspace/shared';
 async function createExerciseEntriesFromTemplate(templateId, userId, today) {
+  const { default: exerciseService } =
+    await import('../services/exerciseService.js');
   log(
     'info',
     `createExerciseEntriesFromTemplate called for templateId: ${templateId}, userId: ${userId}`
   );
-  const exerciseService = require('../services/exerciseService');
   const client = await getClient(userId); // User-specific operation
   try {
     // Fetch the workout plan template with its assignments
@@ -45,14 +45,12 @@ async function createExerciseEntriesFromTemplate(templateId, userId, today) {
        WHERE wpt.id = $1 AND wpt.user_id = $2`,
       [templateId, userId]
     );
-
     const template = templateResult.rows[0];
     log(
       'info',
       'createExerciseEntriesFromTemplate - Fetched template:',
       template
     );
-
     if (
       !template ||
       !template.assignments ||
@@ -64,7 +62,6 @@ async function createExerciseEntriesFromTemplate(templateId, userId, today) {
       );
       return;
     }
-
     // start_date/end_date come from pg as Date objects; extract the YYYY-MM-DD string
     const startDay =
       typeof template.start_date === 'string'
@@ -76,19 +73,15 @@ async function createExerciseEntriesFromTemplate(templateId, userId, today) {
         ? template.end_date.slice(0, 10)
         : localDateToDay(template.end_date)
       : addDays(startDay, 365);
-
     log(
       'info',
       `createExerciseEntriesFromTemplate - Plan start_date: ${startDay}, end_date: ${endDay}`
     );
-
     // Start from today if template start_date is in the past
     let currentDay = compareDays(startDay, today) < 0 ? today : startDay;
-
     while (compareDays(currentDay, endDay) <= 0) {
       const entryDate = currentDay;
       const currentDayOfWeek = dayOfWeek(entryDate);
-
       for (const assignment of template.assignments) {
         if (assignment.day_of_week === currentDayOfWeek) {
           const processExercise = async (exerciseId, sets, notes) => {
@@ -106,7 +99,6 @@ async function createExerciseEntriesFromTemplate(templateId, userId, today) {
               ) || 30;
             const caloriesPerHour = exerciseDetails.calories_per_hour || 0;
             const caloriesBurned = (caloriesPerHour / 60) * durationMinutes;
-
             log(
               'info',
               `createExerciseEntriesFromTemplate - Assignment day_of_week (${assignment.day_of_week}) matches currentDayOfWeek (${currentDayOfWeek}) for date ${entryDate}. Creating exercise entry.`
@@ -121,7 +113,6 @@ async function createExerciseEntriesFromTemplate(templateId, userId, today) {
               workout_plan_assignment_id: assignment.id,
             });
           };
-
           if (assignment.exercise_id) {
             const setsResult = await client.query(
               'SELECT * FROM workout_plan_assignment_sets WHERE assignment_id = $1',
@@ -161,7 +152,6 @@ async function createExerciseEntriesFromTemplate(templateId, userId, today) {
     client.release();
   }
 }
-
 async function deleteExerciseEntriesByTemplateId(templateId, userId, today) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -191,8 +181,9 @@ async function deleteExerciseEntriesByTemplateId(templateId, userId, today) {
     client.release();
   }
 }
-
-module.exports = {
+export { createExerciseEntriesFromTemplate };
+export { deleteExerciseEntriesByTemplateId };
+export default {
   createExerciseEntriesFromTemplate,
   deleteExerciseEntriesByTemplateId,
 };

@@ -1,11 +1,17 @@
-// Load environment variables from root .env file
-require('dotenv').config({
-  path: require('path').resolve(__dirname, '../.env'),
-});
+import dotenv from 'dotenv';
+import { resolve } from 'path';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { jest } from '@jest/globals';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+// Load environment variables from root .env file
+dotenv.config({
+  path: { resolve }.resolve(__dirname, '../.env'),
+});
 // Test environment configuration
 process.env.NODE_ENV = 'test';
-
 // Mock environment variables to prevent loading real .env file
 process.env.SPARKY_FITNESS_DB_USER = 'test_user';
 process.env.SPARKY_FITNESS_DB_HOST = 'localhost';
@@ -15,6 +21,5 @@ process.env.SPARKY_FITNESS_DB_PORT = '5432';
 process.env.SPARKY_FITNESS_APP_DB_USER = 'test_app_user';
 process.env.SPARKY_FITNESS_APP_DB_PASSWORD = 'test_app_password';
 process.env.ENCRYPTION_KEY = 'test-encryption-key';
-
 // Global test timeout
 jest.setTimeout(10000);

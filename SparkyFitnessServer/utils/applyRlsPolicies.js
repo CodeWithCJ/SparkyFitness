@@ -1,7 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const { getSystemClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
+import fs from 'fs';
+import path from 'path';
+import { getSystemClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function applyRlsPolicies() {
   const client = await getSystemClient();
@@ -18,7 +21,7 @@ async function applyRlsPolicies() {
     client.release();
   }
 }
-
-module.exports = {
+export { applyRlsPolicies };
+export default {
   applyRlsPolicies,
 };
