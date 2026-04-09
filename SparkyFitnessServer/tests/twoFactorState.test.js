@@ -1,7 +1,8 @@
+import { describe, expect, it } from 'vitest';
 import { resolveTwoFactorDisableUserUpdate } from '../utils/twoFactorState.js';
 describe('resolveTwoFactorDisableUserUpdate', () => {
   it('preserves the global MFA flag when disabling TOTP and email MFA remains enabled', async () => {
-    const findUserById = jest.fn().mockResolvedValue({
+    const findUserById = vi.fn().mockResolvedValue({
       id: 'user-123',
       mfa_email_enabled: true,
     });
@@ -21,7 +22,7 @@ describe('resolveTwoFactorDisableUserUpdate', () => {
     expect(result).toEqual({ twoFactorEnabled: true });
   });
   it('does not change the update when email MFA is not enabled', async () => {
-    const findUserById = jest.fn().mockResolvedValue({
+    const findUserById = vi.fn().mockResolvedValue({
       id: 'user-123',
       mfa_email_enabled: false,
     });
@@ -40,7 +41,7 @@ describe('resolveTwoFactorDisableUserUpdate', () => {
     expect(result).toBeNull();
   });
   it('ignores unrelated user updates', async () => {
-    const findUserById = jest.fn();
+    const findUserById = vi.fn();
     const result = await resolveTwoFactorDisableUserUpdate(
       { twoFactorEnabled: false },
       {

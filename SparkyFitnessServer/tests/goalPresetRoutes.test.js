@@ -1,12 +1,13 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import goalPresetService from '../services/goalPresetService.js';
 import goalPresetRoutes from '../routes/v2/goalPresetRoutes.js';
 // Mock middleware and service
-jest.mock('../services/goalPresetService');
-jest.mock('../middleware/checkPermissionMiddleware', () =>
-  jest.fn(() => (req, res, next) => next())
-);
+vi.mock('../services/goalPresetService');
+vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
+  default: vi.fn(() => (req, res, next) => next()),
+}));
 const app = express();
 app.use(express.json());
 // Add middleware to set userId for testing
@@ -23,7 +24,7 @@ app.use((req, res, next) => {
 app.use('/api/v2/goal-presets', goalPresetRoutes);
 describe('Goal Preset Routes V2', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   describe('POST /api/v2/goal-presets', () => {
     it('should create a new goal preset', async () => {

@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, test } from 'vitest';
 import { calculateAdaptiveTdee } from '../services/AdaptiveTdeeService.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
@@ -5,18 +6,18 @@ import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
 import bmrService from '../services/bmrService.js';
 import { subDays, format, startOfDay } from 'date-fns';
-jest.mock('../models/userRepository');
-jest.mock('../models/preferenceRepository');
-jest.mock('../models/measurementRepository');
-jest.mock('../models/reportRepository');
-jest.mock('../services/bmrService');
-jest.mock('../config/logging');
+vi.mock('../models/userRepository');
+vi.mock('../models/preferenceRepository');
+vi.mock('../models/measurementRepository');
+vi.mock('../models/reportRepository');
+vi.mock('../services/bmrService');
+vi.mock('../config/logging');
 describe('AdaptiveTdeeService', () => {
   const userId = 'test-user-123';
   const calculationDate = startOfDay(new Date());
   const calculationDateStr = format(calculationDate, 'yyyy-MM-dd');
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   test('should calculate TDEE correctly without ReferenceError', async () => {
     // Mock data

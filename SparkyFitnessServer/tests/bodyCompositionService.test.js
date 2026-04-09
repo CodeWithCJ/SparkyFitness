@@ -1,3 +1,4 @@
+import { describe, expect, test } from 'vitest';
 import { calculateBodyFatNavy } from '../services/bodyCompositionService.js';
 describe('bodyCompositionService', () => {
   describe('calculateBodyFatNavy', () => {

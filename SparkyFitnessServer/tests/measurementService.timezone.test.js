@@ -1,16 +1,18 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import measurementService from '../services/measurementService.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
-jest.mock('../models/measurementRepository');
-jest.mock('../models/preferenceRepository');
-jest.mock('../models/userRepository');
-jest.mock('../models/exerciseRepository');
-jest.mock('../models/exerciseEntry');
-jest.mock('../models/sleepRepository');
-jest.mock('../models/waterContainerRepository');
-jest.mock('../models/activityDetailsRepository');
-jest.mock('../config/logging', () => ({
-  log: jest.fn(),
+import { log } from '../config/logging.js';
+vi.mock('../models/measurementRepository');
+vi.mock('../models/preferenceRepository');
+vi.mock('../models/userRepository');
+vi.mock('../models/exerciseRepository');
+vi.mock('../models/exerciseEntry');
+vi.mock('../models/sleepRepository');
+vi.mock('../models/waterContainerRepository');
+vi.mock('../models/activityDetailsRepository');
+vi.mock('../config/logging', () => ({
+  log: vi.fn(),
 }));
 // ---------------------------------------------------------------------------
 // resolveHealthEntryDate — unit tests
@@ -18,7 +20,7 @@ jest.mock('../config/logging', () => ({
 describe('resolveHealthEntryDate', () => {
   const { resolveHealthEntryDate } = measurementService;
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   it('uses record_timezone over fallback account timezone', () => {
     // 2024-06-14 23:30 UTC → June 15 in Tokyo (UTC+9), June 14 in UTC
@@ -65,7 +67,6 @@ describe('resolveHealthEntryDate', () => {
     expect(result.parsedDate).toBe('2024-06-14');
   });
   it('logs DEBUG when falling back to account timezone', () => {
-    const log = { log }.log;
     const entry = {
       type: 'heart_rate',
       value: 72,
@@ -284,14 +285,14 @@ describe('processHealthData timezone resolution', () => {
     preferenceRepository.getUserPreferences.mockResolvedValue({ timezone: tz });
   }
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Default account timezone: UTC
     setAccountTimezone('UTC');
-    measurementRepository.getCustomCategories = jest.fn().mockResolvedValue([]);
-    measurementRepository.createCustomCategory = jest
+    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
+    measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = jest
+    measurementRepository.upsertCustomMeasurement = vi
       .fn()
       .mockResolvedValue({ id: 'entry-1' });
   });
@@ -384,7 +385,6 @@ describe('processHealthData timezone resolution', () => {
     );
   });
   it('logs timezone fallback by type', async () => {
-    const log = { log }.log;
     const healthData = [
       {
         type: 'heart_rate',

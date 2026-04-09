@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { mapFatSecretSearchItem } from '../integrations/fatsecret/fatsecretService.js';
 import { mapFatSecretFood } from '../integrations/fatsecret/fatsecretService.js';
 describe('FatSecret Service Mapping', () => {

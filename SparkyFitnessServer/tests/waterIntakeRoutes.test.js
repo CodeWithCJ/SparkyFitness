@@ -1,19 +1,27 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import measurementService from '../services/measurementService.js';
 import errorHandler from '../middleware/errorHandler.js';
 import waterIntakeRoutes from '../routes/v2/waterIntakeRoutes.js';
-jest.mock('../services/measurementService');
-// checkPermissionMiddleware is a factory — mock it to return a pass-through
-jest.mock('../middleware/checkPermissionMiddleware', () =>
-  jest.fn(() => (req, res, next) => next())
-);
-// onBehalfOfMiddleware sets req.userId / req.originalUserId — pass through in tests
-jest.mock(
-  '../middleware/onBehalfOfMiddleware',
-  () => (req, res, next) => next()
-);
+vi.mock('../services/measurementService.js', () => ({
+  default: {
+    getWaterIntakeEntryById: vi.fn(),
+    getWaterIntake: vi.fn(),
+    upsertWaterIntake: vi.fn(),
+    updateWaterIntake: vi.fn(),
+    deleteWaterIntake: vi.fn(),
+  },
+}));
+
+vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
+  default: vi.fn(() => (req, res, next) => next()),
+}));
+
+vi.mock('../middleware/onBehalfOfMiddleware.js', () => ({
+  default: (req, res, next) => next(),
+}));
 const injectUser = (req, res, next) => {
   req.userId = 'test-user-id';
   next();
@@ -26,7 +34,7 @@ app.use(errorHandler);
 const VALID_UUID = uuidv4();
 describe('Water Intake Routes (v2)', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   // ---------------------------------------------------------------------------
   // GET /entry/:id

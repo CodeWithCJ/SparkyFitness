@@ -1,11 +1,12 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import measurementService from '../services/measurementService.js';
 import measurementRepository from '../models/measurementRepository.js';
 import { UpsertWaterIntakeBodySchema } from '../schemas/measurementSchemas.js';
 // Mock the repository functions
-jest.mock('../models/measurementRepository');
+vi.mock('../models/measurementRepository');
 describe('Measurement Service - Water Intake', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   // ---------------------------------------------------------------------------
   // Schema Validation Tests

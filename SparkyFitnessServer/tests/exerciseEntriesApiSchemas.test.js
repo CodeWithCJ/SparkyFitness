@@ -1,14 +1,18 @@
+import { describe, expect, it } from 'vitest';
 import { execFileSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SHARED_SCHEMA_FILE =
   '../../shared/src/schemas/api/ExerciseEntries.api.zod.ts';
+
 function runSchema(schemaName, payload) {
+  // ÄNDERUNG: import * as schemaModule verwenden
   const script = `
-    import schemaModule from '${SHARED_SCHEMA_FILE}';
+    import * as schemaModule from '${SHARED_SCHEMA_FILE}';
     const schema = schemaModule.${schemaName};
     const result = schema.safeParse(${JSON.stringify(payload)});
     const output = result.success
@@ -16,6 +20,7 @@ function runSchema(schemaName, payload) {
       : { success: false, issues: result.error.issues.map((issue) => issue.message) };
     console.log(JSON.stringify(output));
   `;
+
   return JSON.parse(
     execFileSync(process.execPath, ['--import', 'tsx', '-e', script], {
       encoding: 'utf8',
@@ -23,8 +28,10 @@ function runSchema(schemaName, payload) {
     }).trim()
   );
 }
+
 describe('Exercise entry API schemas', () => {
   const exerciseId = '11111111-1111-4111-8111-111111111111';
+
   it('accepts preset-based create payloads', () => {
     const result = runSchema('createPresetSessionRequestSchema', {
       workout_preset_id: 42,
@@ -41,6 +48,7 @@ describe('Exercise entry API schemas', () => {
       },
     });
   });
+
   it('accepts freeform inline create payloads', () => {
     const result = runSchema('createPresetSessionRequestSchema', {
       name: 'Morning Workout',
@@ -70,6 +78,7 @@ describe('Exercise entry API schemas', () => {
     expect(result.data.name).toBe('Morning Workout');
     expect(result.data.exercises).toHaveLength(1);
   });
+
   it('rejects create payloads that provide both workout sources', () => {
     const result = runSchema('createPresetSessionRequestSchema', {
       workout_preset_id: 42,
@@ -83,6 +92,7 @@ describe('Exercise entry API schemas', () => {
     });
     expect(result.success).toBe(false);
   });
+
   it('rejects create payloads that provide neither workout source', () => {
     const result = runSchema('createPresetSessionRequestSchema', {
       entry_date: '2026-03-12',
@@ -90,6 +100,7 @@ describe('Exercise entry API schemas', () => {
     });
     expect(result.success).toBe(false);
   });
+
   it('rejects empty exercise arrays', () => {
     const result = runSchema('createPresetSessionRequestSchema', {
       name: 'Morning Workout',
@@ -98,6 +109,7 @@ describe('Exercise entry API schemas', () => {
     });
     expect(result.success).toBe(false);
   });
+
   it('accepts nullable fields in update payloads', () => {
     const result = runSchema('updatePresetSessionRequestSchema', {
       description: null,
@@ -111,6 +123,7 @@ describe('Exercise entry API schemas', () => {
       },
     });
   });
+
   it('rejects empty update payloads', () => {
     const result = runSchema('updatePresetSessionRequestSchema', {});
     expect(result.success).toBe(false);

@@ -1,18 +1,19 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import chatService from '../services/chatService.js';
 import chatRepository from '../models/chatRepository.js';
 import { log } from '../config/logging.js';
 // Mock dependencies
-jest.mock('../models/chatRepository');
-jest.mock('../models/userRepository');
-jest.mock('../models/measurementRepository');
-jest.mock('../config/logging', () => ({
-  log: jest.fn(),
+vi.mock('../models/chatRepository');
+vi.mock('../models/userRepository');
+vi.mock('../models/measurementRepository');
+vi.mock('../config/logging', () => ({
+  log: vi.fn(),
 }));
 describe('chatService', () => {
   const mockUserId = 'user-123';
   const mockTargetUserId = 'user-456';
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   describe('handleAiServiceSettings', () => {
     it('should save AI service settings', async () => {

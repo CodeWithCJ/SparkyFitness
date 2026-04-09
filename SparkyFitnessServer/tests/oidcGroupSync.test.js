@@ -1,6 +1,7 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { syncUserGroups } from '../utils/oidcGroupSync.js';
-jest.mock('jose', () => ({
-  decodeJwt: jest.fn((token) => {
+vi.mock('jose', () => ({
+  decodeJwt: vi.fn((token) => {
     const parts = token.split('.');
     if (parts.length < 2) return {};
     try {
@@ -15,13 +16,13 @@ describe('oidcGroupSync', () => {
   let mockUserRepository;
   beforeEach(() => {
     mockPool = {
-      query: jest.fn(),
+      query: vi.fn(),
     };
     mockUserRepository = {
-      getUserRole: jest.fn(),
-      updateUserRole: jest.fn(),
+      getUserRole: vi.fn(),
+      updateUserRole: vi.fn(),
     };
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   const createIdToken = (payload) => {
     const header = Buffer.from(
@@ -168,7 +169,7 @@ describe('oidcGroupSync', () => {
     const idToken = createIdToken({ email: 'test@test.com' }); // No groups
     const accessToken = 'valid-access-token';
     const mockOidcProviderRepository = {
-      getOidcProviderById: jest.fn().mockResolvedValue({
+      getOidcProviderById: vi.fn().mockResolvedValue({
         userInfoEndpoint: 'https://issuer.com/userinfo',
       }),
     };
@@ -183,9 +184,9 @@ describe('oidcGroupSync', () => {
     });
     mockUserRepository.getUserRole.mockResolvedValue('user');
     // Mock global fetch for Node 20+
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({ groups: ['Admins'] }),
+      json: vi.fn().mockResolvedValue({ groups: ['Admins'] }),
     });
     await syncUserGroups(
       {

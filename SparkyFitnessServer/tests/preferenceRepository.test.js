@@ -1,19 +1,20 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { getClient } from '../db/poolManager.js';
-jest.mock('../db/poolManager', () => ({
-  getClient: jest.fn(),
+vi.mock('../db/poolManager', () => ({
+  getClient: vi.fn(),
 }));
 describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
   let mockClient;
   beforeEach(() => {
     mockClient = {
-      query: jest.fn(),
-      release: jest.fn(),
+      query: vi.fn(),
+      release: vi.fn(),
     };
     getClient.mockResolvedValue(mockClient);
   });
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   it('uses a null-only upsert and returns the resulting row', async () => {
     const row = { user_id: 'user-1', timezone: 'America/Chicago' };

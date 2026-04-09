@@ -1,7 +1,8 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import foodRepository from '../models/foodRepository.js';
 import foodCoreService from '../services/foodCoreService.js';
-jest.mock('../models/foodRepository');
-jest.mock('../config/logging', () => ({ log: jest.fn() }));
+vi.mock('../models/foodRepository');
+vi.mock('../config/logging', () => ({ log: vi.fn() }));
 const TEST_USER_ID = 'user-123';
 const FOOD_ID = 'food-456';
 const VARIANT_ID = 'variant-789';
@@ -42,7 +43,7 @@ const makeVariant = (overrides = {}) => ({
 });
 describe('foodCoreService.updateFoodEntriesSnapshot', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   it('should fetch food + variant, update snapshot, clear ignored updates, and return success message', async () => {
     foodRepository.getFoodById.mockResolvedValue(makeFood());

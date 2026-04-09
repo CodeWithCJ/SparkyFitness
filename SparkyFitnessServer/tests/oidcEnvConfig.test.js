@@ -1,8 +1,9 @@
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { getEnvOidcConfig } from '../utils/oidcEnvConfig.js';
 describe('oidcEnvConfig', () => {
   const originalEnv = process.env;
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
     // Clear OIDC env vars to start fresh
     delete process.env.SPARKY_FITNESS_OIDC_ISSUER_URL;

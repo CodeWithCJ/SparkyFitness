@@ -1,30 +1,26 @@
-<<<<<<< HEAD
-jest.mock('../integrations/openfoodfacts/openFoodFactsAuth', () => ({
-  getOpenFoodFactsSessionCookie: jest.fn(),
-  invalidateOpenFoodFactsSession: jest.fn(),
-}));
-
-const {
-  searchOpenFoodFacts,
-  searchOpenFoodFactsByBarcodeFields,
-} = require('../integrations/openfoodfacts/openFoodFactsService');
-const {
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
   getOpenFoodFactsSessionCookie,
   invalidateOpenFoodFactsSession,
-} = require('../integrations/openfoodfacts/openFoodFactsAuth');
-
-=======
+} from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 import {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
 } from '../integrations/openfoodfacts/openFoodFactsService.js';
->>>>>>> df274255 (refactor: convert project from commonjs to es modules)
-global.fetch = jest.fn();
+
+vi.mock('../integrations/openfoodfacts/openFoodFactsAuth.js', () => ({
+  getOpenFoodFactsSessionCookie: vi.fn(),
+  invalidateOpenFoodFactsSession: vi.fn(),
+}));
+
+global.fetch = vi.fn();
+
 describe('openFoodFactsService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getOpenFoodFactsSessionCookie.mockResolvedValue(null);
   });
+
   describe('searchOpenFoodFacts', () => {
     it('should append the lc parameter with the specified language to the search URL', async () => {
       fetch.mockResolvedValue({
@@ -37,6 +33,7 @@ describe('openFoodFactsService', () => {
         expect.any(Object)
       );
     });
+
     it("should default to language 'en' when not specified", async () => {
       fetch.mockResolvedValue({
         ok: true,
@@ -49,6 +46,7 @@ describe('openFoodFactsService', () => {
       );
     });
   });
+
   describe('searchOpenFoodFactsByBarcodeFields', () => {
     it('should append the lc parameter with the specified language to the product URL', async () => {
       fetch.mockResolvedValue({
@@ -61,6 +59,7 @@ describe('openFoodFactsService', () => {
         expect.any(Object)
       );
     });
+
     it("should default to language 'en' when not specified", async () => {
       fetch.mockResolvedValue({
         ok: true,
@@ -141,7 +140,6 @@ describe('openFoodFactsService', () => {
         'user-A',
         'prov-1'
       );
-      // First call had cookie, second call did not
       expect(fetch.mock.calls[0][1].headers.Cookie).toBe('session=SESS_TOKEN');
       expect(fetch.mock.calls[1][1].headers.Cookie).toBeUndefined();
     });

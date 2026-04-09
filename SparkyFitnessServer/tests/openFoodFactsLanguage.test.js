@@ -1,12 +1,13 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   mapOpenFoodFactsProduct,
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
 } from '../integrations/openfoodfacts/openFoodFactsService.js';
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 describe('OpenFoodFacts Language Handling', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   describe('mapOpenFoodFactsProduct (Fallback Logic)', () => {
     const mockProduct = {

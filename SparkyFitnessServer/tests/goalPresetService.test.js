@@ -1,13 +1,14 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   createGoalPreset,
   updateGoalPreset,
 } from '../services/goalPresetService.js';
 import goalPresetRepository from '../models/goalPresetRepository.js';
 // Mock the repository
-jest.mock('../models/goalPresetRepository');
+vi.mock('../models/goalPresetRepository');
 describe('goalPresetService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   describe('createGoalPreset', () => {
     it('should create a goal preset successfully', async () => {

@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import mealRoutes from '../routes/mealRoutes.js';
@@ -5,17 +6,17 @@ import mealService from '../services/mealService.js';
 import errorHandler from '../middleware/errorHandler.js';
 import { v4 as uuidv4 } from 'uuid';
 // Mock middleware and service
-jest.mock('../services/mealService');
-jest.mock('../middleware/authMiddleware', () => ({
-  authenticate: jest.fn((req, res, next) => {
+vi.mock('../services/mealService');
+vi.mock('../middleware/authMiddleware', () => ({
+  authenticate: vi.fn((req, res, next) => {
     req.userId = 'testUserId';
     next();
   }),
-  authenticateToken: jest.fn((req, res, next) => {
+  authenticateToken: vi.fn((req, res, next) => {
     req.userId = 'testUserId';
     next();
   }),
-  authorizeAccess: jest.fn(() => (req, res, next) => {
+  authorizeAccess: vi.fn(() => (req, res, next) => {
     next();
   }),
 }));
@@ -25,7 +26,7 @@ app.use('/meals', mealRoutes);
 app.use(errorHandler);
 describe('Meal Routes', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   // --- Meal Template Routes ---
   describe('POST /meals', () => {

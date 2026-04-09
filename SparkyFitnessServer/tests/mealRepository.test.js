@@ -1,22 +1,23 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import mealRepository from '../models/mealRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getClient } from '../db/poolManager.js';
 // Mock the poolManager.getClient function
-jest.mock('../db/poolManager', () => ({
-  getClient: jest.fn(),
+vi.mock('../db/poolManager', () => ({
+  getClient: vi.fn(),
 }));
 describe('mealRepository', () => {
   let mockClient;
   beforeEach(() => {
     mockClient = {
-      query: jest.fn(),
-      release: jest.fn(),
+      query: vi.fn(),
+      release: vi.fn(),
     };
     getClient.mockResolvedValue(mockClient);
     mockClient.query.mockClear();
   });
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   // --- Meal Template CRUD Operations ---
   describe('createMeal', () => {

@@ -1,17 +1,19 @@
+import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import globalSettingsRoutes from '../routes/globalSettingsRoutes.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 // Mock dependencies
-jest.mock('../models/globalSettingsRepository', () => ({
-  getGlobalSettings: jest.fn(),
-  saveGlobalSettings: jest.fn(),
-  isUserAiConfigAllowed: jest.fn(),
-  // others as needed
+vi.mock('../models/globalSettingsRepository.js', () => ({
+  default: {
+    getGlobalSettings: vi.fn(),
+    saveGlobalSettings: vi.fn(),
+    isUserAiConfigAllowed: vi.fn(),
+  },
 }));
-jest.mock('../middleware/authMiddleware', () => ({
-  isAdmin: jest.fn((req, res, next) => next()), // Mock authenticate/admin success
-  authenticate: jest.fn((req, res, next) => next()),
+vi.mock('../middleware/authMiddleware', () => ({
+  isAdmin: vi.fn((req, res, next) => next()), // Mock authenticate/admin success
+  authenticate: vi.fn((req, res, next) => next()),
 }));
 const app = express();
 app.use(express.json());

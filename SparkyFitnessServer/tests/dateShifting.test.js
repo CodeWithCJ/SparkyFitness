@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { localDateToDay } from '@workspace/shared';
 /**
  * Tests for date-shifting bugs caused by .toISOString().split('T')[0]

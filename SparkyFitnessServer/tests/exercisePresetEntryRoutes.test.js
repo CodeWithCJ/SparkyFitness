@@ -1,8 +1,71 @@
-import zod from 'zod';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import exerciseService from '../services/exerciseService.js';
 import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
 import exercisePresetEntryRoutes from '../routes/exercisePresetEntryRoutes.js';
-const { z } = zod;
+
+vi.mock('@workspace/shared', () => ({
+  createPresetSessionRequestSchema: {
+    safeParse: vi.fn((data) => {
+      const hasPresetId =
+        data.workout_preset_id !== undefined && data.workout_preset_id !== null;
+      const hasExercises = data.exercises !== undefined;
+
+      if (hasPresetId === hasExercises) {
+        return {
+          success: false,
+          error: {
+            issues: [
+              {
+                message:
+                  'Provide exactly one workout source: workout_preset_id or exercises.',
+              },
+            ],
+            flatten: () => ({ formErrors: [], fieldErrors: {} }),
+          },
+        };
+      }
+      return { success: true, data };
+    }),
+  },
+  updatePresetSessionRequestSchema: {
+    safeParse: vi.fn((data) => {
+      const hasAnyField = Object.keys(data).length > 0;
+      if (!hasAnyField) {
+        return {
+          success: false,
+          error: {
+            issues: [{ message: 'At least one field must be provided.' }],
+            flatten: () => ({ formErrors: [], fieldErrors: {} }),
+          },
+        };
+      }
+      return { success: true, data };
+    }),
+  },
+  presetSessionResponseSchema: {
+    parse: vi.fn((data) => data),
+  },
+}));
+
+vi.mock('../services/exerciseService.js', () => ({
+  default: {
+    createGroupedWorkoutSession: vi.fn(),
+    getGroupedWorkoutSessionById: vi.fn(),
+    updateGroupedWorkoutSession: vi.fn(),
+  },
+}));
+
+vi.mock('../models/exercisePresetEntryRepository.js', () => ({
+  default: {
+    deleteExercisePresetEntry: vi.fn(),
+  },
+}));
+
+vi.mock('../config/logging.js', () => ({
+  log: vi.fn(),
+}));
+
 const exerciseEntrySetRequestSchema = z
   .object({
     set_number: z.number().int().positive(),
@@ -147,23 +210,6 @@ const presetSessionResponseSchema = z
     ),
   })
   .strict();
-const mockShared = {
-  createPresetSessionRequestSchema,
-  updatePresetSessionRequestSchema,
-  presetSessionResponseSchema,
-};
-jest.mock('@workspace/shared', () => mockShared);
-jest.mock('../services/exerciseService', () => ({
-  createGroupedWorkoutSession: jest.fn(),
-  getGroupedWorkoutSessionById: jest.fn(),
-  updateGroupedWorkoutSession: jest.fn(),
-}));
-jest.mock('../models/exercisePresetEntryRepository', () => ({
-  deleteExercisePresetEntry: jest.fn(),
-}));
-jest.mock('../config/logging', () => ({
-  log: jest.fn(),
-}));
 function getRouteHandlers(method, path) {
   const layer = exercisePresetEntryRoutes.stack.find(
     (entry) =>
@@ -282,7 +328,7 @@ const groupedSessionFixture = presetSessionResponseSchema.parse({
 });
 describe('exercisePresetEntryRoutes', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   it('creates a freeform grouped workout session', async () => {
     exerciseService.createGroupedWorkoutSession.mockResolvedValue(

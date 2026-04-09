@@ -1,9 +1,10 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import chatRepository from '../models/chatRepository.js';
 import { getDefaultVisionModel } from '../ai/config.js';
 import { extractNutritionFromLabel } from '../services/labelScanService.js';
-jest.mock('../models/chatRepository');
-jest.mock('../ai/config');
-jest.mock('../config/logging', () => ({ log: jest.fn() }));
+vi.mock('../models/chatRepository');
+vi.mock('../ai/config');
+vi.mock('../config/logging', () => ({ log: vi.fn() }));
 const TEST_USER_ID = 'user-123';
 const TEST_BASE64 = 'iVBORw0KGgoAAAANSUhEUg==';
 const TEST_MIME = 'image/png';
@@ -77,7 +78,7 @@ function mockFetchForProvider(serviceType, nutritionData = sampleNutrition) {
       };
       break;
   }
-  global.fetch = jest.fn().mockResolvedValue({
+  global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     json: async () => responseBody,
   });
@@ -85,7 +86,7 @@ function mockFetchForProvider(serviceType, nutritionData = sampleNutrition) {
 describe('extractNutritionFromLabel', () => {
   const originalFetch = global.fetch;
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getDefaultVisionModel.mockReturnValue('gpt-4o-mini');
   });
   afterEach(() => {
@@ -173,7 +174,7 @@ describe('extractNutritionFromLabel', () => {
     chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
       makeAiServiceDetail()
     );
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 429,
       text: async () => 'Rate limit exceeded',
@@ -193,7 +194,7 @@ describe('extractNutritionFromLabel', () => {
     chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
       makeAiServiceDetail()
     );
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ choices: [{ message: { content: null } }] }),
     });
@@ -213,7 +214,7 @@ describe('extractNutritionFromLabel', () => {
       makeAiServiceDetail()
     );
     const wrappedJson = '```json\n' + JSON.stringify(sampleNutrition) + '\n```';
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         choices: [{ message: { content: wrappedJson } }],
@@ -232,7 +233,7 @@ describe('extractNutritionFromLabel', () => {
     chatRepository.getAiServiceSettingForBackend.mockResolvedValue(
       makeAiServiceDetail()
     );
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         choices: [{ message: { content: 'not valid json at all' } }],
@@ -344,7 +345,7 @@ describe('extractNutritionFromLabel', () => {
         ['mistral', 'https://api.mistral.ai/v1/chat/completions'],
         ['groq', 'https://api.groq.com/openai/v1/chat/completions'],
       ]) {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         chatRepository.getActiveAiServiceSetting.mockResolvedValue(
           makeAiSetting({ service_type: serviceType })
         );

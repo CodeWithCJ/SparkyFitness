@@ -1,22 +1,23 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import oidcProviderRepository from '../models/oidcProviderRepository.js';
 import { getSystemClient } from '../db/poolManager.js';
 // Mock dependencies
-jest.mock('../db/poolManager', () => ({
-  getSystemClient: jest.fn(),
+vi.mock('../db/poolManager', () => ({
+  getSystemClient: vi.fn(),
 }));
-jest.mock('../config/logging', () => ({
-  log: jest.fn(),
+vi.mock('../config/logging', () => ({
+  log: vi.fn(),
 }));
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 describe('oidcProviderRepository', () => {
   let mockClient;
   beforeEach(() => {
     mockClient = {
-      query: jest.fn(),
-      release: jest.fn(),
+      query: vi.fn(),
+      release: vi.fn(),
     };
     getSystemClient.mockResolvedValue(mockClient);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   describe('createOidcProvider', () => {
     it('should persist is_env_configured in additional_config', async () => {

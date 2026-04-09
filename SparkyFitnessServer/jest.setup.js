@@ -1,8 +1,8 @@
+import { vi } from 'vitest';
 import dotenv from 'dotenv';
 import { resolve } from 'path';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { jest } from '@jest/globals';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -22,4 +22,4 @@ process.env.SPARKY_FITNESS_APP_DB_USER = 'test_app_user';
 process.env.SPARKY_FITNESS_APP_DB_PASSWORD = 'test_app_password';
 process.env.ENCRYPTION_KEY = 'test-encryption-key';
 // Global test timeout
-jest.setTimeout(10000);
+vi.setTimeout(10000);

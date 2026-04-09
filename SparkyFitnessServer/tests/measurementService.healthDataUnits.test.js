@@ -1,22 +1,23 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import measurementRepository from '../models/measurementRepository.js';
 import measurementService from '../services/measurementService.js';
-jest.mock('../models/measurementRepository');
-jest.mock('../models/userRepository');
-jest.mock('../models/exerciseRepository');
-jest.mock('../models/exerciseEntry');
-jest.mock('../models/sleepRepository');
-jest.mock('../models/waterContainerRepository');
-jest.mock('../models/activityDetailsRepository');
+vi.mock('../models/measurementRepository');
+vi.mock('../models/userRepository');
+vi.mock('../models/exerciseRepository');
+vi.mock('../models/exerciseEntry');
+vi.mock('../models/sleepRepository');
+vi.mock('../models/waterContainerRepository');
+vi.mock('../models/activityDetailsRepository');
 describe('processHealthData default units (#567)', () => {
   const userId = 'user-123';
   const actingUserId = 'user-123';
   beforeEach(() => {
-    jest.clearAllMocks();
-    measurementRepository.getCustomCategories = jest.fn().mockResolvedValue([]);
-    measurementRepository.createCustomCategory = jest
+    vi.clearAllMocks();
+    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
+    measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = jest
+    measurementRepository.upsertCustomMeasurement = vi
       .fn()
       .mockResolvedValue({ id: 'entry-1' });
   });
@@ -103,12 +104,12 @@ describe('Aggregated health metric default units', () => {
   const userId = 'user-123';
   const actingUserId = 'user-123';
   beforeEach(() => {
-    jest.clearAllMocks();
-    measurementRepository.getCustomCategories = jest.fn().mockResolvedValue([]);
-    measurementRepository.createCustomCategory = jest
+    vi.clearAllMocks();
+    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
+    measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = jest
+    measurementRepository.upsertCustomMeasurement = vi
       .fn()
       .mockResolvedValue({ id: 'entry-1' });
   });
@@ -167,12 +168,12 @@ describe('processMobileHealthData aggregated types', () => {
   const userId = 'user-123';
   const actingUserId = 'user-123';
   beforeEach(() => {
-    jest.clearAllMocks();
-    measurementRepository.getCustomCategories = jest.fn().mockResolvedValue([]);
-    measurementRepository.createCustomCategory = jest
+    vi.clearAllMocks();
+    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
+    measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = jest
+    measurementRepository.upsertCustomMeasurement = vi
       .fn()
       .mockResolvedValue({ id: 'entry-1' });
   });
@@ -317,7 +318,7 @@ describe('processMobileHealthData aggregated types', () => {
     );
   });
   it('reuses existing custom category instead of creating a new one', async () => {
-    measurementRepository.getCustomCategories = jest.fn().mockResolvedValue([
+    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([
       {
         id: 'cat-existing',
         name: 'running_speed_avg',

@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import {
   isPrivateNetworkAddress,
   createCorsOriginChecker,
@@ -59,68 +60,91 @@ describe('corsHelper', () => {
     });
   });
   describe('createCorsOriginChecker', () => {
-    it('should allow configured frontend URL', (done) => {
+    it('should allow configured frontend URL', async () => {
       const checker = createCorsOriginChecker('http://localhost:8080', false);
-      checker('http://localhost:8080', (err, allowed) => {
-        expect(err).toBeNull();
-        expect(allowed).toBe(true);
-        done();
+      await new Promise((resolve) => {
+        checker('http://localhost:8080', (err, allowed) => {
+          expect(err).toBeNull();
+          expect(allowed).toBe(true);
+          resolve();
+        });
       });
     });
-    it('should reject requests with no origin for security', (done) => {
+
+    it('should reject requests with no origin for security', async () => {
       const checker = createCorsOriginChecker('http://localhost:8080', false);
-      checker(undefined, (err, allowed) => {
-        expect(err).toBeNull();
-        expect(allowed).toBe(false);
-        done();
+      await new Promise((resolve) => {
+        checker(undefined, (err, allowed) => {
+          expect(err).toBeNull();
+          expect(allowed).toBe(false);
+          resolve();
+        });
       });
     });
-    it('should reject private network origins when allowPrivateNetworks=false', (done) => {
+
+    it('should reject private network origins when allowPrivateNetworks=false', async () => {
       const checker = createCorsOriginChecker('http://example.com', false);
-      checker('http://192.168.1.100:3000', (err, allowed) => {
-        expect(err).toBeNull();
-        expect(allowed).toBe(false);
-        done();
+      await new Promise((resolve) => {
+        checker('http://192.168.1.100:3000', (err, allowed) => {
+          expect(err).toBeNull();
+          expect(allowed).toBe(false);
+          resolve();
+        });
       });
     });
-    it('should allow private network origins when allowPrivateNetworks=true', (done) => {
+
+    it('should allow private network origins when allowPrivateNetworks=true', async () => {
       const checker = createCorsOriginChecker('http://example.com', true);
-      checker('http://192.168.1.100:3000', (err, allowed) => {
-        expect(err).toBeNull();
-        expect(allowed).toBe(true);
-        done();
+      await new Promise((resolve) => {
+        checker('http://192.168.1.100:3000', (err, allowed) => {
+          expect(err).toBeNull();
+          expect(allowed).toBe(true);
+          resolve();
+        });
       });
     });
-    it('should allow localhost from private networks when enabled', (done) => {
+
+    it('should allow localhost from private networks when enabled', async () => {
       const checker = createCorsOriginChecker('http://example.com', true);
-      checker('http://localhost:3000', (err, allowed) => {
-        expect(err).toBeNull();
-        expect(allowed).toBe(true);
-        done();
+      await new Promise((resolve) => {
+        checker('http://localhost:3000', (err, allowed) => {
+          expect(err).toBeNull();
+          expect(allowed).toBe(true);
+          resolve();
+        });
       });
     });
-    it('should reject localhost when private networks are disabled', (done) => {
+
+    it('should reject localhost when private networks are disabled', async () => {
       const checker = createCorsOriginChecker('http://example.com', false);
-      checker('http://localhost:3000', (err, allowed) => {
-        expect(err).toBeNull();
-        expect(allowed).toBe(false);
-        done();
+      await new Promise((resolve) => {
+        checker('http://localhost:3000', (err, allowed) => {
+          expect(err).toBeNull();
+          expect(allowed).toBe(false);
+          resolve();
+        });
       });
     });
-    it('should reject public IPs regardless of setting', (done) => {
+
+    it('should reject public IPs regardless of setting', async () => {
       const checker = createCorsOriginChecker('http://example.com', true);
-      checker('http://8.8.8.8:3000', (err, allowed) => {
-        expect(err).toBeNull();
-        expect(allowed).toBe(false);
-        done();
+      await new Promise((resolve) => {
+        checker('http://8.8.8.8:3000', (err, allowed) => {
+          expect(err).toBeNull();
+          expect(allowed).toBe(false);
+          resolve();
+        });
       });
     });
-    it('should reject unregistered origins', (done) => {
+
+    it('should reject unregistered origins', async () => {
       const checker = createCorsOriginChecker('http://localhost:8080', false);
-      checker('http://unwanted.com', (err, allowed) => {
-        expect(err).toBeNull();
-        expect(allowed).toBe(false);
-        done();
+      await new Promise((resolve) => {
+        checker('http://unwanted.com', (err, allowed) => {
+          expect(err).toBeNull();
+          expect(allowed).toBe(false);
+          resolve();
+        });
       });
     });
   });

@@ -1,3 +1,4 @@
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import path from 'path';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -137,15 +138,15 @@ describe('Auth rate limit integration', () => {
  */
 describe('/mfa-factors inline rate limiter', () => {
   // Re-require to get a fresh module with a clean hits Map per describe block.
-  // Jest's module cache is reset by jest.isolateModules.
+  // Jest's module cache is reset by vi.isolateModules.
   let router;
-  beforeAll(() => {
-    jest.isolateModules(() => {
-      router = require('../routes/auth/authCoreRoutes');
-    });
+  beforeAll(async () => {
+    vi.resetModules();
+    const module = await import('../routes/auth/authCoreRoutes.js');
+    router = module.default;
   });
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
   // Extract the rate limit middleware from the router stack
   function getRateLimitMiddleware() {
@@ -219,12 +220,12 @@ describe('/mfa-factors inline rate limiter', () => {
     expect(Number(res.headers['X-Retry-After'])).toBeGreaterThan(0);
   });
   it('should allow requests again after the 30 second window expires', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date('2100-01-01T00:00:00Z'));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2100-01-01T00:00:00Z'));
     const middleware = getRateLimitMiddleware();
     const blockedResults = await sendMfaRequests(middleware, 6, '10.2.0.4');
     expect(blockedResults.filter((r) => r === 429)).toHaveLength(1);
-    jest.advanceTimersByTime(30 * 1000 + 1);
+    vi.advanceTimersByTime(30 * 1000 + 1);
     const resultsAfterWindow = await sendMfaRequests(middleware, 1, '10.2.0.4');
     expect(resultsAfterWindow[0]).toBeNull();
   });

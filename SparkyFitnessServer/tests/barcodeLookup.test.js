@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import foodRepository from '../models/foodRepository.js';
 import {
   searchOpenFoodFactsByBarcodeFields,
@@ -11,18 +12,40 @@ import externalProviderService from '../services/externalProviderService.js';
 import preferenceService from '../services/preferenceService.js';
 import { lookupBarcode } from '../services/foodCoreService.js';
 import { normalizeBarcode } from '../utils/foodUtils.js';
-jest.mock('../models/foodRepository');
-jest.mock('../integrations/openfoodfacts/openFoodFactsService', () => ({
-  ...jest.requireActual('../integrations/openfoodfacts/openFoodFactsService'),
-  searchOpenFoodFactsByBarcodeFields: jest.fn(),
-}));
-jest.mock('../integrations/usda/usdaService', () => ({
-  ...jest.requireActual('../integrations/usda/usdaService'),
-  searchUsdaFoodsByBarcode: jest.fn(),
-}));
-jest.mock('../services/externalProviderService');
-jest.mock('../services/preferenceService');
-jest.mock('../config/logging', () => ({ log: jest.fn() }));
+vi.mock('../models/foodRepository.js');
+vi.mock('../services/externalProviderService.js');
+vi.mock('../services/preferenceService.js');
+vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+
+// Manuelle Mocks für Integrationen mit Named & Default Exports
+vi.mock(
+  '../integrations/openfoodfacts/openFoodFactsService.js',
+  async (importOriginal) => {
+    const actual = await importOriginal();
+    const mockSearch = vi.fn();
+    return {
+      ...actual,
+      searchOpenFoodFactsByBarcodeFields: mockSearch, // Für Named Import im Test
+      default: {
+        ...actual.default,
+        searchOpenFoodFactsByBarcodeFields: mockSearch, // Für Default Import im Service
+      },
+    };
+  }
+);
+
+vi.mock('../integrations/usda/usdaService.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  const mockSearch = vi.fn();
+  return {
+    ...actual,
+    searchUsdaFoodsByBarcode: mockSearch, // Für Named Import im Test
+    default: {
+      ...actual.default,
+      searchUsdaFoodsByBarcode: mockSearch, // Für Default Import im Service
+    },
+  };
+});
 describe('normalizeBarcode', () => {
   it('should pad a 12-digit UPC-A to 13-digit EAN-13', () => {
     expect(normalizeBarcode('094395000172')).toBe('0094395000172');
@@ -422,7 +445,7 @@ describe('mapUsdaBarcodeProduct', () => {
 });
 describe('lookupBarcode', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Default: no barcode provider preference
     preferenceService.getUserPreferences.mockResolvedValue({
       default_barcode_provider_id: null,

@@ -1,7 +1,8 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import foodRepository from '../models/foodRepository.js';
 import foodCoreService from '../services/foodCoreService.js';
-jest.mock('../models/foodRepository');
-jest.mock('../config/logging', () => ({ log: jest.fn() }));
+vi.mock('../models/foodRepository');
+vi.mock('../config/logging', () => ({ log: vi.fn() }));
 const TEST_USER_ID = 'user-123';
 const makeFoodData = (overrides = {}) => ({
   name: 'Test Food',
@@ -41,7 +42,7 @@ const makeExistingFood = (overrides = {}) => ({
 });
 describe('foodCoreService.createFood', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   it('should return existing food when barcode already exists for user', async () => {
     const existingFood = makeExistingFood();
@@ -134,7 +135,7 @@ describe('foodCoreService.createFood', () => {
 
 describe('foodCoreService.updateFood', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should not overwrite shared_with_public when only updating name and brand', async () => {

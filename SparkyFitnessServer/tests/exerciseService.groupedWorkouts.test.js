@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { getClient } from '../db/poolManager.js';
 import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
@@ -7,61 +8,71 @@ import calorieCalculationService from '../services/CalorieCalculationService.js'
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 import { getGroupedExerciseSessionByIdWithClient } from '../services/exerciseEntryHistoryService.js';
 import exerciseService from '../services/exerciseService.js';
-jest.mock('../db/poolManager', () => ({
-  getClient: jest.fn(),
-  getSystemClient: jest.fn(),
+vi.mock('../db/poolManager', () => ({
+  getClient: vi.fn(),
+  getSystemClient: vi.fn(),
 }));
-jest.mock('../models/exerciseRepository', () => ({}));
-jest.mock('../models/exercise', () => ({
-  getExerciseById: jest.fn(),
+vi.mock('../models/exerciseRepository', () => ({}));
+vi.mock('../models/exercise', () => ({
+  default: {
+    getExerciseById: vi.fn(),
+  },
 }));
-jest.mock('../models/exerciseEntry', () => ({
-  _createExerciseEntryWithClient: jest.fn(),
-  deleteExerciseEntriesByPresetEntryIdWithClient: jest.fn(),
-  updateExerciseEntriesDateByPresetEntryIdWithClient: jest.fn(),
+vi.mock('../models/exerciseEntry', () => ({
+  default: {
+    _createExerciseEntryWithClient: vi.fn(),
+    deleteExerciseEntriesByPresetEntryIdWithClient: vi.fn(),
+    updateExerciseEntriesDateByPresetEntryIdWithClient: vi.fn(),
+  },
 }));
-jest.mock('../models/activityDetailsRepository', () => ({}));
-jest.mock('../models/exercisePresetEntryRepository', () => ({
-  createExercisePresetEntryWithClient: jest.fn(),
-  updateExercisePresetEntryWithClient: jest.fn(),
-  getExercisePresetEntryById: jest.fn(),
+vi.mock('../models/activityDetailsRepository', () => ({}));
+vi.mock('../models/exercisePresetEntryRepository.js', () => ({
+  default: {
+    createExercisePresetEntryWithClient: vi.fn(),
+    updateExercisePresetEntryWithClient: vi.fn(),
+    getExercisePresetEntryById: vi.fn(),
+  },
 }));
-jest.mock('../models/userRepository', () => ({}));
-jest.mock('../models/preferenceRepository', () => ({}));
-jest.mock('../models/workoutPresetRepository', () => ({
-  getWorkoutPresetById: jest.fn(),
+vi.mock('../models/userRepository', () => ({}));
+vi.mock('../models/preferenceRepository', () => ({}));
+vi.mock('../models/workoutPresetRepository', () => ({
+  default: {
+    getWorkoutPresetById: vi.fn(),
+  },
 }));
-jest.mock('../config/logging', () => ({
-  log: jest.fn(),
+vi.mock('../config/logging', () => ({
+  log: vi.fn(),
 }));
-jest.mock('../integrations/wger/wgerService', () => ({}));
-jest.mock('../integrations/nutritionix/nutritionixService', () => ({}));
-jest.mock('../integrations/freeexercisedb/FreeExerciseDBService', () => ({}));
-jest.mock('../models/measurementRepository', () => ({}));
-jest.mock('../utils/imageDownloader', () => ({
-  downloadImage: jest.fn(),
+vi.mock('../integrations/wger/wgerService', () => ({}));
+vi.mock('../integrations/nutritionix/nutritionixService', () => ({}));
+vi.mock('../integrations/freeexercisedb/FreeExerciseDBService', () => ({}));
+vi.mock('../models/measurementRepository', () => ({}));
+vi.mock('../utils/imageDownloader', () => ({
+  downloadImage: vi.fn(),
 }));
-jest.mock('../services/CalorieCalculationService', () => ({
-  estimateCaloriesBurnedPerHour: jest.fn(),
+vi.mock('../services/CalorieCalculationService', () => ({
+  default: {
+    estimateCaloriesBurnedPerHour: vi.fn(),
+  },
 }));
-jest.mock('../utils/uuidUtils', () => ({
-  isValidUuid: jest.fn(),
-  resolveExerciseIdToUuid: jest.fn(),
+vi.mock('../utils/uuidUtils', () => ({
+  isValidUuid: vi.fn(),
+  resolveExerciseIdToUuid: vi.fn(),
 }));
-jest.mock('../models/familyAccessRepository', () => ({
-  checkFamilyAccessPermission: jest.fn(),
+vi.mock('../models/familyAccessRepository', () => ({
+  checkFamilyAccessPermission: vi.fn(),
 }));
-jest.mock('../services/exerciseEntryHistoryService', () => ({
-  getGroupedExerciseSessionById: jest.fn(),
-  getGroupedExerciseSessionByIdWithClient: jest.fn(),
+vi.mock('../services/exerciseEntryHistoryService', () => ({
+  getGroupedExerciseSessionById: vi.fn(),
+  getGroupedExerciseSessionByIdWithClient: vi.fn(),
 }));
 describe('exerciseService grouped workouts', () => {
   const client = {
-    query: jest.fn(),
-    release: jest.fn(),
+    query: vi.fn(),
+    release: vi.fn(),
   };
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getClient.mockResolvedValue(client);
     client.query.mockResolvedValue({});
   });

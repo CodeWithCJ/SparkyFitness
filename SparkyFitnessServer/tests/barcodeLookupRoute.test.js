@@ -1,21 +1,29 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import foodCrudRoutes from '../routes/foodCrudRoutes.js';
 import foodService from '../services/foodService.js';
-jest.mock('../services/foodService', () => ({
-  lookupBarcode: jest.fn(),
+vi.mock('../services/foodService.js', () => ({
+  default: {
+    lookupBarcode: vi.fn(),
+  },
 }));
-jest.mock('../middleware/authMiddleware', () => ({
-  authenticate: jest.fn((req, res, next) => {
+
+vi.mock('../middleware/authMiddleware.js', () => ({
+  authenticate: vi.fn((req, res, next) => {
     req.userId = 'user-123';
     req.authenticatedUserId = 'user-123';
     next();
   }),
 }));
-jest.mock('../middleware/checkPermissionMiddleware', () =>
-  jest.fn(() => (req, res, next) => next())
-);
-jest.mock('../config/logging', () => ({ log: jest.fn() }));
+
+vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
+  default: vi.fn(() => (req, res, next) => next()),
+}));
+
+vi.mock('../config/logging.js', () => ({
+  log: vi.fn(),
+}));
 const app = express();
 app.use(express.json());
 app.use('/food-crud', foodCrudRoutes);
@@ -25,7 +33,7 @@ app.use((err, req, res, _next) => {
 });
 describe('GET /food-crud/barcode/:barcode', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   it('should return 400 for barcode with letters', async () => {
     const res = await request(app).get('/food-crud/barcode/abc12345');

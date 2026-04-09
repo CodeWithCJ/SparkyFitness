@@ -1,6 +1,7 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import TandoorService from '../integrations/tandoor/tandoorService.js';
-jest.mock('../config/logging', () => ({
-  log: jest.fn(),
+vi.mock('../config/logging', () => ({
+  log: vi.fn(),
 }));
 describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
   const service = new TandoorService(
@@ -9,7 +10,7 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
   );
   const userId = 'user-123';
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   it('should map nutrition from food_properties (Spanish screenshot example)', () => {
     const mockRecipe = {

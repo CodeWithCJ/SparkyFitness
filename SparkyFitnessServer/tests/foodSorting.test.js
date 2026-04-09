@@ -1,23 +1,24 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getFoodsWithPagination } from '../models/food.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getClient } from '../db/poolManager.js';
 // Mock the poolManager.getClient function
-jest.mock('../db/poolManager', () => ({
-  getClient: jest.fn(),
+vi.mock('../db/poolManager', () => ({
+  getClient: vi.fn(),
 }));
 describe('food database sorting', () => {
   let mockClient;
   const userId = uuidv4();
   beforeEach(() => {
     mockClient = {
-      query: jest.fn(),
-      release: jest.fn(),
+      query: vi.fn(),
+      release: vi.fn(),
     };
     getClient.mockResolvedValue(mockClient);
     mockClient.query.mockClear();
   });
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
   it('should construct a valid query when sorting by calories', async () => {
     mockClient.query.mockResolvedValue({ rows: [] });

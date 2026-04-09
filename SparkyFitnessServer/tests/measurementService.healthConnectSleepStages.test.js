@@ -1,38 +1,39 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import measurementService from '../services/measurementService.js';
 import sleepRepository from '../models/sleepRepository.js';
 import userRepository from '../models/userRepository.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
-jest.mock('../models/measurementRepository');
-jest.mock('../models/userRepository');
-jest.mock('../models/exerciseRepository');
-jest.mock('../models/exerciseEntry');
-jest.mock('../models/sleepRepository');
-jest.mock('../models/waterContainerRepository');
-jest.mock('../models/activityDetailsRepository');
-jest.mock('../utils/timezoneLoader', () => ({
-  loadUserTimezone: jest.fn(),
+vi.mock('../models/measurementRepository');
+vi.mock('../models/userRepository');
+vi.mock('../models/exerciseRepository');
+vi.mock('../models/exerciseEntry');
+vi.mock('../models/sleepRepository');
+vi.mock('../models/waterContainerRepository');
+vi.mock('../models/activityDetailsRepository');
+vi.mock('../utils/timezoneLoader', () => ({
+  loadUserTimezone: vi.fn(),
 }));
-jest.mock('../config/logging', () => ({
-  log: jest.fn(),
+vi.mock('../config/logging', () => ({
+  log: vi.fn(),
 }));
 describe('processHealthData Health Connect sleep stages', () => {
   const userId = 'user-hc-sleep';
   const actingUserId = 'user-hc-sleep';
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     loadUserTimezone.mockResolvedValue('UTC');
-    userRepository.getUserProfile = jest.fn().mockResolvedValue(null);
-    sleepRepository.deleteSleepEntriesByEntrySourceAndDate = jest
+    userRepository.getUserProfile = vi.fn().mockResolvedValue(null);
+    sleepRepository.deleteSleepEntriesByEntrySourceAndDate = vi
       .fn()
       .mockResolvedValue(undefined);
-    sleepRepository.upsertSleepEntry = jest
+    sleepRepository.upsertSleepEntry = vi
       .fn()
       .mockResolvedValue({ id: 'sleep-entry-1' });
-    sleepRepository.upsertSleepStageEvent = jest
+    sleepRepository.upsertSleepStageEvent = vi
       .fn()
       .mockResolvedValue({ id: 'sleep-stage-1' });
-    exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate = jest
+    exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate = vi
       .fn()
       .mockResolvedValue(undefined);
   });
