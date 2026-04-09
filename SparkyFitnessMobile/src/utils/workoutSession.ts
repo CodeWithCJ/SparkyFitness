@@ -212,14 +212,14 @@ export function buildSessionSubtitle(
     return parts.join(' \u00b7 ');
   }
 
-  // Individual with multiple sets: show sets info + duration/calories
-  if (session.sets.length > 1) {
+  // Individual with sets: show sets info + duration/calories
+  if (session.sets.length > 0) {
     const totalSets = session.sets.length;
     const totalVolumeKg = session.sets.reduce(
       (sum, set) => sum + (set.weight ?? 0) * (set.reps ?? 0), 0,
     );
     const parts: string[] = [];
-    parts.push(`${totalSets} sets`);
+    parts.push(`${totalSets} set${totalSets !== 1 ? 's' : ''}`);
     if (totalVolumeKg > 0) {
       const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
       parts.push(`${vol.toLocaleString()} ${weightUnit}`);

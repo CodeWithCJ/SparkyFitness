@@ -119,43 +119,37 @@ const ExerciseRow = React.memo(({
     <View>
       <View className="border-t border-border-subtle" />
       <TouchableOpacity
-        className="flex-row items-start py-4"
+        className="py-4"
         onPress={() => onToggle(exercise.id)}
         activeOpacity={0.7}
       >
-        <View className="mr-3 items-center justify-center" style={{ width: 48, height: 48, marginTop: 2 }}>
-          <SafeImage
-            source={snapshot?.images?.[0] ? getImageSource(snapshot.images[0]) : null}
-            style={{ width: 48, height: 48, borderRadius: 8, opacity: 0.8 }}
-            fallback={<Icon name={exerciseIcon} size={28} color={accentPrimary} />}
-          />
-        </View>
-        <View className="flex-1">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-semibold text-text-primary flex-1 mr-2" numberOfLines={1}>
-              {snapshot?.name ?? 'Unknown exercise'}
-            </Text>
-            <Animated.View style={chevronStyle}>
-              <Icon name="chevron-down" size={18} color={textMuted} />
-            </Animated.View>
+        <View className="flex-row items-start">
+          <View className="mr-3 items-center justify-center" style={{ width: 48, height: 48, marginTop: 2 }}>
+            <SafeImage
+              source={snapshot?.images?.[0] ? getImageSource(snapshot.images[0]) : null}
+              style={{ width: 48, height: 48, borderRadius: 8, opacity: 0.8 }}
+              fallback={<Icon name={exerciseIcon} size={28} color={accentPrimary} />}
+            />
           </View>
+          <View className="flex-1">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-lg font-semibold text-text-primary flex-1 mr-2" numberOfLines={1}>
+                {snapshot?.name ?? 'Unknown exercise'}
+              </Text>
+              <Animated.View style={chevronStyle}>
+                <Icon name="chevron-down" size={18} color={textMuted} />
+              </Animated.View>
+            </View>
 
-          {isExpanded ? (
-            <FadeView key="expanded">
-              {metadataItems.length > 0 && (
+            {isExpanded && metadataItems.length > 0 && (
+              <FadeView key="metadata">
                 <Text className="text-xs text-text-muted mt-1">
                   {metadataItems.join(' \u2022 ')}
                 </Text>
-              )}
-              {exercise.sets.length > 0 && (
-                <>
-                  <View className="border-t border-border-subtle mt-3 mb-1" />
-                  {renderSetTable()}
-                </>
-              )}
-            </FadeView>
-          ) : (
-            exercise.sets.length > 0 && (
+              </FadeView>
+            )}
+
+            {!isExpanded && exercise.sets.length > 0 && (
               <FadeView key="collapsed">
                 <View className="mt-1">
                   <Text className="text-sm text-text-secondary">
@@ -168,9 +162,16 @@ const ExerciseRow = React.memo(({
                   )}
                 </View>
               </FadeView>
-            )
-          )}
+            )}
+          </View>
         </View>
+
+        {isExpanded && exercise.sets.length > 0 && (
+          <FadeView key="expanded">
+            <View className="mt-3 mb-1" />
+            {renderSetTable()}
+          </FadeView>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -391,7 +392,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
+      <View className="flex-row items-center px-4 py-3">
         {isEditing ? (
           <FadeView
             key="header-edit"

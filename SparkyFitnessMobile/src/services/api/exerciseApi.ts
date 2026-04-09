@@ -68,7 +68,7 @@ export interface CreateExerciseEntryPayload {
   distance?: number | null;
   avg_heart_rate?: number | null;
   notes?: string | null;
-  sets?: Array<{
+  sets?: {
     id?: number;
     set_number: number;
     set_type?: string | null;
@@ -78,7 +78,7 @@ export interface CreateExerciseEntryPayload {
     rest_time?: number | null;
     notes?: string | null;
     rpe?: number | null;
-  }>;
+  }[];
 }
 
 export const createExerciseEntry = async (

@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { View, TouchableOpacity, Platform, Text, TextInput, Switch } from 'react-native';
+import { View, TouchableOpacity, Platform, Text, Switch } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { CommonActions, StackActions } from '@react-navigation/native';
 import Icon from '../components/Icon';
+import StepperInput from '../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -203,31 +204,13 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
           {/* Amount */}
           <View>
             <View className="flex-row items-center">
-              <View className="flex-row items-center bg-raised border border-border-subtle rounded-lg overflow-hidden">
-                <TouchableOpacity
-                  onPress={() => adjustQuantity(-1)}
-                  className="w-10 h-10 items-center justify-center border-r border-border-subtle"
-                  activeOpacity={0.7}
-                >
-                  <Icon name="remove" size={20} color={accentColor} />
-                </TouchableOpacity>
-                <TextInput
-                  value={quantityText}
-                  onChangeText={updateQuantityText}
-                  onBlur={clampQuantity}
-                  keyboardType="decimal-pad"
-                  selectTextOnFocus
-                  className="text-text-primary text-base text-center w-14 h-10"
-                  style={{ fontSize: 20, lineHeight: 22 }}
-                />
-                <TouchableOpacity
-                  onPress={() => adjustQuantity(1)}
-                  className="w-10 h-10 items-center justify-center border-l border-border-subtle"
-                  activeOpacity={0.7}
-                >
-                  <Icon name="add" size={20} color={accentColor} />
-                </TouchableOpacity>
-              </View>
+              <StepperInput
+                value={quantityText}
+                onChangeText={updateQuantityText}
+                onBlur={clampQuantity}
+                onDecrement={() => adjustQuantity(-1)}
+                onIncrement={() => adjustQuantity(1)}
+              />
               <Text className="text-text-primary text-base font-medium ml-2">
                 {formServingUnit}
               </Text>

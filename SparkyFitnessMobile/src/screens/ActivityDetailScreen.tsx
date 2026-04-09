@@ -429,16 +429,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   };
 
-  // --- Divider ---
-
-  const Divider = () => (
-    <View className="h-px" style={{ backgroundColor: borderSubtle }} />
-  );
-
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-border-subtle">
+      <View className="flex-row items-center px-4 py-3 ">
         {isEditing ? (
           <FadeView
             key="header-edit"
@@ -551,7 +545,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
-        <Divider />
 
         {/* Stats grid */}
         {renderStatsGrid()}
@@ -560,7 +553,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {isEditing ? (
           draftSets.length > 0 || hasSets ? (
             <>
-              <Divider />
               <View className="py-4">
                 <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
                 {draftSets.length > 0 && (
@@ -618,7 +610,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           ) : null
         ) : hasSets ? (
           <>
-            <Divider />
             <View className="py-4">
               <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
               <View className="flex-row py-1 mb-1">
@@ -646,7 +637,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Notes section */}
         {(isEditing || session.notes) && (
           <>
-            <Divider />
             <View className="py-4">
               <Text className="text-sm font-medium text-text-secondary mb-2">Notes</Text>
               {isEditing ? (
@@ -677,7 +667,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Delete */}
         {isEditing && (
           <FadeView>
-            <Divider />
             <Button
               variant="ghost"
               onPress={() => deleteActivity.confirmAndDelete()}
