@@ -1,8 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
-import EditableSetRow from '../components/EditableSetRow';
+import EditableSetList from '../components/EditableSetList';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -552,61 +551,21 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Sets section */}
         {isEditing ? (
           draftSets.length > 0 || hasSets ? (
-            <>
-              <View className="py-4">
-                <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
-                {draftSets.length > 0 && (
-                  <Animated.View layout={LinearTransition.duration(300)}>
-                    <View className="flex-row items-center py-1 mb-1">
-                      <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
-                      <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
-                      <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
-                      <View style={{ width: 18 }} />
-                    </View>
-                    {draftSets.map((set, index) => {
-                      const setKey = `${SET_CLIENT_ID_PREFIX}:${set.clientId}`;
-                      const nextSet = draftSets[index + 1];
-                      return (
-                        <Animated.View
-                          key={set.clientId}
-                          entering={FadeIn.duration(200)}
-                          exiting={FadeOut.duration(150)}
-                          layout={LinearTransition.duration(300)}
-                        >
-                          <EditableSetRow
-                            exerciseClientId={SET_CLIENT_ID_PREFIX}
-                            setClientId={set.clientId}
-                            weight={set.weight}
-                            reps={set.reps}
-                            setNumber={index + 1}
-                            isActive={activeSetKey === setKey}
-                            initialFocusField={activeSetKey === setKey ? activeSetField : undefined}
-                            weightUnit={weightUnit}
-                            nextSetKey={nextSet ? `${SET_CLIENT_ID_PREFIX}:${nextSet.clientId}` : null}
-                            onActivateSet={activateSet}
-                            onDeactivate={deactivateSet}
-                            onUpdateSetField={updateDraftSetField}
-                            onRemoveSet={removeDraftSet}
-                            onAddSet={addDraftSet}
-                            isLastSet={index === draftSets.length - 1}
-                          />
-                        </Animated.View>
-                      );
-                    })}
-                  </Animated.View>
-                )}
-                <TouchableOpacity
-                  className="flex-row items-center justify-center py-3"
-                  onPress={() => addDraftSet()}
-                  activeOpacity={0.6}
-                >
-                  <Icon name="add" size={18} color={accentPrimary} />
-                  <Text className="text-base font-medium ml-1" style={{ color: accentPrimary }}>
-                    Add Set
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
+            <View className="py-4">
+              <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
+              <EditableSetList
+                exerciseClientId={SET_CLIENT_ID_PREFIX}
+                sets={draftSets}
+                activeSetKey={activeSetKey}
+                activeSetField={activeSetField}
+                weightUnit={weightUnit}
+                onActivateSet={activateSet}
+                onDeactivateSet={deactivateSet}
+                onUpdateSetField={updateDraftSetField}
+                onRemoveSet={removeDraftSet}
+                onAddSet={addDraftSet}
+              />
+            </View>
           ) : null
         ) : hasSets ? (
           <>

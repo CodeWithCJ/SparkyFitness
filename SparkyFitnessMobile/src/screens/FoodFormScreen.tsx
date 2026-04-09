@@ -292,7 +292,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         cholesterol: parseOptional(data.cholesterol),
         vitamin_a: parseOptional(data.vitaminA),
         vitamin_c: parseOptional(data.vitaminC),
-        custom_nutrients: customNutrients ?? undefined,
+        custom_nutrients: customNutrients || undefined,
       }).then(invalidateCaches).catch(onError);
 
       // Update name/brand on the parent food record if changed
