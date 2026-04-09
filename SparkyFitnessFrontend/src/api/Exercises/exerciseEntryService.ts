@@ -156,9 +156,10 @@ export const updateExerciseEntry = async (
       isFormData: true,
     });
   } else {
-    // workaround because the backend deletes the image when an url is in the request
-    const { image_url, ...dataToSend } = entryData;
-    // If no new image, send as JSON
+    // Omit image_url when unchanged to avoid triggering server-side image deletion.
+    // Send image_url: null explicitly when the user cleared the image.
+    const { image_url, ...rest } = entryData;
+    const dataToSend = image_url === null ? { ...rest, image_url: null } : rest;
     return apiCall(`/exercise-entries/${entryId}`, {
       method: 'PUT',
       body: dataToSend,
