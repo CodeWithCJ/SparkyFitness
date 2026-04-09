@@ -121,13 +121,12 @@ jobs:
             const screenshotsChecked = checked('[MANDATORY for UI changes] Screenshots');
 
             if (screenshotsChecked) {
-              const hasBeforeSection = prBody.toLowerCase().includes('### before');
-              const hasAfterSection  = prBody.toLowerCase().includes('### after');
-              const hasImages        = prBody.includes('![') || prBody.includes('<img') || prBody.includes('http');
+              // Only look for image markdown, HTML tags, or generic URLs
+              const hasImages = prBody.includes('![') || prBody.includes('<img') || prBody.includes('http');
 
-              if (!hasBeforeSection || !hasAfterSection || !hasImages) {
+              if (!hasImages) {
                 errors.push(
-                  '**[MANDATORY for UI changes]** Screenshots checkbox is checked but Before/After sections appear empty. Please add screenshots.'
+                  '**[MANDATORY for UI changes]** You checked the Screenshots box, but no images were found in the PR body. Please attach them.'
                 );
               }
             }

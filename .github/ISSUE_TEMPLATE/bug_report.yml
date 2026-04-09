@@ -1,0 +1,87 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in SparkyFitness
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out as much as you can so we can reproduce and fix it faster.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: Describe what went wrong...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce the issue?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install_type
+    attributes:
+      label: How are you running SparkyFitness?
+      options:
+        - Docker Compose
+        - Docker (manual)
+        - Bare metal / manual install
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: SparkyFitness version
+      placeholder: e.g. v0.16.5.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area is affected?
+      multiple: true
+      options:
+        - Web frontend
+        - Mobile app (iOS)
+        - Mobile app (Android)
+        - Server / API
+        - AI / SparkyAI
+        - Integrations (Garmin, Fitbit, etc.)
+        - Database / migrations
+        - Docker / deployment
+        - Other
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Paste any relevant logs or attach screenshots. Docker logs can be grabbed with `docker compose logs`.
+      render: shell
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Additional context, browser/OS info, environment details, etc.
