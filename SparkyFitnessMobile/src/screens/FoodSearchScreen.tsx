@@ -176,7 +176,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const renderSearchBar = () => (
     <View className="px-4 py-2">
-      <View className="flex-row items-center bg-raised rounded-lg px-3 py-2.5">
+      <View className="flex-row items-center bg-raised rounded-lg px-3">
         <Icon name="search" size={18} color={textMuted} />
         <View className="flex-1 ml-2">
           <TextInput

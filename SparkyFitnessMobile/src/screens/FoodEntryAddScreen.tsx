@@ -364,6 +364,14 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({ navigation, rou
                   mode: 'adjust-entry-nutrition',
                   returnTo: 'FoodEntryAdd',
                   returnKey: route.key,
+                  foodId: isLocalFood ? item.id : undefined,
+                  variantId: isLocalFood ? selectedVariantId : undefined,
+                  customNutrients: isLocalFood && variants
+                    ? (() => {
+                        const selectedVariant = variants.find((v) => v.id === selectedVariantId);
+                        return selectedVariant ? (selectedVariant.custom_nutrients ?? null) : undefined;
+                      })()
+                    : undefined,
                   initialValues: {
                     name: adjustedValues?.name || item.name,
                     brand: adjustedValues?.brand ?? item.brand ?? '',
