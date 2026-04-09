@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from 'vitest';
+import { vi, beforeEach, describe, expect, test } from 'vitest';
 import { calculateAdaptiveTdee } from '../services/AdaptiveTdeeService.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { vi, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import globalSettingsRoutes from '../routes/globalSettingsRoutes.js';

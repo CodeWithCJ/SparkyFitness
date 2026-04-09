@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { vi, describe, expect, it } from 'vitest';
 import { resolveTwoFactorDisableUserUpdate } from '../utils/twoFactorState.js';
 describe('resolveTwoFactorDisableUserUpdate', () => {
   it('preserves the global MFA flag when disabling TOTP and email MFA remains enabled', async () => {

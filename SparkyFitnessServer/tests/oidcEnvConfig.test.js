@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { vi, afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { getEnvOidcConfig } from '../utils/oidcEnvConfig.js';
 describe('oidcEnvConfig', () => {
   const originalEnv = process.env;

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { vi, beforeEach, describe, expect, it } from 'vitest';
 import chatService from '../services/chatService.js';
 import chatRepository from '../models/chatRepository.js';
 import { log } from '../config/logging.js';

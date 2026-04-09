@@ -528,7 +528,6 @@ async function processPolarNightlyRecharge(
  */
 function iso8601ToSeconds(duration) {
   if (!duration) return 0;
-  // eslint-disable-next-line security/detect-unsafe-regex
   const regex = /^PT(?:(\d{1,5})H)?(?:(\d{1,5})M)?(?:(\d{1,5})S)?$/;
   const matches = duration.match(regex);
   if (!matches) return 0;

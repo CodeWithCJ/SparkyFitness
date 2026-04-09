@@ -65,6 +65,7 @@ export default [
       'security/detect-child-process': 'off',
       'prefer-const': 'warn',
       'no-var': 'warn',
+      'n/file-extension-in-import': ['error', 'always'],
       eqeqeq: ['warn', 'always'],
       // Code style (warnings for gradual improvement)
       quotes: ['warn', 'single', { avoidEscape: true }],

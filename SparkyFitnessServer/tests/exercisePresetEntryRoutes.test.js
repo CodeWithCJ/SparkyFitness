@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import exerciseService from '../services/exerciseService.js';
 import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
@@ -66,80 +66,6 @@ vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
 
-const exerciseEntrySetRequestSchema = z
-  .object({
-    set_number: z.number().int().positive(),
-    set_type: z.string().nullable().optional(),
-    reps: z.number().nullable().optional(),
-    weight: z.number().nullable().optional(),
-    duration: z.number().nullable().optional(),
-    rest_time: z.number().nullable().optional(),
-    notes: z.string().nullable().optional(),
-    rpe: z.number().nullable().optional(),
-  })
-  .strict();
-const presetSessionExerciseRequestSchema = z
-  .object({
-    exercise_id: z.string().uuid(),
-    sort_order: z.number().int().min(0).default(0),
-    duration_minutes: z.number().min(0).default(0),
-    notes: z.string().nullable().optional(),
-    sets: z.array(exerciseEntrySetRequestSchema).default([]),
-  })
-  .strict();
-const createPresetSessionRequestSchema = z
-  .object({
-    workout_preset_id: z.number().int().nullable().optional(),
-    entry_date: z.string(),
-    name: z.string().min(1).optional(),
-    description: z.string().nullable().optional(),
-    notes: z.string().nullable().optional(),
-    source: z.string().default('manual'),
-    exercises: z.array(presetSessionExerciseRequestSchema).min(1).optional(),
-  })
-  .strict()
-  .superRefine((data, ctx) => {
-    const hasPresetId =
-      data.workout_preset_id !== undefined && data.workout_preset_id !== null;
-    const hasExercises = data.exercises !== undefined;
-    if (hasPresetId === hasExercises) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          'Provide exactly one workout source: workout_preset_id or exercises.',
-      });
-    }
-    if (!hasPresetId && !data.name) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Name is required when creating a freeform workout.',
-        path: ['name'],
-      });
-    }
-  });
-const updatePresetSessionRequestSchema = z
-  .object({
-    name: z.string().min(1).optional(),
-    description: z.string().nullable().optional(),
-    notes: z.string().nullable().optional(),
-    entry_date: z.string().optional(),
-    exercises: z.array(presetSessionExerciseRequestSchema).min(1).optional(),
-  })
-  .strict()
-  .superRefine((data, ctx) => {
-    const hasAnyField =
-      data.name !== undefined ||
-      data.description !== undefined ||
-      data.notes !== undefined ||
-      data.entry_date !== undefined ||
-      data.exercises !== undefined;
-    if (!hasAnyField) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'At least one field must be provided.',
-      });
-    }
-  });
 const presetSessionResponseSchema = z
   .object({
     type: z.literal('preset'),

@@ -260,7 +260,6 @@ router.get(
       }
       const targetUserId = userId || req.userId;
       if (userId && userId !== req.userId) {
-        const permissionUtils = permissionUtils;
         const hasPermission = await permissionUtils.canAccessUserData(
           userId,
           'reports',

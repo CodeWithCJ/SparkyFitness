@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { vi, beforeEach, describe, expect, it } from 'vitest';
 import oidcProviderRepository from '../models/oidcProviderRepository.js';
 import { getSystemClient } from '../db/poolManager.js';
 // Mock dependencies

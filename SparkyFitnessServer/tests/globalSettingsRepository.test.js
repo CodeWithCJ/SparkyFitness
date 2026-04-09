@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { vi, beforeEach, describe, expect, it } from 'vitest';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import { getSystemClient } from '../db/poolManager.js';
 // Mock dependencies

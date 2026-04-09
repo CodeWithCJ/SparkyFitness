@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import chatRepository from '../models/chatRepository.js';
 import { getDefaultVisionModel } from '../ai/config.js';
 import { extractNutritionFromLabel } from '../services/labelScanService.js';

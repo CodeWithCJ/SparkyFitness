@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { syncUserGroups } from '../utils/oidcGroupSync.js';
 vi.mock('jose', () => ({
   decodeJwt: vi.fn((token) => {

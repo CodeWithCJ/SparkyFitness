@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { getClient } from '../db/poolManager.js';
 vi.mock('../db/poolManager', () => ({

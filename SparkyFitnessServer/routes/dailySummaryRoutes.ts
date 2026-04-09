@@ -1,5 +1,5 @@
 import express, { RequestHandler } from 'express';
-import { getDailySummary } from '../services/dailySummaryService';
+import { getDailySummary } from '../services/dailySummaryService.js';
 
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';

@@ -4,13 +4,13 @@
   "main": "SparkyFitnessServer.js",
   "type": "module",
   "scripts": {
-    "start": "nodemon --exec node --import tsx SparkyFitnessServer.js",
+    "start": "nodemon SparkyFitnessServer.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --coverage --reporter=verbose",
     "lint": "eslint . --max-warnings 0",
-    "test:ci": "NODE_OPTIONS='--experimental-vm-modules' jest --ci --coverage --runInBand",
     "lint:fix": "eslint . --fix",
     "format:check": "prettier . --check",
     "format": "prettier . --write"
@@ -61,7 +61,6 @@
     "eslint-plugin-n": "^17.23.2",
     "eslint-plugin-security": "^4.0.0",
     "globals": "^17.1.0",
-    "jest": "^30.3.0",
     "nodemon": "^3.1.11",
     "supertest": "^7.0.0",
     "tsx": "^4.21.0",

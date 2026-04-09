@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { vi, beforeEach, describe, expect, it } from 'vitest';
 import TandoorService from '../integrations/tandoor/tandoorService.js';
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
