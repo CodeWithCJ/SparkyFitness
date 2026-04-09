@@ -795,7 +795,7 @@ async function syncGarminData(
     endDate = customEndDate || today;
   } else if (syncType === 'manual') {
     endDate = today;
-    startDate = addDays(today, -7);
+    startDate = today;
   } else if (syncType === 'scheduled') {
     endDate = today;
     startDate = today;
