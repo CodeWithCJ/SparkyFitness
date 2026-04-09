@@ -120,8 +120,6 @@ jobs:
             // so we only validate that screenshots are actually present if the contributor checks the box.
             const screenshotsChecked = checked('[MANDATORY for UI changes] Screenshots');
 
-            const screenshotsChecked = checked('[MANDATORY for UI changes] Screenshots');
-
             if (screenshotsChecked) {
               // Only look for image markdown, HTML tags, or generic URLs
               const hasImages = prBody.includes('![') || prBody.includes('<img') || prBody.includes('http');
