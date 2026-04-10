@@ -5,6 +5,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
+import { parseDecimalInput } from '../utils/numericInput';
 
 interface EditableSetRowProps {
   exerciseClientId: string;
@@ -68,7 +69,7 @@ function EditableSetRow({
   }, [exerciseClientId, onUpdateSetField, setClientId]);
 
   const handleStepWeight = useCallback((direction: number) => {
-    const current = parseFloat(weight) || 0;
+    const current = parseDecimalInput(weight) || 0;
     const next = Math.max(0, current + direction * 5);
     handleUpdateWeight(String(next));
   }, [weight, handleUpdateWeight]);

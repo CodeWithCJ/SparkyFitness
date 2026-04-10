@@ -12,6 +12,7 @@ import { useUniwind, useCSSVariable } from 'uniwind';
 import StepperInput from './StepperInput';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
+import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 export interface ServingAdjustSheetRef {
   present: (entry: FoodEntry) => void;
@@ -33,7 +34,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
   ]) as [string, string];
   const isDarkMode = theme === 'dark' || theme === 'amoled';
 
-  const quantity = parseFloat(quantityText) || 0;
+  const quantity = parseDecimalInput(quantityText) || 0;
   const totalCalories = entry && entry.serving_size > 0
     ? Math.round(entry.calories * quantity / entry.serving_size)
     : 0;
@@ -82,7 +83,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
   };
 
   const updateQuantityText = (text: string) => {
-    if (/^\d*\.?\d*$/.test(text)) {
+    if (DECIMAL_INPUT_REGEX.test(text)) {
       setQuantityText(text);
     }
   };

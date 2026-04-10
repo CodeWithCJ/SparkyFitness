@@ -4,6 +4,7 @@ import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from './BottomSheetPicker';
 import Button from './ui/Button';
 import Icon from './Icon';
+import { DECIMAL_INPUT_REGEX } from '../utils/numericInput';
 
 export interface FoodFormData {
   name: string;
@@ -157,7 +158,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         placeholderTextColor={textMuted}
         value={form[field]}
         onChangeText={(v) => {
-          if (/^\d*\.?\d*$/.test(v)) update(field, v);
+          if (DECIMAL_INPUT_REGEX.test(v)) update(field, v);
         }}
         keyboardType="decimal-pad"
         returnKeyType={nextField ? 'next' : 'done'}
@@ -221,7 +222,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
               placeholderTextColor={textMuted}
               value={form.calories}
               onChangeText={(v) => {
-                if (/^\d*\.?\d*$/.test(v)) update('calories', v);
+                if (DECIMAL_INPUT_REGEX.test(v)) update('calories', v);
               }}
               keyboardType="decimal-pad"
               returnKeyType="next"

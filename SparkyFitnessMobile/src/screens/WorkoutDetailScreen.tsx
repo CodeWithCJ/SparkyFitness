@@ -23,6 +23,7 @@ import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
+import { parseDecimalInput } from '../utils/numericInput';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import { extractActivitySummary } from '../utils/activityDetails';
@@ -350,7 +351,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
     const totalVolume = isEditing
       ? formState.exercises.reduce((sum, ex) => ex.sets.reduce((s, set) => {
-          const w = parseFloat(set.weight);
+          const w = parseDecimalInput(set.weight);
           const r = parseInt(set.reps, 10);
           return s + (isNaN(w) || isNaN(r) ? 0 : w * r);
         }, sum), 0)

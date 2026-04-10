@@ -18,6 +18,7 @@ import { parseOptional } from '../types/foodInfo';
 import { updateFoodVariant, updateFood } from '../services/api/foodsApi';
 import { foodVariantsQueryKey, foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
+import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 
@@ -40,22 +41,22 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
   const [saveToDatabase, setSaveToDatabase] = useState(true);
-  const initialServingSize = parseFloat(initialFood?.servingSize ?? '') || 100;
+  const initialServingSize = parseDecimalInput(initialFood?.servingSize ?? '') || 100;
   const [formServingSize, setFormServingSize] = useState(initialServingSize);
   const [formServingUnit, setFormServingUnit] = useState(initialFood?.servingUnit ?? 'g');
   const [quantityText, setQuantityText] = useState(String(initialServingSize));
-  const quantity = parseFloat(quantityText) || 0;
+  const quantity = parseDecimalInput(quantityText) || 0;
   const servings = formServingSize > 0 ? quantity / formServingSize : 0;
 
   const handleServingChange = (sizeStr: string, unit: string) => {
-    const size = parseFloat(sizeStr) || 0;
+    const size = parseDecimalInput(sizeStr) || 0;
     setFormServingSize(size);
     setFormServingUnit(unit);
     if (size > 0) setQuantityText(String(size));
   };
 
   const updateQuantityText = (text: string) => {
-    if (/^\d*\.?\d*$/.test(text)) setQuantityText(text);
+    if (DECIMAL_INPUT_REGEX.test(text)) setQuantityText(text);
   };
 
   const clampQuantity = () => {
@@ -96,7 +97,7 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
       Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
       return;
     }
-    if (!parseFloat(data.servingSize)) {
+    if (!parseDecimalInput(data.servingSize)) {
       Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
       return;
     }
@@ -113,12 +114,12 @@ function CreateFoodMode({ params, navigation }: { params: CreateFoodParams; navi
       saveFoodPayload: {
         name: data.name,
         brand: data.brand || null,
-        serving_size: parseFloat(data.servingSize) || 0,
+        serving_size: parseDecimalInput(data.servingSize) || 0,
         serving_unit: data.servingUnit || 'serving',
-        calories: parseFloat(data.calories) || 0,
-        protein: parseFloat(data.protein) || 0,
-        carbs: parseFloat(data.carbs) || 0,
-        fat: parseFloat(data.fat) || 0,
+        calories: parseDecimalInput(data.calories) || 0,
+        protein: parseDecimalInput(data.protein) || 0,
+        carbs: parseDecimalInput(data.carbs) || 0,
+        fat: parseDecimalInput(data.fat) || 0,
         dietary_fiber: parseOptional(data.fiber),
         saturated_fat: parseOptional(data.saturatedFat),
         sodium: parseOptional(data.sodium),
@@ -258,7 +259,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
       Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
       return;
     }
-    if (!parseFloat(data.servingSize)) {
+    if (!parseDecimalInput(data.servingSize)) {
       Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
       return;
     }
@@ -275,12 +276,12 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
 
       void updateFoodVariant(variantId, {
         food_id: foodId,
-        serving_size: parseFloat(data.servingSize) || 0,
+        serving_size: parseDecimalInput(data.servingSize) || 0,
         serving_unit: data.servingUnit || 'serving',
-        calories: parseFloat(data.calories) || 0,
-        protein: parseFloat(data.protein) || 0,
-        carbs: parseFloat(data.carbs) || 0,
-        fat: parseFloat(data.fat) || 0,
+        calories: parseDecimalInput(data.calories) || 0,
+        protein: parseDecimalInput(data.protein) || 0,
+        carbs: parseDecimalInput(data.carbs) || 0,
+        fat: parseDecimalInput(data.fat) || 0,
         dietary_fiber: parseOptional(data.fiber),
         saturated_fat: parseOptional(data.saturatedFat),
         sodium: parseOptional(data.sodium),

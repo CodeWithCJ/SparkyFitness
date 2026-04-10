@@ -22,6 +22,7 @@ import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivit
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
 import { distanceFromKm, weightFromKg, weightToKg } from '../utils/unitConversions';
+import { parseDecimalInput } from '../utils/numericInput';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -163,7 +164,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const dateChanged = submission.entryDate !== normalizedDate;
 
     const setsPayload = draftSets.map((set, index) => {
-      const w = parseFloat(set.weight);
+      const w = parseDecimalInput(set.weight);
       const r = parseInt(set.reps, 10);
       const original = originalSetsRef.current.get(set.clientId);
       return {
