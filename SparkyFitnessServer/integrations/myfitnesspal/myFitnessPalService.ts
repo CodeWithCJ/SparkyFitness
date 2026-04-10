@@ -73,7 +73,10 @@ async function getMFPSession(userId: string): Promise<MFPSession | null> {
       currentCookies = `${currentCookies}; ${newCookies}`;
     }
   } catch (e: any) {
-    log('warn', `MFP getSession: CSRF fetch fallback for ${userId}: ${e.message}`);
+    log(
+      'warn',
+      `MFP getSession: CSRF fetch fallback for ${userId}: ${e.message}`
+    );
   }
 
   // 2. Fetch Bearer Token
@@ -110,6 +113,7 @@ async function getMFPSession(userId: string): Promise<MFPSession | null> {
       Authorization: `Bearer ${bearerToken}`,
       'mfp-client-id': 'mfp-main-js',
       Cookie: currentCookies,
+      'x-csrf-token': freshCsrfToken,
       ...(mfpUserId ? { 'mfp-user-id': String(mfpUserId) } : {}),
     },
     mfpUserId: String(mfpUserId),
@@ -126,7 +130,10 @@ export async function pushNutritionToMFP(
   try {
     const session = await getMFPSession(userId);
     if (!session) {
-      log('info', `pushNutritionToMFP: No credentials for ${userId}. Skipping.`);
+      log(
+        'info',
+        `pushNutritionToMFP: No credentials for ${userId}. Skipping.`
+      );
       return null;
     }
     const { authHeaders } = session;
@@ -146,23 +153,31 @@ export async function pushNutritionToMFP(
 
       if (diaryResp.data && Array.isArray(diaryResp.data.items)) {
         const items = diaryResp.data.items;
-        const itemsWithId = items.filter((item: any) => item.id || item.item_id);
+        const itemsWithId = items.filter(
+          (item: any) => item.id || item.item_id
+        );
         for (let i = 0; i < itemsWithId.length; i += DELETE_CONCURRENCY) {
           const batch = itemsWithId.slice(i, i + DELETE_CONCURRENCY);
           await Promise.all(
             batch.map(async (item: any) => {
               const itemId = item.id || item.item_id;
               try {
-                await axios.delete(`https://api.myfitnesspal.com/v2/diary/${itemId}`, {
-                  headers: authHeaders,
-                });
+                await axios.delete(
+                  `https://api.myfitnesspal.com/v2/diary/${itemId}`,
+                  {
+                    headers: authHeaders,
+                  }
+                );
               } catch (e) {}
             })
           );
         }
       }
     } catch (e: any) {
-      log('warn', `pushNutritionToMFP: Cleanup failed for user ${userId}: ${e.message}`);
+      log(
+        'warn',
+        `pushNutritionToMFP: Cleanup failed for user ${userId}: ${e.message}`
+      );
     }
 
     // Push categories
@@ -174,7 +189,9 @@ export async function pushNutritionToMFP(
       snacks: 'Snacks',
     };
 
-    for (const [categoryName, categoryData] of Object.entries(data.categories)) {
+    for (const [categoryName, categoryData] of Object.entries(
+      data.categories
+    )) {
       if (categoryData.calories < 0) continue;
       const mfpMealName = mealMapping[categoryName.toLowerCase()] || 'Snacks';
       const payload = {
@@ -184,7 +201,10 @@ export async function pushNutritionToMFP(
             date: data.date,
             meal_name: mfpMealName,
             nutritional_contents: {
-              energy: { unit: 'calories', value: Math.round(categoryData.calories) },
+              energy: {
+                unit: 'calories',
+                value: Math.round(categoryData.calories),
+              },
               carbohydrates: Number(categoryData.carbohydrate),
               fat: Number(categoryData.fat),
               protein: Number(categoryData.protein),
@@ -193,15 +213,23 @@ export async function pushNutritionToMFP(
         ],
       };
 
-      const finalResp = await axios.post('https://api.myfitnesspal.com/v2/diary', payload, {
-        headers: authHeaders,
-      });
+      const finalResp = await axios.post(
+        'https://api.myfitnesspal.com/v2/diary',
+        payload,
+        {
+          headers: authHeaders,
+        }
+      );
       if (finalResp.status < 400) responses.push(finalResp.data);
     }
 
     return { status: 'success', date: data.date, responses };
   } catch (error: any) {
-    log('error', `pushNutritionToMFP: Fatal error for user ${userId}:`, error.message);
+    log(
+      'error',
+      `pushNutritionToMFP: Fatal error for user ${userId}:`,
+      error.message
+    );
     throw error;
   }
 }
@@ -219,17 +247,21 @@ export async function pushWaterToMFP(
     if (!session) return null;
     const { authHeaders } = session;
 
-    log('info', `pushWaterToMFP: Pushing ${milliliters}ml water for ${userId} on ${date} (edit_total)`);
+    log(
+      'info',
+      `pushWaterToMFP: Pushing ${milliliters}ml water for ${userId} on ${date} (edit_total)`
+    );
 
-    const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
-    
+    const userAgent =
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
+
     // The stats endpoint uses 'edit_total' to update the absolute total.
     // The date is controlled by the 'Referer' header in the MFP web API.
     const customHeaders = {
       ...authHeaders,
       'user-agent': userAgent,
-      'Referer': `https://www.myfitnesspal.com/food/diary?date=${date}`,
-      'origin': 'https://www.myfitnesspal.com',
+      Referer: `https://www.myfitnesspal.com/food/diary?date=${date}`,
+      origin: 'https://www.myfitnesspal.com',
     };
 
     const payload = {
@@ -245,9 +277,13 @@ export async function pushWaterToMFP(
       },
     };
 
-    const resp = await axios.post('https://www.myfitnesspal.com/stats', payload, {
-      headers: customHeaders,
-    });
+    const resp = await axios.post(
+      'https://www.myfitnesspal.com/stats',
+      payload,
+      {
+        headers: customHeaders,
+      }
+    );
 
     return resp.data;
   } catch (error: any) {
