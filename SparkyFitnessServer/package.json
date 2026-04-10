@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "nodemon SparkyFitnessServer.js",
+    "validate": "pnpm run typecheck && pnpm run lint && pnpm run format:check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
