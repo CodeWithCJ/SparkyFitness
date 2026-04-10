@@ -219,40 +219,34 @@ export async function pushWaterToMFP(
     if (!session) return null;
     const { authHeaders } = session;
 
-    log('info', `pushWaterToMFP: Pushing ${milliliters}ml water for ${userId} on ${date}`);
+    log('info', `pushWaterToMFP: Pushing ${milliliters}ml water for ${userId} on ${date} (edit_total)`);
 
-    // Idempotency: DELETE existing water entries for this date
-    try {
-      const discoveryResp = await axios.get(
-        `https://api.myfitnesspal.com/v2/diary?entry_date=${date}&types=water_entry`,
-        { headers: authHeaders }
-      );
-      if (discoveryResp.data && Array.isArray(discoveryResp.data.items)) {
-        for (const item of discoveryResp.data.items) {
-          const itemId = item.id || item.item_id;
-          if (itemId) {
-            await axios.delete(`https://api.myfitnesspal.com/v2/diary/${itemId}`, {
-              headers: authHeaders,
-            });
-          }
-        }
-      }
-    } catch (e: any) {
-      log('warn', `pushWaterToMFP: Cleanup failed: ${e.message}`);
-    }
-
-    const payload = {
-      items: [
-        {
-          type: 'water_entry',
-          date: date,
-          milliliters: Math.round(milliliters),
-        },
-      ],
+    const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
+    
+    // The stats endpoint uses 'edit_total' to update the absolute total.
+    // The date is controlled by the 'Referer' header in the MFP web API.
+    const customHeaders = {
+      ...authHeaders,
+      'user-agent': userAgent,
+      'Referer': `https://www.myfitnesspal.com/food/diary?date=${date}`,
+      'origin': 'https://www.myfitnesspal.com',
     };
 
-    const resp = await axios.post('https://api.myfitnesspal.com/v2/diary', payload, {
-      headers: authHeaders,
+    const payload = {
+      event: {
+        type: 'water_logged',
+        attrs: {
+          type: 'edit_total',
+          unit: 'ml',
+          value: Math.round(milliliters),
+          diary_version: 'mainapp',
+        },
+        user_agent: userAgent,
+      },
+    };
+
+    const resp = await axios.post('https://www.myfitnesspal.com/stats', payload, {
+      headers: customHeaders,
     });
 
     return resp.data;
