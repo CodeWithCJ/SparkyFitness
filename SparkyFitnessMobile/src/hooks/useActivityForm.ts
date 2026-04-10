@@ -65,7 +65,7 @@ export function getActivityDraftSubmission(
   distanceUnit: 'km' | 'miles',
 ): ActivityDraftSubmission {
   const durationMinutes = parseDecimalInput(state.duration);
-  const caloriesBurned = parseInt(state.calories, 10);
+  const caloriesBurned = parseDecimalInput(state.calories);
   const distanceValue = parseDecimalInput(state.distance);
   const hasDuration = !isNaN(durationMinutes) && durationMinutes > 0;
   const hasCalories = !isNaN(caloriesBurned) && caloriesBurned > 0;

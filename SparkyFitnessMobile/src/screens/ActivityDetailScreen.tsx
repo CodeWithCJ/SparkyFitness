@@ -266,11 +266,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       stats.push({
         value: isEditing
           ? (formState.calories || '—')
-          : (calories > 0 ? String(Math.round(calories)) : '—'),
+          : (calories > 0
+              ? (calories % 1 === 0 ? String(calories) : calories.toFixed(1))
+              : '—'),
         label: 'Calories',
         editKey: 'calories',
         editSuffix: 'cal',
-        keyboardType: 'numeric',
+        keyboardType: 'decimal-pad',
       });
     }
     if (isEditing || (session.distance != null && session.distance > 0)) {

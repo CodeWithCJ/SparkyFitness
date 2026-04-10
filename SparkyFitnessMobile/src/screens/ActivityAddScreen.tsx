@@ -271,7 +271,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 value={state.calories}
                 onChangeText={setCalories}
                 placeholder="0"
-                keyboardType="number-pad"
+                keyboardType="decimal-pad"
                 returnKeyType="done"
               />
               <Text className="text-xs text-text-muted mt-1">
