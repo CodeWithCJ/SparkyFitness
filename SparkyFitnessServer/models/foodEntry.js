@@ -828,10 +828,10 @@ async function getDailyNutritionByCategory(userId, date) {
       GROUP BY mt.name
     `;
     const result = await client.query(query, [userId, date]);
-    
+
     // Convert rows to an object keyed by meal name for easier lookup
     const summary = {};
-    result.rows.forEach(row => {
+    result.rows.forEach((row) => {
       summary[row.meal_name] = {
         calories: parseFloat(row.calories || 0),
         protein: parseFloat(row.protein || 0),
@@ -849,7 +849,7 @@ async function getDailyNutritionByCategory(userId, date) {
         vitamin_a: parseFloat(row.vitamin_a || 0),
         vitamin_c: parseFloat(row.vitamin_c || 0),
         calcium: parseFloat(row.calcium || 0),
-        iron: parseFloat(row.iron || 0)
+        iron: parseFloat(row.iron || 0),
       };
     });
     return summary;

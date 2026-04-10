@@ -5,15 +5,16 @@ const exerciseEntryRepository = require('../../models/exerciseEntry');
 const activityDetailsRepository = require('../../models/activityDetailsRepository');
 const exerciseRepository = require('../../models/exercise');
 import moment from 'moment';
-import {
-  encrypt,
-  ENCRYPTION_KEY,
-} from '../../security/encryption';
+import { encrypt, ENCRYPTION_KEY } from '../../security/encryption';
 
 const GARMIN_MICROSERVICE_URL =
   process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
 
-export async function garminLogin(userId: string, email: string, password: string): Promise<any> {
+export async function garminLogin(
+  userId: string,
+  email: string,
+  password: string
+): Promise<any> {
   try {
     const response = await axios.post(
       `${GARMIN_MICROSERVICE_URL}/auth/garmin/login`,
@@ -37,7 +38,11 @@ export async function garminLogin(userId: string, email: string, password: strin
   }
 }
 
-export async function garminResumeLogin(userId: string, clientState: string, mfaCode: string): Promise<any> {
+export async function garminResumeLogin(
+  userId: string,
+  clientState: string,
+  mfaCode: string
+): Promise<any> {
   try {
     const response = await axios.post(
       `${GARMIN_MICROSERVICE_URL}/auth/garmin/resume_login`,
@@ -61,7 +66,10 @@ export async function garminResumeLogin(userId: string, clientState: string, mfa
   }
 }
 
-export async function handleGarminTokens(userId: string, tokensB64: string): Promise<any> {
+export async function handleGarminTokens(
+  userId: string,
+  tokensB64: string
+): Promise<any> {
   try {
     const garthDump = tokensB64;
     const parsedGarthDump = JSON.parse(
@@ -79,9 +87,13 @@ export async function handleGarminTokens(userId: string, tokensB64: string): Pro
     }
     const tokens = parsedGarthDump[1];
     log('debug', 'handleGarminTokens: Extracted Tokens (masked):', {
-      access_token: tokens.access_token ? tokens.access_token.substring(0, 10) + '...' : null,
-      refresh_token: tokens.refresh_token ? tokens.refresh_token.substring(0, 10) + '...' : null,
-      external_user_id: tokens.external_user_id
+      access_token: tokens.access_token
+        ? tokens.access_token.substring(0, 10) + '...'
+        : null,
+      refresh_token: tokens.refresh_token
+        ? tokens.refresh_token.substring(0, 10) + '...'
+        : null,
+      external_user_id: tokens.external_user_id,
     });
 
     log('debug', 'handleGarminTokens: Received Garth dump (masked):', {
@@ -136,7 +148,7 @@ export async function handleGarminTokens(userId: string, tokensB64: string): Pro
       })(),
       external_user_id: tokens.external_user_id || externalUserId,
     };
-    
+
     log('debug', 'handleGarminTokens: Update data for provider (masked):', {
       provider_name: updateData.provider_name,
       provider_type: updateData.provider_type,

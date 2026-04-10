@@ -184,7 +184,12 @@ export async function executeFood(
     const mealType = normalizeMealType(data?.meal_type);
     const quantity = Number(data?.quantity ?? data?.qty ?? data?.amount) || 1;
     const unit = data?.unit || data?.serving_unit || 'serving';
-    const foodName = data?.food_name || data?.name || data?.food || data?.item || 'Unknown Food';
+    const foodName =
+      data?.food_name ||
+      data?.name ||
+      data?.food ||
+      data?.item ||
+      'Unknown Food';
 
     // Extract macros with even more robust aliases
     const calories =

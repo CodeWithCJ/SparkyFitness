@@ -179,7 +179,10 @@ export async function updateSparkyChatHistoryEntry(
   updateData: any
 ) {
   try {
-    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id, authenticatedUserId);
+    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(
+      id,
+      authenticatedUserId
+    );
     if (!entryOwnerId) {
       throw new Error('Chat history entry not found.');
     }
@@ -214,7 +217,10 @@ export async function deleteSparkyChatHistoryEntry(
   id: string
 ) {
   try {
-    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(id, authenticatedUserId);
+    const entryOwnerId = await chatRepository.getChatHistoryEntryOwnerId(
+      id,
+      authenticatedUserId
+    );
     if (!entryOwnerId) {
       throw new Error('Chat history entry not found.');
     }
@@ -553,7 +559,7 @@ Schema: [{"name": "string", "calories": number, "protein": number, "carbs": numb
               };
             })
             .filter((content) => content.parts.length > 0),
-          systemInstruction: undefined as any
+          systemInstruction: undefined as any,
         };
 
         if (googleBody.contents.length === 0) {

@@ -1,7 +1,8 @@
 const { log } = require('../../config/logging');
 
 const EDAMAM_PARSER_URL = 'https://api.edamam.com/api/food-database/v2/parser';
-const EDAMAM_NUTRIENTS_URL = 'https://api.edamam.com/api/food-database/v2/nutrients';
+const EDAMAM_NUTRIENTS_URL =
+  'https://api.edamam.com/api/food-database/v2/nutrients';
 
 // Edamam nutrient code → app field mapping
 const NUTRIENT_MAP = {
@@ -33,9 +34,13 @@ function mapNutrients(nutrients = {}) {
   const result = {};
   for (const [code, field] of Object.entries(NUTRIENT_MAP)) {
     const raw = nutrients[code];
-    result[field] = field === 'calories' || field === 'cholesterol' || field === 'sodium' || field === 'potassium'
-      ? Math.round(raw || 0)
-      : roundNutrient(raw);
+    result[field] =
+      field === 'calories' ||
+      field === 'cholesterol' ||
+      field === 'sodium' ||
+      field === 'potassium'
+        ? Math.round(raw || 0)
+        : roundNutrient(raw);
   }
   return result;
 }
@@ -83,9 +88,13 @@ function mapEdamamFood(food, measuresData, selectedMeasure) {
     const variantNutrients = {};
     for (const [code, field] of Object.entries(NUTRIENT_MAP)) {
       const per100 = food.nutrients?.[code] || 0;
-      variantNutrients[field] = field === 'calories' || field === 'cholesterol' || field === 'sodium' || field === 'potassium'
-        ? Math.round(per100 * factor)
-        : roundNutrient(per100 * factor);
+      variantNutrients[field] =
+        field === 'calories' ||
+        field === 'cholesterol' ||
+        field === 'sodium' ||
+        field === 'potassium'
+          ? Math.round(per100 * factor)
+          : roundNutrient(per100 * factor);
     }
 
     variants.push({
@@ -97,7 +106,9 @@ function mapEdamamFood(food, measuresData, selectedMeasure) {
   });
 
   // Always include 100g as a variant if no measures or as extra option
-  const has100g = variants.some((v) => v.serving_unit === 'g' && v.serving_size === 100);
+  const has100g = variants.some(
+    (v) => v.serving_unit === 'g' && v.serving_size === 100
+  );
   if (!has100g) {
     variants.push({
       serving_size: 100,

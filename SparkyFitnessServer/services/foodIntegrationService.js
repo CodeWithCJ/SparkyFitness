@@ -26,7 +26,13 @@ const FATSECRET_LOCALE = {
   ko: { language: 'ko', region: 'KR' },
 };
 
-async function searchFatSecretFoods(query, clientId, clientSecret, page = 1, language = 'en') {
+async function searchFatSecretFoods(
+  query,
+  clientId,
+  clientSecret,
+  page = 1,
+  language = 'en'
+) {
   try {
     const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
     const locale = FATSECRET_LOCALE[language];
@@ -78,7 +84,12 @@ async function searchFatSecretFoods(query, clientId, clientSecret, page = 1, lan
   }
 }
 
-async function getFatSecretNutrients(foodId, clientId, clientSecret, language = 'en') {
+async function getFatSecretNutrients(
+  foodId,
+  clientId,
+  clientSecret,
+  language = 'en'
+) {
   try {
     // Check cache first — include language in cache key so localized results are cached separately
     const cacheKey = `${foodId}_${language}`;
@@ -290,7 +301,7 @@ async function searchEdamamFoods(query, appId, appKey, page = 1) {
       },
     };
   } catch (error) {
-    log('error', `Error searching Edamam foods:`, error);
+    log('error', 'Error searching Edamam foods:', error);
     throw error;
   }
 }

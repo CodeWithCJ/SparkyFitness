@@ -32,7 +32,9 @@ export interface ChatHistoryEntry {
   updated_at?: Date;
 }
 
-export async function upsertAiServiceSetting(settingData: AiServiceSetting): Promise<AiServiceSetting> {
+export async function upsertAiServiceSetting(
+  settingData: AiServiceSetting
+): Promise<AiServiceSetting> {
   const client = await getClient(settingData.user_id);
   try {
     let encryptedApiKey = settingData.encrypted_api_key || null;
@@ -99,7 +101,10 @@ export async function upsertAiServiceSetting(settingData: AiServiceSetting): Pro
   }
 }
 
-export async function getAiServiceSettingForBackend(id: string, userId: string): Promise<AiServiceSetting | null> {
+export async function getAiServiceSettingForBackend(
+  id: string,
+  userId: string
+): Promise<AiServiceSetting | null> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -138,7 +143,10 @@ export async function getAiServiceSettingForBackend(id: string, userId: string):
   }
 }
 
-export async function getAiServiceSettingById(id: string, userId: string): Promise<any> {
+export async function getAiServiceSettingById(
+  id: string,
+  userId: string
+): Promise<any> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -151,7 +159,10 @@ export async function getAiServiceSettingById(id: string, userId: string): Promi
   }
 }
 
-export async function deleteAiServiceSetting(id: string, userId: string): Promise<boolean> {
+export async function deleteAiServiceSetting(
+  id: string,
+  userId: string
+): Promise<boolean> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -164,7 +175,9 @@ export async function deleteAiServiceSetting(id: string, userId: string): Promis
   }
 }
 
-export async function getAiServiceSettingsByUserId(userId: string): Promise<AiServiceSetting[]> {
+export async function getAiServiceSettingsByUserId(
+  userId: string
+): Promise<AiServiceSetting[]> {
   const client = await getClient(userId);
   try {
     const userResult = await client.query(
@@ -192,7 +205,9 @@ export async function getAiServiceSettingsByUserId(userId: string): Promise<AiSe
   }
 }
 
-export async function getActiveAiServiceSetting(userId: string): Promise<AiServiceSetting | null> {
+export async function getActiveAiServiceSetting(
+  userId: string
+): Promise<AiServiceSetting | null> {
   const client = await getClient(userId);
   try {
     const userResult = await client.query(
@@ -259,7 +274,10 @@ export async function getChatHistoryByUserId(userId: string): Promise<any[]> {
   }
 }
 
-export async function getChatHistoryEntryById(id: string, userId: string): Promise<any> {
+export async function getChatHistoryEntryById(
+  id: string,
+  userId: string
+): Promise<any> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -272,7 +290,10 @@ export async function getChatHistoryEntryById(id: string, userId: string): Promi
   }
 }
 
-export async function getChatHistoryEntryOwnerId(id: string, userId: string): Promise<string | undefined> {
+export async function getChatHistoryEntryOwnerId(
+  id: string,
+  userId: string
+): Promise<string | undefined> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -285,7 +306,11 @@ export async function getChatHistoryEntryOwnerId(id: string, userId: string): Pr
   }
 }
 
-export async function updateChatHistoryEntry(id: string, userId: string, updateData: any): Promise<any> {
+export async function updateChatHistoryEntry(
+  id: string,
+  userId: string,
+  updateData: any
+): Promise<any> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -315,7 +340,10 @@ export async function updateChatHistoryEntry(id: string, userId: string, updateD
   }
 }
 
-export async function deleteChatHistoryEntry(id: string, userId: string): Promise<boolean> {
+export async function deleteChatHistoryEntry(
+  id: string,
+  userId: string
+): Promise<boolean> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -357,7 +385,9 @@ export async function saveChatMessage(
   }
 }
 
-export async function upsertGlobalAiServiceSetting(settingData: any): Promise<any> {
+export async function upsertGlobalAiServiceSetting(
+  settingData: any
+): Promise<any> {
   const client = await getSystemClient();
   try {
     let encryptedApiKey = settingData.encrypted_api_key || null;
@@ -449,7 +479,9 @@ export async function getGlobalAiServiceSettingById(id: string): Promise<any> {
   }
 }
 
-export async function deleteGlobalAiServiceSetting(id: string): Promise<boolean> {
+export async function deleteGlobalAiServiceSetting(
+  id: string
+): Promise<boolean> {
   const client = await getSystemClient();
   try {
     const result = await client.query(

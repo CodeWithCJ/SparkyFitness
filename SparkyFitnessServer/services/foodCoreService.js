@@ -856,7 +856,11 @@ async function lookupBarcode(barcode, userId, providerId) {
           }
         }
       } catch (edamamError) {
-        log('warn', `Edamam barcode lookup failed for ${barcode}:`, edamamError);
+        log(
+          'warn',
+          `Edamam barcode lookup failed for ${barcode}:`,
+          edamamError
+        );
       }
     }
 
@@ -888,7 +892,7 @@ async function lookupBarcode(barcode, userId, providerId) {
           `OpenFoodFacts barcode lookup failed for ${barcode}:`,
           error
         );
-    }
+      }
     }
 
     // Fall back to OpenFoodFacts if not already tried and user preference allows it

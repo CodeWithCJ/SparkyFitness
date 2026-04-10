@@ -298,9 +298,9 @@ class TelegramBotService {
           this.activeGarminSyncs.add(chatId);
 
           const statusMsg = await (this.bot!.sendMessage(
-              chatId,
-              '🔄 Починаємо синхронізацію з Garmin (за 7 днів)...',
-              { disable_notification: true }
+            chatId,
+            '🔄 Починаємо синхронізацію з Garmin (за 7 днів)...',
+            { disable_notification: true }
           ) as any);
 
           try {
@@ -312,33 +312,38 @@ class TelegramBotService {
             for (let i = 0; i < totalDays; i++) {
               const currentDate = addDays(today, -i);
               const dayNum = i + 1;
-              
+
               const filledBlocks = '▓'.repeat(dayNum);
               const emptyBlocks = '░'.repeat(totalDays - dayNum);
               const progressBar = `[${filledBlocks}${emptyBlocks}]`;
 
               await this.bot!.editMessageText(
                 `⏳ Синхронізація Garmin...\n${progressBar} ${dayNum}/${totalDays}\n📅 Дата: ${currentDate}`,
-                { 
-                    chat_id: chatId, 
-                    message_id: statusMsg.message_id,
-                    disable_web_page_preview: true
+                {
+                  chat_id: chatId,
+                  message_id: statusMsg.message_id,
+                  disable_web_page_preview: true,
                 }
               ).catch(() => {});
 
               // Garmin sync service - sync specific day
-              await garminService.syncGarminData(user.id, 'manual', currentDate, currentDate);
+              await garminService.syncGarminData(
+                user.id,
+                'manual',
+                currentDate,
+                currentDate
+              );
               successCount++;
-              
+
               // Small delay for smooth UI feedback
-              await new Promise(resolve => setTimeout(resolve, 300));
+              await new Promise((resolve) => setTimeout(resolve, 300));
             }
 
             await this.bot!.editMessageText(
               `✅ Синхронізація з Garmin завершена за ${successCount} днів!\n📊 Активності та показники оновлені.`,
-              { 
-                chat_id: chatId, 
-                message_id: statusMsg.message_id 
+              {
+                chat_id: chatId,
+                message_id: statusMsg.message_id,
               }
             ).catch(() => {});
           } catch (error: any) {
@@ -363,9 +368,9 @@ class TelegramBotService {
           this.activeNutritionSyncs.add(chatId);
 
           const statusMsg = await (this.bot!.sendMessage(
-              chatId,
-              '🔄 Починаємо синхронізацію харчування з MyFitnessPal (за 7 днів)...',
-              { disable_notification: true }
+            chatId,
+            '🔄 Починаємо синхронізацію харчування з MyFitnessPal (за 7 днів)...',
+            { disable_notification: true }
           ) as any);
 
           try {
@@ -377,7 +382,7 @@ class TelegramBotService {
             for (let i = 0; i < totalDays; i++) {
               const currentDate = addDays(today, -i);
               const dayNum = i + 1;
-              
+
               // Progress visual: [▓▓▓░░░░]
               const filledBlocks = '▓'.repeat(dayNum);
               const emptyBlocks = '░'.repeat(totalDays - dayNum);
@@ -385,33 +390,30 @@ class TelegramBotService {
 
               await this.bot!.editMessageText(
                 `⏳ Синхронізація MyFitnessPal...\n${progressBar} ${dayNum}/${totalDays}\n📅 Дата: ${currentDate}`,
-                { 
-                    chat_id: chatId, 
-                    message_id: statusMsg.message_id,
-                    disable_web_page_preview: true
+                {
+                  chat_id: chatId,
+                  message_id: statusMsg.message_id,
+                  disable_web_page_preview: true,
                 }
               ).catch(() => {});
 
               // MFP sync service
               await syncDailyTotals(user.id, currentDate);
               successCount++;
-              
+
               // Small delay for smooth UI feedback
-              await new Promise(resolve => setTimeout(resolve, 300));
+              await new Promise((resolve) => setTimeout(resolve, 300));
             }
 
             await this.bot!.editMessageText(
               `✅ Синхронізація з MyFitnessPal завершена за ${successCount} днів!\n📊 Дані успішно оновлені.`,
-              { 
-                chat_id: chatId, 
-                message_id: statusMsg.message_id 
+              {
+                chat_id: chatId,
+                message_id: statusMsg.message_id,
               }
             ).catch(() => {});
           } catch (error: any) {
-            log(
-              'error',
-              `[TELEGRAM BOT] MFP sync error: ${error.message}`
-            );
+            log('error', `[TELEGRAM BOT] MFP sync error: ${error.message}`);
             await this.bot!.sendMessage(
               chatId,
               `❌ Помилка синхронізації MyFitnessPal: ${error.message}`,

@@ -1030,7 +1030,10 @@ async function updateFoodEntryMeal(
     }
 
     // Trigger MFP sync in background
-    syncDailyTotals(updatedFoodEntryMeal.user_id, updatedFoodEntryMeal.entry_date);
+    syncDailyTotals(
+      updatedFoodEntryMeal.user_id,
+      updatedFoodEntryMeal.entry_date
+    );
 
     return updatedFoodEntryMeal;
   } catch (error) {
