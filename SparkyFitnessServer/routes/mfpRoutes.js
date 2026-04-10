@@ -59,7 +59,7 @@ router.post('/sync', authenticate, async (req, res, next) => {
     }
 
     const dates = [];
-    let current = start.clone();
+    const current = start.clone();
     while (current.isSameOrBefore(end)) {
       dates.push(current.format('YYYY-MM-DD'));
       current.add(1, 'days');

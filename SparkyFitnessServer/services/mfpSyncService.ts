@@ -82,27 +82,36 @@ export async function syncDailyNutritionToMFP(
     // 2. Sync Water
     let waterSynced = false;
     try {
-      const waterData = await measurementRepository.getWaterIntakeByDate(userId, date);
+      const waterData = await measurementRepository.getWaterIntakeByDate(
+        userId,
+        date
+      );
       const waterMl = waterData ? parseFloat(waterData.water_ml) : 0;
-      
+
       if (waterMl > 0) {
         await pushWaterToMFP(userId, date, waterMl);
         waterSynced = true;
-        log('info', `mfpSyncService: Successfully synced ${waterMl}ml water to MFP for ${userId}`);
+        log(
+          'info',
+          `mfpSyncService: Successfully synced ${waterMl}ml water to MFP for ${userId}`
+        );
       }
     } catch (waterError: any) {
-      log('warn', `mfpSyncService: Water sync failed for ${userId}: ${waterError.message}`);
+      log(
+        'warn',
+        `mfpSyncService: Water sync failed for ${userId}: ${waterError.message}`
+      );
     }
 
     if (!nutritionResult && !waterSynced) {
       return { status: 'skipped', date, reason: 'no_data_or_no_creds' };
     }
 
-    return { 
-      status: 'success', 
-      date, 
+    return {
+      status: 'success',
+      date,
       responses: nutritionResult?.responses || [],
-      waterSynced
+      waterSynced,
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
