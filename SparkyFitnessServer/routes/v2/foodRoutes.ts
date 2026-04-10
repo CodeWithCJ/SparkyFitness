@@ -58,6 +58,39 @@ interface ProviderCredentials {
   is_active?: boolean;
 }
 
+// Resolve an OFF providerId for session-cookie auth. Unlike other providers,
+// OFF does not need credentials to function — this just opts into the
+// authenticated request path when the user has configured an OFF account.
+// Returns the provided id (validated for ownership) or the user's first
+// credentialed OFF provider, or null.
+async function resolveOpenFoodFactsProviderId(
+  userId: string,
+  providerId: string | undefined
+): Promise<string | null> {
+  if (providerId) {
+    try {
+      const details =
+        await externalProviderService.getExternalDataProviderDetails(
+          userId,
+          providerId
+        );
+      if (
+        details &&
+        details.is_active &&
+        details.provider_type === 'openfoodfacts' &&
+        details.app_id &&
+        details.app_key
+      ) {
+        return providerId;
+      }
+    } catch (error) {
+      log('debug', 'v2 OFF providerId validation failed:', error);
+    }
+    return null;
+  }
+  return externalProviderService.getActiveOpenFoodFactsProviderId(userId);
+}
+
 async function resolveProviderCredentials(
   userId: string,
   providerId: string | undefined,
@@ -282,7 +315,17 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
       case 'openfoodfacts': {
         const autoScale =
           ((req.query.autoScale as string) ?? 'true') !== 'false';
-        const result = await searchOpenFoodFacts(query, page, language);
+        const offProviderId = await resolveOpenFoodFactsProviderId(
+          req.userId,
+          providerId
+        );
+        const result = await searchOpenFoodFacts(
+          query,
+          page,
+          language,
+          offProviderId ? req.userId : undefined,
+          offProviderId || undefined
+        );
         const products = (result.products || []).filter(
           (p: Record<string, any>) =>
             p.product_name || p[`product_name_${language}`] || p.product_name_en
@@ -415,10 +458,16 @@ const detailHandler: RequestHandler<{
 
     switch (providerType) {
       case 'openfoodfacts': {
+        const offProviderId = await resolveOpenFoodFactsProviderId(
+          req.userId,
+          providerId
+        );
         const data = await searchOpenFoodFactsByBarcodeFields(
           externalId,
           undefined,
-          language
+          language,
+          offProviderId ? req.userId : undefined,
+          offProviderId || undefined
         );
         if (data.status === 1 && data.product) {
           food = mapOpenFoodFactsProduct(data.product, { language });

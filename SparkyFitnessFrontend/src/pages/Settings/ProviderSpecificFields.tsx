@@ -115,6 +115,49 @@ export const ProviderSpecificFields = ({
         </div>
       )}
 
+      {provider.provider_type === 'openfoodfacts' && (
+        <>
+          <div>
+            <Label htmlFor="add-openfoodfacts-username">
+              Open Food Facts Username (Optional)
+            </Label>
+            <Input
+              id="add-openfoodfacts-username"
+              type="text"
+              value={provider.app_id || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({ ...prev, app_id: e.target.value }))
+              }
+              placeholder="Enter Open Food Facts username"
+              autoComplete="username"
+            />
+          </div>
+          <div>
+            <Label htmlFor="add-openfoodfacts-password">
+              Open Food Facts Password (Optional)
+            </Label>
+            <Input
+              id="add-openfoodfacts-password"
+              type="password"
+              value={provider.app_key || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({ ...prev, app_key: e.target.value }))
+              }
+              placeholder="Enter Open Food Facts password"
+              autoComplete="current-password"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            Username and password for Open Food Facts are optional. If you have
+            an account, adding these credentials allows Sparky to make
+            authenticated requests, which can help reduce rate limiting during
+            busy periods. If you want to keep the existing credentials, simply
+            leave the fields blank. Note that credentials cannot be combined
+            with publicly sharing this provider row.
+          </p>
+        </>
+      )}
+
       {provider.provider_type === 'garmin' && (
         <>
           <div>

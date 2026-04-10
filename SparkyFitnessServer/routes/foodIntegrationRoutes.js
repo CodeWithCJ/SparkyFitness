@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const preferenceService = require('../services/preferenceService');
+const externalProviderService = require('../services/externalProviderService');
 const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
 const foodService = require('../services/foodService');
 const { log } = require('../config/logging');
@@ -381,7 +382,18 @@ router.get('/openfoodfacts/search', authenticate, async (req, res, next) => {
       req.userId
     );
     const language = userPrefs?.language || 'en';
-    const data = await searchOpenFoodFacts(query, page, language);
+    const providerId =
+      req.headers['x-provider-id'] ||
+      (await externalProviderService.getActiveOpenFoodFactsProviderId(
+        req.userId
+      ));
+    const data = await searchOpenFoodFacts(
+      query,
+      page,
+      language,
+      providerId ? req.userId : undefined,
+      providerId || undefined
+    );
     res.json(data);
   } catch (error) {
     next(error);
@@ -422,10 +434,17 @@ router.get(
         req.userId
       );
       const language = userPrefs?.language || 'en';
+      const providerId =
+        req.headers['x-provider-id'] ||
+        (await externalProviderService.getActiveOpenFoodFactsProviderId(
+          req.userId
+        ));
       const data = await searchOpenFoodFactsByBarcodeFields(
         barcode,
         undefined,
-        language
+        language,
+        providerId ? req.userId : undefined,
+        providerId || undefined
       );
       res.json(data);
     } catch (error) {

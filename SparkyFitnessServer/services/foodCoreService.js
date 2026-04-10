@@ -836,7 +836,9 @@ async function lookupBarcode(barcode, userId, providerId) {
         const offData = await searchOpenFoodFactsByBarcodeFields(
           barcode,
           undefined,
-          language
+          language,
+          userId,
+          provider.id
         );
         if (offData?.status === 1 && offData.product) {
           const food = mapOpenFoodFactsProduct(offData.product, {
@@ -865,11 +867,33 @@ async function lookupBarcode(barcode, userId, providerId) {
       !triedOpenFoodFacts &&
       userPreferences?.barcode_fallback_open_food_facts !== false
     ) {
+      // Only look up a credentialed OFF provider when none is already
+      // resolved. Avoids an extra DB round-trip on every OFF barcode lookup
+      // for users without configured credentials.
+      let offProviderId = null;
+      if (provider?.provider_type === 'openfoodfacts') {
+        offProviderId = provider.id;
+      } else {
+        try {
+          offProviderId =
+            await externalProviderService.getActiveOpenFoodFactsProviderId(
+              userId
+            );
+        } catch (fallbackError) {
+          log(
+            'debug',
+            'OpenFoodFacts fallback provider resolution failed:',
+            fallbackError
+          );
+        }
+      }
       try {
         const offData = await searchOpenFoodFactsByBarcodeFields(
           barcode,
           undefined,
-          language
+          language,
+          offProviderId ? userId : undefined,
+          offProviderId || undefined
         );
         if (offData?.status === 1 && offData.product) {
           const food = mapOpenFoodFactsProduct(offData.product, {
