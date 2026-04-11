@@ -195,11 +195,11 @@ const ExerciseRow = React.memo(({
         onPress={() => onToggle(exercise.id)}
         activeOpacity={0.7}
       >
-        <View className="flex-row items-start">
-          <View className="mr-3 items-center justify-center" style={{ width: 48, height: 48, marginTop: 2 }}>
+        <View className="flex-row items-center">
+          <View className="mr-3 items-center justify-center" style={{ width: 64, height: 64, marginTop: 2 }}>
             <SafeImage
               source={snapshot?.images?.[0] ? getImageSource(snapshot.images[0]) : null}
-              style={{ width: 48, height: 48, borderRadius: 8, opacity: 0.8 }}
+              style={{ width: 64, height: 64, borderRadius: 8, opacity: 0.8 }}
               fallback={<Icon name={exerciseIcon} size={28} color={accentPrimary} />}
             />
           </View>
@@ -236,7 +236,7 @@ const ExerciseRow = React.memo(({
                     {getExerciseSetSummary(exercise, weightUnit)}
                   </Text>
                   {volume > 0 && (
-                    <Text className="text-xs text-text-muted mt-0.5">
+                    <Text className="text-sm text-text-muted mt-0.5">
                       Volume: {formatVolume(volume, weightUnit)}
                     </Text>
                   )}

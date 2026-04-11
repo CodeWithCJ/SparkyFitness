@@ -1,6 +1,6 @@
 import './global.css'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StatusBar, Platform, Alert, AppState } from 'react-native';
+import { StatusBar, Platform, Alert, AppState, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   NavigationContainer,
@@ -521,7 +521,18 @@ function AppContent() {
                 screenOptions={{
                   headerShown: false,
                 }}
-                tabBar={(props) => <CustomTabBar {...props} />}
+                tabBar={(props) => (
+                  // Wrap the tab bar so the active workout HUD can sit
+                  // directly on top of it. Order matters: CustomTabBar is
+                  // a later sibling than ActiveWorkoutBar, so its Add button
+                  // (which uses -mt-5 to rise above the tab bar's top edge)
+                  // paints on top of the embedded bar — matching the mockup
+                  // where the + button visually bridges both bars.
+                  <View collapsable={false}>
+                    <ActiveWorkoutBar variant="embedded" />
+                    <CustomTabBar {...props} />
+                  </View>
+                )}
               >
                 <Tab.Screen name="Dashboard" component={SafeDashboard} />
                 <Tab.Screen name="Diary" component={SafeDiary} />

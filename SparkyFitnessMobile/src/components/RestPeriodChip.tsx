@@ -26,7 +26,7 @@ function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProp
   const content = (
     <>
       <Icon name="timer" size={14} color={textMuted} />
-      <Text className="text-xs text-text-muted ml-1">Rest · {formatRest(value)}</Text>
+      <Text className="text-sm text-text-muted ml-1">Rest · {formatRest(value)}</Text>
     </>
   );
 
