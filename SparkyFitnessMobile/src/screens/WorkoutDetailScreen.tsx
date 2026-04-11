@@ -85,34 +85,41 @@ const ActiveWorkoutSetRow = React.memo(({
   const isComplete = useActiveWorkoutStore((s) =>
     Boolean(s.completedSetIds[setIdStr]),
   );
+  const isActiveSet = useActiveWorkoutStore((s) => s.activeSetId === setIdStr);
 
   const displayWeight = set.weight != null
     ? `${parseFloat(weightFromKg(set.weight, weightUnit as 'kg' | 'lbs').toFixed(1))} ${weightUnit}`
     : '\u2014';
   const displayReps = set.reps != null ? String(set.reps) : '\u2014';
 
+  const indicator = (() => {
+    if (!isWorkoutActive) {
+      return <Text className="text-sm text-text-muted">{set.set_number}</Text>;
+    }
+    if (isComplete) {
+      return <Icon name="checkmark-circle" size={22} color={accentPrimary} />;
+    }
+    // Uncompleted during an active workout: highlight the active set with a
+    // filled radio, dim everything else.
+    return (
+      <Icon
+        name={isActiveSet ? 'radio-button-on' : 'radio-button-off'}
+        size={22}
+        color={isActiveSet ? accentPrimary : '#9CA3AF'}
+      />
+    );
+  })();
+
   return (
     <Pressable
-      onLongPress={() => {
-        if (!isWorkoutActive) onLongPress(setIdStr);
-      }}
+      onLongPress={() => onLongPress(setIdStr)}
       onPress={() => {
         if (isWorkoutActive) onPress(setIdStr);
       }}
       delayLongPress={400}
       className="flex-row items-center py-1.5"
     >
-      <View className="w-10 items-center justify-center">
-        {isWorkoutActive ? (
-          <Icon
-            name={isComplete ? 'checkmark-circle' : 'radio-button-off'}
-            size={22}
-            color={isComplete ? accentPrimary : '#9CA3AF'}
-          />
-        ) : (
-          <Text className="text-sm text-text-muted">{set.set_number}</Text>
-        )}
-      </View>
+      <View className="w-10 items-center justify-center">{indicator}</View>
       <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
       <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
     </Pressable>
@@ -371,21 +378,54 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleLongPressSet = (setId: string) => {
-    if (isWorkoutActive) return;
-    if (useActiveWorkoutStore.getState().sessionId !== null) {
-      Alert.alert('Another workout is in progress', 'Finish or clear it first.');
+    const storeState = useActiveWorkoutStore.getState();
+
+    // Inactive path — either no workout running, or a different workout is
+    // active. Same behavior as before: offer to start this one at the
+    // long-pressed set.
+    if (!isWorkoutActive) {
+      if (storeState.sessionId !== null) {
+        Alert.alert('Another workout is in progress', 'Finish or clear it first.');
+        return;
+      }
+      Alert.alert(
+        'Start workout here?',
+        'Sets before this will be marked completed.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Start',
+            onPress: () => {
+              void ensureNotificationPermission();
+              useActiveWorkoutStore.getState().startWorkoutAtSet(session, setId);
+            },
+          },
+        ],
+      );
       return;
     }
+
+    // Active path — confirm a forward-only jump. Reject backward targets
+    // silently since we never jump backward in the list. When the workout is
+    // finished (`activeSetId == null`) the cursor is past the last set, so
+    // every target is behind it and no jump is possible.
+    const activeIndex =
+      storeState.activeSetId == null
+        ? storeState.steps.length
+        : storeState.steps.findIndex((s) => s.setId === storeState.activeSetId);
+    const targetIndex = storeState.steps.findIndex((s) => s.setId === setId);
+    if (targetIndex < 0) return;
+    if (targetIndex <= activeIndex) return;
+
     Alert.alert(
-      'Start workout here?',
+      'Jump to this set?',
       'Sets before this will be marked completed.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Start',
+          text: 'Jump',
           onPress: () => {
-            void ensureNotificationPermission();
-            useActiveWorkoutStore.getState().startWorkoutAtSet(session, setId);
+            useActiveWorkoutStore.getState().jumpToSet(setId);
           },
         },
       ],
@@ -394,7 +434,31 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handlePressSet = (setId: string) => {
     if (!isWorkoutActive) return;
-    useActiveWorkoutStore.getState().toggleSetComplete(setId);
+    const storeState = useActiveWorkoutStore.getState();
+    // Tap on a completed set unchecks it (without moving the cursor).
+    if (storeState.completedSetIds[setId]) {
+      storeState.uncompleteSet(setId);
+      return;
+    }
+    // Tap on the active set completes it and advances.
+    if (storeState.activeSetId === setId) {
+      storeState.completeActiveSet();
+      return;
+    }
+    // Tap on an uncompleted non-active set: allow re-check only if it's
+    // behind the cursor (something the user previously completed and then
+    // unchecked by accident). Taps on future sets stay a no-op — long-press
+    // is the explicit path for jumping forward. When the workout is finished
+    // (`activeSetId == null`) the cursor is past the end, so every set
+    // counts as behind and is re-checkable.
+    const setIndex = storeState.steps.findIndex((s) => s.setId === setId);
+    const activeIndex =
+      storeState.activeSetId == null
+        ? storeState.steps.length
+        : storeState.steps.findIndex((s) => s.setId === storeState.activeSetId);
+    if (setIndex >= 0 && setIndex < activeIndex) {
+      storeState.recompleteSet(setId);
+    }
   };
 
   const openExerciseSearch = () => {

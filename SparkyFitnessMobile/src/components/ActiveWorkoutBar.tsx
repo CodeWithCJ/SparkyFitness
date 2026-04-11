@@ -6,7 +6,6 @@ import {
 } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import Toast from 'react-native-toast-message';
 
 import Icon from './Icon';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
@@ -103,30 +102,18 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
 }) => {
   const sessionId = useActiveWorkoutStore((s) => s.sessionId);
   const activeSession = useActiveWorkoutStore((s) => s.session);
-  const restState = useActiveWorkoutStore((s) => s.activeRest?.state ?? null);
-  const endsAt = useActiveWorkoutStore((s) => s.activeRest?.endsAt ?? null);
-  const pausedRemainingMs = useActiveWorkoutStore(
-    (s) => s.activeRest?.pausedRemainingMs ?? null,
-  );
-  const durationSec = useActiveWorkoutStore((s) => s.activeRest?.durationSec ?? 0);
-  // Exercise name for the currently-resting set (null when no rest is active).
-  const restingExerciseName = useActiveWorkoutStore((s) => {
-    const rest = s.activeRest;
-    if (!rest) return null;
-    return s.steps.find((step) => step.setId === rest.setId)?.exerciseName ?? null;
-  });
-  // The next uncompleted set — drives both the idle-state label and the
-  // "Done" button that lets the user start the next rest without going back
-  // to the workout detail screen.
-  const nextPendingSetId = useActiveWorkoutStore((s) => {
-    if (!s.sessionId) return null;
-    const next = s.steps.find((step) => !s.completedSetIds[step.setId]);
-    return next?.setId ?? null;
-  });
-  const nextPendingExerciseName = useActiveWorkoutStore((s) => {
-    if (!s.sessionId) return null;
-    const next = s.steps.find((step) => !s.completedSetIds[step.setId]);
-    return next?.exerciseName ?? null;
+  const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
+  const restState = useActiveWorkoutStore((s) => s.rest.state);
+  const endsAt = useActiveWorkoutStore((s) => s.rest.endsAt);
+  const pausedRemainingMs = useActiveWorkoutStore((s) => s.rest.pausedRemainingMs);
+  const durationSec = useActiveWorkoutStore((s) => s.rest.durationSec);
+  // Exercise name for the active set — what the user is about to do (or
+  // resting before). Null when the workout has finished (activeSetId == null).
+  const activeExerciseName = useActiveWorkoutStore((s) => {
+    if (s.activeSetId == null) return null;
+    return (
+      s.steps.find((step) => step.setId === s.activeSetId)?.exerciseName ?? null
+    );
   });
 
   const { preferences } = usePreferences();
@@ -163,24 +150,26 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     '--color-text-muted',
   ]) as [string, string];
 
-  // Tick while running so the countdown redraws each second. We use a bare
+  // Tick while resting so the countdown redraws each second. We use a bare
   // tick counter (not a cached `Date.now()`) to force re-renders — the actual
   // "now" used in calculations is read fresh at render time below. Caching it
-  // in state would make the first render after going idle → running show a
+  // in state would make the first render after going ready → resting show a
   // stale value (the countdown would briefly read too high).
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    if (restState !== 'running') return;
+    if (restState !== 'resting') return;
     const id = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, [restState]);
 
-  // Transition running → complete when the deadline passes.
+  // Transition resting → ready when the deadline passes.
   useEffect(() => {
-    if (restState === 'running' && endsAt != null && Date.now() >= endsAt) {
-      useActiveWorkoutStore.getState().markRestComplete();
+    if (restState === 'resting' && endsAt != null && Date.now() >= endsAt) {
+      useActiveWorkoutStore.getState().markRestReady();
     }
   }, [restState, endsAt, tick]);
+
+  const isWorkoutComplete = sessionId != null && activeSetId == null;
 
   // The bar is a persistent workout HUD — visible for the entire active
   // workout, not just while a rest timer is running.
@@ -192,21 +181,14 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   // variant) is showing to avoid a double-bar.
   if (variant === 'floating' && navInfo.isOnTabs) return null;
 
-  const isIdle = restState == null;
-  // In idle state, show the next pending set's exercise; in running/paused/
-  // complete state, show the set the rest is for.
-  const displayExerciseName = isIdle
-    ? nextPendingExerciseName
-    : restingExerciseName;
-
-  // "Up next" line — details (exercise name + set number + weight × reps) for
-  // the next pending set. Shown below the primary row so the user can see what
-  // they're about to do without reopening WorkoutDetail. Looked up against the
-  // active session snapshot since `steps` only holds name/restSec.
-  const nextSetLabel = (() => {
-    if (activeSession == null || nextPendingSetId == null) return null;
+  // "Up next" line — details (set number + weight × reps) for the active
+  // set. Shown below the primary row so the user can see what they're about
+  // to do without reopening WorkoutDetail. Looked up against the active
+  // session snapshot since `steps` only holds name/restSec.
+  const activeSetLabel = (() => {
+    if (activeSession == null || activeSetId == null) return null;
     for (const exercise of activeSession.exercises) {
-      const set = exercise.sets.find((st) => String(st.id) === nextPendingSetId);
+      const set = exercise.sets.find((st) => String(st.id) === activeSetId);
       if (!set) continue;
       const exerciseName = exercise.exercise_snapshot?.name ?? 'Exercise';
       const bits: string[] = [`Set ${set.set_number}/${exercise.sets.length}`];
@@ -225,7 +207,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   })();
 
   const remainingMs = (() => {
-    if (restState === 'running' && endsAt != null) {
+    if (restState === 'resting' && endsAt != null) {
       // Read `Date.now()` fresh at render time — caching it in state would
       // briefly display a stale value on the first render after a new rest
       // starts (the `tick` state only advances via the 1s interval).
@@ -239,31 +221,22 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     durationSec > 0 ? Math.max(0, Math.min(1, remainingMs / (durationSec * 1000))) : 0;
 
   const handlePausePlay = () => {
-    if (restState === 'running') {
+    if (restState === 'resting') {
       useActiveWorkoutStore.getState().pauseRest();
     } else if (restState === 'paused') {
       useActiveWorkoutStore.getState().resumeRest();
     }
   };
 
-  const handleNext = () => {
-    const endedWorkout = useActiveWorkoutStore.getState().dismissRest();
-    if (endedWorkout) {
-      Toast.show({ type: 'success', text1: 'Workout complete' });
-    }
+  // Skip the current rest — clears to 'ready' without advancing the cursor.
+  const handleSkipRest = () => {
+    useActiveWorkoutStore.getState().dismissRest();
   };
 
-  // Mark the next pending set complete and start its rest timer. If every set
-  // is already complete, fall back to dismissRest so the workout ends cleanly.
+  // Complete the active set and advance. Bar-only shortcut so the user can
+  // rep without flipping back to WorkoutDetail.
   const handleDoneSet = () => {
-    if (nextPendingSetId != null) {
-      useActiveWorkoutStore.getState().toggleSetComplete(nextPendingSetId);
-      return;
-    }
-    const endedWorkout = useActiveWorkoutStore.getState().dismissRest();
-    if (endedWorkout) {
-      Toast.show({ type: 'success', text1: 'Workout complete' });
-    }
+    useActiveWorkoutStore.getState().completeActiveSet();
   };
 
   const handleClear = () => {
@@ -293,41 +266,46 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     navigationRef.navigate('WorkoutDetail', { session });
   };
 
-  // Status / timer label on the right side of the primary row — reflects the
-  // active rest-timer state; idle state falls back to a short "Ready" hint.
+  // Status / timer label on the right side of the primary row. When the
+  // workout is finished, the cursor is null and we show "Complete" until the
+  // user taps X to clear.
   const statusLabel = (() => {
-    if (restState === 'running') return formatCountdown(displaySeconds);
+    if (isWorkoutComplete) return 'Complete';
+    if (restState === 'resting') return formatCountdown(displaySeconds);
     if (restState === 'paused') return 'Paused';
-    if (restState === 'complete') return 'Complete';
     return 'Ready';
   })();
-  // Exercise name label — the exercise the user is (or is about to be)
-  // working on.
-  const exerciseLabel = displayExerciseName ?? 'Workout active';
+  // Exercise name label — the exercise the user is currently on (or resting
+  // before). Empty when the workout is finished.
+  const exerciseLabel = isWorkoutComplete
+    ? 'Workout complete'
+    : activeExerciseName ?? 'Workout active';
 
-  // "Up next" single-line summary — merged into one string now that we no
-  // longer split the row around a center gap.
-  const upNextText = nextSetLabel
-    ? `Up next: ${nextSetLabel.exerciseName} · ${nextSetLabel.details}`
-    : '';
+  // "Up next" single-line summary for the active set.
+  const upNextText =
+    !isWorkoutComplete && activeSetLabel
+      ? `${activeSetLabel.exerciseName} · ${activeSetLabel.details}`
+      : '';
 
+  // Left button: pause/play while a rest timer exists, X to clear the
+  // workout when ready (no timer running) or finished.
   const leftButton =
-    restState === 'running' || restState === 'paused' ? (
+    restState === 'resting' || restState === 'paused' ? (
       <Pressable
         onPress={handlePausePlay}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel={restState === 'running' ? 'Pause' : 'Resume'}
+        accessibilityLabel={restState === 'resting' ? 'Pause' : 'Resume'}
         className="p-2"
       >
         <Icon
-          name={restState === 'running' ? 'pause' : 'play'}
+          name={restState === 'resting' ? 'pause' : 'play'}
           size={22}
           color={accentPrimary}
           weight="bold"
         />
       </Pressable>
-    ) : isIdle ? (
+    ) : (
       <Pressable
         onPress={handleClear}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -337,42 +315,53 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       >
         <Icon name="close" size={22} color={textMuted} weight="bold" />
       </Pressable>
-    ) : null;
+    );
 
-  const rightButton =
-    restState === 'paused' ? (
-      <Pressable
-        onPress={handleClear}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        accessibilityRole="button"
-        accessibilityLabel="Clear workout"
-        className="p-2"
-      >
-        <Icon name="close" size={22} color={textMuted} weight="bold" />
-      </Pressable>
-    ) : isIdle || restState === 'complete' ? (
+  // Right button:
+  //  - ready  → Done (complete the active set, advance + start rest)
+  //  - resting → Skip rest
+  //  - paused → X (clear workout, since pause already implies "I'm handling this manually")
+  //  - complete (workout finished) → hidden; the X on the left is the only way out
+  const rightButton = (() => {
+    if (isWorkoutComplete) return null;
+    if (restState === 'resting') {
+      return (
+        <Pressable
+          onPress={handleSkipRest}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Skip rest"
+          className="p-2"
+        >
+          <Icon name="checkmark" size={22} color={accentPrimary} weight="bold" />
+        </Pressable>
+      );
+    }
+    if (restState === 'paused') {
+      return (
+        <Pressable
+          onPress={handleClear}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel="Clear workout"
+          className="p-2"
+        >
+          <Icon name="close" size={22} color={textMuted} weight="bold" />
+        </Pressable>
+      );
+    }
+    return (
       <Pressable
         onPress={handleDoneSet}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel={
-          nextPendingSetId != null ? 'Done — start next set' : 'Finish workout'
-        }
+        accessibilityLabel="Done — start next set"
         className="p-2"
       >
-        <Icon name="forward" size={22} color={accentPrimary} weight="bold" />
-      </Pressable>
-    ) : (
-      <Pressable
-        onPress={handleNext}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        accessibilityRole="button"
-        accessibilityLabel="Skip rest"
-        className="p-2"
-      >
-        <Icon name="forward" size={22} color={accentPrimary} weight="bold" />
+        <Icon name="play" size={22} color={accentPrimary} weight="bold" />
       </Pressable>
     );
+  })();
 
   // Embedded mode adds bottom padding so the floating Add button (which rises
   // ~20pt above the tab bar top edge) overlaps an empty strip at the bottom
@@ -447,7 +436,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
           <View className="flex-1 pl-1 pr-1">
             <Text
               numberOfLines={1}
-              className="text-xs text-text-secondary"
+              className="text-sm text-text-secondary"
             >
               {upNextText}
             </Text>
