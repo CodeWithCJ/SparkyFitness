@@ -286,12 +286,29 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Active workout state (narrow selectors — avoid re-rendering on unrelated changes)
   const activeSessionId = useActiveWorkoutStore((s) => s.sessionId);
+  const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const isWorkoutActive = activeSessionId === session.id;
 
   const toggleSection = (key: string) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
+
+  // Auto-expand the exercise containing the active set while the workout is
+  // running for this session — so tapping the floating HUD lands on the
+  // detail page with the current exercise already open. Never auto-collapses;
+  // the user can still close it manually, and it re-expands only when the
+  // active set advances into a different exercise.
+  useEffect(() => {
+    if (!isWorkoutActive || activeSetId == null) return;
+    const activeExercise = session.exercises.find(ex =>
+      ex.sets.some(s => String(s.id) === activeSetId),
+    );
+    if (!activeExercise) return;
+    setExpandedSections(prev =>
+      prev[activeExercise.id] ? prev : { ...prev, [activeExercise.id]: true },
+    );
+  }, [isWorkoutActive, activeSetId, session]);
 
   const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
   const entryDate = session.entry_date ?? '';

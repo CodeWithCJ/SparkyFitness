@@ -29,7 +29,7 @@ const BAR_CONTENT_HEIGHT = 76;
  * instead of the bar's content. Cheaper than reserving a full-width center
  * gap — content flows edge to edge and only the bottom ~20pt is "dead zone".
  */
-const EMBEDDED_FAB_CLEARANCE = 20;
+const EMBEDDED_FAB_CLEARANCE = 8;
 
 export const ACTIVE_WORKOUT_BAR_HEIGHT = BAR_CONTENT_HEIGHT + EMBEDDED_FAB_CLEARANCE;
 
@@ -107,15 +107,6 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   const endsAt = useActiveWorkoutStore((s) => s.rest.endsAt);
   const pausedRemainingMs = useActiveWorkoutStore((s) => s.rest.pausedRemainingMs);
   const durationSec = useActiveWorkoutStore((s) => s.rest.durationSec);
-  // Exercise name for the active set — what the user is about to do (or
-  // resting before). Null when the workout has finished (activeSetId == null).
-  const activeExerciseName = useActiveWorkoutStore((s) => {
-    if (s.activeSetId == null) return null;
-    return (
-      s.steps.find((step) => step.setId === s.activeSetId)?.exerciseName ?? null
-    );
-  });
-
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
 
@@ -181,27 +172,28 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   // variant) is showing to avoid a double-bar.
   if (variant === 'floating' && navInfo.isOnTabs) return null;
 
-  // "Up next" line — details (set number + weight × reps) for the active
-  // set. Shown below the primary row so the user can see what they're about
-  // to do without reopening WorkoutDetail. Looked up against the active
-  // session snapshot since `steps` only holds name/restSec.
+  // Active-set details (exercise name, set number, weight × reps) looked up
+  // against the session snapshot since `steps` only holds name/restSec.
+  // Split into discrete fields so the rendering can stack "status: name -
+  // set N/M" on one row and the load ("135 lbs × 8") on a second row.
   const activeSetLabel = (() => {
     if (activeSession == null || activeSetId == null) return null;
     for (const exercise of activeSession.exercises) {
       const set = exercise.sets.find((st) => String(st.id) === activeSetId);
       if (!set) continue;
       const exerciseName = exercise.exercise_snapshot?.name ?? 'Exercise';
-      const bits: string[] = [`Set ${set.set_number}/${exercise.sets.length}`];
+      const setNumber = `Set ${set.set_number}/${exercise.sets.length}`;
+      let loadText = '';
       if (set.weight != null && set.reps != null) {
         const w = parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1));
-        bits.push(`${w} ${weightUnit} × ${set.reps}`);
+        loadText = `${w} ${weightUnit} × ${set.reps}`;
       } else if (set.reps != null) {
-        bits.push(`${set.reps} reps`);
+        loadText = `${set.reps} reps`;
       } else if (set.weight != null) {
         const w = parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1));
-        bits.push(`${w} ${weightUnit}`);
+        loadText = `${w} ${weightUnit}`;
       }
-      return { exerciseName, details: bits.join(' · ') };
+      return { exerciseName, setNumber, loadText };
     }
     return null;
   })();
@@ -266,44 +258,44 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     navigationRef.navigate('WorkoutDetail', { session });
   };
 
-  // Status / timer label on the right side of the primary row. When the
-  // workout is finished, the cursor is null and we show "Complete" until the
-  // user taps X to clear.
-  const statusLabel = (() => {
-    if (isWorkoutComplete) return 'Complete';
-    if (restState === 'resting') return formatCountdown(displaySeconds);
-    if (restState === 'paused') return 'Paused';
-    return 'Ready';
+  // Resting / paused use a three-row layout: a top status label ("Resting"
+  // / "Paused"), a middle "Next: exercise - set N/M", and a load line. Other
+  // states collapse to two rows — "Next Up: ..." or "Workout complete" on
+  // top, load (or empty) underneath.
+  const isResting = restState === 'resting' || restState === 'paused';
+  const topStatusLine =
+    restState === 'resting'
+      ? 'Resting'
+      : restState === 'paused'
+        ? 'Paused'
+        : null;
+  const primaryLine = (() => {
+    if (isWorkoutComplete) return 'Workout complete';
+    if (!activeSetLabel) return 'Workout active';
+    const prefix = isResting ? 'Next' : 'Next Up';
+    return `${prefix}: ${activeSetLabel.exerciseName} - ${activeSetLabel.setNumber}`;
   })();
-  // Exercise name label — the exercise the user is currently on (or resting
-  // before). Empty when the workout is finished.
-  const exerciseLabel = isWorkoutComplete
-    ? 'Workout complete'
-    : activeExerciseName ?? 'Workout active';
+  const secondaryLine = isWorkoutComplete
+    ? ''
+    : (activeSetLabel?.loadText ?? '');
 
-  // "Up next" single-line summary for the active set.
-  const upNextText =
-    !isWorkoutComplete && activeSetLabel
-      ? `${activeSetLabel.exerciseName} · ${activeSetLabel.details}`
-      : '';
+  // Right-aligned countdown — only rendered while a rest timer is running.
+  const countdownLabel =
+    restState === 'resting' ? formatCountdown(displaySeconds) : null;
 
-  // Left button: pause/play while a rest timer exists, X to clear the
-  // workout when ready (no timer running) or finished.
+  // Left button:
+  //  - resting → Pause (pauses the rest timer)
+  //  - ready / paused / complete → X (clear workout)
   const leftButton =
-    restState === 'resting' || restState === 'paused' ? (
+    restState === 'resting' ? (
       <Pressable
         onPress={handlePausePlay}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel={restState === 'resting' ? 'Pause' : 'Resume'}
+        accessibilityLabel="Pause"
         className="p-2"
       >
-        <Icon
-          name={restState === 'resting' ? 'pause' : 'play'}
-          size={22}
-          color={accentPrimary}
-          weight="bold"
-        />
+        <Icon name="pause" size={22} color={accentPrimary} weight="bold" />
       </Pressable>
     ) : (
       <Pressable
@@ -318,10 +310,10 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     );
 
   // Right button:
-  //  - ready  → Done (complete the active set, advance + start rest)
-  //  - resting → Skip rest
-  //  - paused → X (clear workout, since pause already implies "I'm handling this manually")
-  //  - complete (workout finished) → hidden; the X on the left is the only way out
+  //  - ready  → Play (complete the active set, advance + start rest)
+  //  - resting → Check (skip rest / mark next ready)
+  //  - paused → Play (resume the rest timer)
+  //  - complete → hidden; the X on the left is the only way out
   const rightButton = (() => {
     if (isWorkoutComplete) return null;
     if (restState === 'resting') {
@@ -331,22 +323,24 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
           accessibilityLabel="Skip rest"
-          className="p-2"
+          // Filled accent pill so the "complete set" affordance pops against
+          // the muted pause icon on the left and the countdown digits.
+          className="h-9 w-9 items-center justify-center rounded-full border-2 border-accent-primary"
         >
-          <Icon name="checkmark" size={22} color={accentPrimary} weight="bold" />
+          <Icon name="checkmark" size={20} color={accentPrimary} weight="bold" />
         </Pressable>
       );
     }
     if (restState === 'paused') {
       return (
         <Pressable
-          onPress={handleClear}
+          onPress={handlePausePlay}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-          accessibilityLabel="Clear workout"
+          accessibilityLabel="Resume"
           className="p-2"
         >
-          <Icon name="close" size={22} color={textMuted} weight="bold" />
+          <Icon name="play" size={22} color={accentPrimary} weight="bold" />
         </Pressable>
       );
     }
@@ -367,12 +361,18 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   // ~20pt above the tab bar top edge) overlaps an empty strip at the bottom
   // of the bar instead of covering content. Floating mode is on stack screens
   // where there's no FAB, so no clearance is needed.
+  //
+  // We use `minHeight` (not a fixed `height`) so the bar can grow vertically
+  // when the bottom details line wraps to two lines — e.g. small phones in
+  // the resting state where the countdown eats horizontal room. The inner row
+  // is intrinsically sized (no `flex-1`), so its py padding drives the
+  // non-wrapped height while wrapping just pushes it taller.
   const isEmbedded = variant === 'embedded';
   const barBody = (
     <View
       className="bg-chrome border-t border-chrome-border"
       style={{
-        height: isEmbedded
+        minHeight: isEmbedded
           ? BAR_CONTENT_HEIGHT + EMBEDDED_FAB_CLEARANCE
           : BAR_CONTENT_HEIGHT,
         paddingBottom: isEmbedded ? EMBEDDED_FAB_CLEARANCE : 0,
@@ -387,62 +387,50 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
         />
       </View>
 
-      <View className="flex-1 flex-col">
-        {/* Line 1 — primary row: left control, exercise name, timer/status, right control */}
-        <View className="flex-1 flex-row items-center px-2">
-          <View className="w-11 items-center">{leftButton}</View>
+      {/* Primary row — left control, stacked top/bottom text, right control.
+          Intrinsically sized so the bar grows when the bottom line wraps. */}
+      <View className="flex-row items-center px-2 py-2">
+        <View className="w-11 items-center">{leftButton}</View>
 
-          <Pressable
-            onPress={handleCenterTap}
-            className="flex-1 justify-center pl-1 pr-2"
-            accessibilityRole="button"
-            accessibilityLabel="Open active workout"
-          >
-            <Text
-              numberOfLines={1}
-              className="text-base font-semibold text-text-primary"
-            >
-              {exerciseLabel}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={handleCenterTap}
-            className="justify-center pr-1"
-            accessibilityRole="button"
-            accessibilityLabel="Open active workout"
-          >
-            <Text
-              numberOfLines={1}
-              className="text-base font-semibold text-text-primary"
-            >
-              {statusLabel}
-            </Text>
-          </Pressable>
-
-          <View className="w-11 items-center">{rightButton}</View>
-        </View>
-
-        {/* Line 2 — "Up next" row: muted single-line summary of the next
-            pending set so the user knows what's coming without reopening
-            WorkoutDetail. Indented past the left/right control columns. */}
         <Pressable
           onPress={handleCenterTap}
+          className="flex-1 justify-center px-1"
           accessibilityRole="button"
           accessibilityLabel="Open active workout"
-          className="h-[22px] flex-row items-center px-2 pb-0.5"
         >
-          <View className="w-11" />
-          <View className="flex-1 pl-1 pr-1">
+          {topStatusLine != null && (
             <Text
               numberOfLines={1}
-              className="text-sm text-text-secondary"
+              className="text-base font-semibold text-text-primary"
             >
-              {upNextText}
+              {topStatusLine}
             </Text>
-          </View>
-          <View className="w-11" />
+          )}
+          <Text
+            numberOfLines={1}
+            className={
+              topStatusLine != null
+                ? 'text-sm text-text-primary'
+                : 'text-base font-semibold text-text-primary'
+            }
+          >
+            {primaryLine}
+          </Text>
+          <Text numberOfLines={1} className="text-sm text-text-secondary">
+            {secondaryLine}
+          </Text>
         </Pressable>
+
+        {countdownLabel != null && (
+          <Text
+            className="px-2 text-xl font-bold text-text-primary"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {countdownLabel}
+          </Text>
+        )}
+
+        <View className="w-11 items-center">{rightButton}</View>
       </View>
     </View>
   );

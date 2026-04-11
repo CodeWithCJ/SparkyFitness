@@ -16,6 +16,8 @@ interface StepperInputProps {
   InputComponent?: React.ComponentType<any>;
   /** Extra props forwarded to the text input */
   inputProps?: Partial<TextInputProps>;
+  /** Ref forwarded to the underlying text input for imperative focus control */
+  inputRef?: React.Ref<TextInput>;
   /** Compact size for inline use in set rows */
   compact?: boolean;
 }
@@ -31,6 +33,7 @@ function StepperInput({
   selectTextOnFocus = true,
   InputComponent = TextInput,
   inputProps,
+  inputRef,
   compact = false,
 }: StepperInputProps) {
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
@@ -51,6 +54,7 @@ function StepperInput({
         <Icon name="remove" size={iconSize} color={accentColor} />
       </TouchableOpacity>
       <InputComponent
+        ref={inputRef}
         value={value}
         onChangeText={onChangeText}
         onBlur={onBlur}

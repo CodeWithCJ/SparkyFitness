@@ -21,26 +21,30 @@ interface RestPeriodChipProps {
 }
 
 function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProps) {
-  const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
-
-  const content = (
-    <>
-      <Icon name="timer" size={14} color={textMuted} />
-      <Text className="text-sm text-text-muted ml-1">Rest · {formatRest(value)}</Text>
-    </>
-  );
+  const [textSecondary, accentPrimary] = useCSSVariable([
+    '--color-text-secondary',
+    '--color-accent-primary',
+  ]) as [string, string];
 
   if (readOnly) {
-    return <View className="flex-row items-center">{content}</View>;
+    return (
+      <View className="flex-row items-center">
+        <Icon name="timer" size={14} color={textSecondary} />
+        <Text className="text-sm text-text-secondary ml-1">Rest · {formatRest(value)}</Text>
+      </View>
+    );
   }
 
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center bg-raised rounded-full py-1 px-2.5"
+      className="flex-row items-center"
       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
     >
-      {content}
+      <Icon name="timer" size={14} color={accentPrimary} />
+      <Text className="text-sm ml-1" style={{ color: accentPrimary }}>
+        Rest · {formatRest(value)}
+      </Text>
     </Pressable>
   );
 }

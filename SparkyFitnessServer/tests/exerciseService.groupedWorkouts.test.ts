@@ -1,4 +1,12 @@
-import { vi, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  vi,
+  type Mock,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 import { getClient } from '../db/poolManager.js';
 import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
@@ -230,7 +238,7 @@ describe('exerciseService grouped workouts', () => {
     const exerciseAId = '22222222-2222-4222-8222-222222222222';
     const exerciseBId = '33333333-3333-4333-8333-333333333333';
     const existingSession = {
-      type: 'preset',
+      type: 'preset' as const,
       id: 'preset-entry-1',
       entry_date: '2026-03-12',
       workout_preset_id: null,
@@ -257,8 +265,8 @@ describe('exerciseService grouped workouts', () => {
     };
 
     const setupExistingSession = () => {
-      (getGroupedExerciseSessionByIdWithClient as any).mockReset();
-      (getGroupedExerciseSessionByIdWithClient as any)
+      (getGroupedExerciseSessionByIdWithClient as unknown as Mock).mockReset();
+      (getGroupedExerciseSessionByIdWithClient as unknown as Mock)
         .mockResolvedValueOnce(existingSession)
         .mockResolvedValueOnce(existingSession);
       // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
@@ -266,9 +274,9 @@ describe('exerciseService grouped workouts', () => {
         { id: 'preset-entry-1' }
       );
       // @ts-expect-error TS(2339): mockImplementation on mocked fn
-      resolveExerciseIdToUuid.mockImplementation(async (id: any) => id);
+      resolveExerciseIdToUuid.mockImplementation(async (id: string) => id);
       // @ts-expect-error TS(2339): mockImplementation on mocked fn
-      exerciseDb.getExerciseById.mockImplementation(async (id: any) => ({
+      exerciseDb.getExerciseById.mockImplementation(async (id: string) => ({
         id,
         name: 'Test Exercise',
         calories_per_hour: 600,
@@ -344,8 +352,8 @@ describe('exerciseService grouped workouts', () => {
 
     it('recomputes calories_burned when duration_minutes changes', async () => {
       setupExistingSession();
-      (
-        calorieCalculationService.estimateCaloriesBurnedPerHour as any
+      vi.mocked(
+        calorieCalculationService.estimateCaloriesBurnedPerHour
       ).mockResolvedValue(600); // 10 cal/min
 
       await exerciseService.updateGroupedWorkoutSession(
@@ -372,10 +380,9 @@ describe('exerciseService grouped workouts', () => {
         }
       );
 
-      const [firstCall, secondCall] = (
-        // @ts-expect-error TS(2339): .mock on mocked fn
-        exerciseEntryDb._updateExerciseEntryWithClient.mock.calls
-      ) as any[];
+      const [firstCall, secondCall] = vi.mocked(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).mock.calls;
       expect(firstCall[3]).toMatchObject({
         duration_minutes: 30,
         calories_burned: 300,
@@ -413,10 +420,9 @@ describe('exerciseService grouped workouts', () => {
         }
       );
 
-      const updateCalls = (
-        // @ts-expect-error TS(2339): .mock on mocked fn
-        exerciseEntryDb._updateExerciseEntryWithClient.mock.calls
-      ) as any[];
+      const updateCalls = vi.mocked(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).mock.calls;
       for (const [, , , updateData] of updateCalls) {
         expect(updateData).not.toHaveProperty('sets');
       }
@@ -562,18 +568,26 @@ describe('exerciseService grouped workouts', () => {
 });
 
 describe('_reconcileExerciseEntrySetsWithClient', () => {
-  let reconcile: any;
+  let reconcile: (
+    client: unknown,
+    entryId: string,
+    sets: unknown[]
+  ) => Promise<unknown>;
 
   beforeAll(async () => {
-    const mod: any = await vi.importActual('../models/exerciseEntry.js');
-    reconcile = (mod.default ?? mod)._reconcileExerciseEntrySetsWithClient;
+    const mod = (await vi.importActual('../models/exerciseEntry.js')) as {
+      default?: Record<string, unknown>;
+    } & Record<string, unknown>;
+    const exports = (mod.default ?? mod) as Record<string, unknown>;
+    reconcile =
+      exports._reconcileExerciseEntrySetsWithClient as typeof reconcile;
   });
 
   function makeClient(existingSetIds: number[]) {
-    const calls: { sql: string; params: any[] }[] = [];
+    const calls: { sql: string; params: unknown[] }[] = [];
     return {
       calls,
-      query: vi.fn((sql: string, params: any[]) => {
+      query: vi.fn((sql: string, params: unknown[]) => {
         calls.push({ sql, params });
         if (/^SELECT id FROM exercise_entry_sets/.test(sql)) {
           return Promise.resolve({
@@ -602,7 +616,7 @@ describe('_reconcileExerciseEntrySetsWithClient', () => {
       /DELETE FROM exercise_entry_sets WHERE id = ANY/.test(sql)
     );
     expect(deleteCall).toBeDefined();
-    expect(deleteCall!.params[0].sort()).toEqual([1, 2]);
+    expect((deleteCall!.params[0] as number[]).sort()).toEqual([1, 2]);
     expect(deleteCall!.params[1]).toBe('entry-a');
   });
 
