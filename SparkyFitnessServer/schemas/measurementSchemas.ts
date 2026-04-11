@@ -43,14 +43,6 @@ const optionalLegacyNumber = z.preprocess((value) => {
   return coerceLegacyNumber(value);
 }, z.number().optional());
 
-const nullableLegacyNumber = z.preprocess((value) => {
-  if (value === null || value === '') {
-    return null;
-  }
-
-  return coerceLegacyNumber(value);
-}, z.number().nullable());
-
 const nullableOptionalLegacyNumber = z.preprocess((value) => {
   if (value === '') {
     return undefined;

@@ -197,6 +197,7 @@ const getWaterIntakeHandler: RequestHandler = async (req, res, next) => {
     const { date } = paramResult.data;
     const waterData = await measurementService.getWaterIntake(
       req.originalUserId || req.userId,
+
       req.userId,
       date
     );
@@ -301,6 +302,7 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
     const { entry_date, change_drinks, container_id } = bodyResult.data;
     const result = await measurementService.upsertWaterIntake(
       req.userId,
+
       req.originalUserId || req.userId,
       entry_date,
       change_drinks,
@@ -431,6 +433,7 @@ const updateWaterIntakeHandler: RequestHandler = async (req, res, next) => {
 
     const updatedEntry = await measurementService.updateWaterIntake(
       req.userId,
+
       req.originalUserId || req.userId,
       id,
       bodyResult.data
@@ -496,6 +499,7 @@ const deleteWaterIntakeHandler: RequestHandler = async (req, res, next) => {
     const { id } = paramResult.data;
     const result = await measurementService.deleteWaterIntake(
       req.userId,
+
       req.originalUserId || req.userId,
       id
     );

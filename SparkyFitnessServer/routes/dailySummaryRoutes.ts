@@ -55,7 +55,9 @@ const handler: RequestHandler = async (req, res, next) => {
     }
 
     const queryUserId = req.query.userId as string | undefined;
+
     const targetUserId = queryUserId || req.userId;
+
     const actorUserId = req.originalUserId || req.userId;
 
     // Family access: either explicit ?userId param, or onBehalfOfMiddleware

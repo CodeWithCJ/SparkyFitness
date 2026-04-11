@@ -14,7 +14,7 @@ import { log } from '../config/logging.js';
 
 /** Convert a pg date value to a YYYY-MM-DD string, or return null. */
 function _dateToString(value: unknown): string | null {
-  if (value == null) return null;
+  if (value === null || value === undefined) return null;
   if (value instanceof Date) return localDateToDay(value);
   return String(value);
 }
@@ -22,7 +22,7 @@ function _dateToString(value: unknown): string | null {
 /** Parse a JSON string field into a string array, returning null on failure or missing input.
  *  Handles double-stringified values (e.g. '"[\\"a\\"]"') by parsing recursively. */
 function _parseJsonArray(value: unknown): string[] | null {
-  if (value == null) return null;
+  if (value === null || value === undefined) return null;
   if (Array.isArray(value)) return value as string[];
   if (typeof value !== 'string') return null;
   try {
@@ -90,13 +90,13 @@ function _buildExerciseEntryWithSnapshot(
     level,
     mechanic,
     // Strip columns that aren't part of the API response
-    user_id,
-    created_by_user_id,
-    updated_by_user_id,
-    created_at,
-    updated_at,
-    workout_plan_assignment_id,
-    image_url,
+    _user_id,
+    _created_by_user_id,
+    _updated_by_user_id,
+    _created_at,
+    _updated_at,
+    _workout_plan_assignment_id,
+    _image_url,
     ...entryData
   } = row;
 
@@ -131,6 +131,7 @@ function _buildExerciseEntryWithSnapshot(
 
 /** Count the total number of "sessions" (preset entries + standalone exercise entries). */
 async function countExerciseEntrySessions(
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   client: { query: Function },
   userId: string
 ): Promise<number> {
@@ -148,6 +149,7 @@ async function countExerciseEntrySessions(
 
 /** Fetch paginated session stubs and their full details. */
 async function getExerciseEntryHistorySessions(
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   client: { query: Function },
   userId: string,
   limit: number,
@@ -431,6 +433,7 @@ export async function getExerciseEntriesByDateV2(
 }
 
 async function _getExerciseEntriesByDateWithClient(
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   client: { query: Function },
   userId: string,
   selectedDate: string
@@ -644,6 +647,7 @@ export async function getGroupedExerciseSessionById(
 }
 
 export async function getGroupedExerciseSessionByIdWithClient(
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   client: { query: Function },
   targetUserId: string,
   presetEntryId: string
