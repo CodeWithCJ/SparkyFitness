@@ -1,11 +1,17 @@
 export interface WorkoutDraftSet {
   clientId: string;
+  /** Populated only when the set originated from an existing server session. */
+  serverId?: string | number;
+  /** Rest time in seconds, populated from the server session. */
+  restTime?: number | null;
   weight: string;
   reps: string;
 }
 
 export interface WorkoutDraftExercise {
   clientId: string;
+  /** Populated only when the exercise row originated from an existing server session. */
+  serverId?: string;
   exerciseId: string;
   exerciseName: string;
   exerciseCategory: string | null;

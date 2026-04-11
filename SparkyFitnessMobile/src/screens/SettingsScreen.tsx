@@ -17,6 +17,7 @@ import * as Application from 'expo-application';
 import Icon from '../components/Icon';
 import { SectionErrorBoundary } from '../components/ScreenErrorBoundary';
 import { shareDiagnosticReport, sanitizeQueryKey } from '../services/diagnosticReportService';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
@@ -32,6 +33,7 @@ type SettingsScreenProps = CompositeScreenProps<
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
 
   const [serverConfigs, setServerConfigs] = useState<ServerConfig[]>([]);
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
@@ -189,7 +191,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 130 }} contentInsetAdjustmentBehavior="never">
+      <ScrollView contentContainerStyle={{ paddingBottom: 130 + activeWorkoutBarPadding }} contentInsetAdjustmentBehavior="never">
         <View className="flex-1 p-4 pb-20">
           <ServerConfigComponent
             serverConfigs={serverConfigs}

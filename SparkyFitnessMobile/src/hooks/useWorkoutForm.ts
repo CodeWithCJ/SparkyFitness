@@ -176,6 +176,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
         entryDate: action.session.entry_date ? normalizeDate(action.session.entry_date) : getTodayDate(),
         exercises: action.session.exercises.map(exercise => ({
           clientId: generateClientId(),
+          serverId: exercise.id,
           exerciseId: exercise.exercise_id,
           exerciseName: exercise.exercise_snapshot?.name ?? 'Unknown',
           exerciseCategory: exercise.exercise_snapshot?.category ?? null,
@@ -183,6 +184,8 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           snapshot: exercise.exercise_snapshot ?? null,
           sets: exercise.sets.map(set => ({
             clientId: generateClientId(),
+            serverId: set.id,
+            restTime: set.rest_time,
             weight: set.weight != null
               ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
               : '',

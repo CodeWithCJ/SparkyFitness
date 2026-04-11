@@ -488,6 +488,64 @@ describe('workoutFormReducer', () => {
       expect(result.exercises[0].exerciseName).toBe('Unknown');
       expect(result.exercises[0].exerciseCategory).toBeNull();
     });
+
+    it('threads exercise id, set id, and rest_time onto the draft', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession({
+        exercises: [
+          {
+            id: 'ex-uuid-1',
+            exercise_id: 'ex-1',
+            exercise_snapshot: {
+              id: 'ex-1',
+              name: 'Bench Press',
+              category: 'Strength',
+              calories_per_hour: 400,
+              source: 'system',
+            },
+            duration_minutes: 20,
+            calories_burned: 150,
+            sets: [
+              { id: 101, set_number: 1, weight: 60, reps: 10, rest_time: 90, set_type: 'working' } as ExerciseEntrySetResponse,
+              { id: 102, set_number: 2, weight: 80, reps: 8, rest_time: null, set_type: 'working' } as ExerciseEntrySetResponse,
+            ],
+          } as any,
+        ],
+      });
+      const result = workoutFormReducer(state, { type: 'POPULATE', session, weightUnit: 'kg' });
+
+      expect(result.exercises[0].serverId).toBe('ex-uuid-1');
+      expect(result.exercises[0].sets[0].serverId).toBe(101);
+      expect(result.exercises[0].sets[1].serverId).toBe(102);
+      expect(result.exercises[0].sets[0].restTime).toBe(90);
+      expect(result.exercises[0].sets[1].restTime).toBeNull();
+    });
+  });
+
+  describe('RESTORE_DRAFT — old drafts without serverId/restTime', () => {
+    it('rehydrates an old persisted draft without crashing; serverId/restTime are undefined', () => {
+      const initial = makeEmptyDraft();
+      const oldDraft: WorkoutDraft = {
+        type: 'workout',
+        name: 'Leg Day',
+        entryDate: '2026-03-11',
+        exercises: [
+          {
+            clientId: 'abc',
+            exerciseId: 'ex-1',
+            exerciseName: 'Squat',
+            exerciseCategory: 'Strength',
+            images: [],
+            sets: [{ clientId: 'set-1', weight: '135', reps: '5' }],
+          },
+        ],
+      };
+
+      const result = workoutFormReducer(initial, { type: 'RESTORE_DRAFT', draft: oldDraft });
+      expect(result.exercises[0].serverId).toBeUndefined();
+      expect(result.exercises[0].sets[0].serverId).toBeUndefined();
+      expect(result.exercises[0].sets[0].restTime).toBeUndefined();
+    });
   });
 
   describe('POPULATE_FROM_PRESET', () => {

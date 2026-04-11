@@ -34,6 +34,9 @@ const ICON_MAP = {
   'radio-button-off': { sf: 'circle', ion: 'radio-button-off' },
   'camera-reverse': { sf: 'camera.rotate', ion: 'camera-reverse-outline' },
   'pencil': { sf: 'pencil', ion: 'create-outline' },
+  'pause': { sf: 'pause.fill', ion: 'pause' },
+  'play': { sf: 'play.fill', ion: 'play' },
+  'forward': { sf: 'forward.fill', ion: 'play-skip-forward' },
 
   // Status
   'shield-checkmark': { sf: 'checkmark.shield', ion: 'shield-checkmark-outline' },

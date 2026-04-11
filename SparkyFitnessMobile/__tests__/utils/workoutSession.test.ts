@@ -15,6 +15,7 @@ import {
   buildExercisesPayload,
 } from '../../src/utils/workoutSession';
 import type { ExerciseSessionResponse } from '@workspace/shared';
+import { presetSessionExerciseRequestSchema } from '@workspace/shared';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
 
 type IndividualSession = Extract<ExerciseSessionResponse, { type: 'individual' }>;
@@ -919,6 +920,124 @@ describe('workoutSession', () => {
       const exercise = makeDraftExercise({ sets: [] });
       const payload = buildExercisesPayload([exercise], 'kg');
       expect(payload[0].sets).toEqual([]);
+    });
+
+    describe('id + rest_time threading', () => {
+      // Valid UUID v4 format (version nibble = 4, variant nibble = 8..b).
+      const UUID_A = '11111111-1111-4111-8111-111111111111';
+      const UUID_B = '22222222-2222-4222-8222-222222222222';
+
+      it('omits id entirely when no exercise has serverId', () => {
+        const payload = buildExercisesPayload(
+          [
+            makeDraftExercise({
+              exerciseId: UUID_A,
+              sets: [{ clientId: 's1', weight: '100', reps: '10' }],
+            }),
+          ],
+          'kg',
+        );
+        expect(payload[0]).not.toHaveProperty('id');
+        expect(payload[0].sets[0]).not.toHaveProperty('id');
+        // Round-trip parse to confirm the shape is schema-valid.
+        expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
+      });
+
+      it('includes exercise id + per-set id when all exercises have serverId', () => {
+        const payload = buildExercisesPayload(
+          [
+            makeDraftExercise({
+              serverId: UUID_A,
+              exerciseId: UUID_A,
+              sets: [
+                { clientId: 'c1', serverId: 101, weight: '100', reps: '10' },
+                { clientId: 'c2', serverId: 102, weight: '90', reps: '8' },
+              ],
+            }),
+            makeDraftExercise({
+              serverId: UUID_B,
+              exerciseId: UUID_B,
+              sets: [{ clientId: 'c3', serverId: 201, weight: '50', reps: '12' }],
+            }),
+          ],
+          'kg',
+        );
+        expect((payload[0] as any).id).toBe(UUID_A);
+        expect((payload[0].sets[0] as any).id).toBe(101);
+        expect((payload[0].sets[1] as any).id).toBe(102);
+        expect((payload[1] as any).id).toBe(UUID_B);
+        expect((payload[1].sets[0] as any).id).toBe(201);
+        expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
+        expect(() => presetSessionExerciseRequestSchema.parse(payload[1])).not.toThrow();
+      });
+
+      it('includes rest_time when restTime is set', () => {
+        const payload = buildExercisesPayload(
+          [
+            makeDraftExercise({
+              serverId: UUID_A,
+              exerciseId: UUID_A,
+              sets: [
+                {
+                  clientId: 'c1',
+                  serverId: 101,
+                  restTime: 120,
+                  weight: '100',
+                  reps: '10',
+                },
+              ],
+            }),
+          ],
+          'kg',
+        );
+        expect((payload[0].sets[0] as any).rest_time).toBe(120);
+      });
+
+      it('omits rest_time when restTime is null', () => {
+        const payload = buildExercisesPayload(
+          [
+            makeDraftExercise({
+              serverId: UUID_A,
+              exerciseId: UUID_A,
+              sets: [
+                {
+                  clientId: 'c1',
+                  serverId: 101,
+                  restTime: null,
+                  weight: '100',
+                  reps: '10',
+                },
+              ],
+            }),
+          ],
+          'kg',
+        );
+        expect(payload[0].sets[0]).not.toHaveProperty('rest_time');
+      });
+
+      it('strips all exercise and set IDs when any exercise lacks serverId (mixed fallback)', () => {
+        const payload = buildExercisesPayload(
+          [
+            makeDraftExercise({
+              serverId: UUID_A,
+              exerciseId: UUID_A,
+              sets: [{ clientId: 'c1', serverId: 101, weight: '100', reps: '10' }],
+            }),
+            // New exercise without serverId — should force the fallback.
+            makeDraftExercise({
+              exerciseId: UUID_B,
+              sets: [{ clientId: 'c2', weight: '80', reps: '8' }],
+            }),
+          ],
+          'kg',
+        );
+        expect(payload[0]).not.toHaveProperty('id');
+        expect(payload[0].sets[0]).not.toHaveProperty('id');
+        expect(payload[1]).not.toHaveProperty('id');
+        expect(payload[1].sets[0]).not.toHaveProperty('id');
+        expect(() => presetSessionExerciseRequestSchema.parse(payload[0])).not.toThrow();
+        expect(() => presetSessionExerciseRequestSchema.parse(payload[1])).not.toThrow();
+      });
     });
   });
 });

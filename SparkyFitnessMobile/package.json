@@ -37,7 +37,9 @@
     "expo-device": "~8.0.10",
     "expo-file-system": "~19.0.21",
     "expo-font": "~14.0.11",
+    "expo-haptics": "~15.0.8",
     "expo-health-connect": "^0.1.1",
+    "expo-notifications": "~0.32.16",
     "expo-secure-store": "~15.0.8",
     "expo-sharing": "~14.0.8",
     "expo-splash-screen": "~31.0.13",
@@ -62,7 +64,8 @@
     "tailwindcss": "^4.1.18",
     "uniwind": "^1.2.7",
     "victory-native": "^41.20.2",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

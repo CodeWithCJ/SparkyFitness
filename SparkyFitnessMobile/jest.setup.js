@@ -93,6 +93,37 @@ jest.mock('expo-background-task', () => ({
   BackgroundTaskResult: { Success: 1, Failed: 2 },
 }));
 
+// Mock expo-notifications
+jest.mock('expo-notifications', () => {
+  let nextId = 1;
+  return {
+    setNotificationHandler: jest.fn(),
+    setNotificationChannelAsync: jest.fn().mockResolvedValue(undefined),
+    getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+    requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+    scheduleNotificationAsync: jest.fn(async () => `mock-notif-${nextId++}`),
+    cancelScheduledNotificationAsync: jest.fn().mockResolvedValue(undefined),
+    AndroidImportance: { HIGH: 4, DEFAULT: 3, LOW: 2, MIN: 1, NONE: 0 },
+    SchedulableTriggerInputTypes: {
+      CALENDAR: 'calendar',
+      DAILY: 'daily',
+      WEEKLY: 'weekly',
+      MONTHLY: 'monthly',
+      YEARLY: 'yearly',
+      DATE: 'date',
+      TIME_INTERVAL: 'timeInterval',
+    },
+  };
+});
+
+// Mock expo-haptics
+jest.mock('expo-haptics', () => ({
+  notificationAsync: jest.fn().mockResolvedValue(undefined),
+  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+  impactAsync: jest.fn().mockResolvedValue(undefined),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+}));
+
 // Mock expo-secure-store
 jest.mock('expo-secure-store', () => {
   const store = {};

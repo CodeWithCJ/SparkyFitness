@@ -6,6 +6,13 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import Icon, { type IconName } from './Icon';
 
 export const TAB_BAR_HEIGHT = 56;
+/**
+ * The floating Add button uses `-mt-5` (20px) so it visually rises above the
+ * tab bar's top edge. Anything rendered as a sibling above the tab bar (e.g.
+ * the active workout bar) must add this clearance to avoid being covered by
+ * the button.
+ */
+export const TAB_BAR_ADD_BUTTON_OVERFLOW = 20;
 
 const TAB_ICONS: Record<string, IconName> = {
   Dashboard: 'tab-dashboard',

@@ -51,8 +51,10 @@
             "backgroundColor": "#232323",
             "image": "./assets/images/splash.png"
           }
-          
         }
+      ],
+      [
+        "expo-notifications"
       ]
     ],
     "experiments": {

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, SectionList, RefreshCo
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { TAB_BAR_HEIGHT } from '../components/CustomTabBar';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
 import WorkoutCard from '../components/WorkoutCard';
@@ -26,7 +27,9 @@ type SessionSection = { title: string; data: ExerciseSessionResponse[] };
 const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
-  const scrollBottomPadding = TAB_BAR_HEIGHT + insets.bottom + 16;
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
+  const scrollBottomPadding =
+    TAB_BAR_HEIGHT + activeWorkoutBarPadding + insets.bottom + 16;
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { preferences } = usePreferences();

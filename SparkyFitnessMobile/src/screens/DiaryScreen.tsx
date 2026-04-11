@@ -13,6 +13,7 @@ import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarShee
 import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import StatusView from '../components/StatusView';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useDailySummary } from '../hooks';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
@@ -78,6 +79,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
   const [refreshing, setRefreshing] = useState(false);
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const topSafeAreaStyle = Platform.OS === 'ios' ? { paddingTop: insets.top } : undefined;
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -135,7 +137,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
     return (
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 + activeWorkoutBarPadding }}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="never"
         refreshControl={

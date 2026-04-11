@@ -246,7 +246,18 @@ export function buildExercisesPayload(
   exercises: WorkoutDraftExercise[],
   weightUnit: 'kg' | 'lbs',
 ) {
+  // Server enforces "all or none" for exercise IDs on preset-session update
+  // (exerciseService.js ~L1713). If any exercise is new, we strip IDs from all
+  // exercises AND all sets so the server takes its delete-and-recreate path.
+  // Set IDs within an exercise, by contrast, reconcile correctly with mixed
+  // IDs — update for present IDs, insert for absent, delete for omitted.
+  const allExercisesHaveServerId =
+    exercises.length > 0 && exercises.every(e => e.serverId !== undefined);
+
   return exercises.map((exercise, index) => ({
+    ...(allExercisesHaveServerId && exercise.serverId !== undefined
+      ? { id: exercise.serverId }
+      : {}),
     exercise_id: exercise.exerciseId,
     sort_order: index,
     duration_minutes: 0,
@@ -254,9 +265,13 @@ export function buildExercisesPayload(
       const weight = parseDecimalInput(set.weight);
       const reps = parseInt(set.reps, 10);
       return {
+        ...(allExercisesHaveServerId && set.serverId !== undefined
+          ? { id: set.serverId }
+          : {}),
         set_number: setIndex + 1,
         weight: isNaN(weight) ? null : weightToKg(weight, weightUnit),
         reps: isNaN(reps) ? null : reps,
+        ...(set.restTime != null ? { rest_time: set.restTime } : {}),
       };
     }),
   }));
