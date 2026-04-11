@@ -36,7 +36,7 @@ export const setForegroundAutoSyncWindowOpen = (isOpen: boolean): void => {
 
 export const isForegroundAutoSyncWindowOpen = (): boolean => foregroundAutoSyncWindowOpen;
 
-export const shouldRunColdStartAutoSync = async (configId: string): Promise<boolean> => {
+export const shouldRunForegroundResumeAutoSync = async (configId: string): Promise<boolean> => {
   try {
     const value = await AsyncStorage.getItem(autoSyncKeyForConfig(configId));
     if (!value) return true;

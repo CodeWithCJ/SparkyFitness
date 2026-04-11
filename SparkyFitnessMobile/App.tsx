@@ -55,7 +55,7 @@ import {
   isSyncClaimed,
   isForegroundAutoSyncWindowOpen,
   setForegroundAutoSyncWindowOpen,
-  shouldRunColdStartAutoSync,
+  shouldRunForegroundResumeAutoSync,
   recordAutoSyncTime,
 } from './src/services/autoSyncCoordinator';
 import { initializeTheme } from './src/services/themeService';
@@ -414,7 +414,6 @@ function AppContent() {
       if (!syncOnOpen) return;
       const config = await getActiveServerConfig();
       if (!config) return;
-      if (!(await shouldRunColdStartAutoSync(config.id))) return;
 
       setForegroundAutoSyncWindowState(true);
       const coordRelease = tryClaimAutoSync();
@@ -468,7 +467,7 @@ function AppContent() {
 
         const syncOnOpen = await loadSyncOnOpenEnabled();
         if (!syncOnOpen) return;
-        if (!(await shouldRunColdStartAutoSync(config.id))) return;
+        if (!(await shouldRunForegroundResumeAutoSync(config.id))) return;
 
         setForegroundAutoSyncWindowState(true);
         const coordRelease = tryClaimAutoSync();

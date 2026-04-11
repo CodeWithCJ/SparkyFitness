@@ -26,7 +26,7 @@ const SyncOnOpen: React.FC<SyncOnOpenProps> = ({ isEnabled, onToggle }) => {
         />
       </View>
       <Text className="text-[13px] text-text-muted leading-4.5 mt-1">
-        When enabled, health data will sync automatically each time you open the app. Syncs again only after 5 minutes away.
+        When enabled, health data will sync automatically when you open the app.
       </Text>
     </View>
   );
