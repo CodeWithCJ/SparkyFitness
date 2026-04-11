@@ -3,6 +3,7 @@ import { clearDraft } from '../services/workoutDraftService';
 import { useDraftPersistence } from './useDraftPersistence';
 import { getTodayDate, normalizeDate } from '../utils/dateUtils';
 import { kmToMiles, distanceToKm } from '../utils/unitConversions';
+import { parseDecimalInput } from '../utils/numericInput';
 import type { Exercise } from '../types/exercise';
 import type { ActivityDraft } from '../types/drafts';
 import type { IndividualSessionResponse } from '@workspace/shared';
@@ -39,7 +40,7 @@ function defaultActivityName(exerciseName: string, dateString: string): string {
 }
 
 function calculateCalories(caloriesPerHour: number, durationStr: string): string {
-  const duration = parseFloat(durationStr);
+  const duration = parseDecimalInput(durationStr);
   if (!caloriesPerHour || isNaN(duration) || duration <= 0) return '';
   return String(Math.round(caloriesPerHour * (duration / 60)));
 }
@@ -63,9 +64,9 @@ export function getActivityDraftSubmission(
   state: ActivityDraft,
   distanceUnit: 'km' | 'miles',
 ): ActivityDraftSubmission {
-  const durationMinutes = parseFloat(state.duration);
-  const caloriesBurned = parseInt(state.calories, 10);
-  const distanceValue = parseFloat(state.distance);
+  const durationMinutes = parseDecimalInput(state.duration);
+  const caloriesBurned = parseDecimalInput(state.calories);
+  const distanceValue = parseDecimalInput(state.distance);
   const hasDuration = !isNaN(durationMinutes) && durationMinutes > 0;
   const hasCalories = !isNaN(caloriesBurned) && caloriesBurned > 0;
   const hasDistance = !isNaN(distanceValue) && distanceValue > 0;

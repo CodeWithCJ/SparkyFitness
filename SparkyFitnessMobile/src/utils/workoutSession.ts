@@ -2,6 +2,7 @@ import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 import type { WorkoutDraftExercise } from '../types/drafts';
 import { weightToKg, weightFromKg, distanceFromKm } from './unitConversions';
+import { parseDecimalInput } from './numericInput';
 
 export const CATEGORY_ICON_MAP: Record<string, IconName> = {
   Strength: 'exercise-weights',
@@ -250,7 +251,7 @@ export function buildExercisesPayload(
     sort_order: index,
     duration_minutes: 0,
     sets: exercise.sets.map((set, setIndex) => {
-      const weight = parseFloat(set.weight);
+      const weight = parseDecimalInput(set.weight);
       const reps = parseInt(set.reps, 10);
       return {
         set_number: setIndex + 1,

@@ -21,6 +21,7 @@ import { toFormString, parseOptional, buildNutrientDisplayList } from '../types/
 import type { FoodVariantDetail } from '../types/foods';
 import type { FoodEntry } from '../types/foodEntries';
 import type { RootStackScreenProps } from '../types/navigation';
+import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 type FoodEntryViewScreenProps = RootStackScreenProps<'FoodEntryView'>;
 
@@ -116,12 +117,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   const displayValues = useMemo(() => {
     if (!adjustedValues) return activeVariant;
     return {
-      servingSize: parseFloat(adjustedValues.servingSize) || activeVariant.servingSize,
+      servingSize: parseDecimalInput(adjustedValues.servingSize) || activeVariant.servingSize,
       servingUnit: adjustedValues.servingUnit || activeVariant.servingUnit,
-      calories: parseFloat(adjustedValues.calories) || 0,
-      protein: parseFloat(adjustedValues.protein) || 0,
-      carbs: parseFloat(adjustedValues.carbs) || 0,
-      fat: parseFloat(adjustedValues.fat) || 0,
+      calories: parseDecimalInput(adjustedValues.calories) || 0,
+      protein: parseDecimalInput(adjustedValues.protein) || 0,
+      carbs: parseDecimalInput(adjustedValues.carbs) || 0,
+      fat: parseDecimalInput(adjustedValues.fat) || 0,
       fiber: parseOptional(adjustedValues.fiber),
       saturatedFat: parseOptional(adjustedValues.saturatedFat),
       sodium: parseOptional(adjustedValues.sodium),
@@ -136,7 +137,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
     };
   }, [adjustedValues, activeVariant]);
 
-  const quantity = parseFloat(quantityText) || 0;
+  const quantity = parseDecimalInput(quantityText) || 0;
   const editServings = displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
   const scaled = (value: number) => value * editServings;
   const servingSizeRef = useRef(displayValues.servingSize);
@@ -159,7 +160,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   useEffect(() => {
     if (adjustedFromNav) {
       const previousServingSize = servingSizeRef.current;
-      const newServingSize = parseFloat(adjustedFromNav.servingSize) || previousServingSize;
+      const newServingSize = parseDecimalInput(adjustedFromNav.servingSize) || previousServingSize;
       updateEdit({
         adjustedValues: adjustedFromNav,
         ...(newServingSize !== previousServingSize ? { quantityText: String(newServingSize) } : {}),
@@ -179,7 +180,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
   };
 
   const updateQuantityText = (text: string) => {
-    if (/^\d*\.?\d*$/.test(text)) {
+    if (DECIMAL_INPUT_REGEX.test(text)) {
       updateEdit({ quantityText: text });
     }
   };

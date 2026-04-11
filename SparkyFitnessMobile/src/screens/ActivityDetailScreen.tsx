@@ -22,6 +22,7 @@ import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivit
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
 import { distanceFromKm, weightFromKg, weightToKg } from '../utils/unitConversions';
+import { parseDecimalInput } from '../utils/numericInput';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -163,7 +164,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const dateChanged = submission.entryDate !== normalizedDate;
 
     const setsPayload = draftSets.map((set, index) => {
-      const w = parseFloat(set.weight);
+      const w = parseDecimalInput(set.weight);
       const r = parseInt(set.reps, 10);
       const original = originalSetsRef.current.get(set.clientId);
       return {
@@ -265,11 +266,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       stats.push({
         value: isEditing
           ? (formState.calories || '—')
-          : (calories > 0 ? String(Math.round(calories)) : '—'),
+          : (calories > 0
+              ? (calories % 1 === 0 ? String(calories) : calories.toFixed(1))
+              : '—'),
         label: 'Calories',
         editKey: 'calories',
         editSuffix: 'cal',
-        keyboardType: 'numeric',
+        keyboardType: 'decimal-pad',
       });
     }
     if (isEditing || (session.distance != null && session.distance > 0)) {

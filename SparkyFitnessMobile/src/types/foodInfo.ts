@@ -2,6 +2,7 @@ import type { FoodItem, TopFoodItem } from './foods';
 import type { ExternalFoodItem, ExternalFoodVariant } from './externalFoods';
 import type { Meal } from './meals';
 import type { BarcodeFood } from '../services/api/externalFoodSearchApi';
+import { parseDecimalInput } from '../utils/numericInput';
 
 /** Convert a numeric value to a form-compatible string. Returns '' for null/undefined. */
 export const toFormString = (v: number | null | undefined): string =>
@@ -9,7 +10,7 @@ export const toFormString = (v: number | null | undefined): string =>
 
 /** Parse an optional form string to a number. Returns undefined for empty strings. */
 export const parseOptional = (s: string): number | undefined =>
-  s === '' ? undefined : (parseFloat(s) || 0);
+  s === '' ? undefined : (parseDecimalInput(s) || 0);
 
 /** Ordered list of extra nutrient fields for display and form conversion. */
 export const EXTRA_NUTRIENT_FIELDS = [
