@@ -10,6 +10,7 @@ import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
 import WorkoutEditableExerciseList from '../components/WorkoutEditableExerciseList';
+import RestPeriodChip from '../components/RestPeriodChip';
 import { getSourceLabel, getWorkoutSummary, CATEGORY_ICON_MAP } from '../utils/workoutSession';
 import {
   useDeleteWorkout,
@@ -129,6 +130,7 @@ interface ExerciseRowProps {
   textMuted: string;
   weightUnit: string;
   isWorkoutActive: boolean;
+  showRestChip: boolean;
   onLongPressSet: (setId: string) => void;
   onPressSet: (setId: string) => void;
 }
@@ -142,6 +144,7 @@ const ExerciseRow = React.memo(({
   textMuted,
   weightUnit,
   isWorkoutActive,
+  showRestChip,
   onLongPressSet,
   onPressSet,
 }: ExerciseRowProps) => {
@@ -215,6 +218,14 @@ const ExerciseRow = React.memo(({
                 <Text className="text-xs text-text-muted mt-1">
                   {metadataItems.join(' \u2022 ')}
                 </Text>
+              </FadeView>
+            )}
+
+            {isExpanded && showRestChip && (
+              <FadeView key="rest-chip">
+                <View className="flex-row self-start mt-1.5">
+                  <RestPeriodChip readOnly value={exercise.sets[0]?.rest_time} />
+                </View>
               </FadeView>
             )}
 
@@ -309,6 +320,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     addSet,
     removeSet,
     updateSetField,
+    setExerciseRest,
     setName: setFormName,
     setDate: setFormDate,
     populate,
@@ -440,6 +452,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           textMuted={textMuted}
           weightUnit={weightUnit}
           isWorkoutActive={isWorkoutActive}
+          showRestChip={isSparky}
           onLongPressSet={handleLongPressSet}
           onPressSet={handlePressSet}
         />
@@ -648,6 +661,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             onAddSet={handleAddSet}
             onRemoveExercise={handleRemoveExercise}
             onAddExercisePress={openExerciseSearch}
+            onChangeRest={setExerciseRest}
             mode="detail"
           />
         ) : renderViewExercises()}

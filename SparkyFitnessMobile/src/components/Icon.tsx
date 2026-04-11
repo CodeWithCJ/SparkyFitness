@@ -55,6 +55,7 @@ const ICON_MAP = {
   'meal-snack': { sf: 'clock.fill', ion: 'time' },
 
   // Exercise
+  'timer': { sf: 'timer', ion: 'timer-outline' },
   'exercise': { sf: 'flame.fill', ion: 'flame' },
   'exercise-running': { sf: 'figure.run', ion: 'walk-outline' },
   'exercise-cycling': { sf: 'figure.outdoor.cycle', ion: 'bicycle-outline' },

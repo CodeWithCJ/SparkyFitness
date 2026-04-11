@@ -5,6 +5,7 @@ import Icon from './Icon';
 import Button from './ui/Button';
 import SafeImage from './SafeImage';
 import EditableSetList from './EditableSetList';
+import RestPeriodChip from './RestPeriodChip';
 import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
 import type { WorkoutDraftExercise } from '../types/drafts';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
@@ -23,6 +24,7 @@ interface EditableExerciseCardProps {
   onRemoveSet: (exerciseClientId: string, setClientId: string) => void;
   onAddSet: (exerciseClientId: string) => void;
   onRemove: (exercise: WorkoutDraftExercise) => void;
+  onOpenRestSheet: (exerciseClientId: string, currentRest: number | null | undefined) => void;
 }
 
 function EditableExerciseCard({
@@ -39,6 +41,7 @@ function EditableExerciseCard({
   onRemoveSet,
   onAddSet,
   onRemove,
+  onOpenRestSheet,
 }: EditableExerciseCardProps) {
   const [accentPrimary, textMuted] = useCSSVariable([
     '--color-accent-primary',
@@ -49,6 +52,7 @@ function EditableExerciseCard({
     [getImageSource, imagePath],
   );
   const exerciseIcon = (exercise.exerciseCategory && CATEGORY_ICON_MAP[exercise.exerciseCategory]) || 'exercise-weights';
+  const firstSetRest = exercise.sets[0]?.restTime;
 
   return (
     <View className="py-4">
@@ -80,6 +84,13 @@ function EditableExerciseCard({
               {subtitle}
             </Text>
           ) : null}
+
+          <View className="flex-row self-start mt-1.5">
+            <RestPeriodChip
+              value={firstSetRest}
+              onPress={() => onOpenRestSheet(exercise.clientId, firstSetRest)}
+            />
+          </View>
         </View>
       </View>
 

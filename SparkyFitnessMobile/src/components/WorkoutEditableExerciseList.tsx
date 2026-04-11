@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import EditableExerciseCard from './EditableExerciseCard';
+import RestPeriodSheet, { type RestPeriodSheetRef } from './RestPeriodSheet';
 import type { WorkoutDraftExercise } from '../types/drafts';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 
@@ -25,6 +26,7 @@ interface WorkoutEditableExerciseListProps {
   onAddSet: (exerciseClientId: string) => void;
   onRemoveExercise: (exercise: WorkoutDraftExercise) => void;
   onAddExercisePress: () => void;
+  onChangeRest: (exerciseClientId: string, seconds: number) => void;
   mode?: 'add' | 'detail';
 }
 
@@ -41,9 +43,29 @@ function WorkoutEditableExerciseList({
   onAddSet,
   onRemoveExercise,
   onAddExercisePress,
+  onChangeRest,
   mode = 'add',
 }: WorkoutEditableExerciseListProps) {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+  const restSheetRef = useRef<RestPeriodSheetRef>(null);
+  const [restSheetTarget, setRestSheetTarget] = useState<string | null>(null);
+
+  const handleOpenRestSheet = useCallback(
+    (exerciseClientId: string, currentRest: number | null | undefined) => {
+      setRestSheetTarget(exerciseClientId);
+      restSheetRef.current?.present(currentRest);
+    },
+    [],
+  );
+
+  const handleRestChange = useCallback(
+    (seconds: number) => {
+      if (restSheetTarget) {
+        onChangeRest(restSheetTarget, seconds);
+      }
+    },
+    [onChangeRest, restSheetTarget],
+  );
 
   return (
     <Animated.View layout={LinearTransition.duration(300)}>
@@ -76,6 +98,7 @@ function WorkoutEditableExerciseList({
             onRemoveSet={onRemoveSet}
             onAddSet={onAddSet}
             onRemove={onRemoveExercise}
+            onOpenRestSheet={handleOpenRestSheet}
           />
         );
 
@@ -118,6 +141,8 @@ function WorkoutEditableExerciseList({
           </Text>
         </TouchableOpacity>
       </Animated.View>
+
+      <RestPeriodSheet ref={restSheetRef} onChange={handleRestChange} />
     </Animated.View>
   );
 }

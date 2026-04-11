@@ -64,6 +64,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     addSet,
     removeSet,
     updateSetField,
+    setExerciseRest,
     setName,
     setDate,
     populate,
@@ -282,6 +283,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   onAddSet={handleAddSet}
                   onRemoveExercise={handleRemoveExercise}
                   onAddExercisePress={openExerciseSearch}
+                  onChangeRest={setExerciseRest}
                 />
 
                 {/* Bottom spacer so content isn't hidden behind footer */}

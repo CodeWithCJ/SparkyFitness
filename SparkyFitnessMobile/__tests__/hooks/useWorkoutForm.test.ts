@@ -101,6 +101,18 @@ describe('workoutFormReducer', () => {
       expect(result.exercises[0].sets[0].clientId).toBe('scid-1');
     });
 
+    it('seeds the initial set with restTime: 90', () => {
+      const state = makeEmptyDraft();
+      const exercise = makeExercise();
+      const result = workoutFormReducer(state, {
+        type: 'ADD_EXERCISE',
+        exercise,
+        exerciseClientId: 'ecid-1',
+        setClientId: 'scid-1',
+      });
+      expect(result.exercises[0].sets[0].restTime).toBe(90);
+    });
+
     it('preserves existing exercises', () => {
       const state = makeEmptyDraft();
       const ex1 = makeExercise({ id: 'ex-1', name: 'Bench Press' });
@@ -227,6 +239,136 @@ describe('workoutFormReducer', () => {
       const result = workoutFormReducer(state, { type: 'ADD_SET', exerciseClientId: 'ex-1', setClientId: 'set-new' });
       expect(result.exercises[0].sets).toHaveLength(2);
       expect(result.exercises[1].sets).toHaveLength(1);
+    });
+
+    it('inherits restTime from the first set, not the last', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        exercises: [
+          {
+            clientId: 'ex-abc',
+            exerciseId: 'ex-1',
+            exerciseName: 'Bench',
+            exerciseCategory: null,
+            sets: [
+              { clientId: 'set-1', weight: '100', reps: '10', restTime: 120 },
+              { clientId: 'set-2', weight: '100', reps: '10', restTime: 45 },
+            ],
+          },
+        ],
+      };
+
+      const result = workoutFormReducer(state, {
+        type: 'ADD_SET',
+        exerciseClientId: 'ex-abc',
+        setClientId: 'set-new',
+      });
+      expect(result.exercises[0].sets).toHaveLength(3);
+      expect(result.exercises[0].sets[2].restTime).toBe(120);
+    });
+
+    it('defaults restTime to 90 when first set has no restTime', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        exercises: [
+          {
+            clientId: 'ex-abc',
+            exerciseId: 'ex-1',
+            exerciseName: 'Bench',
+            exerciseCategory: null,
+            sets: [{ clientId: 'set-1', weight: '100', reps: '10' }],
+          },
+        ],
+      };
+
+      const result = workoutFormReducer(state, {
+        type: 'ADD_SET',
+        exerciseClientId: 'ex-abc',
+        setClientId: 'set-new',
+      });
+      expect(result.exercises[0].sets[1].restTime).toBe(90);
+    });
+  });
+
+  describe('SET_EXERCISE_REST', () => {
+    it('updates restTime for every set of the targeted exercise', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        exercises: [
+          {
+            clientId: 'ex-abc',
+            exerciseId: 'ex-1',
+            exerciseName: 'Bench',
+            exerciseCategory: null,
+            sets: [
+              { clientId: 'set-1', weight: '100', reps: '10', restTime: 60 },
+              { clientId: 'set-2', weight: '100', reps: '10', restTime: 60 },
+              { clientId: 'set-3', weight: '100', reps: '10', restTime: 60 },
+            ],
+          },
+        ],
+      };
+
+      const result = workoutFormReducer(state, {
+        type: 'SET_EXERCISE_REST',
+        exerciseClientId: 'ex-abc',
+        seconds: 180,
+      });
+      expect(result.exercises[0].sets.map((s) => s.restTime)).toEqual([180, 180, 180]);
+    });
+
+    it('leaves other exercises untouched', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        exercises: [
+          {
+            clientId: 'ex-a',
+            exerciseId: 'ex-1',
+            exerciseName: 'Bench',
+            exerciseCategory: null,
+            sets: [{ clientId: 'set-1', weight: '100', reps: '10', restTime: 60 }],
+          },
+          {
+            clientId: 'ex-b',
+            exerciseId: 'ex-2',
+            exerciseName: 'Squat',
+            exerciseCategory: null,
+            sets: [{ clientId: 'set-2', weight: '200', reps: '5', restTime: 90 }],
+          },
+        ],
+      };
+
+      const result = workoutFormReducer(state, {
+        type: 'SET_EXERCISE_REST',
+        exerciseClientId: 'ex-a',
+        seconds: 300,
+      });
+      expect(result.exercises[0].sets[0].restTime).toBe(300);
+      expect(result.exercises[1].sets[0].restTime).toBe(90);
+    });
+
+    it('preserves set weight/reps while updating restTime', () => {
+      const state: WorkoutDraft = {
+        ...makeEmptyDraft(),
+        exercises: [
+          {
+            clientId: 'ex-abc',
+            exerciseId: 'ex-1',
+            exerciseName: 'Bench',
+            exerciseCategory: null,
+            sets: [{ clientId: 'set-1', weight: '225', reps: '5', restTime: 90 }],
+          },
+        ],
+      };
+
+      const result = workoutFormReducer(state, {
+        type: 'SET_EXERCISE_REST',
+        exerciseClientId: 'ex-abc',
+        seconds: 45,
+      });
+      expect(result.exercises[0].sets[0].weight).toBe('225');
+      expect(result.exercises[0].sets[0].reps).toBe('5');
+      expect(result.exercises[0].sets[0].restTime).toBe(45);
     });
   });
 
@@ -642,6 +784,32 @@ describe('workoutFormReducer', () => {
 
       expect(result.exercises[0].sets[0].weight).toBe('');
       expect(result.exercises[0].sets[0].reps).toBe('');
+    });
+
+    it('carries rest_time from preset sets into drafts', () => {
+      const state = makeEmptyDraft();
+      const preset = makePreset({
+        exercises: [
+          {
+            id: 'pe-1',
+            exercise_id: 'ex-1',
+            exercise_name: 'Squat',
+            image_url: null,
+            sets: [
+              { id: 's-1', set_number: 1, set_type: 'working', reps: 5, weight: 100, duration: null, rest_time: 120, notes: null },
+              { id: 's-2', set_number: 2, set_type: 'working', reps: 5, weight: 100, duration: null, rest_time: null, notes: null },
+            ],
+          },
+        ],
+      });
+      const result = workoutFormReducer(state, {
+        type: 'POPULATE_FROM_PRESET',
+        preset,
+        weightUnit: 'kg',
+      });
+
+      expect(result.exercises[0].sets[0].restTime).toBe(120);
+      expect(result.exercises[0].sets[1].restTime).toBeNull();
     });
 
     it('handles preset with multiple exercises', () => {
