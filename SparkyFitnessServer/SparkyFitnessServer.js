@@ -65,6 +65,7 @@ const globalSettingsRoutes = require('./routes/globalSettingsRoutes');
 const versionRoutes = require('./routes/versionRoutes');
 const onboardingRoutes = require('./routes/onboardingRoutes'); // Import onboarding routes
 const customNutrientRoutes = require('./routes/customNutrientRoutes'); // Import custom nutrient routes
+const mfpRoutes = require('./routes/mfpRoutes');
 const { applyMigrations } = require('./utils/dbMigrations');
 const { applyRlsPolicies } = require('./utils/applyRlsPolicies');
 const waterContainerRoutes = require('./routes/waterContainerRoutes');
@@ -398,6 +399,7 @@ app.use('/api/review', reviewRoutes);
 app.use('/api/custom-nutrients', customNutrientRoutes);
 app.use('/api/adaptive-tdee', adaptiveTdeeRoutes);
 app.use('/api/meal-types', mealTypeRoutes);
+app.use('/api/integrations/myfitnesspal', mfpRoutes);
 
 // Swagger
 app.use(
