@@ -199,6 +199,16 @@ async function createExternalDataProvider(providerData) {
   }
 }
 
+// Note on OFF convention: the `app_id` / `app_key` columns (encrypted per-row)
+// double as OFF username / password for providers of type `openfoodfacts`. For
+// other providers they are API credential fields. Callers must honor the
+// mutual-exclusion rule between populated OFF credentials and
+// `shared_with_public` — see externalProviderService.
+//
+// updateExternalDataProvider: passing `updateData.app_id === null` (and
+// similarly `app_key === null`) is an explicit request to CLEAR the stored
+// credential — all three encrypted columns are nulled out. Passing
+// `undefined` leaves them unchanged (COALESCE semantics).
 async function updateExternalDataProvider(id, userId, updateData) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -208,18 +218,24 @@ async function updateExternalDataProvider(id, userId, updateData) {
     let encryptedAppKey = updateData.encrypted_app_key || null;
     let appKeyIv = updateData.app_key_iv || null;
     let appKeyTag = updateData.app_key_tag || null;
+    let clearAppId = false;
+    let clearAppKey = false;
 
     const encryptedGarthDump = updateData.encrypted_garth_dump || null;
     const garthDumpIv = updateData.garth_dump_iv || null;
     const garthDumpTag = updateData.garth_dump_tag || null;
 
-    if (updateData.app_id !== undefined) {
+    if (updateData.app_id === null) {
+      clearAppId = true;
+    } else if (updateData.app_id !== undefined) {
       const encryptedId = await encrypt(updateData.app_id, ENCRYPTION_KEY);
       encryptedAppId = encryptedId.encryptedText;
       appIdIv = encryptedId.iv;
       appIdTag = encryptedId.tag;
     }
-    if (updateData.app_key !== undefined) {
+    if (updateData.app_key === null) {
+      clearAppKey = true;
+    } else if (updateData.app_key !== undefined) {
       const encryptedKey = await encrypt(updateData.app_key, ENCRYPTION_KEY);
       encryptedAppKey = encryptedKey.encryptedText;
       appKeyIv = encryptedKey.iv;
@@ -233,12 +249,12 @@ async function updateExternalDataProvider(id, userId, updateData) {
         is_active = COALESCE($3, is_active),
         base_url = COALESCE($4, base_url),
         shared_with_public = COALESCE($5, shared_with_public),
-        encrypted_app_id = COALESCE($6, encrypted_app_id),
-        app_id_iv = COALESCE($7, app_id_iv),
-        app_id_tag = COALESCE($8, app_id_tag),
-        encrypted_app_key = COALESCE($9, encrypted_app_key),
-        app_key_iv = COALESCE($10, app_key_iv),
-        app_key_tag = COALESCE($11, app_key_tag),
+        encrypted_app_id = CASE WHEN $19 THEN NULL ELSE COALESCE($6, encrypted_app_id) END,
+        app_id_iv = CASE WHEN $19 THEN NULL ELSE COALESCE($7, app_id_iv) END,
+        app_id_tag = CASE WHEN $19 THEN NULL ELSE COALESCE($8, app_id_tag) END,
+        encrypted_app_key = CASE WHEN $20 THEN NULL ELSE COALESCE($9, encrypted_app_key) END,
+        app_key_iv = CASE WHEN $20 THEN NULL ELSE COALESCE($10, app_key_iv) END,
+        app_key_tag = CASE WHEN $20 THEN NULL ELSE COALESCE($11, app_key_tag) END,
         encrypted_garth_dump = COALESCE($12, encrypted_garth_dump),
         garth_dump_iv = COALESCE($13, garth_dump_iv),
         garth_dump_tag = COALESCE($14, garth_dump_tag),
@@ -267,6 +283,8 @@ async function updateExternalDataProvider(id, userId, updateData) {
         updateData.external_user_id,
         id,
         updateData.sync_frequency,
+        clearAppId,
+        clearAppKey,
       ]
     );
     return result.rows[0];

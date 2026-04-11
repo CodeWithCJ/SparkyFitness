@@ -628,7 +628,9 @@ describe('lookupBarcode', () => {
     expect(searchOpenFoodFactsByBarcodeFields).toHaveBeenCalledWith(
       barcode,
       undefined,
-      'fr'
+      'fr',
+      undefined,
+      undefined
     );
     expect(result.source).toBe('openfoodfacts');
     expect(result.food.name).toBe('Produit Français');
@@ -848,6 +850,74 @@ describe('lookupBarcode', () => {
       2,
       '094395000172',
       'test-usda-api-key'
+    );
+  });
+
+  it('passes (userId, provider.id) to OFF when OFF is the configured primary provider', async () => {
+    const offProvider = {
+      id: 'prov-off-1',
+      provider_type: 'openfoodfacts',
+      is_active: true,
+    };
+    foodRepository.findFoodByBarcode.mockResolvedValue(null);
+    externalProviderService.getExternalDataProviderDetails.mockResolvedValue(
+      offProvider
+    );
+    searchOpenFoodFactsByBarcodeFields.mockResolvedValue(makeOffResponse());
+
+    const result = await lookupBarcode(
+      '3017620422003',
+      TEST_USER_ID,
+      'prov-off-1'
+    );
+
+    expect(result.source).toBe('openfoodfacts');
+    expect(searchOpenFoodFactsByBarcodeFields).toHaveBeenCalledWith(
+      '3017620422003',
+      undefined,
+      'en',
+      TEST_USER_ID,
+      'prov-off-1'
+    );
+  });
+
+  it('uses getActiveOpenFoodFactsProviderId in the OFF fallback branch', async () => {
+    foodRepository.findFoodByBarcode.mockResolvedValue(null);
+    externalProviderService.getActiveOpenFoodFactsProviderId.mockResolvedValue(
+      'prov-off-2'
+    );
+    searchOpenFoodFactsByBarcodeFields.mockResolvedValue(makeOffResponse());
+
+    const result = await lookupBarcode('3017620422003', TEST_USER_ID);
+
+    expect(result.source).toBe('openfoodfacts');
+    expect(
+      externalProviderService.getActiveOpenFoodFactsProviderId
+    ).toHaveBeenCalledWith(TEST_USER_ID);
+    expect(searchOpenFoodFactsByBarcodeFields).toHaveBeenCalledWith(
+      '3017620422003',
+      undefined,
+      'en',
+      TEST_USER_ID,
+      'prov-off-2'
+    );
+  });
+
+  it('OFF fallback omits user/providerId when no credentialed OFF provider exists', async () => {
+    foodRepository.findFoodByBarcode.mockResolvedValue(null);
+    externalProviderService.getActiveOpenFoodFactsProviderId.mockResolvedValue(
+      null
+    );
+    searchOpenFoodFactsByBarcodeFields.mockResolvedValue(makeOffResponse());
+
+    await lookupBarcode('3017620422003', TEST_USER_ID);
+
+    expect(searchOpenFoodFactsByBarcodeFields).toHaveBeenCalledWith(
+      '3017620422003',
+      undefined,
+      'en',
+      undefined,
+      undefined
     );
   });
 

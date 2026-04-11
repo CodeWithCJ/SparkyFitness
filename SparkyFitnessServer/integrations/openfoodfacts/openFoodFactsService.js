@@ -1,6 +1,10 @@
 const { log } = require('../../config/logging');
 const { name, version } = require('../../package.json');
 const { normalizeBarcode } = require('../../utils/foodUtils');
+const {
+  getOpenFoodFactsSessionCookie,
+  invalidateOpenFoodFactsSession,
+} = require('./openFoodFactsAuth');
 
 const USER_AGENT = `${name}/${version} (https://github.com/CodeWithCJ/SparkyFitness)`;
 
@@ -18,7 +22,54 @@ const OFF_FIELDS = [
   'nutriments',
 ];
 
-async function searchOpenFoodFacts(query, page = 1, language = 'en') {
+// Wraps fetch with optional session-cookie authentication for OFF endpoints.
+// On 429/5xx with an attached cookie, invalidates the session and retries once
+// without the cookie. OFF returns 200 on stale cookies (no 401 signal), so we
+// don't try to distinguish that case — we only retry on the observable
+// failure mode (rate limiting).
+async function fetchOpenFoodFacts(
+  url,
+  { authenticatedUserId, providerId } = {}
+) {
+  const baseHeaders = { ...OFF_HEADERS };
+  let sessionCookie = null;
+
+  if (authenticatedUserId && providerId) {
+    try {
+      sessionCookie = await getOpenFoodFactsSessionCookie(
+        authenticatedUserId,
+        providerId
+      );
+    } catch (error) {
+      log('debug', 'OpenFoodFacts: session cookie lookup failed:', error);
+    }
+  }
+
+  const headers = sessionCookie
+    ? { ...baseHeaders, Cookie: `session=${sessionCookie}` }
+    : baseHeaders;
+
+  const response = await fetch(url, { method: 'GET', headers });
+
+  if (sessionCookie && (response.status === 429 || response.status >= 500)) {
+    log(
+      'warn',
+      `OpenFoodFacts: ${response.status} with session cookie — invalidating and retrying unauthenticated`
+    );
+    invalidateOpenFoodFactsSession(authenticatedUserId, providerId);
+    return fetch(url, { method: 'GET', headers: baseHeaders });
+  }
+
+  return response;
+}
+
+async function searchOpenFoodFacts(
+  query,
+  page = 1,
+  language = 'en',
+  authenticatedUserId,
+  providerId
+) {
   try {
     const fieldSet = new Set(OFF_FIELDS);
     if (language !== 'en') {
@@ -27,9 +78,9 @@ async function searchOpenFoodFacts(query, page = 1, language = 'en') {
     const fields = [...fieldSet];
 
     const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${fields.join(',')}&lc=${language}`;
-    const response = await fetch(searchUrl, {
-      method: 'GET',
-      headers: OFF_HEADERS,
+    const response = await fetchOpenFoodFacts(searchUrl, {
+      authenticatedUserId,
+      providerId,
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -60,7 +111,9 @@ async function searchOpenFoodFacts(query, page = 1, language = 'en') {
 async function searchOpenFoodFactsByBarcodeFields(
   barcode,
   fields = OFF_FIELDS,
-  language = 'en'
+  language = 'en',
+  authenticatedUserId,
+  providerId
 ) {
   try {
     const fieldSet = new Set(fields);
@@ -70,9 +123,9 @@ async function searchOpenFoodFactsByBarcodeFields(
     const finalFields = [...fieldSet];
     const fieldsParam = finalFields.join(',');
     const searchUrl = `https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
-    const response = await fetch(searchUrl, {
-      method: 'GET',
-      headers: OFF_HEADERS,
+    const response = await fetchOpenFoodFacts(searchUrl, {
+      authenticatedUserId,
+      providerId,
     });
     if (!response.ok) {
       if (response.status === 404) {

@@ -84,6 +84,48 @@ export const EditProviderForm = ({
           </Select>
         </div>
       </div>
+      {editData.provider_type === 'openfoodfacts' && (
+        <>
+          <div>
+            <Label>Open Food Facts Username (Optional)</Label>
+            <Input
+              type="text"
+              value={editData.app_id || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_id: e.target.value,
+                }))
+              }
+              placeholder="(leave blank to keep existing)"
+              autoComplete="username"
+            />
+          </div>
+          <div>
+            <Label>Open Food Facts Password (Optional)</Label>
+            <Input
+              type="password"
+              value={editData.app_key || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_key: e.target.value,
+                }))
+              }
+              placeholder="•••••••• (leave blank to keep existing)"
+              autoComplete="current-password"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            Username and password for Open Food Facts are optional. If you have
+            an account, adding these credentials allows Sparky to make
+            authenticated requests, which can help reduce rate limiting during
+            busy periods. If you want to keep the existing credentials, simply
+            leave the fields blank. Note that credentials cannot be combined
+            with publicly sharing this provider row.
+          </p>
+        </>
+      )}
       {(editData.provider_type === 'mealie' ||
         editData.provider_type === 'tandoor' ||
         editData.provider_type === 'free-exercise-db') && (
