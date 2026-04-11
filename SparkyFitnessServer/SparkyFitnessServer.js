@@ -22,6 +22,9 @@ const cookieParser = require('cookie-parser');
 const { endPool } = require('./db/poolManager');
 const { log } = require('./config/logging');
 const { authenticate } = require('./middleware/authMiddleware');
+const {
+  applySignOutCookieCleanup,
+} = require('./middleware/signOutCookieCleanup');
 const foodRoutes = require('./routes/foodRoutes');
 const v2FoodRoutes = require('./routes/v2/foodRoutes');
 const v2ExerciseEntryRoutes = require('./routes/v2/exerciseEntryRoutes');
@@ -172,12 +175,13 @@ app.use(async (req, res, next) => {
       return next();
     }
 
-    // 2. Manual Sign-Out Cleanup: Clear sparky_active_user_id cookie
-    if (req.method === 'POST' && req.path === '/sign-out') {
+    // 2. Manual Sign-Out Cleanup: preserve sparky_active_user_id delete
+    // cookie across Better Auth's own Set-Cookie writes.
+    if (req.method === 'POST' && req.path === '/api/auth/sign-out') {
       console.log(
         '[AUTH HANDLER] Manual Cleanup: Clearing sparky_active_user_id on logout'
       );
-      res.clearCookie('sparky_active_user_id', { path: '/' });
+      applySignOutCookieCleanup(res);
     }
 
     console.log(
