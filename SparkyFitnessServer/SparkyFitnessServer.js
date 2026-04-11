@@ -398,6 +398,7 @@ app.use('/api/review', reviewRoutes);
 app.use('/api/custom-nutrients', customNutrientRoutes);
 app.use('/api/adaptive-tdee', adaptiveTdeeRoutes);
 app.use('/api/meal-types', mealTypeRoutes);
+app.use('/api/meal-types', mealTypeRoutes);
 
 // Swagger
 app.use(
