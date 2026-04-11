@@ -1,8 +1,6 @@
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import { log } from '../config/logging.js';
-import {
-  invalidateOpenFoodFactsSession,
-} from('../integrations/openfoodfacts/openFoodFactsAuth');
+import { invalidateOpenFoodFactsSession } from '../integrations/openfoodfacts/openFoodFactsAuth.ts';
 
 // Build a 400-tagged Error for user-input validation failures so the
 // centralized errorHandler surfaces them as client errors instead of the

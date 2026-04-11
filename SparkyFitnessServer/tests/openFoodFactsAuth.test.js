@@ -1,40 +1,55 @@
-jest.mock('../services/externalProviderService');
-jest.mock('../config/logging', () => ({ log: jest.fn() }));
-
-const externalProviderService = require('../services/externalProviderService');
-const {
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import externalProviderService from '../services/externalProviderService.js';
+import {
   getOpenFoodFactsSessionCookie,
   invalidateOpenFoodFactsSession,
   __resetForTests,
-} = require('../integrations/openfoodfacts/openFoodFactsAuth');
+} from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 
-global.fetch = jest.fn();
+vi.mock('../services/externalProviderService.js');
+vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+
+global.fetch = vi.fn();
 
 const USER_ID = 'user-A';
 const PROVIDER_ID = 'prov-1';
 const OTHER_PROVIDER_ID = 'prov-2';
 
+// 1. UPDATE: Mocks robuster gemacht (ok, status und headers.get hinzugefügt)
 function makeOffLoginResponse({ session = 'abc123', body = '' } = {}) {
   return {
+    ok: true,
+    status: 200,
     headers: {
       getSetCookie: () => [
         `session=${session}; Path=/; HttpOnly`,
         'other=foo; Path=/',
       ],
+      get: (name) => {
+        if (name.toLowerCase() === 'set-cookie') {
+          return `session=${session}; Path=/; HttpOnly`;
+        }
+        return null;
+      },
     },
-    text: jest.fn().mockResolvedValue(body),
+    text: vi.fn().mockResolvedValue(body),
   };
 }
 
 function makeOffLoginRejectedResponse() {
   return {
-    headers: { getSetCookie: () => [] },
-    text: jest.fn().mockResolvedValue(''),
+    ok: true,
+    status: 200,
+    headers: {
+      getSetCookie: () => [],
+      get: () => null,
+    },
+    text: vi.fn().mockResolvedValue(''),
   };
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   __resetForTests();
 });
 
