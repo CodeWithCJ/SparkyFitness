@@ -13,10 +13,10 @@ async function getGoalByDate(userId, selectedDate) {
                breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
                custom_nutrients
         FROM user_goals
-        WHERE goal_date = $1
+        WHERE user_id = $1 AND goal_date = $2
         ORDER BY updated_at DESC, created_at DESC -- Prioritize most recently updated/created
         LIMIT 1`,
-      [selectedDate]
+      [userId, selectedDate]
     );
     return result.rows[0];
   } finally {
@@ -37,10 +37,10 @@ async function getMostRecentGoalBeforeDate(userId, selectedDate) {
                breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
                custom_nutrients
        FROM user_goals
-       WHERE (goal_date < $1 OR goal_date IS NULL)
+       WHERE user_id = $1 AND (goal_date < $2 OR goal_date IS NULL)
        ORDER BY goal_date DESC NULLS LAST
        LIMIT 1`,
-      [selectedDate]
+      [userId, selectedDate]
     );
     return result.rows[0];
   } finally {
@@ -141,10 +141,11 @@ async function deleteGoalsInRange(userId, startDate, endDate) {
   try {
     await client.query(
       `DELETE FROM user_goals
-       WHERE goal_date >= $1
-         AND goal_date < $2
+       WHERE user_id = $1
+         AND goal_date >= $2
+         AND goal_date < $3
          AND goal_date IS NOT NULL`,
-      [startDate, endDate]
+      [userId, startDate, endDate]
     );
     return true;
   } finally {
@@ -157,8 +158,8 @@ async function deleteDefaultGoal(userId) {
   try {
     await client.query(
       `DELETE FROM user_goals
-       WHERE goal_date IS NULL`,
-      []
+       WHERE user_id = $1 AND goal_date IS NULL`,
+      [userId]
     );
     return true;
   } finally {
