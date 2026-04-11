@@ -1,4 +1,4 @@
-import externalProviderService from('../services/externalProviderService');
+import externalProviderService from '../services/externalProviderService.js';
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import preferenceService from '../services/preferenceService.js';

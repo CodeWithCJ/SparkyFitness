@@ -7,7 +7,7 @@ import {
 import {
   getExerciseEntryHistory,
   getExerciseEntriesByDateV2,
-} from '../../services/exerciseEntryHistoryService';
+} from '../../services/exerciseEntryHistoryService.js';
 import { z } from 'zod';
 
 import { log } from '../../config/logging.js';

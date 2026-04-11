@@ -4,11 +4,11 @@ import {
   UpdateWaterIntakeBodySchema,
   DateParamSchema,
   UuidParamSchema,
-} from '../../schemas/measurementSchemas';
+} from '../../schemas/measurementSchemas.js';
 
-import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware';
-import onBehalfOfMiddleware from '../../middleware/onBehalfOfMiddleware';
-import measurementService from '../../services/measurementService';
+import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
+import onBehalfOfMiddleware from '../../middleware/onBehalfOfMiddleware.js';
+import measurementService from '../../services/measurementService.js';
 
 const router = express.Router();
 

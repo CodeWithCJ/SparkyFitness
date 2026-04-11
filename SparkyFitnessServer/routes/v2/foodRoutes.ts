@@ -3,7 +3,7 @@ import {
   BarcodeResponseSchema,
   NormalizedFoodSchema,
   SearchResponseSchema,
-} from '../../schemas/foodSchemas';
+} from '../../schemas/foodSchemas.js';
 
 import { log } from '../../config/logging.js';
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
