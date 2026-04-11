@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, Image, ScrollView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Image, ScrollView, Platform, Alert, ActivityIndicator, AppState } from 'react-native';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import SyncFrequency from '../components/SyncFrequency';
+import SyncOnOpen from '../components/SyncOnOpen';
 import HealthDataSync from '../components/HealthDataSync';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -24,7 +25,20 @@ import {
   stopObservers,
 } from '../services/healthConnectService';
 import { configureBackgroundSync, stopBackgroundSync, performBackgroundSync } from '../services/backgroundSyncService';
-import { saveTimeRange, loadTimeRange, loadLastSyncedTime, loadBackgroundSyncEnabled, saveBackgroundSyncEnabled } from '../services/storage';
+import {
+  tryClaimAutoSync,
+  isForegroundAutoSyncWindowOpen,
+  isSyncClaimed,
+} from '../services/autoSyncCoordinator';
+import {
+  saveTimeRange,
+  loadTimeRange,
+  loadLastSyncedTime,
+  loadBackgroundSyncEnabled,
+  saveBackgroundSyncEnabled,
+  saveSyncOnOpenEnabled,
+  loadSyncOnOpenEnabled,
+} from '../services/storage';
 import type { TimeRange } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { HEALTH_METRICS } from '../HealthMetrics';
@@ -58,6 +72,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(false);
+  const [isSyncOnOpenEnabled, setIsSyncOnOpenEnabled] = useState<boolean>(false);
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
   const [lastSyncedTimeLoaded, setLastSyncedTimeLoaded] = useState<boolean>(false);
   const [isHealthConnectInitialized, setIsHealthConnectInitialized] = useState<boolean>(false);
@@ -108,6 +123,9 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
 
     const bgSyncEnabled = await loadBackgroundSyncEnabled();
     setIsBackgroundSyncEnabled(bgSyncEnabled);
+
+    const syncOnOpen = await loadSyncOnOpenEnabled();
+    setIsSyncOnOpenEnabled(syncOnOpen);
 
     const loadedSyncTime = await loadLastSyncedTime();
     setLastSyncedTime(loadedSyncTime);
@@ -164,9 +182,24 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
       await configureBackgroundSync();
       if (Platform.OS === 'ios') {
         startObservers(() => {
-          performBackgroundSync('healthkit-observer').catch(error => {
-            console.error('[SyncScreen] Observer-triggered sync failed:', error);
-          });
+          if (
+            AppState.currentState === 'active' &&
+            Platform.OS === 'ios' &&
+            isForegroundAutoSyncWindowOpen()
+          ) {
+            return;
+          }
+
+          const release = tryClaimAutoSync();
+          if (!release) return;
+
+          performBackgroundSync('healthkit-observer')
+            .catch(error => {
+              console.error('[SyncScreen] Observer-triggered sync failed:', error);
+            })
+            .finally(() => {
+              release();
+            });
         });
       }
     } else {
@@ -175,6 +208,11 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         stopObservers();
       }
     }
+  };
+
+  const handleToggleSyncOnOpen = async (newValue: boolean): Promise<void> => {
+    setIsSyncOnOpenEnabled(newValue);
+    await saveSyncOnOpenEnabled(newValue);
   };
 
   const handleToggleHealthMetric = async (
@@ -297,7 +335,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   };
 
   const handleSync = (): void => {
-    if (syncMutation.isPending) return;
+    if (syncMutation.isPending || isSyncClaimed()) return;
     syncMutation.mutate({ timeRange: selectedTimeRange, healthMetricStates });
   };
 
@@ -347,7 +385,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           variant="primary"
           className="flex-row items-center mb-2"
           onPress={handleSync}
-          disabled={syncMutation.isPending || !isHealthConnectInitialized}
+          disabled={syncMutation.isPending || isSyncClaimed() || !isHealthConnectInitialized}
         >
           <Image
             source={require('../../assets/icons/sync_now_alt.png')}
@@ -400,6 +438,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           isEnabled={isBackgroundSyncEnabled}
           onToggle={handleToggleBackgroundSync}
         />
+        <SyncOnOpen isEnabled={isSyncOnOpenEnabled} onToggle={handleToggleSyncOnOpen} />
 
         <HealthDataSync
           healthMetricStates={healthMetricStates}

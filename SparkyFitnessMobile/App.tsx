@@ -1,6 +1,6 @@
 import './global.css'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StatusBar, Platform, Alert } from 'react-native';
+import { StatusBar, Platform, Alert, AppState } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   NavigationContainer,
@@ -40,11 +40,24 @@ import OnboardingScreen from './src/screens/OnboardingScreen';
 import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
-import { loadBackgroundSyncEnabled, loadTimeRange, getActiveServerConfig } from './src/services/storage';
+import {
+  loadBackgroundSyncEnabled,
+  loadTimeRange,
+  getActiveServerConfig,
+  loadSyncOnOpenEnabled,
+} from './src/services/storage';
 import type { TimeRange } from './src/services/storage';
 import { initHealthConnect, loadHealthPreference , startObservers, stopObservers } from './src/services/healthConnectService';
 import { HEALTH_METRICS } from './src/HealthMetrics';
 import { configureBackgroundSync, performBackgroundSync } from './src/services/backgroundSyncService';
+import {
+  tryClaimAutoSync,
+  isSyncClaimed,
+  isForegroundAutoSyncWindowOpen,
+  setForegroundAutoSyncWindowOpen,
+  shouldRunColdStartAutoSync,
+  recordAutoSyncTime,
+} from './src/services/autoSyncCoordinator';
 import { initializeTheme } from './src/services/themeService';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { initLogService } from './src/services/LogService';
@@ -115,6 +128,13 @@ function AppContent() {
 
   const addSheetRef = useRef<AddSheetRef>(null);
   const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
+  const foregroundAutoSyncWindowRef = useRef(false);
+  const backgroundEnteredAtRef = useRef<number | null>(null);
+  const wasInBackgroundRef = useRef(false);
+  const setForegroundAutoSyncWindowState = useCallback((isOpen: boolean) => {
+    foregroundAutoSyncWindowRef.current = isOpen;
+    setForegroundAutoSyncWindowOpen(isOpen);
+  }, []);
 
   const [primary, chrome, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
@@ -246,7 +266,7 @@ function AppContent() {
   const syncMutation = useSyncHealthData();
 
   const handleSyncHealthData = useCallback(async () => {
-    if (syncMutation.isPending) return;
+    if (syncMutation.isPending || isSyncClaimed()) return;
 
     const initialized = await initHealthConnect();
     if (!initialized) {
@@ -265,6 +285,46 @@ function AppContent() {
 
     syncMutation.mutate({ timeRange, healthMetricStates });
   }, [syncMutation]);
+
+  const triggerAutoSync = useCallback(async (configId: string, release: () => void) => {
+    let committed = false;
+    try {
+      if (syncMutation.isPending) return;
+
+      const initialized = await initHealthConnect();
+      if (!initialized) return;
+
+      const loadedTimeRange = await loadTimeRange();
+      const timeRange: TimeRange = loadedTimeRange ?? '3d';
+      const healthMetricStates: Record<string, boolean> = {};
+      for (const metric of HEALTH_METRICS) {
+        const enabled = await loadHealthPreference<boolean>(metric.preferenceKey);
+        healthMetricStates[metric.stateKey] = enabled === true;
+      }
+
+      committed = true;
+      syncMutation.mutate({
+        timeRange,
+        healthMetricStates,
+      }, {
+        onSuccess: () => {
+          void recordAutoSyncTime(configId);
+        },
+        onSettled: () => {
+          release();
+        },
+      });
+    } catch (error) {
+      console.error('[App] Auto sync on open failed:', error);
+    } finally {
+      if (!committed) release();
+    }
+  }, [syncMutation]);
+
+  const triggerAutoSyncRef = useRef(triggerAutoSync);
+  useEffect(() => {
+    triggerAutoSyncRef.current = triggerAutoSync;
+  }, [triggerAutoSync]);
 
   useEffect(() => {
     let cancelled = false;
@@ -308,9 +368,26 @@ function AppContent() {
         if (!enabled || cancelled) return;
 
         startObservers(() => {
-          performBackgroundSync('healthkit-observer').catch(error => {
-            console.error('[App] Observer-triggered sync failed:', error);
-          });
+          // Yield only during a deliberate foreground auto-sync window (cold-start or
+          // foreground-return). Outside that narrow window, let background delivery fire normally.
+          if (
+            AppState.currentState === 'active' &&
+            foregroundAutoSyncWindowRef.current &&
+            isForegroundAutoSyncWindowOpen()
+          ) {
+            return;
+          }
+
+          const release = tryClaimAutoSync();
+          if (!release) return;
+
+          performBackgroundSync('healthkit-observer')
+            .catch(error => {
+              console.error('[App] Observer-triggered sync failed:', error);
+            })
+            .finally(() => {
+              release();
+            });
         });
       } catch (error) {
         console.error('[App] Failed to configure HealthKit observers:', error);
@@ -327,7 +404,98 @@ function AppContent() {
         stopObservers();
       }
     };
-  }, []);
+  }, [setForegroundAutoSyncWindowState]);
+
+  useEffect(() => {
+    if (initialRoute !== 'Tabs') return;
+
+    const triggerColdStartSync = async () => {
+      const syncOnOpen = await loadSyncOnOpenEnabled();
+      if (!syncOnOpen) return;
+      const config = await getActiveServerConfig();
+      if (!config) return;
+      if (!(await shouldRunColdStartAutoSync(config.id))) return;
+
+      setForegroundAutoSyncWindowState(true);
+      const coordRelease = tryClaimAutoSync();
+      if (!coordRelease) {
+        setForegroundAutoSyncWindowState(false);
+        return;
+      }
+
+      const cleanup = () => {
+        setForegroundAutoSyncWindowState(false);
+        coordRelease();
+      };
+      const watchdog = setTimeout(cleanup, 90_000);
+      const safeCleanup = () => {
+        clearTimeout(watchdog);
+        cleanup();
+      };
+
+      await triggerAutoSyncRef.current(config.id, safeCleanup);
+    };
+
+    triggerColdStartSync().catch(error => {
+      setForegroundAutoSyncWindowState(false);
+      console.error('[App] Cold-start sync on open failed:', error);
+    });
+  }, [initialRoute, setForegroundAutoSyncWindowState]);
+
+  useEffect(() => {
+    const FOREGROUND_SYNC_MIN_AWAY_MS = 5 * 60 * 1000;
+
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      try {
+        if (nextAppState === 'background') {
+          backgroundEnteredAtRef.current = Date.now();
+          wasInBackgroundRef.current = true;
+          return;
+        }
+
+        if (nextAppState !== 'active') return;
+        if (!wasInBackgroundRef.current) return;
+
+        const enteredAt = backgroundEnteredAtRef.current;
+        wasInBackgroundRef.current = false;
+        backgroundEnteredAtRef.current = null;
+
+        const timeAway = enteredAt !== null ? Date.now() - enteredAt : Infinity;
+        if (timeAway < FOREGROUND_SYNC_MIN_AWAY_MS) return;
+
+        const config = await getActiveServerConfig();
+        if (!config) return;
+
+        const syncOnOpen = await loadSyncOnOpenEnabled();
+        if (!syncOnOpen) return;
+        if (!(await shouldRunColdStartAutoSync(config.id))) return;
+
+        setForegroundAutoSyncWindowState(true);
+        const coordRelease = tryClaimAutoSync();
+        if (!coordRelease) {
+          setForegroundAutoSyncWindowState(false);
+          return;
+        }
+
+        const cleanup = () => {
+          setForegroundAutoSyncWindowState(false);
+          coordRelease();
+        };
+        const watchdog = setTimeout(cleanup, 90_000);
+        const safeCleanup = () => {
+          clearTimeout(watchdog);
+          cleanup();
+        };
+
+        await triggerAutoSyncRef.current(config.id, safeCleanup);
+      } catch (error) {
+        setForegroundAutoSyncWindowState(false);
+        console.error('[App] Foreground-return sync on open failed:', error);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [setForegroundAutoSyncWindowState]);
 
   if (!initialRoute) return null;
 
