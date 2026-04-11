@@ -12,6 +12,7 @@ import cookieParser from 'cookie-parser';
 import { endPool } from './db/poolManager.js';
 import { log } from './config/logging.js';
 import { authenticate } from './middleware/authMiddleware.js';
+import { applySignOutCookieCleanup } from './middleware/signOutCookieCleanup.js';
 import foodRoutes from './routes/foodRoutes.js';
 // @ts-expect-error TS1192
 import v2FoodRoutes from './routes/v2/foodRoutes.js';
@@ -186,12 +187,14 @@ app.use(async (req, res, next) => {
     if (isDiscovery) {
       return next();
     }
-    // 2. Manual Sign-Out Cleanup: Clear sparky_active_user_id cookie
-    if (req.method === 'POST' && req.path === '/sign-out') {
+
+    // 2. Manual Sign-Out Cleanup: preserve sparky_active_user_id delete
+    // cookie across Better Auth's own Set-Cookie writes.
+    if (req.method === 'POST' && req.path === '/api/auth/sign-out') {
       console.log(
         '[AUTH HANDLER] Manual Cleanup: Clearing sparky_active_user_id on logout'
       );
-      res.clearCookie('sparky_active_user_id', { path: '/' });
+      applySignOutCookieCleanup(res);
     }
     console.log(
       `[AUTH HANDLER] Intercepted request: ${req.method} ${req.originalUrl}`
