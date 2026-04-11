@@ -53,6 +53,7 @@ services:
     volumes:
       - ../SparkyFitnessServer:/app/SparkyFitnessServer:z
       - /app/SparkyFitnessServer/node_modules
+      - ../node_modules:/app/node_modules:z
       - ./docker_volume/uploads:/app/SparkyFitnessServer/uploads:z
       - ./docker_volume/backup:/app/SparkyFitnessServer/backup:z
     networks:
