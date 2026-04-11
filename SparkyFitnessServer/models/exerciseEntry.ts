@@ -737,6 +737,127 @@ async function deleteExerciseEntriesByPresetEntryIdWithClient(
     [userId, presetEntryId]
   );
 }
+async function _deleteExerciseEntryWithClient(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  id: any
+) {
+  const result = await client.query(
+    'DELETE FROM exercise_entries WHERE id = $1 AND user_id = $2 RETURNING id',
+    [id, userId]
+  );
+  return result.rowCount > 0;
+}
+
+// Reconcile exercise_entry_sets rows against an incoming payload,
+// preserving existing set IDs so clients can key UI state off them.
+// Callers must guarantee that exerciseEntryId belongs to the current RLS user.
+async function _reconcileExerciseEntrySetsWithClient(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exerciseEntryId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sets: any
+) {
+  const incoming = Array.isArray(sets) ? sets : [];
+
+  const existingResult = await client.query(
+    'SELECT id FROM exercise_entry_sets WHERE exercise_entry_id = $1',
+    [exerciseEntryId]
+  );
+  const existingIds = new Set(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    existingResult.rows.map((row: any) => row.id)
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updates: any[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const inserts: any[] = [];
+  const referencedIds = new Set();
+
+  for (const set of incoming) {
+    if (set.id !== undefined && set.id !== null) {
+      const numericId =
+        typeof set.id === 'number' ? set.id : Number.parseInt(set.id, 10);
+      if (!Number.isFinite(numericId) || !existingIds.has(numericId)) {
+        log(
+          'warn',
+          `Rejected set reconcile: set id ${set.id} not found on exercise entry ${exerciseEntryId}`
+        );
+        const error = new Error('Set does not belong to this exercise entry.');
+        // @ts-expect-error TS(2339): Property 'status' does not exist on type 'Error'.
+        error.status = 400;
+        throw error;
+      }
+      referencedIds.add(numericId);
+      updates.push({ ...set, id: numericId });
+    } else {
+      inserts.push(set);
+    }
+  }
+
+  const idsToDelete = [...existingIds].filter((id) => !referencedIds.has(id));
+
+  if (idsToDelete.length > 0) {
+    await client.query(
+      'DELETE FROM exercise_entry_sets WHERE id = ANY($1::int[]) AND exercise_entry_id = $2',
+      [idsToDelete, exerciseEntryId]
+    );
+  }
+
+  for (const set of updates) {
+    await client.query(
+      `UPDATE exercise_entry_sets
+       SET set_number = $1,
+           set_type = $2,
+           reps = $3,
+           weight = $4,
+           duration = $5,
+           rest_time = $6,
+           notes = $7,
+           rpe = $8
+       WHERE id = $9 AND exercise_entry_id = $10`,
+      [
+        set.set_number,
+        set.set_type ?? null,
+        set.reps ?? null,
+        set.weight ?? null,
+        set.duration ?? null,
+        set.rest_time ?? null,
+        set.notes ?? null,
+        set.rpe ?? null,
+        set.id,
+        exerciseEntryId,
+      ]
+    );
+  }
+
+  if (inserts.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const setsValues = inserts.map((set: any) => [
+      exerciseEntryId,
+      set.set_number,
+      set.set_type ?? null,
+      set.reps ?? null,
+      set.weight ?? null,
+      set.duration ?? null,
+      set.rest_time ?? null,
+      set.notes ?? null,
+      set.rpe ?? null,
+    ]);
+    const setsQuery = format(
+      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe) VALUES %L',
+      setsValues
+    );
+    await client.query(setsQuery);
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function deleteExerciseEntry(id: any, userId: any) {
   const client = await getClient(userId);
@@ -1081,6 +1202,9 @@ export { deleteExerciseEntriesByEntrySourceAndDate };
 export default {
   upsertExerciseEntryData,
   _createExerciseEntryWithClient,
+  _updateExerciseEntryWithClient,
+  _deleteExerciseEntryWithClient,
+  _reconcileExerciseEntrySetsWithClient,
   createExerciseEntry,
   getExerciseEntryById,
   getExerciseEntryOwnerId,

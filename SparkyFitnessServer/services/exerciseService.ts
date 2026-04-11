@@ -1545,6 +1545,27 @@ function createServiceError(status: any, message: any) {
   error.status = status;
   return error;
 }
+function deriveDurationMinutes(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exerciseData: any,
+  { preserveLegacyPresetDurationFallback = false } = {}
+) {
+  const durationFromSets =
+    exerciseData.sets?.reduce(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (sum: any, set: any) =>
+        sum + (set.duration || 0) + (set.rest_time || 0) / 60,
+      0
+    ) || 0;
+  if (typeof exerciseData.duration_minutes === 'number') {
+    return exerciseData.duration_minutes;
+  }
+  if (preserveLegacyPresetDurationFallback && durationFromSets === 0) {
+    return 30;
+  }
+  return durationFromSets;
+}
+
 async function createGroupedExerciseEntriesWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
@@ -1570,19 +1591,10 @@ async function createGroupedExerciseEntriesWithClient(
   } = options;
   const createdEntries = [];
   for (const exercise of exercises || []) {
-    const durationFromSets =
-      exercise.sets?.reduce(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (sum: any, set: any) =>
-          sum + (set.duration || 0) + (set.rest_time || 0) / 60,
-        0
-      ) || 0;
-    const durationMinutes =
-      typeof exercise.duration_minutes === 'number'
-        ? exercise.duration_minutes
-        : preserveLegacyPresetDurationFallback && durationFromSets === 0
-          ? 30
-          : durationFromSets;
+    const durationMinutes = deriveDurationMinutes(exercise, {
+      preserveLegacyPresetDurationFallback,
+    });
+
     const preparedEntry = await prepareExerciseEntryForCreate(userId, {
       exercise_id: exercise.exercise_id,
       entry_date: entryDate,
@@ -1749,22 +1761,118 @@ async function updateGroupedWorkoutSession(
           'Nested exercise editing is only supported for manual or sparky workouts.'
         );
       }
-      await exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient(
-        client,
-        userId,
-        presetEntryId
-      );
-      await createGroupedExerciseEntriesWithClient(
-        client,
-        userId,
-        actingUserId,
-        presetEntryId,
-        targetEntryDate,
-        updateData.exercises,
-        {
-          entrySource: existingSession.source,
+
+      const incomingExercises = updateData.exercises;
+      const withId = incomingExercises.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (e: any) => e.id !== undefined && e.id !== null
+      ).length;
+
+      if (withId !== 0 && withId !== incomingExercises.length) {
+        throw createServiceError(
+          400,
+          'exercises[].id must be provided for all entries or none.'
+        );
+      }
+
+      const useReconcile =
+        withId === incomingExercises.length && incomingExercises.length > 0;
+
+      if (!useReconcile) {
+        await exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient(
+          client,
+          userId,
+          presetEntryId
+        );
+
+        await createGroupedExerciseEntriesWithClient(
+          client,
+          userId,
+          actingUserId,
+          presetEntryId,
+          targetEntryDate,
+          incomingExercises,
+          {
+            entrySource: existingSession.source,
+          }
+        );
+      } else {
+        const existingExercises = existingSession.exercises || [];
+        const existingById = new Map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          existingExercises.map((e: any) => [e.id, e])
+        );
+
+        for (const ex of incomingExercises) {
+          if (!existingById.has(ex.id)) {
+            log(
+              'warn',
+              `Rejected reconcile: exercise id ${ex.id} not in session ${presetEntryId} for user ${userId}`
+            );
+            throw createServiceError(
+              400,
+              'Exercise entry does not belong to this session.'
+            );
+          }
         }
-      );
+
+        const incomingIdSet = new Set(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          incomingExercises.map((e: any) => e.id)
+        );
+        const toDelete = existingExercises.filter(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (e: any) => !incomingIdSet.has(e.id)
+        );
+        for (const e of toDelete) {
+          await exerciseEntryDb._deleteExerciseEntryWithClient(
+            client,
+            userId,
+            e.id
+          );
+        }
+
+        for (const ex of incomingExercises) {
+          // Reuse prepareExerciseEntryForCreate so calories_burned is
+          // recomputed from the new duration/sets the same way the legacy
+          // delete-and-recreate path does — otherwise the helper would
+          // preserve the stale value.
+          const preparedEntry = await prepareExerciseEntryForCreate(userId, {
+            exercise_id: ex.exercise_id,
+            entry_date: targetEntryDate,
+            notes: ex.notes ?? null,
+            sets: ex.sets || [],
+            duration_minutes: deriveDurationMinutes(ex),
+            sort_order: ex.sort_order ?? 0,
+            distance: ex.distance,
+            avg_heart_rate: ex.avg_heart_rate,
+          });
+
+          await exerciseEntryDb._updateExerciseEntryWithClient(
+            client,
+            ex.id,
+            userId,
+            {
+              exercise_id: preparedEntry.exercise_id,
+              notes: preparedEntry.notes,
+              sort_order: preparedEntry.sort_order ?? 0,
+              distance: preparedEntry.distance,
+              avg_heart_rate: preparedEntry.avg_heart_rate,
+              duration_minutes: preparedEntry.duration_minutes,
+              calories_burned: preparedEntry.calories_burned,
+              entry_date: targetEntryDate,
+            },
+            actingUserId,
+            existingSession.source
+          );
+
+          await exerciseEntryDb._reconcileExerciseEntrySetsWithClient(
+            client,
+            ex.id,
+            ex.sets || []
+          );
+        }
+      }
     } else if (
       updateData.entry_date !== undefined &&
       updateData.entry_date !== existingSession.entry_date
