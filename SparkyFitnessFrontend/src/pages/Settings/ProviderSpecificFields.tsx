@@ -1,3 +1,4 @@
+import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ export const ProviderSpecificFields = ({
   const needsAppId = [
     'nutritionix',
     'fatsecret',
+    'edamam',
     'withings',
     'fitbit',
     'strava',
@@ -38,6 +40,7 @@ export const ProviderSpecificFields = ({
     'tandoor',
     'nutritionix',
     'fatsecret',
+    'edamam',
     'usda',
     'withings',
     'fitbit',
@@ -186,6 +189,43 @@ export const ProviderSpecificFields = ({
               autoComplete="current-password"
             />
           </div>
+        </>
+      )}
+
+      {provider.provider_type === 'myfitnesspal' && (
+        <>
+          <div>
+            <Label htmlFor="add-mfp-csrf">MFP CSRF Token (x-csrf-token)</Label>
+            <Input
+              id="add-mfp-csrf"
+              type="text"
+              value={provider.app_id || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({ ...prev, app_id: e.target.value }))
+              }
+              placeholder="Paste x-csrf-token from Network tab"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <Label htmlFor="add-mfp-cookies">MFP Session Cookies</Label>
+            <Input
+              id="add-mfp-cookies"
+              type="text"
+              value={provider.app_key || ''}
+              onChange={(e) =>
+                setProvider((prev) => ({ ...prev, app_key: e.target.value }))
+              }
+              placeholder="Paste full Cookie string from Network tab"
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            <strong>How to find:</strong> Open MyFitnessPal in browser, press
+            F12 (Network tab), find a request to{' '}
+            <code>www.myfitnesspal.com</code>, and copy <code>Cookie</code> and{' '}
+            <code>x-csrf-token</code> from Request Headers.
+          </p>
         </>
       )}
 

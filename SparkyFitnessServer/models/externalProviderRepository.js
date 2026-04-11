@@ -402,8 +402,8 @@ async function getExternalDataProviderByUserIdAndProviderName(
         ept.is_strictly_private
       FROM external_data_providers edp
       LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
-      WHERE edp.provider_name = $1`,
-      [providerName]
+      WHERE (edp.provider_name = $1 OR edp.provider_type = $1) AND edp.user_id = $2`,
+      [providerName, userId]
     );
     const data = result.rows[0];
     if (!data) {

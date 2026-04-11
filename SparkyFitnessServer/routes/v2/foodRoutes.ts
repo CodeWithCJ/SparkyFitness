@@ -357,7 +357,8 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
           query,
           credentials.app_id,
           credentials.app_key,
-          page
+          page,
+          language
         );
         const rawFoods = result.foods?.food;
         const items = Array.isArray(rawFoods)
@@ -487,7 +488,8 @@ const detailHandler: RequestHandler<{
         const data = await getFatSecretNutrients(
           externalId,
           credentials.app_id,
-          credentials.app_key
+          credentials.app_key,
+          language
         );
         if (data) {
           food = mapFatSecretFood(data);

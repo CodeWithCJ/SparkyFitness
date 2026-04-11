@@ -118,6 +118,7 @@ const ExternalProviderList = ({ showAddForm }: ExternalProviderListProps) => {
           data.provider_type === 'fatsecret' ||
           data.provider_type === 'mealie' ||
           data.provider_type === 'tandoor' ||
+          data.provider_type === 'edamam' ||
           data.provider_type === 'usda')
       ) {
         setDefaultFoodDataProviderId(data.id);

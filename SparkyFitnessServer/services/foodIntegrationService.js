@@ -7,16 +7,43 @@ const {
 } = require('../integrations/fatsecret/fatsecretService');
 const MealieService = require('../integrations/mealie/mealieService'); // Import MealieService
 const TandoorService = require('../integrations/tandoor/tandoorService'); // Import TandoorService
+const EdamamService = require('../integrations/edamam/edamamService');
 
-async function searchFatSecretFoods(query, clientId, clientSecret, page = 1) {
+// Maps user language codes to FatSecret language+region pairs.
+// Only languages confirmed by FatSecret localization docs are listed.
+const FATSECRET_LOCALE = {
+  ru: { language: 'ru', region: 'RU' },
+  uk: { language: 'uk', region: 'UA' },
+  de: { language: 'de', region: 'DE' },
+  fr: { language: 'fr', region: 'FR' },
+  es: { language: 'es', region: 'ES' },
+  pt: { language: 'pt', region: 'BR' },
+  it: { language: 'it', region: 'IT' },
+  nl: { language: 'nl', region: 'NL' },
+  pl: { language: 'pl', region: 'PL' },
+  zh: { language: 'zh', region: 'CN' },
+  ja: { language: 'ja', region: 'JP' },
+  ko: { language: 'ko', region: 'KR' },
+};
+
+async function searchFatSecretFoods(
+  query,
+  clientId,
+  clientSecret,
+  page = 1,
+  language = 'en'
+) {
   try {
     const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
-    const searchUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams({
+    const locale = FATSECRET_LOCALE[language];
+    const params = {
       method: 'foods.search',
       search_expression: query,
       page_number: page - 1,
       format: 'json',
-    }).toString()}`;
+      ...(locale ? { language: locale.language, region: locale.region } : {}),
+    };
+    const searchUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams(params).toString()}`;
     log('info', `FatSecret Search URL: ${searchUrl}`);
     const response = await fetch(searchUrl, {
       method: 'GET',
@@ -57,21 +84,30 @@ async function searchFatSecretFoods(query, clientId, clientSecret, page = 1) {
   }
 }
 
-async function getFatSecretNutrients(foodId, clientId, clientSecret) {
+async function getFatSecretNutrients(
+  foodId,
+  clientId,
+  clientSecret,
+  language = 'en'
+) {
   try {
-    // Check cache first
-    const cachedData = foodNutrientCache.get(foodId);
+    // Check cache first — include language in cache key so localized results are cached separately
+    const cacheKey = `${foodId}_${language}`;
+    const cachedData = foodNutrientCache.get(cacheKey);
     if (cachedData && Date.now() < cachedData.expiry) {
-      log('info', `Returning cached data for foodId: ${foodId}`);
+      log('info', `Returning cached data for foodId: ${foodId} (${language})`);
       return cachedData.data;
     }
 
     const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
-    const nutrientsUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams({
+    const locale = FATSECRET_LOCALE[language];
+    const params = {
       method: 'food.get.v4',
       food_id: foodId,
       format: 'json',
-    }).toString()}`;
+      ...(locale ? { language: locale.language, region: locale.region } : {}),
+    };
+    const nutrientsUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams(params).toString()}`;
     log('info', `FatSecret Nutrients URL: ${nutrientsUrl}`);
     const response = await fetch(nutrientsUrl, {
       method: 'GET',
@@ -90,7 +126,7 @@ async function getFatSecretNutrients(foodId, clientId, clientSecret) {
 
     const data = await response.json();
     // Store in cache
-    foodNutrientCache.set(foodId, {
+    foodNutrientCache.set(cacheKey, {
       data: data,
       expiry: Date.now() + CACHE_DURATION_MS,
     });
@@ -170,7 +206,6 @@ async function getMealieFoodDetails(slug, baseUrl, apiKey, userId, providerId) {
     throw error;
   }
 }
-
 module.exports = {
   searchFatSecretFoods,
   getFatSecretNutrients,
@@ -178,6 +213,8 @@ module.exports = {
   getMealieFoodDetails,
   searchTandoorFoods,
   getTandoorFoodDetails,
+  searchEdamamFoods,
+  getEdamamFoodDetails,
 };
 
 async function searchTandoorFoods(query, baseUrl, apiKey, userId, providerId) {
@@ -230,6 +267,88 @@ async function getTandoorFoodDetails(id, baseUrl, apiKey, userId, providerId) {
       `Error getting Tandoor food details for id ${id} for user ${userId}:`,
       error
     );
+    throw error;
+  }
+}
+async function searchEdamamFoods(query, appId, appKey, page = 1) {
+  log(
+    'debug',
+    `searchEdamamFoods: query: ${query}, appId: ${appId}, page: ${page}`
+  );
+  try {
+    const data = await EdamamService.searchEdamamByQuery(
+      query,
+      appId,
+      appKey,
+      page
+    );
+    const hints = data.hints || [];
+
+    // Map each hint to app format
+    const foods = hints.map(EdamamService.mapEdamamSearchItem).filter(Boolean);
+
+    const pageSize = 20;
+    const totalCount = data.count != null ? data.count : foods.length;
+    const hasMore = data._links?.next != null || totalCount > page * pageSize;
+
+    return {
+      items: foods,
+      pagination: {
+        page,
+        pageSize,
+        totalCount,
+        hasMore,
+      },
+    };
+  } catch (error) {
+    log('error', 'Error searching Edamam foods:', error);
+    throw error;
+  }
+}
+
+async function getEdamamFoodDetails(foodId, appId, appKey) {
+  log('debug', `getEdamamFoodDetails: foodId: ${foodId}, appId: ${appId}`);
+  try {
+    // To get full measures/weights, we need to call the nutrients POST endpoint.
+    // However, the parser hints already contain the basic nutrients for 100g.
+    // Optimal way to get measures is either re-parsing or calling /nutrients with foodId.
+    const url = `${EdamamService.EDAMAM_NUTRIENTS_URL}?${new URLSearchParams({
+      app_id: appId,
+      app_key: appKey,
+    })}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        ingredients: [
+          {
+            quantity: 100,
+            measureURI:
+              'http://www.edamam.com/ontologies/edamam.owl#Measure_gram',
+            foodId: foodId,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      log('error', 'Edamam nutrients API error:', text);
+      throw new Error(`Edamam API error: ${text}`);
+    }
+
+    const data = await response.json();
+    const food = data.ingredients?.[0]?.parsed?.[0]?.food;
+    if (!food) return null;
+
+    // Measures are in data.measures
+    return EdamamService.mapEdamamFood(food, data.measures);
+  } catch (error) {
+    log('error', `Error getting Edamam food details: ${foodId}`, error);
     throw error;
   }
 }

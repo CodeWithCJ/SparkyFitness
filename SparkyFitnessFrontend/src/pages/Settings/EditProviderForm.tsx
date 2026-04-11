@@ -171,7 +171,8 @@ export const EditProviderForm = ({
         </>
       )}
       {(editData.provider_type === 'nutritionix' ||
-        editData.provider_type === 'fatsecret') && (
+        editData.provider_type === 'fatsecret' ||
+        editData.provider_type === 'edamam') && (
         <>
           <div>
             <Label>App ID</Label>
@@ -236,6 +237,20 @@ export const EditProviderForm = ({
             className="text-blue-500 underline"
           >
             Fatsecret Platform Dashboard
+          </a>
+          .
+        </p>
+      )}
+      {editData.provider_type === 'edamam' && (
+        <p className="text-sm text-muted-foreground col-span-2">
+          Get your App ID and App Key from the{' '}
+          <a
+            href="https://developer.edamam.com/admin/applications"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline"
+          >
+            Edamam Developer Portal
           </a>
           .
         </p>
@@ -532,10 +547,64 @@ export const EditProviderForm = ({
                 <Clipboard className="h-4 w-4" />
               </Button>
             </strong>
-            and ensuring your local URL is correct if testing locally. Note:
-            Strava callback URL on the server is configured to:
             <strong>{`${window.location.origin}/strava/callback`}</strong>
           </p>
+        </>
+      )}
+      {editData.provider_type === 'myfitnesspal' && (
+        <>
+          {/* Show connection status for connected MyFitnessPal accounts instead of credential fields */}
+          {provider.app_id && provider.app_key ? (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                <span className="font-medium">Connected to MyFitnessPal</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                Your MyFitnessPal account is connected. To reconnect with
+                different credentials, disconnect first and add a new provider.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div>
+                <Label>MFP CSRF Token (x-csrf-token)</Label>
+                <Input
+                  type="text"
+                  value={editData.app_id || ''}
+                  onChange={(e) =>
+                    setEditData((prev) => ({
+                      ...prev,
+                      app_id: e.target.value,
+                    }))
+                  }
+                  placeholder="Paste x-csrf-token from Network tab"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label>MFP Session Cookies</Label>
+                <Input
+                  type="text"
+                  value={editData.app_key || ''}
+                  onChange={(e) =>
+                    setEditData((prev) => ({
+                      ...prev,
+                      app_key: e.target.value,
+                    }))
+                  }
+                  placeholder="Paste full Cookie string from Network tab"
+                  autoComplete="off"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground col-span-2">
+                <strong>How to find:</strong> Open MyFitnessPal in browser,
+                press F12 (Network tab), find a request to{' '}
+                <code>www.myfitnesspal.com</code>, and copy <code>Cookie</code>{' '}
+                and <code>x-csrf-token</code> from Request Headers.
+              </p>
+            </>
+          )}
         </>
       )}
       {editData.provider_type === 'hevy' && (
@@ -565,7 +634,8 @@ export const EditProviderForm = ({
         editData.provider_type === 'fitbit' ||
         editData.provider_type === 'strava' ||
         editData.provider_type === 'polar' ||
-        editData.provider_type === 'hevy') && (
+        editData.provider_type === 'hevy' ||
+        editData.provider_type === 'myfitnesspal') && (
         <div>
           <Label htmlFor="edit_sync_frequency">Sync Frequency</Label>
           <Select

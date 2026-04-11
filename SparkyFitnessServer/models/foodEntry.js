@@ -799,6 +799,64 @@ async function getFoodEntryComponentsByFoodEntryMealId(
   }
 }
 
+async function getDailyNutritionByCategory(userId, date) {
+  const client = await getClient(userId);
+  try {
+    const query = `
+      SELECT 
+        LOWER(mt.name) as meal_name,
+        SUM(fe.calories) as calories,
+        SUM(fe.protein) as protein,
+        SUM(fe.carbs) as carbs,
+        SUM(fe.fat) as fat,
+        SUM(fe.saturated_fat) as saturated_fat,
+        SUM(fe.polyunsaturated_fat) as polyunsaturated_fat,
+        SUM(fe.monounsaturated_fat) as monounsaturated_fat,
+        SUM(fe.trans_fat) as trans_fat,
+        SUM(fe.cholesterol) as cholesterol,
+        SUM(fe.sodium) as sodium,
+        SUM(fe.potassium) as potassium,
+        SUM(fe.dietary_fiber) as dietary_fiber,
+        SUM(fe.sugars) as sugars,
+        SUM(fe.vitamin_a) as vitamin_a,
+        SUM(fe.vitamin_c) as vitamin_c,
+        SUM(fe.calcium) as calcium,
+        SUM(fe.iron) as iron
+      FROM food_entries fe
+      JOIN meal_types mt ON fe.meal_type_id = mt.id
+      WHERE fe.user_id = $1 AND fe.entry_date = $2
+      GROUP BY mt.name
+    `;
+    const result = await client.query(query, [userId, date]);
+
+    // Convert rows to an object keyed by meal name for easier lookup
+    const summary = {};
+    result.rows.forEach((row) => {
+      summary[row.meal_name] = {
+        calories: parseFloat(row.calories || 0),
+        protein: parseFloat(row.protein || 0),
+        carbs: parseFloat(row.carbs || 0),
+        fat: parseFloat(row.fat || 0),
+        saturated_fat: parseFloat(row.saturated_fat || 0),
+        polyunsaturated_fat: parseFloat(row.polyunsaturated_fat || 0),
+        monounsaturated_fat: parseFloat(row.monounsaturated_fat || 0),
+        trans_fat: parseFloat(row.trans_fat || 0),
+        cholesterol: parseFloat(row.cholesterol || 0),
+        sodium: parseFloat(row.sodium || 0),
+        potassium: parseFloat(row.potassium || 0),
+        dietary_fiber: parseFloat(row.dietary_fiber || 0),
+        sugars: parseFloat(row.sugars || 0),
+        vitamin_a: parseFloat(row.vitamin_a || 0),
+        vitamin_c: parseFloat(row.vitamin_c || 0),
+        calcium: parseFloat(row.calcium || 0),
+        iron: parseFloat(row.iron || 0),
+      };
+    });
+    return summary;
+  } finally {
+    client.release();
+  }
+}
 async function deleteFoodEntryComponentsByFoodEntryMealId(
   foodEntryMealId,
   userId
@@ -832,4 +890,5 @@ module.exports = {
   getFoodEntryById,
   getFoodEntryComponentsByFoodEntryMealId,
   deleteFoodEntryComponentsByFoodEntryMealId,
+  getDailyNutritionByCategory,
 };
