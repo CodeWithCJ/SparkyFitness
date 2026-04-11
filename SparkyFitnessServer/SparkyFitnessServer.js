@@ -22,6 +22,9 @@ const cookieParser = require('cookie-parser');
 const { endPool } = require('./db/poolManager');
 const { log } = require('./config/logging');
 const { authenticate } = require('./middleware/authMiddleware');
+const {
+  applySignOutCookieCleanup,
+} = require('./middleware/signOutCookieCleanup');
 const foodRoutes = require('./routes/foodRoutes');
 const v2FoodRoutes = require('./routes/v2/foodRoutes');
 const v2ExerciseEntryRoutes = require('./routes/v2/exerciseEntryRoutes');
@@ -172,26 +175,13 @@ app.use(async (req, res, next) => {
       return next();
     }
 
-    // 2. Manual Sign-Out Cleanup: Clear sparky_active_user_id cookie.
-    // Better Auth's node adapter writes its own Set-Cookie via res.setHeader,
-    // which replaces anything express already set. Wrap setHeader so our
-    // delete-cookie is merged into whatever Better Auth writes.
+    // 2. Manual Sign-Out Cleanup: preserve sparky_active_user_id delete
+    // cookie across Better Auth's own Set-Cookie writes.
     if (req.method === 'POST' && req.path === '/api/auth/sign-out') {
       console.log(
         '[AUTH HANDLER] Manual Cleanup: Clearing sparky_active_user_id on logout'
       );
-      const clearCookieStr =
-        'sparky_active_user_id=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      res.clearCookie('sparky_active_user_id', { path: '/' });
-      const originalSetHeader = res.setHeader.bind(res);
-      res.setHeader = function (name, value) {
-        if (typeof name === 'string' && name.toLowerCase() === 'set-cookie') {
-          const arr = Array.isArray(value) ? value.slice() : [value];
-          if (!arr.includes(clearCookieStr)) arr.push(clearCookieStr);
-          return originalSetHeader(name, arr);
-        }
-        return originalSetHeader(name, value);
-      };
+      applySignOutCookieCleanup(res);
     }
 
     console.log(
