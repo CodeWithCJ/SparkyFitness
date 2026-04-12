@@ -76,6 +76,7 @@ SplashScreen.preventAutoHideAsync();
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
 const EmptyScreen = () => null;
+const AUTO_SYNC_WATCHDOG_MS = 90_000;
 
 // Tab screens — no Go Back (tab bar provides navigation)
 const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
@@ -297,10 +298,12 @@ function AppContent() {
       const loadedTimeRange = await loadTimeRange();
       const timeRange: TimeRange = loadedTimeRange ?? '3d';
       const healthMetricStates: Record<string, boolean> = {};
-      for (const metric of HEALTH_METRICS) {
-        const enabled = await loadHealthPreference<boolean>(metric.preferenceKey);
-        healthMetricStates[metric.stateKey] = enabled === true;
-      }
+      await Promise.all(
+        HEALTH_METRICS.map(async (metric) => {
+          const enabled = await loadHealthPreference<boolean>(metric.preferenceKey);
+          healthMetricStates[metric.stateKey] = enabled === true;
+        }),
+      );
 
       committed = true;
       syncMutation.mutate({
@@ -426,7 +429,7 @@ function AppContent() {
         setForegroundAutoSyncWindowState(false);
         coordRelease();
       };
-      const watchdog = setTimeout(cleanup, 90_000);
+      const watchdog = setTimeout(cleanup, AUTO_SYNC_WATCHDOG_MS);
       const safeCleanup = () => {
         clearTimeout(watchdog);
         cleanup();
@@ -480,7 +483,7 @@ function AppContent() {
           setForegroundAutoSyncWindowState(false);
           coordRelease();
         };
-        const watchdog = setTimeout(cleanup, 90_000);
+        const watchdog = setTimeout(cleanup, AUTO_SYNC_WATCHDOG_MS);
         const safeCleanup = () => {
           clearTimeout(watchdog);
           cleanup();

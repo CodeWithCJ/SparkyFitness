@@ -184,7 +184,6 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         startObservers(() => {
           if (
             AppState.currentState === 'active' &&
-            Platform.OS === 'ios' &&
             isForegroundAutoSyncWindowOpen()
           ) {
             return;
