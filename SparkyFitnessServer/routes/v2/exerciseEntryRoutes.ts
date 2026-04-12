@@ -67,6 +67,7 @@ const historyHandler: RequestHandler = async (req, res, next) => {
     const { page, pageSize, userId: queryUserId } = parsedQuery.data;
 
     // Family access permission check
+
     const targetUserId = queryUserId || req.userId;
 
     const actorUserId = req.originalUserId || req.userId;
@@ -154,7 +155,7 @@ const byDateHandler: RequestHandler = async (req, res, next) => {
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-    if (queryUserId != null) {
+    if (queryUserId !== null && queryUserId !== undefined) {
       if (typeof queryUserId !== 'string' || !uuidRegex.test(queryUserId)) {
         res.status(400).json({ error: 'userId must be a valid UUID.' });
         return;
@@ -162,6 +163,7 @@ const byDateHandler: RequestHandler = async (req, res, next) => {
     }
 
     const targetUserId = (queryUserId as string) || req.userId;
+
     const actorUserId = req.originalUserId || req.userId;
 
     if (queryUserId && queryUserId !== actorUserId) {

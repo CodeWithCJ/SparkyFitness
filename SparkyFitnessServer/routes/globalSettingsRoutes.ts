@@ -1,0 +1,94 @@
+import express from 'express';
+import globalSettingsRepository from '../models/globalSettingsRepository.js';
+import { log } from '../config/logging.js';
+import { isAdmin, authenticate } from '../middleware/authMiddleware.js';
+const router = express.Router();
+/**
+ * @swagger
+ * /admin/global-settings:
+ *   get:
+ *     summary: GET Global Authentication Settings (Admin Only)
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Global settings.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/GlobalSettings'
+ */
+router.get('/', isAdmin, async (req, res) => {
+  try {
+    const settings = await globalSettingsRepository.getGlobalSettings();
+    res.json(settings);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    log('error', `Error getting global auth settings: ${error.message}`);
+    res.status(500).json({ message: 'Error retrieving global auth settings' });
+  }
+});
+/**
+ * @swagger
+ * /admin/global-settings:
+ *   put:
+ *     summary: Update Global Authentication Settings (Admin Only)
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/GlobalSettings'
+ *     responses:
+ *       200:
+ *         description: Settings updated successfully.
+ */
+router.put('/', isAdmin, async (req, res) => {
+  try {
+    const settingsData = req.body;
+    const newSettings =
+      await globalSettingsRepository.saveGlobalSettings(settingsData);
+    log('info', 'Global auth settings updated successfully.');
+    res.status(200).json(newSettings);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    log('error', `Error updating global auth settings: ${error.message}`);
+    res.status(500).json({ message: 'Error updating global auth settings' });
+  }
+});
+/**
+ * @swagger
+ * /api/global-settings/allow-user-ai-config:
+ *   get:
+ *     summary: Check if users are allowed to configure AI services (Public)
+ *     tags: [System & Admin]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Returns whether user AI config is allowed.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 allow_user_ai_config:
+ *                   type: boolean
+ */
+router.get('/allow-user-ai-config', authenticate, async (req, res) => {
+  try {
+    const isAllowed = await globalSettingsRepository.isUserAiConfigAllowed();
+    res.json({ allow_user_ai_config: isAllowed });
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    log('error', `Error checking user AI config permission: ${error.message}`);
+    res
+      .status(500)
+      .json({ message: 'Error checking user AI config permission' });
+  }
+});
+export default router;

@@ -4,7 +4,7 @@ import {
   optionalNullableInt,
   nullableNumber,
   nullableInt,
-} from './schema.utils.ts';
+} from './schema.utils.js';
 
 const GoalPresetFieldsSchema = z.object({
   preset_name: z.string().min(1, 'preset_name is required'),

@@ -18,8 +18,5 @@
     "coverage"
   ],
   "ext": "js,ts,json",
-  "execMap": {
-    "js": "tsx",
-    "ts": "tsx"
-  }
+  "exec": "tsx SparkyFitnessServer.ts"
 }

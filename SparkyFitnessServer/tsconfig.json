@@ -5,20 +5,23 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "esModuleInterop": true,
-    "allowJs": true,
+    "allowJs": false,
     "checkJs": false,
     "noEmit": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noImplicitAny": true,
+    "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "allowImportingTsExtensions": true,
     "paths": {
       "@workspace/shared": ["../shared/src/index.ts"]
     }
   },
-  "include": ["**/*.ts", "../shared/src"],
+  "include": ["**/*.ts"],
   "exclude": [
     "node_modules",
     "dist",

@@ -245,6 +245,7 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
     const providerId = req.query.providerId as string | undefined;
     const result = await foodCoreService.lookupBarcode(
       barcode,
+
       req.userId,
       providerId
     );
@@ -308,6 +309,7 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
     );
     const userPrefs = await preferenceService.getUserPreferences(
       req.userId,
+
       req.userId
     );
     const language = userPrefs?.language || 'en';
@@ -327,10 +329,12 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
           query,
           page,
           language,
+
           offProviderId ? req.userId : undefined,
           offProviderId || undefined
         );
         const products = (result.products || []).filter(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (p: Record<string, any>) =>
             p.product_name || p[`product_name_${language}`] || p.product_name_en
         );
@@ -379,6 +383,7 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
           query,
           credentials.base_url,
           credentials.app_key,
+
           req.userId,
           providerId,
           page
@@ -393,6 +398,7 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
           query,
           credentials.base_url,
           credentials.app_key,
+
           req.userId,
           providerId
         );
@@ -423,7 +429,9 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
       );
       return;
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (error instanceof Error && (error as any).status) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       res.status((error as any).status).json({ error: error.message });
       return;
     }
@@ -454,6 +462,7 @@ const detailHandler: RequestHandler<{
     );
     const userPrefs = await preferenceService.getUserPreferences(
       req.userId,
+
       req.userId
     );
     const language = userPrefs?.language || 'en';
@@ -470,6 +479,7 @@ const detailHandler: RequestHandler<{
           externalId,
           undefined,
           language,
+
           offProviderId ? req.userId : undefined,
           offProviderId || undefined
         );
@@ -504,6 +514,7 @@ const detailHandler: RequestHandler<{
           externalId,
           credentials.base_url,
           credentials.app_key,
+
           req.userId,
           providerId
         );
@@ -523,6 +534,7 @@ const detailHandler: RequestHandler<{
           externalId,
           credentials.base_url,
           credentials.app_key,
+
           req.userId,
           providerId
         );
@@ -555,7 +567,9 @@ const detailHandler: RequestHandler<{
       );
       return;
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (error instanceof Error && (error as any).status) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       res.status((error as any).status).json({ error: error.message });
       return;
     }

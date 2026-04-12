@@ -72,6 +72,7 @@ function computeCalorieBalance(
   stepCalories: number,
   goals: { calories?: number | null },
   userProfile: { date_of_birth?: string; gender?: string } | null,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userPreferences: Record<string, any> | null,
   measurements: {
     weight?: string | number;
@@ -294,6 +295,7 @@ export async function getDailySummary({
     userProfile,
     userPreferences,
     measurements,
+    // @ts-expect-error TS(2345): Argument of type 'unknown' is not assignable to pa... Remove this comment to see the full error message
     adaptiveTdeeData
   );
 

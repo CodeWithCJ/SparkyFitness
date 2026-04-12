@@ -115,6 +115,7 @@ const getGoalPresetHandler: RequestHandler = async (req, res, next) => {
       return;
     }
     const { id } = paramResult.data;
+
     const preset = await goalPresetService.getGoalPreset(id, req.userId);
     if (!preset) {
       res.status(404).json({ error: 'Goal preset not found.' });
@@ -177,6 +178,7 @@ const updateGoalPresetHandler: RequestHandler = async (req, res, next) => {
 
     const updatedPreset = await goalPresetService.updateGoalPreset(
       id,
+
       req.userId,
       bodyResult.data
     );
@@ -231,6 +233,7 @@ const deleteGoalPresetHandler: RequestHandler = async (req, res, next) => {
       return;
     }
     const { id } = paramResult.data;
+
     const result = await goalPresetService.deleteGoalPreset(id, req.userId);
     if (!result) {
       res.status(404).json({ error: 'Goal preset not found.' });
