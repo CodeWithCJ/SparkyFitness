@@ -32,6 +32,7 @@ const ACTIVE_SERVER_CONFIG_ID_KEY = 'activeServerConfigId';
 const TIME_RANGE_KEY = 'timeRange';
 const LAST_SYNCED_TIME_KEY = 'lastSyncedTime';
 const BACKGROUND_SYNC_ENABLED_KEY = 'backgroundSyncEnabled';
+const SYNC_ON_OPEN_ENABLED_KEY = 'syncOnOpenEnabled';
 
 const secureStoreKey = (configId: string) => `apiKey_${configId}`;
 const sessionTokenSecureStoreKey = (configId: string) => `sessionToken_${configId}`;
@@ -298,6 +299,25 @@ export const loadBackgroundSyncEnabled = async (): Promise<boolean> => {
     return JSON.parse(value) as boolean;
   } catch (error) {
     console.error('Failed to load background sync enabled preference.', error);
+    return false;
+  }
+};
+
+export const saveSyncOnOpenEnabled = async (enabled: boolean): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(SYNC_ON_OPEN_ENABLED_KEY, JSON.stringify(enabled));
+  } catch (error) {
+    console.error('Failed to save sync on open preference.', error);
+  }
+};
+
+export const loadSyncOnOpenEnabled = async (): Promise<boolean> => {
+  try {
+    const value = await AsyncStorage.getItem(SYNC_ON_OPEN_ENABLED_KEY);
+    if (value === null) return false;
+    return JSON.parse(value) as boolean;
+  } catch (error) {
+    console.error('Failed to load sync on open preference.', error);
     return false;
   }
 };
