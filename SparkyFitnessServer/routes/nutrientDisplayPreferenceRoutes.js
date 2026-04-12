@@ -1,15 +1,13 @@
-const express = require('express');
+import express from 'express';
+import nutrientDisplayPreferenceService from '../services/nutrientDisplayPreferenceService.js';
+import { authenticate } from '../middleware/authMiddleware.js';
 const router = express.Router();
-const nutrientDisplayPreferenceService = require('../services/nutrientDisplayPreferenceService');
-const { authenticate } = require('../middleware/authMiddleware');
-
 /**
  * @swagger
  * tags:
  *   name: Nutrition & Meals
  *   description: Food database, meal planning, meal types, and nutritional tracking.
  */
-
 /**
  * @swagger
  * components:
@@ -46,7 +44,6 @@ const { authenticate } = require('../middleware/authMiddleware');
  *         - platform
  *         - visible_nutrients
  */
-
 /**
  * @swagger
  * /nutrient-display-preferences:
@@ -81,7 +78,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /nutrient-display-preferences/{viewGroup}/{platform}:
@@ -146,7 +142,6 @@ router.put('/:viewGroup/:platform', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /nutrient-display-preferences/{viewGroup}/{platform}:
@@ -195,5 +190,4 @@ router.delete('/:viewGroup/:platform', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

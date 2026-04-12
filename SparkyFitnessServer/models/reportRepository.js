@@ -1,5 +1,4 @@
-const { getClient } = require('../db/poolManager');
-
+import { getClient } from '../db/poolManager.js';
 async function getNutritionData(
   userId,
   startDate,
@@ -25,7 +24,6 @@ async function getNutritionData(
           `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`
       )
       .join(',\n           ');
-
     const result = await client.query(
       `SELECT
          TO_CHAR(entry_date, 'YYYY-MM-DD') AS date,
@@ -116,7 +114,6 @@ async function getNutritionData(
     client.release();
   }
 }
-
 async function getTabularFoodData(
   userId,
   startDate,
@@ -139,7 +136,6 @@ async function getTabularFoodData(
     const customNutrientsSelectMealAgg = customNutrients
       .map((cn) => `SUM(cfe_meal."${cn.name}") AS "${cn.name}"`)
       .join(',\n        ');
-
     const result = await client.query(
       `WITH CalculatedFoodEntries AS (
         SELECT
@@ -327,7 +323,6 @@ async function getTabularFoodData(
     client.release();
   }
 }
-
 async function getMeasurementData(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -340,7 +335,6 @@ async function getMeasurementData(userId, startDate, endDate) {
     client.release();
   }
 }
-
 async function getCustomMeasurementsData(
   userId,
   categoryId,
@@ -358,7 +352,6 @@ async function getCustomMeasurementsData(
     client.release();
   }
 }
-
 async function getMiniNutritionTrends(
   userId,
   startDate,
@@ -386,7 +379,6 @@ async function getMiniNutritionTrends(
           `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`
       )
       .join(',\n           ');
-
     const result = await client.query(
       `SELECT
          TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date,
@@ -477,7 +469,6 @@ async function getMiniNutritionTrends(
     client.release();
   }
 }
-
 async function getExerciseEntries(
   userId,
   startDate,
@@ -520,10 +511,8 @@ async function getExerciseEntries(
          ) AS sets
        FROM exercise_entries ee
        WHERE ee.user_id = $1 AND ee.entry_date BETWEEN $2 AND $3`;
-
     const params = [userId, startDate, endDate];
     let paramIndex = 4;
-
     if (equipment) {
       query += ` AND ee.equipment ILIKE $${paramIndex}`;
       params.push(`%${equipment}%`);
@@ -539,16 +528,13 @@ async function getExerciseEntries(
       params.push(exercise);
       paramIndex++;
     }
-
     query += ' ORDER BY ee.entry_date DESC, ee.created_at DESC';
-
     const result = await client.query(query, params);
     return result.rows;
   } finally {
     client.release();
   }
 }
-
 async function getExerciseNames(userId, muscle, equipment) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -556,7 +542,6 @@ async function getExerciseNames(userId, muscle, equipment) {
       'SELECT DISTINCT exercise_id as id, exercise_name as name FROM exercise_entries WHERE user_id = $1';
     const params = [userId];
     let paramIndex = 2;
-
     if (muscle) {
       query += ` AND primary_muscles ILIKE $${paramIndex}`;
       params.push(`%${muscle}%`);
@@ -568,15 +553,20 @@ async function getExerciseNames(userId, muscle, equipment) {
       paramIndex++;
     }
     query += ' ORDER BY name';
-
     const result = await client.query(query, params);
     return result.rows;
   } finally {
     client.release();
   }
 }
-
-module.exports = {
+export { getNutritionData };
+export { getTabularFoodData };
+export { getMeasurementData };
+export { getCustomMeasurementsData };
+export { getMiniNutritionTrends };
+export { getExerciseEntries };
+export { getExerciseNames };
+export default {
   getNutritionData,
   getTabularFoodData,
   getMeasurementData,

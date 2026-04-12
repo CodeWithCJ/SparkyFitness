@@ -1,17 +1,16 @@
-const express = require('express');
+import express from 'express';
+import { authenticate, isAdmin } from '../middleware/authMiddleware.js';
+import authService from '../services/authService.js';
+import userRepository from '../models/userRepository.js';
+import chatRepository from '../models/chatRepository.js';
+import { log } from '../config/logging.js';
+import { logAdminAction } from '../services/authService.js';
+import { auth } from '../auth.js';
 const router = express.Router();
-const { authenticate, isAdmin } = require('../middleware/authMiddleware');
-const authService = require('../services/authService');
-const userRepository = require('../models/userRepository'); // Import userRepository
-const chatRepository = require('../models/chatRepository'); // Import chatRepository
-const { log } = require('../config/logging');
-const { logAdminAction } = require('../services/authService'); // Import logAdminAction
-
 // Middleware to ensure only admins can access these routes
 // This will be enhanced later to prioritize SPARKY_FITNESS_ADMIN_EMAIL
 router.use(authenticate);
 router.use(isAdmin);
-
 /**
  * @swagger
  * /admin/users:
@@ -68,7 +67,6 @@ router.get('/users', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/users/{userId}:
@@ -107,18 +105,15 @@ router.get('/users', async (req, res, next) => {
 router.delete('/users/:userId', async (req, res, next) => {
   try {
     const { userId } = req.params;
-
     const user = await userRepository.findUserById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-
     if (user.email === process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       return res
         .status(403)
         .json({ error: 'Cannot delete the primary admin user.' });
     }
-
     const success = await userRepository.deleteUser(userId);
     if (success) {
       await logAdminAction(req.userId, userId, 'USER_DELETED', {
@@ -139,7 +134,6 @@ router.delete('/users/:userId', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/users/{userId}/status:
@@ -192,24 +186,20 @@ router.put('/users/:userId/status', async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { isActive } = req.body; // Expecting a boolean value
-
     if (typeof isActive !== 'boolean') {
       return res
         .status(400)
         .json({ error: 'isActive must be a boolean value.' });
     }
-
     const user = await userRepository.findUserById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-
     if (user.email === process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
       return res
         .status(403)
         .json({ error: 'Cannot change status of the primary admin user.' });
     }
-
     const success = await userRepository.updateUserStatus(userId, isActive);
     if (success) {
       await logAdminAction(req.userId, userId, 'USER_STATUS_UPDATED', {
@@ -233,7 +223,6 @@ router.put('/users/:userId/status', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/users/{userId}/role:
@@ -287,18 +276,15 @@ router.put('/users/:userId/role', async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { role } = req.body;
-
     if (!role || (role !== 'user' && role !== 'admin')) {
       return res
         .status(400)
         .json({ error: 'Role must be either "user" or "admin".' });
     }
-
     const user = await userRepository.findUserById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-
     if (
       user.email === process.env.SPARKY_FITNESS_ADMIN_EMAIL &&
       role !== 'admin'
@@ -307,7 +293,6 @@ router.put('/users/:userId/role', async (req, res, next) => {
         error: 'Cannot change role of the primary admin user from admin.',
       });
     }
-
     const success = await userRepository.updateUserRole(userId, role);
     if (success) {
       await logAdminAction(req.userId, userId, 'USER_ROLE_UPDATED', {
@@ -329,7 +314,6 @@ router.put('/users/:userId/role', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/users/{userId}/full-name:
@@ -382,11 +366,9 @@ router.put('/users/:userId/full-name', async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { fullName } = req.body;
-
     if (!fullName) {
       return res.status(400).json({ error: 'Full name is required.' });
     }
-
     const success = await userRepository.updateUserFullName(userId, fullName);
     if (success) {
       await logAdminAction(req.userId, userId, 'USER_FULL_NAME_UPDATED', {
@@ -408,7 +390,6 @@ router.put('/users/:userId/full-name', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/users/{userId}/reset-password:
@@ -452,15 +433,12 @@ router.post('/users/:userId/reset-password', async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-
-    const { auth } = require('../auth');
     await auth.api.forgotPassword({
       email: user.email,
       redirectTo:
         (process.env.SPARKY_FITNESS_FRONTEND_URL || 'http://localhost:8080') +
         '/reset-password',
     });
-
     await logAdminAction(req.userId, userId, 'USER_PASSWORD_RESET_INITIATED', {
       targetUserId: userId,
       email: user.email,
@@ -475,7 +453,6 @@ router.post('/users/:userId/reset-password', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/users/{userId}/mfa/reset:
@@ -505,7 +482,6 @@ router.post('/users/:userId/mfa/reset', async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
-
     await authService.resetUserMfa(req.userId, userId);
     res.status(200).json({ message: 'MFA reset successfully.' });
   } catch (error) {
@@ -517,7 +493,6 @@ router.post('/users/:userId/mfa/reset', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/ai-service-settings/global:
@@ -543,7 +518,6 @@ router.get('/ai-service-settings/global', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/ai-service-settings/global:
@@ -594,19 +568,16 @@ router.post('/ai-service-settings/global', async (req, res, next) => {
       is_active,
       model_name,
     } = req.body;
-
     if (!service_name || !service_type) {
       return res
         .status(400)
         .json({ error: 'service_name and service_type are required.' });
     }
-
     if (service_type !== 'ollama' && !api_key) {
       return res
         .status(400)
         .json({ error: 'api_key is required for non-Ollama services.' });
     }
-
     const settingData = {
       service_name,
       service_type,
@@ -616,7 +587,6 @@ router.post('/ai-service-settings/global', async (req, res, next) => {
       is_active: is_active || false,
       model_name: model_name || null,
     };
-
     const result =
       await chatRepository.upsertGlobalAiServiceSetting(settingData);
     await logAdminAction(req.userId, null, 'GLOBAL_AI_SETTING_CREATED', {
@@ -629,7 +599,6 @@ router.post('/ai-service-settings/global', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/ai-service-settings/global/{id}:
@@ -690,7 +659,6 @@ router.put('/ai-service-settings/global/:id', async (req, res, next) => {
       is_active,
       model_name,
     } = req.body;
-
     // Verify the setting exists and is global
     const existing = await chatRepository.getGlobalAiServiceSettingById(id);
     if (!existing) {
@@ -698,13 +666,11 @@ router.put('/ai-service-settings/global/:id', async (req, res, next) => {
         .status(404)
         .json({ error: 'Global AI service setting not found.' });
     }
-
     if (!service_name || !service_type) {
       return res
         .status(400)
         .json({ error: 'service_name and service_type are required.' });
     }
-
     const settingData = {
       id,
       service_name,
@@ -715,7 +681,6 @@ router.put('/ai-service-settings/global/:id', async (req, res, next) => {
       is_active: is_active !== undefined ? is_active : existing.is_active,
       model_name: model_name || null,
     };
-
     const result =
       await chatRepository.upsertGlobalAiServiceSetting(settingData);
     await logAdminAction(req.userId, null, 'GLOBAL_AI_SETTING_UPDATED', {
@@ -732,7 +697,6 @@ router.put('/ai-service-settings/global/:id', async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /admin/ai-service-settings/global/{id}:
@@ -761,7 +725,6 @@ router.put('/ai-service-settings/global/:id', async (req, res, next) => {
 router.delete('/ai-service-settings/global/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-
     // Verify the setting exists and is global
     const existing = await chatRepository.getGlobalAiServiceSettingById(id);
     if (!existing) {
@@ -769,7 +732,6 @@ router.delete('/ai-service-settings/global/:id', async (req, res, next) => {
         .status(404)
         .json({ error: 'Global AI service setting not found.' });
     }
-
     const success = await chatRepository.deleteGlobalAiServiceSetting(id);
     if (success) {
       await logAdminAction(req.userId, null, 'GLOBAL_AI_SETTING_DELETED', {
@@ -791,5 +753,4 @@ router.delete('/ai-service-settings/global/:id', async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

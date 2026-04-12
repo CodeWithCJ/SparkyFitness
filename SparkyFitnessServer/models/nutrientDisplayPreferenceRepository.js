@@ -1,8 +1,6 @@
-const { getClient } = require('../db/poolManager');
-const format = require('pg-format');
-
+import { getClient } from '../db/poolManager.js';
+import format from 'pg-format';
 const TABLE_NAME = 'user_nutrient_display_preferences';
-
 async function getNutrientDisplayPreferences(userId) {
   const query = `SELECT * FROM ${TABLE_NAME} WHERE user_id = $1`;
   const client = await getClient(userId);
@@ -13,7 +11,6 @@ async function getNutrientDisplayPreferences(userId) {
     client.release();
   }
 }
-
 async function upsertNutrientDisplayPreference(
   userId,
   viewGroup,
@@ -40,7 +37,6 @@ async function upsertNutrientDisplayPreference(
     client.release();
   }
 }
-
 async function deleteNutrientDisplayPreference(userId, viewGroup, platform) {
   const query = `DELETE FROM ${TABLE_NAME} WHERE user_id = $1 AND view_group = $2 AND platform = $3`;
   const client = await getClient(userId);
@@ -50,7 +46,6 @@ async function deleteNutrientDisplayPreference(userId, viewGroup, platform) {
     client.release();
   }
 }
-
 async function createDefaultNutrientPreferences(userId, defaultPreferences) {
   const values = defaultPreferences.map((pref) => [
     userId,
@@ -58,13 +53,11 @@ async function createDefaultNutrientPreferences(userId, defaultPreferences) {
     pref.platform,
     JSON.stringify(pref.visible_nutrients),
   ]);
-
   const query = format(
     'INSERT INTO %I (user_id, view_group, platform, visible_nutrients) VALUES %L RETURNING *',
     TABLE_NAME,
     values
   );
-
   const client = await getClient(userId); // Assuming userId is available in context for this function
   try {
     const { rows } = await client.query(query);
@@ -73,8 +66,11 @@ async function createDefaultNutrientPreferences(userId, defaultPreferences) {
     client.release();
   }
 }
-
-module.exports = {
+export { getNutrientDisplayPreferences };
+export { upsertNutrientDisplayPreference };
+export { deleteNutrientDisplayPreference };
+export { createDefaultNutrientPreferences };
+export default {
   getNutrientDisplayPreferences,
   upsertNutrientDisplayPreference,
   deleteNutrientDisplayPreference,

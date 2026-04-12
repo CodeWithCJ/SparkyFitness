@@ -1,15 +1,13 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import exerciseService from '../services/exerciseService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const exerciseService = require('../services/exerciseService');
-
 /**
  * @swagger
  * tags:
  *   name: Fitness & Workouts
  *   description: Exercise database, workout presets, and activity logging.
  */
-
 /**
  * @swagger
  * /freeexercisedb/add:
@@ -51,7 +49,6 @@ router.post('/add', authenticate, async (req, res, next) => {
     if (!exerciseId) {
       return res.status(400).json({ message: 'Exercise ID is required.' });
     }
-
     const authenticatedUserId = req.userId;
     const newExercise =
       await exerciseService.addFreeExerciseDBExerciseToUserExercises(
@@ -67,5 +64,4 @@ router.post('/add', authenticate, async (req, res, next) => {
     next(error); // Pass error to centralized error handler
   }
 });
-
-module.exports = router;
+export default router;

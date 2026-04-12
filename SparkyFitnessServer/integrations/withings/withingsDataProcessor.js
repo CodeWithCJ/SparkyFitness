@@ -1,12 +1,10 @@
-// SparkyFitnessServer/integrations/withings/withingsDataProcessor.js
-
-const measurementRepository = require('../../models/measurementRepository');
-const { log } = require('../../config/logging');
-const exerciseRepository = require('../../models/exercise'); // Import exercise repository
-const exerciseEntryRepository = require('../../models/exerciseEntry'); // Import exerciseEntry repository
-const sleepRepository = require('../../models/sleepRepository'); // Import sleep repository
-const { instantToDay } = require('@workspace/shared');
-
+import measurementRepository from '../../models/measurementRepository.js';
+import { log } from '../../config/logging.js';
+import exerciseRepository from '../../models/exercise.js';
+import exerciseEntryRepository from '../../models/exerciseEntry.js';
+import sleepRepository from '../../models/sleepRepository.js';
+import { instantToDay } from '@workspace/shared';
+import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 // Define a mapping for Withings metric types to SparkyFitness measurement types
 // This can be extended as more Withings metrics are integrated
 const WITHINGS_METRIC_MAPPING = {
@@ -298,7 +296,6 @@ const WITHINGS_METRIC_MAPPING = {
     frequency: 'Daily',
   },
 };
-
 async function processWithingsMeasures(
   userId,
   createdByUserId,
@@ -309,11 +306,9 @@ async function processWithingsMeasures(
     log('info', `No Withings measures data to process for user ${userId}.`);
     return;
   }
-
   for (const group of measuregrps) {
     // Only process actual measurements (category 1), skip user objectives (category 2)
     if (group.category !== 1) continue;
-
     const timestamp = group.date || group.timestamp;
     if (!timestamp || isNaN(timestamp)) {
       log(
@@ -325,14 +320,12 @@ async function processWithingsMeasures(
     const entryDate = instantToDay(timestamp * 1000, timezone); // Convert Unix timestamp to YYYY-MM-DD
     const measurementsToUpsert = {};
     const customMeasurementsToUpsert = [];
-
     for (const measure of group.measures) {
       const metricInfo = WITHINGS_METRIC_MAPPING[measure.type];
       if (metricInfo) {
         // Withings measures often come with a 'unit' field which is a power of 10.
         // E.g., weight in kg with unit 0 means actual kg, unit -1 means 0.1 kg.
         let value = measure.value * Math.pow(10, measure.unit); // Use measure.unit from Withings API for scaling
-
         // Apply unit conversions for check_in_measurement types if needed
         if (
           metricInfo.type === 'check_in_measurement' &&
@@ -343,7 +336,6 @@ async function processWithingsMeasures(
           }
           // Add other conversions here if necessary (e.g., kg to lbs, but assuming kg is standard for now)
         }
-
         if (metricInfo.type === 'check_in_measurement' && metricInfo.column) {
           measurementsToUpsert[metricInfo.column] = value;
         } else if (
@@ -367,7 +359,6 @@ async function processWithingsMeasures(
         );
       }
     }
-
     // Upsert into check_in_measurements if there are any standard measurements
     if (Object.keys(measurementsToUpsert).length > 0) {
       await measurementRepository.upsertCheckInMeasurements(
@@ -381,7 +372,6 @@ async function processWithingsMeasures(
         `Upserted standard Withings measures for user ${userId} on ${entryDate}.`
       );
     }
-
     // Upsert into custom_measurements
     for (const customMeasurement of customMeasurementsToUpsert) {
       await upsertCustomMeasurementLogic(
@@ -393,7 +383,6 @@ async function processWithingsMeasures(
     }
   }
 }
-
 async function processWithingsHeartData(
   userId,
   createdByUserId,
@@ -404,7 +393,6 @@ async function processWithingsHeartData(
     log('info', `No Withings heart data to process for user ${userId}.`);
     return;
   }
-
   for (const series of heartSeries) {
     const timestamp = series.date || series.timestamp;
     if (!timestamp || isNaN(timestamp)) {
@@ -414,11 +402,9 @@ async function processWithingsHeartData(
       );
       continue;
     }
-
     const entryDate = instantToDay(timestamp * 1000, timezone);
     const entryHour = new Date(timestamp * 1000).getUTCHours();
     const entryTimestamp = new Date(timestamp * 1000).toISOString();
-
     // Process Heart Rate
     if (series.heart_rate) {
       const metricInfo = WITHINGS_METRIC_MAPPING.heart_rate;
@@ -442,7 +428,6 @@ async function processWithingsHeartData(
         `Upserted Withings heart rate for user ${userId} on ${entryDate}.`
       );
     }
-
     // Process Afib from ECG
     if (series.ecg && series.ecg.afib !== undefined) {
       const metricInfo = WITHINGS_METRIC_MAPPING.afib;
@@ -466,7 +451,6 @@ async function processWithingsHeartData(
         `Upserted Withings afib result for user ${userId} on ${entryDate}.`
       );
     }
-
     // Process Blood Pressure from Heart API (BPM Core)
     if (series.bloodpressure) {
       if (series.bloodpressure.systole) {
@@ -510,7 +494,6 @@ async function processWithingsHeartData(
     }
   }
 }
-
 async function processWithingsSleepData(
   userId,
   createdByUserId,
@@ -529,12 +512,10 @@ async function processWithingsSleepData(
     : sleepSummary
       ? [sleepSummary]
       : [];
-
   if (seriesArr.length === 0 && summaryArr.length === 0) {
     log('info', `No Withings sleep data to process for user ${userId}.`);
     return;
   }
-
   // Map Withings sleep states to SparkyFitness stage types
   const SLEEP_STAGE_MAPPING = {
     0: 'awake',
@@ -542,11 +523,9 @@ async function processWithingsSleepData(
     2: 'deep',
     3: 'rem',
   };
-
   // Identify the date range for deletion
   let minDate = null;
   let maxDate = null;
-
   const allRelevantEntries = [...seriesArr, ...summaryArr];
   for (const item of allRelevantEntries) {
     const timestamp = item.date || item.startdate || item.timestamp;
@@ -556,12 +535,10 @@ async function processWithingsSleepData(
         typeof timestamp === 'string' && timestamp.includes('-')
           ? timestamp
           : instantToDay(timestamp * 1000, timezone);
-
       if (!minDate || entryDate < minDate) minDate = entryDate;
       if (!maxDate || entryDate > maxDate) maxDate = entryDate;
     }
   }
-
   if (minDate && maxDate) {
     await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(
       userId,
@@ -574,20 +551,16 @@ async function processWithingsSleepData(
       `Deleted existing Withings sleep entries between ${minDate} and ${maxDate} for user ${userId}.`
     );
   }
-
   const sleepEntryMap = new Map(); // entry_date -> db_id
-
   // 1. Process Summaries (The most reliable source for high-level metrics)
   for (const summary of summaryArr) {
     const entryDate =
       typeof summary.date === 'string'
         ? summary.date
         : instantToDay(summary.date * 1000, timezone);
-
     // Default to start/end dates
     let bedtimeTs = summary.startdate;
     let wakeTimeTs = summary.enddate;
-
     // Refine with night_events if available (1=got in bed, 4=got out of bed)
     if (summary.data.night_events) {
       const events = summary.data.night_events;
@@ -599,10 +572,8 @@ async function processWithingsSleepData(
         wakeTimeTs = summary.startdate + events['4'][events['4'].length - 1];
       }
     }
-
     const bedtime = new Date(bedtimeTs * 1000).toISOString();
     const wakeTime = new Date(wakeTimeTs * 1000).toISOString();
-
     const sleepEntryData = {
       entry_date: entryDate,
       bedtime: bedtime,
@@ -621,7 +592,6 @@ async function processWithingsSleepData(
       lowest_respiration_value: summary.data.rr_min || null,
       highest_respiration_value: summary.data.rr_max || null,
     };
-
     const createdEntry = await sleepRepository.upsertSleepEntry(
       userId,
       createdByUserId,
@@ -630,7 +600,6 @@ async function processWithingsSleepData(
     sleepEntryMap.set(entryDate, createdEntry.id);
     log('info', `Processed sleep summary for ${entryDate} for user ${userId}.`);
   }
-
   // 2. Process Detailed Series (Sleep Stages)
   // Match each stage to its parent summary's entry_date so overnight sessions
   // that cross local midnight stay grouped under one sleep entry.
@@ -642,9 +611,7 @@ async function processWithingsSleepData(
         ? s.date
         : instantToDay(s.date * 1000, timezone),
   }));
-
   const stagesByDate = new Map();
-
   for (const segment of seriesArr) {
     if (segment.startdate && segment.state !== undefined) {
       const parent = summaryRanges.find(
@@ -653,24 +620,20 @@ async function processWithingsSleepData(
       const entryDate = parent
         ? parent.entryDate
         : instantToDay(segment.startdate * 1000, timezone);
-
       if (!stagesByDate.has(entryDate)) {
         stagesByDate.set(entryDate, []);
       }
       stagesByDate.get(entryDate).push(segment);
     }
   }
-
   for (const [entryDate, segments] of stagesByDate.entries()) {
     let entryId = sleepEntryMap.get(entryDate);
-
     // If no summary was found for this date, we create a basic entry from the series
     if (!entryId) {
       const firstSegment = segments[0];
       const lastSegment = segments[segments.length - 1];
       const bedtime = new Date(firstSegment.startdate * 1000).toISOString();
       const wakeTime = new Date(lastSegment.enddate * 1000).toISOString();
-
       const basicEntry = await sleepRepository.upsertSleepEntry(
         userId,
         createdByUserId,
@@ -686,18 +649,14 @@ async function processWithingsSleepData(
       entryId = basicEntry.id;
       sleepEntryMap.set(entryDate, entryId);
     }
-
     const stageAggregates = { deep: 0, light: 0, rem: 0, awake: 0 };
-
     for (const segment of segments) {
       const duration = segment.enddate - segment.startdate;
       const stageType = SLEEP_STAGE_MAPPING[segment.state] || 'awake';
       const stageKey = stageType; // Already lowercase from SLEEP_STAGE_MAPPING
-
       if (stageAggregates[stageKey] !== undefined) {
         stageAggregates[stageKey] += duration;
       }
-
       await sleepRepository.upsertSleepStageEvent(userId, entryId, {
         stage_type: stageType,
         start_time: new Date(segment.startdate * 1000).toISOString(),
@@ -705,7 +664,6 @@ async function processWithingsSleepData(
         duration_in_seconds: duration,
       });
     }
-
     await sleepRepository.updateSleepEntry(userId, entryId, createdByUserId, {
       deep_sleep_seconds: stageAggregates.deep,
       light_sleep_seconds: stageAggregates.light,
@@ -714,14 +672,12 @@ async function processWithingsSleepData(
       time_asleep_in_seconds:
         stageAggregates.deep + stageAggregates.light + stageAggregates.rem,
     });
-
     log(
       'info',
       `Processed ${segments.length} sleep stages for ${entryDate} for user ${userId}.`
     );
   }
 }
-
 async function upsertCustomMeasurementLogic(
   userId,
   createdByUserId,
@@ -736,10 +692,8 @@ async function upsertCustomMeasurementLogic(
     entryTimestamp,
     frequency,
   } = customMeasurement;
-
   let category = await measurementRepository.getCustomCategories(userId);
   category = category.find((cat) => cat.name === categoryName);
-
   let categoryId;
   if (!category) {
     // Create new custom category if it doesn't exist
@@ -761,7 +715,6 @@ async function upsertCustomMeasurementLogic(
   } else {
     categoryId = category.id;
   }
-
   // Upsert the custom measurement entry
   await measurementRepository.upsertCustomMeasurement(
     userId,
@@ -776,7 +729,6 @@ async function upsertCustomMeasurementLogic(
     source
   );
 }
-
 async function processWithingsActivity(
   userId,
   createdByUserId,
@@ -786,10 +738,8 @@ async function processWithingsActivity(
     log('info', `No Withings activity data to process for user ${userId}.`);
     return;
   }
-
   for (const activity of activities) {
     const entryDate = activity.date; // "YYYY-MM-DD"
-
     // 1. Process Steps
     if (activity.steps !== undefined) {
       await measurementRepository.upsertStepData(
@@ -803,7 +753,6 @@ async function processWithingsActivity(
         `Upserted Withings daily steps for user ${userId} on ${entryDate}: ${activity.steps}.`
       );
     }
-
     // 2. Process Total Calories (Active + Passive)
     if (activity.totalcalories !== undefined) {
       await upsertCustomMeasurementLogic(
@@ -821,7 +770,6 @@ async function processWithingsActivity(
         'Withings'
       );
     }
-
     // 3. Process Elevation (Floors)
     if (activity.elevation !== undefined) {
       await upsertCustomMeasurementLogic(
@@ -841,13 +789,11 @@ async function processWithingsActivity(
     }
   }
 }
-
 async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
   if (!Array.isArray(workouts) || workouts.length === 0) {
     log('info', `No Withings workout data to process for user ${userId}.`);
     return;
   }
-
   // Define a mapping for Withings workout categories to SparkyFitness exercise names
   // This list can be expanded as more categories are identified or requested.
   const WITHINGS_WORKOUT_CATEGORY_MAPPING = {
@@ -901,7 +847,6 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
     307: 'Indoor Running',
     308: 'Indoor Cycling',
   };
-
   // First, delete all existing Withings exercise entries for the date range to prevent duplicates.
   // We iterate through the dates covered by the workouts and delete entries for each day,
   // specifically targeting entries with 'Withings' as their source.
@@ -927,7 +872,6 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
       processedDates.add(entryDate);
     }
   }
-
   for (const workout of workouts) {
     try {
       const workoutCategory = workout.category;
@@ -936,12 +880,10 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
         `Withings Workout - Category ${workoutCategory}`;
       // The sourceId for the exercise definition remains the same, as it identifies the type of exercise.
       const exerciseSourceId = `withings-workout-${workoutCategory}`;
-
       let exercise = await exerciseRepository.getExerciseBySourceAndSourceId(
         'Withings',
         exerciseSourceId
       ); // Corrected variable name
-
       if (!exercise) {
         // If not found by source and sourceId, try to find by name (for user-created exercises)
         const searchResults = await exerciseRepository.searchExercises(
@@ -956,7 +898,6 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
           );
         }
       }
-
       if (!exercise) {
         const durationSeconds = workout.enddate - workout.startdate;
         // Create a new exercise if it doesn't exist
@@ -992,17 +933,14 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
           `Created new exercise for Withings workout category ${workoutCategory}: ${exercise.name}`
         );
       }
-
       // Calculate duration in minutes
       const durationSeconds = workout.enddate - workout.startdate;
       const durationMinutes = Math.round(durationSeconds / 60);
-
       // Prepare exercise entry data
       const entryDate = new Date(workout.startdate * 1000)
         .toISOString()
         .split('T')[0];
       const caloriesBurned = workout.data.calories || 0;
-
       const exerciseEntryData = {
         exercise_id: exercise.id,
         duration_minutes: durationMinutes,
@@ -1022,7 +960,6 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
           },
         ],
       };
-
       const newEntry = await exerciseEntryRepository.createExerciseEntry(
         userId,
         exerciseEntryData,
@@ -1033,10 +970,8 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
         'info',
         `Logged Withings workout entry for user ${userId}: ${exercise.name} on ${entryDate}.`
       );
-
       // Add activity details (HR Zones, etc.)
       if (newEntry && newEntry.id) {
-        const activityDetailsRepository = require('../../models/activityDetailsRepository');
         await activityDetailsRepository.createActivityDetail(userId, {
           exercise_entry_id: newEntry.id,
           provider_name: 'Withings',
@@ -1061,8 +996,12 @@ async function processWithingsWorkouts(userId, createdByUserId, workouts = []) {
     }
   }
 }
-
-module.exports = {
+export { processWithingsMeasures };
+export { processWithingsHeartData };
+export { processWithingsSleepData };
+export { processWithingsActivity };
+export { processWithingsWorkouts };
+export default {
   processWithingsMeasures,
   processWithingsHeartData,
   processWithingsSleepData,

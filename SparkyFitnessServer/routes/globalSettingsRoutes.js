@@ -1,9 +1,8 @@
-const express = require('express');
+import express from 'express';
+import globalSettingsRepository from '../models/globalSettingsRepository.js';
+import { log } from '../config/logging.js';
+import { isAdmin, authenticate } from '../middleware/authMiddleware.js';
 const router = express.Router();
-const globalSettingsRepository = require('../models/globalSettingsRepository');
-const { log } = require('../config/logging');
-const { isAdmin, authenticate } = require('../middleware/authMiddleware');
-
 /**
  * @swagger
  * /admin/global-settings:
@@ -29,7 +28,6 @@ router.get('/', isAdmin, async (req, res) => {
     res.status(500).json({ message: 'Error retrieving global auth settings' });
   }
 });
-
 /**
  * @swagger
  * /admin/global-settings:
@@ -60,7 +58,6 @@ router.put('/', isAdmin, async (req, res) => {
     res.status(500).json({ message: 'Error updating global auth settings' });
   }
 });
-
 /**
  * @swagger
  * /api/global-settings/allow-user-ai-config:
@@ -91,5 +88,4 @@ router.get('/allow-user-ai-config', authenticate, async (req, res) => {
       .json({ message: 'Error checking user AI config permission' });
   }
 });
-
-module.exports = router;
+export default router;

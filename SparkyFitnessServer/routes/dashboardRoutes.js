@@ -1,11 +1,10 @@
-const express = require('express');
+import express from 'express';
+import dashboardService from '../services/DashboardService.js';
+import { authenticate } from '../middleware/authMiddleware.js';
+import { log } from '../config/logging.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { todayInZone } from '@workspace/shared';
 const router = express.Router();
-const dashboardService = require('../services/DashboardService');
-const { authenticate } = require('../middleware/authMiddleware');
-const { log } = require('../config/logging');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { todayInZone } = require('@workspace/shared');
-
 /**
  * @swagger
  * /api/dashboard/stats:
@@ -31,14 +30,11 @@ router.get('/stats', authenticate, async (req, res, next) => {
     const userId = req.activeUserId || req.authenticatedUserId;
     const tz = await loadUserTimezone(userId);
     const date = req.query.date || todayInZone(tz);
-
     log('info', `Dashboard stats requested for user ${userId} on date ${date}`);
-
     const stats = await dashboardService.getDashboardStats(userId, date);
     res.json(stats);
   } catch (error) {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

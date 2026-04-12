@@ -1,13 +1,11 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const format = require('pg-format');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import format from 'pg-format';
 async function createMealPlanTemplate(planData) {
   const client = await getClient(planData.user_id); // User-specific operation
   try {
     log('info', 'createMealPlanTemplate - planData:', planData);
     await client.query('BEGIN');
-
     const insertTemplateQuery = `
             INSERT INTO meal_plan_templates (user_id, plan_name, description, start_date, end_date, is_active)
             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
@@ -19,22 +17,18 @@ async function createMealPlanTemplate(planData) {
       planData.end_date,
       planData.is_active ?? false,
     ];
-
     log(
       'info',
       'createMealPlanTemplate - insertTemplateQuery:',
       insertTemplateQuery
     );
     log('info', 'createMealPlanTemplate - templateValues:', templateValues);
-
     const templateResult = await client.query(
       insertTemplateQuery,
       templateValues
     );
     const newTemplate = templateResult.rows[0];
-
     const assignments = planData.assignments || planData.day_presets;
-
     if (assignments && assignments.length > 0) {
       const mealTypesRes = await client.query(
         'SELECT id, name FROM meal_types WHERE user_id = $1 OR user_id IS NULL',
@@ -44,7 +38,6 @@ async function createMealPlanTemplate(planData) {
       mealTypesRes.rows.forEach((r) =>
         mealTypeMap.set(r.name.toLowerCase(), r.id)
       );
-
       const assignmentValues = assignments.map((a) => {
         let typeId = a.meal_type_id;
         if (!typeId && a.meal_type) {
@@ -55,7 +48,6 @@ async function createMealPlanTemplate(planData) {
             `Invalid meal type: ${a.meal_type || a.meal_type_id}`
           );
         }
-
         if (a.item_type === 'meal') {
           return [
             newTemplate.id,
@@ -91,7 +83,6 @@ async function createMealPlanTemplate(planData) {
       await client.query(assignmentQuery);
       log('info', 'createMealPlanTemplate - Executed assignmentQuery');
     }
-
     await client.query('COMMIT');
     log('info', 'createMealPlanTemplate - Committed transaction');
     const finalQuery = `
@@ -136,7 +127,6 @@ async function createMealPlanTemplate(planData) {
     client.release();
   }
 }
-
 async function getMealPlanTemplatesByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -153,7 +143,6 @@ async function getMealPlanTemplatesByUserId(userId) {
     client.release();
   }
 }
-
 async function getMealPlanTemplateAssignments(templateId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -184,12 +173,10 @@ async function getMealPlanTemplateAssignments(templateId, userId) {
     client.release();
   }
 }
-
 async function updateMealPlanTemplate(planId, planData) {
   const client = await getClient(planData.user_id); // User-specific operation
   try {
     await client.query('BEGIN');
-
     await client.query(
       `UPDATE meal_plan_templates SET
                 plan_name = $1, description = $2, start_date = $3, end_date = $4, is_active = $5, updated_at = now()
@@ -203,12 +190,10 @@ async function updateMealPlanTemplate(planId, planData) {
         planId,
       ]
     );
-
     await client.query(
       'DELETE FROM meal_plan_template_assignments WHERE template_id = $1',
       [planId]
     );
-
     if (planData.assignments && planData.assignments.length > 0) {
       const mealTypesRes = await client.query(
         'SELECT id, name FROM meal_types WHERE user_id = $1 OR user_id IS NULL',
@@ -218,7 +203,6 @@ async function updateMealPlanTemplate(planId, planData) {
       mealTypesRes.rows.forEach((r) =>
         mealTypeMap.set(r.name.toLowerCase(), r.id)
       );
-
       const assignmentValues = planData.assignments.map((a) => {
         let typeId = a.meal_type_id;
         if (!typeId && a.meal_type) {
@@ -227,7 +211,6 @@ async function updateMealPlanTemplate(planId, planData) {
         if (!typeId) {
           throw new Error(`Invalid meal type: ${a.meal_type}`);
         }
-
         if (a.item_type === 'meal') {
           return [
             planId,
@@ -261,7 +244,6 @@ async function updateMealPlanTemplate(planId, planData) {
       );
       await client.query(assignmentQuery);
     }
-
     await client.query('COMMIT');
     const finalQuery = `
             SELECT
@@ -309,7 +291,6 @@ async function updateMealPlanTemplate(planId, planData) {
     client.release();
   }
 }
-
 async function deleteMealPlanTemplate(planId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -330,7 +311,6 @@ async function deleteMealPlanTemplate(planId, userId) {
     client.release();
   }
 }
-
 async function deactivateAllMealPlanTemplates(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -340,7 +320,6 @@ async function deactivateAllMealPlanTemplates(userId) {
     client.release();
   }
 }
-
 async function getMealPlanTemplateOwnerId(templateId) {
   const client = await getClient(templateId); // User-specific operation (RLS will handle access)
   try {
@@ -353,7 +332,6 @@ async function getMealPlanTemplateOwnerId(templateId) {
     client.release();
   }
 }
-
 async function getActiveMealPlanForDate(userId, date) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -399,7 +377,6 @@ async function getActiveMealPlanForDate(userId, date) {
     client.release();
   }
 }
-
 async function getMealPlanTemplatesByMealId(mealId) {
   const client = await getClient(mealId); // User-specific operation (RLS will handle access)
   try {
@@ -443,8 +420,16 @@ async function getMealPlanTemplatesByMealId(mealId) {
     client.release();
   }
 }
-
-module.exports = {
+export { createMealPlanTemplate };
+export { getMealPlanTemplatesByUserId };
+export { updateMealPlanTemplate };
+export { deleteMealPlanTemplate };
+export { deactivateAllMealPlanTemplates };
+export { getMealPlanTemplateOwnerId };
+export { getActiveMealPlanForDate };
+export { getMealPlanTemplatesByMealId };
+export { getMealPlanTemplateAssignments };
+export default {
   createMealPlanTemplate,
   getMealPlanTemplatesByUserId,
   updateMealPlanTemplate,

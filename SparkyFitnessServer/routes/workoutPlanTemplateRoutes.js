@@ -1,8 +1,7 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import workoutPlanTemplateService from '../services/workoutPlanTemplateService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const workoutPlanTemplateService = require('../services/workoutPlanTemplateService');
-
 /**
  * @swagger
  * /workout-plan-templates:
@@ -41,7 +40,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /workout-plan-templates:
@@ -76,7 +74,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /workout-plan-templates/{id}:
@@ -127,7 +124,6 @@ router.get('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /workout-plan-templates/{id}:
@@ -189,7 +185,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /workout-plan-templates/{id}:
@@ -239,7 +234,6 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /workout-plan-templates/active/{date}:
@@ -281,4 +275,4 @@ router.get('/active/:date', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-module.exports = router;
+export default router;

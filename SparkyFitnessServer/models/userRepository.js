@@ -1,25 +1,20 @@
-const { getClient, getSystemClient } = require('../db/poolManager');
-
+import { getClient, getSystemClient } from '../db/poolManager.js';
 async function createUser(userId, email, hashedPassword, full_name) {
   const client = await getSystemClient(); // System client for user creation
   try {
     await client.query('BEGIN'); // Start transaction for atomicity
-
     // Insert into "user"
     await client.query(
       'INSERT INTO "user" (id, email, name, image, created_at, updated_at) VALUES ($1, $2, $3, $4, now(), now())',
       [userId, email, full_name, null]
     );
-
     // Insert into "account" for email/password
     await client.query(
       'INSERT INTO "account" (id, account_id, provider_id, user_id, password, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, $4, now(), now())',
       [email, 'credential', userId, hashedPassword]
     );
-
     // Initialize profile and goals safely
     await ensureUserInitialization(userId, full_name, client);
-
     await client.query('COMMIT'); // Commit transaction
     return userId;
   } catch (error) {
@@ -29,7 +24,6 @@ async function createUser(userId, email, hashedPassword, full_name) {
     client.release();
   }
 }
-
 async function findUserByEmail(email) {
   const client = await getSystemClient(); // System client for finding user by email (authentication)
   try {
@@ -48,7 +42,6 @@ async function findUserByEmail(email) {
     client.release();
   }
 }
-
 async function findUserById(userId) {
   const client = await getSystemClient(); // System client for finding user by ID (authentication/admin)
   try {
@@ -71,7 +64,6 @@ async function findUserById(userId) {
     client.release();
   }
 }
-
 async function findUserIdByEmail(email) {
   const client = await getSystemClient(); // System client for finding user ID by email (authentication)
   try {
@@ -84,7 +76,6 @@ async function findUserIdByEmail(email) {
     client.release();
   }
 }
-
 async function getAccessibleUsers(userId) {
   const client = await getSystemClient(); // System client for bypassing RLS
   try {
@@ -108,7 +99,6 @@ async function getAccessibleUsers(userId) {
     client.release();
   }
 }
-
 async function getUserProfile(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -121,7 +111,6 @@ async function getUserProfile(userId) {
     client.release();
   }
 }
-
 async function updateUserProfile(
   userId,
   full_name,
@@ -151,7 +140,6 @@ async function updateUserProfile(
     client.release();
   }
 }
-
 async function updateUserPassword(userId, hashedPassword) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -164,7 +152,6 @@ async function updateUserPassword(userId, hashedPassword) {
     client.release();
   }
 }
-
 async function updateUserEmail(userId, newEmail) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -186,7 +173,6 @@ async function updateUserEmail(userId, newEmail) {
     client.release();
   }
 }
-
 async function getUserRole(userId) {
   const client = await getSystemClient(); // System client for getting user role (admin check)
   try {
@@ -198,7 +184,6 @@ async function getUserRole(userId) {
     client.release();
   }
 }
-
 async function updateUserRole(userId, role) {
   const client = await getSystemClient(); // System client for updating user role (admin operation)
   try {
@@ -211,12 +196,10 @@ async function updateUserRole(userId, role) {
     client.release();
   }
 }
-
 async function createOidcUser(userId, email, fullName, providerId, oidcSub) {
   const client = await getSystemClient(); // System client for OIDC user creation
   try {
     await client.query('BEGIN');
-
     // Insert into "user"
     const userResult = await client.query(
       `INSERT INTO "user" (id, email, image, created_at, updated_at)
@@ -224,16 +207,13 @@ async function createOidcUser(userId, email, fullName, providerId, oidcSub) {
       [userId, email, null]
     );
     const newUserId = userResult.rows[0].id;
-
     // Initialize profile and goals safely
     await ensureUserInitialization(newUserId, fullName, client);
-
     // Link the new user to the OIDC provider (account table)
     await client.query(
       'INSERT INTO "account" (id, account_id, provider_id, user_id, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, now(), now())',
       [oidcSub, 'oidc-' + providerId, newUserId]
     );
-
     await client.query('COMMIT');
     return newUserId;
   } catch (error) {
@@ -243,7 +223,6 @@ async function createOidcUser(userId, email, fullName, providerId, oidcSub) {
     client.release();
   }
 }
-
 async function findUserOidcLink(userId, providerId) {
   const client = await getSystemClient(); // System client for finding OIDC link (authentication)
   try {
@@ -256,7 +235,6 @@ async function findUserOidcLink(userId, providerId) {
     client.release();
   }
 }
-
 async function createUserOidcLink(userId, providerId, oidcSub) {
   const client = await getSystemClient(); // System client for creating OIDC link
   try {
@@ -268,7 +246,6 @@ async function createUserOidcLink(userId, providerId, oidcSub) {
     client.release();
   }
 }
-
 async function findUserByOidcSub(oidcSub, providerId) {
   const client = await getSystemClient(); // System client for finding user by OIDC sub (authentication)
   try {
@@ -284,7 +261,6 @@ async function findUserByOidcSub(oidcSub, providerId) {
     client.release();
   }
 }
-
 async function updateUserOidcLink(linkId, newOidcSub) {
   const client = await getSystemClient(); // System client for updating OIDC link
   try {
@@ -296,7 +272,6 @@ async function updateUserOidcLink(linkId, newOidcSub) {
     client.release();
   }
 }
-
 async function updatePasswordResetToken() {
   const client = await getSystemClient();
   try {
@@ -307,7 +282,6 @@ async function updatePasswordResetToken() {
     client.release();
   }
 }
-
 async function findUserByPasswordResetToken(token) {
   const client = await getSystemClient(); // System client for password reset token lookup
   try {
@@ -320,7 +294,6 @@ async function findUserByPasswordResetToken(token) {
     client.release();
   }
 }
-
 async function updateUserLastLogin(userId) {
   const client = await getSystemClient(); // System client for updating last login
   try {
@@ -332,7 +305,6 @@ async function updateUserLastLogin(userId) {
     client.release();
   }
 }
-
 async function getAllUsers(limit, offset, searchTerm) {
   const client = await getSystemClient(); // System client for getting all users (admin operation)
   try {
@@ -349,23 +321,19 @@ async function getAllUsers(limit, offset, searchTerm) {
     `;
     const params = [];
     let whereClause = '';
-
     if (searchTerm) {
       whereClause += ` WHERE LOWER(u.email) LIKE LOWER($${params.length + 1}) OR LOWER(p.full_name) LIKE LOWER($${params.length + 1}) `;
       params.push(`%${searchTerm}%`);
     }
-
     query += whereClause;
     query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limit, offset);
-
     const result = await client.query(query, params);
     return result.rows;
   } finally {
     client.release();
   }
 }
-
 async function deleteUser(userId) {
   const client = await getSystemClient(); // System client for deleting user (admin operation)
   try {
@@ -374,7 +342,6 @@ async function deleteUser(userId) {
       'DELETE FROM "user" WHERE id = $1 RETURNING id',
       [userId]
     );
-
     await client.query('COMMIT');
     return result.rowCount > 0;
   } catch (error) {
@@ -384,7 +351,6 @@ async function deleteUser(userId) {
     client.release();
   }
 }
-
 async function updateUserStatus(userId, isActive) {
   const client = await getSystemClient(); // System client for updating user status (admin operation)
   try {
@@ -397,7 +363,6 @@ async function updateUserStatus(userId, isActive) {
     client.release();
   }
 }
-
 async function updateUserFullName(userId, fullName) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -410,7 +375,6 @@ async function updateUserFullName(userId, fullName) {
     client.release();
   }
 }
-
 async function updateUserMfaSettings(
   userId,
   mfaSecret,
@@ -437,7 +401,6 @@ async function updateUserMfaSettings(
       mfaEmailEnabled,
       mfaEnforced,
     ]);
-
     // Handle two_factor table updates
     if (mfaSecret !== undefined || mfaRecoveryCodes !== undefined) {
       const twoFactorQuery = `
@@ -450,13 +413,11 @@ async function updateUserMfaSettings(
       `;
       await client.query(twoFactorQuery, [userId, mfaSecret, mfaRecoveryCodes]);
     }
-
     return result.rowCount > 0;
   } finally {
     client.release();
   }
 }
-
 async function getMfaSettings(userId) {
   const client = await getSystemClient();
   try {
@@ -474,7 +435,6 @@ async function getMfaSettings(userId) {
     client.release();
   }
 }
-
 async function isOidcUser(userId) {
   const client = await getSystemClient();
   try {
@@ -487,7 +447,6 @@ async function isOidcUser(userId) {
     client.release();
   }
 }
-
 async function ensureUserInitialization(
   userId,
   fullName,
@@ -497,27 +456,23 @@ async function ensureUserInitialization(
   const client = existingClient || (await getSystemClient());
   try {
     if (!existingClient) await client.query('BEGIN');
-
     await client.query(
       'INSERT INTO profiles (id, full_name, avatar_url, created_at, updated_at) ' +
         'SELECT $1, $2, $3, now(), now() WHERE NOT EXISTS (SELECT 1 FROM profiles WHERE id = $1)',
       [userId, fullName, avatarUrl]
     );
-
     // Ensure user_goals exists (the base goal with NULL date)
     await client.query(
       'INSERT INTO user_goals (user_id, created_at, updated_at) ' +
         'SELECT $1, now(), now() WHERE NOT EXISTS (SELECT 1 FROM user_goals WHERE user_id = $1 AND goal_date IS NULL)',
       [userId]
     );
-
     // Ensure onboarding_status exists
     await client.query(
       'INSERT INTO onboarding_status (user_id, onboarding_complete, created_at, updated_at) ' +
         'SELECT $1, FALSE, now(), now() WHERE NOT EXISTS (SELECT 1 FROM onboarding_status WHERE user_id = $1)',
       [userId]
     );
-
     if (!existingClient) await client.query('COMMIT');
   } catch (error) {
     if (!existingClient) await client.query('ROLLBACK');
@@ -526,8 +481,34 @@ async function ensureUserInitialization(
     if (!existingClient) client.release();
   }
 }
-
-module.exports = {
+export { createUser };
+export { createOidcUser };
+export { findUserByEmail };
+export { findUserById };
+export { findUserIdByEmail };
+export { getAccessibleUsers };
+export { getUserProfile };
+export { updateUserProfile };
+export { updateUserPassword };
+export { updateUserEmail };
+export { getUserRole };
+export { updateUserRole };
+export { updatePasswordResetToken };
+export { findUserByPasswordResetToken };
+export { findUserOidcLink };
+export { createUserOidcLink };
+export { findUserByOidcSub };
+export { updateUserLastLogin };
+export { getAllUsers };
+export { deleteUser };
+export { updateUserStatus };
+export { updateUserFullName };
+export { updateUserOidcLink };
+export { updateUserMfaSettings };
+export { getMfaSettings };
+export { isOidcUser };
+export { ensureUserInitialization };
+export default {
   createUser,
   createOidcUser,
   findUserByEmail,

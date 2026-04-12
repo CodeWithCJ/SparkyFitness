@@ -1,17 +1,21 @@
-//console.log('DEBUG: Loading measurementService.js');
-const { log } = require('../config/logging'); // Import the logger utility
-const measurementRepository = require('../models/measurementRepository');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const {
+import { log } from '../config/logging.js';
+import measurementRepository from '../models/measurementRepository.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import {
   instantToDay,
   instantHourMinute,
   instantToDayWithOffset,
   instantHourMinuteWithOffset,
   isValidTimeZone,
   isDayString,
-} = require('@workspace/shared');
-const { userAge } = require('../utils/dateHelpers');
-
+} from '@workspace/shared';
+import { userAge } from '../utils/dateHelpers.js';
+import userRepository from '../models/userRepository.js';
+import sleepRepository from '../models/sleepRepository.js';
+import exerciseDb from '../models/exercise.js';
+import exerciseEntryDb from '../models/exerciseEntry.js';
+import waterContainerRepository from '../models/waterContainerRepository.js';
+import activityDetailsRepository from '../models/activityDetailsRepository.js';
 /**
  * Default units for health metric types when not provided by client (e.g. HealthConnect sync).
  * Ensures graphs and UI show a unit instead of "N/A". Aligned with mobile HealthMetrics and API usage.
@@ -151,14 +155,6 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   // Last types
   cycling_ftp: 'W',
 };
-const userRepository = require('../models/userRepository');
-const sleepRepository = require('../models/sleepRepository'); // Import sleepRepository
-// require concrete modules to avoid circular export issues for exercise functions used at runtime
-const exerciseDb = require('../models/exercise');
-const exerciseEntryDb = require('../models/exerciseEntry');
-const waterContainerRepository = require('../models/waterContainerRepository'); // Import waterContainerRepository
-const activityDetailsRepository = require('../models/activityDetailsRepository'); // Import activityDetailsRepository
-
 /**
  * Resolve the entry date, timestamp, and hour for a health data record using
  * the per-record timezone fallback chain:
@@ -184,7 +180,6 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
   } else {
     basisField = entry.date || entry.entry_date || entry.timestamp;
   }
-
   // 2. If the basis is a date-only string (YYYY-MM-DD) with no timestamp,
   // the record was already bucketed client-side. Trust the date as-is —
   // applying timezone conversion to a UTC-midnight-parsed day string would
@@ -193,12 +188,10 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
     typeof basisField === 'string' &&
     isDayString(basisField) &&
     !entry.timestamp;
-
   const basisDate = new Date(basisField);
   if (isNaN(basisDate.getTime())) {
     return null;
   }
-
   if (basisIsDayOnly) {
     return {
       parsedDate: basisField,
@@ -206,7 +199,6 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
       entryHour: 0,
     };
   }
-
   // 3. Determine the timestamp for entryTimestamp (prefer explicit timestamp)
   let entryTimestamp;
   if (entry.timestamp) {
@@ -217,12 +209,10 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
   } else {
     entryTimestamp = basisDate.toISOString();
   }
-
   // The instant used for hour derivation
   const hourBasis = entry.timestamp ? new Date(entry.timestamp) : null;
   const validHourBasis =
     hourBasis && !isNaN(hourBasis.getTime()) ? hourBasis : null;
-
   // 4. Resolve timezone (fallback chain)
   if (entry.record_timezone && isValidTimeZone(entry.record_timezone)) {
     return {
@@ -233,7 +223,6 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
         : 0,
     };
   }
-
   if (
     entry.record_utc_offset_minutes !== null &&
     typeof entry.record_utc_offset_minutes === 'number'
@@ -252,7 +241,6 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
         : 0,
     };
   }
-
   // Fallback to account timezone — log for observability (Phase 4 tracking)
   log(
     'DEBUG',
@@ -266,7 +254,6 @@ function resolveHealthEntryDate(entry, fallbackTimezone) {
       : 0,
   };
 }
-
 const HEALTH_CONNECT_SLEEP_SOURCES = new Set([
   'Health Connect',
   'HealthConnect',
@@ -279,21 +266,17 @@ const VALID_SLEEP_STAGE_TYPES = new Set([
   'in_bed',
   'unknown',
 ]);
-
 function isHealthConnectSleepSource(source) {
   return typeof source === 'string' && HEALTH_CONNECT_SLEEP_SOURCES.has(source);
 }
-
 function sanitizeHealthConnectSleepStageEvents(stageEvents) {
   if (!Array.isArray(stageEvents)) {
     return [];
   }
-
   return stageEvents.reduce((sanitized, stageEvent) => {
     if (!stageEvent || typeof stageEvent !== 'object') {
       return sanitized;
     }
-
     const stageType =
       typeof stageEvent.stage_type === 'string'
         ? stageEvent.stage_type.toLowerCase()
@@ -301,23 +284,19 @@ function sanitizeHealthConnectSleepStageEvents(stageEvents) {
     if (!stageType || !VALID_SLEEP_STAGE_TYPES.has(stageType)) {
       return sanitized;
     }
-
     const startTime = new Date(stageEvent.start_time);
     const endTime = new Date(stageEvent.end_time);
     if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
       return sanitized;
     }
-
     let durationInSeconds = Number(stageEvent.duration_in_seconds);
     if (!Number.isFinite(durationInSeconds) || durationInSeconds <= 0) {
       durationInSeconds = (endTime.getTime() - startTime.getTime()) / 1000;
     }
     durationInSeconds = Math.round(durationInSeconds);
-
     if (durationInSeconds <= 0) {
       return sanitized;
     }
-
     sanitized.push({
       stage_type: stageType,
       start_time: startTime.toISOString(),
@@ -327,14 +306,12 @@ function sanitizeHealthConnectSleepStageEvents(stageEvents) {
     return sanitized;
   }, []);
 }
-
 async function processHealthData(healthDataArray, userId, actingUserId) {
   const tz = await loadUserTimezone(userId);
   const processedResults = [];
   const errors = [];
   const tzMetadataByType = {};
   const tzFallbackByType = {};
-
   // 0. Pre-Cleanup: Delete existing Sleep/Exercise entries for the date range to prevent duplicates
   // This implements a "delete-then-insert" strategy for idempotent sync
   const entriesToClean = healthDataArray.filter(
@@ -343,10 +320,8 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       d.type === 'ExerciseSession' ||
       d.type === 'Workout'
   );
-
   if (entriesToClean.length > 0) {
     const datesBySource = {};
-
     for (const entry of entriesToClean) {
       const source = entry.source || 'manual';
       const resolved = resolveHealthEntryDate(entry, tz);
@@ -357,22 +332,18 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
         datesBySource[source][resolved.parsedDate] = true;
       }
     }
-
     for (const source in datesBySource) {
       const dates = Object.keys(datesBySource[source]).sort();
       if (dates.length > 0) {
         const startDate = dates[0];
         const endDate = dates[dates.length - 1]; // Inclusive end date for the function call
-
         // Calculate max date + 1 day for database range logic if needed, but the current repo methods usually take inclusive/specific range
         // Looking at sleepRepository.deleteSleepEntriesByEntrySourceAndDate(user_id, source, start_date, end_date), it typically handles range.
         // Let's assume inclusive range which is standard for these helpers.
-
         log(
           'info',
           `[processHealthData] Pre-cleanup: Deleting existing entries for source '${source}' from ${startDate} to ${endDate}.`
         );
-
         // Clean Sleep
         await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(
           userId,
@@ -380,7 +351,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
           startDate,
           endDate
         );
-
         // Clean Exercises
         // Note: deleteExerciseEntriesByEntrySourceAndDate expects (userId, startDate, endDate, source) - verify arg order!
         // Based on typical repo patterns, let's verify.
@@ -396,7 +366,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       }
     }
   }
-
   for (const dataEntry of healthDataArray) {
     const {
       value,
@@ -406,7 +375,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       source = 'manual',
       dataType,
     } = dataEntry; // Added source and dataType with default
-
     // Check for required fields. Note: 'value' is not required for complex types like SleepSession, Stress, Workout.
     const complexTypes = [
       'SleepSession',
@@ -415,7 +383,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       'Workout',
     ];
     const isComplexType = complexTypes.includes(type);
-
     if (
       (!isComplexType && (value === undefined || value === null)) ||
       !type ||
@@ -429,7 +396,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       });
       continue;
     }
-
     const resolved = resolveHealthEntryDate(dataEntry, tz);
     if (!resolved) {
       const dateToParse = date || dataEntry.entry_date || timestamp;
@@ -457,11 +423,9 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
     const parsedDate = resolved.parsedDate;
     const entryTimestamp = resolved.entryTimestamp;
     const entryHour = resolved.entryHour;
-
     try {
       let result;
       let categoryId;
-
       // Handle specific types first, then fall back to custom measurements
       switch (type) {
         case 'step':
@@ -554,7 +518,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             const stageEvents = isHealthConnectSleepSource(source)
               ? sanitizeHealthConnectSleepStageEvents(dataEntry.stage_events)
               : dataEntry.stage_events || [];
-
             // Map the dataEntry fields to what processSleepEntry expects
             const sleepEntryData = {
               entry_date: parsedDate,
@@ -624,7 +587,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             // Usually Stress has a level/value. If it's just a session token (val=1), use that.
             const stressValue =
               value !== undefined && value !== null ? value : 1;
-
             result = await measurementRepository.upsertCustomMeasurement(
               userId,
               actingUserId,
@@ -680,7 +642,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
                   : 0,
               });
             }
-
             const exerciseEntry = await exerciseEntryDb.createExerciseEntry(
               userId,
               {
@@ -696,7 +657,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
               actingUserId,
               source
             );
-
             if (raw_data) {
               await activityDetailsRepository.createActivityDetail(userId, {
                 exercise_entry_id: exerciseEntry.id,
@@ -776,7 +736,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             break;
           }
           categoryId = category.id;
-
           let processedValue = value;
           if (category.data_type === 'numeric') {
             const numericValue = parseFloat(value);
@@ -790,7 +749,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
             processedValue = numericValue;
           }
           // If data_type is 'text', we use the value as is.
-
           result = await measurementRepository.upsertCustomMeasurement(
             userId,
             actingUserId,
@@ -819,7 +777,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       });
     }
   }
-
   // Log timezone metadata coverage per type for observability
   const fallbackTypes = Object.keys(tzFallbackByType);
   if (fallbackTypes.length > 0) {
@@ -841,7 +798,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
       `[processHealthData] Timezone metadata present by type: ${details}`
     );
   }
-
   if (errors.length > 0) {
     throw new Error(
       JSON.stringify({
@@ -857,7 +813,6 @@ async function processHealthData(healthDataArray, userId, actingUserId) {
     };
   }
 }
-
 async function processMobileHealthData(
   mobileHealthDataArray,
   userId,
@@ -866,7 +821,6 @@ async function processMobileHealthData(
   const tz = await loadUserTimezone(userId);
   const processedResults = [];
   const errors = [];
-
   for (const dataEntry of mobileHealthDataArray) {
     const {
       type,
@@ -890,7 +844,6 @@ async function processMobileHealthData(
       'debug',
       `[processMobileHealthData] Processing dataEntry with type: ${type}`
     );
-
     if (!type || !source || !timestamp) {
       errors.push({
         error:
@@ -899,11 +852,9 @@ async function processMobileHealthData(
       });
       continue;
     }
-
     let parsedDate;
     let entryTimestamp;
     let entryHour;
-
     try {
       const dateObj = new Date(timestamp);
       if (isNaN(dateObj.getTime())) {
@@ -920,7 +871,6 @@ async function processMobileHealthData(
       });
       continue;
     }
-
     try {
       let result;
       switch (type) {
@@ -1020,7 +970,6 @@ async function processMobileHealthData(
                 : 0, // Convert to per hour
             });
           }
-
           const exerciseEntry = await exerciseEntryDb.createExerciseEntry(
             userId,
             {
@@ -1036,7 +985,6 @@ async function processMobileHealthData(
             actingUserId,
             source
           );
-
           // Store raw data in activity details
           if (raw_data) {
             await activityDetailsRepository.createActivityDetail(userId, {
@@ -1064,7 +1012,6 @@ async function processMobileHealthData(
               : undefined;
           const resolvedUnit =
             unitFromPayload || DEFAULT_UNITS_BY_HEALTH_TYPE[type] || 'N/A';
-
           const category = await getOrCreateCustomCategory(
             userId,
             actingUserId,
@@ -1079,7 +1026,6 @@ async function processMobileHealthData(
             });
             break;
           }
-
           const numericValue = parseFloat(value);
           if (isNaN(numericValue)) {
             errors.push({
@@ -1088,7 +1034,6 @@ async function processMobileHealthData(
             });
             break;
           }
-
           result = await measurementRepository.upsertCustomMeasurement(
             userId,
             actingUserId,
@@ -1117,7 +1062,6 @@ async function processMobileHealthData(
       });
     }
   }
-
   if (errors.length > 0) {
     throw new Error(
       JSON.stringify({
@@ -1133,7 +1077,6 @@ async function processMobileHealthData(
     };
   }
 }
-
 // Helper function to get or create a custom category
 async function getOrCreateCustomCategory(
   userId,
@@ -1146,7 +1089,6 @@ async function getOrCreateCustomCategory(
   const existingCategories =
     await measurementRepository.getCustomCategories(userId);
   const category = existingCategories.find((cat) => cat.name === categoryName);
-
   if (category) {
     return category;
   } else {
@@ -1165,7 +1107,6 @@ async function getOrCreateCustomCategory(
     return { id: newCategory.id, ...newCategoryData };
   }
 }
-
 async function getWaterIntake(authenticatedUserId, targetUserId, date) {
   try {
     const waterData = await measurementRepository.getWaterIntakeByDate(
@@ -1183,7 +1124,6 @@ async function getWaterIntake(authenticatedUserId, targetUserId, date) {
     throw error;
   }
 }
-
 async function upsertWaterIntake(
   authenticatedUserId,
   actingUserId,
@@ -1202,7 +1142,6 @@ async function upsertWaterIntake(
     const currentManualMl = currentManualRecord
       ? Number(currentManualRecord.water_ml)
       : 0;
-
     // 2. Determine amount per drink based on container
     let amountPerDrink;
     if (containerId) {
@@ -1225,13 +1164,11 @@ async function upsertWaterIntake(
       // Use default amount per drink if no container ID is provided
       amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
     }
-
     // 3. Calculate new total water intake for the MANUAL bucket
     const newManualTotalWaterMl = Math.max(
       0,
       currentManualMl + changeDrinks * amountPerDrink
     );
-
     // 4. Upsert the new manual water intake
     const result = await measurementRepository.upsertWaterData(
       authenticatedUserId,
@@ -1250,7 +1187,6 @@ async function upsertWaterIntake(
     throw error;
   }
 }
-
 async function getWaterIntakeEntryById(authenticatedUserId, id) {
   try {
     const entryOwnerId = await measurementRepository.getWaterIntakeEntryOwnerId(
@@ -1274,7 +1210,6 @@ async function getWaterIntakeEntryById(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function updateWaterIntake(
   authenticatedUserId,
   actingUserId,
@@ -1315,7 +1250,6 @@ async function updateWaterIntake(
     throw error;
   }
 }
-
 async function deleteWaterIntake(authenticatedUserId, actingUserId, id) {
   try {
     const entryOwnerId = await measurementRepository.getWaterIntakeEntryOwnerId(
@@ -1347,7 +1281,6 @@ async function deleteWaterIntake(authenticatedUserId, actingUserId, id) {
     throw error;
   }
 }
-
 async function upsertCheckInMeasurements(
   authenticatedUserId,
   actingUserId,
@@ -1371,7 +1304,6 @@ async function upsertCheckInMeasurements(
     throw error;
   }
 }
-
 async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
   try {
     const measurement =
@@ -1389,7 +1321,6 @@ async function getCheckInMeasurements(authenticatedUserId, targetUserId, date) {
     throw error;
   }
 }
-
 async function getLatestCheckInMeasurementsOnOrBeforeDate(
   authenticatedUserId,
   targetUserId,
@@ -1411,7 +1342,6 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
     throw error;
   }
 }
-
 async function updateCheckInMeasurements(
   authenticatedUserId,
   actingUserId,
@@ -1430,7 +1360,6 @@ async function updateCheckInMeasurements(
         authenticatedUserId,
         entryDate
       );
-
     if (!existingMeasurement) {
       log(
         'warn',
@@ -1438,7 +1367,6 @@ async function updateCheckInMeasurements(
       );
       throw new Error('Check-in measurement not found.');
     }
-
     const updatedMeasurement =
       await measurementRepository.updateCheckInMeasurements(
         authenticatedUserId,
@@ -1469,7 +1397,6 @@ async function updateCheckInMeasurements(
     throw error;
   }
 }
-
 async function deleteCheckInMeasurements(authenticatedUserId, id) {
   try {
     const entryOwnerId =
@@ -1499,7 +1426,6 @@ async function deleteCheckInMeasurements(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function getCustomCategories(authenticatedUserId, targetUserId) {
   try {
     let finalUserId = authenticatedUserId;
@@ -1518,7 +1444,6 @@ async function getCustomCategories(authenticatedUserId, targetUserId) {
     throw error;
   }
 }
-
 async function createCustomCategory(
   authenticatedUserId,
   actingUserId,
@@ -1539,7 +1464,6 @@ async function createCustomCategory(
     throw error;
   }
 }
-
 async function updateCustomCategory(authenticatedUserId, id, updateData) {
   try {
     const categoryOwnerId =
@@ -1575,7 +1499,6 @@ async function updateCustomCategory(authenticatedUserId, id, updateData) {
     throw error;
   }
 }
-
 async function deleteCustomCategory(authenticatedUserId, id) {
   try {
     const categoryOwnerId =
@@ -1608,7 +1531,6 @@ async function deleteCustomCategory(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function getCustomMeasurementEntries(
   authenticatedUserId,
   limit,
@@ -1634,7 +1556,6 @@ async function getCustomMeasurementEntries(
     throw error;
   }
 }
-
 async function getCustomMeasurementEntriesByDate(
   authenticatedUserId,
   targetUserId,
@@ -1656,7 +1577,6 @@ async function getCustomMeasurementEntriesByDate(
     throw error;
   }
 }
-
 async function getCheckInMeasurementsByDateRange(
   authenticatedUserId,
   userId,
@@ -1680,7 +1600,6 @@ async function getCheckInMeasurementsByDateRange(
     throw error;
   }
 }
-
 async function getCustomMeasurementsByDateRange(
   authenticatedUserId,
   userId,
@@ -1706,15 +1625,11 @@ async function getCustomMeasurementsByDateRange(
     throw error;
   }
 }
-
 async function calculateSleepScore(sleepEntryData, stageEvents, age = null) {
   const { duration_in_seconds, time_asleep_in_seconds } = sleepEntryData;
-
   if (!duration_in_seconds || duration_in_seconds <= 0) return 0;
-
   let score = 0;
   const maxScore = 100;
-
   // Define optimal ranges based on age and gender
   let optimalMinDuration = 7 * 3600; // Default 7 hours
   let optimalMaxDuration = 9 * 3600; // Default 9 hours
@@ -1722,7 +1637,6 @@ async function calculateSleepScore(sleepEntryData, stageEvents, age = null) {
   let optimalDeepMax = 25; // Default 25%
   const optimalRemMin = 20; // Default 20%
   const optimalRemMax = 25; // Default 25%
-
   // Adjust optimal sleep duration based on age
   if (age !== null) {
     if (age >= 65) {
@@ -1740,10 +1654,8 @@ async function calculateSleepScore(sleepEntryData, stageEvents, age = null) {
     }
     // Add more age groups as needed
   }
-
   // Component 1: Total Sleep Duration (TST) - 30% of score
   const tstWeight = 30;
-
   if (
     duration_in_seconds >= optimalMinDuration &&
     duration_in_seconds <= optimalMaxDuration
@@ -1757,12 +1669,10 @@ async function calculateSleepScore(sleepEntryData, stageEvents, age = null) {
     );
     score += Math.max(0, tstWeight - (deviation / 3600) * 5); // 5 points deduction per hour deviation
   }
-
   // Component 2: Sleep Efficiency - 25% of score
   const sleepEfficiency = (time_asleep_in_seconds / duration_in_seconds) * 100;
   const optimalEfficiency = 85; // 85%
   const efficiencyWeight = 25;
-
   if (sleepEfficiency >= optimalEfficiency) {
     score += efficiencyWeight;
   } else {
@@ -1771,13 +1681,11 @@ async function calculateSleepScore(sleepEntryData, stageEvents, age = null) {
       efficiencyWeight - (optimalEfficiency - sleepEfficiency) * 1
     ); // 1 point deduction per % below optimal
   }
-
   // Component 3: Sleep Stage Distribution (Deep & REM) - 30% of score (15% each)
   let deepSleepDuration = 0;
   let remSleepDuration = 0;
   let awakeDuration = 0;
   let numAwakePeriods = 0;
-
   if (stageEvents && stageEvents.length > 0) {
     let inAwakePeriod = false;
     for (const event of stageEvents) {
@@ -1796,18 +1704,15 @@ async function calculateSleepScore(sleepEntryData, stageEvents, age = null) {
       }
     }
   }
-
   const totalSleepStagesDuration =
     deepSleepDuration +
     remSleepDuration +
     (time_asleep_in_seconds - awakeDuration);
-
   if (totalSleepStagesDuration > 0) {
     const deepSleepPercentage =
       (deepSleepDuration / totalSleepStagesDuration) * 100;
     const remSleepPercentage =
       (remSleepDuration / totalSleepStagesDuration) * 100;
-
     // Adjust optimal deep and REM sleep percentages based on age/gender if needed
     // For simplicity, using general guidelines here. More specific adjustments can be added.
     if (age !== null) {
@@ -1817,7 +1722,6 @@ async function calculateSleepScore(sleepEntryData, stageEvents, age = null) {
         optimalDeepMax = 20;
       }
     }
-
     // Deep Sleep Score (15%)
     const deepWeight = 15;
     if (
@@ -1832,7 +1736,6 @@ async function calculateSleepScore(sleepEntryData, stageEvents, age = null) {
       );
       score += Math.max(0, deepWeight - deviation * 0.5); // 0.5 point deduction per % deviation
     }
-
     // REM Sleep Score (15%)
     const remWeight = 15;
     if (
@@ -1848,23 +1751,17 @@ async function calculateSleepScore(sleepEntryData, stageEvents, age = null) {
       score += Math.max(0, remWeight - deviation * 0.5); // 0.5 point deduction per % deviation
     }
   }
-
   // Component 4: Disturbances (Awake Time/Periods) - 15% of score
   const disturbanceWeight = 15;
   let disturbanceDeduction = 0;
-
   // Deduct for total awake time
   disturbanceDeduction += (awakeDuration / 60) * 0.5; // 0.5 points deduction per minute awake
-
   // Deduct for number of awake periods
   disturbanceDeduction += numAwakePeriods * 2; // 2 points deduction per awake period
-
   score += Math.max(0, disturbanceWeight - disturbanceDeduction);
-
   // Ensure score is within 0-100 range
   return Math.round(Math.max(0, Math.min(score, maxScore)));
 }
-
 async function processSleepEntry(userId, actingUserId, sleepEntryData) {
   log(
     'debug',
@@ -1872,7 +1769,6 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
   );
   try {
     let stage_events = sleepEntryData.stage_events;
-
     const {
       stage_events: _stage_events,
       entry_date,
@@ -1888,7 +1784,6 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
       awake_sleep_seconds,
       ...rest
     } = sleepEntryData;
-
     // If no stage events are provided, create a default "light sleep" stage
     if (!stage_events || stage_events.length === 0) {
       log(
@@ -1904,7 +1799,6 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
         },
       ];
     }
-
     let timeAsleepInSeconds = 0;
     // This check is now redundant but harmless as stage_events will always have at least one entry
     if (stage_events && stage_events.length > 0) {
@@ -1912,7 +1806,6 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
         .filter((event) => event.stage_type !== 'awake')
         .reduce((sum, event) => sum + event.duration_in_seconds, 0);
     }
-
     // Fetch user profile to get age and gender
     const userProfile = await userRepository.getUserProfile(userId);
     const tz = await loadUserTimezone(userId);
@@ -1920,14 +1813,12 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
       ? userAge(userProfile.date_of_birth, tz)
       : null;
     const gender = userProfile?.gender || null;
-
     const sleepScore = await calculateSleepScore(
       { duration_in_seconds, time_asleep_in_seconds: timeAsleepInSeconds },
       stage_events,
       age,
       gender
     );
-
     const entryToUpsert = {
       entry_date: entry_date,
       bedtime: new Date(bedtime),
@@ -1947,20 +1838,17 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
       '[processSleepEntry] entryToUpsert before upsert:',
       entryToUpsert
     );
-
     // Pass actingUserId to upsertSleepEntry
     const newSleepEntry = await sleepRepository.upsertSleepEntry(
       userId,
       actingUserId,
       entryToUpsert
     );
-
     if (stage_events && stage_events.length > 0) {
       // Deleting existing stages is handled by upsertSleepStageEvent if we treat them as new or updates?
       // Actually handling stages usually implies wiping for a new sync or upserting individually.
       // Since upsertSleepEntry returns an ID, we can just insert them.
       // NOTE: Sync logic usually replaces for a given day.
-
       for (const stageEvent of stage_events) {
         // Round duration for each stage event
         const duration =
@@ -1983,7 +1871,6 @@ async function processSleepEntry(userId, actingUserId, sleepEntryData) {
     throw error;
   }
 }
-
 async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
   try {
     const {
@@ -1994,14 +1881,12 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
       entry_date,
       ...entryDetails
     } = updateData;
-
     let timeAsleepInSeconds = 0;
     if (stage_events && stage_events.length > 0) {
       timeAsleepInSeconds = stage_events
         .filter((event) => event.stage_type !== 'awake')
         .reduce((sum, event) => sum + event.duration_in_seconds, 0);
     }
-
     // Fetch user profile to get age and gender
     const userProfile = await userRepository.getUserProfile(userId);
     const tz = await loadUserTimezone(userId);
@@ -2009,14 +1894,12 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
       ? userAge(userProfile.date_of_birth, tz)
       : null;
     const gender = userProfile?.gender || null;
-
     const sleepScore = await calculateSleepScore(
       { duration_in_seconds, time_asleep_in_seconds: timeAsleepInSeconds },
       stage_events,
       age,
       gender
     );
-
     const updatedEntryDetails = {
       ...entryDetails,
       entry_date: entry_date, // Trust the passed entry_date
@@ -2031,7 +1914,6 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
       '[updateSleepEntry] updatedEntryDetails before update:',
       updatedEntryDetails
     );
-
     // Update the main sleep entry details
     // Pass actingUserId provided in the arguments
     const updatedEntry = await sleepRepository.updateSleepEntry(
@@ -2040,12 +1922,10 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
       actingUserId,
       updatedEntryDetails
     );
-
     // Handle stage events if provided
     if (stage_events !== undefined) {
       // First, delete all existing stage events for this sleep entry
       await sleepRepository.deleteSleepStageEventsByEntryId(userId, entryId);
-
       // Then, insert the new stage events
       if (stage_events.length > 0) {
         for (const stageEvent of stage_events) {
@@ -2069,41 +1949,6 @@ async function updateSleepEntry(userId, entryId, actingUserId, updateData) {
     throw error;
   }
 }
-
-module.exports = {
-  processHealthData,
-  processMobileHealthData, // Export the new function
-  getWaterIntake,
-  upsertWaterIntake,
-  getWaterIntakeEntryById,
-  updateWaterIntake,
-  deleteWaterIntake,
-  upsertCheckInMeasurements,
-  getCheckInMeasurements,
-  getLatestCheckInMeasurementsOnOrBeforeDate,
-  updateCheckInMeasurements,
-  deleteCheckInMeasurements,
-  getCustomCategories,
-  createCustomCategory,
-  updateCustomCategory,
-  deleteCustomCategory,
-  getCustomMeasurementEntries,
-  getCustomMeasurementEntriesByDate,
-  getCheckInMeasurementsByDateRange,
-  getCustomMeasurementsByDateRange,
-  calculateSleepScore, // Export calculateSleepScore
-  upsertCustomMeasurementEntry,
-  deleteCustomMeasurementEntry,
-  getMostRecentMeasurement,
-  processSleepEntry,
-  updateSleepEntry,
-  getSleepEntriesByUserIdAndDateRange:
-    sleepRepository.getSleepEntriesByUserIdAndDateRange,
-  deleteSleepEntry: sleepRepository.deleteSleepEntry, // Export the new delete function
-  getOrCreateCustomCategory, // Export getOrCreateCustomCategory
-  resolveHealthEntryDate,
-};
-
 async function upsertCustomMeasurementEntry(
   authenticatedUserId,
   actingUserId,
@@ -2119,16 +1964,13 @@ async function upsertCustomMeasurementEntry(
       notes,
       source = 'manual',
     } = payload;
-
     // Fetch category details to get the frequency
     const categories =
       await measurementRepository.getCustomCategories(authenticatedUserId);
     const category = categories.find((cat) => cat.id === category_id);
-
     if (!category) {
       throw new Error(`Custom category with ID ${category_id} not found.`);
     }
-
     const result = await measurementRepository.upsertCustomMeasurement(
       authenticatedUserId,
       actingUserId,
@@ -2151,7 +1993,6 @@ async function upsertCustomMeasurementEntry(
     throw error;
   }
 }
-
 async function deleteCustomMeasurementEntry(authenticatedUserId, id) {
   try {
     const entryOwnerId =
@@ -2184,7 +2025,6 @@ async function deleteCustomMeasurementEntry(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function getMostRecentMeasurement(userId, measurementType) {
   try {
     const measurement = await measurementRepository.getMostRecentMeasurement(
@@ -2201,3 +2041,66 @@ async function getMostRecentMeasurement(userId, measurementType) {
     throw error;
   }
 }
+export const getSleepEntriesByUserIdAndDateRange =
+  sleepRepository.getSleepEntriesByUserIdAndDateRange;
+export const deleteSleepEntry = sleepRepository.deleteSleepEntry;
+export { processHealthData };
+export { processMobileHealthData };
+export { getWaterIntake };
+export { upsertWaterIntake };
+export { getWaterIntakeEntryById };
+export { updateWaterIntake };
+export { deleteWaterIntake };
+export { upsertCheckInMeasurements };
+export { getCheckInMeasurements };
+export { getLatestCheckInMeasurementsOnOrBeforeDate };
+export { updateCheckInMeasurements };
+export { deleteCheckInMeasurements };
+export { getCustomCategories };
+export { createCustomCategory };
+export { updateCustomCategory };
+export { deleteCustomCategory };
+export { getCustomMeasurementEntries };
+export { getCustomMeasurementEntriesByDate };
+export { getCheckInMeasurementsByDateRange };
+export { getCustomMeasurementsByDateRange };
+export { calculateSleepScore };
+export { upsertCustomMeasurementEntry };
+export { deleteCustomMeasurementEntry };
+export { getMostRecentMeasurement };
+export { processSleepEntry };
+export { updateSleepEntry };
+export { getOrCreateCustomCategory };
+export { resolveHealthEntryDate };
+export default {
+  processHealthData,
+  processMobileHealthData,
+  getWaterIntake,
+  upsertWaterIntake,
+  getWaterIntakeEntryById,
+  updateWaterIntake,
+  deleteWaterIntake,
+  upsertCheckInMeasurements,
+  getCheckInMeasurements,
+  getLatestCheckInMeasurementsOnOrBeforeDate,
+  updateCheckInMeasurements,
+  deleteCheckInMeasurements,
+  getCustomCategories,
+  createCustomCategory,
+  updateCustomCategory,
+  deleteCustomCategory,
+  getCustomMeasurementEntries,
+  getCustomMeasurementEntriesByDate,
+  getCheckInMeasurementsByDateRange,
+  getCustomMeasurementsByDateRange,
+  calculateSleepScore,
+  upsertCustomMeasurementEntry,
+  deleteCustomMeasurementEntry,
+  getMostRecentMeasurement,
+  processSleepEntry,
+  updateSleepEntry,
+  getSleepEntriesByUserIdAndDateRange,
+  deleteSleepEntry,
+  getOrCreateCustomCategory,
+  resolveHealthEntryDate,
+};

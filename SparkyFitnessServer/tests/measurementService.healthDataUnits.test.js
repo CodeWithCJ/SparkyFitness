@@ -1,37 +1,26 @@
-/**
- * Tests for health data processing default units (fix for #567).
- * When HealthConnect (or other clients) send data without a unit, the server
- * should apply default units so the UI does not show "N/A".
- *
- * Run with: npx jest tests/measurementService.healthDataUnits.test.js
- * (Server tests may require SPARKY_FITNESS_API_ENCRYPTION_KEY set to a 64-char hex string.)
- */
-const measurementRepository = require('../models/measurementRepository');
-const measurementService = require('../services/measurementService');
-
-jest.mock('../models/measurementRepository');
-jest.mock('../models/userRepository');
-jest.mock('../models/exerciseRepository');
-jest.mock('../models/exerciseEntry');
-jest.mock('../models/sleepRepository');
-jest.mock('../models/waterContainerRepository');
-jest.mock('../models/activityDetailsRepository');
-
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import measurementRepository from '../models/measurementRepository.js';
+import measurementService from '../services/measurementService.js';
+vi.mock('../models/measurementRepository');
+vi.mock('../models/userRepository');
+vi.mock('../models/exerciseRepository');
+vi.mock('../models/exerciseEntry');
+vi.mock('../models/sleepRepository');
+vi.mock('../models/waterContainerRepository');
+vi.mock('../models/activityDetailsRepository');
 describe('processHealthData default units (#567)', () => {
   const userId = 'user-123';
   const actingUserId = 'user-123';
-
   beforeEach(() => {
-    jest.clearAllMocks();
-    measurementRepository.getCustomCategories = jest.fn().mockResolvedValue([]);
-    measurementRepository.createCustomCategory = jest
+    vi.clearAllMocks();
+    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
+    measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = jest
+    measurementRepository.upsertCustomMeasurement = vi
       .fn()
       .mockResolvedValue({ id: 'entry-1' });
   });
-
   it('applies default unit when payload has no unit (e.g. heart_rate -> bpm)', async () => {
     const healthDataArray = [
       {
@@ -41,20 +30,17 @@ describe('processHealthData default units (#567)', () => {
         source: 'HealthConnect',
       },
     ];
-
     await measurementService.processHealthData(
       healthDataArray,
       userId,
       actingUserId
     );
-
     expect(measurementRepository.createCustomCategory).toHaveBeenCalledTimes(1);
     const createPayload =
       measurementRepository.createCustomCategory.mock.calls[0][0];
     expect(createPayload.measurement_type).toBe('bpm');
     expect(createPayload.name).toBe('heart_rate');
   });
-
   it('uses payload unit when provided', async () => {
     const healthDataArray = [
       {
@@ -65,19 +51,16 @@ describe('processHealthData default units (#567)', () => {
         unit: 'beats/min',
       },
     ];
-
     await measurementService.processHealthData(
       healthDataArray,
       userId,
       actingUserId
     );
-
     expect(measurementRepository.createCustomCategory).toHaveBeenCalledTimes(1);
     const createPayload =
       measurementRepository.createCustomCategory.mock.calls[0][0];
     expect(createPayload.measurement_type).toBe('beats/min');
   });
-
   it('applies default unit for TotalCaloriesBurned when unit missing', async () => {
     const healthDataArray = [
       {
@@ -87,19 +70,16 @@ describe('processHealthData default units (#567)', () => {
         source: 'HealthConnect',
       },
     ];
-
     await measurementService.processHealthData(
       healthDataArray,
       userId,
       actingUserId
     );
-
     expect(measurementRepository.createCustomCategory).toHaveBeenCalledTimes(1);
     const createPayload =
       measurementRepository.createCustomCategory.mock.calls[0][0];
     expect(createPayload.measurement_type).toBe('kcal');
   });
-
   it('applies default unit for distance when unit missing', async () => {
     const healthDataArray = [
       {
@@ -109,35 +89,30 @@ describe('processHealthData default units (#567)', () => {
         source: 'HealthConnect',
       },
     ];
-
     await measurementService.processHealthData(
       healthDataArray,
       userId,
       actingUserId
     );
-
     expect(measurementRepository.createCustomCategory).toHaveBeenCalledTimes(1);
     const createPayload =
       measurementRepository.createCustomCategory.mock.calls[0][0];
     expect(createPayload.measurement_type).toBe('m');
   });
 });
-
 describe('Aggregated health metric default units', () => {
   const userId = 'user-123';
   const actingUserId = 'user-123';
-
   beforeEach(() => {
-    jest.clearAllMocks();
-    measurementRepository.getCustomCategories = jest.fn().mockResolvedValue([]);
-    measurementRepository.createCustomCategory = jest
+    vi.clearAllMocks();
+    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
+    measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = jest
+    measurementRepository.upsertCustomMeasurement = vi
       .fn()
       .mockResolvedValue({ id: 'entry-1' });
   });
-
   it.each([
     // Chunk 1: Heart rate + vitals
     ['heart_rate_min', 'bpm'],
@@ -177,13 +152,11 @@ describe('Aggregated health metric default units', () => {
     const healthDataArray = [
       { type, value: 42, date: '2025-06-01', source: 'apple_health' },
     ];
-
     await measurementService.processHealthData(
       healthDataArray,
       userId,
       actingUserId
     );
-
     expect(measurementRepository.createCustomCategory).toHaveBeenCalledTimes(1);
     const createPayload =
       measurementRepository.createCustomCategory.mock.calls[0][0];
@@ -191,22 +164,19 @@ describe('Aggregated health metric default units', () => {
     expect(createPayload.name).toBe(type);
   });
 });
-
 describe('processMobileHealthData aggregated types', () => {
   const userId = 'user-123';
   const actingUserId = 'user-123';
-
   beforeEach(() => {
-    jest.clearAllMocks();
-    measurementRepository.getCustomCategories = jest.fn().mockResolvedValue([]);
-    measurementRepository.createCustomCategory = jest
+    vi.clearAllMocks();
+    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
+    measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = jest
+    measurementRepository.upsertCustomMeasurement = vi
       .fn()
       .mockResolvedValue({ id: 'entry-1' });
   });
-
   it('stores aggregated type as custom measurement via mobile path', async () => {
     const mobileData = [
       {
@@ -216,25 +186,21 @@ describe('processMobileHealthData aggregated types', () => {
         timestamp: '2025-06-01T10:00:00Z',
       },
     ];
-
     const result = await measurementService.processMobileHealthData(
       mobileData,
       userId,
       actingUserId
     );
-
     expect(result.processed).toHaveLength(1);
     expect(result.processed[0]).toMatchObject({
       type: 'running_speed_avg',
       status: 'success',
     });
-
     expect(measurementRepository.createCustomCategory).toHaveBeenCalledTimes(1);
     const createPayload =
       measurementRepository.createCustomCategory.mock.calls[0][0];
     expect(createPayload.name).toBe('running_speed_avg');
     expect(createPayload.measurement_type).toBe('m/s');
-
     expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledTimes(
       1
     );
@@ -251,7 +217,6 @@ describe('processMobileHealthData aggregated types', () => {
       'apple_health'
     );
   });
-
   it('uses payload unit over default when provided', async () => {
     const mobileData = [
       {
@@ -262,19 +227,16 @@ describe('processMobileHealthData aggregated types', () => {
         timestamp: '2025-06-01T10:00:00Z',
       },
     ];
-
     const result = await measurementService.processMobileHealthData(
       mobileData,
       userId,
       actingUserId
     );
-
     expect(result.processed).toHaveLength(1);
     const createPayload =
       measurementRepository.createCustomCategory.mock.calls[0][0];
     expect(createPayload.measurement_type).toBe('km/h');
   });
-
   it('rejects entry with non-numeric value', async () => {
     const mobileData = [
       {
@@ -284,7 +246,6 @@ describe('processMobileHealthData aggregated types', () => {
         timestamp: '2025-06-01T10:00:00Z',
       },
     ];
-
     await expect(
       measurementService.processMobileHealthData(
         mobileData,
@@ -292,12 +253,10 @@ describe('processMobileHealthData aggregated types', () => {
         actingUserId
       )
     ).rejects.toThrow();
-
     expect(
       measurementRepository.upsertCustomMeasurement
     ).not.toHaveBeenCalled();
   });
-
   it('handles multiple aggregated entries in one batch', async () => {
     const mobileData = [
       {
@@ -319,19 +278,16 @@ describe('processMobileHealthData aggregated types', () => {
         timestamp: '2025-06-01T10:00:00Z',
       },
     ];
-
     const result = await measurementService.processMobileHealthData(
       mobileData,
       userId,
       actingUserId
     );
-
     expect(result.processed).toHaveLength(3);
     expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledTimes(
       3
     );
   });
-
   it('passes notes through when provided', async () => {
     const mobileData = [
       {
@@ -342,13 +298,11 @@ describe('processMobileHealthData aggregated types', () => {
         notes: 'New FTP test result',
       },
     ];
-
     const result = await measurementService.processMobileHealthData(
       mobileData,
       userId,
       actingUserId
     );
-
     expect(result.processed).toHaveLength(1);
     expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
       userId,
@@ -363,9 +317,8 @@ describe('processMobileHealthData aggregated types', () => {
       'apple_health'
     );
   });
-
   it('reuses existing custom category instead of creating a new one', async () => {
-    measurementRepository.getCustomCategories = jest.fn().mockResolvedValue([
+    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([
       {
         id: 'cat-existing',
         name: 'running_speed_avg',
@@ -374,7 +327,6 @@ describe('processMobileHealthData aggregated types', () => {
         data_type: 'numeric',
       },
     ]);
-
     const mobileData = [
       {
         type: 'running_speed_avg',
@@ -383,13 +335,11 @@ describe('processMobileHealthData aggregated types', () => {
         timestamp: '2025-06-01T10:00:00Z',
       },
     ];
-
     const result = await measurementService.processMobileHealthData(
       mobileData,
       userId,
       actingUserId
     );
-
     expect(result.processed).toHaveLength(1);
     expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
     expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(

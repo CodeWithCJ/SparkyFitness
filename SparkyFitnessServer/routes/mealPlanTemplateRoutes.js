@@ -1,10 +1,8 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import mealPlanTemplateService from '../services/mealPlanTemplateService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const mealPlanTemplateService = require('../services/mealPlanTemplateService');
-
 // --- Meal Day Preset Routes ---
-
 /**
  * @swagger
  * /meal-plan-templates/presets:
@@ -39,7 +37,6 @@ router.post('/presets', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meal-plan-templates/presets:
@@ -67,7 +64,6 @@ router.get('/presets', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meal-plan-templates/presets/{id}:
@@ -113,7 +109,6 @@ router.put('/presets/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meal-plan-templates/presets/{id}:
@@ -148,9 +143,7 @@ router.delete('/presets/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // --- Meal Plan Template Routes ---
-
 /**
  * @swagger
  * /meal-plan-templates:
@@ -185,7 +178,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meal-plan-templates:
@@ -215,7 +207,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meal-plan-templates/{id}:
@@ -261,7 +252,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /meal-plan-templates/{id}:
@@ -298,5 +288,4 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

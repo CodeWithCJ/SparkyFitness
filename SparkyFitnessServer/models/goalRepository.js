@@ -1,5 +1,4 @@
-const { getClient } = require('../db/poolManager');
-
+import { getClient } from '../db/poolManager.js';
 async function getGoalByDate(userId, selectedDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -23,7 +22,6 @@ async function getGoalByDate(userId, selectedDate) {
     client.release();
   }
 }
-
 async function getMostRecentGoalBeforeDate(userId, selectedDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -47,7 +45,6 @@ async function getMostRecentGoalBeforeDate(userId, selectedDate) {
     client.release();
   }
 }
-
 async function upsertGoal(goalData) {
   const client = await getClient(goalData.user_id); // User-specific operation
   try {
@@ -135,7 +132,6 @@ async function upsertGoal(goalData) {
     client.release();
   }
 }
-
 async function deleteGoalsInRange(userId, startDate, endDate) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -151,7 +147,6 @@ async function deleteGoalsInRange(userId, startDate, endDate) {
     client.release();
   }
 }
-
 async function deleteDefaultGoal(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -165,8 +160,12 @@ async function deleteDefaultGoal(userId) {
     client.release();
   }
 }
-
-module.exports = {
+export { getGoalByDate };
+export { getMostRecentGoalBeforeDate };
+export { upsertGoal };
+export { deleteGoalsInRange };
+export { deleteDefaultGoal };
+export default {
   getGoalByDate,
   getMostRecentGoalBeforeDate,
   upsertGoal,

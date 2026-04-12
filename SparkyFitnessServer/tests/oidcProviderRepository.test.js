@@ -1,29 +1,24 @@
-const oidcProviderRepository = require('../models/oidcProviderRepository');
-const { getSystemClient } = require('../db/poolManager');
-
+import { vi, beforeEach, describe, expect, it } from 'vitest';
+import oidcProviderRepository from '../models/oidcProviderRepository.js';
+import { getSystemClient } from '../db/poolManager.js';
 // Mock dependencies
-jest.mock('../db/poolManager', () => ({
-  getSystemClient: jest.fn(),
+vi.mock('../db/poolManager', () => ({
+  getSystemClient: vi.fn(),
 }));
-
-jest.mock('../config/logging', () => ({
-  log: jest.fn(),
+vi.mock('../config/logging', () => ({
+  log: vi.fn(),
 }));
-
-global.fetch = jest.fn();
-
+global.fetch = vi.fn();
 describe('oidcProviderRepository', () => {
   let mockClient;
-
   beforeEach(() => {
     mockClient = {
-      query: jest.fn(),
-      release: jest.fn(),
+      query: vi.fn(),
+      release: vi.fn(),
     };
     getSystemClient.mockResolvedValue(mockClient);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
-
   describe('createOidcProvider', () => {
     it('should persist is_env_configured in additional_config', async () => {
       const providerData = {
@@ -34,9 +29,7 @@ describe('oidcProviderRepository', () => {
         is_env_configured: true,
         auto_register: true,
       };
-
       mockClient.query.mockResolvedValue({ rows: [{ id: 'new-id' }] });
-
       // Mock fetch for discovery document
       global.fetch.mockResolvedValue({
         ok: true,
@@ -48,22 +41,18 @@ describe('oidcProviderRepository', () => {
           issuer: 'http://issuer.com',
         }),
       });
-
       await oidcProviderRepository.createOidcProvider(providerData);
-
       // Check the second call to query (the INSERT into sso_provider)
       const insertCall = mockClient.query.mock.calls.find(
         (call) =>
           typeof call[0] === 'string' &&
           call[0].includes('INSERT INTO "sso_provider"')
       );
-
       expect(insertCall).toBeDefined();
       const configJson = JSON.parse(insertCall[1][11]);
       expect(configJson.is_env_configured).toBe(true);
     });
   });
-
   describe('updateOidcProvider', () => {
     it('should update is_env_configured in additional_config', async () => {
       const providerId = 'test-id';
@@ -73,12 +62,10 @@ describe('oidcProviderRepository', () => {
         display_name: 'Updated Provider',
         is_env_configured: true,
       };
-
       mockClient.query.mockResolvedValueOnce({
         rows: [{ client_secret: 'old-secret' }],
       }); // for getOidcProviderById inside update
       mockClient.query.mockResolvedValueOnce({ rows: [] }); // for update
-
       // Mock fetch for discovery document
       global.fetch.mockResolvedValue({
         ok: true,
@@ -90,15 +77,12 @@ describe('oidcProviderRepository', () => {
           issuer: 'http://issuer.com',
         }),
       });
-
       await oidcProviderRepository.updateOidcProvider(providerId, providerData);
-
       const updateCall = mockClient.query.mock.calls.find(
         (call) =>
           typeof call[0] === 'string' &&
           call[0].includes('UPDATE "sso_provider"')
       );
-
       expect(updateCall).toBeDefined();
       const configJson = JSON.parse(updateCall[1][10]);
       expect(configJson.is_env_configured).toBe(true);

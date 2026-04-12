@@ -1,40 +1,27 @@
-/**
- * Tests for per-record timezone resolution in health data processing.
- *
- * Covers the resolveHealthEntryDate() helper and its integration into
- * processHealthData() — verifying the fallback chain:
- *   1. record_timezone (IANA)
- *   2. record_utc_offset_minutes (fixed offset)
- *   3. account timezone (fallback)
- *
- * Run with: pnpm exec jest tests/measurementService.timezone.test.js
- */
-const measurementService = require('../services/measurementService');
-const measurementRepository = require('../models/measurementRepository');
-const preferenceRepository = require('../models/preferenceRepository');
-
-jest.mock('../models/measurementRepository');
-jest.mock('../models/preferenceRepository');
-jest.mock('../models/userRepository');
-jest.mock('../models/exerciseRepository');
-jest.mock('../models/exerciseEntry');
-jest.mock('../models/sleepRepository');
-jest.mock('../models/waterContainerRepository');
-jest.mock('../models/activityDetailsRepository');
-jest.mock('../config/logging', () => ({
-  log: jest.fn(),
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import measurementService from '../services/measurementService.js';
+import measurementRepository from '../models/measurementRepository.js';
+import preferenceRepository from '../models/preferenceRepository.js';
+import { log } from '../config/logging.js';
+vi.mock('../models/measurementRepository');
+vi.mock('../models/preferenceRepository');
+vi.mock('../models/userRepository');
+vi.mock('../models/exerciseRepository');
+vi.mock('../models/exerciseEntry');
+vi.mock('../models/sleepRepository');
+vi.mock('../models/waterContainerRepository');
+vi.mock('../models/activityDetailsRepository');
+vi.mock('../config/logging', () => ({
+  log: vi.fn(),
 }));
-
 // ---------------------------------------------------------------------------
 // resolveHealthEntryDate — unit tests
 // ---------------------------------------------------------------------------
 describe('resolveHealthEntryDate', () => {
   const { resolveHealthEntryDate } = measurementService;
-
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
-
   it('uses record_timezone over fallback account timezone', () => {
     // 2024-06-14 23:30 UTC → June 15 in Tokyo (UTC+9), June 14 in UTC
     const entry = {
@@ -46,7 +33,6 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   it('uses record_utc_offset_minutes over fallback account timezone', () => {
     // 2024-06-14 23:30 UTC with +540 min offset → June 15
     const entry = {
@@ -58,7 +44,6 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   it('prefers record_timezone over record_utc_offset_minutes', () => {
     // Both present — IANA zone should win
     const entry = {
@@ -71,7 +56,6 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   it('falls back to account timezone when no record metadata', () => {
     // 2024-06-15 00:30 UTC → June 14 in LA (UTC-7)
     const entry = {
@@ -82,9 +66,7 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'America/Los_Angeles');
     expect(result.parsedDate).toBe('2024-06-14');
   });
-
   it('logs DEBUG when falling back to account timezone', () => {
-    const log = require('../config/logging').log;
     const entry = {
       type: 'heart_rate',
       value: 72,
@@ -96,7 +78,6 @@ describe('resolveHealthEntryDate', () => {
       expect.stringContaining('falling back to account timezone')
     );
   });
-
   it('ignores invalid record_timezone and falls back', () => {
     const entry = {
       type: 'heart_rate',
@@ -107,7 +88,6 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   it('returns null for unparseable dates', () => {
     const entry = {
       type: 'heart_rate',
@@ -116,9 +96,7 @@ describe('resolveHealthEntryDate', () => {
     };
     expect(resolveHealthEntryDate(entry, 'UTC')).toBeNull();
   });
-
   // -- Sleep: basis = wake_time / end --
-
   it('uses wake_time as basis instant for SleepSession', () => {
     // Sleep that starts June 14 and ends June 15.
     // wake_time is 2024-06-15 06:00 UTC. With UTC+9 that's June 15 15:00 local → June 15.
@@ -137,7 +115,6 @@ describe('resolveHealthEntryDate', () => {
     // wake_time in UTC → June 15
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   it('falls back to date/entry_date for SleepSession without wake_time', () => {
     const entry = {
       type: 'SleepSession',
@@ -149,9 +126,7 @@ describe('resolveHealthEntryDate', () => {
     // date field '2024-06-15' → parsed as UTC midnight → June 15
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   // -- Exercise: basis = start/timestamp --
-
   it('uses timestamp as basis for ExerciseSession', () => {
     const entry = {
       type: 'ExerciseSession',
@@ -162,7 +137,6 @@ describe('resolveHealthEntryDate', () => {
     // 23:30 UTC in Tokyo (+9) → June 15 08:30 → June 15
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   it('uses date as basis for Workout when no timestamp', () => {
     const entry = {
       type: 'Workout',
@@ -172,7 +146,6 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   it('prefers timestamp over pre-bucketed date for ExerciseSession', () => {
     // User works out at 2024-06-14 23:00 UTC in Tokyo (UTC+9).
     // Local time: June 15 08:00 JST → correct entry_date is June 15.
@@ -190,7 +163,6 @@ describe('resolveHealthEntryDate', () => {
     // timestamp in Tokyo → June 15 08:00 → June 15
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   it('prefers timestamp over pre-bucketed date for Workout', () => {
     const entry = {
       type: 'Workout',
@@ -202,9 +174,7 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   // -- entryHour --
-
   it('derives entryHour from timestamp using record_timezone', () => {
     // 15:45 UTC in Tokyo (+9) → 00:45
     const entry = {
@@ -216,7 +186,6 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.entryHour).toBe(0);
   });
-
   it('derives entryHour from timestamp using record_utc_offset_minutes', () => {
     // 15:45 UTC with -4h → 11:45 → hour 11
     const entry = {
@@ -228,7 +197,6 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.entryHour).toBe(11);
   });
-
   it('defaults entryHour to 0 when no timestamp field', () => {
     const entry = {
       type: 'heart_rate',
@@ -239,9 +207,7 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.entryHour).toBe(0);
   });
-
   // -- Travel scenarios --
-
   it('workout recorded in UTC+9, synced from UTC-5: lands on original local day', () => {
     // User works out at 2024-06-14 23:00 UTC while in Tokyo (UTC+9).
     // Local time: June 15 08:00 JST → entry_date should be June 15.
@@ -256,9 +222,7 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'America/New_York');
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   // -- Date-only bypass (client-aggregated daily records) --
-
   it('preserves date-only aggregate with negative-offset timezone metadata', () => {
     // Client aggregated steps into 2024-01-15 using America/New_York.
     // Without the bypass, parsing '2024-01-15' as UTC midnight then applying
@@ -272,7 +236,6 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.parsedDate).toBe('2024-01-15');
   });
-
   it('preserves date-only aggregate with offset metadata', () => {
     const entry = {
       type: 'Active Calories',
@@ -283,7 +246,6 @@ describe('resolveHealthEntryDate', () => {
     const result = resolveHealthEntryDate(entry, 'UTC');
     expect(result.parsedDate).toBe('2024-01-15');
   });
-
   it('still applies timezone when entry has both date and timestamp', () => {
     // When a timestamp is present, timezone conversion should apply even if
     // the date field is a YYYY-MM-DD string.
@@ -297,7 +259,6 @@ describe('resolveHealthEntryDate', () => {
     // timestamp 23:00 UTC in Tokyo (+9) → June 15 08:00 → June 15
     expect(result.parsedDate).toBe('2024-06-15');
   });
-
   it('sleep ending in one timezone, synced from another: lands on original wake day', () => {
     // User sleeps in London (UTC+1 BST). Goes to bed June 14 23:00 BST (22:00 UTC).
     // Wakes up June 15 07:00 BST (06:00 UTC).
@@ -314,31 +275,27 @@ describe('resolveHealthEntryDate', () => {
     expect(result.parsedDate).toBe('2024-06-15');
   });
 });
-
 // ---------------------------------------------------------------------------
 // processHealthData — integration tests for timezone resolution
 // ---------------------------------------------------------------------------
 describe('processHealthData timezone resolution', () => {
   const userId = 'user-tz';
   const actingUserId = 'user-tz';
-
   function setAccountTimezone(tz) {
     preferenceRepository.getUserPreferences.mockResolvedValue({ timezone: tz });
   }
-
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Default account timezone: UTC
     setAccountTimezone('UTC');
-    measurementRepository.getCustomCategories = jest.fn().mockResolvedValue([]);
-    measurementRepository.createCustomCategory = jest
+    measurementRepository.getCustomCategories = vi.fn().mockResolvedValue([]);
+    measurementRepository.createCustomCategory = vi
       .fn()
       .mockResolvedValue({ id: 'cat-new' });
-    measurementRepository.upsertCustomMeasurement = jest
+    measurementRepository.upsertCustomMeasurement = vi
       .fn()
       .mockResolvedValue({ id: 'entry-1' });
   });
-
   it('record_timezone overrides account timezone for parsedDate', async () => {
     // Account timezone is UTC. Record says Asia/Tokyo.
     // 2024-06-14 23:30 UTC → June 14 in UTC, June 15 in Tokyo.
@@ -351,13 +308,11 @@ describe('processHealthData timezone resolution', () => {
         record_timezone: 'Asia/Tokyo',
       },
     ];
-
     await measurementService.processHealthData(
       healthData,
       userId,
       actingUserId
     );
-
     expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
       userId,
       actingUserId,
@@ -371,7 +326,6 @@ describe('processHealthData timezone resolution', () => {
       'HealthConnect'
     );
   });
-
   it('record_utc_offset_minutes overrides account timezone for parsedDate', async () => {
     const healthData = [
       {
@@ -382,13 +336,11 @@ describe('processHealthData timezone resolution', () => {
         record_utc_offset_minutes: 540, // +9h
       },
     ];
-
     await measurementService.processHealthData(
       healthData,
       userId,
       actingUserId
     );
-
     expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
       userId,
       actingUserId,
@@ -402,7 +354,6 @@ describe('processHealthData timezone resolution', () => {
       'HealthConnect'
     );
   });
-
   it('falls back to account timezone when no record metadata', async () => {
     // Account is America/Los_Angeles (UTC-7 in summer).
     setAccountTimezone('America/Los_Angeles');
@@ -415,13 +366,11 @@ describe('processHealthData timezone resolution', () => {
         source: 'HealthConnect',
       },
     ];
-
     await measurementService.processHealthData(
       healthData,
       userId,
       actingUserId
     );
-
     expect(measurementRepository.upsertCustomMeasurement).toHaveBeenCalledWith(
       userId,
       actingUserId,
@@ -435,9 +384,7 @@ describe('processHealthData timezone resolution', () => {
       'HealthConnect'
     );
   });
-
   it('logs timezone fallback by type', async () => {
-    const log = require('../config/logging').log;
     const healthData = [
       {
         type: 'heart_rate',
@@ -454,13 +401,11 @@ describe('processHealthData timezone resolution', () => {
         // no timezone metadata — will fall back
       },
     ];
-
     await measurementService.processHealthData(
       healthData,
       userId,
       actingUserId
     );
-
     // Fallback log includes the type that fell back
     expect(log).toHaveBeenCalledWith(
       'INFO',

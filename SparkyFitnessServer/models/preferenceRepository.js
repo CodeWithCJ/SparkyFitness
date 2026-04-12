@@ -1,5 +1,4 @@
-const { getClient } = require('../db/poolManager');
-
+import { getClient } from '../db/poolManager.js';
 async function updateUserPreferences(userId, preferenceData) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -76,7 +75,6 @@ async function updateUserPreferences(userId, preferenceData) {
     client.release();
   }
 }
-
 async function deleteUserPreferences(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -89,7 +87,6 @@ async function deleteUserPreferences(userId) {
     client.release();
   }
 }
-
 async function getUserPreferences(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -102,7 +99,6 @@ async function getUserPreferences(userId) {
     client.release();
   }
 }
-
 async function bootstrapUserTimezoneIfUnset(userId, timezone) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -129,7 +125,6 @@ async function bootstrapUserTimezoneIfUnset(userId, timezone) {
     client.release();
   }
 }
-
 async function upsertUserPreferences(preferenceData) {
   const client = await getClient(preferenceData.user_id); // User-specific operation
   try {
@@ -231,8 +226,12 @@ async function upsertUserPreferences(preferenceData) {
     client.release();
   }
 }
-
-module.exports = {
+export { updateUserPreferences };
+export { deleteUserPreferences };
+export { getUserPreferences };
+export { bootstrapUserTimezoneIfUnset };
+export { upsertUserPreferences };
+export default {
   updateUserPreferences,
   deleteUserPreferences,
   getUserPreferences,

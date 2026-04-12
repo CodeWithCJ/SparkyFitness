@@ -1,8 +1,7 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import weeklyGoalPlanService from '../services/weeklyGoalPlanService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const weeklyGoalPlanService = require('../services/weeklyGoalPlanService');
-
 /**
  * @swagger
  * /weekly-goal-plans:
@@ -41,7 +40,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /weekly-goal-plans:
@@ -73,7 +71,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /weekly-goal-plans/active:
@@ -122,7 +119,6 @@ router.get('/active', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /weekly-goal-plans/{id}:
@@ -177,7 +173,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /weekly-goal-plans/{id}:
@@ -221,5 +216,4 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

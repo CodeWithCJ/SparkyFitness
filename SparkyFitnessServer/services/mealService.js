@@ -1,14 +1,11 @@
-const mealRepository = require('../models/mealRepository');
-const foodRepository = require('../models/foodRepository');
-const foodEntryRepository = require('../models/foodEntry');
-const mealPlanTemplateRepository = require('../models/mealPlanTemplateRepository');
-const mealPlanTemplateService = require('./mealPlanTemplateService'); // Import the service
-const mealTypeRepository = require('../models/mealType');
-
-const { log } = require('../config/logging');
-
+import mealRepository from '../models/mealRepository.js';
+import foodRepository from '../models/foodRepository.js';
+import foodEntryRepository from '../models/foodEntry.js';
+import mealPlanTemplateRepository from '../models/mealPlanTemplateRepository.js';
+import mealPlanTemplateService from './mealPlanTemplateService.js';
+import mealTypeRepository from '../models/mealType.js';
+import { log } from '../config/logging.js';
 // --- Meal Template Service Functions ---
-
 async function resolveMealTypeId(userId, mealTypeName) {
   if (!mealTypeName) return null;
   const types = await mealTypeRepository.getAllMealTypes(userId);
@@ -17,7 +14,6 @@ async function resolveMealTypeId(userId, mealTypeName) {
   );
   return match ? match.id : null;
 }
-
 async function createMeal(userId, mealData) {
   try {
     mealData.user_id = userId;
@@ -35,7 +31,6 @@ async function createMeal(userId, mealData) {
     throw error;
   }
 }
-
 async function getMeals(userId, filter = 'all', searchTerm = '') {
   try {
     let meals;
@@ -73,7 +68,6 @@ async function getMeals(userId, filter = 'all', searchTerm = '') {
     throw error;
   }
 }
-
 async function getMealById(userId, mealId) {
   try {
     log(
@@ -104,7 +98,6 @@ async function getMealById(userId, mealId) {
     throw error;
   }
 }
-
 async function updateMeal(userId, mealId, updateData) {
   try {
     const meal = await mealRepository.getMealById(mealId, userId);
@@ -117,12 +110,10 @@ async function updateMeal(userId, mealId, updateData) {
       userId,
       updateData
     );
-
     let confirmationMessage = null;
     if (updateData.is_public) {
       const mealWithFoods = await mealRepository.getMealById(mealId, userId);
       const foodIds = mealWithFoods.foods.map((f) => f.food_id);
-
       if (foodIds.length > 0) {
         log(
           'info',
@@ -143,7 +134,6 @@ async function updateMeal(userId, mealId, updateData) {
         confirmationMessage = `Meal shared successfully. ${foodIds.length} associated foods have also been made public.`;
       }
     }
-
     // After updating the meal, re-sync any meal plan templates that use this meal
     const affectedTemplates =
       await mealPlanTemplateRepository.getMealPlanTemplatesByMealId(mealId);
@@ -163,7 +153,6 @@ async function updateMeal(userId, mealId, updateData) {
         );
       }
     }
-
     return { ...updatedMeal, confirmationMessage };
   } catch (error) {
     log(
@@ -174,7 +163,6 @@ async function updateMeal(userId, mealId, updateData) {
     throw error;
   }
 }
-
 async function deleteMeal(userId, mealId) {
   try {
     const meal = await mealRepository.getMealById(mealId, userId);
@@ -182,14 +170,12 @@ async function deleteMeal(userId, mealId) {
       throw new Error('Meal not found.');
     }
     // Authorization check: User can only delete their own meals
-
     // Check if this meal is used in any meal plans or food entries by other users
     // Assuming a getMealDeletionImpact function exists in mealRepository
     const deletionImpact = await mealRepository.getMealDeletionImpact(
       mealId,
       userId
     );
-
     if (deletionImpact.usedByOtherUsers) {
       // Soft delete (hide) if used by other users
       await mealRepository.updateMeal(mealId, userId, { is_public: false });
@@ -221,7 +207,6 @@ async function deleteMeal(userId, mealId) {
     throw error;
   }
 }
-
 async function getMealDeletionImpact(userId, mealId) {
   try {
     const meal = await mealRepository.getMealById(mealId, userId);
@@ -243,9 +228,7 @@ async function getMealDeletionImpact(userId, mealId) {
     throw error;
   }
 }
-
 // --- Meal Plan Service Functions ---
-
 async function createMealPlanEntry(userId, planData) {
   try {
     planData.user_id = userId;
@@ -260,7 +243,6 @@ async function createMealPlanEntry(userId, planData) {
     throw error;
   }
 }
-
 async function getMealPlanEntries(userId, startDate, endDate) {
   try {
     const mealPlanEntries = await mealRepository.getMealPlanEntries(
@@ -278,7 +260,6 @@ async function getMealPlanEntries(userId, startDate, endDate) {
     throw error;
   }
 }
-
 async function updateMealPlanEntry(userId, planId, updateData) {
   try {
     // First, verify ownership by fetching the entry by its ID for the specific user
@@ -305,7 +286,6 @@ async function updateMealPlanEntry(userId, planId, updateData) {
     throw error;
   }
 }
-
 async function deleteMealPlanEntry(userId, planId) {
   try {
     // First, verify ownership by fetching the entry by its ID for the specific user
@@ -331,9 +311,7 @@ async function deleteMealPlanEntry(userId, planId) {
     throw error;
   }
 }
-
 // --- Logging Meal Plan to Food Entries ---
-
 async function logMealPlanEntryToDiary(userId, mealPlanId, targetDate) {
   try {
     const mealPlanEntry = await mealRepository.getMealPlanEntryById(
@@ -343,7 +321,6 @@ async function logMealPlanEntryToDiary(userId, mealPlanId, targetDate) {
     if (!mealPlanEntry) {
       throw new Error('Meal plan entry not found or not authorized.');
     }
-
     let mealTypeId = mealPlanEntry.meal_type_id;
     if (!mealTypeId && mealPlanEntry.meal_type) {
       mealTypeId = await resolveMealTypeId(userId, mealPlanEntry.meal_type);
@@ -353,9 +330,7 @@ async function logMealPlanEntryToDiary(userId, mealPlanId, targetDate) {
         `Invalid meal type configuration for plan entry ${mealPlanId}`
       );
     }
-
     const entriesToCreate = [];
-
     if (mealPlanEntry.meal_id) {
       // If it's a meal template, expand its foods
       const meal = await mealRepository.getMealById(
@@ -392,7 +367,6 @@ async function logMealPlanEntryToDiary(userId, mealPlanId, targetDate) {
     } else {
       throw new Error('Meal plan entry is neither a meal nor a food.');
     }
-
     const createdFoodEntries = [];
     for (const entryData of entriesToCreate) {
       const newFoodEntry = await foodRepository.createFoodEntry(entryData);
@@ -408,7 +382,6 @@ async function logMealPlanEntryToDiary(userId, mealPlanId, targetDate) {
     throw error;
   }
 }
-
 async function logDayMealPlanToDiary(userId, planDate, targetDate) {
   try {
     const mealPlanEntries = await mealRepository.getMealPlanEntries(
@@ -417,7 +390,6 @@ async function logDayMealPlanToDiary(userId, planDate, targetDate) {
       planDate
     );
     const createdFoodEntries = [];
-
     for (const entry of mealPlanEntries) {
       const newEntries = await logMealPlanEntryToDiary(
         userId,
@@ -436,7 +408,6 @@ async function logDayMealPlanToDiary(userId, planDate, targetDate) {
     throw error;
   }
 }
-
 async function searchMeals(userId, searchTerm, limit = null) {
   try {
     const meals = await mealRepository.searchMeals(searchTerm, userId, limit);
@@ -450,7 +421,6 @@ async function searchMeals(userId, searchTerm, limit = null) {
     throw error;
   }
 }
-
 async function getMealsNeedingReview(authenticatedUserId) {
   try {
     const mealsNeedingReview =
@@ -465,7 +435,6 @@ async function getMealsNeedingReview(authenticatedUserId) {
     throw error;
   }
 }
-
 async function updateMealEntriesSnapshot(authenticatedUserId, mealId) {
   try {
     // Fetch the latest meal details
@@ -473,23 +442,19 @@ async function updateMealEntriesSnapshot(authenticatedUserId, mealId) {
     if (!meal) {
       throw new Error('Meal not found.');
     }
-
     // Construct the new snapshot data
     const newSnapshotData = {
       // Assuming meal entries snapshot the meal name
       meal_name: meal.name,
     };
-
     // Update all relevant meal entries for the authenticated user
     await mealRepository.updateMealEntriesSnapshot(
       authenticatedUserId,
       mealId,
       newSnapshotData
     );
-
     // Clear any ignored updates for this meal for this user
     await mealRepository.clearUserIgnoredUpdate(authenticatedUserId, mealId);
-
     return { message: 'Meal entries updated successfully.' };
   } catch (error) {
     log(
@@ -500,7 +465,6 @@ async function updateMealEntriesSnapshot(authenticatedUserId, mealId) {
     throw error;
   }
 }
-
 async function createMealFromDiaryEntries(
   userId,
   date,
@@ -517,14 +481,11 @@ async function createMealFromDiaryEntries(
         date,
         mealType
       );
-
     if (foodEntries.length === 0) {
       throw new Error(`No food entries found for ${mealType} on ${date}.`);
     }
-
     const mealFoods = [];
     const missingFoods = [];
-
     // 2. Validate existence of food_id and variant_id for each retrieved food entry
     for (const entry of foodEntries) {
       const food = await foodRepository.getFoodById(entry.food_id, userId);
@@ -532,7 +493,6 @@ async function createMealFromDiaryEntries(
         missingFoods.push(`${entry.food_name} (ID: ${entry.food_id})`);
         continue; // Skip this entry and continue to the next
       }
-
       // Ensure the variant exists. Food entries store variant_id which links to food_variants
       // For simplicity, we'll re-fetch the food to ensure all variant details are current
       // (though foodEntry stores a snapshot, meal creation should use current data)
@@ -556,7 +516,6 @@ async function createMealFromDiaryEntries(
         missingFoods.push(`${entry.food_name} (No variant found)`);
         continue;
       }
-
       // 3. Transform food entries into meal template format
       mealFoods.push({
         food_id: entry.food_id,
@@ -566,13 +525,11 @@ async function createMealFromDiaryEntries(
         custom_nutrients: entry.custom_nutrients || {},
       });
     }
-
     if (missingFoods.length > 0) {
       throw new Error(
         `Cannot create meal. The following foods or their variants are missing: ${missingFoods.join(', ')}. Please ensure they exist.`
       );
     }
-
     const defaultMealName = `${mealType} on ${date}`;
     const mealData = {
       user_id: userId,
@@ -583,7 +540,6 @@ async function createMealFromDiaryEntries(
       serving_unit: 'serving',
       foods: mealFoods,
     };
-
     // 4. Call mealRepository.createMeal to create the new meal
     const newMeal = await mealRepository.createMeal(mealData);
     return newMeal;
@@ -596,8 +552,23 @@ async function createMealFromDiaryEntries(
     throw error;
   }
 }
-
-module.exports = {
+export { createMeal };
+export { getMeals };
+export { getMealById };
+export { updateMeal };
+export { deleteMeal };
+export { createMealPlanEntry };
+export { getMealPlanEntries };
+export { updateMealPlanEntry };
+export { deleteMealPlanEntry };
+export { logMealPlanEntryToDiary };
+export { logDayMealPlanToDiary };
+export { searchMeals };
+export { getMealsNeedingReview };
+export { updateMealEntriesSnapshot };
+export { getMealDeletionImpact };
+export { createMealFromDiaryEntries };
+export default {
   createMeal,
   getMeals,
   getMealById,
@@ -613,5 +584,5 @@ module.exports = {
   getMealsNeedingReview,
   updateMealEntriesSnapshot,
   getMealDeletionImpact,
-  createMealFromDiaryEntries, // New function export
+  createMealFromDiaryEntries,
 };

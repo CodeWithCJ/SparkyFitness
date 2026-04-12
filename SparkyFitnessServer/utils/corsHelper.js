@@ -1,5 +1,4 @@
-const ipaddr = require('ipaddr.js');
-
+import ipaddr from 'ipaddr.js';
 /**
  * Check if a host is a private network address
  * @param {string} hostname - The hostname to check (e.g., "192.168.1.100", "localhost", "10.0.0.5")
@@ -7,9 +6,7 @@ const ipaddr = require('ipaddr.js');
  */
 function isPrivateNetworkAddress(hostname) {
   if (!hostname) return false;
-
   let cleanHostname = hostname.toLowerCase();
-
   // Try to clean up port if present using URL parser
   // We prepend http:// to ensure it parses as a URL from a hostname string
   try {
@@ -19,7 +16,6 @@ function isPrivateNetworkAddress(hostname) {
       : `http://${cleanHostname}`;
     const url = new URL(urlStr);
     cleanHostname = url.hostname;
-
     // Remove brackets for IPv6 [::1] -> ::1 as ipaddr.js expects raw address
     if (cleanHostname.startsWith('[') && cleanHostname.endsWith(']')) {
       cleanHostname = cleanHostname.slice(1, -1);
@@ -27,23 +23,19 @@ function isPrivateNetworkAddress(hostname) {
   } catch {
     // If URL parsing fails, proceed with original string
   }
-
   // Check localhost explicitly as it's not an IP address
   if (cleanHostname === 'localhost') {
     return true;
   }
-
   try {
     // Parse the hostname as an IP address
     const addr = ipaddr.parse(cleanHostname);
     const range = addr.range();
-
     // Check for various private/local ranges
     const privateRanges = ['loopback', 'private', 'linkLocal', 'uniqueLocal'];
     if (privateRanges.includes(range)) {
       return true;
     }
-
     // Special handling for IPv4-mapped IPv6 addresses (e.g., ::ffff:192.168.1.1)
     if (addr.kind() === 'ipv6' && addr.isIPv4MappedAddress()) {
       const ipv4Addr = addr.toIPv4Address();
@@ -57,10 +49,8 @@ function isPrivateNetworkAddress(hostname) {
     // so we return false as it's not a private network address.
     return false;
   }
-
   return false;
 }
-
 /**
  * Create a CORS origin checker function that allows configured frontend URL and optionally private networks
  * @param {string} configuredFrontendUrl - The frontend URL from environment (e.g., "http://localhost:8080")
@@ -74,7 +64,6 @@ function createCorsOriginChecker(
   extraTrustedOrigins = ''
 ) {
   const allowedOrigins = [];
-
   // Add configured frontend URL with validation
   if (configuredFrontendUrl) {
     try {
@@ -85,7 +74,6 @@ function createCorsOriginChecker(
       console.warn(`Invalid configured frontend URL: ${configuredFrontendUrl}`);
     }
   }
-
   // Add extra trusted origins
   if (extraTrustedOrigins) {
     extraTrustedOrigins.split(',').forEach((originStr) => {
@@ -99,14 +87,12 @@ function createCorsOriginChecker(
       }
     });
   }
-
   return (origin, callback, req) => {
     // 1. Basic Check: Match the origin exactly against your list
     const effectiveOrigin = origin === 'null' ? undefined : origin;
     if (effectiveOrigin && allowedOrigins.includes(effectiveOrigin)) {
       return callback(null, true);
     }
-
     // 2. Private Network Check (Broad switch)
     try {
       if (effectiveOrigin) {
@@ -118,7 +104,6 @@ function createCorsOriginChecker(
     } catch {
       /* ignore invalid origins */
     }
-
     // 3. Fallback: Check the Referer (Fixes HTTPS to HTTP IP failures)
     const referer = req?.headers?.referer;
     if (referer) {
@@ -136,7 +121,6 @@ function createCorsOriginChecker(
     if (!effectiveOrigin && !referer) {
       return callback(null, false);
     }
-
     // 5. Reject if no match found
     const rejectionReason = allowPrivateNetworks
       ? 'origin/referer not in allowlist and not a private network'
@@ -147,8 +131,9 @@ function createCorsOriginChecker(
     return callback(null, false);
   };
 }
-
-module.exports = {
+export { isPrivateNetworkAddress };
+export { createCorsOriginChecker };
+export default {
   isPrivateNetworkAddress,
   createCorsOriginChecker,
 };

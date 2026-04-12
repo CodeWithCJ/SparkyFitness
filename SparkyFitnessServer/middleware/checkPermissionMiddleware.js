@@ -1,25 +1,21 @@
-const { canAccessUserData } = require('../utils/permissionUtils');
-const { log } = require('../config/logging');
-
+import { canAccessUserData } from '../utils/permissionUtils.js';
+import { log } from '../config/logging.js';
 const checkPermissionMiddleware = (permissionType) => {
   return async (req, res, next) => {
     // If not acting on behalf of another user, or if it's the original user, proceed
     if (!req.originalUserId || req.userId === req.originalUserId) {
       return next();
     }
-
     try {
       log(
         'debug',
         `checkPermissionMiddleware: User ${req.originalUserId} acting as ${req.userId}. Checking '${permissionType}' permission.`
       );
-
       const hasPermission = await canAccessUserData(
         req.userId,
         permissionType,
         req.originalUserId
       );
-
       if (hasPermission) {
         next();
       } else {
@@ -43,5 +39,4 @@ const checkPermissionMiddleware = (permissionType) => {
     }
   };
 };
-
-module.exports = checkPermissionMiddleware;
+export default checkPermissionMiddleware;

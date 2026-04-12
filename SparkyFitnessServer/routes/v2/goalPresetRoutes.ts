@@ -1,12 +1,12 @@
 import express, { RequestHandler } from 'express';
-import { UuidParamSchema } from '../../schemas/measurementSchemas';
+import { UuidParamSchema } from '../../schemas/measurementSchemas.js';
 import {
   CreateGoalPresetBodySchema,
   UpdateGoalPresetBodySchema,
-} from '../../schemas/goalPresetSchemas';
+} from '../../schemas/goalPresetSchemas.js';
 
-import checkPermissionMiddleware = require('../../middleware/checkPermissionMiddleware');
-import goalPresetService = require('../../services/goalPresetService');
+import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
+import goalPresetService from '../../services/goalPresetService.js';
 
 const router = express.Router();
 

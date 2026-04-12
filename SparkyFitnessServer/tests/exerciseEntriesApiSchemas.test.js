@@ -1,11 +1,18 @@
-const { execFileSync } = require('child_process');
+import { describe, expect, it } from 'vitest';
+import { execFileSync } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const SHARED_SCHEMA_FILE =
   '../../shared/src/schemas/api/ExerciseEntries.api.zod.ts';
 
 function runSchema(schemaName, payload) {
+  // ÄNDERUNG: import * as schemaModule verwenden
   const script = `
-    import schemaModule from '${SHARED_SCHEMA_FILE}';
+    import * as schemaModule from '${SHARED_SCHEMA_FILE}';
     const schema = schemaModule.${schemaName};
     const result = schema.safeParse(${JSON.stringify(payload)});
     const output = result.success
@@ -31,7 +38,6 @@ describe('Exercise entry API schemas', () => {
       entry_date: '2026-03-12',
       notes: null,
     });
-
     expect(result).toEqual({
       success: true,
       data: {
@@ -68,7 +74,6 @@ describe('Exercise entry API schemas', () => {
         },
       ],
     });
-
     expect(result.success).toBe(true);
     expect(result.data.name).toBe('Morning Workout');
     expect(result.data.exercises).toHaveLength(1);
@@ -85,7 +90,6 @@ describe('Exercise entry API schemas', () => {
         },
       ],
     });
-
     expect(result.success).toBe(false);
   });
 
@@ -94,7 +98,6 @@ describe('Exercise entry API schemas', () => {
       entry_date: '2026-03-12',
       name: 'Morning Workout',
     });
-
     expect(result.success).toBe(false);
   });
 
@@ -104,7 +107,6 @@ describe('Exercise entry API schemas', () => {
       entry_date: '2026-03-12',
       exercises: [],
     });
-
     expect(result.success).toBe(false);
   });
 
@@ -113,7 +115,6 @@ describe('Exercise entry API schemas', () => {
       description: null,
       notes: null,
     });
-
     expect(result).toEqual({
       success: true,
       data: {

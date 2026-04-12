@@ -1,6 +1,5 @@
-const { log } = require('../../config/logging');
+import { log } from '../../config/logging.js';
 // Using native fetch (standard in Node 22+)
-
 class TandoorService {
   constructor(baseUrl, apiKey) {
     if (!baseUrl) {
@@ -13,17 +12,14 @@ class TandoorService {
     }
     this.accessToken = apiKey; // Tandoor API uses token for authentication
   }
-
   // Placeholder for searchRecipes
   async searchRecipes(query, options = {}) {
     if (!this.accessToken) {
       throw new Error('Tandoor API key not provided.');
     }
-
     const url = new URL(`${this.baseUrl}/api/recipe/`);
     url.searchParams.append('query', query);
     url.searchParams.append('page_size', 10); // Limit results to 10
-
     try {
       const authHeader =
         typeof this.accessToken === 'string' &&
@@ -31,7 +27,6 @@ class TandoorService {
           this.accessToken.startsWith('Token '))
           ? this.accessToken
           : `Bearer ${this.accessToken}`;
-
       const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
@@ -47,7 +42,6 @@ class TandoorService {
       );
       const contentType = response.headers.get('content-type') || '';
       log('debug', `Tandoor search response content-type: ${contentType}`);
-
       if (!response.ok) {
         const errorText = await response.text();
         log('error', `Tandoor API Error Response (Raw): ${errorText}`);
@@ -63,7 +57,6 @@ class TandoorService {
           );
         }
       }
-
       // If the server returned HTML (browsable API or login page), log the raw text for diagnosis
       if (!contentType.includes('application/json')) {
         const raw = await response.text();
@@ -73,7 +66,6 @@ class TandoorService {
         );
         return [];
       }
-
       const data = await response.json();
       // Log the top-level keys / type to help debugging different API shapes
       try {
@@ -89,7 +81,6 @@ class TandoorService {
       } catch {
         log('debug', 'Tandoor search response could not be inspected');
       }
-
       // Support multiple response shapes:
       // - paginated: { results: [...] }
       // - direct array: [ {...}, ... ]
@@ -114,7 +105,6 @@ class TandoorService {
           }
         }
       }
-
       log('debug', `Found ${results.length} recipes for query: ${query}`);
       return results;
     } catch (error) {
@@ -122,14 +112,11 @@ class TandoorService {
       return [];
     }
   }
-
   async getRecipeDetails(id, options = {}) {
     if (!this.accessToken) {
       throw new Error('Tandoor API key not provided.');
     }
-
     const url = `${this.baseUrl}/api/recipe/${encodeURIComponent(id)}/`;
-
     try {
       const authHeader =
         typeof this.accessToken === 'string' &&
@@ -137,7 +124,6 @@ class TandoorService {
           this.accessToken.startsWith('Token '))
           ? this.accessToken
           : `Bearer ${this.accessToken}`;
-
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -146,14 +132,12 @@ class TandoorService {
           ...options.headers,
         },
       });
-
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(
           `Get recipe details failed: ${response.status} ${response.statusText} - ${errorData}`
         );
       }
-
       const data = await response.json();
       log('debug', `Successfully retrieved details for recipe: ${id}`);
       return data;
@@ -166,30 +150,24 @@ class TandoorService {
       return null;
     }
   }
-
   mapTandoorRecipeToSparkyFood(tandoorRecipe, userId) {
     log(
       'debug',
       `[Tandoor Mapping] Starting mapping for recipe ID: ${tandoorRecipe.id} ("${tandoorRecipe.name}")`
     );
-
     const extractFromProperties = (props, candidates) => {
       if (!Array.isArray(props)) return null;
-
       for (const cand of candidates) {
         const candNorm = cand.toLowerCase().replace(/[^a-z0-9]/g, '');
-
         const found = props.find((p) => {
           const pt = p.property_type;
           if (!pt) return false;
-
           const nameNorm = (pt.name || '')
             .toLowerCase()
             .replace(/[^a-z0-9]/g, '');
           const slugNorm = (pt.open_data_slug || '')
             .toLowerCase()
             .replace(/[^a-z0-9]/g, '');
-
           // Match against name OR strict slug (e.g., "property-calories" or "calories")
           return (
             nameNorm === candNorm ||
@@ -197,7 +175,6 @@ class TandoorService {
             slugNorm === `property-${candNorm}`
           );
         });
-
         if (
           found &&
           found.property_amount !== undefined &&
@@ -215,11 +192,9 @@ class TandoorService {
       }
       return null;
     };
-
     const properties = tandoorRecipe.properties || [];
     const foodProperties = tandoorRecipe.food_properties || {};
     const nutritionData = tandoorRecipe.nutrition;
-
     // Generic getter that checks multiple candidate names across:
     // 1. nutrition object (explicit structured data)
     // 2. food_properties (auto-calculated data)
@@ -229,9 +204,7 @@ class TandoorService {
         'debug',
         `[Tandoor Mapping] Searching for "${label}" (Candidates: ${candidates.join(', ')})`
       );
-
       let bestValue = null;
-
       // 1. Check nutrition (Explicit structured data)
       if (nutritionData) {
         const nutritionKeys = {
@@ -240,7 +213,6 @@ class TandoorService {
           carbs: ['carbohydrates', 'carbohydrate', 'carbs'],
           fat: ['fats', 'fat'],
         };
-
         if (
           typeof nutritionData === 'object' &&
           !Array.isArray(nutritionData)
@@ -260,7 +232,6 @@ class TandoorService {
             }
           }
         }
-
         if (Array.isArray(nutritionData)) {
           for (const item of nutritionData) {
             if (item.name && item.value !== undefined) {
@@ -283,7 +254,6 @@ class TandoorService {
           }
         }
       }
-
       // 2. Check food_properties (Automatic calculations - Dictionary shape)
       if (foodProperties && typeof foodProperties === 'object') {
         for (const key of Object.keys(foodProperties)) {
@@ -295,7 +265,6 @@ class TandoorService {
             const slugNorm = (prop.open_data_slug || '')
               .toLowerCase()
               .replace(/[^a-z0-9]/g, '');
-
             for (const cand of candidates) {
               const candNorm = cand.toLowerCase().replace(/[^a-z0-9]/g, '');
               // Stricter check for slugs
@@ -318,25 +287,21 @@ class TandoorService {
           }
         }
       }
-
       // 3. Fallback to properties (Array shape)
       const fallbackVal = extractFromProperties(properties, candidates);
       if (fallbackVal !== null) {
         if (fallbackVal > 0) return fallbackVal;
         if (bestValue === null) bestValue = fallbackVal;
       }
-
       if (bestValue !== null) {
         return bestValue;
       }
-
       log(
         'debug',
         `[Tandoor Mapping] No Match: Could not find value for "${label}"`
       );
       return null;
     };
-
     // Candidate name lists for common nutrients (covering common variants/case)
     const nutrientsMap = {
       calories: [
@@ -432,7 +397,6 @@ class TandoorService {
       calcium: ['calcium', 'ca', 'property-calcium-ca', 'calcio'],
       iron: ['iron', 'fe', 'property-iron-fe', 'hierro'],
     };
-
     const calories = getNutritionValue(nutrientsMap.calories, 'calories');
     const protein = getNutritionValue(nutrientsMap.protein, 'protein');
     const carbs = getNutritionValue(nutrientsMap.carbs, 'carbs');
@@ -465,7 +429,6 @@ class TandoorService {
     const vitamin_c = getNutritionValue(nutrientsMap.vitamin_c, 'vitamin_c');
     const calcium = getNutritionValue(nutrientsMap.calcium, 'calcium');
     const iron = getNutritionValue(nutrientsMap.iron, 'iron');
-
     if (
       (!nutritionData || Object.keys(nutritionData).length === 0) &&
       properties &&
@@ -476,7 +439,6 @@ class TandoorService {
         `Derived nutrition from properties for recipe ${tandoorRecipe.id}: calories=${calories}, protein=${protein}, carbs=${carbs}, fat=${fat}`
       );
     }
-
     // Default serving information: preserve recipe servings count when provided (numeric)
     let recipeYield = 1;
     if (
@@ -491,12 +453,10 @@ class TandoorService {
     ) {
       recipeYield = Number(tandoorRecipe.servings_text[0]);
     }
-
     log(
       'debug',
       `[Tandoor Mapping] Recipe makes ${recipeYield} servings. Data is per-serving.`
     );
-
     return {
       food: {
         name: tandoorRecipe.name,
@@ -542,5 +502,4 @@ class TandoorService {
     };
   }
 }
-
-module.exports = TandoorService;
+export default TandoorService;

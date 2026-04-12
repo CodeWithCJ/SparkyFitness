@@ -1,11 +1,8 @@
-// SparkyFitnessServer/integrations/hevy/hevyDataProcessor.js
-
-const exerciseEntryRepository = require('../../models/exerciseEntry');
-const exerciseRepository = require('../../models/exercise');
-const measurementRepository = require('../../models/measurementRepository');
-const { log } = require('../../config/logging');
-const { todayInZone, instantToDay } = require('@workspace/shared');
-
+import exerciseEntryRepository from '../../models/exerciseEntry.js';
+import exerciseRepository from '../../models/exercise.js';
+import measurementRepository from '../../models/measurementRepository.js';
+import { log } from '../../config/logging.js';
+import { todayInZone, instantToDay } from '@workspace/shared';
 /**
  * Process Hevy user info to sync measurements.
  * @param {string} userId - The Sparky Fitness user ID.
@@ -23,12 +20,10 @@ async function processHevyUserInfo(
   const entryDate = updated_at
     ? updated_at.split('T')[0]
     : todayInZone(timezone);
-
   try {
     const measurements = {};
     if (weight_kg) measurements.weight = weight_kg;
     if (height_cm) measurements.height = height_cm;
-
     if (Object.keys(measurements).length > 0) {
       await measurementRepository.upsertCheckInMeasurements(
         userId,
@@ -48,7 +43,6 @@ async function processHevyUserInfo(
     );
   }
 }
-
 /**
  * Process a list of workouts from Hevy.
  * @param {string} userId - The Sparky Fitness user ID.
@@ -65,7 +59,6 @@ async function processHevyWorkouts(
     'info',
     `Processing ${workouts.length} Hevy workouts for user ${userId}...`
   );
-
   for (const workout of workouts) {
     try {
       await processSingleWorkout(userId, createdByUserId, workout, timezone);
@@ -77,7 +70,6 @@ async function processHevyWorkouts(
     }
   }
 }
-
 /**
  * Process a single workout from Hevy.
  * @param {string} userId - The Sparky Fitness user ID.
@@ -93,12 +85,10 @@ async function processSingleWorkout(
   const startTime = new Date(workout.start_time);
   const endTime = new Date(workout.end_time);
   const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
-
   log(
     'debug',
     `Processing Hevy workout: ${workout.title} (${startTime.toISOString()})`
   );
-
   for (const hevyExercise of workout.exercises) {
     // 1. Find or create exercise template
     let exercise = await exerciseRepository.findExerciseByNameAndUserId(
@@ -117,7 +107,6 @@ async function processSingleWorkout(
         createdByUserId
       );
     }
-
     // 2. Prepare entry data
     const entryData = {
       exercise_id: exercise.id,
@@ -138,7 +127,6 @@ async function processSingleWorkout(
         rpe: set.rpe,
       })),
     };
-
     // 3. Create/update exercise entry using repository
     // This handles snapshotting and duplicates
     await exerciseEntryRepository.createExerciseEntry(
@@ -149,7 +137,6 @@ async function processSingleWorkout(
     );
   }
 }
-
 /**
  * Map Hevy set types to Sparky Fitness set types.
  * @param {string} hevyType - Hevy set type (normal, warm_up, drop_set, failure).
@@ -164,8 +151,9 @@ function mapSetType(hevyType) {
   };
   return mapping[hevyType] || 'Working Set';
 }
-
-module.exports = {
+export { processHevyUserInfo };
+export { processHevyWorkouts };
+export default {
   processHevyUserInfo,
   processHevyWorkouts,
 };

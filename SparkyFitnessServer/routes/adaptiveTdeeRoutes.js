@@ -1,8 +1,7 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import adaptiveTdeeService from '../services/AdaptiveTdeeService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const adaptiveTdeeService = require('../services/AdaptiveTdeeService');
-
 /**
  * @swagger
  * /adaptive-tdee:
@@ -27,5 +26,4 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

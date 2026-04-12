@@ -7,12 +7,12 @@ import {
 import {
   getExerciseEntryHistory,
   getExerciseEntriesByDateV2,
-} from '../../services/exerciseEntryHistoryService';
+} from '../../services/exerciseEntryHistoryService.js';
 import { z } from 'zod';
 
-const { log } = require('../../config/logging');
-const checkPermissionMiddleware = require('../../middleware/checkPermissionMiddleware');
-const { canAccessUserData } = require('../../utils/permissionUtils');
+import { log } from '../../config/logging.js';
+import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
+import { canAccessUserData } from '../../utils/permissionUtils.js';
 
 const router = express.Router();
 

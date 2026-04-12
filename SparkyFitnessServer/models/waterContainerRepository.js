@@ -1,5 +1,4 @@
-const { getClient } = require('../db/poolManager');
-
+import { getClient } from '../db/poolManager.js';
 async function createWaterContainer(userId, containerData) {
   const { name, volume, unit, is_primary, servings_per_container } =
     containerData;
@@ -15,7 +14,6 @@ async function createWaterContainer(userId, containerData) {
     client.release();
   }
 }
-
 async function getWaterContainersByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -28,7 +26,6 @@ async function getWaterContainersByUserId(userId) {
     client.release();
   }
 }
-
 async function updateWaterContainer(id, userId, updateData) {
   const { name, volume, unit, is_primary, servings_per_container } = updateData;
   const client = await getClient(userId); // User-specific operation
@@ -50,7 +47,6 @@ async function updateWaterContainer(id, userId, updateData) {
     client.release();
   }
 }
-
 async function deleteWaterContainer(id, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -63,7 +59,6 @@ async function deleteWaterContainer(id, userId) {
     client.release();
   }
 }
-
 async function setPrimaryWaterContainer(id, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -87,7 +82,6 @@ async function setPrimaryWaterContainer(id, userId) {
     client.release();
   }
 }
-
 async function getPrimaryWaterContainerByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -100,7 +94,6 @@ async function getPrimaryWaterContainerByUserId(userId) {
     client.release();
   }
 }
-
 async function getWaterContainerById(id, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -113,13 +106,19 @@ async function getWaterContainerById(id, userId) {
     client.release();
   }
 }
-
-module.exports = {
+export { createWaterContainer };
+export { getWaterContainersByUserId };
+export { updateWaterContainer };
+export { deleteWaterContainer };
+export { setPrimaryWaterContainer };
+export { getPrimaryWaterContainerByUserId };
+export { getWaterContainerById };
+export default {
   createWaterContainer,
   getWaterContainersByUserId,
   updateWaterContainer,
   deleteWaterContainer,
   setPrimaryWaterContainer,
   getPrimaryWaterContainerByUserId,
-  getWaterContainerById, // Export the new function
+  getWaterContainerById,
 };

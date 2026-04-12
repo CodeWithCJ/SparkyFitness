@@ -1,6 +1,5 @@
-const jose = require('jose');
-const { log } = require('../config/logging');
-
+import { decodeJwt } from 'jose';
+import { log } from '../config/logging.js';
 /**
  * Syncs user roles based on OIDC groups found in the id_token or UserInfo endpoint.
  * @param {Object} deps Dependencies: { pool, userRepository, oidcProviderRepository }
@@ -10,19 +9,15 @@ const { log } = require('../config/logging');
  */
 async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
   const { pool, userRepository, oidcProviderRepository } = deps;
-
   if (!adminGroup) return;
-
   try {
     const { rows: allAccounts } = await pool.query(
       'SELECT provider_id, id_token, access_token FROM "account" WHERE user_id = $1 ORDER BY updated_at DESC',
       [userId]
     );
-
     const oidcAccount = allAccounts.find((a) =>
       a.provider_id.startsWith('oidc-')
     );
-
     if (!oidcAccount) {
       log(
         'info',
@@ -30,15 +25,12 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
       );
       return;
     }
-
     let groups = [];
     let decodedPayload = null;
-
     // 1. Try id_token first
     if (oidcAccount.id_token) {
       try {
-        decodedPayload = jose.decodeJwt(oidcAccount.id_token);
-
+        decodedPayload = decodeJwt(oidcAccount.id_token);
         // Check expiration
         const now = Math.floor(Date.now() / 1000);
         if (decodedPayload.exp && decodedPayload.exp < now) {
@@ -48,7 +40,6 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
           );
           return;
         }
-
         const groupsClaim = decodedPayload.groups || [];
         groups = Array.isArray(groupsClaim)
           ? groupsClaim.filter(Boolean)
@@ -63,7 +54,6 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
         );
       }
     }
-
     // 2. If no groups found in id_token and we have an access_token, try UserInfo
     if (
       groups.length === 0 &&
@@ -73,7 +63,6 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
       try {
         const pid = providerId || oidcAccount.provider_id.replace('oidc-', '');
         const provider = await oidcProviderRepository.getOidcProviderById(pid);
-
         if (provider && provider.userInfoEndpoint) {
           log(
             'info',
@@ -82,7 +71,6 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
           const response = await fetch(provider.userInfoEndpoint, {
             headers: { Authorization: `Bearer ${oidcAccount.access_token}` },
           });
-
           if (response.ok) {
             const userInfo = await response.json();
             const groupsClaim = userInfo.groups || [];
@@ -101,7 +89,6 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
         log('error', '[AUTH] OIDC Sync: UserInfo fetch failed:', error);
       }
     }
-
     // 3. Process the groups (even if empty, we might need to revoke admin)
     const currentRole = await userRepository.getUserRole(userId);
     if (groups.includes(adminGroup)) {
@@ -127,5 +114,7 @@ async function syncUserGroups(deps, userId, adminGroup, providerId = null) {
     log('error', `[AUTH] OIDC Group Sync Error for user ${userId}:`, err);
   }
 }
-
-module.exports = { syncUserGroups };
+export { syncUserGroups };
+export default {
+  syncUserGroups,
+};

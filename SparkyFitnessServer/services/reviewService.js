@@ -1,13 +1,10 @@
-const foodRepository = require('../models/foodRepository');
-const exerciseRepository = require('../models/exerciseRepository');
-
+import foodRepository from '../models/foodRepository.js';
+import exerciseRepository from '../models/exerciseRepository.js';
 async function getNeedsReviewItems(userId) {
   const foodsNeedingReview = await foodRepository.getFoodsNeedingReview(userId);
   const exercisesNeedingReview =
     await exerciseRepository.getExercisesNeedingReview(userId);
-
   const reviewItems = [];
-
   foodsNeedingReview.forEach((food) => {
     reviewItems.push({
       id: food.id,
@@ -16,7 +13,6 @@ async function getNeedsReviewItems(userId) {
       // Add other relevant food details if needed
     });
   });
-
   exercisesNeedingReview.forEach((exercise) => {
     reviewItems.push({
       id: exercise.id,
@@ -25,10 +21,8 @@ async function getNeedsReviewItems(userId) {
       // Add other relevant exercise details if needed
     });
   });
-
   return reviewItems;
 }
-
 /**
  * Counts the number of shared items that need review by the current user.
  * An item needs review if it has been updated by its owner after the current user's last known version.
@@ -39,11 +33,11 @@ async function getNeedsReviewCount(userId) {
   const foodsNeedingReview = await foodRepository.getFoodsNeedingReview(userId);
   const exercisesNeedingReview =
     await exerciseRepository.getExercisesNeedingReview(userId);
-
   return foodsNeedingReview.length + exercisesNeedingReview.length;
 }
-
-module.exports = {
+export { getNeedsReviewCount };
+export { getNeedsReviewItems };
+export default {
   getNeedsReviewCount,
   getNeedsReviewItems,
 };

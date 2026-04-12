@@ -1,23 +1,26 @@
-const express = require('express');
-const router = express.Router();
-const { log } = require('../config/logging');
-const {
+import express from 'express';
+import { log } from '../config/logging.js';
+import {
   performBackup,
   performRestore,
   BACKUP_DIR,
-} = require('../services/backupService');
-const { authenticate, isAdmin } = require('../middleware/authMiddleware');
-const backupSettingsRepository = require('../models/backupSettingsRepository');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
+} from '../services/backupService.js';
+import { authenticate, isAdmin } from '../middleware/authMiddleware.js';
+import backupSettingsRepository from '../models/backupSettingsRepository.js';
+import multer from 'multer';
+import path from 'path';
+import { promises } from 'fs';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+const router = express.Router();
+const fs = { promises }.promises;
 // Configure multer for file uploads (for restore)
 const upload = multer({
   dest: path.join(__dirname, '../temp_uploads/'), // Temporary directory for uploaded backup files
   limits: { fileSize: 1024 * 1024 * 500 }, // 500 MB limit, adjust as needed
 });
-
 // Ensure temporary upload directory exists
 async function ensureTempUploadDirectory() {
   const tempUploadDir = path.join(__dirname, '../temp_uploads/');
@@ -34,14 +37,12 @@ async function ensureTempUploadDirectory() {
   }
 }
 ensureTempUploadDirectory(); // Call once on startup
-
 /**
  * @swagger
  * tags:
  *   name: System & Admin
  *   description: System configuration, administrative tasks, backups, and audits.
  */
-
 /**
  * @swagger
  * /backup/manual:
@@ -94,7 +95,6 @@ router.post('/manual', authenticate, isAdmin, async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /backup/restore:
@@ -139,21 +139,18 @@ router.post(
     if (!req.file) {
       return res.status(400).json({ message: 'No backup file uploaded.' });
     }
-
     const uploadedFilePath = req.file.path;
     const originalFileName = req.file.originalname;
     log(
       'info',
       `Uploaded backup file: ${originalFileName} to ${uploadedFilePath}`
     );
-
     try {
       // Move the uploaded file to the designated backup directory for processing
       const finalBackupPath = path.join(BACKUP_DIR, originalFileName);
       await fs.copyFile(uploadedFilePath, finalBackupPath);
       await fs.unlink(uploadedFilePath);
       log('info', `Moved uploaded file to: ${finalBackupPath}`);
-
       // Perform restore
       const result = await performRestore(finalBackupPath);
       if (result.success) {
@@ -184,7 +181,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * components:
@@ -210,7 +206,6 @@ router.post(
  *         backupLocation:
  *           type: string
  */
-
 /**
  * @swagger
  * /backup/settings:
@@ -232,7 +227,6 @@ router.post(
 router.get('/settings', authenticate, isAdmin, async (req, res) => {
   try {
     const backupSettings = await backupSettingsRepository.getBackupSettings();
-
     res.status(200).json({
       backupEnabled: backupSettings.backup_enabled,
       backupDays: backupSettings.backup_days,
@@ -250,7 +244,6 @@ router.get('/settings', authenticate, isAdmin, async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /backup/settings:
@@ -294,7 +287,6 @@ router.get('/settings', authenticate, isAdmin, async (req, res) => {
 router.post('/settings', authenticate, isAdmin, async (req, res) => {
   try {
     const { backupEnabled, backupDays, backupTime, retentionDays } = req.body;
-
     const updatedSettings = await backupSettingsRepository.updateBackupSettings(
       {
         backup_enabled: backupEnabled,
@@ -303,9 +295,7 @@ router.post('/settings', authenticate, isAdmin, async (req, res) => {
         retention_days: retentionDays,
       }
     );
-
     // TODO: Re-schedule cron jobs based on new settings
-
     res.status(200).json({
       message: 'Backup settings saved successfully.',
       settings: updatedSettings,
@@ -318,5 +308,4 @@ router.post('/settings', authenticate, isAdmin, async (req, res) => {
     });
   }
 });
-
-module.exports = router;
+export default router;

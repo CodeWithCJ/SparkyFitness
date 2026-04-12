@@ -1,21 +1,11 @@
-const express = require('express');
+import express from 'express';
+import foodIntegrationRoutes from './foodIntegrationRoutes.js';
+import foodCrudRoutes from './foodCrudRoutes.js';
+import foodEntryRoutes from './foodEntryRoutes.js';
 const router = express.Router();
-
-/**
- * @swagger
- * tags:
- *   name: Nutrition & Meals
- *   description: Food database, meal planning, meal types, and nutritional tracking.
- */
-
-const foodIntegrationRoutes = require('./foodIntegrationRoutes');
-const foodCrudRoutes = require('./foodCrudRoutes');
-const foodEntryRoutes = require('./foodEntryRoutes');
-
 // Mount the new routers
 router.use('/', foodIntegrationRoutes);
 router.use('/', foodCrudRoutes);
-
 /**
  * @swagger
  * /food-entries/{date}:
@@ -41,5 +31,4 @@ router.get('/food-entries/:date', (req, res, next) => {
   req.url = `/by-date/${req.params.date}`; // Modify URL to match foodEntryRoutes expectation
   foodEntryRoutes(req, res, next);
 });
-
-module.exports = router;
+export default router;

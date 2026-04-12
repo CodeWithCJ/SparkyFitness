@@ -1,10 +1,8 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import onboardingService from '../services/onboardingService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const onboardingService = require('../services/onboardingService');
-
 router.use(express.json());
-
 /**
  * @route   POST /api/onboarding
  * @desc    Submit user onboarding data
@@ -41,7 +39,6 @@ router.post('/', authenticate, async (req, res, next) => {
   try {
     const userId = req.userId;
     const onboardingData = req.body;
-
     const {
       sex,
       primaryGoal,
@@ -51,7 +48,6 @@ router.post('/', authenticate, async (req, res, next) => {
       activityLevel,
       targetWeight,
     } = onboardingData;
-
     if (
       !sex ||
       !primaryGoal ||
@@ -67,15 +63,12 @@ router.post('/', authenticate, async (req, res, next) => {
           'Ensure sex, primaryGoal, currentWeight, height, birthDate, activityLevel, and targetWeight are provided.',
       });
     }
-
     await onboardingService.processOnboardingData(userId, onboardingData);
-
     res.status(201).json({ message: 'Onboarding completed successfully.' });
   } catch (error) {
     next(error);
   }
 });
-
 /**
  * @route   GET /api/onboarding/status
  * @desc    Check if the current user has completed onboarding
@@ -100,15 +93,12 @@ router.post('/', authenticate, async (req, res, next) => {
 router.get('/status', authenticate, async (req, res, next) => {
   try {
     const userId = req.userId;
-
     const isComplete = await onboardingService.checkOnboardingStatus(userId);
-
     res.status(200).json({ onboardingComplete: isComplete });
   } catch (error) {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /onboarding/reset:
@@ -131,5 +121,4 @@ router.post('/reset', authenticate, async (req, res) => {
     res.status(500).json({ error: 'Failed to reset onboarding status.' });
   }
 });
-
-module.exports = router;
+export default router;

@@ -1,12 +1,10 @@
-const { log } = require('../../config/logging');
-const {
+import { log } from '../../config/logging.js';
+import {
   normalizeBarcode,
   normalizeServingUnit,
-} = require('../../utils/foodUtils');
+} from '../../utils/foodUtils.js';
 // Using native fetch (standard in Node 22+)
-
 const USDA_API_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
-
 async function searchUsdaFoods(query, apiKey, page = 1, pageSize = 50) {
   try {
     const searchUrl = `${USDA_API_BASE_URL}/foods/search?query=${encodeURIComponent(query)}&pageNumber=${page}&pageSize=${pageSize}&api_key=${apiKey}`;
@@ -37,7 +35,6 @@ async function searchUsdaFoods(query, apiKey, page = 1, pageSize = 50) {
     throw error;
   }
 }
-
 async function searchUsdaFoodsByBarcode(barcode, apiKey) {
   try {
     const searchUrl = `${USDA_API_BASE_URL}/foods/search?query=${encodeURIComponent(barcode)}&dataType=Branded&api_key=${apiKey}`;
@@ -60,7 +57,6 @@ async function searchUsdaFoodsByBarcode(barcode, apiKey) {
     throw error;
   }
 }
-
 async function getUsdaFoodDetails(fdcId, apiKey) {
   try {
     const detailsUrl = `${USDA_API_BASE_URL}/food/${fdcId}?api_key=${apiKey}`;
@@ -83,7 +79,6 @@ async function getUsdaFoodDetails(fdcId, apiKey) {
     throw error;
   }
 }
-
 function mapUsdaBarcodeProduct(food) {
   const nutrients = {};
   for (const n of food.foodNutrients || []) {
@@ -92,7 +87,6 @@ function mapUsdaBarcodeProduct(food) {
   }
   const servingSize = food.servingSize > 0 ? food.servingSize : 100;
   const scale = servingSize / 100;
-
   const defaultVariant = {
     serving_size: servingSize,
     serving_unit: normalizeServingUnit(food.servingSizeUnit),
@@ -117,7 +111,6 @@ function mapUsdaBarcodeProduct(food) {
     vitamin_c: Math.round((nutrients[1162] || 0) * scale * 10) / 10,
     is_default: true,
   };
-
   return {
     name: food.description,
     brand: food.brandName || food.brandOwner || '',
@@ -128,8 +121,11 @@ function mapUsdaBarcodeProduct(food) {
     default_variant: defaultVariant,
   };
 }
-
-module.exports = {
+export { searchUsdaFoods };
+export { getUsdaFoodDetails };
+export { searchUsdaFoodsByBarcode };
+export { mapUsdaBarcodeProduct };
+export default {
   searchUsdaFoods,
   getUsdaFoodDetails,
   searchUsdaFoodsByBarcode,

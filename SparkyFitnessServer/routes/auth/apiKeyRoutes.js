@@ -1,10 +1,9 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../../middleware/authMiddleware.js';
+import { auth } from '../../auth.js';
 const router = express.Router();
-const { authenticate } = require('../../middleware/authMiddleware');
-
 // auth is required lazily within handlers to avoid early initialization issues during migrations
 // const { auth } = require('../../auth');
-
 /**
  * @swagger
  * /identity/user/generate-api-key:
@@ -34,19 +33,15 @@ const { authenticate } = require('../../middleware/authMiddleware');
  */
 router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
   const { name, expiresIn } = req.body;
-
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
-
   try {
-    const { auth } = require('../../auth');
     const result = await auth.api.createApiKey({
       userId: req.userId,
       name,
       expiresIn: expiresIn || 31536000, // Default 1 year
     });
-
     res.status(201).json({
       message: 'API key generated successfully',
       apiKey: {
@@ -60,7 +55,6 @@ router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/user/api-key/{apiKeyId}:
@@ -85,14 +79,11 @@ router.delete(
   authenticate,
   async (req, res, next) => {
     const { apiKeyId } = req.params;
-
     try {
-      const { auth } = require('../../auth');
       await auth.api.deleteApiKey({
         apiKeyId,
         userId: req.userId,
       });
-
       res.status(200).json({ message: 'API key deleted successfully.' });
     } catch (error) {
       if (error.message.includes('not found')) {
@@ -102,7 +93,6 @@ router.delete(
     }
   }
 );
-
 /**
  * @swagger
  * /identity/user-api-keys:
@@ -116,15 +106,12 @@ router.delete(
  */
 router.get('/user-api-keys', authenticate, async (req, res, next) => {
   try {
-    const { auth } = require('../../auth');
     const apiKeys = await auth.api.listApiKeys({
       userId: req.userId,
     });
-
     res.status(200).json(apiKeys);
   } catch (error) {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

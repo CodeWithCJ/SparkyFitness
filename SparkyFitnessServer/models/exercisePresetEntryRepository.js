@@ -1,12 +1,10 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 const PRESET_ENTRY_SELECT = `
   SELECT id, user_id, workout_preset_id, name, description, entry_date, created_at,
          updated_at, created_by_user_id, notes, source
   FROM exercise_preset_entries
 `;
-
 async function getExercisePresetEntryByIdWithClient(client, id, userId) {
   const result = await client.query(
     `${PRESET_ENTRY_SELECT}
@@ -15,7 +13,6 @@ async function getExercisePresetEntryByIdWithClient(client, id, userId) {
   );
   return result.rows[0] || null;
 }
-
 async function createExercisePresetEntryWithClient(
   client,
   userId,
@@ -36,14 +33,12 @@ async function createExercisePresetEntryWithClient(
       entryData.source ?? 'manual',
     ]
   );
-
   return getExercisePresetEntryByIdWithClient(
     client,
     result.rows[0].id,
     userId
   );
 }
-
 async function createExercisePresetEntry(userId, entryData, createdByUserId) {
   const client = await getClient(userId);
   try {
@@ -64,7 +59,6 @@ async function createExercisePresetEntry(userId, entryData, createdByUserId) {
     client.release();
   }
 }
-
 async function getExercisePresetEntryById(id, userId) {
   const client = await getClient(userId);
   try {
@@ -73,7 +67,6 @@ async function getExercisePresetEntryById(id, userId) {
     client.release();
   }
 }
-
 async function getExercisePresetEntriesByDate(userId, entryDate) {
   const client = await getClient(userId);
   try {
@@ -88,7 +81,6 @@ async function getExercisePresetEntriesByDate(userId, entryDate) {
     client.release();
   }
 }
-
 async function updateExercisePresetEntryWithClient(
   client,
   id,
@@ -103,7 +95,6 @@ async function updateExercisePresetEntryWithClient(
   if (!existingEntry) {
     return null;
   }
-
   const mergedEntry = {
     workout_preset_id:
       updateData.workout_preset_id !== undefined
@@ -125,7 +116,6 @@ async function updateExercisePresetEntryWithClient(
         ? updateData.source
         : existingEntry.source,
   };
-
   const result = await client.query(
     `UPDATE exercise_preset_entries SET
        workout_preset_id = $1,
@@ -148,14 +138,11 @@ async function updateExercisePresetEntryWithClient(
       userId,
     ]
   );
-
   if (result.rowCount === 0) {
     return null;
   }
-
   return getExercisePresetEntryByIdWithClient(client, id, userId);
 }
-
 async function updateExercisePresetEntry(id, userId, updateData) {
   const client = await getClient(userId);
   try {
@@ -176,7 +163,6 @@ async function updateExercisePresetEntry(id, userId, updateData) {
     client.release();
   }
 }
-
 async function deleteExercisePresetEntry(id, userId) {
   const client = await getClient(userId);
   try {
@@ -195,7 +181,6 @@ async function deleteExercisePresetEntry(id, userId) {
     client.release();
   }
 }
-
 async function deleteExercisePresetEntriesByEntrySourceAndDate(
   userId,
   startDate,
@@ -205,7 +190,6 @@ async function deleteExercisePresetEntriesByEntrySourceAndDate(
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-
     // Get IDs of exercise preset entries to be deleted
     const presetEntryIdsResult = await client.query(
       `SELECT id FROM exercise_preset_entries
@@ -215,13 +199,11 @@ async function deleteExercisePresetEntriesByEntrySourceAndDate(
       [userId, startDate, endDate, entrySource]
     );
     const presetEntryIds = presetEntryIdsResult.rows.map((row) => row.id);
-
     if (presetEntryIds.length > 0) {
       // Delete associated activity details (if any, though currently full_activity_data is linked to exercise_entry)
       // This assumes exercise_entry_activity_details might eventually link to exercise_preset_entries directly.
       // For now, we'll just delete the preset entries.
       // If activity details are linked to preset entries, a similar deletion logic would be needed here.
-
       // Delete the exercise preset entries themselves
       const result = await client.query(
         'DELETE FROM exercise_preset_entries WHERE id = ANY($1::uuid[])',
@@ -253,8 +235,16 @@ async function deleteExercisePresetEntriesByEntrySourceAndDate(
     client.release();
   }
 }
-
-module.exports = {
+export { createExercisePresetEntry };
+export { createExercisePresetEntryWithClient };
+export { getExercisePresetEntryById };
+export { getExercisePresetEntryByIdWithClient };
+export { getExercisePresetEntriesByDate };
+export { updateExercisePresetEntry };
+export { updateExercisePresetEntryWithClient };
+export { deleteExercisePresetEntry };
+export { deleteExercisePresetEntriesByEntrySourceAndDate };
+export default {
   createExercisePresetEntry,
   createExercisePresetEntryWithClient,
   getExercisePresetEntryById,
@@ -263,5 +253,5 @@ module.exports = {
   updateExercisePresetEntry,
   updateExercisePresetEntryWithClient,
   deleteExercisePresetEntry,
-  deleteExercisePresetEntriesByEntrySourceAndDate, // New export
+  deleteExercisePresetEntriesByEntrySourceAndDate,
 };

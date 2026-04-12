@@ -9,8 +9,8 @@ import {
   type ExerciseSessionResponse,
 } from '@workspace/shared';
 
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 
 /** Convert a pg date value to a YYYY-MM-DD string, or return null. */
 function _dateToString(value: unknown): string | null {

@@ -1,8 +1,7 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import reviewService from '../services/reviewService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const reviewService = require('../services/reviewService');
-
 /**
  * @swagger
  * /reviews/needs-review-count:
@@ -29,7 +28,6 @@ router.get('/needs-review-count', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /reviews/needs-review:
@@ -60,5 +58,4 @@ router.get('/needs-review', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

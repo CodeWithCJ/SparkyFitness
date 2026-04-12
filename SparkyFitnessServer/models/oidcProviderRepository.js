@@ -1,10 +1,7 @@
-const { getSystemClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-// Use native fetch (available in Node 20+) status: %SAME% summary: %SAME% task_name: %SAME%
-const NodeCache = require('node-cache');
-
+import { getSystemClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import NodeCache from 'node-cache';
 const discoveryCache = new NodeCache({ stdTTL: 3600 });
-
 /**
  * Returns the frontend base URL with protocol and no trailing slash (for OIDC redirect URIs).
  * @returns {string}
@@ -17,7 +14,6 @@ function getBaseUrl() {
     : `https://${frontendUrl}`;
   return urlWithProtocol.replace(/\/$/, '');
 }
-
 /**
  * Fetches OIDC endpoints from the discovery document
  * @param {string} discoveryEndpoint - The OIDC discovery endpoint URL
@@ -25,7 +21,6 @@ function getBaseUrl() {
  */
 async function fetchOidcEndpoints(discoveryEndpoint) {
   let discoveryDocument = discoveryCache.get(discoveryEndpoint);
-
   if (!discoveryDocument) {
     try {
       const response = await fetch(discoveryEndpoint);
@@ -44,7 +39,6 @@ async function fetchOidcEndpoints(discoveryEndpoint) {
       return {};
     }
   }
-
   return {
     issuer: discoveryDocument.issuer,
     jwksEndpoint: discoveryDocument.jwks_uri,
@@ -53,7 +47,6 @@ async function fetchOidcEndpoints(discoveryEndpoint) {
     userInfoEndpoint: discoveryDocument.userinfo_endpoint,
   };
 }
-
 async function getOidcProviders() {
   const client = await getSystemClient();
   try {
@@ -89,7 +82,6 @@ async function getOidcProviders() {
     client.release();
   }
 }
-
 async function getOidcProviderById(id) {
   const client = await getSystemClient();
   try {
@@ -99,11 +91,9 @@ async function getOidcProviderById(id) {
     );
     const row = result.rows[0];
     if (!row) return null;
-
     const config = row.additional_config
       ? JSON.parse(row.additional_config)
       : {};
-
     const baseUrl = getBaseUrl();
     const provider = {
       id: row.id,
@@ -125,7 +115,6 @@ async function getOidcProviderById(id) {
       // Force correct redirectURI for Better Auth
       redirectURI: `${baseUrl}/api/auth/sso/callback/${row.provider_id}`,
     };
-
     let endSessionEndpoint = null;
     if (provider.issuer_url) {
       const discoveryUrl = `${provider.issuer_url.replace(/\/$/, '')}/.well-known/openid-configuration`;
@@ -149,7 +138,6 @@ async function getOidcProviderById(id) {
         endSessionEndpoint = discoveryDocument.end_session_endpoint;
       }
     }
-
     return {
       ...provider,
       end_session_endpoint: endSessionEndpoint,
@@ -158,7 +146,6 @@ async function getOidcProviderById(id) {
     client.release();
   }
 }
-
 async function createOidcProvider(providerData) {
   const client = await getSystemClient();
   try {
@@ -179,15 +166,12 @@ async function createOidcProvider(providerData) {
       is_env_configured: providerData.is_env_configured || false,
       admin_group: providerData.admin_group || null,
     });
-
     const providerId = providerData.provider_id || `oidc-${Date.now()}`;
     const discoveryEndpoint =
       providerData.issuer_url.replace(/\/$/, '') +
       '/.well-known/openid-configuration';
-
     // Fetch OIDC endpoints from discovery document
     const endpoints = await fetchOidcEndpoints(discoveryEndpoint);
-
     // Construct native oidcConfig for Better Auth (object for JSONB column; same base as auth.baseURL)
     const baseUrl = getBaseUrl();
     const callbackBase = `${baseUrl}/api/auth`;
@@ -209,7 +193,6 @@ async function createOidcProvider(providerData) {
         providerData.token_endpoint_auth_method || 'client_secret_post',
       overrideUserInfo: true,
     };
-
     const result = await client.query(
       `INSERT INTO "sso_provider" 
             (provider_id, issuer, domain, client_id, client_secret, scopes, discovery_endpoint, 
@@ -235,18 +218,16 @@ async function createOidcProvider(providerData) {
     );
     // Refresh Better Auth trusted providers after creation
     try {
-      const { syncTrustedProviders } = require('../auth');
+      const { syncTrustedProviders } = await import('../auth.js');
       await syncTrustedProviders();
     } catch (err) {
       log('error', 'Failed to refresh trusted providers after creation:', err);
     }
-
     return result.rows[0];
   } finally {
     client.release();
   }
 }
-
 async function updateOidcProvider(id, providerData) {
   const client = await getSystemClient();
   try {
@@ -267,7 +248,6 @@ async function updateOidcProvider(id, providerData) {
       timeout: providerData.timeout || 30000,
       is_env_configured: providerData.is_env_configured || false,
     });
-
     const discoveryEndpoint =
       providerData.issuer_url.replace(/\/$/, '') +
       '/.well-known/openid-configuration';
@@ -275,10 +255,8 @@ async function updateOidcProvider(id, providerData) {
       providerData.client_secret && providerData.client_secret !== '*****'
         ? providerData.client_secret
         : existing.client_secret;
-
     // Fetch OIDC endpoints from discovery document
     const endpoints = await fetchOidcEndpoints(discoveryEndpoint);
-
     // Construct native oidcConfig for Better Auth (same base as auth.baseURL; JSONB)
     const baseUrl = getBaseUrl();
     const callbackBase = `${baseUrl}/api/auth`;
@@ -301,7 +279,6 @@ async function updateOidcProvider(id, providerData) {
         providerData.token_endpoint_auth_method || 'client_secret_post',
       overrideUserInfo: true,
     };
-
     const query = `
             UPDATE "sso_provider" 
             SET issuer=$1, domain=$2, client_id=$3, client_secret=$4, scopes=$5, discovery_endpoint=$6, 
@@ -309,7 +286,6 @@ async function updateOidcProvider(id, providerData) {
                 additional_config=$11, oidc_config=$12::jsonb, provider_id=$13, updated_at=NOW() 
             WHERE id::text=$14 OR provider_id=$14
             RETURNING id`;
-
     const result = await client.query(query, [
       endpoints.issuer || providerData.issuer_url,
       providerData.domain,
@@ -326,21 +302,18 @@ async function updateOidcProvider(id, providerData) {
       providerIdToUse,
       id,
     ]);
-
     // Refresh Better Auth trusted providers after update
     try {
-      const { syncTrustedProviders } = require('../auth');
+      const { syncTrustedProviders } = await import('../auth.js');
       await syncTrustedProviders();
     } catch (err) {
       log('error', 'Failed to refresh trusted providers after update:', err);
     }
-
     return result.rows[0];
   } finally {
     client.release();
   }
 }
-
 async function deleteOidcProvider(id) {
   const client = await getSystemClient();
   try {
@@ -348,10 +321,9 @@ async function deleteOidcProvider(id) {
       'DELETE FROM "sso_provider" WHERE id::text = $1 OR provider_id = $1',
       [id]
     );
-
     // Refresh Better Auth trusted providers after deletion
     try {
-      const { syncTrustedProviders } = require('../auth');
+      const { syncTrustedProviders } = await import('../auth.js');
       await syncTrustedProviders();
     } catch (err) {
       log('error', 'Failed to refresh trusted providers after deletion:', err);
@@ -360,14 +332,12 @@ async function deleteOidcProvider(id) {
     client.release();
   }
 }
-
 async function getActiveOidcProviderIds() {
   const client = await getSystemClient();
   try {
     const result = await client.query(
       'SELECT provider_id, additional_config FROM "sso_provider"'
     );
-
     return result.rows
       .filter((row) => {
         let config = row.additional_config;
@@ -388,7 +358,6 @@ async function getActiveOidcProviderIds() {
     client.release();
   }
 }
-
 async function setProviderLogo(id, logoUrl) {
   const client = await getSystemClient();
   try {
@@ -412,8 +381,14 @@ async function setProviderLogo(id, logoUrl) {
     client.release();
   }
 }
-
-module.exports = {
+export { getOidcProviders };
+export { getOidcProviderById };
+export { getActiveOidcProviderIds };
+export { createOidcProvider };
+export { updateOidcProvider };
+export { deleteOidcProvider };
+export { setProviderLogo };
+export default {
   getOidcProviders,
   getOidcProviderById,
   getActiveOidcProviderIds,

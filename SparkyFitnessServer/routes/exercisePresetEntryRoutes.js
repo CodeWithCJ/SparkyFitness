@@ -1,38 +1,33 @@
-const express = require('express');
-const { z } = require('zod');
-const {
+import express from 'express';
+import { z } from 'zod';
+import {
   createPresetSessionRequestSchema,
   updatePresetSessionRequestSchema,
   presetSessionResponseSchema,
-} = require('@workspace/shared');
-const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepository');
-const exerciseService = require('../services/exerciseService');
-const { log } = require('../config/logging');
-
+} from '@workspace/shared';
+import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
+import exerciseService from '../services/exerciseService.js';
+import { log } from '../config/logging.js';
 const router = express.Router();
 const presetEntryIdParamSchema = z.object({
   id: z.string().uuid(),
 });
-
 const isAuthenticated = (req, res, next) => {
   if (!req.userId) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
   next();
 };
-
 function sendValidationError(res, message, error) {
   return res.status(400).json({
     error: message,
     details: error.flatten(),
   });
 }
-
 function handleRouteError(error, res, next) {
   if (error?.status) {
     return res.status(error.status).json({ message: error.message });
   }
-
   if (error instanceof z.ZodError) {
     log('error', 'Grouped workout response validation failed:', error);
     return next(
@@ -41,17 +36,14 @@ function handleRouteError(error, res, next) {
       })
     );
   }
-
   return next(error);
 }
-
 /**
  * @swagger
  * tags:
  *   name: Fitness & Workouts
  *   description: Exercise database, workout presets, and activity logging.
  */
-
 /**
  * @swagger
  * /exercise-preset-entries:
@@ -81,13 +73,11 @@ router.post('/', isAuthenticated, async (req, res, next) => {
         parsedBody.error
       );
     }
-
     const groupedWorkout = await exerciseService.createGroupedWorkoutSession(
       req.userId,
       req.originalUserId || req.userId,
       parsedBody.data
     );
-
     const response = presetSessionResponseSchema.parse(groupedWorkout);
     res.status(201).json(response);
   } catch (error) {
@@ -95,7 +85,6 @@ router.post('/', isAuthenticated, async (req, res, next) => {
     handleRouteError(error, res, next);
   }
 });
-
 /**
  * @swagger
  * /exercise-preset-entries/{id}:
@@ -125,18 +114,15 @@ router.get('/:id', isAuthenticated, async (req, res, next) => {
         parsedParams.error
       );
     }
-
     const groupedWorkout = await exerciseService.getGroupedWorkoutSessionById(
       req.userId,
       parsedParams.data.id
     );
-
     if (!groupedWorkout) {
       return res
         .status(404)
         .json({ message: 'Exercise preset entry not found.' });
     }
-
     const response = presetSessionResponseSchema.parse(groupedWorkout);
     res.status(200).json(response);
   } catch (error) {
@@ -148,7 +134,6 @@ router.get('/:id', isAuthenticated, async (req, res, next) => {
     handleRouteError(error, res, next);
   }
 });
-
 /**
  * @swagger
  * /exercise-preset-entries/{id}:
@@ -180,7 +165,6 @@ router.put('/:id', isAuthenticated, async (req, res, next) => {
         parsedParams.error
       );
     }
-
     const parsedBody = updatePresetSessionRequestSchema.safeParse(req.body);
     if (!parsedBody.success) {
       return sendValidationError(
@@ -189,14 +173,12 @@ router.put('/:id', isAuthenticated, async (req, res, next) => {
         parsedBody.error
       );
     }
-
     const groupedWorkout = await exerciseService.updateGroupedWorkoutSession(
       req.userId,
       req.originalUserId || req.userId,
       parsedParams.data.id,
       parsedBody.data
     );
-
     const response = presetSessionResponseSchema.parse(groupedWorkout);
     res.status(200).json(response);
   } catch (error) {
@@ -208,7 +190,6 @@ router.put('/:id', isAuthenticated, async (req, res, next) => {
     handleRouteError(error, res, next);
   }
 });
-
 /**
  * @swagger
  * /exercise-preset-entries/{id}:
@@ -238,7 +219,6 @@ router.delete('/:id', isAuthenticated, async (req, res, next) => {
         parsedParams.error
       );
     }
-
     const deleted =
       await exercisePresetEntryRepository.deleteExercisePresetEntry(
         parsedParams.data.id,
@@ -249,7 +229,6 @@ router.delete('/:id', isAuthenticated, async (req, res, next) => {
         message: 'Exercise preset entry not found or not authorized.',
       });
     }
-
     res.status(204).send();
   } catch (error) {
     log(
@@ -260,5 +239,4 @@ router.delete('/:id', isAuthenticated, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

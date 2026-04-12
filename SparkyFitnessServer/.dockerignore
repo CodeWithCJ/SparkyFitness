@@ -1,5 +1,7 @@
 # Ignore node_modules as they are installed in a multi-stage build
 node_modules
+**/node_modules
+
 
 # Ignore environment files
 .env

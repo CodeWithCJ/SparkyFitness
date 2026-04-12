@@ -1,45 +1,68 @@
-const express = require('express');
-const request = require('supertest');
-
-jest.mock('../middleware/checkPermissionMiddleware', () =>
-  jest.fn(() => (req, res, next) => next())
-);
-jest.mock('../services/foodCoreService', () => ({
-  lookupBarcode: jest.fn(),
-}));
-jest.mock('../services/externalProviderService', () => ({
-  getExternalDataProviderDetails: jest.fn(),
-}));
-jest.mock('../services/preferenceService', () => ({
-  getUserPreferences: jest.fn(),
-}));
-jest.mock('../config/logging', () => ({ log: jest.fn() }));
-jest.mock('../integrations/openfoodfacts/openFoodFactsService', () => ({
-  searchOpenFoodFacts: jest.fn(),
-  searchOpenFoodFactsByBarcodeFields: jest.fn(),
-  mapOpenFoodFactsProduct: jest.fn(),
-}));
-jest.mock('../integrations/usda/usdaService', () => ({
-  searchUsdaFoods: jest.fn(),
-  getUsdaFoodDetails: jest.fn(),
-  mapUsdaBarcodeProduct: jest.fn(),
-}));
-jest.mock('../integrations/fatsecret/fatsecretService', () => ({
-  mapFatSecretFood: jest.fn(),
-  mapFatSecretSearchItem: jest.fn(),
-}));
-jest.mock('../services/foodIntegrationService', () => ({
-  searchFatSecretFoods: jest.fn(),
-  getFatSecretNutrients: jest.fn(),
-  searchMealieFoods: jest.fn(),
-  getMealieFoodDetails: jest.fn(),
-  searchTandoorFoods: jest.fn(),
-  getTandoorFoodDetails: jest.fn(),
+import { vi, beforeEach, describe, expect, it } from 'vitest';
+import express from 'express';
+import request from 'supertest';
+import foodCoreService from '../services/foodCoreService.js';
+import foodRoutesV2 from '../routes/v2/foodRoutes.ts';
+vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
+  default: vi.fn(() => (req, res, next) => next()),
 }));
 
-const foodCoreService = require('../services/foodCoreService');
-const foodRoutesV2 = require('../routes/v2/foodRoutes.ts');
+vi.mock('../services/foodCoreService.js', () => ({
+  default: {
+    lookupBarcode: vi.fn(),
+  },
+}));
 
+vi.mock('../services/externalProviderService.js', () => ({
+  default: {
+    getExternalDataProviderDetails: vi.fn(),
+  },
+}));
+
+vi.mock('../services/preferenceService.js', () => ({
+  default: {
+    getUserPreferences: vi.fn(),
+  },
+}));
+
+// Falls log ein benannter Export ist (import { log }), bleibt es so:
+vi.mock('../config/logging.js', () => ({
+  log: vi.fn(),
+}));
+
+vi.mock('../integrations/openfoodfacts/openFoodFactsService.js', () => ({
+  default: {
+    searchOpenFoodFacts: vi.fn(),
+    searchOpenFoodFactsByBarcodeFields: vi.fn(),
+    mapOpenFoodFactsProduct: vi.fn(),
+  },
+}));
+
+vi.mock('../integrations/usda/usdaService.js', () => ({
+  default: {
+    searchUsdaFoods: vi.fn(),
+    getUsdaFoodDetails: vi.fn(),
+    mapUsdaBarcodeProduct: vi.fn(),
+  },
+}));
+
+vi.mock('../integrations/fatsecret/fatsecretService.js', () => ({
+  default: {
+    mapFatSecretFood: vi.fn(),
+    mapFatSecretSearchItem: vi.fn(),
+  },
+}));
+
+vi.mock('../services/foodIntegrationService.js', () => ({
+  default: {
+    searchFatSecretFoods: vi.fn(),
+    getFatSecretNutrients: vi.fn(),
+    searchMealieFoods: vi.fn(),
+    getMealieFoodDetails: vi.fn(),
+    searchTandoorFoods: vi.fn(),
+    getTandoorFoodDetails: vi.fn(),
+  },
+}));
 const app = express();
 app.use(express.json());
 app.use((req, res, next) => {
@@ -51,15 +74,12 @@ app.use('/v2/foods', foodRoutesV2);
 app.use((err, req, res, _next) => {
   res.status(err.status || 500).json({ error: err.message });
 });
-
 describe('GET /v2/foods/barcode/:barcode', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
-
   it('returns a local barcode hit when optional fields are null', async () => {
     const barcode = '012345678901';
-
     foodCoreService.lookupBarcode.mockResolvedValue({
       source: 'local',
       food: {
@@ -98,9 +118,7 @@ describe('GET /v2/foods/barcode/:barcode', () => {
         variants: null,
       },
     });
-
     const res = await request(app).get(`/v2/foods/barcode/${barcode}`);
-
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({
       source: 'local',

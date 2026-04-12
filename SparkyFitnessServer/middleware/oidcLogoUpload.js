@@ -1,14 +1,16 @@
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const { createUploadMiddleware } = require('./uploadMiddleware');
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { createUploadMiddleware } from './uploadMiddleware.js';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Ensure the upload directory exists
 const uploadDir = path.join(__dirname, '..', 'uploads', 'oidc');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-
 // Create a storage configuration for OIDC logos
 const oidcLogoStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -19,7 +21,5 @@ const oidcLogoStorage = multer.diskStorage({
     cb(null, `oidc-logo-${uniqueSuffix}${path.extname(file.originalname)}`);
   },
 });
-
 const oidcLogoUpload = createUploadMiddleware(oidcLogoStorage);
-
-module.exports = oidcLogoUpload;
+export default oidcLogoUpload;

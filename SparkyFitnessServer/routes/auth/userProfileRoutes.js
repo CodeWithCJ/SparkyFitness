@@ -1,18 +1,19 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../../middleware/authMiddleware.js';
+import authService from '../../services/authService.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { log } from '../../config/logging.js';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const router = express.Router();
-const { authenticate } = require('../../middleware/authMiddleware');
-const authService = require('../../services/authService');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-
 const UPLOADS_DIR = path.join(__dirname, '../../uploads/avatars');
-const { log } = require('../../config/logging');
 log('info', 'UserProfileRoutes UPLOADS_DIR:', UPLOADS_DIR);
-
 // Ensure the uploads directory exists
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, UPLOADS_DIR);
@@ -23,7 +24,6 @@ const storage = multer.diskStorage({
     cb(null, req.userId + '-' + uniqueSuffix + fileExtension);
   },
 });
-
 const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
@@ -33,7 +33,6 @@ const upload = multer({
       path.extname(file.originalname).toLowerCase()
     );
     const mimetype = allowedTypes.test(file.mimetype);
-
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -41,7 +40,6 @@ const upload = multer({
     }
   },
 });
-
 /**
  * @swagger
  * /identity/user:
@@ -62,13 +60,11 @@ router.get('/user', authenticate, async (req, res, next) => {
       authService.getUser(req.authenticatedUserId),
       authService.getUser(req.userId),
     ]);
-
     res.status(200).json({
       // The actual logged-in user
       authenticatedUserId: authenticatedUser.id,
       authenticatedUserEmail: authenticatedUser.email,
       role: authenticatedUser.role,
-
       // The user context we are currently operating in
       activeUserId: activeUser.id,
       activeUserEmail: activeUser.email,
@@ -82,7 +78,6 @@ router.get('/user', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/switch-context:
@@ -115,13 +110,11 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
   if (!targetUserId) {
     return res.status(400).json({ error: 'targetUserId is required.' });
   }
-
   try {
     const { activeUserId } = await authService.switchUserContext(
       req.authenticatedUserId,
       targetUserId
     );
-
     // Set the new active user ID in the cookie
     res.cookie('sparky_active_user_id', activeUserId, {
       httpOnly: true,
@@ -129,7 +122,6 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
       sameSite: 'strict',
       path: '/',
     });
-
     res
       .status(200)
       .json({ message: 'Context switched successfully.', activeUserId });
@@ -140,7 +132,6 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/users/find-by-email:
@@ -165,11 +156,9 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
  */
 router.get('/users/find-by-email', authenticate, async (req, res, next) => {
   const { email } = req.query;
-
   if (!email) {
     return res.status(400).json({ error: 'Email parameter is required.' });
   }
-
   try {
     const userId = await authService.findUserIdByEmail(email);
     res.status(200).json({ userId });
@@ -183,7 +172,6 @@ router.get('/users/find-by-email', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/profiles:
@@ -214,7 +202,6 @@ router.get('/profiles', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/profiles:
@@ -272,7 +259,6 @@ router.put('/profiles', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/update-password:
@@ -309,11 +295,9 @@ router.put('/profiles', authenticate, async (req, res, next) => {
  */
 router.post('/update-password', authenticate, async (req, res, next) => {
   const { newPassword } = req.body;
-
   if (!newPassword) {
     return res.status(400).json({ error: 'New password is required.' });
   }
-
   try {
     // Security: Password updates must always apply to the authenticated user, not the active context
     await authService.updateUserPassword(req.authenticatedUserId, newPassword);
@@ -325,7 +309,6 @@ router.post('/update-password', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/update-email:
@@ -364,11 +347,9 @@ router.post('/update-password', authenticate, async (req, res, next) => {
  */
 router.post('/update-email', authenticate, async (req, res, next) => {
   const { newEmail } = req.body;
-
   if (!newEmail) {
     return res.status(400).json({ error: 'New email is required.' });
   }
-
   try {
     // Security: Email updates must always apply to the authenticated user
     await authService.updateUserEmail(req.authenticatedUserId, newEmail);
@@ -385,7 +366,6 @@ router.post('/update-email', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/profiles/avatar:
@@ -439,12 +419,10 @@ router.post(
       // The avatar URL should be a relative path that the frontend can use.
       // The logic for serving the file will handle the rest.
       const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-
       // Update the profile of the active user context
       await authService.updateUserProfile(req.userId, {
         avatar_url: avatarUrl,
       });
-
       res.status(200).json({
         message: 'Avatar uploaded successfully.',
         avatar_url: avatarUrl,
@@ -455,7 +433,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /identity/profiles/avatar/{filename}:
@@ -489,12 +466,10 @@ router.get('/profiles/avatar/:filename', authenticate, (req, res, next) => {
   try {
     const { filename } = req.params;
     const avatarPath = path.join(UPLOADS_DIR, filename);
-
     // Security check: Ensure the filename is safe to prevent directory traversal
     if (filename.includes('..')) {
       return res.status(400).json({ error: 'Invalid filename.' });
     }
-
     if (fs.existsSync(avatarPath)) {
       res.sendFile(avatarPath);
     } else {
@@ -505,7 +480,6 @@ router.get('/profiles/avatar/:filename', authenticate, (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /identity/mfa/email-toggle:
@@ -528,13 +502,11 @@ router.get('/profiles/avatar/:filename', authenticate, (req, res, next) => {
  */
 router.post('/mfa/email-toggle', authenticate, async (req, res, next) => {
   const { enabled } = req.body;
-
   try {
     // Security: MFA settings must apply to the authenticated user
     const user = await authService.getUser(req.authenticatedUserId);
     const totpEnabled = !!user.mfa_totp_enabled;
     const globalMfaState = enabled || totpEnabled;
-
     await authService.updateUserMfaSettings(
       req.authenticatedUserId,
       undefined, // mfaSecret
@@ -543,7 +515,6 @@ router.post('/mfa/email-toggle', authenticate, async (req, res, next) => {
       undefined, // mfaRecoveryCodes
       undefined // mfaEnforced
     );
-
     res.status(200).json({
       message: `Email MFA ${enabled ? 'enabled' : 'disabled'} successfully.`,
       mfaEmailEnabled: enabled,
@@ -558,5 +529,4 @@ router.post('/mfa/email-toggle', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

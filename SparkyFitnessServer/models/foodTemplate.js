@@ -1,14 +1,13 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const format = require('pg-format');
-const foodEntryMealRepository = require('./foodEntryMealRepository');
-const {
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import format from 'pg-format';
+import foodEntryMealRepository from './foodEntryMealRepository.js';
+import {
   addDays,
   compareDays,
   dayOfWeek,
   localDateToDay,
-} = require('@workspace/shared');
-
+} from '@workspace/shared';
 async function deleteFoodEntriesByMealPlanId(mealPlanId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -28,16 +27,13 @@ async function deleteFoodEntriesByMealPlanId(mealPlanId, userId) {
     client.release();
   }
 }
-
 async function deleteFoodEntriesByTemplateId(templateId, userId, today) {
   const client = await getClient(userId); // User-specific operation
   try {
     const params = [templateId, userId, today];
-
     // Only delete from today onwards
     const query =
       'DELETE FROM food_entries WHERE meal_plan_template_id = $1 AND user_id = $2 AND entry_date >= $3';
-
     // 1. Identify food_entry_meals to delete (orphaned by this operation)
     const entryMealsQuery = `
       SELECT DISTINCT food_entry_meal_id
@@ -46,10 +42,8 @@ async function deleteFoodEntriesByTemplateId(templateId, userId, today) {
     `;
     const entryMealsResult = await client.query(entryMealsQuery, params);
     const entryMealIds = entryMealsResult.rows.map((r) => r.food_entry_meal_id);
-
     // 2. Delete the food entries
     const result = await client.query(query, params);
-
     // 3. Delete the orphaned food_entry_meals
     if (entryMealIds.length > 0) {
       await client.query(
@@ -61,7 +55,6 @@ async function deleteFoodEntriesByTemplateId(templateId, userId, today) {
         `Deleted ${entryMealIds.length} orphaned food_entry_meals for template ${templateId}`
       );
     }
-
     return result.rowCount;
   } catch (error) {
     log(
@@ -74,7 +67,6 @@ async function deleteFoodEntriesByTemplateId(templateId, userId, today) {
     client.release();
   }
 }
-
 async function createFoodEntriesFromTemplate(templateId, userId, today) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -83,7 +75,6 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
       'info',
       `Creating food entries from template ${templateId} for user ${userId}`
     );
-
     const templateQuery = `
             SELECT
                 t.start_date,
@@ -117,7 +108,6 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
     if (templateResult.rows.length === 0) {
       throw new Error('Meal plan template not found or access denied.');
     }
-
     const { start_date, end_date, assignments } = templateResult.rows[0];
     if (!assignments || assignments.length === 0) {
       log(
@@ -127,7 +117,6 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
       await client.query('COMMIT');
       return;
     }
-
     // start_date/end_date come from pg as Date objects; extract the YYYY-MM-DD string
     const startDay =
       typeof start_date === 'string'
@@ -139,15 +128,12 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
         ? end_date.slice(0, 10)
         : localDateToDay(end_date)
       : addDays(startDay, 365);
-
     // Start from today if template start_date is in the past
     let currentDay = compareDays(startDay, today) < 0 ? today : startDay;
-
     const foodEntriesToInsert = [];
     const mealIds = new Set();
     const foodIds = new Set();
     const variantIds = new Set();
-
     assignments.forEach((assignment) => {
       if (assignment.item_type === 'meal') {
         mealIds.add(assignment.meal_id);
@@ -159,7 +145,6 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
         }
       }
     });
-
     const mealFoodsMap = new Map();
     if (mealIds.size > 0) {
       const mealFoodsResult = await client.query(
@@ -181,7 +166,6 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
         }
       });
     }
-
     const foodsMap = new Map();
     if (foodIds.size > 0) {
       const foodsResult = await client.query(
@@ -190,7 +174,6 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
       );
       foodsResult.rows.forEach((row) => foodsMap.set(row.id, row));
     }
-
     const mealsMap = new Map();
     if (mealIds.size > 0) {
       const mealsResult = await client.query(
@@ -199,7 +182,6 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
       );
       mealsResult.rows.forEach((row) => mealsMap.set(row.id, row));
     }
-
     const variantsMap = new Map();
     if (variantIds.size > 0) {
       const variantsResult = await client.query(
@@ -208,7 +190,6 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
       );
       variantsResult.rows.forEach((row) => variantsMap.set(row.id, row));
     }
-
     const existingFoodEntries = new Set();
     const existingEntriesQuery = `
         SELECT food_id, meal_id, meal_type_id, entry_date, variant_id
@@ -232,32 +213,25 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
       const key = `${entry.food_id || entry.meal_id}-${entry.meal_type_id}-${dateStr}-${entry.variant_id}`;
       existingFoodEntries.add(key);
     });
-
     while (compareDays(currentDay, endDay) <= 0) {
       const dow = dayOfWeek(currentDay);
       const assignmentsForDay = assignments.filter(
         (a) => a.day_of_week === dow
       );
-
       for (const assignment of assignmentsForDay) {
         if (assignment.item_type === 'meal') {
           const mealFoods = mealFoodsMap.get(assignment.meal_id) || [];
           if (mealFoods.length === 0) continue;
-
           const entryKey = `${assignment.meal_id}-${assignment.meal_type_id}-${currentDay}-null`;
           if (existingFoodEntries.has(entryKey)) continue;
-
           const meal = mealsMap.get(assignment.meal_id);
           if (!meal) continue;
-
           const mealQuantity = assignment.quantity || 1.0;
           const mealUnit = assignment.unit || 'serving';
-
           log(
             'info',
             `Creating food_entry_meal for meal ${meal.name} with quantity ${mealQuantity} ${mealUnit}`
           );
-
           // Create food_entry_meals record
           const foodEntryMealData = {
             user_id: userId,
@@ -271,18 +245,15 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
             created_by_user_id: userId,
             updated_by_user_id: userId,
           };
-
           const newFoodEntryMeal =
             await foodEntryMealRepository.createFoodEntryMeal(
               foodEntryMealData,
               userId
             );
-
           log(
             'info',
             `Created food_entry_meal ${newFoodEntryMeal.id} for meal ${meal.name}`
           );
-
           // Calculate multiplier for scaling component foods
           const mealServingSize = meal.serving_size || 1.0;
           let multiplier = 1.0;
@@ -291,12 +262,10 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
           } else {
             multiplier = mealQuantity / mealServingSize;
           }
-
           log(
             'info',
             `Multiplier for meal scaling: ${multiplier} (quantity: ${mealQuantity}, serving_size: ${mealServingSize})`
           );
-
           for (const foodItem of mealFoods) {
             const variant = variantsMap.get(foodItem.variant_id);
             if (!variant) {
@@ -306,9 +275,7 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
               );
               continue;
             }
-
             const scaledQuantity = foodItem.quantity * multiplier;
-
             foodEntriesToInsert.push([
               userId,
               foodItem.food_id,
@@ -354,10 +321,8 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
           const food = foodsMap.get(assignment.food_id);
           const variant = variantsMap.get(assignment.variant_id);
           if (!food || !variant) continue;
-
           const entryKey = `${assignment.food_id}-${assignment.meal_type_id}-${currentDay}-${assignment.variant_id}`;
           if (existingFoodEntries.has(entryKey)) continue;
-
           foodEntriesToInsert.push([
             userId,
             assignment.food_id,
@@ -398,7 +363,6 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
       }
       currentDay = addDays(currentDay, 1);
     }
-
     if (foodEntriesToInsert.length > 0) {
       const insertQuery = format(
         `INSERT INTO food_entries (
@@ -419,7 +383,6 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
     } else {
       log('info', `No new food entries to insert for template ${templateId}`);
     }
-
     await client.query('COMMIT');
     log(
       'info',
@@ -437,8 +400,10 @@ async function createFoodEntriesFromTemplate(templateId, userId, today) {
     client.release();
   }
 }
-
-module.exports = {
+export { deleteFoodEntriesByMealPlanId };
+export { deleteFoodEntriesByTemplateId };
+export { createFoodEntriesFromTemplate };
+export default {
   deleteFoodEntriesByMealPlanId,
   deleteFoodEntriesByTemplateId,
   createFoodEntriesFromTemplate,

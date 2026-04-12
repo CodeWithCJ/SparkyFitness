@@ -1,12 +1,10 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import preferenceService from '../services/preferenceService.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const preferenceService = require('../services/preferenceService');
-
 // Endpoint to bootstrap timezone from the device only if unset
 router.post('/bootstrap-timezone', authenticate, async (req, res, next) => {
   const { timezone } = req.body;
-
   try {
     const preferences = await preferenceService.bootstrapUserTimezone(
       req.userId,
@@ -30,7 +28,6 @@ router.post('/bootstrap-timezone', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // Endpoint to update user preferences
 /**
  * @swagger
@@ -52,7 +49,6 @@ router.post('/bootstrap-timezone', authenticate, async (req, res, next) => {
  */
 router.put('/', authenticate, async (req, res, next) => {
   const preferenceData = req.body;
-
   try {
     const updatedPreferences = await preferenceService.updateUserPreferences(
       req.userId,
@@ -76,7 +72,6 @@ router.put('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // Endpoint to delete user preferences
 /**
  * @swagger
@@ -107,7 +102,6 @@ router.delete('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // Endpoint to fetch user preferences
 /**
  * @swagger
@@ -142,7 +136,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // Endpoint to upsert user preferences
 /**
  * @swagger
@@ -164,7 +157,6 @@ router.get('/', authenticate, async (req, res, next) => {
  */
 router.post('/', authenticate, async (req, res, next) => {
   const preferenceData = req.body;
-
   try {
     const newPreferences = await preferenceService.upsertUserPreferences(
       req.userId,
@@ -181,5 +173,4 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

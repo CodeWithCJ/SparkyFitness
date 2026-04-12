@@ -1,20 +1,23 @@
-const express = require('express');
-const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware'); // Import the new middleware
-const exerciseService = require('../services/exerciseService');
-const exerciseEntryService = require('../services/exerciseEntryService'); // New import for exercise entry service
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
-const { createUploadMiddleware } = require('../middleware/uploadMiddleware');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import exerciseService from '../services/exerciseService.js';
+import exerciseEntryService from '../services/exerciseEntryService.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+import { createUploadMiddleware } from '../middleware/uploadMiddleware.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+const router = express.Router();
 // Function to sanitize filename
 const sanitizeFilename = (filename) => {
   return filename.replace(/[^a-zA-Z0-9_.-]/g, '_').substring(0, 50);
 };
-
 // Custom storage for exercise entries
 const exerciseEntryStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -33,19 +36,15 @@ const exerciseEntryStorage = multer.diskStorage({
     cb(null, newFilename);
   },
 });
-
 const upload = createUploadMiddleware(exerciseEntryStorage);
-
 // Apply diary permission check to all exercise entry routes
 router.use(checkPermissionMiddleware('diary'));
-
 /**
  * @swagger
  * tags:
  *   name: Fitness & Workouts
  *   description: Exercise database, workout presets, and activity logging.
  */
-
 /**
  * @swagger
  * components:
@@ -126,7 +125,6 @@ router.use(checkPermissionMiddleware('diary'));
  *         - exercise_id
  *         - entry_date
  */
-
 /**
  * @swagger
  * /exercise-entries/by-date:
@@ -168,17 +166,14 @@ router.get('/by-date', authenticate, async (req, res, next) => {
   try {
     const { userId } = req.query; // Check for userId param
     const targetUserId = userId || req.userId;
-
     if (userId && userId !== req.userId) {
-      const hasPermission =
-        await require('../utils/permissionUtils').canAccessUserData(
-          userId,
-          'diary',
-          req.userId
-        ); // Permission check
+      const hasPermission = await { canAccessUserData }.canAccessUserData(
+        userId,
+        'diary',
+        req.userId
+      ); // Permission check
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
-
     const entries = await exerciseService.getExerciseEntriesByDate(
       req.userId,
       targetUserId,
@@ -192,7 +187,6 @@ router.get('/by-date', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercise-entries:
@@ -305,7 +299,6 @@ router.post(
             .json({ error: 'Invalid format for activity_details.' });
         }
       }
-
       const uuidRegex =
         /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
       if (exercise_id && !uuidRegex.test(exercise_id)) {
@@ -313,26 +306,22 @@ router.post(
           .status(400)
           .json({ error: 'Exercise ID must be a valid UUID.' });
       }
-
       let imageUrl = entryData.image_url || null;
       if (req.file) {
         // Construct the URL path for the image
         const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         imageUrl = `/uploads/exercise_entries/${today}/${req.file.filename}`;
       }
-
       const targetUserId = req.body.user_id || req.userId;
       // Check permission if explicitly creating for another user
       if (req.body.user_id && req.body.user_id !== req.userId) {
-        const hasPermission =
-          await require('../utils/permissionUtils').canAccessUserData(
-            req.body.user_id,
-            'diary',
-            req.userId
-          ); // Permission check
+        const hasPermission = await { canAccessUserData }.canAccessUserData(
+          req.body.user_id,
+          'diary',
+          req.userId
+        ); // Permission check
         if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
       }
-
       const newEntry = await exerciseService.createExerciseEntry(
         targetUserId,
         req.originalUserId || req.userId,
@@ -361,7 +350,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /exercise-entries/from-plan:
@@ -471,7 +459,6 @@ router.post('/from-plan', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercise-entries/history/{exerciseId}:
@@ -532,7 +519,6 @@ router.get('/history/:exerciseId', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercise-entries/{id}:
@@ -588,7 +574,6 @@ router.get('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercise-entries/{id}:
@@ -684,7 +669,6 @@ router.put(
     } else {
       updateData = req.body;
     }
-
     if (
       updateData.activity_details &&
       typeof updateData.activity_details === 'string'
@@ -698,10 +682,8 @@ router.put(
           .json({ error: 'Invalid format for activity_details.' });
       }
     }
-
     // Extract new fields from updateData
     const { distance, avg_heart_rate } = updateData;
-
     const uuidRegex =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (!id || !uuidRegex.test(id)) {
@@ -709,12 +691,10 @@ router.put(
         error: 'Exercise Entry ID is required and must be a valid UUID.',
       });
     }
-
     if (req.file) {
       const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       updateData.image_url = `/uploads/exercise_entries/${today}/${req.file.filename}`;
     }
-
     // Add new fields to updateData
     updateData.distance = distance;
     updateData.avg_heart_rate = avg_heart_rate;
@@ -741,7 +721,6 @@ router.put(
     }
   }
 );
-
 /**
  * @swagger
  * /exercise-entries/progress/{exerciseId}:
@@ -800,7 +779,6 @@ router.put(
 router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
   const { exerciseId } = req.params;
   const { startDate, endDate } = req.query;
-
   if (!exerciseId) {
     return res.status(400).json({ error: 'Exercise ID is required.' });
   }
@@ -809,7 +787,6 @@ router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
       error: 'Start date and end date are required for progress data.',
     });
   }
-
   try {
     const progressData = await exerciseService.getExerciseProgressData(
       req.userId,
@@ -828,7 +805,6 @@ router.get('/progress/:exerciseId', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercise-entries/{id}:
@@ -882,7 +858,6 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercise-entries/import-history-csv:
@@ -983,5 +958,4 @@ router.post('/import-history-csv', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
-module.exports = router;
+export default router;

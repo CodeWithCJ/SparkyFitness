@@ -1,6 +1,5 @@
-const { getSystemClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-
+import { getSystemClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 class BackupSettingsRepository {
   async getBackupSettings() {
     const client = await getSystemClient(); // System-level operation
@@ -21,16 +20,14 @@ class BackupSettingsRepository {
       client.release();
     }
   }
-
   async createDefaultBackupSettings() {
     const client = await getSystemClient(); // System-level operation
     try {
-      const result = await client.query(
-        `INSERT INTO backup_settings (backup_enabled, backup_days, backup_time, retention_days)
+      const result =
+        await client.query(`INSERT INTO backup_settings (backup_enabled, backup_days, backup_time, retention_days)
          VALUES (FALSE, '{}', '02:00', 7)
          ON CONFLICT ((id IS NOT NULL)) DO NOTHING
-         RETURNING *;`
-      );
+         RETURNING *;`);
       // If the insert didn't return a row (due to ON CONFLICT DO NOTHING), fetch the existing one
       if (result.rows.length === 0) {
         return this.getBackupSettings();
@@ -43,7 +40,6 @@ class BackupSettingsRepository {
       client.release();
     }
   }
-
   async updateBackupSettings({
     backup_enabled,
     backup_days,
@@ -75,7 +71,6 @@ class BackupSettingsRepository {
       client.release();
     }
   }
-
   async updateLastBackupStatus(status, timestamp) {
     const client = await getSystemClient(); // System-level operation
     try {
@@ -113,5 +108,4 @@ class BackupSettingsRepository {
     }
   }
 }
-
-module.exports = new BackupSettingsRepository();
+export default new BackupSettingsRepository();

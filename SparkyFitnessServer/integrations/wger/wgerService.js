@@ -1,16 +1,14 @@
-const { log } = require('../../config/logging');
-const NodeCache = require('node-cache');
-const {
+import { log } from '../../config/logging.js';
+import NodeCache from 'node-cache';
+import {
   muscleNameMap,
   equipmentNameMap,
   forceMap,
   mechanicMap,
-} = require('./wgerNameMapping');
-
+} from './wgerNameMapping.js';
 const WGER_API_BASE_URL = 'https://wger.de/api/v2';
 const WGER_CACHE_DURATION_SECONDS = 3600; // Cache for 1 hour
 const wgerCache = new NodeCache({ stdTTL: WGER_CACHE_DURATION_SECONDS });
-
 async function callWgerApi(endpoint, params = {}) {
   // Create a stable query string for caching by sorting keys
   const sortedKeys = Object.keys(params).sort();
@@ -21,14 +19,12 @@ async function callWgerApi(endpoint, params = {}) {
   const queryString = new URLSearchParams(sortedParams).toString();
   const url = `${WGER_API_BASE_URL}${endpoint}/?${queryString}`;
   const cacheKey = `${endpoint}?${queryString}`;
-
   // Check cache first
   const cachedData = wgerCache.get(cacheKey);
   if (cachedData) {
     log('info', `Returning cached data for Wger API: ${url}`);
     return cachedData;
   }
-
   try {
     log('info', `Calling Wger API: ${url}`);
     const response = await fetch(url, {
@@ -37,7 +33,6 @@ async function callWgerApi(endpoint, params = {}) {
         Accept: 'application/json',
       },
     });
-
     if (!response.ok) {
       // For 404, we can expect this if an exercise doesn't exist, so we don't want to throw an error.
       if (response.status === 404) {
@@ -54,7 +49,6 @@ async function callWgerApi(endpoint, params = {}) {
       );
       throw new Error(`Wger API error: ${response.status} - ${errorText}`);
     }
-
     const data = await response.json();
     wgerCache.set(cacheKey, data); // Cache the response
     return data;
@@ -63,7 +57,6 @@ async function callWgerApi(endpoint, params = {}) {
     throw error;
   }
 }
-
 async function searchWgerExercises(
   query,
   muscleIds = [],
@@ -84,9 +77,7 @@ async function searchWgerExercises(
       ? equipmentIds.split(',')
       : [];
   const hasFilters = muscleIdList.length > 0 || equipmentIdList.length > 0;
-
   const exerciseSet = new Map();
-
   if (hasQuery && !hasFilters) {
     const params = { term: query, language: language };
     const data = await callWgerApi('/exercise/search', params);
@@ -97,7 +88,6 @@ async function searchWgerExercises(
     }
   } else {
     const filterPromises = [];
-
     // Create API calls for each muscle and equipment ID
     muscleIdList.forEach((id) => {
       filterPromises.push(
@@ -109,7 +99,6 @@ async function searchWgerExercises(
         callWgerApi('/exercise', { language, equipment: id, limit: 100 })
       );
     });
-
     const results = await Promise.all(filterPromises);
     results.forEach((data) => {
       if (data && data.results) {
@@ -119,28 +108,22 @@ async function searchWgerExercises(
       }
     });
   }
-
   const exercises = Array.from(exerciseSet.values());
-
   const detailedExercises = await Promise.all(
     exercises.map(async (exercise) => {
       const details = await getWgerExerciseDetails(exercise.id);
       if (!details) return null;
-
       const englishTranslation = details.translations?.find(
         (t) => t.language === 2
       );
       const anyTranslation = details.translations?.[0];
-
       const exerciseName =
         englishTranslation?.name || details.name || anyTranslation?.name;
       const description =
         englishTranslation?.description || anyTranslation?.description || '';
-
       const images = details.images
         ? details.images.map((img) => img.image)
         : [];
-
       return {
         ...exercise,
         ...details,
@@ -156,32 +139,26 @@ async function searchWgerExercises(
       };
     })
   );
-
   const validExercises = detailedExercises.filter((d) => d !== null);
-
   return {
     exercises: validExercises.slice(offset, offset + limit),
     totalCount: validExercises.length,
   };
 }
-
 async function getWgerExerciseDetails(exerciseId) {
   // Use /exerciseinfo/ endpoint for detailed information
   const data = await callWgerApi(`/exerciseinfo/${exerciseId}`);
   // If data is null (which callWgerApi returns for a 404), we just return it.
   return data;
 }
-
 async function getWgerMuscleIdMap() {
   const cacheKey = 'wger-muscle-id-map';
   let idMap = wgerCache.get(cacheKey);
   if (idMap) {
     return idMap;
   }
-
   const wgerMusclesData = await callWgerApi('/muscle');
   const wgerMuscles = wgerMusclesData.results;
-
   idMap = {};
   for (const ourName in muscleNameMap) {
     const wgerNames = Array.isArray(muscleNameMap[ourName])
@@ -197,26 +174,21 @@ async function getWgerMuscleIdMap() {
         return wgerMuscle ? wgerMuscle.id : null;
       })
       .filter((id) => id !== null);
-
     if (ids.length > 0) {
       idMap[ourName] = ids;
     }
   }
-
   wgerCache.set(cacheKey, idMap);
   return idMap;
 }
-
 async function getWgerEquipmentIdMap() {
   const cacheKey = 'wger-equipment-id-map';
   let idMap = wgerCache.get(cacheKey);
   if (idMap) {
     return idMap;
   }
-
   const wgerEquipmentData = await callWgerApi('/equipment');
   const wgerEquipment = wgerEquipmentData.results;
-
   idMap = {};
   for (const ourName in equipmentNameMap) {
     const wgerNames = Array.isArray(equipmentNameMap[ourName])
@@ -230,17 +202,18 @@ async function getWgerEquipmentIdMap() {
         return wgerEquip ? wgerEquip.id : null;
       })
       .filter((id) => id !== null);
-
     if (ids.length > 0) {
       idMap[ourName] = ids;
     }
   }
-
   wgerCache.set(cacheKey, idMap);
   return idMap;
 }
-
-module.exports = {
+export { searchWgerExercises };
+export { getWgerExerciseDetails };
+export { getWgerMuscleIdMap };
+export { getWgerEquipmentIdMap };
+export default {
   searchWgerExercises,
   getWgerExerciseDetails,
   getWgerMuscleIdMap,

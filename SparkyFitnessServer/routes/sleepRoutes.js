@@ -1,11 +1,11 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import measurementService from '../services/measurementService.js';
+import sleepAnalyticsService from '../services/sleepAnalyticsService.js';
+import { log } from '../config/logging.js';
+import permissionUtils from '../utils/permissionUtils.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const checkPermissionMiddleware = require('../middleware/checkPermissionMiddleware');
-const measurementService = require('../services/measurementService');
-const sleepAnalyticsService = require('../services/sleepAnalyticsService'); // Import sleepAnalyticsService
-const { log } = require('../config/logging');
-
 /**
  * @swagger
  * /sleep/analytics:
@@ -58,9 +58,7 @@ router.get(
           error: 'Missing required query parameters: startDate and endDate.',
         });
       }
-
       const targetUserId = userId || req.userId;
-
       const analyticsData = await sleepAnalyticsService.getSleepAnalytics(
         targetUserId,
         startDate,
@@ -73,7 +71,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep/manual_entry:
@@ -133,7 +130,6 @@ router.post(
             'Missing required fields: entry_date, bedtime, wake_time, or duration_in_seconds.',
         });
       }
-
       const sleepEntryData = {
         entry_date: entry_date,
         bedtime: new Date(bedtime),
@@ -142,7 +138,6 @@ router.post(
         source: 'manual',
         stage_events: stage_events,
       };
-
       const result = await measurementService.processSleepEntry(
         req.userId,
         req.userId,
@@ -155,7 +150,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep:
@@ -199,11 +193,8 @@ router.get(
           error: 'Missing required query parameters: startDate and endDate.',
         });
       }
-
       const targetUserId = userId || req.userId;
-
       if (userId && userId !== req.userId) {
-        const permissionUtils = require('../utils/permissionUtils');
         const hasPermission = await permissionUtils.canAccessUserData(
           userId,
           'reports',
@@ -216,7 +207,6 @@ router.get(
           });
         }
       }
-
       const sleepEntries =
         await measurementService.getSleepEntriesByUserIdAndDateRange(
           targetUserId,
@@ -230,7 +220,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep/details:
@@ -269,11 +258,8 @@ router.get(
           error: 'Missing required query parameters: startDate and endDate.',
         });
       }
-
       const targetUserId = userId || req.userId;
-
       if (userId && userId !== req.userId) {
-        const permissionUtils = require('../utils/permissionUtils');
         const hasPermission = await permissionUtils.canAccessUserData(
           userId,
           'reports',
@@ -286,7 +272,6 @@ router.get(
           });
         }
       }
-
       const sleepEntries =
         await measurementService.getSleepEntriesByUserIdAndDateRange(
           targetUserId,
@@ -300,7 +285,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep/{id}:
@@ -347,14 +331,12 @@ router.put(
       const { id } = req.params;
       const { bedtime, wake_time, duration_in_seconds, stage_events } =
         req.body;
-
       const updatedSleepEntryData = {
         bedtime: bedtime ? new Date(bedtime) : undefined,
         wake_time: wake_time ? new Date(wake_time) : undefined,
         duration_in_seconds: duration_in_seconds,
         stage_events: stage_events,
       };
-
       const result = await measurementService.updateSleepEntry(
         req.userId,
         id,
@@ -372,7 +354,6 @@ router.put(
     }
   }
 );
-
 /**
  * @swagger
  * /sleep/{id}:
@@ -411,5 +392,4 @@ router.delete(
     }
   }
 );
-
-module.exports = router;
+export default router;

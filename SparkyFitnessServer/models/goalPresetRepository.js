@@ -1,6 +1,5 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 async function createGoalPreset(presetData) {
   const client = await getClient(presetData.user_id); // User-specific operation
   try {
@@ -63,7 +62,6 @@ async function createGoalPreset(presetData) {
     client.release();
   }
 }
-
 async function getGoalPresetsByUserId(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -76,7 +74,6 @@ async function getGoalPresetsByUserId(userId) {
     client.release();
   }
 }
-
 async function getGoalPresetById(presetId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -89,7 +86,6 @@ async function getGoalPresetById(presetId, userId) {
     client.release();
   }
 }
-
 async function updateGoalPreset(presetId, presetData) {
   const client = await getClient(presetData.user_id); // User-specific operation
   try {
@@ -153,7 +149,6 @@ async function updateGoalPreset(presetId, presetData) {
     client.release();
   }
 }
-
 async function deleteGoalPreset(presetId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -166,8 +161,12 @@ async function deleteGoalPreset(presetId, userId) {
     client.release();
   }
 }
-
-module.exports = {
+export { createGoalPreset };
+export { getGoalPresetsByUserId };
+export { getGoalPresetById };
+export { updateGoalPreset };
+export { deleteGoalPreset };
+export default {
   createGoalPreset,
   getGoalPresetsByUserId,
   getGoalPresetById,

@@ -1,22 +1,23 @@
-jest.mock('../integrations/openfoodfacts/openFoodFactsAuth', () => ({
-  getOpenFoodFactsSessionCookie: jest.fn(),
-  invalidateOpenFoodFactsSession: jest.fn(),
-}));
-
-const {
-  searchOpenFoodFacts,
-  searchOpenFoodFactsByBarcodeFields,
-} = require('../integrations/openfoodfacts/openFoodFactsService');
-const {
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
   getOpenFoodFactsSessionCookie,
   invalidateOpenFoodFactsSession,
-} = require('../integrations/openfoodfacts/openFoodFactsAuth');
+} from '../integrations/openfoodfacts/openFoodFactsAuth.js';
+import {
+  searchOpenFoodFacts,
+  searchOpenFoodFactsByBarcodeFields,
+} from '../integrations/openfoodfacts/openFoodFactsService.js';
 
-global.fetch = jest.fn();
+vi.mock('../integrations/openfoodfacts/openFoodFactsAuth.js', () => ({
+  getOpenFoodFactsSessionCookie: vi.fn(),
+  invalidateOpenFoodFactsSession: vi.fn(),
+}));
+
+global.fetch = vi.fn();
 
 describe('openFoodFactsService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getOpenFoodFactsSessionCookie.mockResolvedValue(null);
   });
 
@@ -26,9 +27,7 @@ describe('openFoodFactsService', () => {
         ok: true,
         json: () => Promise.resolve({ products: [], count: 0 }),
       });
-
       await searchOpenFoodFacts('pizza', 1, 'fr');
-
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('&lc=fr'),
         expect.any(Object)
@@ -40,9 +39,7 @@ describe('openFoodFactsService', () => {
         ok: true,
         json: () => Promise.resolve({ products: [], count: 0 }),
       });
-
       await searchOpenFoodFacts('pizza', 1);
-
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('&lc=en'),
         expect.any(Object)
@@ -56,9 +53,7 @@ describe('openFoodFactsService', () => {
         ok: true,
         json: () => Promise.resolve({ status: 1, product: {} }),
       });
-
       await searchOpenFoodFactsByBarcodeFields('12345678', undefined, 'it');
-
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('&lc=it'),
         expect.any(Object)
@@ -70,9 +65,7 @@ describe('openFoodFactsService', () => {
         ok: true,
         json: () => Promise.resolve({ status: 1, product: {} }),
       });
-
       await searchOpenFoodFactsByBarcodeFields('12345678');
-
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('&lc=en'),
         expect.any(Object)
@@ -147,7 +140,6 @@ describe('openFoodFactsService', () => {
         'user-A',
         'prov-1'
       );
-      // First call had cookie, second call did not
       expect(fetch.mock.calls[0][1].headers.Cookie).toBe('session=SESS_TOKEN');
       expect(fetch.mock.calls[1][1].headers.Cookie).toBeUndefined();
     });

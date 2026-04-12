@@ -1,8 +1,6 @@
-const { log } = require('../../config/logging');
-const externalProviderRepository = require('../../models/externalProviderRepository');
-
+import { log } from '../../config/logging.js';
+import externalProviderRepository from '../../models/externalProviderRepository.js';
 const NUTRITIONIX_API_BASE_URL = 'https://trackapi.nutritionix.com/v2';
-
 async function getNutritionixHeaders(providerId) {
   const providerData =
     await externalProviderRepository.getExternalDataProviderById(providerId);
@@ -15,7 +13,6 @@ async function getNutritionixHeaders(providerId) {
     'x-app-key': providerData.app_key,
   };
 }
-
 async function searchNutritionixFoods(query, providerId) {
   try {
     const headers = await getNutritionixHeaders(providerId);
@@ -42,7 +39,6 @@ async function searchNutritionixFoods(query, providerId) {
     throw error;
   }
 }
-
 async function getNutritionixNutrients(query, providerId) {
   try {
     const headers = await getNutritionixHeaders(providerId);
@@ -97,7 +93,6 @@ async function getNutritionixNutrients(query, providerId) {
     throw error;
   }
 }
-
 async function getNutritionixBrandedNutrients(nixItemId, providerId) {
   try {
     const headers = await getNutritionixHeaders(providerId);
@@ -117,7 +112,6 @@ async function getNutritionixBrandedNutrients(nixItemId, providerId) {
       const food = data.foods[0];
       const getNutrientValue = (attr_id) =>
         food.full_nutrients?.find((n) => n.attr_id === attr_id)?.value || 0;
-
       return {
         name: food.food_name,
         brand: food.brand_name || null,
@@ -152,7 +146,6 @@ async function getNutritionixBrandedNutrients(nixItemId, providerId) {
     throw error;
   }
 }
-
 async function searchNutritionixExercises(
   query,
   providerId,
@@ -164,7 +157,6 @@ async function searchNutritionixExercises(
       query: query,
       ...userDemographics, // Add user demographics if provided
     };
-
     const response = await fetch(
       `${NUTRITIONIX_API_BASE_URL}/natural/exercise`,
       {
@@ -173,15 +165,12 @@ async function searchNutritionixExercises(
         body: JSON.stringify(body),
       }
     );
-
     if (!response.ok) {
       const errorText = await response.text();
       log('error', 'Nutritionix Natural Exercise API error:', errorText);
       throw new Error(`Nutritionix API error: ${errorText}`);
     }
-
     const data = await response.json();
-
     // Map Nutritionix exercise data to a standardized format
     if (data.exercises && data.exercises.length > 0) {
       return data.exercises.map((exercise) => {
@@ -210,8 +199,11 @@ async function searchNutritionixExercises(
     throw error;
   }
 }
-
-module.exports = {
+export { searchNutritionixFoods };
+export { getNutritionixNutrients };
+export { getNutritionixBrandedNutrients };
+export { searchNutritionixExercises };
+export default {
   searchNutritionixFoods,
   getNutritionixNutrients,
   getNutritionixBrandedNutrients,

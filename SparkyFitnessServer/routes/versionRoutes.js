@@ -1,7 +1,6 @@
-const express = require('express');
+import express from 'express';
+import versionService from '../services/versionService.js';
 const router = express.Router();
-const versionService = require('../services/versionService');
-
 /**
  * @swagger
  * /version/current:
@@ -22,7 +21,6 @@ router.get('/current', (req, res) => {
   const appVersion = versionService.getAppVersion();
   res.json({ version: appVersion });
 });
-
 /**
  * @swagger
  * /version/latest-github:
@@ -45,5 +43,4 @@ router.get('/latest-github', async (req, res) => {
     });
   }
 });
-
-module.exports = router;
+export default router;

@@ -1,5 +1,4 @@
-const swaggerJsdoc = require('swagger-jsdoc');
-
+import swaggerJsdoc from 'swagger-jsdoc';
 const options = {
   definition: {
     openapi: '3.0.0',
@@ -1429,7 +1428,5 @@ const options = {
     './SparkyFitnessServer.js',
   ], // Paths to files containing OpenAPI definitions
 };
-
 const specs = swaggerJsdoc(options);
-
-module.exports = specs;
+export default specs;

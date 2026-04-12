@@ -1,9 +1,8 @@
-const measurementRepository = require('../models/measurementRepository');
-const userRepository = require('../models/userRepository'); // Import userRepository
-const { log } = require('../config/logging');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { userAge } = require('../utils/dateHelpers');
-
+import measurementRepository from '../models/measurementRepository.js';
+import userRepository from '../models/userRepository.js';
+import { log } from '../config/logging.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { userAge } from '../utils/dateHelpers.js';
 // Approximate MET values based on exercise category and level
 const MET_VALUES = {
   cardio: {
@@ -48,7 +47,6 @@ const MET_VALUES = {
     expert: 4.0,
   },
 };
-
 /**
  * Estimates calories burned per hour for a given exercise and user.
  * @param {object} exercise - The exercise object (must have category and level).
@@ -62,22 +60,18 @@ async function estimateCaloriesBurnedPerHour(exercise, userId, sets) {
       ? exercise.category.name
       : exercise.category;
   const category = categoryName ? categoryName.toLowerCase() : 'default';
-
   if (category === 'cardio' && exercise.calories_per_hour) {
     return exercise.calories_per_hour;
   }
-
   let userWeightKg = 70; // Default to 70kg if user weight not found
   let age = 30; // Default age
   let userGender = 'male'; // Default gender
-
   try {
     const latestMeasurement =
       await measurementRepository.getLatestMeasurement(userId);
     if (latestMeasurement && latestMeasurement.weight) {
       userWeightKg = latestMeasurement.weight;
     }
-
     const userProfile = await userRepository.getUserProfile(userId);
     if (userProfile) {
       if (userProfile.date_of_birth) {
@@ -94,9 +88,7 @@ async function estimateCaloriesBurnedPerHour(exercise, userId, sets) {
       `CalorieCalculationService: Could not fetch user profile for user ${userId}, using defaults. Error: ${error.message}`
     );
   }
-
   const level = exercise.level ? exercise.level.toLowerCase() : 'intermediate';
-
   let met;
   if (category === 'strength' && sets && sets.length > 0) {
     // Enhanced MET calculation for strength training
@@ -122,29 +114,24 @@ async function estimateCaloriesBurnedPerHour(exercise, userId, sets) {
   } else {
     met = MET_VALUES[category]?.[level] || MET_VALUES['default'][level];
   }
-
   // Ensure MET is not too low
   if (met < 1.0) met = 1.0;
-
   // Formula: METs * 3.5 * body weight in kg / 200 = calories burned per minute
   // Calories burned per hour: (METs * 3.5 * body weight in kg) / 200 * 60
   let caloriesPerHour = ((met * 3.5 * userWeightKg) / 200) * 60;
-
   // Apply gender and age adjustments (heuristic for better estimation)
   // These are simplified adjustments and not based on a precise scientific model.
   if (userGender === 'female') {
     caloriesPerHour *= 0.9; // Heuristic: Women might burn slightly fewer calories for the same activity
   }
-
   // Simple age adjustment: reduce calories by 0.5% for every 5 years over 30
   if (age > 30) {
     const ageAdjustmentFactor = 1 - Math.floor((age - 30) / 5) * 0.005;
     caloriesPerHour *= Math.max(0.85, ageAdjustmentFactor); // Cap reduction at 15%
   }
-
   return Math.round(caloriesPerHour);
 }
-
-module.exports = {
+export { estimateCaloriesBurnedPerHour };
+export default {
   estimateCaloriesBurnedPerHour,
 };

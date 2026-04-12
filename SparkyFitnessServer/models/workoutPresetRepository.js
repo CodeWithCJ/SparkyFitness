@@ -1,12 +1,10 @@
-const { getClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const format = require('pg-format');
-
+import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import format from 'pg-format';
 async function createWorkoutPreset(presetData) {
   const client = await getClient(presetData.user_id); // User-specific operation
   try {
     await client.query('BEGIN');
-
     const presetResult = await client.query(
       `INSERT INTO workout_presets (user_id, name, description, is_public)
        VALUES ($1, $2, $3, $4) RETURNING id, user_id, name, description, is_public`,
@@ -18,7 +16,6 @@ async function createWorkoutPreset(presetData) {
       ]
     );
     const newPreset = { ...presetResult.rows[0], isNew: true };
-
     if (presetData.exercises && presetData.exercises.length > 0) {
       for (const exercise of presetData.exercises) {
         const exerciseResult = await client.query(
@@ -32,7 +29,6 @@ async function createWorkoutPreset(presetData) {
           ]
         );
         const newExerciseId = exerciseResult.rows[0].id;
-
         if (exercise.sets && exercise.sets.length > 0) {
           const setsValues = exercise.sets.map((set) => [
             newExerciseId,
@@ -52,7 +48,6 @@ async function createWorkoutPreset(presetData) {
         }
       }
     }
-
     await client.query('COMMIT');
     // Refetch the created preset to get the full nested structure
     return getWorkoutPresetById(newPreset.id, presetData.user_id);
@@ -64,7 +59,6 @@ async function createWorkoutPreset(presetData) {
     client.release();
   }
 }
-
 async function getWorkoutPresetByName(userId, name) {
   const client = await getClient(userId);
   try {
@@ -107,18 +101,15 @@ async function getWorkoutPresetByName(userId, name) {
     client.release();
   }
 }
-
 async function getWorkoutPresets(userId, page = 1, limit = 10) {
   const client = await getClient(userId); // User-specific operation
   try {
     const offset = (page - 1) * limit;
-
     const totalResult = await client.query(
       'SELECT COUNT(*) FROM workout_presets WHERE is_public = TRUE OR user_id = $1',
       [userId]
     );
     const total = parseInt(totalResult.rows[0].count, 10);
-
     const result = await client.query(
       `SELECT
          wp.id, wp.user_id, wp.name, wp.description, wp.is_public, wp.created_at, wp.updated_at,
@@ -164,7 +155,6 @@ async function getWorkoutPresets(userId, page = 1, limit = 10) {
     client.release();
   }
 }
-
 async function getWorkoutPresetById(presetId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -206,12 +196,10 @@ async function getWorkoutPresetById(presetId, userId) {
     client.release();
   }
 }
-
 async function updateWorkoutPreset(presetId, userId, updateData) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
-
     const result = await client.query(
       `UPDATE workout_presets SET
         name = COALESCE($1, name),
@@ -222,14 +210,12 @@ async function updateWorkoutPreset(presetId, userId, updateData) {
        RETURNING id`,
       [updateData.name, updateData.description, updateData.is_public, presetId]
     );
-
     if (result.rows.length > 0 && updateData.exercises !== undefined) {
       // Delete old exercises and sets (cascade will handle sets)
       await client.query(
         'DELETE FROM workout_preset_exercises WHERE workout_preset_id = $1',
         [presetId]
       );
-
       // Insert new exercises and sets
       if (updateData.exercises.length > 0) {
         for (const exercise of updateData.exercises) {
@@ -244,7 +230,6 @@ async function updateWorkoutPreset(presetId, userId, updateData) {
             ]
           );
           const newExerciseId = exerciseResult.rows[0].id;
-
           if (exercise.sets && exercise.sets.length > 0) {
             const setsValues = exercise.sets.map((set) => [
               newExerciseId,
@@ -265,7 +250,6 @@ async function updateWorkoutPreset(presetId, userId, updateData) {
         }
       }
     }
-
     await client.query('COMMIT');
     // Refetch the updated preset to get the full nested structure
     return getWorkoutPresetById(presetId, userId);
@@ -277,7 +261,6 @@ async function updateWorkoutPreset(presetId, userId, updateData) {
     client.release();
   }
 }
-
 async function deleteWorkoutPreset(presetId, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -296,7 +279,6 @@ async function deleteWorkoutPreset(presetId, userId) {
     client.release();
   }
 }
-
 async function getWorkoutPresetOwnerId(userId, presetId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -309,7 +291,6 @@ async function getWorkoutPresetOwnerId(userId, presetId) {
     client.release();
   }
 }
-
 async function addExerciseToWorkoutPreset(
   userId,
   workoutPresetId,
@@ -321,14 +302,12 @@ async function addExerciseToWorkoutPreset(
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
-
     const exerciseResult = await client.query(
       `INSERT INTO workout_preset_exercises (workout_preset_id, exercise_id, image_url, sort_order)
        VALUES ($1, $2, $3, $4) RETURNING id`,
       [workoutPresetId, exerciseId, imageUrl, sortOrder]
     );
     const newExerciseId = exerciseResult.rows[0].id;
-
     if (sets && sets.length > 0) {
       const setsValues = sets.map((set) => [
         newExerciseId,
@@ -346,7 +325,6 @@ async function addExerciseToWorkoutPreset(
       );
       await client.query(setsQuery);
     }
-
     await client.query('COMMIT');
     return newExerciseId;
   } catch (error) {
@@ -361,7 +339,6 @@ async function addExerciseToWorkoutPreset(
     client.release();
   }
 }
-
 async function searchWorkoutPresets(searchTerm, userId, limit = null) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -399,20 +376,26 @@ async function searchWorkoutPresets(searchTerm, userId, limit = null) {
       GROUP BY wp.id
       ORDER BY wp.name ASC`;
     const queryParams = [`%${searchTerm}%`, userId];
-
     if (limit !== null) {
       query += ' LIMIT $3';
       queryParams.push(limit);
     }
-
     const result = await client.query(query, queryParams);
     return result.rows;
   } finally {
     client.release();
   }
 }
-
-module.exports = {
+export { createWorkoutPreset };
+export { getWorkoutPresets };
+export { getWorkoutPresetById };
+export { updateWorkoutPreset };
+export { deleteWorkoutPreset };
+export { getWorkoutPresetOwnerId };
+export { searchWorkoutPresets };
+export { getWorkoutPresetByName };
+export { addExerciseToWorkoutPreset };
+export default {
   createWorkoutPreset,
   getWorkoutPresets,
   getWorkoutPresetById,

@@ -1,12 +1,10 @@
-const { Pool, types } = require('pg');
-const { log } = require('../config/logging');
-
+import pg from 'pg';
+import { log } from '../config/logging.js';
+const { Pool, types } = pg;
 // Parse numeric types
 types.setTypeParser(types.builtins.NUMERIC, (value) => parseFloat(value));
-
 let ownerPoolInstance = null;
 let appPoolInstance = null;
-
 function createOwnerPoolInstance() {
   const newPool = new Pool({
     user: process.env.SPARKY_FITNESS_DB_USER,
@@ -18,15 +16,12 @@ function createOwnerPoolInstance() {
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
   });
-
   newPool.on('error', (err) => {
     log('error', 'Unexpected error on idle owner client', err);
     process.exit(-1);
   });
-
   return newPool;
 }
-
 function createAppPoolInstance() {
   const newPool = new Pool({
     user: process.env.SPARKY_FITNESS_APP_DB_USER,
@@ -38,29 +33,24 @@ function createAppPoolInstance() {
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
   });
-
   newPool.on('error', (err) => {
     log('error', 'Unexpected error on idle app client', err);
     process.exit(-1);
   });
-
   return newPool;
 }
-
 function _getRawOwnerPool() {
   if (!ownerPoolInstance) {
     ownerPoolInstance = createOwnerPoolInstance();
   }
   return ownerPoolInstance;
 }
-
 function _getRawAppPool() {
   if (!appPoolInstance) {
     appPoolInstance = createAppPoolInstance();
   }
   return appPoolInstance;
 }
-
 async function getClient(userId, authenticatedUserId = null) {
   if (!userId) {
     throw new Error(
@@ -77,12 +67,10 @@ async function getClient(userId, authenticatedUserId = null) {
   ]);
   return client;
 }
-
 async function getSystemClient() {
   const client = await _getRawOwnerPool().connect();
   return client;
 }
-
 async function endPool() {
   if (ownerPoolInstance) {
     log('info', 'Ending existing owner database connection pool...');
@@ -97,7 +85,6 @@ async function endPool() {
     appPoolInstance = null;
   }
 }
-
 async function resetPool() {
   await endPool();
   ownerPoolInstance = createOwnerPoolInstance();
@@ -105,15 +92,18 @@ async function resetPool() {
   log('info', 'New database connection pools initialized.');
   return { ownerPoolInstance, appPoolInstance };
 }
-
 // Initialize the pools when the module is first loaded
 ownerPoolInstance = createOwnerPoolInstance();
 appPoolInstance = createAppPoolInstance();
-
-module.exports = {
+export { endPool };
+export { resetPool };
+export { getClient };
+export { getSystemClient };
+export { _getRawOwnerPool as getRawOwnerPool };
+export default {
   endPool,
   resetPool,
-  getClient, // getClient is now the primary way to get a client for user operations
-  getSystemClient, // Export for system-level operations
+  getClient,
+  getSystemClient,
   getRawOwnerPool: _getRawOwnerPool,
 };

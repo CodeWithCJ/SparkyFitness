@@ -1,8 +1,6 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-
 router.use(express.json());
-
 /**
  * @swagger
  * /health:
@@ -26,5 +24,4 @@ router.get('/', async (req, res) => {
     status: 'UP',
   });
 });
-
-module.exports = router;
+export default router;

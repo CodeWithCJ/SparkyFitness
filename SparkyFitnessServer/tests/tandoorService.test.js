@@ -1,20 +1,17 @@
-const TandoorService = require('../integrations/tandoor/tandoorService');
-
-jest.mock('../config/logging', () => ({
-  log: jest.fn(),
+import { vi, beforeEach, describe, expect, it } from 'vitest';
+import TandoorService from '../integrations/tandoor/tandoorService.js';
+vi.mock('../config/logging', () => ({
+  log: vi.fn(),
 }));
-
 describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
   const service = new TandoorService(
     'http://tandoor.example.com',
     'fake-api-key'
   );
   const userId = 'user-123';
-
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
-
   it('should map nutrition from food_properties (Spanish screenshot example)', () => {
     const mockRecipe = {
       id: 2,
@@ -43,16 +40,13 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
       },
       servings: 4,
     };
-
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
-
     expect(result.food.name).toBe(mockRecipe.name);
     expect(result.variant.protein).toBe(237.57);
     expect(result.variant.fat).toBe(69.838);
     expect(result.variant.carbs).toBe(86.365);
     expect(result.variant.serving_size).toBe(1); // mapped data is per serving
   });
-
   it('should map nutrition from nutrition object (explicit structured data)', () => {
     const mockRecipe = {
       id: 5,
@@ -66,15 +60,12 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
       food_properties: {},
       properties: [],
     };
-
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
-
     expect(result.variant.calories).toBe(250);
     expect(result.variant.protein).toBe(15);
     expect(result.variant.fat).toBe(10);
     expect(result.variant.carbs).toBe(30);
   });
-
   it('should map nutrition from nutrition array', () => {
     const mockRecipe = {
       id: 6,
@@ -86,13 +77,10 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
       food_properties: {},
       properties: [],
     };
-
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
-
     expect(result.variant.protein).toBe(40);
     expect(result.variant.calories).toBe(300);
   });
-
   it('should respect priority: nutrition > food_properties > properties', () => {
     const mockRecipe = {
       id: 10,
@@ -107,12 +95,9 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
       },
       properties: [{ property_type: { name: 'Protein' }, property_amount: 30 }],
     };
-
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
-
     expect(result.variant.protein).toBe(10); // nutrition takes precedence
   });
-
   it('should fallback to food_properties if nutrition is missing', () => {
     const mockRecipe = {
       id: 11,
@@ -127,12 +112,9 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
       },
       properties: [{ property_type: { name: 'Protein' }, property_amount: 30 }],
     };
-
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
-
     expect(result.variant.protein).toBe(20); // food_properties takes precedence over properties
   });
-
   it('should match open_data_slug even if name is localized', () => {
     const mockRecipe = {
       id: 12,
@@ -145,12 +127,9 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
         },
       },
     };
-
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
-
     expect(result.variant.carbs).toBe(50);
   });
-
   it('should ignore 0 values in food_properties and fallback to non-zero values in properties', () => {
     const mockRecipe = {
       id: 14,
@@ -164,13 +143,10 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
         { property_type: { name: 'Proteins' }, property_amount: 34 },
       ],
     };
-
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
-
     expect(result.variant.calories).toBe(482);
     expect(result.variant.protein).toBe(34);
   });
-
   it("should not match 'ca' as 'calories' (partial slug bug fix)", () => {
     const mockRecipe = {
       id: 15,
@@ -182,9 +158,7 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
         },
       ],
     };
-
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
-
     expect(result.variant.calories).toBe(0); // Should NOT match 'ca'
     expect(result.variant.calcium).toBe(50); // Should match 'calcium'
   });

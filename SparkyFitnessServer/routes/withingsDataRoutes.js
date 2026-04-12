@@ -1,11 +1,8 @@
-// SparkyFitnessServer/routes/withingsDataRoutes.js
-
-const express = require('express');
+import express from 'express';
+import { log } from '../config/logging.js';
+import { authenticate } from '../middleware/authMiddleware.js';
+import measurementRepository from '../models/measurementRepository.js';
 const router = express.Router();
-const { log } = require('../config/logging');
-const { authenticate } = require('../middleware/authMiddleware');
-const measurementRepository = require('../models/measurementRepository');
-
 /**
  * @swagger
  * /integrations/withings/data:
@@ -35,13 +32,11 @@ router.get('/withings/data', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     const { startDate, endDate } = req.query; // Expecting YYYY-MM-DD format
-
     if (!startDate || !endDate) {
       return res.status(400).json({
         message: 'startDate and endDate are required query parameters.',
       });
     }
-
     // Fetch weight from check_in_measurements
     const weightData =
       await measurementRepository.getCheckInMeasurementsByDateRange(
@@ -50,11 +45,9 @@ router.get('/withings/data', authenticate, async (req, res) => {
         endDate
       );
     const latestWeight = weightData.length > 0 ? weightData[0].weight : null;
-
     // Fetch custom measurements related to Withings (blood pressure, heart rate, sleep)
     const customCategories =
       await measurementRepository.getCustomCategories(userId);
-
     const withingsData = {
       weight: latestWeight,
       bloodPressure: [],
@@ -62,7 +55,6 @@ router.get('/withings/data', authenticate, async (req, res) => {
       sleep: [],
       // Add other metrics as needed
     };
-
     for (const category of customCategories) {
       // Filter for categories that might come from Withings
       // This is a simplified check; a more robust solution might involve tagging categories by source
@@ -79,7 +71,6 @@ router.get('/withings/data', authenticate, async (req, res) => {
             endDate,
             'withings'
           );
-
         if (category.name.includes('Blood Pressure')) {
           withingsData.bloodPressure.push(...entries);
         } else if (category.name.includes('Heart Rate')) {
@@ -89,7 +80,6 @@ router.get('/withings/data', authenticate, async (req, res) => {
         }
       }
     }
-
     res.status(200).json({
       message: 'Withings data retrieved successfully',
       data: withingsData,
@@ -105,5 +95,4 @@ router.get('/withings/data', authenticate, async (req, res) => {
     });
   }
 });
-
-module.exports = router;
+export default router;

@@ -1,11 +1,10 @@
-const bcrypt = require('bcrypt');
-
-const { v4: uuidv4 } = require('uuid');
-const userRepository = require('../models/userRepository');
-const familyAccessRepository = require('../models/familyAccessRepository');
-const { log } = require('../config/logging');
-const { canAccessUserData } = require('../utils/permissionUtils');
-
+import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
+import userRepository from '../models/userRepository.js';
+import familyAccessRepository from '../models/familyAccessRepository.js';
+import { log } from '../config/logging.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
+import adminActivityLogRepository from '../models/adminActivityLogRepository.js';
 /**
  * Gets consistent user data by ID.
  * Used internally by various app services.
@@ -26,7 +25,6 @@ async function getUser(authenticatedUserId) {
     throw error;
   }
 }
-
 async function findUserIdByEmail(email) {
   try {
     const user = await userRepository.findUserIdByEmail(email);
@@ -39,7 +37,6 @@ async function findUserIdByEmail(email) {
     throw error;
   }
 }
-
 async function generateUserApiKey(targetUserId, description) {
   try {
     const newApiKey = uuidv4();
@@ -58,7 +55,6 @@ async function generateUserApiKey(targetUserId, description) {
     throw error;
   }
 }
-
 async function deleteUserApiKey(targetUserId, apiKeyId) {
   try {
     const success = await userRepository.deleteApiKey(apiKeyId, targetUserId);
@@ -75,7 +71,6 @@ async function deleteUserApiKey(targetUserId, apiKeyId) {
     throw error;
   }
 }
-
 async function getAccessibleUsers(authenticatedUserId) {
   try {
     const users = await userRepository.getAccessibleUsers(authenticatedUserId);
@@ -85,7 +80,6 @@ async function getAccessibleUsers(authenticatedUserId) {
     throw error;
   }
 }
-
 async function getUserProfile(targetUserId) {
   try {
     const profile = await userRepository.getUserProfile(targetUserId);
@@ -99,7 +93,6 @@ async function getUserProfile(targetUserId) {
     throw error;
   }
 }
-
 async function updateUserProfile(targetUserId, profileData) {
   try {
     const { full_name, phone_number, date_of_birth, bio, avatar_url, gender } =
@@ -126,7 +119,6 @@ async function updateUserProfile(targetUserId, profileData) {
     throw error;
   }
 }
-
 async function getUserApiKeys(targetUserId) {
   try {
     const apiKeys = await userRepository.getUserApiKeys(targetUserId);
@@ -140,14 +132,12 @@ async function getUserApiKeys(targetUserId) {
     throw error;
   }
 }
-
 async function switchUserContext(authenticatedUserId, targetUserId) {
   try {
     log(
       'info',
       `Attempting context switch: User ${authenticatedUserId} -> User ${targetUserId}`
     );
-
     // Verify access
     const hasAccess = await canAccessUserData(
       targetUserId,
@@ -159,7 +149,6 @@ async function switchUserContext(authenticatedUserId, targetUserId) {
         'Forbidden: You do not have permission to switch to this user context.'
       );
     }
-
     return { success: true, activeUserId: targetUserId };
   } catch (error) {
     log(
@@ -170,7 +159,6 @@ async function switchUserContext(authenticatedUserId, targetUserId) {
     throw error;
   }
 }
-
 async function updateUserPassword(authenticatedUserId, newPassword) {
   try {
     const saltRounds = 10;
@@ -188,7 +176,6 @@ async function updateUserPassword(authenticatedUserId, newPassword) {
     throw error;
   }
 }
-
 async function updateUserEmail(authenticatedUserId, newEmail) {
   try {
     const existingUser = await userRepository.findUserByEmail(newEmail);
@@ -208,7 +195,6 @@ async function updateUserEmail(authenticatedUserId, newEmail) {
     throw error;
   }
 }
-
 async function checkFamilyAccess(authenticatedUserId, ownerUserId, permission) {
   try {
     const hasAccess = await familyAccessRepository.checkFamilyAccessPermission(
@@ -222,7 +208,6 @@ async function checkFamilyAccess(authenticatedUserId, ownerUserId, permission) {
     throw error;
   }
 }
-
 async function getFamilyAccessEntries(authenticatedUserId) {
   try {
     const entries =
@@ -235,7 +220,6 @@ async function getFamilyAccessEntries(authenticatedUserId) {
     throw error;
   }
 }
-
 async function createFamilyAccessEntry(authenticatedUserId, entryData) {
   try {
     return await familyAccessRepository.createFamilyAccessEntry(
@@ -251,7 +235,6 @@ async function createFamilyAccessEntry(authenticatedUserId, entryData) {
     throw error;
   }
 }
-
 async function updateFamilyAccessEntry(authenticatedUserId, id, updateData) {
   try {
     const updatedEntry = await familyAccessRepository.updateFamilyAccessEntry(
@@ -269,7 +252,6 @@ async function updateFamilyAccessEntry(authenticatedUserId, id, updateData) {
     throw error;
   }
 }
-
 async function deleteFamilyAccessEntry(authenticatedUserId, id) {
   try {
     const success = await familyAccessRepository.deleteFamilyAccessEntry(
@@ -283,7 +265,6 @@ async function deleteFamilyAccessEntry(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function updateUserFullName(userId, fullName) {
   try {
     const success = await userRepository.updateUserFullName(userId, fullName);
@@ -297,7 +278,6 @@ async function updateUserFullName(userId, fullName) {
     throw error;
   }
 }
-
 async function updateUserMfaSettings(
   userId,
   mfaSecret,
@@ -321,7 +301,6 @@ async function updateUserMfaSettings(
     throw error;
   }
 }
-
 /**
  * Resets a user's MFA status (TOTP and Email).
  * Used by administrators.
@@ -345,7 +324,6 @@ async function resetUserMfa(adminUserId, targetUserId) {
     throw error;
   }
 }
-
 /**
  * Internal logger for administrative actions.
  */
@@ -356,7 +334,6 @@ async function logAdminAction(
   actionDetails
 ) {
   try {
-    const adminActivityLogRepository = require('../models/adminActivityLogRepository');
     await adminActivityLogRepository.createAdminActivityLog(
       adminUserId,
       targetUserId,
@@ -368,8 +345,28 @@ async function logAdminAction(
     // Silent fail for logging to prevent breaking main admin actions
   }
 }
-
-module.exports = {
+export { getUser };
+export { findUserIdByEmail };
+export { generateUserApiKey };
+export { deleteUserApiKey };
+export { getAccessibleUsers };
+export { getUserProfile };
+export { updateUserProfile };
+export { getUserApiKeys };
+export { switchUserContext };
+export { updateUserPassword };
+export { updateUserEmail };
+export { canAccessUserData };
+export { checkFamilyAccess };
+export { getFamilyAccessEntries };
+export { createFamilyAccessEntry };
+export { updateFamilyAccessEntry };
+export { deleteFamilyAccessEntry };
+export { updateUserFullName };
+export { updateUserMfaSettings };
+export { resetUserMfa };
+export { logAdminAction };
+export default {
   getUser,
   findUserIdByEmail,
   generateUserApiKey,
@@ -388,7 +385,6 @@ module.exports = {
   updateFamilyAccessEntry,
   deleteFamilyAccessEntry,
   updateUserFullName,
-
   updateUserMfaSettings,
   resetUserMfa,
   logAdminAction,

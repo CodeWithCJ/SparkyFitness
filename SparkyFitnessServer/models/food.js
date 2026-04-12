@@ -1,49 +1,6 @@
-/**
- * @swagger
- * components:
- *   schemas:
- *     NutritionSummary:
- *       type: object
- *       properties:
- *         total_calories:
- *           type: number
- *         total_protein:
- *           type: number
- *         total_carbs:
- *           type: number
- *         total_fat:
- *           type: number
- *         total_saturated_fat:
- *           type: number
- *         total_polyunsaturated_fat:
- *           type: number
- *         total_monounsaturated_fat:
- *           type: number
- *         total_trans_fat:
- *           type: number
- *         total_cholesterol:
- *           type: number
- *         total_sodium:
- *           type: number
- *         total_potassium:
- *           type: number
- *         total_dietary_fiber:
- *           type: number
- *         total_sugars:
- *           type: number
- *         total_vitamin_a:
- *           type: number
- *         total_vitamin_c:
- *           type: number
- *         total_calcium:
- *           type: number
- *         total_iron:
- *           type: number
- */
-const { getClient, getSystemClient } = require('../db/poolManager');
-const { log } = require('../config/logging');
-const { normalizeBarcode } = require('../utils/foodUtils');
-
+import { getClient, getSystemClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
+import { normalizeBarcode } from '../utils/foodUtils.js';
 function sanitizeGlycemicIndex(gi) {
   const allowedGICategories = [
     'None',
@@ -65,7 +22,6 @@ function sanitizeGlycemicIndex(gi) {
   }
   return gi;
 }
-
 function sanitizeNumeric(value) {
   if (
     value === null ||
@@ -83,7 +39,6 @@ function sanitizeNumeric(value) {
   const num = parseFloat(sanitizedValue);
   return isNaN(num) ? null : num;
 }
-
 function sanitizeBoolean(value) {
   if (
     value === true ||
@@ -105,7 +60,6 @@ function sanitizeBoolean(value) {
   }
   return null;
 }
-
 async function searchFoods(
   name,
   userId,
@@ -149,7 +103,6 @@ async function searchFoods(
       WHERE f.is_quick_food = FALSE AND `;
     const queryParams = [];
     let paramIndex = 1;
-
     if (exactMatch) {
       query += `CONCAT(f.brand, ' ', f.name) ILIKE $${paramIndex++}`;
       queryParams.push(name);
@@ -162,7 +115,6 @@ async function searchFoods(
     } else {
       throw new Error('Invalid search parameters.');
     }
-
     query += ` LIMIT $${paramIndex++}`;
     queryParams.push(limit);
     const result = await client.query(query, queryParams);
@@ -171,12 +123,10 @@ async function searchFoods(
     client.release();
   }
 }
-
 async function createFood(foodData) {
   const client = await getClient(foodData.user_id); // User-specific operation
   try {
     await client.query('BEGIN'); // Start transaction
-
     // 1. Create the food entry
     const foodResult = await client.query(
       `INSERT INTO foods (
@@ -197,7 +147,6 @@ async function createFood(foodData) {
       ]
     );
     const newFood = foodResult.rows[0];
-
     // 2. Create the primary food variant and mark it as default
     const variantResult = await client.query(
       `INSERT INTO food_variants (
@@ -232,9 +181,7 @@ async function createFood(foodData) {
       ]
     );
     const newVariantId = variantResult.rows[0].id;
-
     await client.query('COMMIT'); // Commit transaction
-
     // Return the new food with its default variant details
     return {
       ...newFood,
@@ -270,7 +217,6 @@ async function createFood(foodData) {
     client.release();
   }
 }
-
 async function findFoodByBarcode(barcode, userId) {
   barcode = normalizeBarcode(barcode);
   const client = await getClient(userId);
@@ -314,7 +260,6 @@ async function findFoodByBarcode(barcode, userId) {
     client.release();
   }
 }
-
 async function getFoodById(foodId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -356,7 +301,6 @@ async function getFoodById(foodId, userId) {
     client.release();
   }
 }
-
 async function getFoodOwnerId(foodId, userId) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -371,7 +315,6 @@ async function getFoodOwnerId(foodId, userId) {
     client.release();
   }
 }
-
 async function updateFood(id, userId, foodData) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -407,7 +350,6 @@ async function updateFood(id, userId, foodData) {
     client.release();
   }
 }
-
 async function deleteFood(id, userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -420,7 +362,6 @@ async function deleteFood(id, userId) {
     client.release();
   }
 }
-
 async function getFoodsWithPagination(
   searchTerm,
   foodFilter,
@@ -434,15 +375,12 @@ async function getFoodsWithPagination(
     const whereClauses = ['f.is_quick_food = FALSE'];
     const queryParams = [];
     let paramIndex = 1;
-
     if (searchTerm) {
       whereClauses.push(`CONCAT(brand, ' ', name) ILIKE $${paramIndex}`);
       queryParams.push(`%${searchTerm}%`);
       paramIndex++;
     }
-
     // RLS will handle ownership filtering
-
     let query = `
       SELECT
         f.id, f.name, f.brand, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type,
@@ -475,14 +413,12 @@ async function getFoodsWithPagination(
       LEFT JOIN food_variants fv ON f.id = fv.food_id AND fv.is_default = TRUE
       WHERE ${whereClauses.join(' AND ')}
     `;
-
     let orderByClause = 'f.name ASC, f.id ASC';
     if (sortBy) {
       const [sortField, sortOrder] = sortBy.split(':');
       const nutritionSortFields = ['calories', 'protein', 'carbs', 'fat'];
       const allowedSortFields = ['name', ...nutritionSortFields];
       const allowedSortOrders = ['asc', 'desc'];
-
       if (
         allowedSortFields.includes(sortField) &&
         allowedSortOrders.includes(sortOrder)
@@ -500,32 +436,26 @@ async function getFoodsWithPagination(
       }
     }
     query += ` ORDER BY ${orderByClause}`;
-
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     queryParams.push(limit, offset);
-
     const foodsResult = await client.query(query, queryParams);
     return foodsResult.rows;
   } finally {
     client.release();
   }
 }
-
 async function countFoods(searchTerm, foodFilter, authenticatedUserId) {
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
     const whereClauses = ['is_quick_food = FALSE'];
     const countQueryParams = [];
     let paramIndex = 1;
-
     if (searchTerm) {
       whereClauses.push(`CONCAT(brand, ' ', name) ILIKE $${paramIndex}`);
       countQueryParams.push(`%${searchTerm}%`);
       paramIndex++;
     }
-
     // RLS will handle ownership filtering
-
     const countQuery = `
       SELECT COUNT(*)
       FROM foods
@@ -537,7 +467,6 @@ async function countFoods(searchTerm, foodFilter, authenticatedUserId) {
     client.release();
   }
 }
-
 async function getFoodDeletionImpact(foodId, authenticatedUserId) {
   const client = await getClient(authenticatedUserId); // Client for authenticated user's RLS
   const systemClient = await getSystemClient(); // Client to bypass RLS for cross-user checks
@@ -549,14 +478,12 @@ async function getFoodDeletionImpact(foodId, authenticatedUserId) {
     );
     const isPubliclyShared =
       publicFoodResult.rows[0]?.shared_with_public || false;
-
     // Get food owner ID (using systemClient to bypass RLS)
     const foodOwnerResult = await systemClient.query(
       'SELECT user_id FROM foods WHERE id = $1',
       [foodId]
     );
     const foodOwnerId = foodOwnerResult.rows[0]?.user_id;
-
     // Count references by the authenticated user (using client with RLS)
     const currentUserReferencesQueries = [
       client.query(
@@ -595,13 +522,11 @@ async function getFoodDeletionImpact(foodId, authenticatedUserId) {
       currentUserReferencesResults[3].rows[0].count,
       10
     );
-
     const currentUserReferences =
       currentUserFoodEntriesCount +
       currentUserMealFoodsCount +
       currentUserMealPlansCount +
       currentUserMealPlanTemplateAssignmentsCount;
-
     // Count references by other users (excluding the authenticated user) (using systemClient to bypass RLS)
     const otherUserReferencesQueries = [
       systemClient.query(
@@ -640,13 +565,11 @@ async function getFoodDeletionImpact(foodId, authenticatedUserId) {
       otherUserReferencesResults[3].rows[0].count,
       10
     );
-
     const otherUserReferences =
       otherUserFoodEntriesCount +
       otherUserMealFoodsCount +
       otherUserMealPlansCount +
       otherUserMealPlanTemplateAssignmentsCount;
-
     // Get users who have family access to this food (if the food owner is the authenticated user)
     let familySharedUsers = [];
     if (foodOwnerId === authenticatedUserId) {
@@ -664,7 +587,6 @@ async function getFoodDeletionImpact(foodId, authenticatedUserId) {
         (row) => row.family_user_id
       );
     }
-
     return {
       foodEntriesCount: currentUserFoodEntriesCount + otherUserFoodEntriesCount,
       mealFoodsCount: currentUserMealFoodsCount + otherUserMealFoodsCount,
@@ -683,19 +605,16 @@ async function getFoodDeletionImpact(foodId, authenticatedUserId) {
     systemClient.release(); // Release the system client as well
   }
 }
-
 async function deleteFoodAndDependencies(foodId, userId) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-
     // 1. Delete food entries referencing this food for the current user
     await client.query(
       'DELETE FROM food_entries WHERE food_id = $1 AND user_id = $2',
       [foodId, userId]
     );
     log('info', `Deleted food entries for food ${foodId} by user ${userId}`);
-
     // 2. Delete meal_foods referencing this food for meals owned by the current user
     await client.query(
       `
@@ -711,14 +630,12 @@ async function deleteFoodAndDependencies(foodId, userId) {
       'info',
       `Deleted meal foods for food ${foodId} in meals by user ${userId}`
     );
-
     // 3. Delete meal_plans referencing this food for the current user
     await client.query(
       'DELETE FROM meal_plans WHERE food_id = $1 AND user_id = $2',
       [foodId, userId]
     );
     log('info', `Deleted meal plans for food ${foodId} by user ${userId}`);
-
     // 4. Delete meal_plan_template_assignments referencing this food for templates owned by the current user
     await client.query(
       `
@@ -734,20 +651,17 @@ async function deleteFoodAndDependencies(foodId, userId) {
       'info',
       `Deleted meal plan template assignments for food ${foodId} in templates by user ${userId}`
     );
-
     // 5. Delete food variants associated with this food
     await client.query('DELETE FROM food_variants WHERE food_id = $1', [
       foodId,
     ]);
     log('info', `Deleted food variants for food ${foodId}`);
-
     // 6. Finally, delete the food itself
     const result = await client.query(
       'DELETE FROM foods WHERE id = $1 AND user_id = $2 RETURNING id',
       [foodId, userId]
     );
     log('info', `Deleted food ${foodId} by user ${userId}`);
-
     await client.query('COMMIT');
     return result.rowCount > 0;
   } catch (error) {
@@ -762,7 +676,6 @@ async function deleteFoodAndDependencies(foodId, userId) {
     client.release();
   }
 }
-
 async function createFoodsInBulk(userId, foodDataArray) {
   class DuplicateFoodError extends Error {
     constructor(message, duplicates) {
@@ -771,7 +684,6 @@ async function createFoodsInBulk(userId, foodDataArray) {
       this.duplicates = duplicates;
     }
   }
-
   // 1. --- Grouping incoming Variants by Food (name + brand)
   const groupedFoods = foodDataArray.reduce((acc, variant) => {
     const key = `${variant.name}|${variant.brand}`;
@@ -789,7 +701,6 @@ async function createFoodsInBulk(userId, foodDataArray) {
     acc[key].variants.push(variant);
     return acc;
   }, {});
-
   const foodsToCreate = Object.values(groupedFoods);
   if (foodsToCreate.length === 0) {
     return {
@@ -798,16 +709,13 @@ async function createFoodsInBulk(userId, foodDataArray) {
       createdVariants: 0,
     };
   }
-
   // 2. Pre-flight Duplicate Check before starting the db transaction
   const potentialDuplicates = foodsToCreate.map((food) => [
     userId,
     food.name,
     food.brand,
   ]);
-
   const flatValues = potentialDuplicates.flat();
-
   let placeholderIndex = 1;
   const placeholderString = potentialDuplicates
     .map(
@@ -815,12 +723,10 @@ async function createFoodsInBulk(userId, foodDataArray) {
         `($${placeholderIndex++}::uuid, $${placeholderIndex++}, $${placeholderIndex++})`
     )
     .join(', ');
-
   const duplicateCheckQuery = `
     SELECT name, brand FROM foods
     WHERE (user_id, name, brand) IN (VALUES ${placeholderString})
   `;
-
   const clientForDuplicateCheck = await getClient(userId);
   let existingFoods;
   try {
@@ -833,7 +739,6 @@ async function createFoodsInBulk(userId, foodDataArray) {
   } finally {
     clientForDuplicateCheck.release();
   }
-
   if (existingFoods.length > 0) {
     // If duplicates are found, throw an error.
     throw new DuplicateFoodError(
@@ -841,15 +746,12 @@ async function createFoodsInBulk(userId, foodDataArray) {
       existingFoods
     );
   }
-
   // 3. Database Transaction starts here for Bulk Insert
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
-
     let totalFoodsCreated = 0;
     let totalVariantsCreated = 0;
-
     for (const food of foodsToCreate) {
       const foodResult = await client.query(
         `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type, created_at, updated_at)
@@ -869,7 +771,6 @@ async function createFoodsInBulk(userId, foodDataArray) {
       );
       const newFoodId = foodResult.rows[0].id;
       totalFoodsCreated++;
-
       for (const variant of food.variants) {
         await client.query(
           `INSERT INTO food_variants (
@@ -910,9 +811,7 @@ async function createFoodsInBulk(userId, foodDataArray) {
         totalVariantsCreated++;
       }
     }
-
     await client.query('COMMIT');
-
     return {
       message: 'Food data imported successfully.',
       createdFoods: totalFoodsCreated,
@@ -926,7 +825,6 @@ async function createFoodsInBulk(userId, foodDataArray) {
     client.release();
   }
 }
-
 async function getFoodsNeedingReview(userId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -959,7 +857,6 @@ async function getFoodsNeedingReview(userId) {
     client.release();
   }
 }
-
 async function clearUserIgnoredUpdate(userId, variantId) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -972,7 +869,24 @@ async function clearUserIgnoredUpdate(userId, variantId) {
     client.release();
   }
 }
-module.exports = {
+export { sanitizeGlycemicIndex };
+export { sanitizeNumeric };
+export { sanitizeBoolean };
+export { searchFoods };
+export { createFood };
+export { findFoodByBarcode };
+export { getFoodById };
+export { getFoodOwnerId };
+export { updateFood };
+export { deleteFood };
+export { getFoodsWithPagination };
+export { countFoods };
+export { getFoodDeletionImpact };
+export { createFoodsInBulk };
+export { getFoodsNeedingReview };
+export { clearUserIgnoredUpdate };
+export { deleteFoodAndDependencies };
+export default {
   sanitizeGlycemicIndex,
   sanitizeNumeric,
   sanitizeBoolean,

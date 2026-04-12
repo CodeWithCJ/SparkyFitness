@@ -1,29 +1,34 @@
-const { getClient } = require('../db/poolManager'); // Import the database connection pool
-const exerciseRepository = require('../models/exerciseRepository');
-// Require concrete exercise and exerciseEntry modules directly to avoid circular export issues
-const exerciseDb = require('../models/exercise');
-const exerciseEntryDb = require('../models/exerciseEntry');
-const activityDetailsRepository = require('../models/activityDetailsRepository'); // New import
-const exercisePresetEntryRepository = require('../models/exercisePresetEntryRepository'); // New import
-const preferenceRepository = require('../models/preferenceRepository');
-const workoutPresetRepository = require('../models/workoutPresetRepository'); // Added missing import
-const { v4: uuidv4 } = require('uuid'); // New import for UUID generation
-const { log } = require('../config/logging');
-const wgerService = require('../integrations/wger/wgerService');
-const nutritionixService = require('../integrations/nutritionix/nutritionixService');
-const freeExerciseDBService = require('../integrations/freeexercisedb/FreeExerciseDBService'); // New import
-const measurementRepository = require('../models/measurementRepository');
-const { downloadImage } = require('../utils/imageDownloader'); // Import image downloader
-const calorieCalculationService = require('./CalorieCalculationService'); // Import calorie calculation service
-const fs = require('fs'); // Import file system module
-const path = require('path'); // Import path module
-const { resolveExerciseIdToUuid } = require('../utils/uuidUtils'); // Import uuidUtils
-const papa = require('papaparse');
-const {
+import { getClient } from '../db/poolManager.js';
+import exerciseRepository from '../models/exerciseRepository.js';
+import exerciseDb from '../models/exercise.js';
+import exerciseEntryDb from '../models/exerciseEntry.js';
+import activityDetailsRepository from '../models/activityDetailsRepository.js';
+import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
+import preferenceRepository from '../models/preferenceRepository.js';
+import workoutPresetRepository from '../models/workoutPresetRepository.js';
+import { v4 as uuidv4 } from 'uuid';
+import { log } from '../config/logging.js';
+import wgerService from '../integrations/wger/wgerService.js';
+import nutritionixService from '../integrations/nutritionix/nutritionixService.js';
+import measurementRepository from '../models/measurementRepository.js';
+import { downloadImage } from '../utils/imageDownloader.js';
+import calorieCalculationService from './CalorieCalculationService.js';
+import fs from 'fs';
+import path from 'path';
+import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
+import papa from 'papaparse';
+import {
   getGroupedExerciseSessionById,
   getGroupedExerciseSessionByIdWithClient,
-} = require('./exerciseEntryHistoryService');
-
+} from './exerciseEntryHistoryService.js';
+import {
+  levelMap,
+  forceMap,
+  mechanicMap,
+  createReverseMap,
+  muscleNameMap,
+  equipmentNameMap,
+} from '../integrations/wger/wgerNameMapping.js';
 async function getExercisesWithPagination(
   authenticatedUserId,
   targetUserId,
@@ -38,7 +43,6 @@ async function getExercisesWithPagination(
   try {
     const limit = parseInt(itemsPerPage, 10) || 10;
     const offset = ((parseInt(currentPage, 10) || 1) - 1) * limit;
-
     const [exercises, totalCount] = await Promise.all([
       exerciseDb.getExercisesWithPagination(
         targetUserId,
@@ -63,20 +67,16 @@ async function getExercisesWithPagination(
       exercises.map(async (exercise) => {
         const tags = [];
         const isOwner = exercise.user_id === authenticatedUserId;
-
         if (isOwner) {
           tags.push('private');
         }
-
         if (exercise.shared_with_public) {
           tags.push('public');
         }
-
         if (!isOwner && !exercise.shared_with_public) {
           // If not owned and not public, it must be visible due to family access
           tags.push('family');
         }
-
         return { ...exercise, tags };
       })
     );
@@ -90,7 +90,6 @@ async function getExercisesWithPagination(
     throw error;
   }
 }
-
 async function searchExercises(
   authenticatedUserId,
   name,
@@ -109,19 +108,15 @@ async function searchExercises(
       exercises.map(async (exercise) => {
         const tags = [];
         const isOwner = exercise.user_id === authenticatedUserId;
-
         if (isOwner) {
           tags.push('private');
         }
-
         if (exercise.shared_with_public) {
           tags.push('public');
         }
-
         if (!isOwner && !exercise.shared_with_public) {
           tags.push('family');
         }
-
         return { ...exercise, tags };
       })
     );
@@ -135,7 +130,6 @@ async function searchExercises(
     throw error;
   }
 }
-
 async function getAvailableEquipment() {
   try {
     const equipment = await exerciseDb.getDistinctEquipment();
@@ -145,7 +139,6 @@ async function getAvailableEquipment() {
     throw error;
   }
 }
-
 async function getAvailableMuscleGroups() {
   try {
     const muscleGroups = await exerciseDb.getDistinctMuscleGroups();
@@ -155,7 +148,6 @@ async function getAvailableMuscleGroups() {
     throw error;
   }
 }
-
 async function createExercise(authenticatedUserId, exerciseData) {
   try {
     // Ensure the exercise is created for the authenticated user
@@ -175,7 +167,6 @@ async function createExercise(authenticatedUserId, exerciseData) {
     throw error;
   }
 }
-
 async function prepareExerciseEntryForCreate(authenticatedUserId, entryData) {
   const resolvedExerciseId = await resolveExerciseIdToUuid(
     entryData.exercise_id
@@ -184,11 +175,9 @@ async function prepareExerciseEntryForCreate(authenticatedUserId, entryData) {
     resolvedExerciseId,
     authenticatedUserId
   );
-
   if (!exercise) {
     throw new Error('Exercise not found for snapshot.');
   }
-
   const durationFromSets = Array.isArray(entryData.sets)
     ? entryData.sets.reduce(
         (sum, set) => sum + (set.duration || 0) + (set.rest_time || 0) / 60,
@@ -199,7 +188,6 @@ async function prepareExerciseEntryForCreate(authenticatedUserId, entryData) {
     typeof entryData.duration_minutes === 'number'
       ? entryData.duration_minutes
       : durationFromSets;
-
   let calculatedCaloriesBurned = entryData.calories_burned;
   if (
     calculatedCaloriesBurned === undefined ||
@@ -213,7 +201,6 @@ async function prepareExerciseEntryForCreate(authenticatedUserId, entryData) {
       );
     calculatedCaloriesBurned = (caloriesPerHour / 60) * durationMinutes;
   }
-
   return {
     ...entryData,
     user_id: authenticatedUserId,
@@ -228,7 +215,6 @@ async function prepareExerciseEntryForCreate(authenticatedUserId, entryData) {
     avg_heart_rate: entryData.avg_heart_rate ?? null,
   };
 }
-
 async function createExerciseEntry(
   authenticatedUserId,
   actingUserId,
@@ -239,14 +225,12 @@ async function createExerciseEntry(
       authenticatedUserId,
       entryData
     );
-
     // Use exerciseEntry module to create the entry (handles sets and snapshot inserts)
     const newEntry = await exerciseEntryDb.createExerciseEntry(
       authenticatedUserId,
       snapshotEntryData,
       actingUserId
     );
-
     // If activity_details are provided, create them
     if (entryData.activity_details && entryData.activity_details.length > 0) {
       for (const detail of entryData.activity_details) {
@@ -273,7 +257,6 @@ async function createExerciseEntry(
     throw error;
   }
 }
-
 async function getExerciseEntryById(authenticatedUserId, id) {
   try {
     const entryOwnerId = await exerciseEntryDb.getExerciseEntryOwnerId(
@@ -303,7 +286,6 @@ async function getExerciseEntryById(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function updateExerciseEntry(
   authenticatedUserId,
   actingUserId,
@@ -318,7 +300,6 @@ async function updateExerciseEntry(
     if (!existingEntry) {
       throw new Error('Exercise entry not found.');
     }
-
     // If a new image is being uploaded or the image is being cleared, delete the old one
     if (
       (updateData.image_url || updateData.image_url === null) &&
@@ -330,7 +311,6 @@ async function updateExerciseEntry(
         log('info', `Deleted old exercise entry image: ${oldImagePath}`);
       }
     }
-
     // If calories_burned is not provided, calculate it using the calorieCalculationService
     if (
       updateData.exercise_id &&
@@ -362,7 +342,6 @@ async function updateExerciseEntry(
       // If calories_burned is not in updateData, use existing value or 0
       updateData.calories_burned = existingEntry.calories_burned || 0;
     }
-
     const updatedEntry = await exerciseEntryDb.updateExerciseEntry(
       id,
       authenticatedUserId,
@@ -394,7 +373,6 @@ async function updateExerciseEntry(
           id
         );
       const incomingActivityDetails = updateData.activity_details || [];
-
       // Identify details to delete
       for (const existingDetail of existingActivityDetails) {
         const found = incomingActivityDetails.find(
@@ -407,7 +385,6 @@ async function updateExerciseEntry(
           );
         }
       }
-
       // Identify details to create or update
       for (const incomingDetail of incomingActivityDetails) {
         if (incomingDetail.id) {
@@ -444,7 +421,6 @@ async function updateExerciseEntry(
     throw error;
   }
 }
-
 async function deleteExerciseEntry(authenticatedUserId, id) {
   try {
     const entryOwnerId = await exerciseEntryDb.getExerciseEntryOwnerId(
@@ -458,7 +434,6 @@ async function deleteExerciseEntry(authenticatedUserId, id) {
     if (!entry) {
       throw new Error('Exercise entry not found.'); // Should not happen if entryOwnerId was found
     }
-
     // If an image is associated with the entry, delete it from the filesystem
     if (entry.image_url) {
       const imagePath = path.join(__dirname, '..', entry.image_url);
@@ -467,7 +442,6 @@ async function deleteExerciseEntry(authenticatedUserId, id) {
         log('info', `Deleted exercise entry image: ${imagePath}`);
       }
     }
-
     const success = await exerciseEntryDb.deleteExerciseEntry(id, entryOwnerId);
     if (!success) {
       throw new Error('Exercise entry not found or not authorized to delete.');
@@ -482,7 +456,6 @@ async function deleteExerciseEntry(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function getExerciseById(authenticatedUserId, id) {
   try {
     const exerciseOwnerId = await exerciseDb.getExerciseOwnerId(
@@ -507,7 +480,6 @@ async function getExerciseById(authenticatedUserId, id) {
     throw error;
   }
 }
-
 async function updateExercise(authenticatedUserId, id, updateData) {
   try {
     const exerciseOwnerId = await exerciseDb.getExerciseOwnerId(
@@ -539,7 +511,6 @@ async function updateExercise(authenticatedUserId, id, updateData) {
     throw error;
   }
 }
-
 async function deleteExercise(
   authenticatedUserId,
   exerciseId,
@@ -561,7 +532,6 @@ async function deleteExercise(
       );
       throw new Error('Exercise not found.');
     }
-
     const deletionImpact = await exerciseDb.getExerciseDeletionImpact(
       exerciseId,
       authenticatedUserId
@@ -570,17 +540,14 @@ async function deleteExercise(
       'info',
       `deleteExercise: Deletion impact for exercise ${exerciseId}: ${JSON.stringify(deletionImpact)}`
     );
-
     const {
       exerciseEntriesCount,
       workoutPlansCount,
       workoutPresetsCount,
       otherUserReferences,
     } = deletionImpact;
-
     const totalReferences =
       exerciseEntriesCount + workoutPlansCount + workoutPresetsCount;
-
     // Scenario 1: No references at all
     if (totalReferences === 0) {
       log(
@@ -596,7 +563,6 @@ async function deleteExercise(
       }
       return { message: 'Exercise deleted permanently.', status: 'deleted' };
     }
-
     // Scenario 2: References only by the current user
     if (otherUserReferences === 0) {
       if (forceDelete) {
@@ -631,7 +597,6 @@ async function deleteExercise(
         };
       }
     }
-
     // Scenario 3: References by other users
     if (otherUserReferences > 0) {
       // If other users reference this exercise, hide it (mark as quick exercise) so it's removed from searches
@@ -648,7 +613,6 @@ async function deleteExercise(
         status: 'hidden',
       };
     }
-
     // Fallback for any unhandled cases (should not be reached)
     log(
       'warn',
@@ -664,7 +628,6 @@ async function deleteExercise(
     throw error;
   }
 }
-
 async function getExerciseEntriesByDate(
   authenticatedUserId,
   targetUserId,
@@ -687,7 +650,6 @@ async function getExerciseEntriesByDate(
     if (!entries || entries.length === 0) {
       return [];
     }
-
     // For each entry, fetch and attach its activity details
     const entriesWithDetails = await Promise.all(
       entries.map(async (entry) => {
@@ -700,7 +662,6 @@ async function getExerciseEntriesByDate(
         return { ...entry, activity_details: activityDetails };
       })
     );
-
     return entriesWithDetails;
   } catch (error) {
     log(
@@ -711,7 +672,6 @@ async function getExerciseEntriesByDate(
     throw error;
   }
 }
-
 async function getOrCreateActiveCaloriesExercise(userId) {
   try {
     const exerciseId =
@@ -726,7 +686,6 @@ async function getOrCreateActiveCaloriesExercise(userId) {
     throw error;
   }
 }
-
 async function upsertExerciseEntryData(
   userId,
   exerciseId,
@@ -750,7 +709,6 @@ async function upsertExerciseEntryData(
     throw error;
   }
 }
-
 async function searchExternalExercises(
   authenticatedUserId,
   query,
@@ -761,32 +719,30 @@ async function searchExternalExercises(
   page = 1,
   pageSize = 20
 ) {
+  const { default: freeExerciseDBService } =
+    await import('../integrations/freeexercisedb/FreeExerciseDBService.js');
+
   log(
     'info',
     `[exerciseService] searchExternalExercises called with: query='${query}', providerType='${providerType}', equipmentFilter='${equipmentFilter}', muscleGroupFilter='${muscleGroupFilter}', page=${page}, pageSize=${pageSize}`
   );
-
   const emptyResponse = {
     items: [],
     pagination: { page, pageSize, totalCount: 0, hasMore: false },
   };
-
   try {
     let items = [];
     let totalCount = 0;
     const offset = (page - 1) * pageSize;
-
     const latestMeasurement =
       await measurementRepository.getLatestMeasurement(authenticatedUserId);
     const userWeightKg =
       latestMeasurement && latestMeasurement.weight
         ? latestMeasurement.weight
         : 70; // Default to 70kg
-
     const hasFilters =
       equipmentFilter.length > 0 || muscleGroupFilter.length > 0;
     const hasQuery = query.trim().length > 0;
-
     // If there's no search query but filters are present, and the provider doesn't support filters,
     // return an empty result to avoid returning a large, unfiltered list.
     if (!hasQuery && hasFilters) {
@@ -798,18 +754,15 @@ async function searchExternalExercises(
         return emptyResponse;
       }
     }
-
     if (providerType === 'wger') {
       const muscleIdMap = await wgerService.getWgerMuscleIdMap();
       const equipmentIdMap = await wgerService.getWgerEquipmentIdMap();
-
       const muscleIds = muscleGroupFilter
         .flatMap((name) => muscleIdMap[name] || [])
         .filter((id) => id);
       const equipmentIds = equipmentFilter
         .flatMap((name) => equipmentIdMap[name] || [])
         .filter((id) => id);
-
       const wgerResult = await wgerService.searchWgerExercises(
         query,
         muscleIds,
@@ -818,7 +771,6 @@ async function searchExternalExercises(
         pageSize,
         offset
       );
-
       totalCount = wgerResult.totalCount;
       items = wgerResult.exercises.map((exercise) => {
         let caloriesPerHour = 0;
@@ -827,7 +779,6 @@ async function searchExternalExercises(
             ((exercise.met * 3.5 * userWeightKg) / 200) * 60
           );
         }
-
         return {
           id: exercise.id.toString(),
           name: exercise.name,
@@ -847,7 +798,6 @@ async function searchExternalExercises(
       // For Nutritionix, we are not using user demographics for now, as per user feedback.
       const nutritionixSearchResults =
         await nutritionixService.searchNutritionixExercises(query, providerId);
-
       totalCount = nutritionixSearchResults.length;
       items = nutritionixSearchResults.slice(offset, offset + pageSize);
     } else if (providerType === 'free-exercise-db') {
@@ -858,7 +808,6 @@ async function searchExternalExercises(
         pageSize,
         offset
       );
-
       totalCount = freeExerciseDBResult.totalCount;
       items = freeExerciseDBResult.exercises.map((exercise) => ({
         id: exercise.id,
@@ -899,7 +848,6 @@ async function searchExternalExercises(
         `Unsupported external exercise provider: ${providerType}`
       );
     }
-
     return {
       items,
       pagination: {
@@ -918,7 +866,6 @@ async function searchExternalExercises(
     throw error;
   }
 }
-
 async function addExternalExerciseToUserExercises(
   authenticatedUserId,
   wgerExerciseId
@@ -926,16 +873,13 @@ async function addExternalExerciseToUserExercises(
   try {
     const wgerExerciseDetails =
       await wgerService.getWgerExerciseDetails(wgerExerciseId);
-
     if (!wgerExerciseDetails) {
       throw new Error('Wger exercise not found.');
     }
-
     log(
       'info',
       `Raw wger exercise data for exercise ID ${wgerExerciseId}: ${JSON.stringify(wgerExerciseDetails, null, 2)}`
     );
-
     // Calculate calories_per_hour
     let caloriesPerHour = 0; // Default value if MET is not available or calculation fails
     if (wgerExerciseDetails.met && wgerExerciseDetails.met > 0) {
@@ -945,7 +889,6 @@ async function addExternalExerciseToUserExercises(
       if (latestMeasurement && latestMeasurement.weight) {
         userWeightKg = latestMeasurement.weight;
       }
-
       // Formula: METs * 3.5 * body weight in kg / 200 = calories burned per minute
       // To get calories per hour: (METs * 3.5 * body weight in kg) / 200 * 60
       caloriesPerHour =
@@ -958,7 +901,6 @@ async function addExternalExerciseToUserExercises(
           authenticatedUserId
         );
     }
-
     // Use the name from translations if available, otherwise fallback to description or ID
     const exerciseName =
       wgerExerciseDetails.translations &&
@@ -966,37 +908,23 @@ async function addExternalExerciseToUserExercises(
       wgerExerciseDetails.translations[0].name
         ? wgerExerciseDetails.translations[0].name
         : wgerExerciseDetails.description || `Wger Exercise ${wgerExerciseId}`;
-
-    const {
-      levelMap,
-      forceMap,
-      mechanicMap,
-      createReverseMap,
-      muscleNameMap,
-      equipmentNameMap,
-    } = require('../integrations/wger/wgerNameMapping');
     const wgerLevelName = wgerExerciseDetails.level?.name || 'Intermediate';
     const mappedLevel = levelMap[wgerLevelName] || 'intermediate';
-
     const reverseMuscleMap = createReverseMap(muscleNameMap);
     const reverseEquipmentMap = createReverseMap(equipmentNameMap);
-
     const wgerForceName = wgerExerciseDetails.force?.name || null;
     const mappedForce = wgerForceName
       ? forceMap[wgerForceName.toLowerCase()]
       : null;
-
     const wgerMechanicName = wgerExerciseDetails.mechanic?.name || null;
     const mappedMechanic = wgerMechanicName
       ? mechanicMap[wgerMechanicName.toLowerCase()]
       : null;
-
     const rawDescription =
       (wgerExerciseDetails.translations &&
         wgerExerciseDetails.translations.length > 0 &&
         wgerExerciseDetails.translations[0].description) ||
       '';
-
     // Sanitize and split instructions
     const instructions = rawDescription
       .replace(/<li>/g, '\n- ') // Add a marker for list items
@@ -1004,7 +932,6 @@ async function addExternalExerciseToUserExercises(
       .split('\n')
       .map((s) => s.trim())
       .filter((s) => s);
-
     const exerciseData = {
       name: exerciseName,
       category: wgerExerciseDetails.category
@@ -1035,7 +962,6 @@ async function addExternalExerciseToUserExercises(
       instructions: instructions,
       images: [], // Initialize as empty, will be populated after download
     };
-
     // Download images and update paths
     if (wgerExerciseDetails.images && wgerExerciseDetails.images.length > 0) {
       const exerciseFolderName = exerciseName.replace(/[^a-zA-Z0-9]/g, '_');
@@ -1063,12 +989,10 @@ async function addExternalExerciseToUserExercises(
       );
       exerciseData.images = localImagePaths.filter((p) => p !== null);
     }
-
     log(
       'info',
       `Mapped exercise data before insert: ${JSON.stringify(exerciseData, null, 2)}`
     );
-
     const newExercise = await exerciseDb.createExercise(exerciseData);
     return newExercise;
   } catch (error) {
@@ -1080,14 +1004,12 @@ async function addExternalExerciseToUserExercises(
     throw error;
   }
 }
-
 async function addNutritionixExerciseToUserExercises(
   authenticatedUserId,
   nutritionixExerciseData
 ) {
   try {
     const newExerciseId = uuidv4(); // Generate a new UUID for the local exercise
-
     const exerciseData = {
       id: newExerciseId,
       name: nutritionixExerciseData.name,
@@ -1100,7 +1022,6 @@ async function addNutritionixExerciseToUserExercises(
       source_external_id: nutritionixExerciseData.external_id.toString(), // Store original Nutritionix ID
       source: 'nutritionix',
     };
-
     const newExercise = await exerciseDb.createExercise(exerciseData);
     return newExercise;
   } catch (error) {
@@ -1112,20 +1033,18 @@ async function addNutritionixExerciseToUserExercises(
     throw error;
   }
 }
-
 async function addFreeExerciseDBExerciseToUserExercises(
   authenticatedUserId,
   freeExerciseDBId
 ) {
+  const { default: freeExerciseDBService } =
+    await import('../integrations/freeexercisedb/FreeExerciseDBService.js');
   try {
-    const freeExerciseDBService = require('../integrations/freeexercisedb/FreeExerciseDBService'); // Lazy load to avoid circular dependency
     const exerciseDetails =
       await freeExerciseDBService.getExerciseById(freeExerciseDBId);
-
     if (!exerciseDetails) {
       throw new Error('Free-Exercise-DB exercise not found.');
     }
-
     await Promise.all(
       exerciseDetails.images.map(async (imagePath) => {
         const imageUrl = freeExerciseDBService.getExerciseImageUrl(imagePath); // This now correctly forms the external URL
@@ -1134,7 +1053,6 @@ async function addFreeExerciseDBExerciseToUserExercises(
         return imagePath; // Store the original relative path in the database
       })
     );
-
     // Map free-exercise-db data to our generic Exercise model
     const exerciseData = {
       id: uuidv4(), // Generate a new UUID for the local exercise
@@ -1160,7 +1078,6 @@ async function addFreeExerciseDBExerciseToUserExercises(
       is_custom: true, // Imported exercises are custom to the user
       shared_with_public: false, // Imported exercises are private by default
     };
-
     const newExercise = await exerciseDb.createExercise(exerciseData);
     return newExercise;
   } catch (error) {
@@ -1172,7 +1089,6 @@ async function addFreeExerciseDBExerciseToUserExercises(
     throw error;
   }
 }
-
 async function getSuggestedExercises(authenticatedUserId, limit) {
   try {
     const preferences =
@@ -1196,7 +1112,6 @@ async function getSuggestedExercises(authenticatedUserId, limit) {
     throw error;
   }
 }
-
 async function getRecentExercises(authenticatedUserId, limit) {
   try {
     const preferences =
@@ -1210,19 +1125,15 @@ async function getRecentExercises(authenticatedUserId, limit) {
       recentExercises.map(async (exercise) => {
         const tags = [];
         const isOwner = exercise.user_id === authenticatedUserId;
-
         if (isOwner) {
           tags.push('private');
         }
-
         if (exercise.shared_with_public) {
           tags.push('public');
         }
-
         if (!isOwner && !exercise.shared_with_public) {
           tags.push('family');
         }
-
         return { ...exercise, tags };
       })
     );
@@ -1236,7 +1147,6 @@ async function getRecentExercises(authenticatedUserId, limit) {
     throw error;
   }
 }
-
 async function getTopExercises(authenticatedUserId, limit) {
   try {
     const preferences =
@@ -1250,19 +1160,15 @@ async function getTopExercises(authenticatedUserId, limit) {
       topExercises.map(async (exercise) => {
         const tags = [];
         const isOwner = exercise.user_id === authenticatedUserId;
-
         if (isOwner) {
           tags.push('private');
         }
-
         if (exercise.shared_with_public) {
           tags.push('public');
         }
-
         if (!isOwner && !exercise.shared_with_public) {
           tags.push('family');
         }
-
         return { ...exercise, tags };
       })
     );
@@ -1276,7 +1182,6 @@ async function getTopExercises(authenticatedUserId, limit) {
     throw error;
   }
 }
-
 async function getExerciseProgressData(
   authenticatedUserId,
   exerciseId,
@@ -1301,7 +1206,6 @@ async function getExerciseProgressData(
     throw error;
   }
 }
-
 async function getExerciseHistory(authenticatedUserId, exerciseId, limit) {
   try {
     const resolvedExerciseId = await resolveExerciseIdToUuid(exerciseId);
@@ -1321,25 +1225,21 @@ async function getExerciseHistory(authenticatedUserId, exerciseId, limit) {
     throw error;
   }
 }
-
 async function importExercisesFromCSV(authenticatedUserId, filePath) {
   let createdCount = 0;
   let updatedCount = 0;
   let failedCount = 0;
   const failedRows = [];
-
   try {
     const fileContent = fs.readFileSync(filePath, 'utf8');
     const { data, errors } = papa.parse(fileContent, {
       header: true,
       skipEmptyLines: true,
     });
-
     if (errors.length > 0) {
       log('error', 'CSV parsing errors:', errors);
       throw new Error('CSV parsing failed. Please check file format.');
     }
-
     for (const row of data) {
       try {
         const exerciseName = row.name ? row.name.trim() : null;
@@ -1348,7 +1248,6 @@ async function importExercisesFromCSV(authenticatedUserId, filePath) {
           failedRows.push({ row, reason: 'Exercise name is required.' });
           continue;
         }
-
         const primaryMuscles = row.primary_muscles
           ? row.primary_muscles.split(',').map((m) => m.trim())
           : [];
@@ -1357,7 +1256,6 @@ async function importExercisesFromCSV(authenticatedUserId, filePath) {
           failedRows.push({ row, reason: 'Primary muscles are required.' });
           continue;
         }
-
         const sourceId = exerciseName.toLowerCase().replace(/\s/g, '_');
         const exerciseData = {
           name: exerciseName,
@@ -1385,7 +1283,6 @@ async function importExercisesFromCSV(authenticatedUserId, filePath) {
           source: 'CSV',
           source_id: sourceId,
         };
-
         // Handle images: download and store local paths
         if (row.images) {
           const imageUrls = row.images.split(',').map((url) => url.trim());
@@ -1411,7 +1308,6 @@ async function importExercisesFromCSV(authenticatedUserId, filePath) {
         } else {
           exerciseData.images = [];
         }
-
         const existingExercise = await exerciseDb.searchExercises(
           exerciseName,
           authenticatedUserId,
@@ -1453,7 +1349,6 @@ async function importExercisesFromCSV(authenticatedUserId, filePath) {
       fs.unlinkSync(filePath);
     }
   }
-
   return {
     message: 'CSV import complete.',
     created: createdCount,
@@ -1462,7 +1357,6 @@ async function importExercisesFromCSV(authenticatedUserId, filePath) {
     failedRows: failedRows,
   };
 }
-
 async function getExerciseDeletionImpact(authenticatedUserId, exerciseId) {
   log(
     'info',
@@ -1494,13 +1388,11 @@ async function getExerciseDeletionImpact(authenticatedUserId, exerciseId) {
     throw error;
   }
 }
-
 function createServiceError(status, message) {
   const error = new Error(message);
   error.status = status;
   return error;
 }
-
 async function createGroupedExerciseEntriesWithClient(
   client,
   userId,
@@ -1515,7 +1407,6 @@ async function createGroupedExerciseEntriesWithClient(
     workoutPlanAssignmentId = null,
     preserveLegacyPresetDurationFallback = false,
   } = options;
-
   const createdEntries = [];
   for (const exercise of exercises || []) {
     const durationFromSets =
@@ -1529,7 +1420,6 @@ async function createGroupedExerciseEntriesWithClient(
         : preserveLegacyPresetDurationFallback && durationFromSets === 0
           ? 30
           : durationFromSets;
-
     const preparedEntry = await prepareExerciseEntryForCreate(userId, {
       exercise_id: exercise.exercise_id,
       entry_date: entryDate,
@@ -1541,7 +1431,6 @@ async function createGroupedExerciseEntriesWithClient(
       distance: exercise.distance,
       avg_heart_rate: exercise.avg_heart_rate,
     });
-
     const createdEntry = await exerciseEntryDb._createExerciseEntryWithClient(
       client,
       userId,
@@ -1552,19 +1441,15 @@ async function createGroupedExerciseEntriesWithClient(
     );
     createdEntries.push(createdEntry);
   }
-
   return createdEntries;
 }
-
 async function getGroupedWorkoutSessionById(userId, presetEntryId) {
   return getGroupedExerciseSessionById(userId, presetEntryId);
 }
-
 async function createGroupedWorkoutSession(userId, actingUserId, sessionData) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-
     const {
       workout_preset_id,
       entry_date,
@@ -1575,12 +1460,10 @@ async function createGroupedWorkoutSession(userId, actingUserId, sessionData) {
       exercises,
       workoutPlanAssignmentId = null,
     } = sessionData;
-
     let presetEntry;
     let exerciseDefinitions;
     let childEntrySource = source;
     let preserveLegacyPresetDurationFallback = false;
-
     if (workout_preset_id !== undefined && workout_preset_id !== null) {
       const workoutPreset = await workoutPresetRepository.getWorkoutPresetById(
         workout_preset_id,
@@ -1589,7 +1472,6 @@ async function createGroupedWorkoutSession(userId, actingUserId, sessionData) {
       if (!workoutPreset) {
         throw createServiceError(404, 'Workout preset not found.');
       }
-
       presetEntry =
         await exercisePresetEntryRepository.createExercisePresetEntryWithClient(
           client,
@@ -1627,7 +1509,6 @@ async function createGroupedWorkoutSession(userId, actingUserId, sessionData) {
         );
       exerciseDefinitions = exercises || [];
     }
-
     await createGroupedExerciseEntriesWithClient(
       client,
       userId,
@@ -1641,13 +1522,11 @@ async function createGroupedWorkoutSession(userId, actingUserId, sessionData) {
         preserveLegacyPresetDurationFallback,
       }
     );
-
     const groupedSession = await getGroupedExerciseSessionByIdWithClient(
       client,
       userId,
       presetEntry.id
     );
-
     await client.query('COMMIT');
     return groupedSession;
   } catch (error) {
@@ -1658,7 +1537,6 @@ async function createGroupedWorkoutSession(userId, actingUserId, sessionData) {
     client.release();
   }
 }
-
 async function updateGroupedWorkoutSession(
   userId,
   actingUserId,
@@ -1668,7 +1546,6 @@ async function updateGroupedWorkoutSession(
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-
     const existingSession = await getGroupedExerciseSessionByIdWithClient(
       client,
       userId,
@@ -1677,7 +1554,6 @@ async function updateGroupedWorkoutSession(
     if (!existingSession) {
       throw createServiceError(404, 'Exercise preset entry not found.');
     }
-
     await exercisePresetEntryRepository.updateExercisePresetEntryWithClient(
       client,
       presetEntryId,
@@ -1689,9 +1565,7 @@ async function updateGroupedWorkoutSession(
         entry_date: updateData.entry_date,
       }
     );
-
     const targetEntryDate = updateData.entry_date || existingSession.entry_date;
-
     if (updateData.exercises !== undefined) {
       if (!['manual', 'sparky'].includes(existingSession.source)) {
         throw createServiceError(
@@ -1699,13 +1573,11 @@ async function updateGroupedWorkoutSession(
           'Nested exercise editing is only supported for manual or sparky workouts.'
         );
       }
-
       await exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient(
         client,
         userId,
         presetEntryId
       );
-
       await createGroupedExerciseEntriesWithClient(
         client,
         userId,
@@ -1729,13 +1601,11 @@ async function updateGroupedWorkoutSession(
         actingUserId
       );
     }
-
     const groupedSession = await getGroupedExerciseSessionByIdWithClient(
       client,
       userId,
       presetEntryId
     );
-
     await client.query('COMMIT');
     return groupedSession;
   } catch (error) {
@@ -1746,7 +1616,6 @@ async function updateGroupedWorkoutSession(
     client.release();
   }
 }
-
 async function logWorkoutPresetGrouped(
   userId,
   actingUserId,
@@ -1760,44 +1629,6 @@ async function logWorkoutPresetGrouped(
     ...options,
   });
 }
-
-module.exports = {
-  getExerciseById,
-  getOrCreateActiveCaloriesExercise,
-  upsertExerciseEntryData,
-  getExercisesWithPagination,
-  searchExercises,
-  getAvailableEquipment,
-  getAvailableMuscleGroups,
-  createExercise,
-  createExerciseEntry,
-  getExerciseEntryById,
-  updateExerciseEntry,
-  deleteExerciseEntry,
-  updateExercise,
-  deleteExercise,
-  getExerciseEntriesByDate,
-  addFreeExerciseDBExerciseToUserExercises,
-  getSuggestedExercises,
-  searchExternalExercises,
-  addExternalExerciseToUserExercises,
-  addNutritionixExerciseToUserExercises,
-  getExerciseDeletionImpact,
-  getExerciseProgressData,
-  getExerciseHistory,
-  getRecentExercises,
-  getTopExercises,
-  importExercisesFromCSV,
-  importExercisesFromJson, // Export the new function
-  getExercisesNeedingReview, // New export
-  updateExerciseEntriesSnapshot, // New export
-  getActivityDetailsByExerciseEntryIdAndProvider, // Renamed export
-  logWorkoutPresetGrouped, // New export
-  createGroupedWorkoutSession,
-  updateGroupedWorkoutSession,
-  getGroupedWorkoutSessionById,
-};
-
 async function getActivityDetailsByExerciseEntryIdAndProvider(
   authenticatedUserId,
   entryId,
@@ -1805,14 +1636,12 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(
 ) {
   try {
     let activityDetails = [];
-
     // First, try to find an exercise entry with the given ID
     const exerciseEntry = await exerciseEntryDb.getExerciseEntryById(
       entryId,
       authenticatedUserId
     );
     let targetId = entryId; // Default to the provided entryId
-
     if (exerciseEntry) {
       // If it's an exercise entry and linked to a preset, use the preset ID
       if (exerciseEntry.exercise_preset_entry_id) {
@@ -1849,7 +1678,6 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(
           );
       }
     }
-
     // Find the full_activity_data and full_workout_data for the given provider
     const activityData = activityDetails.find(
       (detail) =>
@@ -1861,7 +1689,6 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(
         detail.provider_name === providerName &&
         detail.detail_type === 'full_workout_data'
     );
-
     // Return a composite object containing both, if they exist
     if (activityData || workoutData) {
       return {
@@ -1879,7 +1706,6 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(
     throw error;
   }
 }
-
 async function getExercisesNeedingReview(authenticatedUserId) {
   try {
     const exercisesNeedingReview =
@@ -1894,7 +1720,6 @@ async function getExercisesNeedingReview(authenticatedUserId) {
     throw error;
   }
 }
-
 async function updateExerciseEntriesSnapshot(authenticatedUserId, exerciseId) {
   try {
     // Fetch the latest exercise details
@@ -1905,26 +1730,22 @@ async function updateExerciseEntriesSnapshot(authenticatedUserId, exerciseId) {
     if (!exercise) {
       throw new Error('Exercise not found.');
     }
-
     // Construct the new snapshot data
     const newSnapshotData = {
       exercise_name: exercise.name,
       calories_per_hour: exercise.calories_per_hour,
     };
-
     // Update all relevant exercise entries for the authenticated user
     await exerciseRepository.updateExerciseEntriesSnapshot(
       authenticatedUserId,
       exerciseId,
       newSnapshotData
     );
-
     // Clear any ignored updates for this exercise for this user
     await exerciseRepository.clearUserIgnoredUpdate(
       authenticatedUserId,
       exerciseId
     );
-
     return { message: 'Exercise entries updated successfully.' };
   } catch (error) {
     log(
@@ -1935,14 +1756,12 @@ async function updateExerciseEntriesSnapshot(authenticatedUserId, exerciseId) {
     throw error;
   }
 }
-
 async function importExercisesFromJson(authenticatedUserId, exercisesArray) {
   let createdCount = 0;
   let updatedCount = 0;
   let failedCount = 0;
   const failedRows = [];
   const duplicates = [];
-
   for (const exerciseData of exercisesArray) {
     try {
       const exerciseName = exerciseData.name ? exerciseData.name.trim() : null;
@@ -1954,7 +1773,6 @@ async function importExercisesFromJson(authenticatedUserId, exercisesArray) {
         });
         continue;
       }
-
       const primaryMuscles = exerciseData.primary_muscles
         ? exerciseData.primary_muscles.split(',').map((m) => m.trim())
         : [];
@@ -1966,7 +1784,6 @@ async function importExercisesFromJson(authenticatedUserId, exercisesArray) {
         });
         continue;
       }
-
       const sourceId = exerciseName.toLowerCase().replace(/\s/g, '_');
       const newExerciseData = {
         name: exerciseName,
@@ -1994,7 +1811,6 @@ async function importExercisesFromJson(authenticatedUserId, exercisesArray) {
         source: 'CSV_Import', // Indicate that it came from a CSV import via the UI
         source_id: sourceId,
       };
-
       // Handle images: download and store local paths
       if (exerciseData.images) {
         const imageUrls = exerciseData.images
@@ -2019,7 +1835,6 @@ async function importExercisesFromJson(authenticatedUserId, exercisesArray) {
       } else {
         newExerciseData.images = [];
       }
-
       const existingExercise = await exerciseDb.searchExercises(
         exerciseName,
         authenticatedUserId,
@@ -2031,7 +1846,6 @@ async function importExercisesFromJson(authenticatedUserId, exercisesArray) {
         const isDuplicate = existingExercise.some(
           (ex) => ex.name.toLowerCase() === exerciseName.toLowerCase()
         );
-
         if (isDuplicate) {
           duplicates.push({
             name: exerciseName,
@@ -2044,7 +1858,6 @@ async function importExercisesFromJson(authenticatedUserId, exercisesArray) {
           });
           continue;
         }
-
         // Assuming the first match is the one to update
         await exerciseDb.updateExercise(
           existingExercise[0].id,
@@ -2066,14 +1879,12 @@ async function importExercisesFromJson(authenticatedUserId, exercisesArray) {
       );
     }
   }
-
   if (duplicates.length > 0) {
     const error = new Error('Duplicate exercises found.');
     error.status = 409; // Conflict
     error.data = { duplicates };
     throw error;
   }
-
   return {
     message: 'Exercise import complete.',
     created: createdCount,
@@ -2082,3 +1893,73 @@ async function importExercisesFromJson(authenticatedUserId, exercisesArray) {
     failedRows: failedRows,
   };
 }
+export { getExerciseById };
+export { getOrCreateActiveCaloriesExercise };
+export { upsertExerciseEntryData };
+export { getExercisesWithPagination };
+export { searchExercises };
+export { getAvailableEquipment };
+export { getAvailableMuscleGroups };
+export { createExercise };
+export { createExerciseEntry };
+export { getExerciseEntryById };
+export { updateExerciseEntry };
+export { deleteExerciseEntry };
+export { updateExercise };
+export { deleteExercise };
+export { getExerciseEntriesByDate };
+export { addFreeExerciseDBExerciseToUserExercises };
+export { getSuggestedExercises };
+export { searchExternalExercises };
+export { addExternalExerciseToUserExercises };
+export { addNutritionixExerciseToUserExercises };
+export { getExerciseDeletionImpact };
+export { getExerciseProgressData };
+export { getExerciseHistory };
+export { getRecentExercises };
+export { getTopExercises };
+export { importExercisesFromCSV };
+export { importExercisesFromJson };
+export { getExercisesNeedingReview };
+export { updateExerciseEntriesSnapshot };
+export { getActivityDetailsByExerciseEntryIdAndProvider };
+export { logWorkoutPresetGrouped };
+export { createGroupedWorkoutSession };
+export { updateGroupedWorkoutSession };
+export { getGroupedWorkoutSessionById };
+export default {
+  getExerciseById,
+  getOrCreateActiveCaloriesExercise,
+  upsertExerciseEntryData,
+  getExercisesWithPagination,
+  searchExercises,
+  getAvailableEquipment,
+  getAvailableMuscleGroups,
+  createExercise,
+  createExerciseEntry,
+  getExerciseEntryById,
+  updateExerciseEntry,
+  deleteExerciseEntry,
+  updateExercise,
+  deleteExercise,
+  getExerciseEntriesByDate,
+  addFreeExerciseDBExerciseToUserExercises,
+  getSuggestedExercises,
+  searchExternalExercises,
+  addExternalExerciseToUserExercises,
+  addNutritionixExerciseToUserExercises,
+  getExerciseDeletionImpact,
+  getExerciseProgressData,
+  getExerciseHistory,
+  getRecentExercises,
+  getTopExercises,
+  importExercisesFromCSV,
+  importExercisesFromJson,
+  getExercisesNeedingReview,
+  updateExerciseEntriesSnapshot,
+  getActivityDetailsByExerciseEntryIdAndProvider,
+  logWorkoutPresetGrouped,
+  createGroupedWorkoutSession,
+  updateGroupedWorkoutSession,
+  getGroupedWorkoutSessionById,
+};

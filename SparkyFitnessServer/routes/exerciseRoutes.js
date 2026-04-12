@@ -1,13 +1,12 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import exerciseService from '../services/exerciseService.js';
+import reportRepository from '../models/reportRepository.js';
+import wgerService from '../integrations/wger/wgerService.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const exerciseService = require('../services/exerciseService');
-const reportRepository = require('../models/reportRepository');
-const wgerService = require('../integrations/wger/wgerService');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-
 // Setup Multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -27,14 +26,12 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage: storage });
-
 /**
  * @swagger
  * tags:
  *   name: Fitness & Workouts
  *   description: Exercise database, workout presets, and activity logging.
  */
-
 /**
  * @swagger
  * /exercises:
@@ -118,7 +115,6 @@ router.get('/', authenticate, async (req, res, next) => {
   const muscleGroupFilterArray = muscleGroupFilter
     ? muscleGroupFilter.split(',')
     : [];
-
   try {
     const { exercises, totalCount } =
       await exerciseService.getExercisesWithPagination(
@@ -140,7 +136,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/suggested:
@@ -186,7 +181,6 @@ router.get('/suggested', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/recent:
@@ -232,7 +226,6 @@ router.get('/recent', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/top:
@@ -278,7 +271,6 @@ router.get('/top', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/search:
@@ -326,7 +318,6 @@ router.get('/search', authenticate, async (req, res, next) => {
   const muscleGroupFilterArray = muscleGroupFilter
     ? muscleGroupFilter.split(',')
     : [];
-
   // Allow broad search for internal exercises even if searchTerm and filters are empty
   try {
     const exercises = await exerciseService.searchExercises(
@@ -344,7 +335,6 @@ router.get('/search', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/search-external:
@@ -445,11 +435,9 @@ router.get('/search-external', authenticate, async (req, res, next) => {
     muscleGroupFilter && muscleGroupFilter.length > 0
       ? muscleGroupFilter.split(',')
       : [];
-
   const hasQuery = query && query.trim().length > 0;
   const hasFilters =
     equipmentFilterArray.length > 0 || muscleGroupFilterArray.length > 0;
-
   if (!hasQuery && !hasFilters) {
     return res
       .status(400)
@@ -476,7 +464,6 @@ router.get('/search-external', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/equipment:
@@ -506,7 +493,6 @@ router.get('/equipment', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/muscle-groups:
@@ -536,7 +522,6 @@ router.get('/muscle-groups', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/wger-filters:
@@ -571,23 +556,19 @@ router.get('/wger-filters', authenticate, async (req, res, next) => {
   try {
     const wgerMuscles = await wgerService.getWgerMuscleIdMap();
     const wgerEquipment = await wgerService.getWgerEquipmentIdMap();
-
     const ourMuscles = await exerciseService.getAvailableMuscleGroups();
     const ourEquipment = await exerciseService.getAvailableEquipment();
-
     const uniqueMuscles = Object.keys(wgerMuscles).filter(
       (m) => !ourMuscles.includes(m)
     );
     const uniqueEquipment = Object.keys(wgerEquipment).filter(
       (e) => !ourEquipment.includes(e)
     );
-
     res.status(200).json({ uniqueMuscles, uniqueEquipment });
   } catch (error) {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/names:
@@ -620,7 +601,6 @@ router.get('/wger-filters', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-
 router.get('/names', authenticate, async (req, res, next) => {
   try {
     const { muscle, equipment } = req.query;
@@ -634,7 +614,6 @@ router.get('/names', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/add-external:
@@ -684,7 +663,6 @@ router.post('/add-external', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/add-nutritionix-exercise:
@@ -743,7 +721,6 @@ router.post(
     }
   }
 );
-
 // Endpoint to fetch an exercise by ID
 /**
  * @swagger
@@ -800,7 +777,6 @@ router.get('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/:
@@ -852,7 +828,6 @@ router.post(
               `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
           )
         : [];
-
       const newExercise = await exerciseService.createExercise(req.userId, {
         ...exerciseData,
         user_id: req.userId,
@@ -920,7 +895,6 @@ router.post(
     }
   }
 );
-
 /**
  * @swagger
  * /exercises/import-json:
@@ -989,7 +963,6 @@ router.post('/import-json', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // Endpoint to update an exercise
 /**
  * @swagger
@@ -1054,7 +1027,6 @@ router.put(
         .status(400)
         .json({ error: 'Exercise ID is required and must be a valid UUID.' });
     }
-
     try {
       const exerciseData = JSON.parse(req.body.exerciseData);
       const newImagePaths = req.files
@@ -1063,10 +1035,8 @@ router.put(
               `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
           )
         : [];
-
       // Combine existing images with new images
       const allImages = [...(exerciseData.images || []), ...newImagePaths];
-
       const updatedExercise = await exerciseService.updateExercise(
         req.userId,
         id,
@@ -1089,7 +1059,6 @@ router.put(
     }
   }
 );
-
 /**
  * @swagger
  * /exercises/{id}/deletion-impact:
@@ -1158,7 +1127,6 @@ router.get('/:id/deletion-impact', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // Endpoint to delete an exercise
 /**
  * @swagger
@@ -1244,7 +1212,6 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/needs-review:
@@ -1275,7 +1242,6 @@ router.get('/needs-review', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /exercises/update-snapshot:
@@ -1328,7 +1294,6 @@ router.post('/update-snapshot', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 // Endpoint to get Garmin activity details by exercise entry ID
 /**
  * @swagger
@@ -1432,7 +1397,6 @@ router.get(
     }
   }
 );
-
 /**
  * @swagger
  * /exercises/activity-details/{exerciseEntryId}/{providerName}:
@@ -1514,5 +1478,4 @@ router.get(
     }
   }
 );
-
-module.exports = router;
+export default router;

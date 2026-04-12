@@ -1,14 +1,12 @@
-const { log } = require('../config/logging');
-const userRepository = require('../models/userRepository'); // Import userRepository
-const { serializeSignedCookie } = require('better-call');
-
+import { log } from '../config/logging.js';
+import userRepository from '../models/userRepository.js';
+import { serializeSignedCookie } from 'better-call';
+import { auth } from '../auth.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
 const authenticate = async (req, res, next) => {
   //log("debug", `authenticate middleware: req.path = ${req.path}, req.headers.cookie = ${req.headers.cookie}`);
-
   // 1. Better Auth Session & API Key Check (Unified Identity)
   try {
-    const { auth } = require('../auth');
-
     // Route Bearer tokens to the correct auth mechanism:
     // - API keys (64+ alphanumeric chars, no dots) → x-api-key header
     // - Session tokens (shorter, or contain dots) → signed session cookie
@@ -50,12 +48,10 @@ const authenticate = async (req, res, next) => {
         );
       }
     }
-
     // getSession resolves from session cookies or x-api-key header
     const session = await auth.api.getSession({
       headers: req.headers,
     });
-
     if (session && session.user) {
       log(
         'debug',
@@ -64,17 +60,14 @@ const authenticate = async (req, res, next) => {
       req.authenticatedUserId = session.user.id;
       req.originalUserId = req.authenticatedUserId;
       req.user = session.user; // Full user object (includes role)
-
       // Handle 'sparky_active_user_id' cookie for context switching
       const activeUserId = req.cookies.sparky_active_user_id;
       if (activeUserId && activeUserId !== req.authenticatedUserId) {
-        const { canAccessUserData } = require('../utils/permissionUtils');
         const [hasReports, hasDiary, hasCheckin] = await Promise.all([
           canAccessUserData(activeUserId, 'reports', req.authenticatedUserId),
           canAccessUserData(activeUserId, 'diary', req.authenticatedUserId),
           canAccessUserData(activeUserId, 'checkin', req.authenticatedUserId),
         ]);
-
         if (hasReports || hasDiary || hasCheckin) {
           req.activeUserId = activeUserId;
           log(
@@ -91,9 +84,7 @@ const authenticate = async (req, res, next) => {
       } else {
         req.activeUserId = req.authenticatedUserId;
       }
-
       req.userId = req.activeUserId; // RLS context
-
       // Ensure user initialization
       try {
         await userRepository.ensureUserInitialization(
@@ -107,12 +98,10 @@ const authenticate = async (req, res, next) => {
           err
         );
       }
-
       return next();
     }
   } catch (error) {
     log('error', 'Error checking Better Auth identity:', error);
-
     const code = error?.body?.code;
     if (code === 'RATE_LIMITED') {
       const retryAfterMs = error.body?.details?.tryAgainIn;
@@ -131,17 +120,14 @@ const authenticate = async (req, res, next) => {
       return res.status(429).json({ error: 'API key usage limit exceeded.' });
     }
   }
-
   // No valid authentication found
   log('warn', `Authentication: No valid identity provided for ${req.path}`);
   return res.status(401).json({ error: 'Authentication required.' });
 };
-
 const isAdmin = async (req, res, next) => {
   if (!req.userId) {
     return res.status(401).json({ error: 'Authentication required.' });
   }
-
   // 1. Super-admin override
   if (
     process.env.SPARKY_FITNESS_ADMIN_EMAIL &&
@@ -149,24 +135,22 @@ const isAdmin = async (req, res, next) => {
   ) {
     return next();
   }
-
   // 2. Native Better Auth Role Check
   // Note: Better Auth stores role in the session/user object if configured
   const userRole =
     req.user?.role || (await userRepository.getUserRole(req.userId));
-
   if (userRole === 'admin') {
     return next();
   }
-
   log(
     'warn',
     `Admin Check: Access denied for User ${req.userId} (Role: ${userRole})`
   );
   return res.status(403).json({ error: 'Admin access required.' });
 };
-
-module.exports = {
+export { authenticate };
+export { isAdmin };
+export default {
   authenticate,
   isAdmin,
 };

@@ -1,16 +1,14 @@
-const workoutPlanTemplateRepository = require('../models/workoutPlanTemplateRepository');
-const workoutPresetRepository = require('../models/workoutPresetRepository');
-const exerciseRepository = require('../models/exerciseRepository');
-const { log } = require('../config/logging');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { todayInZone } = require('@workspace/shared');
-
+import workoutPlanTemplateRepository from '../models/workoutPlanTemplateRepository.js';
+import workoutPresetRepository from '../models/workoutPresetRepository.js';
+import exerciseRepository from '../models/exerciseRepository.js';
+import { log } from '../config/logging.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { todayInZone } from '@workspace/shared';
 async function resolveToday(userId, clientDate) {
   if (clientDate) return clientDate;
   const tz = await loadUserTimezone(userId);
   return todayInZone(tz);
 }
-
 async function createWorkoutPlanTemplate(userId, planData) {
   log(
     'info',
@@ -84,11 +82,9 @@ async function createWorkoutPlanTemplate(userId, planData) {
     });
   }
 }
-
 async function getWorkoutPlanTemplatesByUserId(userId) {
   return workoutPlanTemplateRepository.getWorkoutPlanTemplatesByUserId(userId);
 }
-
 async function getWorkoutPlanTemplateById(userId, templateId) {
   const template =
     await workoutPlanTemplateRepository.getWorkoutPlanTemplateById(
@@ -109,7 +105,6 @@ async function getWorkoutPlanTemplateById(userId, templateId) {
   }
   return template;
 }
-
 async function updateWorkoutPlanTemplate(userId, templateId, updateData) {
   log(
     'info',
@@ -165,7 +160,6 @@ async function updateWorkoutPlanTemplate(userId, templateId, updateData) {
       userId,
       today
     );
-
     const updatedPlan =
       await workoutPlanTemplateRepository.updateWorkoutPlanTemplate(
         templateId,
@@ -205,7 +199,6 @@ async function updateWorkoutPlanTemplate(userId, templateId, updateData) {
     });
   }
 }
-
 async function deleteWorkoutPlanTemplate(userId, templateId) {
   log(
     'info',
@@ -233,7 +226,6 @@ async function deleteWorkoutPlanTemplate(userId, templateId) {
       userId,
       today
     );
-
     const deleted =
       await workoutPlanTemplateRepository.deleteWorkoutPlanTemplate(
         templateId,
@@ -257,15 +249,19 @@ async function deleteWorkoutPlanTemplate(userId, templateId) {
     });
   }
 }
-
 async function getActiveWorkoutPlanForDate(userId, date) {
   return workoutPlanTemplateRepository.getActiveWorkoutPlanForDate(
     userId,
     date
   );
 }
-
-module.exports = {
+export { createWorkoutPlanTemplate };
+export { getWorkoutPlanTemplatesByUserId };
+export { getWorkoutPlanTemplateById };
+export { updateWorkoutPlanTemplate };
+export { deleteWorkoutPlanTemplate };
+export { getActiveWorkoutPlanForDate };
+export default {
   createWorkoutPlanTemplate,
   getWorkoutPlanTemplatesByUserId,
   getWorkoutPlanTemplateById,

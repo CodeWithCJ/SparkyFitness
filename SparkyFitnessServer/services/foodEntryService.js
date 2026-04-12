@@ -1,10 +1,9 @@
-const foodRepository = require('../models/foodRepository');
-const foodEntryMealRepository = require('../models/foodEntryMealRepository');
-const mealService = require('./mealService');
-const { log } = require('../config/logging');
-const mealTypeRepository = require('../models/mealType');
-const { sanitizeCustomNutrients } = require('../utils/foodUtils');
-
+import foodRepository from '../models/foodRepository.js';
+import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
+import mealService from './mealService.js';
+import { log } from '../config/logging.js';
+import mealTypeRepository from '../models/mealType.js';
+import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 // Helper functions (already defined)
 function getGlycemicIndexValue(category) {
   switch (category) {
@@ -22,7 +21,6 @@ function getGlycemicIndexValue(category) {
       return null;
   }
 }
-
 function getGlycemicIndexCategory(value) {
   if (value === null) return 'None';
   if (value <= 20) return 'Very Low';
@@ -31,7 +29,6 @@ function getGlycemicIndexCategory(value) {
   if (value <= 90) return 'High';
   return 'Very High';
 }
-
 async function resolveMealTypeId(userId, mealTypeName) {
   if (!mealTypeName) return null;
   const types = await mealTypeRepository.getAllMealTypes(userId);
@@ -40,7 +37,6 @@ async function resolveMealTypeId(userId, mealTypeName) {
   );
   return match ? match.id : null;
 }
-
 async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
   try {
     const entryWithUser = {
@@ -48,18 +44,14 @@ async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
       user_id: entryData.user_id || authenticatedUserId,
       created_by_user_id: actingUserId,
     };
-
     if (entryData.custom_nutrients !== undefined) {
       entryWithUser.custom_nutrients = sanitizeCustomNutrients(
         entryData.custom_nutrients
       );
     }
-
     log(
       'info',
-      `createFoodEntry in foodService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, entryData: ${JSON.stringify(
-        entryData
-      )}`
+      `createFoodEntry in foodService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, entryData: ${JSON.stringify(entryData)}`
     );
     const newEntry = await foodRepository.createFoodEntry(
       entryWithUser,
@@ -75,7 +67,6 @@ async function createFoodEntry(authenticatedUserId, actingUserId, entryData) {
     throw error;
   }
 }
-
 async function updateFoodEntry(
   authenticatedUserId,
   actingUserId,
@@ -95,7 +86,6 @@ async function updateFoodEntry(
         'Forbidden: You do not have permission to update this food entry.'
       );
     }
-
     // Fetch the existing entry to get food_id and current variant_id if not provided in entryData
     const existingEntry = await foodRepository.getFoodEntryById(
       entryId,
@@ -104,12 +94,9 @@ async function updateFoodEntry(
     if (!existingEntry) {
       throw new Error('Food entry not found.');
     }
-
     const foodIdToUse = existingEntry.food_id;
     const variantIdToUse = entryData.variant_id || existingEntry.variant_id;
-
     let newSnapshotData;
-
     if (foodIdToUse) {
       // Variant changed — rebuild snapshot from the new food/variant
       const food = await foodRepository.getFoodById(
@@ -126,7 +113,6 @@ async function updateFoodEntry(
       if (!variant) {
         throw new Error('Food variant not found for snapshotting.');
       }
-
       newSnapshotData = {
         food_name: food.name,
         brand_name: food.brand,
@@ -182,7 +168,6 @@ async function updateFoodEntry(
         ),
       };
     }
-
     // Apply inline nutrition overrides if provided by the client
     const nutritionOverrideFields = [
       'food_name',
@@ -218,7 +203,6 @@ async function updateFoodEntry(
         entryData.custom_nutrients
       );
     }
-
     const updatedEntry = await foodRepository.updateFoodEntry(
       entryId,
       authenticatedUserId,
@@ -261,7 +245,6 @@ async function deleteFoodEntry(authenticatedUserId, entryId) {
         'Forbidden: You do not have permission to delete this food entry.'
       );
     }
-
     const success = await foodRepository.deleteFoodEntry(
       entryId,
       authenticatedUserId
@@ -279,7 +262,6 @@ async function deleteFoodEntry(authenticatedUserId, entryId) {
     throw error;
   }
 }
-
 async function getFoodEntriesByDate(
   authenticatedUserId,
   targetUserId,
@@ -307,7 +289,6 @@ async function getFoodEntriesByDate(
     throw error;
   }
 }
-
 async function getFoodEntriesByDateRange(
   authenticatedUserId,
   targetUserId,
@@ -330,7 +311,6 @@ async function getFoodEntriesByDateRange(
     throw error;
   }
 }
-
 async function copyFoodEntries(
   authenticatedUserId,
   actingUserId,
@@ -344,14 +324,12 @@ async function copyFoodEntries(
       'info',
       `copyFoodEntries: Copying from ${sourceDate} (${sourceMealType}) to ${targetDate} (${targetMealType}) for user ${authenticatedUserId}`
     );
-
     // 1. Fetch source entries
     const sourceEntries = await foodRepository.getFoodEntriesByDateAndMealType(
       authenticatedUserId,
       sourceDate,
       sourceMealType
     );
-
     if (sourceEntries.length === 0) {
       log(
         'debug',
@@ -359,7 +337,6 @@ async function copyFoodEntries(
       );
       return [];
     }
-
     const targetMealTypeId = await resolveMealTypeId(
       authenticatedUserId,
       targetMealType
@@ -367,20 +344,16 @@ async function copyFoodEntries(
     if (!targetMealTypeId) {
       throw new Error(`Invalid target meal type: ${targetMealType}`);
     }
-
     // Map to keep track of duplicated food_entry_meals
     // Key: old_food_entry_meal_id, Value: new_food_entry_meal_id
     const mealMapping = new Map();
-
     const entriesToCreate = [];
     for (const entry of sourceEntries) {
       log(
         'debug',
         `copyFoodEntries: Processing source entry: ${JSON.stringify(entry)}`
       );
-
       let newFoodEntryMealId = null;
-
       // If the entry belongs to a meal container, ensure the container is duplicated
       if (entry.food_entry_meal_id) {
         if (mealMapping.has(entry.food_entry_meal_id)) {
@@ -392,7 +365,6 @@ async function copyFoodEntries(
               entry.food_entry_meal_id,
               authenticatedUserId
             );
-
           if (originalMeal) {
             // Create a new meal container for the target date/slot
             const newMeal = await foodEntryMealRepository.createFoodEntryMeal(
@@ -417,7 +389,6 @@ async function copyFoodEntries(
           }
         }
       }
-
       // Check for existing entry to prevent duplicates in the same meal/slot
       const existingEntry = await foodRepository.getFoodEntryByDetails(
         authenticatedUserId,
@@ -427,7 +398,6 @@ async function copyFoodEntries(
         entry.variant_id,
         newFoodEntryMealId // Use the new meal container ID for the duplicate check
       );
-
       if (!existingEntry) {
         entriesToCreate.push({
           user_id: authenticatedUserId,
@@ -475,7 +445,6 @@ async function copyFoodEntries(
         );
       }
     }
-
     if (entriesToCreate.length === 0) {
       log(
         'debug',
@@ -483,7 +452,6 @@ async function copyFoodEntries(
       );
       return [];
     }
-
     const newEntries = await foodRepository.bulkCreateFoodEntries(
       entriesToCreate,
       authenticatedUserId
@@ -498,7 +466,6 @@ async function copyFoodEntries(
     throw error;
   }
 }
-
 async function copyFoodEntriesFromYesterday(
   authenticatedUserId,
   actingUserId,
@@ -510,20 +477,16 @@ async function copyFoodEntriesFromYesterday(
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10);
     const day = parseInt(dayStr, 10);
-
     if (isNaN(year) || isNaN(month) || isNaN(day)) {
       throw new Error('Invalid date format provided for targetDate.');
     }
-
     const priorDay = new Date(Date.UTC(year, month - 1, day));
     priorDay.setUTCDate(priorDay.getUTCDate() - 1);
     const sourceDate = priorDay.toISOString().split('T')[0];
-
     log(
       'info',
       `copyFoodEntriesFromYesterday: Calculating sourceDate ${sourceDate} from targetDate ${targetDate}`
     );
-
     // Delegate to consolidated copyFoodEntries function
     return await copyFoodEntries(
       authenticatedUserId,
@@ -542,7 +505,6 @@ async function copyFoodEntriesFromYesterday(
     throw error;
   }
 }
-
 async function copyAllFoodEntries(
   authenticatedUserId,
   actingUserId,
@@ -554,13 +516,11 @@ async function copyAllFoodEntries(
       'info',
       `copyAllFoodEntries: Copying entire day from ${sourceDate} to ${targetDate} for user ${authenticatedUserId}`
     );
-
     // 1. Fetch all entries from the source day to find used meal slots
     const allSourceEntries = await foodRepository.getFoodEntriesByDate(
       authenticatedUserId,
       sourceDate
     );
-
     if (allSourceEntries.length === 0) {
       log(
         'debug',
@@ -568,7 +528,6 @@ async function copyAllFoodEntries(
       );
       return [];
     }
-
     // 2. Identify unique meal types (slots) that have data
     const usedMealTypes = [
       ...new Set(allSourceEntries.map((e) => e.meal_type)),
@@ -577,9 +536,7 @@ async function copyAllFoodEntries(
       'debug',
       `copyAllFoodEntries: Found ${usedMealTypes.length} slots with data: ${usedMealTypes.join(', ')}`
     );
-
     const allCopiedEntries = [];
-
     // 3. Loop through each slot and perform a Deep Copy
     for (const mealType of usedMealTypes) {
       const copiedEntries = await copyFoodEntries(
@@ -592,7 +549,6 @@ async function copyAllFoodEntries(
       );
       allCopiedEntries.push(...copiedEntries);
     }
-
     log(
       'info',
       `Successfully copied entire day (${allCopiedEntries.length} entries) from ${sourceDate} to ${targetDate} for user ${authenticatedUserId}.`
@@ -607,7 +563,6 @@ async function copyAllFoodEntries(
     throw error;
   }
 }
-
 async function copyAllFoodEntriesFromYesterday(
   authenticatedUserId,
   actingUserId,
@@ -618,15 +573,12 @@ async function copyAllFoodEntriesFromYesterday(
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10);
     const day = parseInt(dayStr, 10);
-
     if (isNaN(year) || isNaN(month) || isNaN(day)) {
       throw new Error('Invalid date format provided for targetDate.');
     }
-
     const priorDay = new Date(Date.UTC(year, month - 1, day));
     priorDay.setUTCDate(priorDay.getUTCDate() - 1);
     const sourceDate = priorDay.toISOString().split('T')[0];
-
     return await copyAllFoodEntries(
       authenticatedUserId,
       actingUserId,
@@ -642,7 +594,6 @@ async function copyAllFoodEntriesFromYesterday(
     throw error;
   }
 }
-
 async function getDailyNutritionSummary(userId, date) {
   try {
     const summary = await foodRepository.getDailyNutritionSummary(userId, date);
@@ -666,7 +617,6 @@ async function getDailyNutritionSummary(userId, date) {
     throw error;
   }
 }
-
 // New functions for food_entry_meals logic
 async function createFoodEntryMeal(
   authenticatedUserId,
@@ -675,9 +625,7 @@ async function createFoodEntryMeal(
 ) {
   log(
     'info',
-    `createFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, mealData: ${JSON.stringify(
-      mealData
-    )}`
+    `createFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, mealData: ${JSON.stringify(mealData)}`
   );
   try {
     // 1. Create the parent food_entry_meals record with quantity and unit
@@ -695,12 +643,9 @@ async function createFoodEntryMeal(
       },
       actingUserId
     );
-
     const resolvedMealTypeId = newFoodEntryMeal.meal_type_id;
-
     let foodsToProcess = mealData.foods || [];
     let mealServingSize = 1.0; // Default serving size
-
     // If a meal_template id is provided fetch the template for serving size
     if (mealData.meal_template_id) {
       log(
@@ -715,9 +660,7 @@ async function createFoodEntryMeal(
         mealServingSize = mealTemplate.serving_size || 1.0; // Always get the meal serving size
         log(
           'info',
-          `Meal template serving size: ${mealServingSize} ${
-            mealTemplate.serving_unit || 'serving'
-          }`
+          `Meal template serving size: ${mealServingSize} ${mealTemplate.serving_unit || 'serving'}`
         );
         // If no specific foods provided use template
         if (!mealData.foods || mealData.foods.length === 0) {
@@ -738,7 +681,6 @@ async function createFoodEntryMeal(
         // Continue without template data
       }
     }
-
     // Calculate portion multiplier: consumed_quantity / meal_serving_size
     const consumedQuantity = mealData.quantity || 1.0;
     let multiplier = 1.0;
@@ -754,7 +696,6 @@ async function createFoodEntryMeal(
       'info',
       `Portion multiplier: ${multiplier} (consumed: ${consumedQuantity}, serving_size: ${mealServingSize}, has_template: ${!!mealData.meal_template_id})`
     );
-
     // 2. Create component food_entries records with scaled quantities
     const entriesToCreate = [];
     for (const foodItem of foodsToProcess) {
@@ -780,7 +721,6 @@ async function createFoodEntryMeal(
         );
         continue;
       }
-
       const snapshot = {
         food_name: food.name,
         brand_name: food.brand,
@@ -806,10 +746,8 @@ async function createFoodEntryMeal(
         glycemic_index: variant.glycemic_index,
         custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
-
       // Scale the food quantity by the multiplier
       const scaledQuantity = foodItem.quantity * multiplier;
-
       entriesToCreate.push({
         user_id: newFoodEntryMeal.user_id, // Use the user_id from the created meal (target user)
         created_by_user_id: actingUserId,
@@ -823,7 +761,6 @@ async function createFoodEntryMeal(
         ...snapshot,
       });
     }
-
     if (entriesToCreate.length > 0) {
       await foodRepository.bulkCreateFoodEntries(
         entriesToCreate,
@@ -834,7 +771,6 @@ async function createFoodEntryMeal(
         `Created ${entriesToCreate.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}.`
       );
     }
-
     return newFoodEntryMeal;
   } catch (error) {
     log(
@@ -845,7 +781,6 @@ async function createFoodEntryMeal(
     throw error;
   }
 }
-
 async function updateFoodEntryMeal(
   authenticatedUserId,
   actingUserId,
@@ -854,9 +789,7 @@ async function updateFoodEntryMeal(
 ) {
   log(
     'info',
-    `updateFoodEntryMeal in foodEntryService: foodEntryMealId: ${foodEntryMealId}, updatedMealData: ${JSON.stringify(
-      updatedMealData
-    )}, authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}`
+    `updateFoodEntryMeal in foodEntryService: foodEntryMealId: ${foodEntryMealId}, updatedMealData: ${JSON.stringify(updatedMealData)}, authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}`
   );
   try {
     // 1. Update the parent food_entry_meals record's metadata
@@ -874,13 +807,10 @@ async function updateFoodEntryMeal(
         },
         authenticatedUserId
       );
-
     const resolvedMealTypeId = updatedFoodEntryMeal.meal_type_id;
-
     if (!updatedFoodEntryMeal) {
       throw new Error('Food entry meal not found or not authorized to update.');
     }
-
     // 2. Delete existing component food_entries
     await foodRepository.deleteFoodEntryComponentsByFoodEntryMealId(
       foodEntryMealId,
@@ -891,14 +821,11 @@ async function updateFoodEntryMeal(
       `Deleted existing component food entries for food_entry_meal ${foodEntryMealId}.`
     );
     log('info', '[DEBUG] updateFoodEntryMeal Service Data:', updatedMealData); // DEBUG LOG
-
     // Calculate portion multiplier
     // Foods from getFoodEntryMealWithComponents now have BASE (unscaled) quantities,
     // so we just apply the new quantity as the multiplier
-
     let multiplier = 1.0;
     const newQuantity = updatedMealData.quantity || 1.0;
-
     if (updatedMealData.meal_template_id) {
       // Fetch meal template to get reference serving size
       const mealTemplate = await mealService.getMealById(
@@ -924,7 +851,6 @@ async function updateFoodEntryMeal(
         `Update portion scaling (no template): multiplier ${multiplier}`
       );
     }
-
     // 3. Create new component food_entries records
     const entriesToCreate = [];
     for (const foodItem of updatedMealData.foods) {
@@ -950,7 +876,6 @@ async function updateFoodEntryMeal(
         );
         continue;
       }
-
       const snapshot = {
         food_name: food.name,
         brand_name: food.brand,
@@ -976,10 +901,8 @@ async function updateFoodEntryMeal(
         glycemic_index: variant.glycemic_index,
         custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
-
       // Scale the food quantity
       const scaledQuantity = foodItem.quantity * multiplier;
-
       entriesToCreate.push({
         user_id: authenticatedUserId,
         created_by_user_id: actingUserId,
@@ -993,7 +916,6 @@ async function updateFoodEntryMeal(
         ...snapshot,
       });
     }
-
     if (entriesToCreate.length > 0) {
       await foodRepository.bulkCreateFoodEntries(
         entriesToCreate,
@@ -1004,7 +926,6 @@ async function updateFoodEntryMeal(
         `Recreated ${entriesToCreate.length} component food entries for food_entry_meal ${foodEntryMealId}.`
       );
     }
-
     return updatedFoodEntryMeal;
   } catch (error) {
     log(
@@ -1015,7 +936,6 @@ async function updateFoodEntryMeal(
     throw error;
   }
 }
-
 async function getFoodEntryMealWithComponents(
   authenticatedUserId,
   foodEntryMealId
@@ -1032,13 +952,11 @@ async function getFoodEntryMealWithComponents(
     if (!foodEntryMeal) {
       return null;
     }
-
     const componentFoodEntries =
       await foodRepository.getFoodEntryComponentsByFoodEntryMealId(
         foodEntryMealId,
         authenticatedUserId
       );
-
     // Calculate the multiplier that was used when storing for editing purposes
     let storedMultiplier = 1.0;
     if (foodEntryMeal.meal_template_id) {
@@ -1068,7 +986,6 @@ async function getFoodEntryMealWithComponents(
         );
       }
     }
-
     // Aggregate nutritional data from componentFoodEntries (for frontend display)
     let totalCalories = 0;
     let totalProtein = 0;
@@ -1090,11 +1007,9 @@ async function getFoodEntryMealWithComponents(
     const totalCustomNutrients = {};
     let totalCarbsForGI = 0;
     let weightedGIAccumulator = 0;
-
     componentFoodEntries.forEach((entry) => {
       const servingSize = entry.serving_size || 1;
       const ratio = entry.quantity / servingSize;
-
       totalCalories += (entry.calories || 0) * ratio;
       totalProtein += (entry.protein || 0) * ratio;
       totalCarbs += (entry.carbs || 0) * ratio;
@@ -1112,7 +1027,6 @@ async function getFoodEntryMealWithComponents(
       totalVitaminC += (entry.vitamin_c || 0) * ratio;
       totalCalcium += (entry.calcium || 0) * ratio;
       totalIron += (entry.iron || 0) * ratio;
-
       // Aggregate custom nutrients
       if (
         entry.custom_nutrients &&
@@ -1133,7 +1047,6 @@ async function getFoodEntryMealWithComponents(
           }
         });
       }
-
       if (entry.glycemic_index && entry.carbs) {
         const giValue = getGlycemicIndexValue(entry.glycemic_index);
         if (giValue !== null) {
@@ -1143,10 +1056,8 @@ async function getFoodEntryMealWithComponents(
         }
       }
     });
-
     const aggregatedGlycemicIndex =
       totalCarbsForGI > 0 ? weightedGIAccumulator / totalCarbsForGI : null;
-
     return {
       ...foodEntryMeal,
       foods: componentFoodEntries.map((entry) => {
@@ -1212,7 +1123,6 @@ async function getFoodEntryMealWithComponents(
     throw error;
   }
 }
-
 async function getFoodEntryMealsByDate(
   authenticatedUserId,
   targetUserId,
@@ -1229,14 +1139,12 @@ async function getFoodEntryMealsByDate(
         selectedDate
       );
     const mealsWithComponents = [];
-
     for (const meal of foodEntryMeals) {
       const componentFoodEntries =
         await foodRepository.getFoodEntryComponentsByFoodEntryMealId(
           meal.id,
           authenticatedUserId
         );
-
       let totalCalories = 0;
       let totalSodium = 0;
       let totalFiber = 0;
@@ -1257,7 +1165,6 @@ async function getFoodEntryMealsByDate(
       let totalFat = 0;
       let totalCarbsForGI = 0;
       let weightedGIAccumulator = 0;
-
       componentFoodEntries.forEach((entry) => {
         const ratio = entry.quantity / (entry.serving_size || 1);
         totalCalories += (entry.calories || 0) * ratio;
@@ -1277,7 +1184,6 @@ async function getFoodEntryMealsByDate(
         totalVitaminC += (entry.vitamin_c || 0) * ratio;
         totalCalcium += (entry.calcium || 0) * ratio;
         totalIron += (entry.iron || 0) * ratio;
-
         // Aggregate custom nutrients
         if (
           entry.custom_nutrients &&
@@ -1298,7 +1204,6 @@ async function getFoodEntryMealsByDate(
             }
           });
         }
-
         if (entry.glycemic_index && entry.carbs) {
           const giValue = getGlycemicIndexValue(entry.glycemic_index);
           if (giValue !== null) {
@@ -1311,7 +1216,6 @@ async function getFoodEntryMealsByDate(
       });
       const aggregatedGlycemicIndex =
         totalCarbsForGI > 0 ? weightedGIAccumulator / totalCarbsForGI : null;
-
       mealsWithComponents.push({
         ...meal,
         foods: componentFoodEntries.map((entry) => ({
@@ -1368,7 +1272,6 @@ async function getFoodEntryMealsByDate(
         glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
       });
     }
-
     return mealsWithComponents;
   } catch (error) {
     log(
@@ -1379,7 +1282,6 @@ async function getFoodEntryMealsByDate(
     throw error;
   }
 }
-
 async function deleteFoodEntryMeal(authenticatedUserId, foodEntryMealId) {
   log(
     'info',
@@ -1405,22 +1307,35 @@ async function deleteFoodEntryMeal(authenticatedUserId, foodEntryMealId) {
     throw error;
   }
 }
-
-module.exports = {
+export { createFoodEntry };
+export { deleteFoodEntry };
+export { updateFoodEntry };
+export { getFoodEntriesByDate };
+export { getFoodEntriesByDateRange };
+export { copyFoodEntries };
+export { copyFoodEntriesFromYesterday };
+export { copyAllFoodEntries };
+export { copyAllFoodEntriesFromYesterday };
+export { getDailyNutritionSummary };
+export { createFoodEntryMeal };
+export { updateFoodEntryMeal };
+export { getFoodEntryMealWithComponents };
+export { getFoodEntryMealsByDate };
+export { deleteFoodEntryMeal };
+export default {
   createFoodEntry,
   deleteFoodEntry,
   updateFoodEntry,
   getFoodEntriesByDate,
-  // getFoodEntriesByDateAndMealType, // This function is used internally by the service, no need to export
   getFoodEntriesByDateRange,
   copyFoodEntries,
   copyFoodEntriesFromYesterday,
   copyAllFoodEntries,
   copyAllFoodEntriesFromYesterday,
   getDailyNutritionSummary,
-  createFoodEntryMeal, // New export
-  updateFoodEntryMeal, // New export
-  getFoodEntryMealWithComponents, // New export
-  getFoodEntryMealsByDate, // New export
-  deleteFoodEntryMeal, // New export
+  createFoodEntryMeal,
+  updateFoodEntryMeal,
+  getFoodEntryMealWithComponents,
+  getFoodEntryMealsByDate,
+  deleteFoodEntryMeal,
 };

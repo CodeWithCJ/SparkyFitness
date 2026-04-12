@@ -1,18 +1,15 @@
-const express = require('express');
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import externalProviderService from '../services/externalProviderService.js';
+import { log } from '../config/logging.js';
 const router = express.Router();
-const { authenticate } = require('../middleware/authMiddleware');
-const externalProviderService = require('../services/externalProviderService');
-const { log } = require('../config/logging');
-
 router.use(express.json());
-
 /**
  * @swagger
  * tags:
  *   name: External Integrations
  *   description: Third-party service connections (Garmin, Withings, Oura, etc.).
  */
-
 /**
  * @swagger
  * components:
@@ -66,7 +63,6 @@ router.use(express.json());
  *         - provider_name
  *         - provider_type
  */
-
 /**
  * @swagger
  * /external-providers:
@@ -100,7 +96,6 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /external-providers/user/{targetUserId}:
@@ -155,7 +150,6 @@ router.get('/user/:targetUserId', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /external-providers:
@@ -224,7 +218,6 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /external-providers/{id}:
@@ -318,7 +311,6 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /external-providers/{id}:
@@ -373,7 +365,6 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /external-providers/{id}:
@@ -426,7 +417,6 @@ router.get('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
-
 /**
  * @swagger
  * /external-providers/garmin/activities-and-workouts:
@@ -470,16 +460,13 @@ router.post(
     try {
       const { userId } = req;
       const data = req.body;
-
       log('info', `Received data from Garmin microservice for user ${userId}.`);
-
       // Pass the data to the service layer for processing
       const result =
         await externalProviderService.processGarminActivitiesAndWorkouts(
           userId,
           data
         );
-
       res.status(200).json({ message: 'Data processed successfully.', result });
     } catch (error) {
       log('error', `Error processing Garmin data: ${error.message}`, {
@@ -489,4 +476,4 @@ router.post(
     }
   }
 );
-module.exports = router;
+export default router;

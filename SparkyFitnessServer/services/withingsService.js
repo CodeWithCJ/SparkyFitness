@@ -1,17 +1,10 @@
-// SparkyFitnessServer/services/withingsService.js
-
-const { log } = require('../config/logging');
-const withingsIntegrationService = require('../integrations/withings/withingsService');
-const withingsDataProcessor = require('../integrations/withings/withingsDataProcessor');
-const { getSystemClient } = require('../db/poolManager');
-const { loadRawBundle } = require('../utils/diagnosticLogger');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const {
-  todayInZone,
-  addDays,
-  dayRangeToUtcRange,
-} = require('@workspace/shared');
-
+import { log } from '../config/logging.js';
+import withingsIntegrationService from '../integrations/withings/withingsService.js';
+import withingsDataProcessor from '../integrations/withings/withingsDataProcessor.js';
+import { getSystemClient } from '../db/poolManager.js';
+import { loadRawBundle } from '../utils/diagnosticLogger.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { todayInZone, addDays, dayRangeToUtcRange } from '@workspace/shared';
 // Configuration for data mocking/caching
 const WITHINGS_DATA_SOURCE =
   process.env.SPARKY_FITNESS_WITHINGS_DATA_SOURCE || 'withings';
@@ -19,7 +12,6 @@ log(
   'info',
   `[withingsService] Withings data source configured to: ${WITHINGS_DATA_SOURCE}`
 );
-
 /**
  * Orchestrate a full Withings data sync for a user
  * @param {number} userId - The ID of the user to sync data for
@@ -28,7 +20,6 @@ log(
 async function syncWithingsData(userId, syncType = 'manual') {
   const tz = await loadUserTimezone(userId);
   const todayStr = todayInZone(tz);
-
   // Calculate dates for sync
   const startDateYMD = addDays(todayStr, -7);
   const endDateYMD = addDays(todayStr, 1);
@@ -39,31 +30,25 @@ async function syncWithingsData(userId, syncType = 'manual') {
   );
   const startDateUnix = Math.floor(startDateUtc.getTime() / 1000);
   const endDateUnix = Math.floor(Date.now() / 1000);
-
   log(
     'info',
     `[withingsService] Starting Withings sync (${syncType}) for user ${userId}. Loading from: ${WITHINGS_DATA_SOURCE}`
   );
-
   if (WITHINGS_DATA_SOURCE === 'local') {
     log(
       'info',
       `[withingsService] Replaying Withings sync from raw diagnostic bundle for user ${userId}`
     );
     const bundle = loadRawBundle('withings');
-
     if (!bundle || !bundle.responses) {
       throw new Error(
         'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_WITHINGS_DATA_SOURCE unset (or set to "withings") ' +
           'and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.'
       );
     }
-
     const responses = bundle.responses;
-
     try {
       log('debug', `[withingsService] Processing raw data for ${userId}...`);
-
       if (responses['raw_measures']) {
         await withingsDataProcessor.processWithingsMeasures(
           userId,
@@ -103,7 +88,6 @@ async function syncWithingsData(userId, syncType = 'manual') {
           responses['raw_activity'].data.body?.activities || []
         );
       }
-
       // Update last_sync_at
       const client = await getSystemClient();
       try {
@@ -114,7 +98,6 @@ async function syncWithingsData(userId, syncType = 'manual') {
       } finally {
         client.release();
       }
-
       log(
         'info',
         `[withingsService] Withings sync from raw bundle completed for user ${userId}.`
@@ -133,13 +116,11 @@ async function syncWithingsData(userId, syncType = 'manual') {
       throw error;
     }
   }
-
   try {
     log(
       'info',
       `[withingsService] Fetching live Withings data for user ${userId}`
     );
-
     // Helper to safely fetch raw data (logging is handled inside the integration methods)
     async function safeFetch(dataType, fetchFn) {
       try {
@@ -152,7 +133,6 @@ async function syncWithingsData(userId, syncType = 'manual') {
         return null; // Return null so we can continue with other data types
       }
     }
-
     // 1. Fetch EVERYTHING first (The Safe Phase)
     log('debug', '[withingsService] Phase 1: Capturing raw API responses...');
     const bundle = {
@@ -199,10 +179,8 @@ async function syncWithingsData(userId, syncType = 'manual') {
         )
       ),
     };
-
     // 2. Process EVERYTHING second (The Action Phase)
     log('debug', '[withingsService] Phase 2: Processing captured data...');
-
     if (bundle.measures) {
       await withingsDataProcessor.processWithingsMeasures(
         userId,
@@ -242,9 +220,7 @@ async function syncWithingsData(userId, syncType = 'manual') {
         bundle.activity
       );
     }
-
     // Update last_sync_at (redundant if already updated, but safe)
-
     // Update last_sync_at (redundant if already updated, but safe)
     const client = await getSystemClient();
     try {
@@ -255,7 +231,6 @@ async function syncWithingsData(userId, syncType = 'manual') {
     } finally {
       client.release();
     }
-
     log(
       'info',
       `[withingsService] Full Withings live sync completed for user ${userId}.`
@@ -270,7 +245,7 @@ async function syncWithingsData(userId, syncType = 'manual') {
     throw error;
   }
 }
-
-module.exports = {
+export { syncWithingsData };
+export default {
   syncWithingsData,
 };

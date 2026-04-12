@@ -2,14 +2,16 @@
   "name": "sparkyfitnessserver",
   "version": "0.16.5.7",
   "main": "SparkyFitnessServer.js",
+  "type": "module",
   "scripts": {
     "start": "nodemon SparkyFitnessServer.js",
+    "validate": "pnpm run typecheck && pnpm run lint && pnpm run format:check",
     "typecheck": "tsc --noEmit",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
-    "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
-    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --coverage --reporter=verbose",
     "lint": "eslint . --max-warnings 0",
-    "test:ci": "NODE_OPTIONS='--experimental-vm-modules' jest --ci --coverage --runInBand",
     "lint:fix": "eslint . --fix",
     "format:check": "prettier . --check",
     "format": "prettier . --write"
@@ -55,14 +57,15 @@
     "@types/express": "^5.0.6",
     "@types/node": "^25.5.0",
     "@types/pg": "^8.18.0",
+    "@vitest/coverage-v8": "^4.1.4",
     "eslint": "^10.0.3",
     "eslint-plugin-n": "^17.23.2",
     "eslint-plugin-security": "^4.0.0",
     "globals": "^17.1.0",
-    "jest": "^30.3.0",
     "nodemon": "^3.1.11",
     "supertest": "^7.0.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.4"
   }
 }

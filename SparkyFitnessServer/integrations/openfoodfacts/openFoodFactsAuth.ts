@@ -1,5 +1,5 @@
-const { log } = require('../../config/logging');
-const pkg = require('../../package.json');
+import { log } from '../../config/logging.js';
+import pkg from '../../package.json' with { type: 'json' };
 
 interface SessionCacheEntry {
   session: string | null;
@@ -131,11 +131,12 @@ async function getOpenFoodFactsSessionCookie(
   // Lazy-require to avoid a circular dependency:
   //   externalProviderService → openFoodFactsAuth (invalidate hook)
   //   openFoodFactsAuth → externalProviderService (cred fetch)
-  const externalProviderService = require('../../services/externalProviderService');
 
   const loginPromise: Promise<string | null> = (async () => {
     let providerDetails: OpenFoodFactsProviderDetails | null;
     try {
+      const { default: externalProviderService } =
+        await import('../../services/externalProviderService.js');
       providerDetails =
         await externalProviderService.getExternalDataProviderDetails(
           authenticatedUserId,
@@ -215,7 +216,7 @@ function __resetForTests(): void {
   inFlightLogins.clear();
 }
 
-module.exports = {
+export {
   getOpenFoodFactsSessionCookie,
   invalidateOpenFoodFactsSession,
   loginToOpenFoodFacts,

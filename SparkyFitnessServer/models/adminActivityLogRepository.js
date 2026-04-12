@@ -1,5 +1,4 @@
-const { getSystemClient } = require('../db/poolManager');
-
+import { getSystemClient } from '../db/poolManager.js';
 async function createAdminActivityLog(
   adminUserId,
   targetUserId,
@@ -18,7 +17,7 @@ async function createAdminActivityLog(
     client.release();
   }
 }
-
-module.exports = {
+export { createAdminActivityLog };
+export default {
   createAdminActivityLog,
 };

@@ -1,8 +1,6 @@
-const externalProviderRepository = require('../models/externalProviderRepository');
-const { log } = require('../config/logging');
-const {
-  invalidateOpenFoodFactsSession,
-} = require('../integrations/openfoodfacts/openFoodFactsAuth');
+import externalProviderRepository from '../models/externalProviderRepository.js';
+import { log } from '../config/logging.js';
+import { invalidateOpenFoodFactsSession } from '../integrations/openfoodfacts/openFoodFactsAuth.ts';
 
 // Build a 400-tagged Error for user-input validation failures so the
 // centralized errorHandler surfaces them as client errors instead of the
@@ -62,7 +60,6 @@ async function getExternalDataProviders(userId) {
     throw error;
   }
 }
-
 async function getExternalDataProvidersForUser(
   authenticatedUserId,
   targetUserId
@@ -75,13 +72,11 @@ async function getExternalDataProvidersForUser(
         authenticatedUserId,
         targetUserId
       );
-
     // Filter out restricted providers for non-owners using the dynamic flag
     const filteredProviders =
       authenticatedUserId === targetUserId
         ? providers
         : providers.filter((p) => !p.is_strictly_private);
-
     const providersWithVisibility = filteredProviders.map((p) => ({
       ...redactCredentialsForNonOwner(p, authenticatedUserId),
       visibility:
@@ -105,7 +100,6 @@ async function getExternalDataProvidersForUser(
     throw error;
   }
 }
-
 async function createExternalDataProvider(authenticatedUserId, providerData) {
   try {
     providerData.user_id = authenticatedUserId;
@@ -147,7 +141,6 @@ async function createExternalDataProvider(authenticatedUserId, providerData) {
     throw error;
   }
 }
-
 async function updateExternalDataProvider(
   authenticatedUserId,
   providerId,
@@ -249,7 +242,6 @@ async function updateExternalDataProvider(
     throw error;
   }
 }
-
 async function getExternalDataProviderDetails(authenticatedUserId, providerId) {
   try {
     const isOwner =
@@ -274,7 +266,6 @@ async function getExternalDataProviderDetails(authenticatedUserId, providerId) {
     throw error;
   }
 }
-
 async function deleteExternalDataProvider(authenticatedUserId, providerId) {
   try {
     const isOwner =
@@ -337,7 +328,13 @@ async function getActiveOpenFoodFactsProviderId(userId) {
   }
 }
 
-module.exports = {
+export { getExternalDataProviders };
+export { getExternalDataProvidersForUser };
+export { createExternalDataProvider };
+export { updateExternalDataProvider };
+export { getExternalDataProviderDetails };
+export { deleteExternalDataProvider };
+export default {
   getExternalDataProviders,
   getExternalDataProvidersForUser,
   createExternalDataProvider,

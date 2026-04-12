@@ -1,17 +1,15 @@
-const { log } = require('../../config/logging');
-const { name, version } = require('../../package.json');
-const { normalizeBarcode } = require('../../utils/foodUtils');
-const {
+import {
   getOpenFoodFactsSessionCookie,
   invalidateOpenFoodFactsSession,
-} = require('./openFoodFactsAuth');
-
+} from './openFoodFactsAuth.js';
+import { log } from '../../config/logging.js';
+import package$0 from '../../package.json' with { type: 'json' };
+import { normalizeBarcode } from '../../utils/foodUtils.js';
+const { name, version } = package$0;
 const USER_AGENT = `${name}/${version} (https://github.com/CodeWithCJ/SparkyFitness)`;
-
 const OFF_HEADERS = {
   'User-Agent': USER_AGENT,
 };
-
 const OFF_FIELDS = [
   'product_name',
   'product_name_en',
@@ -76,7 +74,6 @@ async function searchOpenFoodFacts(
       fieldSet.add(`product_name_${language}`);
     }
     const fields = [...fieldSet];
-
     const searchUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${fields.join(',')}&lc=${language}`;
     const response = await fetchOpenFoodFacts(searchUrl, {
       authenticatedUserId,
@@ -107,7 +104,6 @@ async function searchOpenFoodFacts(
     throw error;
   }
 }
-
 async function searchOpenFoodFactsByBarcodeFields(
   barcode,
   fields = OFF_FIELDS,
@@ -150,7 +146,6 @@ async function searchOpenFoodFactsByBarcodeFields(
     throw error;
   }
 }
-
 function mapOpenFoodFactsProduct(
   product,
   { autoScale = true, language = 'en' } = {}
@@ -162,7 +157,6 @@ function mapOpenFoodFactsProduct(
       : 100
     : 100;
   const scale = servingSize / 100;
-
   const defaultVariant = {
     serving_size: servingSize,
     serving_unit: 'g',
@@ -207,7 +201,6 @@ function mapOpenFoodFactsProduct(
       : 0,
     is_default: true,
   };
-
   // Language fallback priority:
   // 1. product_name_${language}
   // 2. product_name_en
@@ -216,7 +209,6 @@ function mapOpenFoodFactsProduct(
     product[`product_name_${language}`] ||
     product.product_name_en ||
     product.product_name;
-
   return {
     name,
     brand: product.brands?.split(',')[0]?.trim() || '',
@@ -227,7 +219,10 @@ function mapOpenFoodFactsProduct(
     default_variant: defaultVariant,
   };
 }
-module.exports = {
+export { searchOpenFoodFacts };
+export { searchOpenFoodFactsByBarcodeFields };
+export { mapOpenFoodFactsProduct };
+export default {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
   mapOpenFoodFactsProduct,

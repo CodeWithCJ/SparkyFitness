@@ -1,21 +1,20 @@
-jest.mock('../models/externalProviderRepository');
-jest.mock('../integrations/openfoodfacts/openFoodFactsAuth', () => ({
-  invalidateOpenFoodFactsSession: jest.fn(),
-}));
-jest.mock('../config/logging', () => ({ log: jest.fn() }));
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import externalProviderRepository from '../models/externalProviderRepository.js';
+import externalProviderService from '../services/externalProviderService.js';
+import { invalidateOpenFoodFactsSession } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 
-const externalProviderRepository = require('../models/externalProviderRepository');
-const externalProviderService = require('../services/externalProviderService');
-const {
-  invalidateOpenFoodFactsSession,
-} = require('../integrations/openfoodfacts/openFoodFactsAuth');
+vi.mock('../models/externalProviderRepository.js');
+vi.mock('../integrations/openfoodfacts/openFoodFactsAuth.js', () => ({
+  invalidateOpenFoodFactsSession: vi.fn(),
+}));
+vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 const OWNER = 'owner-1';
 const VIEWER = 'viewer-2';
 const PROVIDER_ID = 'prov-off-1';
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 describe('getExternalDataProvidersForUser - non-owner credential redaction', () => {
@@ -90,9 +89,6 @@ describe('getExternalDataProvidersForUser - non-owner credential redaction', () 
 });
 
 describe('createExternalDataProvider - mutual exclusion', () => {
-  // Expect a rejection whose error message matches `pattern` AND carries
-  // statusCode=400 so the centralized errorHandler will surface it as a
-  // client validation failure rather than 500 Internal Server Error.
   const expectBadRequest = async (promise, pattern) => {
     await expect(promise).rejects.toThrow(pattern);
     await expect(promise).rejects.toMatchObject({ statusCode: 400 });
@@ -162,9 +158,6 @@ describe('createExternalDataProvider - mutual exclusion', () => {
 });
 
 describe('updateExternalDataProvider - mutual exclusion + invalidation', () => {
-  // Expect a rejection whose error message matches `pattern` AND carries
-  // statusCode=400 so the centralized errorHandler will surface it as a
-  // client validation failure rather than 500 Internal Server Error.
   const expectBadRequest = async (promise, pattern) => {
     await expect(promise).rejects.toThrow(pattern);
     await expect(promise).rejects.toMatchObject({ statusCode: 400 });

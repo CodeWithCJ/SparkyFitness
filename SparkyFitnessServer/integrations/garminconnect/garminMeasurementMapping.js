@@ -52,7 +52,6 @@ const garminMeasurementMapping = {
     dataType: 'numeric',
     measurementType: 'ml',
   },
-
   // Custom Measurements
   resting_heart_rate: {
     targetType: 'custom',
@@ -392,7 +391,6 @@ const garminMeasurementMapping = {
     measurementType: 'N/A',
     frequency: 'Daily',
   },
-
   // Fitness and Training Metrics
   fitness_age: {
     targetType: 'custom',
@@ -436,7 +434,6 @@ const garminMeasurementMapping = {
     measurementType: 'N/A',
     frequency: 'Daily',
   },
-
   // Race Predictions (additional distances)
   race_prediction_10k: {
     targetType: 'custom',
@@ -460,5 +457,4 @@ const garminMeasurementMapping = {
     frequency: 'Daily',
   },
 };
-
-module.exports = garminMeasurementMapping;
+export default garminMeasurementMapping;

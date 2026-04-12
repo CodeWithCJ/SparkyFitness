@@ -1,16 +1,15 @@
-const reportRepository = require('../models/reportRepository');
-const measurementRepository = require('../models/measurementRepository'); // For custom categories
-const userRepository = require('../models/userRepository');
-const goalRepository = require('../models/goalRepository'); // Import goalRepository
-const preferenceRepository = require('../models/preferenceRepository');
-const bmrService = require('./bmrService');
-const sleepAnalyticsService = require('./sleepAnalyticsService'); // Import sleepAnalyticsService
-const customNutrientService = require('./customNutrientService');
-const { log } = require('../config/logging');
-const { addDays, compareDays, todayInZone } = require('@workspace/shared');
-const { userAge } = require('../utils/dateHelpers');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-
+import reportRepository from '../models/reportRepository.js';
+import measurementRepository from '../models/measurementRepository.js';
+import userRepository from '../models/userRepository.js';
+import goalRepository from '../models/goalRepository.js';
+import preferenceRepository from '../models/preferenceRepository.js';
+import bmrService from './bmrService.js';
+import sleepAnalyticsService from './sleepAnalyticsService.js';
+import customNutrientService from './customNutrientService.js';
+import { log } from '../config/logging.js';
+import { addDays, compareDays, todayInZone } from '@workspace/shared';
+import { userAge } from '../utils/dateHelpers.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 async function getReportsData(
   authenticatedUserId,
   targetUserId,
@@ -21,7 +20,6 @@ async function getReportsData(
     // Fetch custom nutrients first as they are needed for dynamic SQL generation in repositories
     const customNutrients =
       await customNutrientService.getCustomNutrients(targetUserId);
-
     const [
       fetchedNutritionData,
       tabularDataRaw,
@@ -51,7 +49,6 @@ async function getReportsData(
       preferenceRepository.getUserPreferences(targetUserId),
       sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate),
     ]);
-
     const customMeasurementsData = [];
     for (const category of customCategoriesResult) {
       const customMeasurementResult =
@@ -63,10 +60,8 @@ async function getReportsData(
         );
       customMeasurementsData.push(...customMeasurementResult);
     }
-
     const tabularData = tabularDataRaw.map((row) => {
       // Custom nutrients are now already in the row, scaled and summed by the repository
-
       return {
         ...row,
         foods: {
@@ -94,7 +89,6 @@ async function getReportsData(
         },
       };
     });
-
     const nutritionData = fetchedNutritionData.map((item) => {
       const mappedItem = {
         date: item.date,
@@ -116,34 +110,28 @@ async function getReportsData(
         calcium: parseFloat(item.calcium) || 0,
         iron: parseFloat(item.iron) || 0,
       };
-
       // Map custom nutrients dynamically
       customNutrients.forEach((cn) => {
         const key = cn.name; // Use exact name as key, matching frontend expectation
         mappedItem[key] = parseFloat(item[key]) || 0;
       });
-
       return mappedItem;
     });
-
     // BMR Calculation
     if (userProfile && userPreferences) {
       const tz = userPreferences?.timezone || 'UTC';
       const age = userAge(userProfile.date_of_birth, tz);
       const gender = userProfile.gender;
       const bmrAlgorithm = userPreferences.bmr_algorithm;
-
       nutritionData.forEach((day) => {
         // Find the most recent measurement on or before the current day
         const relevantMeasurements = measurementData
           .filter((m) => new Date(m.entry_date) <= new Date(day.date))
           .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date));
-
         const latestMeasurement = relevantMeasurements[0];
         const weight = latestMeasurement?.weight;
         const height = latestMeasurement?.height;
         const bodyFat = latestMeasurement?.body_fat_percentage;
-
         if (weight && height && age && gender && bmrAlgorithm) {
           try {
             day.bmr = bmrService.calculateBmr(
@@ -168,7 +156,6 @@ async function getReportsData(
           userPreferences.include_bmr_in_net_calories;
       });
     }
-
     const exerciseEntries = exerciseEntriesRaw.map((entry) => ({
       ...entry,
       exercises: {
@@ -190,7 +177,6 @@ async function getReportsData(
         mechanic: entry.exercise_mechanic,
       },
     }));
-
     return {
       nutritionData,
       tabularData,
@@ -209,7 +195,6 @@ async function getReportsData(
     throw error;
   }
 }
-
 async function getMiniNutritionTrends(
   authenticatedUserId,
   targetUserId,
@@ -227,14 +212,12 @@ async function getMiniNutritionTrends(
     // Fetch custom nutrients to include in the trends
     const customNutrients =
       await customNutrientService.getCustomNutrients(targetUserId);
-
     const result = await reportRepository.getMiniNutritionTrends(
       targetUserId,
       startDate,
       endDate,
       customNutrients
     );
-
     const formattedResults = result.map((row) => {
       const mappedRow = {
         date: row.entry_date,
@@ -256,7 +239,6 @@ async function getMiniNutritionTrends(
         calcium: parseFloat(row.total_calcium) || 0,
         iron: parseFloat(row.total_iron) || 0,
       };
-
       // Map custom nutrients dynamically
       customNutrients.forEach((cn) => {
         // The repository will return them as columns like "MyNutrient", matching the nutrient name
@@ -265,10 +247,8 @@ async function getMiniNutritionTrends(
         // Let's assume for now I will use the raw name in the repo query to match getNutritionData pattern.
         mappedRow[cn.name] = parseFloat(row[cn.name] || 0);
       });
-
       return mappedRow;
     });
-
     return formattedResults;
   } catch (error) {
     log(
@@ -279,7 +259,6 @@ async function getMiniNutritionTrends(
     throw error;
   }
 }
-
 async function getNutritionTrendsWithGoals(
   authenticatedUserId,
   targetUserId,
@@ -293,24 +272,19 @@ async function getNutritionTrendsWithGoals(
       startDate,
       endDate
     );
-
     // Create a map for quick lookup of nutrition data by date
     const nutritionMap = new Map(
       nutritionData.map((item) => [item.date, item])
     );
-
     const trendData = [];
     let currentDay = startDate;
-
     while (compareDays(currentDay, endDate) <= 0) {
       const dailyNutrition = nutritionMap.get(currentDay) || {};
-
       // Fetch the most recent goal for the current date
       const dailyGoal = await goalRepository.getMostRecentGoalBeforeDate(
         targetUserId,
         currentDay
       );
-
       trendData.push({
         date: currentDay,
         calories: parseFloat(dailyNutrition.calories || 0),
@@ -334,13 +308,11 @@ async function getNutritionTrendsWithGoals(
     throw error;
   }
 }
-
 // Helper function to calculate 1RM using the Epley formula
 function calculate1RM(weight, reps) {
   if (reps === 0) return 0;
   return weight * (1 + reps / 30);
 }
-
 // Helper function to categorize rep ranges
 function getRepRangeCategory(reps) {
   if (reps >= 1 && reps <= 5) return '1-5 Reps';
@@ -349,7 +321,6 @@ function getRepRangeCategory(reps) {
   if (reps > 12) return '12+ Reps';
   return 'N/A';
 }
-
 // Helper function to calculate workout consistency
 function calculateWorkoutConsistency(
   exerciseEntries,
@@ -365,7 +336,6 @@ function calculateWorkoutConsistency(
       monthlyFrequency: 0,
     };
   }
-
   const workoutDates = [
     ...new Set(
       exerciseEntries.map((e) => {
@@ -374,10 +344,8 @@ function calculateWorkoutConsistency(
       })
     ),
   ].sort();
-
   let currentStreak = 0;
   let longestStreak = 0;
-
   if (workoutDates.length > 0) {
     // Calculate streaks using string-based day comparison
     let streak = 1;
@@ -392,29 +360,24 @@ function calculateWorkoutConsistency(
       }
     }
     longestStreak = Math.max(longestStreak, streak);
-
     // Check if the most recent workout was yesterday or today to determine current streak
     const lastWorkout = workoutDates[workoutDates.length - 1];
     const today = todayInZone(timezone);
     const yesterday = addDays(today, -1);
-
     if (lastWorkout === today || lastWorkout === yesterday) {
       currentStreak = streak;
     } else {
       currentStreak = 0;
     }
   }
-
   // Calculate frequencies
   const start = new Date(startDate);
   const end = new Date(endDate);
   const diffTime = Math.abs(end - start);
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
   const totalWorkouts = workoutDates.length;
   const weeklyFrequency = (totalWorkouts / diffDays) * 7;
   const monthlyFrequency = (totalWorkouts / diffDays) * 30;
-
   return {
     currentStreak,
     longestStreak,
@@ -422,7 +385,6 @@ function calculateWorkoutConsistency(
     monthlyFrequency: isNaN(monthlyFrequency) ? 0 : monthlyFrequency,
   };
 }
-
 // Helper function to calculate muscle group recovery
 function calculateMuscleGroupRecovery(exerciseEntries) {
   const recoveryData = {};
@@ -438,12 +400,10 @@ function calculateMuscleGroupRecovery(exerciseEntries) {
   });
   return recoveryData;
 }
-
 // Helper function to calculate exercise variety
 function calculateExerciseVariety(exerciseEntries) {
   const varietyData = {};
   const muscleExerciseMap = {};
-
   exerciseEntries.forEach((entry) => {
     if (entry.exercises && entry.exercises.primary_muscles) {
       const primaryMuscles = JSON.parse(
@@ -457,41 +417,33 @@ function calculateExerciseVariety(exerciseEntries) {
       });
     }
   });
-
   for (const muscle in muscleExerciseMap) {
     varietyData[muscle] = muscleExerciseMap[muscle].size;
   }
-
   return varietyData;
 }
-
 // Helper function to calculate PR progression
 function calculatePrProgression(exerciseEntries) {
   const progression = {};
-
   // Sort entries by date ascending to process in chronological order
   const sortedEntries = [...exerciseEntries].sort(
     (a, b) =>
       new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
   );
-
   sortedEntries.forEach((entry) => {
     if (entry.sets && entry.sets.length > 0) {
       entry.sets.forEach((set) => {
         const weight = parseFloat(set.weight) || 0;
         const reps = parseInt(set.reps) || 0;
         const oneRM = calculate1RM(weight, reps);
-
         if (!progression[entry.exercise_name]) {
           progression[entry.exercise_name] = [];
         }
-
         const exerciseProgression = progression[entry.exercise_name];
         const lastPr =
           exerciseProgression.length > 0
             ? exerciseProgression[exerciseProgression.length - 1]
             : null;
-
         if (
           !lastPr ||
           oneRM > lastPr.oneRM ||
@@ -508,13 +460,11 @@ function calculatePrProgression(exerciseEntries) {
       });
     }
   });
-
   return progression;
 }
 // Helper function to analyze set performance (first vs. middle vs. last sets)
 function calculateSetPerformance(exerciseEntries) {
   const setPerformance = {};
-
   exerciseEntries.forEach((entry) => {
     if (entry.sets && entry.sets.length >= 3) {
       const exerciseName = entry.exercise_name;
@@ -525,12 +475,10 @@ function calculateSetPerformance(exerciseEntries) {
           lastSet: { reps: [], weight: [] },
         };
       }
-
       const firstSet = entry.sets[0];
       const lastSet = entry.sets[entry.sets.length - 1];
       const middleIndex = Math.floor(entry.sets.length / 2);
       const middleSet = entry.sets[middleIndex];
-
       setPerformance[exerciseName].firstSet.reps.push(firstSet.reps);
       setPerformance[exerciseName].firstSet.weight.push(firstSet.weight);
       setPerformance[exerciseName].middleSet.reps.push(middleSet.reps);
@@ -539,7 +487,6 @@ function calculateSetPerformance(exerciseEntries) {
       setPerformance[exerciseName].lastSet.weight.push(lastSet.weight);
     }
   });
-
   // Averaging the results for a cleaner data structure
   for (const exercise in setPerformance) {
     const data = setPerformance[exercise];
@@ -560,10 +507,8 @@ function calculateSetPerformance(exerciseEntries) {
       data.lastSet.weight.reduce((a, b) => a + b, 0) /
       data.lastSet.weight.length;
   }
-
   return setPerformance;
 }
-
 async function getExerciseDashboardData(
   authenticatedUserId,
   targetUserId,
@@ -582,26 +527,21 @@ async function getExerciseDashboardData(
       muscle,
       exercise
     );
-
     let totalVolume = 0;
     let totalReps = 0;
     const totalWorkouts = new Set(); // To count unique workout days
     const prData = {}; // Stores max 1RM for each exercise
     const bestSetRepRange = {}; // Stores max weight for each exercise and rep range
     const muscleGroupVolume = {}; // Stores total volume per muscle group
-
     exerciseEntries.forEach((entry) => {
       totalWorkouts.add(entry.entry_date); // Add unique dates
-
       if (entry.sets && entry.sets.length > 0) {
         entry.sets.forEach((set) => {
           const weight = parseFloat(set.weight) || 0;
           const reps = parseInt(set.reps) || 0;
-
           // Calculate total volume and reps
           totalVolume += weight * reps;
           totalReps += reps;
-
           // Calculate 1RM and track PRs
           const oneRM = calculate1RM(weight, reps);
           if (
@@ -615,7 +555,6 @@ async function getExerciseDashboardData(
               reps,
             };
           }
-
           // Best set per rep range
           const repRange = getRepRangeCategory(reps);
           if (repRange !== 'N/A') {
@@ -633,7 +572,6 @@ async function getExerciseDashboardData(
               };
             }
           }
-
           // Muscle group volume
           if (entry.exercises && entry.exercises.primary_muscles) {
             // It's already parsed in getReportsData, so no need to parse again
@@ -648,7 +586,6 @@ async function getExerciseDashboardData(
         });
       }
     });
-
     const timezone = await loadUserTimezone(targetUserId);
     const consistencyData = calculateWorkoutConsistency(
       exerciseEntries,
@@ -660,7 +597,6 @@ async function getExerciseDashboardData(
     const prProgressionData = calculatePrProgression(exerciseEntries);
     const exerciseVarietyData = calculateExerciseVariety(exerciseEntries);
     const setPerformanceData = calculateSetPerformance(exerciseEntries);
-
     return {
       keyStats: {
         totalWorkouts: totalWorkouts.size,
@@ -686,8 +622,11 @@ async function getExerciseDashboardData(
     throw error;
   }
 }
-
-module.exports = {
+export { getReportsData };
+export { getMiniNutritionTrends };
+export { getNutritionTrendsWithGoals };
+export { getExerciseDashboardData };
+export default {
   getReportsData,
   getMiniNutritionTrends,
   getNutritionTrendsWithGoals,

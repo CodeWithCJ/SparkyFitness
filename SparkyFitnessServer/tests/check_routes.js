@@ -1,5 +1,4 @@
-const { auth } = require('../auth');
-
+import { auth } from '../auth.js';
 async function checkRoutes() {
   console.log('Checking deleteAllExpiredApiKeys path...');
   const endpoint = auth.api.deleteAllExpiredApiKeys;
@@ -11,5 +10,4 @@ async function checkRoutes() {
     console.log('Endpoint not found in auth.api');
   }
 }
-
 checkRoutes().catch(console.error);

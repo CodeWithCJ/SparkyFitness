@@ -1,6 +1,6 @@
-const nutrientDisplayPreferenceRepository = require('../models/nutrientDisplayPreferenceRepository');
-const { log } = require('../config/logging');
-
+import nutrientDisplayPreferenceRepository from '../models/nutrientDisplayPreferenceRepository.js';
+import { log } from '../config/logging.js';
+import customNutrientService from './customNutrientService.js';
 const defaultNutrients = [
   'calories',
   'protein',
@@ -8,7 +8,6 @@ const defaultNutrients = [
   'fat',
   'dietary_fiber',
 ];
-
 const predefinedNutrients = [
   'calories',
   'protein',
@@ -29,7 +28,6 @@ const predefinedNutrients = [
   'calcium',
   'glycemic_index',
 ];
-
 /**
  * Automatically adds a nutrient to specific view groups if it's not already present.
  * Target views: food_database, goal, report_tabular, report_chart
@@ -42,30 +40,25 @@ async function addNutrientToSpecificViews(userId, nutrientName) {
     'report_chart',
   ];
   const platforms = ['desktop', 'mobile'];
-
   log(
     'debug',
     `addNutrientToSpecificViews: Start for user ${userId}, nutrient: ${nutrientName}`
   );
-
   // Get raw customizations from DB to avoid fallback logic interference
   const rawUserPrefs =
     await nutrientDisplayPreferenceRepository.getNutrientDisplayPreferences(
       userId
     );
-
   // Get all currently known nutrients to build a full list for new records
   const allKnownNutrients = await getAllNutrients(userId);
   if (!allKnownNutrients.includes(nutrientName)) {
     allKnownNutrients.push(nutrientName);
   }
-
   for (const group of targetGroups) {
     for (const platform of platforms) {
       const existing = rawUserPrefs.find(
         (p) => p.view_group === group && p.platform === platform
       );
-
       let visibleNutrients;
       if (existing) {
         // User has a custom record, append to it if missing
@@ -73,7 +66,6 @@ async function addNutrientToSpecificViews(userId, nutrientName) {
           typeof existing.visible_nutrients === 'string'
             ? JSON.parse(existing.visible_nutrients)
             : existing.visible_nutrients;
-
         if (!visibleNutrients.includes(nutrientName)) {
           visibleNutrients.push(nutrientName);
           log(
@@ -103,7 +95,6 @@ async function addNutrientToSpecificViews(userId, nutrientName) {
     }
   }
 }
-
 /**
  * Removes a nutrient from all display preferences for a user.
  */
@@ -112,18 +103,15 @@ async function removeNutrientFromAllViews(userId, nutrientName) {
     'info',
     `removeNutrientFromAllViews: Removing nutrient ${nutrientName} for user ${userId}`
   );
-
   const rawUserPrefs =
     await nutrientDisplayPreferenceRepository.getNutrientDisplayPreferences(
       userId
     );
-
   for (const pref of rawUserPrefs) {
     const visibleNutrients =
       typeof pref.visible_nutrients === 'string'
         ? JSON.parse(pref.visible_nutrients)
         : pref.visible_nutrients;
-
     if (visibleNutrients.includes(nutrientName)) {
       const updatedNutrients = visibleNutrients.filter(
         (n) => n !== nutrientName
@@ -141,9 +129,7 @@ async function removeNutrientFromAllViews(userId, nutrientName) {
     }
   }
 }
-
 async function getAllNutrients(userId) {
-  const customNutrientService = require('./customNutrientService');
   const customNutrients =
     await customNutrientService.getCustomNutrients(userId);
   const customNutrientNames = customNutrients
@@ -151,7 +137,6 @@ async function getAllNutrients(userId) {
     .map((cn) => cn.name); // Keep original casing for custom nutrients
   return [...predefinedNutrients, ...customNutrientNames];
 }
-
 const defaultPreferences = [
   // Desktop
   {
@@ -216,13 +201,11 @@ const defaultPreferences = [
     visible_nutrients: predefinedNutrients,
   },
 ];
-
 async function getNutrientDisplayPreferences(userId) {
   const userPreferencesRaw =
     await nutrientDisplayPreferenceRepository.getNutrientDisplayPreferences(
       userId
     );
-
   const userPreferences = userPreferencesRaw.map((p) => ({
     ...p,
     visible_nutrients:
@@ -230,9 +213,7 @@ async function getNutrientDisplayPreferences(userId) {
         ? JSON.parse(p.visible_nutrients)
         : p.visible_nutrients,
   }));
-
   const allNutrientsDynamic = await getAllNutrients(userId);
-
   // Return a complete list of 12 preferences (6 groups x 2 platforms)
   const viewGroups = [
     'summary',
@@ -243,15 +224,12 @@ async function getNutrientDisplayPreferences(userId) {
     'report_chart',
   ];
   const platforms = ['desktop', 'mobile'];
-
   const completePreferences = [];
-
   for (const group of viewGroups) {
     for (const platform of platforms) {
       const userPref = userPreferences.find(
         (p) => p.view_group === group && p.platform === platform
       );
-
       if (userPref) {
         completePreferences.push(userPref);
       } else {
@@ -259,9 +237,7 @@ async function getNutrientDisplayPreferences(userId) {
         const defaultMatch = defaultPreferences.find(
           (p) => p.view_group === group && p.platform === platform
         );
-
         const prefToPush = JSON.parse(JSON.stringify(defaultMatch));
-
         // Ensure defaults for specific groups include all current nutrients
         if (
           group === 'food_database' ||
@@ -271,15 +247,12 @@ async function getNutrientDisplayPreferences(userId) {
         ) {
           prefToPush.visible_nutrients = allNutrientsDynamic;
         }
-
         completePreferences.push(prefToPush);
       }
     }
   }
-
   return completePreferences;
 }
-
 async function upsertNutrientDisplayPreference(
   userId,
   viewGroup,
@@ -293,23 +266,19 @@ async function upsertNutrientDisplayPreference(
     visibleNutrients
   );
 }
-
 async function resetNutrientDisplayPreference(userId, viewGroup, platform) {
   await nutrientDisplayPreferenceRepository.deleteNutrientDisplayPreference(
     userId,
     viewGroup,
     platform
   );
-
   const allNutrientsDynamic = await getAllNutrients(userId);
-
   let defaultVisibleNutrients;
   if (viewGroup === 'summary' || viewGroup === 'quick_info') {
     defaultVisibleNutrients = defaultNutrients; // Use the smaller default set for these
   } else {
     defaultVisibleNutrients = allNutrientsDynamic; // Use all nutrients for other view groups
   }
-
   const newDefaultPreference =
     await nutrientDisplayPreferenceRepository.upsertNutrientDisplayPreference(
       userId,
@@ -319,13 +288,11 @@ async function resetNutrientDisplayPreference(userId, viewGroup, platform) {
     );
   return newDefaultPreference;
 }
-
 async function createDefaultNutrientPreferencesForUser(userId) {
   const allNutrientsDynamic = await getAllNutrients(userId);
   const dynamicDefaultPreferences = JSON.parse(
     JSON.stringify(defaultPreferences)
   );
-
   dynamicDefaultPreferences.forEach((pref) => {
     if (
       pref.view_group === 'food_database' ||
@@ -336,14 +303,19 @@ async function createDefaultNutrientPreferencesForUser(userId) {
       pref.visible_nutrients = allNutrientsDynamic;
     }
   });
-
   return await nutrientDisplayPreferenceRepository.createDefaultNutrientPreferences(
     userId,
     dynamicDefaultPreferences
   );
 }
-
-module.exports = {
+export { getNutrientDisplayPreferences };
+export { upsertNutrientDisplayPreference };
+export { resetNutrientDisplayPreference };
+export { createDefaultNutrientPreferencesForUser };
+export { getAllNutrients };
+export { addNutrientToSpecificViews };
+export { removeNutrientFromAllViews };
+export default {
   getNutrientDisplayPreferences,
   upsertNutrientDisplayPreference,
   resetNutrientDisplayPreference,

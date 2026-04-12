@@ -1,11 +1,11 @@
-const goalRepository = require('../models/goalRepository');
-const weeklyGoalPlanRepository = require('../models/weeklyGoalPlanRepository');
-const goalPresetRepository = require('../models/goalPresetRepository');
-const { log } = require('../config/logging');
-const { format, getDay } = require('date-fns');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { todayInZone } = require('@workspace/shared');
-
+import goalRepository from '../models/goalRepository.js';
+import weeklyGoalPlanRepository from '../models/weeklyGoalPlanRepository.js';
+import goalPresetRepository from '../models/goalPresetRepository.js';
+import { log } from '../config/logging.js';
+import { format, getDay } from 'date-fns';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { todayInZone } from '@workspace/shared';
+import customNutrientService from './customNutrientService.js';
 // Helper function to calculate grams from percentages
 function calculateGramsFromPercentages(
   calories,
@@ -18,7 +18,6 @@ function calculateGramsFromPercentages(
   const fat_grams = (calories * (fat_percentage / 100)) / 9;
   return { protein_grams, carbs_grams, fat_grams };
 }
-
 async function getUserGoals(targetUserId, selectedDate) {
   try {
     if (!targetUserId) {
@@ -56,9 +55,7 @@ async function getUserGoals(targetUserId, selectedDate) {
         snacks_percentage: 25,
       };
     }
-
     let goals = await goalRepository.getGoalByDate(targetUserId, selectedDate);
-
     if (!goals) {
       // Check active weekly plan
       const activeWeeklyPlan =
@@ -92,7 +89,6 @@ async function getUserGoals(targetUserId, selectedDate) {
             presetId = activeWeeklyPlan.saturday_preset_id;
             break;
         }
-
         if (presetId) {
           goals = await goalPresetRepository.getGoalPresetById(
             presetId,
@@ -101,7 +97,6 @@ async function getUserGoals(targetUserId, selectedDate) {
         }
       }
     }
-
     if (!goals) {
       // Fallback to most recent goal before date (which includes default goal if goal_date is NULL)
       goals = await goalRepository.getMostRecentGoalBeforeDate(
@@ -109,7 +104,6 @@ async function getUserGoals(targetUserId, selectedDate) {
         selectedDate
       );
     }
-
     // If still no goals, return hardcoded defaults
     if (!goals) {
       goals = {
@@ -142,7 +136,6 @@ async function getUserGoals(targetUserId, selectedDate) {
         snacks_percentage: 25,
       };
     }
-
     // If percentages are set, calculate absolute grams for return
     if (
       goals.protein_percentage !== null &&
@@ -160,7 +153,6 @@ async function getUserGoals(targetUserId, selectedDate) {
       goals.carbs = carbs_grams;
       goals.fat = fat_grams;
     }
-
     return goals;
   } catch (error) {
     log(
@@ -171,7 +163,6 @@ async function getUserGoals(targetUserId, selectedDate) {
     throw error;
   }
 }
-
 async function manageGoalTimeline(authenticatedUserId, goalData) {
   try {
     const {
@@ -206,18 +197,15 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       p_snacks_percentage,
       custom_nutrients,
     } = goalData;
-
     log(
       'debug',
       `manageGoalTimeline - Received goalData: ${JSON.stringify(goalData)}`
     );
     log('debug', `manageGoalTimeline - p_water_goal_ml: ${p_water_goal_ml}`);
-
     // If percentages are provided, calculate grams for storage
     let protein_to_store = p_protein;
     let carbs_to_store = p_carbs;
     let fat_to_store = p_fat;
-
     if (
       typeof p_protein_percentage === 'number' &&
       !isNaN(p_protein_percentage) &&
@@ -246,7 +234,6 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
         `manageGoalTimeline - Using provided grams: Protein ${protein_to_store}, Carbs ${protein_to_store}, Fat ${fat_to_store}. Percentages were not all valid numbers.`
       );
     }
-
     // Helper to convert NaN to 0 for numeric fields, or null if specified
     const cleanNumber = (value, allow_null = false) => {
       log(
@@ -271,14 +258,9 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       log('debug', `cleanNumber: Returning cleaned number: ${num}`);
       return num;
     };
-
-    // Filter custom nutrients to only include those that are currently defined for the user
-    // This prevents "zombie" data from being re-inserted if the frontend sends back old keys
-    const customNutrientService = require('./customNutrientService');
     const activeCustomNutrients =
       await customNutrientService.getCustomNutrients(authenticatedUserId);
     const activeNames = new Set(activeCustomNutrients.map((n) => n.name));
-
     const filteredCustomNutrients = {};
     if (custom_nutrients && typeof custom_nutrients === 'object') {
       Object.entries(custom_nutrients).forEach(([name, value]) => {
@@ -292,7 +274,6 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
         }
       });
     }
-
     const goalPayload = {
       user_id: authenticatedUserId,
       goal_date: p_start_date,
@@ -329,7 +310,6 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       snacks_percentage: cleanNumber(p_snacks_percentage, true),
       custom_nutrients: filteredCustomNutrients,
     };
-
     // If cascade is false, or if editing a past date, only update that specific date
     if (
       !p_cascade ||
@@ -350,22 +330,18 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
       const startDate = new Date(p_start_date);
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + 6);
-
       // Delete existing goals in the range to prevent conflicts and ensure clean slate
       await goalRepository.deleteGoalsInRange(
         authenticatedUserId,
         p_start_date,
         format(endDate, 'yyyy-MM-dd')
       );
-
       // Insert the new goal, which will act as the template for the cascade
       await goalRepository.upsertGoal(goalPayload);
-
       // The getMostRecentGoalBeforeDate function will now handle the cascading logic,
       // so we don't need to loop and insert for every single day.
       // We also remove the default goal to ensure this new goal becomes the baseline.
       await goalRepository.deleteDefaultGoal(authenticatedUserId);
-
       return { message: 'Goal timeline managed successfully with cascade.' };
     }
   } catch (error) {
@@ -377,8 +353,9 @@ async function manageGoalTimeline(authenticatedUserId, goalData) {
     throw error;
   }
 }
-
-module.exports = {
+export { getUserGoals };
+export { manageGoalTimeline };
+export default {
   getUserGoals,
   manageGoalTimeline,
 };

@@ -1,5 +1,4 @@
-const { getClient } = require('../db/poolManager');
-
+import { getClient } from '../db/poolManager.js';
 /**
  * Saves onboarding data and updates the user's status to complete.
  * This function uses a transaction to ensure atomicity.
@@ -20,11 +19,9 @@ async function saveOnboardingData(userId, data) {
     activityLevel,
     addBurnedCalories,
   } = data;
-
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-
     // Query 1: Insert or update the detailed onboarding data.
     const onboardingQuery = `
       INSERT INTO onboarding_data (
@@ -51,7 +48,6 @@ async function saveOnboardingData(userId, data) {
       activityLevel,
       addBurnedCalories,
     ]);
-
     // Query 2: Mark onboarding as complete in the status table.
     const statusQuery = `
       UPDATE onboarding_status
@@ -59,7 +55,6 @@ async function saveOnboardingData(userId, data) {
       WHERE user_id = $1;
     `;
     await client.query(statusQuery, [userId]);
-
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -69,7 +64,6 @@ async function saveOnboardingData(userId, data) {
     client.release();
   }
 }
-
 /**
  * Fetches the onboarding completion status for a given user.
  * @param {string} userId - The UUID of the user.
@@ -90,7 +84,6 @@ async function getOnboardingStatus(userId) {
     client.release();
   }
 }
-
 /**
  * Resets the onboarding completion status for a given user to FALSE.
  * @param {string} userId - The UUID of the user.
@@ -112,8 +105,10 @@ async function resetOnboardingStatus(userId) {
     client.release();
   }
 }
-
-module.exports = {
+export { saveOnboardingData };
+export { getOnboardingStatus };
+export { resetOnboardingStatus };
+export default {
   saveOnboardingData,
   getOnboardingStatus,
   resetOnboardingStatus,

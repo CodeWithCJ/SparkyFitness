@@ -1,13 +1,10 @@
-// SparkyFitnessServer/integrations/fitbit/fitbitDataProcessor.js
-
-const measurementRepository = require('../../models/measurementRepository');
-const exerciseEntryRepository = require('../../models/exerciseEntry');
-const exerciseRepository = require('../../models/exercise');
-const activityDetailsRepository = require('../../models/activityDetailsRepository');
-const sleepRepository = require('../../models/sleepRepository');
-const { log } = require('../../config/logging');
-const { localDateToDay, todayInZone } = require('@workspace/shared');
-
+import measurementRepository from '../../models/measurementRepository.js';
+import exerciseEntryRepository from '../../models/exerciseEntry.js';
+import exerciseRepository from '../../models/exercise.js';
+import activityDetailsRepository from '../../models/activityDetailsRepository.js';
+import sleepRepository from '../../models/sleepRepository.js';
+import { log } from '../../config/logging.js';
+import { localDateToDay, todayInZone } from '@workspace/shared';
 /**
  * Helper to parse Fitbit local time string with a provided offset
  * @param {string} localTimeStr - e.g. "2023-10-27T10:00:00.000"
@@ -20,7 +17,6 @@ function parseFitbitTime(localTimeStr, offsetMs = 0) {
   if (localTimeStr.includes('Z') || /[+-]\d{2}:?\d{2}$/.test(localTimeStr)) {
     return new Date(localTimeStr).toISOString();
   }
-
   // Append the offset to the string if it's a simple ISO-like string.
   const sign = offsetMs >= 0 ? '+' : '-';
   const absOffset = Math.abs(offsetMs);
@@ -31,12 +27,10 @@ function parseFitbitTime(localTimeStr, offsetMs = 0) {
     .toString()
     .padStart(2, '0');
   const offsetStr = `${sign}${hours}:${minutes}`;
-
   // Fitbit format is sometimes "2023-10-27 10:00:00" or "2023-10-27T10:00:00"
   const normalizedStr = localTimeStr.replace(' ', 'T');
   return new Date(`${normalizedStr}${offsetStr}`).toISOString();
 }
-
 /**
  * Process Fitbit profile data (for height)
  */
@@ -49,7 +43,6 @@ async function processFitbitProfile(
 ) {
   if (!data || !data.user) return;
   const height = data.user.height;
-
   // Fitbit Profile API height is typically returned in Centimeters by default.
   // We will treat it as CM to avoid double-conversion issues.
   const syncDate = date || todayInZone(timezone);
@@ -64,7 +57,6 @@ async function processFitbitProfile(
     `Upserted Fitbit height for user ${userId}: ${height} cm on ${syncDate}.`
   );
 }
-
 /**
  * Process Fitbit heart rate data
  */
@@ -77,11 +69,9 @@ async function processFitbitHeartRate(userId, createdByUserId, data) {
     log('info', `No Fitbit heart rate data to process for user ${userId}.`);
     return;
   }
-
   for (const entry of data['activities-heart']) {
     const entryDate = entry.dateTime;
     const restingHeartRate = entry.value.restingHeartRate;
-
     if (restingHeartRate) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
         categoryName: 'Resting Heart Rate',
@@ -99,7 +89,6 @@ async function processFitbitHeartRate(userId, createdByUserId, data) {
     }
   }
 }
-
 /**
  * Process Fitbit steps data
  */
@@ -112,11 +101,9 @@ async function processFitbitSteps(userId, createdByUserId, data) {
     log('info', `No Fitbit steps data to process for user ${userId}.`);
     return;
   }
-
   for (const entry of data['activities-steps']) {
     const entryDate = entry.dateTime;
     const steps = parseInt(entry.value, 10);
-
     if (!isNaN(steps)) {
       await measurementRepository.upsertStepData(
         userId,
@@ -128,7 +115,6 @@ async function processFitbitSteps(userId, createdByUserId, data) {
     }
   }
 }
-
 /**
  * Process Fitbit weight data
  */
@@ -137,11 +123,9 @@ async function processFitbitWeight(userId, createdByUserId, data) {
     log('info', `No Fitbit weight data to process for user ${userId}.`);
     return;
   }
-
   for (const entry of data.weight) {
     const entryDate = entry.date;
     const weight = entry.weight;
-
     await measurementRepository.upsertCheckInMeasurements(
       userId,
       createdByUserId,
@@ -154,7 +138,6 @@ async function processFitbitWeight(userId, createdByUserId, data) {
     );
   }
 }
-
 /**
  * Process Fitbit body fat data
  */
@@ -177,18 +160,14 @@ async function processFitbitBodyFat(userId, createdByUserId, data) {
     }
   }
 }
-
 async function processFitbitSpO2(userId, createdByUserId, data) {
   if (!data) return;
-
   // Range responses return data in "spo2" array
   const entries = data.spo2 || (Array.isArray(data) ? data : [data]);
-
   for (const entry of entries) {
     if (!entry || !entry.value) continue;
     const entryDate = entry.dateTime;
     const spo2 = entry.value.avg;
-
     if (spo2) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
         categoryName: 'SpO2',
@@ -203,7 +182,6 @@ async function processFitbitSpO2(userId, createdByUserId, data) {
     }
   }
 }
-
 /**
  * Process Fitbit skin temperature data
  */
@@ -212,11 +190,9 @@ async function processFitbitTemperature(userId, createdByUserId, data) {
     log('info', `No Fitbit temperature data to process for user ${userId}.`);
     return;
   }
-
   for (const entry of data.tempSkin) {
     const entryDate = entry.dateTime;
     const tempVariation = entry.value.nightlyRelative;
-
     if (tempVariation !== undefined) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
         categoryName: 'Skin Temperature Variation',
@@ -234,17 +210,14 @@ async function processFitbitTemperature(userId, createdByUserId, data) {
     }
   }
 }
-
 /**
  * Process Fitbit HRV data
  */
 async function processFitbitHRV(userId, createdByUserId, data) {
   if (!data) return;
-
   // Range responses return data in "hrv" array
   const entries = data.hrv || (Array.isArray(data) ? data : []);
   if (entries.length === 0) return;
-
   for (const entry of entries) {
     if (!entry || !entry.value) continue;
     const entryDate = entry.dateTime;
@@ -263,17 +236,14 @@ async function processFitbitHRV(userId, createdByUserId, data) {
     }
   }
 }
-
 /**
  * Process Fitbit Respiratory Rate data
  */
 async function processFitbitRespiratoryRate(userId, createdByUserId, data) {
   if (!data) return;
-
   // Range responses return data in "br" array
   const entries = data.br || (Array.isArray(data) ? data : []);
   if (entries.length === 0) return;
-
   for (const entry of entries) {
     if (!entry || !entry.value) continue;
     const entryDate = entry.dateTime;
@@ -298,17 +268,14 @@ async function processFitbitRespiratoryRate(userId, createdByUserId, data) {
     }
   }
 }
-
 /**
  * Process Fitbit Active Zone Minutes data
  */
 async function processFitbitActiveZoneMinutes(userId, createdByUserId, data) {
   if (!data) return;
-
   // Range responses return data in "activities-active-zone-minutes" array
   const entries = data['activities-active-zone-minutes'] || [];
   if (entries.length === 0) return;
-
   for (const entry of entries) {
     if (!entry || !entry.value) continue;
     const entryDate = entry.dateTime;
@@ -330,17 +297,14 @@ async function processFitbitActiveZoneMinutes(userId, createdByUserId, data) {
     }
   }
 }
-
 /**
  * Process Fitbit Cardio Fitness Scor (VO2 Max) data
  */
 async function processFitbitCardioFitness(userId, createdByUserId, data) {
   if (!data) return;
-
   // Range responses return data in "cardioFitnessScore" array
   const entries = data['cardioFitnessScore'] || [];
   if (entries.length === 0) return;
-
   for (const entry of entries) {
     if (!entry || !entry.value) continue;
     const entryDate = entry.dateTime;
@@ -358,7 +322,6 @@ async function processFitbitCardioFitness(userId, createdByUserId, data) {
     }
   }
 }
-
 /**
  * Process Fitbit Core Temperature data
  */
@@ -367,7 +330,6 @@ async function processFitbitCoreTemperature(userId, createdByUserId, data) {
   for (const entry of data.tempCore) {
     const entryDate = entry.dateTime;
     const temp = entry.value;
-
     if (temp !== undefined) {
       await upsertCustomMeasurementLogic(userId, createdByUserId, {
         categoryName: 'Core Temperature',
@@ -381,7 +343,6 @@ async function processFitbitCoreTemperature(userId, createdByUserId, data) {
     }
   }
 }
-
 /**
  * Process Fitbit Activity Minutes data
  */
@@ -409,7 +370,6 @@ async function processFitbitActivityMinutes(userId, createdByUserId, data) {
     }
   }
 }
-
 /**
  * Process Fitbit Sleep data
  */
@@ -443,7 +403,6 @@ async function processFitbitSleep(
           (entry.levels.summary?.awake?.minutes || 0)) *
         60,
     };
-
     const result = await sleepRepository.upsertSleepEntry(
       userId,
       createdByUserId,
@@ -452,19 +411,16 @@ async function processFitbitSleep(
     if (result && result.id && entry.levels) {
       // First, delete existing sleep stages for this entry to prevent duplication
       await sleepRepository.deleteSleepStageEventsByEntryId(userId, result.id);
-
       // Map Fitbit levels to SparkyFitness supported stages
       // Note: 'awake' is required by SparkyFitness analytics to correctly exclude from 'time asleep'
       for (const stage of entry.levels.data || []) {
         const startIso = parseFitbitTime(stage.dateTime, timezoneOffset);
         const startTime = new Date(startIso);
         const endTime = new Date(startTime.getTime() + stage.seconds * 1000);
-
         let stageType = stage.level;
         if (stageType === 'wake' || stageType === 'restless')
           stageType = 'awake';
         if (stageType === 'asleep') stageType = 'light';
-
         await sleepRepository.upsertSleepStageEvent(userId, result.id, {
           stage_type: stageType,
           start_time: startIso,
@@ -475,7 +431,6 @@ async function processFitbitSleep(
     }
   }
 }
-
 /**
  * Process Fitbit Water data
  */
@@ -486,10 +441,8 @@ async function processFitbitWater(
   timezone = 'UTC'
 ) {
   if (!data) return;
-
   // Range responses return data in "foods-log-water" array
   const entries = data['foods-log-water'] || [];
-
   // Fallback to single day summary if range array is empty but summary exists
   if (
     entries.length === 0 &&
@@ -500,17 +453,14 @@ async function processFitbitWater(
       data.water && data.water.length > 0
         ? data.water[0].date
         : todayInZone(timezone);
-
     entries.push({
       dateTime: entryDate,
       value: data.summary.water,
     });
   }
-
   for (const entry of entries) {
     const water = parseFloat(entry.value || 0);
     const entryDate = entry.dateTime;
-
     await measurementRepository.upsertWaterData(
       userId,
       createdByUserId,
@@ -524,7 +474,6 @@ async function processFitbitWater(
     );
   }
 }
-
 /**
  * Process Fitbit Activity/Exercise data
  */
@@ -535,12 +484,9 @@ async function processFitbitActivities(
   startDate = null
 ) {
   if (!data || !data.activities || data.activities.length === 0) return;
-
   const stepsPerDay = {};
-
   for (const activity of data.activities) {
     const entryDate = activity.startTime.substring(0, 10);
-
     // Safety filter to prevent processing very old data
     if (startDate && entryDate < startDate) {
       log(
@@ -549,15 +495,12 @@ async function processFitbitActivities(
       );
       continue;
     }
-
     // Accumulate steps for fallback logic
     const activitySteps = activity.steps || 0;
     if (activitySteps > 0) {
       stepsPerDay[entryDate] = (stepsPerDay[entryDate] || 0) + activitySteps;
     }
-
     const exerciseName = activity.activityName || 'Fitbit Activity';
-
     let exercise = await exerciseRepository.findExerciseByNameAndUserId(
       exerciseName,
       userId
@@ -572,9 +515,7 @@ async function processFitbitActivities(
         shared_with_public: false,
       });
     }
-
     const distanceKm = activity.distance;
-
     const entryData = {
       exercise_id: exercise.id,
       entry_date: entryDate,
@@ -594,14 +535,12 @@ async function processFitbitActivities(
         },
       ],
     };
-
     const newEntry = await exerciseEntryRepository.createExerciseEntry(
       userId,
       entryData,
       createdByUserId,
       'Fitbit'
     );
-
     if (newEntry && newEntry.id) {
       await activityDetailsRepository.createActivityDetail(userId, {
         exercise_entry_id: newEntry.id,
@@ -612,14 +551,11 @@ async function processFitbitActivities(
       });
     }
   }
-
   // Step Fallback Optimization: Fetch all measurements in one range query to avoid queries-in-a-loop
   const dates = Object.keys(stepsPerDay).sort();
   if (dates.length === 0) return;
-
   const startDateRange = dates[0];
   const endDateRange = dates[dates.length - 1];
-
   try {
     const existingMeasurements =
       await measurementRepository.getCheckInMeasurementsByDateRange(
@@ -627,7 +563,6 @@ async function processFitbitActivities(
         startDateRange,
         endDateRange
       );
-
     // Map existing measurements by date for O(1) lookups
     const measurementsByDate = {};
     if (existingMeasurements && Array.isArray(existingMeasurements)) {
@@ -642,17 +577,14 @@ async function processFitbitActivities(
         measurementsByDate[dateKey] = m;
       });
     }
-
     for (const [date, totalActivitySteps] of Object.entries(stepsPerDay)) {
       const existing = measurementsByDate[date];
       const currentSteps =
         existing && existing.steps ? parseInt(existing.steps, 10) : 0;
-
       log(
         'debug',
         `[fitbitDataProcessor] Date: ${date}, Activity Steps: ${totalActivitySteps}, Current Steps: ${currentSteps}`
       );
-
       // Only upsert if our activity total is higher
       if (totalActivitySteps > currentSteps) {
         log(
@@ -674,7 +606,6 @@ async function processFitbitActivities(
     );
   }
 }
-
 /**
  * Helper logic for upserting custom measurements
  */
@@ -692,10 +623,8 @@ async function upsertCustomMeasurementLogic(
     entryTimestamp,
     frequency,
   } = customMeasurement;
-
   const categories = await measurementRepository.getCustomCategories(userId);
   const category = categories.find((cat) => cat.name === categoryName);
-
   let categoryId;
   if (!category) {
     const newCategoryData = {
@@ -713,7 +642,6 @@ async function upsertCustomMeasurementLogic(
   } else {
     categoryId = category.id;
   }
-
   await measurementRepository.upsertCustomMeasurement(
     userId,
     createdByUserId,
@@ -727,8 +655,23 @@ async function upsertCustomMeasurementLogic(
     'Fitbit'
   );
 }
-
-module.exports = {
+export { processFitbitProfile };
+export { processFitbitHeartRate };
+export { processFitbitSteps };
+export { processFitbitWeight };
+export { processFitbitBodyFat };
+export { processFitbitSpO2 };
+export { processFitbitTemperature };
+export { processFitbitHRV };
+export { processFitbitRespiratoryRate };
+export { processFitbitActiveZoneMinutes };
+export { processFitbitActivityMinutes };
+export { processFitbitSleep };
+export { processFitbitActivities };
+export { processFitbitWater };
+export { processFitbitCardioFitness };
+export { processFitbitCoreTemperature };
+export default {
   processFitbitProfile,
   processFitbitHeartRate,
   processFitbitSteps,

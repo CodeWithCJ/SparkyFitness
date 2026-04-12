@@ -1,15 +1,13 @@
-const mealPlanTemplateRepository = require('../models/mealPlanTemplateRepository');
-const foodRepository = require('../models/foodRepository');
-const { log } = require('../config/logging');
-const { loadUserTimezone } = require('../utils/timezoneLoader');
-const { todayInZone } = require('@workspace/shared');
-
+import mealPlanTemplateRepository from '../models/mealPlanTemplateRepository.js';
+import foodRepository from '../models/foodRepository.js';
+import { log } from '../config/logging.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { todayInZone } from '@workspace/shared';
 async function resolveToday(userId, clientDate) {
   if (clientDate) return clientDate;
   const tz = await loadUserTimezone(userId);
   return todayInZone(tz);
 }
-
 async function createMealPlanTemplate(userId, planData) {
   log('info', 'createMealPlanTemplate service - received planData:', planData);
   try {
@@ -52,7 +50,6 @@ async function createMealPlanTemplate(userId, planData) {
     throw new Error('Failed to create meal plan template.', { cause: error });
   }
 }
-
 async function getMealPlanTemplates(userId) {
   try {
     const templates =
@@ -77,7 +74,6 @@ async function getMealPlanTemplates(userId) {
     throw new Error('Failed to fetch meal plan templates.', { cause: error });
   }
 }
-
 async function updateMealPlanTemplate(planId, userId, planData) {
   log(
     'info',
@@ -93,7 +89,6 @@ async function updateMealPlanTemplate(planId, userId, planData) {
       `updateMealPlanTemplate service - Deleting old food entries for template ${planId}`
     );
     await foodRepository.deleteFoodEntriesByTemplateId(planId, userId, today);
-
     if (planData.is_active) {
       log(
         'info',
@@ -106,7 +101,6 @@ async function updateMealPlanTemplate(planId, userId, planData) {
       { ...planData, user_id: userId }
     );
     log('info', 'updateMealPlanTemplate service - updatedPlan:', updatedPlan);
-
     if (updatedPlan.is_active) {
       log(
         'info',
@@ -123,7 +117,6 @@ async function updateMealPlanTemplate(planId, userId, planData) {
         'updateMealPlanTemplate service - Updated plan is not active, skipping food entry creation.'
       );
     }
-
     return updatedPlan;
   } catch (error) {
     log(
@@ -134,7 +127,6 @@ async function updateMealPlanTemplate(planId, userId, planData) {
     throw new Error('Failed to update meal plan template.', { cause: error });
   }
 }
-
 async function deleteMealPlanTemplate(planId, userId, currentClientDate) {
   try {
     const today = await resolveToday(userId, currentClientDate);
@@ -143,7 +135,6 @@ async function deleteMealPlanTemplate(planId, userId, currentClientDate) {
       `deleteMealPlanTemplate service - Deleting food entries for template ${planId} starting from ${today}`
     );
     await foodRepository.deleteFoodEntriesByTemplateId(planId, userId, today);
-
     return await mealPlanTemplateRepository.deleteMealPlanTemplate(
       planId,
       userId
@@ -157,8 +148,11 @@ async function deleteMealPlanTemplate(planId, userId, currentClientDate) {
     throw new Error('Failed to delete meal plan template.', { cause: error });
   }
 }
-
-module.exports = {
+export { createMealPlanTemplate };
+export { getMealPlanTemplates };
+export { updateMealPlanTemplate };
+export { deleteMealPlanTemplate };
+export default {
   createMealPlanTemplate,
   getMealPlanTemplates,
   updateMealPlanTemplate,

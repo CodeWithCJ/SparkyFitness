@@ -1,9 +1,9 @@
-const express = require('express');
+import express from 'express';
+import { log } from '../../config/logging.js';
+import globalSettingsRepository from '../../models/globalSettingsRepository.js';
+import oidcProviderRepository from '../../models/oidcProviderRepository.js';
+import userRepository from '../../models/userRepository.js';
 const router = express.Router();
-const { log } = require('../../config/logging');
-const globalSettingsRepository = require('../../models/globalSettingsRepository');
-const oidcProviderRepository = require('../../models/oidcProviderRepository');
-
 // Inline rate limiter for the /mfa-factors endpoint to prevent account enumeration.
 // This endpoint reveals whether an email has an account, so it needs tighter limits
 // than the global 100/min. Better Auth's rate limiter doesn't apply here because
@@ -13,35 +13,28 @@ const mfaFactorsRateLimit = (() => {
   const MAX = 5;
   const WINDOW_MS = 30 * 1000;
   let lastSweepAt = 0;
-
   function evictExpired(now) {
     for (const [ip, entry] of hits) {
       if (now - entry.start >= WINDOW_MS) hits.delete(ip);
     }
     lastSweepAt = now;
   }
-
   return (req, res, next) => {
     const ip = req.ip;
     const now = Date.now();
-
     // Sweep at most once per window to avoid O(n) cleanup on every request.
     if (hits.size > 0 && now - lastSweepAt >= WINDOW_MS) {
       evictExpired(now);
     }
-
     const entry = hits.get(ip);
-
     if (!entry) {
       hits.set(ip, { start: now, count: 1 });
       return next();
     }
-
     if (entry.count < MAX) {
       entry.count++;
       return next();
     }
-
     const retryAfter = Math.ceil((entry.start + WINDOW_MS - now) / 1000);
     res.set('X-Retry-After', String(retryAfter));
     return res
@@ -49,7 +42,6 @@ const mfaFactorsRateLimit = (() => {
       .json({ message: 'Too many requests. Please try again later.' });
   };
 })();
-
 /**
  * @swagger
  * /auth/settings:
@@ -66,7 +58,6 @@ router.get('/settings', async (req, res) => {
       globalSettingsRepository.getGlobalSettings(),
       oidcProviderRepository.getOidcProviders(),
     ]);
-
     let trustedOrigin = null;
     if (process.env.SPARKY_FITNESS_FRONTEND_URL) {
       try {
@@ -82,14 +73,11 @@ router.get('/settings', async (req, res) => {
         );
       }
     }
-
     // Environment overrides are now handled within globalSettingsRepository.getGlobalSettings()
     const oidcAutoRedirectEnv =
       process.env.SPARKY_FITNESS_OIDC_AUTO_REDIRECT === 'true';
-
     const emailEnabled = globalSettings.enable_email_password_login;
     const oidcEnabled = globalSettings.is_oidc_active;
-
     const activeProviders = providers
       .filter((p) => p.is_active)
       .map((p) => ({
@@ -98,7 +86,6 @@ router.get('/settings', async (req, res) => {
         logo_url: p.logo_url,
         auto_register: p.auto_register, // Expose the flag
       }));
-
     res.json({
       trusted_origin: trustedOrigin,
       email: {
@@ -128,7 +115,6 @@ router.get('/settings', async (req, res) => {
     });
   }
 });
-
 /**
  * @swagger
  * /auth/mfa-factors:
@@ -152,15 +138,11 @@ router.get('/mfa-factors', mfaFactorsRateLimit, async (req, res) => {
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
   }
-
   try {
-    const userRepository = require('../../models/userRepository');
     const user = await userRepository.findUserByEmail(email);
-
     if (!user) {
       return res.json({ mfa_totp_enabled: false, mfa_email_enabled: false });
     }
-
     res.json({
       mfa_totp_enabled: user.mfa_totp_enabled || false,
       mfa_email_enabled: user.mfa_email_enabled || false,
@@ -173,5 +155,4 @@ router.get('/mfa-factors', mfaFactorsRateLimit, async (req, res) => {
     });
   }
 });
-
-module.exports = router;
+export default router;
