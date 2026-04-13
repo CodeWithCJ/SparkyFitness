@@ -116,6 +116,11 @@ spec:
             matchLabels:
               {{- include "sparkyfitness.selectorLabels" . | nindent 14 }}
               app.kubernetes.io/component: server
+        {{- if include "sparkyfitness.databaseBackupEnabled" . }}
+        - podSelector:
+            matchLabels:
+              {{- include "sparkyfitness.databaseBackupComponentLabels" . | nindent 14 }}
+        {{- end }}
       ports:
         - port: 5432
 {{- end }}

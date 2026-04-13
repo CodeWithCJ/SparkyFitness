@@ -111,6 +111,34 @@ app.kubernetes.io/component: postgresql
 {{- end -}}
 {{- end }}
 
+{{- define "sparkyfitness.databaseBackupComponentLabels" -}}
+{{ include "sparkyfitness.selectorLabels" . }}
+app.kubernetes.io/component: database-backup
+{{- end }}
+
+{{- define "sparkyfitness.databaseBackupPvcName" -}}
+{{- if .Values.databaseBackup.persistence.existingClaim -}}
+{{- .Values.databaseBackup.persistence.existingClaim -}}
+{{- else -}}
+{{- printf "%s-database-backup" (include "sparkyfitness.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end }}
+
+{{- define "sparkyfitness.databaseBackupEnabled" -}}
+{{- if .Values.databaseBackup.enabled -}}
+  {{- if and .Values.postgresql.enabled .Values.postgresql.backup.enabled -}}
+    {{- fail "databaseBackup.enabled and postgresql.backup.enabled cannot both be true; choose either built-in S3 backups or PVC backups" -}}
+  {{- end -}}
+  {{- $days := int (default 0 .Values.databaseBackup.retention.days) -}}
+  {{- $weeks := int (default 0 .Values.databaseBackup.retention.weeks) -}}
+  {{- $months := int (default 0 .Values.databaseBackup.retention.months) -}}
+  {{- if and (le $days 0) (le $weeks 0) (le $months 0) -}}
+    {{- fail "databaseBackup.enabled requires at least one positive retention value in databaseBackup.retention" -}}
+  {{- end -}}
+true
+{{- end -}}
+{{- end }}
+
 {{/* ================================================================== */}}
 {{/* Secret name helpers (per type)                                     */}}
 {{/* ================================================================== */}}

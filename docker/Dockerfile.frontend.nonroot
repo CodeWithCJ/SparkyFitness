@@ -2,7 +2,8 @@ ARG FRONTEND_BASE_IMAGE=codewithcj/sparkyfitness:latest
 FROM ${FRONTEND_BASE_IMAGE}
 
 # Reconfigure nginx so the frontend can run as an unprivileged user in
-# Kubernetes while preserving the upstream image's static content and tooling.
+# Kubernetes while serving only static assets and SPA routes. API and upload
+# routing is handled by Ingress/HTTPRoute rather than frontend proxying.
 COPY docker/nginx.nonroot.conf.template /etc/nginx/templates/default.conf.template
 COPY docker/docker-entrypoint.nonroot.sh /docker-entrypoint.sh
 
