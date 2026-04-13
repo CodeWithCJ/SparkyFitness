@@ -2,10 +2,11 @@ import { log } from '../../config/logging.js';
 import axios from 'axios';
 import externalProviderRepository from '../../models/externalProviderRepository.js';
 import { encrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
+import { GarminJwtPayload, GarminTokenPayload } from 'types/garmin.ts';
 const GARMIN_MICROSERVICE_URL =
   process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function garminLogin(userId: any, email: any, password: any) {
+
+async function garminLogin(userId: string, email: string, password: string) {
   try {
     const response = await axios.post(
       `${GARMIN_MICROSERVICE_URL}/auth/garmin/login`,
@@ -16,22 +17,27 @@ async function garminLogin(userId: any, email: any, password: any) {
       }
     );
     return response.data; // Should contain tokens or MFA status
-  } catch (error) {
+  } catch (error: unknown) {
+    const isAxiosError = axios.isAxiosError(error);
+    const errorData = isAxiosError ? error.response?.data : null;
+    const detail =
+      errorData?.detail ||
+      (error instanceof Error ? error.message : String(error));
+
     log(
       'error',
       `Error during Garmin login for user ${userId}:`,
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error.response ? error.response.data : error.message
+      errorData || detail
     );
-    throw new Error(
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Failed to login to Garmin: ${error.response ? error.response.data.detail : error.message}`,
-      { cause: error }
-    );
+    throw new Error(`Failed to login to Garmin: ${detail}`, { cause: error });
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function garminResumeLogin(userId: any, clientState: any, mfaCode: any) {
+
+async function garminResumeLogin(
+  userId: string,
+  clientState: string,
+  mfaCode: string
+) {
   try {
     const response = await axios.post(
       `${GARMIN_MICROSERVICE_URL}/auth/garmin/resume_login`,
@@ -42,114 +48,86 @@ async function garminResumeLogin(userId: any, clientState: any, mfaCode: any) {
       }
     );
     return response.data; // Should contain tokens
-  } catch (error) {
+  } catch (error: unknown) {
+    const isAxiosError = axios.isAxiosError(error);
+    const errorData = isAxiosError ? error.response?.data : null;
+    const detail =
+      errorData?.detail ||
+      (error instanceof Error ? error.message : String(error));
+
     log(
       'error',
       `Error during Garmin MFA for user ${userId}:`,
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error.response ? error.response.data : error.message
+      errorData || detail
     );
-    throw new Error(
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Failed to complete Garmin MFA: ${error.response ? error.response.data.detail : error.message}`,
-      { cause: error }
-    );
+    throw new Error(`Failed to complete Garmin MFA: ${detail}`, {
+      cause: error,
+    });
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleGarminTokens(userId: any, tokensB64: any) {
+async function handleGarminTokens(
+  userId: string,
+  tokensObj: GarminTokenPayload
+) {
   try {
-    // Decode the base64 tokens string to get the actual tokens object
-    // The tokensB64 is the full garth.dumps() output, which is a base64 encoded string of a JSON array.
-    // The Python microservice returns the full garth.dumps() output directly.
-    const garthDump = tokensB64;
-    const parsedGarthDump = JSON.parse(
-      Buffer.from(garthDump, 'base64').toString('utf8')
-    );
-    // garth.dumps() always returns a 2-element JSON array: [OAuth1Token, OAuth2Token].
-    // OAuth2Token (index 1) contains access_token, refresh_token, expires_at, etc.
-    if (
-      !Array.isArray(parsedGarthDump) ||
-      parsedGarthDump.length < 2 ||
-      !parsedGarthDump[1]
-    ) {
-      throw new Error(
-        'Unexpected garth dump structure: expected a 2-element array [OAuth1Token, OAuth2Token], ' +
-          `received ${Array.isArray(parsedGarthDump) ? `array of length ${parsedGarthDump.length}` : typeof parsedGarthDump}`
+    if (!tokensObj.di_token) {
+      throw new Error('Unexpected token structure: missing di_token.');
+    }
+
+    let expiresAt: Date | null = null;
+    let externalUserId: string = `garmin_user_${userId}`;
+
+    try {
+      // JWTs themselves are always base64 encoded, so this split/decode stays
+      const payloadBase64 = tokensObj.di_token.split('.')[1];
+      const payloadJson = JSON.parse(
+        Buffer.from(payloadBase64, 'base64').toString('utf8')
+      ) as GarminJwtPayload;
+
+      if (payloadJson.exp) {
+        expiresAt = new Date(payloadJson.exp * 1000);
+      }
+      if (payloadJson.garmin_guid) {
+        externalUserId = payloadJson.garmin_guid;
+      }
+    } catch {
+      log(
+        'warn',
+        `Failed to decode JWT payload from di_token for user ${userId}`
       );
     }
-    const tokens = parsedGarthDump[1];
-    log('debug', 'handleGarminTokens: Parsed Garth Dump:', parsedGarthDump);
-    log('debug', 'handleGarminTokens: Extracted Tokens:', tokens);
-    log('debug', 'handleGarminTokens: Received Garth dump (masked):', {
-      garth_dump_masked: garthDump ? `${garthDump.substring(0, 30)}...` : 'N/A',
-      access_token_masked: tokens.access_token
-        ? `${tokens.access_token.substring(0, 8)}...`
-        : 'N/A',
-      refresh_token_masked: tokens.refresh_token
-        ? `${tokens.refresh_token.substring(0, 8)}...`
-        : 'N/A',
-      expires_at: tokens.expires_at,
-      external_user_id: tokens.external_user_id,
+
+    log('debug', 'handleGarminTokens: Extracted Tokens', {
+      di_client_id: tokensObj.di_client_id,
+      expires_at: expiresAt,
+      external_user_id: externalUserId,
     });
-    // Encrypt the entire Garth dump
-    const encryptedGarthDump = await encrypt(garthDump, ENCRYPTION_KEY);
-    log('debug', 'handleGarminTokens: Encrypted Garth Dump:', {
-      encrypted_garth_dump: encryptedGarthDump.encryptedText
-        ? `${encryptedGarthDump.encryptedText.substring(0, 30)}...`
-        : null,
-      garth_dump_iv: encryptedGarthDump.iv,
-      garth_dump_tag: encryptedGarthDump.tag,
-    });
-    // Assuming 'external_user_id' is available in the tokens object or can be derived
-    const externalUserId = tokens.external_user_id || `garmin_user_${userId}`; // Placeholder
-    log(
-      'debug',
-      `handleGarminTokens: externalUserId determined as: ${externalUserId}`
-    );
-    // Check if a Garmin provider entry already exists for this user
+
+    // Stringify the pure JSON object for encryption/storage
+    const tokensString = JSON.stringify(tokensObj);
+    const encryptedGarthDump = await encrypt(tokensString, ENCRYPTION_KEY);
+
     const provider =
       await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
         userId,
         'garmin'
       );
+
     const updateData = {
       provider_name: 'garmin',
-      provider_type: 'garmin', // Changed to 'garmin' as per user's request
+      provider_type: 'garmin',
       user_id: userId,
       is_active: true,
-      base_url: 'https://connect.garmin.com', // Garmin Connect base URL
+      base_url: 'https://connect.garmin.com',
       encrypted_garth_dump: encryptedGarthDump.encryptedText,
       garth_dump_iv: encryptedGarthDump.iv,
       garth_dump_tag: encryptedGarthDump.tag,
-      // garth serialises the access token expiry as `expires_at` (Unix seconds).
-      // We prefer this over `refresh_token_expires_at` because the UI shows this
-      // date as "token expires at" — the access token (hours/days) is far more
-      // meaningful to surface than the refresh token expiry (typically months away).
-      // Fallback to refresh_token_expires_at only if expires_at is absent, which
-      // should not happen in normal garth dumps but guards against older token shapes.
-      token_expires_at: (() => {
-        const expiryTimestamp =
-          tokens.expires_at || tokens.refresh_token_expires_at;
-        return expiryTimestamp ? new Date(expiryTimestamp * 1000) : null;
-      })(),
-      external_user_id: tokens.external_user_id || externalUserId, // Use external_user_id from tokens if available
+      token_expires_at: expiresAt,
+      external_user_id: externalUserId,
     };
-    log('debug', 'handleGarminTokens: Update data for provider (masked):', {
-      provider_name: updateData.provider_name,
-      provider_type: updateData.provider_type,
-      user_id: updateData.user_id,
-      is_active: updateData.is_active,
-      base_url: updateData.base_url,
-      encrypted_garth_dump_masked: updateData.encrypted_garth_dump
-        ? `${updateData.encrypted_garth_dump.substring(0, 30)}...`
-        : 'N/A',
-      token_expires_at: updateData.token_expires_at,
-      external_user_id: updateData.external_user_id,
-    });
+
     let savedProvider;
     if (provider && provider.id) {
-      // Update existing provider entry
       savedProvider =
         await externalProviderRepository.updateExternalDataProvider(
           provider.id,
@@ -158,38 +136,28 @@ async function handleGarminTokens(userId: any, tokensB64: any) {
         );
       log('info', `Updated Garmin provider entry for user ${userId}.`);
     } else {
-      // Create new provider entry
       savedProvider =
         await externalProviderRepository.createExternalDataProvider(updateData);
       log('info', `Created new Garmin provider entry for user ${userId}.`);
     }
-    return savedProvider; // Return the created or updated provider object
-  } catch (error) {
+    return savedProvider;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     log(
       'error',
       `Error handling Garmin tokens for user ${userId}:`,
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error.message
+      errorMessage
     );
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    let errorMessage = `Failed to handle Garmin tokens: ${error.message}`;
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.includes('Invalid key length')) {
-      errorMessage =
-        'Failed to handle Garmin tokens: Encryption key (SPARKY_FITNESS_API_ENCRYPTION_KEY) has an invalid length. Expected 64 hex characters or 44 Base64 characters. Update your environment variable and try again.';
-    }
-    throw new Error(errorMessage, { cause: error });
+    throw new Error(`Failed to handle Garmin tokens: ${errorMessage}`, {
+      cause: error,
+    });
   }
 }
 async function syncGarminHealthAndWellness(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  metricTypes: any
+  userId: string,
+  startDate: string,
+  endDate: string,
+  metricTypes?: string[]
 ) {
   try {
     const provider =
@@ -218,30 +186,40 @@ async function syncGarminHealthAndWellness(
         timeout: 120000, // 2 minutes timeout
       }
     );
-    return response.data;
-  } catch (error) {
+    const result = response.data;
+
+    if (result.new_tokens) {
+      log(
+        'info',
+        `Detected token refresh during health sync for user ${userId}. Updating...`
+      );
+      await handleGarminTokens(userId, result.new_tokens);
+    }
+
+    return result;
+  } catch (error: unknown) {
+    const isAxiosError = axios.isAxiosError(error);
+    const errorData = isAxiosError ? error.response?.data : null;
+    const detail =
+      errorData?.detail ||
+      (error instanceof Error ? error.message : String(error));
+
     log(
       'error',
       `Error fetching Garmin health and wellness data for user ${userId} from ${startDate} to ${endDate}:`,
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error.response ? error.response.data : error.message
+      errorData || detail
     );
     throw new Error(
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Failed to fetch Garmin health and wellness data: ${error.response ? error.response.data.detail : error.message}`,
+      `Failed to fetch Garmin health and wellness data: ${detail}`,
       { cause: error }
     );
   }
 }
 async function fetchGarminActivitiesAndWorkouts(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  activityType: any
+  userId: string,
+  startDate: string,
+  endDate: string,
+  activityType?: string
 ) {
   try {
     const provider =
@@ -276,16 +254,20 @@ async function fetchGarminActivitiesAndWorkouts(
       response.data
     );
     return response.data;
-  } catch (error) {
+  } catch (error: unknown) {
+    const isAxiosError = axios.isAxiosError(error);
+    const errorData = isAxiosError ? error.response?.data : null;
+    const detail =
+      errorData?.detail ||
+      (error instanceof Error ? error.message : String(error));
+
     log(
       'error',
       `Error fetching Garmin activities and workouts for user ${userId} from ${startDate} to ${endDate}:`,
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error.response ? error.response.data : error.message
+      errorData || detail
     );
     throw new Error(
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Failed to fetch Garmin activities and workouts: ${error.response ? error.response.data.detail : error.message}`,
+      `Failed to fetch Garmin activities and workouts: ${detail}`,
       { cause: error }
     );
   }
