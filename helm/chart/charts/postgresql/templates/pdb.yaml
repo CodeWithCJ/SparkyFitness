@@ -1,0 +1,21 @@
+{{- if include "postgresql.pdbEnabled" . }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "postgresql.fullname" . }}
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "postgresql.selectorLabels" . | nindent 6 }}
+  {{- if and (eq .Values.architecture "replication") .Values.replication.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.replication.pdb.maxUnavailable }}
+  {{- else if .Values.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.pdb.maxUnavailable }}
+  {{- else if eq .Values.architecture "replication" }}
+  minAvailable: {{ .Values.replication.pdb.minAvailable }}
+  {{- else }}
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  {{- end }}
+{{- end }}

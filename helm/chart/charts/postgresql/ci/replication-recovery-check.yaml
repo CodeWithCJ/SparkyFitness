@@ -1,0 +1,14 @@
+architecture: replication
+
+replication:
+  primary:
+    persistence:
+      enabled: false
+    probes:
+      requireWritable: true
+  readReplicas:
+    replicaCount: 2
+    persistence:
+      enabled: false
+    probes:
+      requireRecoveryMode: true

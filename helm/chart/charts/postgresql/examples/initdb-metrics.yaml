@@ -1,0 +1,19 @@
+architecture: standalone
+
+auth:
+  existingSecret: postgresql-auth
+
+initdb:
+  scripts:
+    10-app.sql: |
+      CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
+standalone:
+  persistence:
+    enabled: true
+    size: 20Gi

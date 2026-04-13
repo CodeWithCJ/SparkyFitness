@@ -1,0 +1,30 @@
+architecture: replication
+
+auth:
+  existingSecret: postgresql-auth
+
+config:
+  preset: medium
+  pgHbaEntries:
+    - type: host
+      database: app
+      user: app
+      address: 10.0.0.0/8
+      method: scram-sha-256
+
+replication:
+  primary:
+    resourcesPreset: medium
+    persistence:
+      enabled: true
+      size: 50Gi
+  readReplicas:
+    replicaCount: 2
+    resourcesPreset: small
+    persistence:
+      enabled: true
+      size: 50Gi
+
+metrics:
+  enabled: true
+  resourcesPreset: small

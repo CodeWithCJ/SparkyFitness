@@ -1,0 +1,8 @@
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
+standalone:
+  persistence:
+    enabled: false

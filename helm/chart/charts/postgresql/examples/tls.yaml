@@ -1,0 +1,17 @@
+architecture: standalone
+
+auth:
+  existingSecret: postgresql-auth
+
+tls:
+  enabled: true
+  existingSecret: postgresql-tls
+  sslMode: require
+
+networkPolicy:
+  enabled: true
+
+standalone:
+  persistence:
+    enabled: true
+    size: 20Gi

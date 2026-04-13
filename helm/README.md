@@ -12,7 +12,7 @@ A Helm chart for deploying [Sparkyfitness](https://github.com/CodeWithCJ/SparkyF
 | Server | `codewithcj/sparkyfitness_server` | 3010 | No |
 | Frontend | `codewithcj/sparkyfitness_frontend_nonroot` | 8080 | No |
 | Garmin | `codewithcj/sparkyfitness_garmin` | 8000 | Yes |
-| PostgreSQL | `postgres:15-alpine` | 5432 | Yes (bundled) |
+| PostgreSQL | official `postgres:18.3-trixie` via `helmforge/postgresql` | 5432 | Yes (bundled) |
 
 ## Quick Start
 
@@ -20,13 +20,13 @@ A Helm chart for deploying [Sparkyfitness](https://github.com/CodeWithCJ/SparkyF
 helm install sparkyfitness ./chart
 ```
 
-This deploys Sparkyfitness with a bundled PostgreSQL instance, auto-generated secrets, and sane defaults. Access via `kubectl port-forward svc/sparkyfitness-frontend 8080:8080`.
+This deploys Sparkyfitness with a bundled PostgreSQL 18.3 instance, auto-generated secrets, and sane defaults. Access via `kubectl port-forward svc/sparkyfitness-frontend 8080:8080`.
 
 ## Database
 
 ### Bundled PostgreSQL (default)
 
-Enabled by default. Credentials are auto-generated on first install and preserved across upgrades.
+Enabled by default. The chart now pulls PostgreSQL from the namespace-scoped `helmforge/postgresql` dependency, using the official `postgres` image rather than a Bitnami-based chart or image.
 
 ```yaml
 postgresql:
@@ -35,8 +35,24 @@ postgresql:
     database: sparkyfitness
     username: sparky
     # password: ""  # auto-generated if empty
-  persistence:
-    size: 8Gi
+  image:
+    tag: "18.3-trixie"
+```
+
+### Scheduled backups
+
+The bundled PostgreSQL dependency includes a built-in backup CronJob. Backup wiring is intentionally optional and remains disabled until backup settings are supplied:
+
+```yaml
+postgresql:
+  enabled: true
+  backup:
+    enabled: true
+    schedule: "0 3 * * *"
+    s3:
+      endpoint: "https://minio.example.com"
+      bucket: "sparkyfitness-db"
+      existingSecret: "sparkyfitness-db-backup"
 ```
 
 ### External Database
@@ -81,7 +97,7 @@ The chart manages five separate Kubernetes Secrets:
 |--------|------|---------|
 | `<release>-app` | `api_encryption_key`, `better_auth_secret` | Server |
 | `<release>-appdb` | `username`, `password` | Server (app DB user) |
-| `<release>-postgres` | `username`, `password` | Server (DB owner) |
+| `<release>-postgresql-auth` | `postgres-password`, `user-password`, `replication-password` | Bundled PostgreSQL + Server (DB owner password) |
 | `<release>-oidc` | `client_id`, `client_secret` | Server (if OIDC enabled) |
 | `<release>-smtp` | `username`, `password` | Server (if email enabled) |
 
@@ -93,7 +109,13 @@ Each secret supports three provisioning modes:
 
 ### Existing Secrets
 
+For the bundled PostgreSQL dependency, `postgresql.auth.existingSecret` must provide the password keys expected by `helmforge/postgresql`. The owner username remains `postgresql.auth.username` in values.
+
 ```yaml
+postgresql:
+  auth:
+    existingSecret: "my-bundled-postgres-secret" # keys: postgres-password, user-password, replication-password
+
 server:
   secrets:
     existingSecret: "my-app-secret"       # keys: api_encryption_key, better_auth_secret

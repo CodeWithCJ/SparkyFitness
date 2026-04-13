@@ -1,0 +1,44 @@
+suite: Service
+templates:
+  - service.yaml
+release:
+  name: test
+  namespace: default
+tests:
+  - it: should be a Service
+    asserts:
+      - isKind:
+          of: Service
+
+  - it: should have correct name in standalone mode
+    asserts:
+      - equal:
+          path: metadata.name
+          value: test-postgresql
+
+  - it: should be ClusterIP by default
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+
+  - it: should expose port 5432
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            name: postgres
+            port: 5432
+            targetPort: postgres
+
+  - it: should have correct selector labels
+    asserts:
+      - equal:
+          path: spec.selector["app.kubernetes.io/name"]
+          value: postgresql
+      - equal:
+          path: spec.selector["app.kubernetes.io/instance"]
+          value: test
+      - equal:
+          path: spec.selector["app.kubernetes.io/component"]
+          value: postgresql

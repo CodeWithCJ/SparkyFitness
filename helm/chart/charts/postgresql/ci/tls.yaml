@@ -1,0 +1,7 @@
+tls:
+  enabled: true
+  existingSecret: postgresql-tls
+
+standalone:
+  persistence:
+    enabled: false

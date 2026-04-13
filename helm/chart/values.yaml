@@ -330,13 +330,13 @@ garmin:
     automountServiceAccountToken: false
     annotations: {}
 
-# -- Bundled PostgreSQL (postgres:15-alpine, UID 999)
+# -- Bundled PostgreSQL (official postgres:18.3-trixie, UID 999)
 # Set enabled=false and configure externalDatabase to use an existing instance.
 postgresql:
   enabled: true
   image:
     repository: postgres
-    tag: "15-alpine"
+    tag: "18.3-trixie"
     pullPolicy: IfNotPresent
   livenessProbe:
     exec:
@@ -372,7 +372,7 @@ postgresql:
     database: sparkyfitness
     username: sparky
     password: ""
-    # -- Use an existing K8s Secret (keys: username, password)
+    # -- Use an existing K8s Secret (keys: postgres-password, user-password, replication-password)
     existingSecret: ""
   persistence:
     enabled: true
@@ -386,6 +386,24 @@ postgresql:
     limits:
       cpu: 500m
       memory: 512Mi
+  backup:
+    enabled: false
+    schedule: "0 3 * * *"
+    suspend: false
+    concurrencyPolicy: Forbid
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+    backoffLimit: 1
+    archivePrefix: sparkyfitness
+    s3:
+      endpoint: ""
+      bucket: ""
+      prefix: postgresql
+      createBucketIfNotExists: true
+      # -- Use an existing K8s Secret (keys: access-key, secret-key)
+      existingSecret: ""
+      accessKey: ""
+      secretKey: ""
 
 # -- External database (used when postgresql.enabled=false)
 externalDatabase:

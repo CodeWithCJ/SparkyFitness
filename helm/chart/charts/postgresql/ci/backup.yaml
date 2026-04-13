@@ -1,0 +1,9 @@
+# CI: Backup enabled
+backup:
+  enabled: true
+  suspend: true
+  s3:
+    endpoint: https://minio.example.com
+    bucket: postgresql-backups
+    accessKey: test-access
+    secretKey: test-secret
