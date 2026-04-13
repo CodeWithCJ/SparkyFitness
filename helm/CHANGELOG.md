@@ -5,6 +5,8 @@
 ### Features
 
 - **Dedicated non-root frontend image** — Helm now defaults to `codewithcj/sparkyfitness_frontend_nonroot`, which is layered from the canonical frontend image build and runs nginx as UID/GID `101` on port `8080`.
+- **Bundled PostgreSQL dependency restored** — the chart now depends on `helmforge/postgresql`, a namespace-scoped PostgreSQL chart that uses the official `postgres` image and exposes scheduled backup support without requiring an operator.
+- **PostgreSQL 18.3 defaults and backup values** — bundled PostgreSQL now defaults to `postgres:18.3-trixie`, and the parent chart exposes optional backup scheduling and S3 backup settings under `postgresql.backup`.
 
 ### Chores
 

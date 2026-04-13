@@ -1,0 +1,214 @@
+{{- $containerSecurityContext := .Values.securityContext -}}
+{{- if hasKey .Values "containerSecurityContext" -}}
+  {{- $containerSecurityContext = .Values.containerSecurityContext -}}
+{{- end -}}
+{{- if and (eq .Values.architecture "replication") (gt (int .Values.replication.readReplicas.replicaCount) 0) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "postgresql.replicaStatefulSetName" . }}
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "postgresql.replicasHeadlessServiceName" . }}
+  replicas: {{ .Values.replication.readReplicas.replicaCount }}
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      {{- include "postgresql.componentLabels" (dict "root" . "role" "replica") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "postgresql.componentLabels" (dict "root" . "role" "replica") | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "postgresql.podSpecCommon" . | nindent 6 }}
+      initContainers:
+        - name: clone-primary
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -ec
+            - |
+              DATA_DIR="${PGDATA:-/var/lib/postgresql/data/pgdata}"
+              if [ -s "${DATA_DIR}/PG_VERSION" ]; then
+                exit 0
+              fi
+              mkdir -p "${DATA_DIR}"
+              chmod 0700 "${DATA_DIR}"
+              until pg_isready -h {{ include "postgresql.primaryServiceName" . }} -p {{ .Values.service.port }} -U {{ .Values.auth.replicationUsername }}; do
+                sleep 5
+              done
+              rm -rf "${DATA_DIR:?}"/*
+              {{- if .Values.tls.enabled }}
+              export PGSSLMODE={{ .Values.tls.sslMode | quote }}
+              export PGSSLROOTCERT=/tls/{{ .Values.tls.caFilename }}
+              {{- end }}
+              pg_basebackup \
+                -h {{ include "postgresql.primaryServiceName" . }} \
+                -p {{ .Values.service.port }} \
+                -U {{ .Values.auth.replicationUsername }} \
+                -D "${DATA_DIR}" \
+                -Fp \
+                -Xs \
+                -P \
+                -R
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "postgresql.secretName" . }}
+                  key: {{ .Values.auth.existingSecretReplicationPasswordKey }}
+          securityContext:
+            {{- toYaml $containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            {{- if .Values.tls.enabled }}
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+            {{- end }}
+      containers:
+        - name: postgresql
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - -c
+            - config_file=/etc/postgresql/generated/postgresql.conf
+            - -c
+            - hba_file=/etc/postgresql/generated/pg_hba.conf
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.service.port }}
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "postgresql.secretName" . }}
+                  key: {{ .Values.auth.existingSecretPostgresPasswordKey }}
+            {{- if .Values.tls.enabled }}
+            - name: PGSSLMODE
+              value: {{ .Values.tls.sslMode | quote }}
+            - name: PGSSLROOTCERT
+              value: /tls/{{ .Values.tls.caFilename }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - {{ include "postgresql.probeCommandString" . | quote }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - {{ include "postgresql.replicaReadinessCommandString" . | quote }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -ec
+                - {{ include "postgresql.probeCommandString" . | quote }}
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+          {{- end }}
+          securityContext:
+            {{- toYaml $containerSecurityContext | nindent 12 }}
+          resources:
+            {{- if .Values.replication.readReplicas.resources }}
+            {{- toYaml .Values.replication.readReplicas.resources | nindent 12 }}
+            {{- else }}
+            {{- include "postgresql.resourcesPreset" (dict "preset" .Values.replication.readReplicas.resourcesPreset) | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: config
+              mountPath: /etc/postgresql/generated
+            {{- if .Values.tls.enabled }}
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        {{- if .Values.metrics.enabled }}
+        - name: postgres-exporter
+          image: "{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}"
+          imagePullPolicy: {{ .Values.metrics.image.pullPolicy }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.service.metricsPort }}
+          env:
+            {{- include "postgresql.metricsEnv" . | nindent 12 }}
+          securityContext:
+            {{- toYaml $containerSecurityContext | nindent 12 }}
+          resources:
+            {{- if .Values.metrics.resources }}
+            {{- toYaml .Values.metrics.resources | nindent 12 }}
+            {{- else }}
+            {{- include "postgresql.metricsResourcesPreset" . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            {{- if .Values.tls.enabled }}
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+            {{- end }}
+        {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "postgresql.configMapName" . }}
+        {{- if .Values.tls.enabled }}
+        - name: tls
+          secret:
+            secretName: {{ include "postgresql.tlsSecretName" . }}
+        {{- end }}
+        {{- if not .Values.replication.readReplicas.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+  {{- if .Values.replication.readReplicas.persistence.enabled }}
+  volumeClaimTemplates:
+    {{- include "postgresql.volumeClaimTemplate" (dict "root" . "persistence" .Values.replication.readReplicas.persistence) | nindent 4 }}
+  {{- end }}
+{{- end }}

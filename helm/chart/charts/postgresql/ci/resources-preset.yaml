@@ -1,0 +1,15 @@
+architecture: replication
+
+config:
+  preset: medium
+
+replication:
+  primary:
+    resourcesPreset: medium
+  readReplicas:
+    replicaCount: 2
+    resourcesPreset: small
+
+metrics:
+  enabled: true
+  resourcesPreset: small

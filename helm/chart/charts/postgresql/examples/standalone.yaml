@@ -1,0 +1,9 @@
+architecture: standalone
+
+auth:
+  existingSecret: postgresql-auth
+
+standalone:
+  persistence:
+    enabled: true
+    size: 20Gi

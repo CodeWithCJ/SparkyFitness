@@ -1,0 +1,5 @@
+architecture: standalone
+
+standalone:
+  persistence:
+    enabled: false

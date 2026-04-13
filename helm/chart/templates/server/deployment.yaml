@@ -76,15 +76,23 @@ spec:
                   key: password
             # --- Database credentials (owner) ---
             - name: SPARKY_FITNESS_DB_USER
+              {{- if .Values.postgresql.enabled }}
+              value: {{ .Values.postgresql.auth.username | quote }}
+              {{- else }}
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.databaseSecretName" . }}
                   key: username
+              {{- end }}
             - name: SPARKY_FITNESS_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "sparkyfitness.databaseSecretName" . }}
+                  {{- if .Values.postgresql.enabled }}
+                  key: user-password
+                  {{- else }}
                   key: password
+                  {{- end }}
             {{- if .Values.config.oidc.enabled }}
             # --- OIDC credentials ---
             - name: SPARKY_FITNESS_OIDC_CLIENT_ID

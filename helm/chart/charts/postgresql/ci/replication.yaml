@@ -1,0 +1,14 @@
+architecture: replication
+
+replication:
+  primary:
+    persistence:
+      enabled: false
+  readReplicas:
+    replicaCount: 2
+    persistence:
+      enabled: false
+
+pdb:
+  enabled: true
+  minAvailable: 1

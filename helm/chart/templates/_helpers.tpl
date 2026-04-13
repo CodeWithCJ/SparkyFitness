@@ -69,9 +69,27 @@ imagePullSecrets:
 {{/* Database helpers                                                    */}}
 {{/* ================================================================== */}}
 
+{{- define "sparkyfitness.bundledPostgresqlName" -}}
+{{- printf "%s-postgresql" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end }}
+
+{{- define "sparkyfitness.bundledPostgresqlSecretName" -}}
+{{- if .Values.postgresql.auth.existingSecret -}}
+{{- .Values.postgresql.auth.existingSecret -}}
+{{- else -}}
+{{- printf "%s-auth" (include "sparkyfitness.bundledPostgresqlName" .) -}}
+{{- end -}}
+{{- end }}
+
+{{- define "sparkyfitness.bundledPostgresqlSelectorLabels" -}}
+app.kubernetes.io/name: postgresql
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: postgresql
+{{- end }}
+
 {{- define "sparkyfitness.databaseHost" -}}
 {{- if .Values.postgresql.enabled -}}
-{{- include "sparkyfitness.fullname" . }}-postgresql
+{{- include "sparkyfitness.bundledPostgresqlName" . -}}
 {{- else -}}
 {{- required "externalDatabase.host is required when postgresql.enabled=false" .Values.externalDatabase.host -}}
 {{- end -}}
@@ -146,14 +164,15 @@ Database credentials secret name.
 Resolves: postgresql.auth or externalDatabase.auth → existingSecret > chart-managed.
 */}}
 {{- define "sparkyfitness.databaseSecretName" -}}
-{{- $dbAuth := .Values.externalDatabase.auth -}}
 {{- if .Values.postgresql.enabled -}}
-  {{- $dbAuth = .Values.postgresql.auth -}}
-{{- end -}}
-{{- if $dbAuth.existingSecret -}}
-  {{- $dbAuth.existingSecret -}}
+  {{- include "sparkyfitness.bundledPostgresqlSecretName" . -}}
 {{- else -}}
-  {{- include "sparkyfitness.fullname" . }}-postgres
+  {{- $dbAuth := .Values.externalDatabase.auth -}}
+  {{- if $dbAuth.existingSecret -}}
+    {{- $dbAuth.existingSecret -}}
+  {{- else -}}
+    {{- include "sparkyfitness.fullname" . }}-postgres
+  {{- end -}}
 {{- end -}}
 {{- end }}
 

@@ -1,0 +1,23 @@
+architecture: standalone
+
+auth:
+  existingSecret: postgresql-auth
+
+config:
+  preset: medium
+  pgHbaEntries:
+    - type: host
+      database: app
+      user: app
+      address: 10.0.0.0/8
+      method: scram-sha-256
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
+standalone:
+  persistence:
+    enabled: true
+    size: 20Gi

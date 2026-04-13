@@ -1,0 +1,15 @@
+architecture: replication
+
+replication:
+  primary:
+    persistence:
+      enabled: false
+  readReplicas:
+    replicaCount: 2
+    persistence:
+      enabled: false
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true

@@ -1,0 +1,6 @@
+initdb:
+  existingConfigMap: postgresql-extra-initdb
+
+standalone:
+  persistence:
+    enabled: false
