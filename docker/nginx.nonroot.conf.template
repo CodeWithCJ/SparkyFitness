@@ -1,0 +1,92 @@
+limit_req_zone $binary_remote_addr zone=login_signup_zone:10m rate=${NGINX_RATE_LIMIT};
+
+server {
+  listen 8080;
+  server_name localhost;
+
+  add_header X-Frame-Options "SAMEORIGIN" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; font-src 'self' https:;" always;
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+  root /usr/share/nginx/html;
+  index index.html index.htm;
+
+  gzip on;
+  gzip_vary on;
+  gzip_min_length 1024;
+  gzip_proxied any;
+  gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml application/javascript application/json;
+  gzip_disable "MSIE [1-6]\.";
+
+  location ^~ /api/auth/ {
+    limit_req zone=login_signup_zone burst=10 nodelay;
+    proxy_pass http://${SPARKY_FITNESS_SERVER_HOST}:${SPARKY_FITNESS_SERVER_PORT};
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Ssl on;
+  }
+
+  location ~ ^/api/health(/|$) {
+    deny all;
+    access_log off;
+  }
+
+  location /health-data {
+    proxy_pass http://${SPARKY_FITNESS_SERVER_HOST}:${SPARKY_FITNESS_SERVER_PORT}/api/health-data;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Ssl on;
+  }
+
+  location ^~ /uploads/ {
+    proxy_pass http://${SPARKY_FITNESS_SERVER_HOST}:${SPARKY_FITNESS_SERVER_PORT}/uploads/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Ssl on;
+  }
+
+  location ^~ /api/ {
+    proxy_pass http://${SPARKY_FITNESS_SERVER_HOST}:${SPARKY_FITNESS_SERVER_PORT};
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Ssl on;
+
+    proxy_buffer_size 16k;
+    proxy_buffers 16 64k;
+    proxy_busy_buffers_size 128k;
+  }
+
+  location /assets/ {
+    expires 1y;
+    add_header Cache-Control "public, no-transform, immutable";
+    try_files $uri =404;
+  }
+
+  location ~* \.(?:png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+    expires 7d;
+    add_header Cache-Control "public, no-transform, immutable";
+  }
+
+  location / {
+    expires -1;
+    add_header Cache-Control "no-cache, no-store, must-revalidate";
+    try_files $uri $uri/ /index.html;
+  }
+
+  client_max_body_size 10m;
+  proxy_connect_timeout 60s;
+  proxy_send_timeout 300s;
+  proxy_read_timeout 300s;
+
+  access_log /dev/stdout;
+  error_log /dev/stderr warn;
+}

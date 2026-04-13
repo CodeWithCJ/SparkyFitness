@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- **Dedicated non-root frontend image** — Helm now defaults to `codewithcj/sparkyfitness_frontend_nonroot`, which is layered from the canonical frontend image build and runs nginx as UID/GID `101` on port `8080`.
+
+### Chores
+
+- **Frontend image publishing expanded** — Docker publish workflows now build and push the base frontend image first and the non-root frontend variant second to both Docker Hub and GHCR.
+
 ## 0.2.0
 
 ### Breaking Changes

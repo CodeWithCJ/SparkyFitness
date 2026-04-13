@@ -10,7 +10,7 @@ A Helm chart for deploying [Sparkyfitness](https://github.com/CodeWithCJ/SparkyF
 | Component | Image | Default Port | Optional |
 |-----------|-------|-------------|----------|
 | Server | `codewithcj/sparkyfitness_server` | 3010 | No |
-| Frontend | `codewithcj/sparkyfitness` | 80 | No |
+| Frontend | `codewithcj/sparkyfitness_frontend_nonroot` | 8080 | No |
 | Garmin | `codewithcj/sparkyfitness_garmin` | 8000 | Yes |
 | PostgreSQL | `postgres:15-alpine` | 5432 | Yes (bundled) |
 
@@ -20,7 +20,7 @@ A Helm chart for deploying [Sparkyfitness](https://github.com/CodeWithCJ/SparkyF
 helm install sparkyfitness ./chart
 ```
 
-This deploys Sparkyfitness with a bundled PostgreSQL instance, auto-generated secrets, and sane defaults. Access via `kubectl port-forward svc/sparkyfitness-frontend 8080:80`.
+This deploys Sparkyfitness with a bundled PostgreSQL instance, auto-generated secrets, and sane defaults. Access via `kubectl port-forward svc/sparkyfitness-frontend 8080:8080`.
 
 ## Database
 
