@@ -150,3 +150,69 @@ export interface ActivityDetailsResponse {
 export interface ActivityDetailMetric {
   metrics: string[];
 }
+
+export interface CsvRow {
+  entry_date: string;
+  exercise_name: string;
+  preset_name?: string;
+  entry_notes?: string;
+  calories_burned?: string;
+  distance?: string;
+  avg_heart_rate?: string;
+  set_number?: string;
+  set_type?: string;
+  reps?: string;
+  weight?: string;
+  duration_min?: string;
+  rest_time_sec?: string;
+  set_notes?: string;
+  exercise_category?: string;
+  calories_per_hour?: string;
+  exercise_description?: string;
+  exercise_source?: string;
+  exercise_force?: string;
+  exercise_level?: string;
+  exercise_mechanic?: string;
+  exercise_equipment?: string;
+  primary_muscles?: string;
+  secondary_muscles?: string;
+  instructions?: string;
+  activity_field_name?: string;
+  activity_value?: string;
+  [key: string]: string | undefined;
+}
+
+export interface HistoryGroupedExerciseEntry {
+  id: string;
+  entry_date: Date;
+  exercise_name: string;
+  preset_name?: string;
+  entry_notes?: string;
+  calories_burned?: number;
+  distance?: number;
+  avg_heart_rate?: number;
+  exercise_category?: string;
+  calories_per_hour?: number;
+  exercise_description?: string;
+  exercise_source?: string;
+  exercise_force?: string;
+  exercise_level?: string;
+  exercise_mechanic?: string;
+  exercise_equipment?: string[];
+  primary_muscles?: string[];
+  secondary_muscles?: string[];
+  instructions?: string[];
+  sets: {
+    set_number: number;
+    set_type?: string;
+    reps?: number;
+    weight?: number;
+    duration_min?: number;
+    rest_time_sec?: number;
+    notes?: string;
+  }[];
+  activity_details: {
+    field_name: string;
+    value: string | number;
+  }[];
+}
