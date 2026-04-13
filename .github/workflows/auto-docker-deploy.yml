@@ -84,6 +84,39 @@ jobs:
           subject-digest: ${{ steps.push-frontend.outputs.digest }}
           push-to-registry: true
 
+      - name: Metadata frontend non-root
+        id: meta-frontend-nonroot
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            codewithcj/sparkyfitness_frontend_nonroot
+            ghcr.io/${{ github.repository }}-frontend-nonroot
+          tags: |
+            type=raw,value=${{ steps.get_latest_release.outputs.tag }}
+            type=raw,value=latest
+
+      - name: Build and push frontend non-root
+        id: push-frontend-nonroot
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.frontend.nonroot
+          build-args: |
+            FRONTEND_BASE_IMAGE=ghcr.io/${{ github.repository }}-frontend:${{ steps.meta-frontend.outputs.version }}
+          push: true
+          tags: ${{ steps.meta-frontend-nonroot.outputs.tags }}
+          labels: ${{ steps.meta-frontend-nonroot.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate artifact attestation Frontend non-root
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}-frontend-nonroot
+          subject-digest: ${{ steps.push-frontend-nonroot.outputs.digest }}
+          push-to-registry: true
+
       - name: Metadata server
         id: meta-server
         uses: docker/metadata-action@v5

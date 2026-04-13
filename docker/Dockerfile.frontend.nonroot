@@ -1,0 +1,23 @@
+ARG FRONTEND_BASE_IMAGE=codewithcj/sparkyfitness:latest
+FROM ${FRONTEND_BASE_IMAGE}
+
+# Reconfigure nginx so the frontend can run as an unprivileged user in
+# Kubernetes while preserving the upstream image's static content and tooling.
+COPY docker/nginx.nonroot.conf.template /etc/nginx/templates/default.conf.template
+COPY docker/docker-entrypoint.nonroot.sh /docker-entrypoint.sh
+
+RUN chmod +x /docker-entrypoint.sh \
+    && mkdir -p /var/run/nginx /var/cache/nginx /etc/nginx/conf.d \
+    && chown -R 101:101 /var/run/nginx \
+                        /var/cache/nginx \
+                        /var/log/nginx \
+                        /etc/nginx/conf.d \
+                        /usr/share/nginx/html
+
+USER 101:101
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD wget -qO /dev/null http://127.0.0.1:8080/ || exit 1
+
+CMD ["/docker-entrypoint.sh"]

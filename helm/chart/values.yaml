@@ -221,16 +221,16 @@ server:
     automountServiceAccountToken: false
     annotations: {}
 
-# -- Frontend (nginx:alpine, runs as root for port 80)
+# -- Frontend (nginx, runs as non-root on port 8080)
 # NOTE: readOnlyRootFilesystem is enabled; nginx writable dirs are mounted as emptyDir.
 frontend:
   image:
-    repository: codewithcj/sparkyfitness
+    repository: codewithcj/sparkyfitness_frontend_nonroot
     # -- Defaults to Chart.yaml appVersion if empty
     tag: ""
     pullPolicy: IfNotPresent
   replicas: 1
-  port: 80
+  port: 8080
   livenessProbe:
     httpGet:
       path: /
@@ -254,15 +254,21 @@ frontend:
       cpu: 500m
       memory: 256Mi
   podSecurityContext:
-    runAsNonRoot: false
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    fsGroup: 101
+    fsGroupChangePolicy: OnRootMismatch
     seccompProfile:
       type: RuntimeDefault
   containerSecurityContext:
+    runAsUser: 101
+    runAsGroup: 101
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
     capabilities:
       drop: [ALL]
-      add: [CHOWN, NET_BIND_SERVICE, SETGID, SETUID]
+      add: []
   service:
     type: ClusterIP
     annotations: {}
