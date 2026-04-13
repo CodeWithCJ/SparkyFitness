@@ -405,6 +405,50 @@ postgresql:
       accessKey: ""
       secretKey: ""
 
+# -- PVC-backed pg_dumpall backups with configurable daily/weekly/monthly retention.
+# Leave disabled to use the bundled chart's built-in S3 backup mode instead.
+databaseBackup:
+  enabled: false
+  schedule: "0 4 * * *"
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  backoffLimit: 1
+  archivePrefix: sparkyfitness
+  image:
+    repository: postgres
+    tag: "18.3-trixie"
+    pullPolicy: IfNotPresent
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    runAsUser: 999
+    runAsGroup: 999
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop: [ALL]
+  persistence:
+    existingClaim: ""
+    size: 10Gi
+    accessMode: ReadWriteOnce
+    storageClass: ""
+    mountPath: /backup
+  retention:
+    days: 7
+    weeks: 5
+    months: 3
+  resources: {}
+  database:
+    pgDumpAllArgs: "--clean --if-exists"
+
 # -- External database (used when postgresql.enabled=false)
 externalDatabase:
   host: ""

@@ -1,0 +1,107 @@
+{{- if include "sparkyfitness.databaseBackupEnabled" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "sparkyfitness.fullname" . }}-database-backup-scripts
+  labels:
+    {{- include "sparkyfitness.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database-backup
+data:
+  database-backup.sh: |
+    #!/bin/sh
+    set -eu
+    umask 077
+
+    backup_root="${BACKUP_ROOT:-/backup}"
+    archive_dir="${backup_root}/archives"
+    daily_dir="${backup_root}/daily"
+    weekly_dir="${backup_root}/weekly"
+    monthly_dir="${backup_root}/monthly"
+    tmp_dir="${backup_root}/tmp"
+
+    mkdir -p "${archive_dir}" "${daily_dir}" "${weekly_dir}" "${monthly_dir}" "${tmp_dir}"
+
+    timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+    archive="${archive_dir}/${BACKUP_ARCHIVE_PREFIX}-postgresql-${timestamp}.sql.gz"
+    tmp_archive="${tmp_dir}/${BACKUP_ARCHIVE_PREFIX}-postgresql-${timestamp}.sql.gz.tmp"
+
+    export PGPASSWORD="${DB_PASSWORD}"
+    pg_dumpall ${PG_DUMPALL_EXTRA_ARGS:-} \
+      --host="${DB_HOST}" \
+      --port="${DB_PORT}" \
+      --username="${DB_USER}" | gzip -c > "${tmp_archive}"
+    mv "${tmp_archive}" "${archive}"
+
+    link_slot() {
+      slot_dir="$1"
+      slot_name="$2"
+      mkdir -p "${slot_dir}"
+      rm -f "${slot_dir}/${slot_name}"
+      ln "${archive}" "${slot_dir}/${slot_name}"
+    }
+
+    if [ "${RETENTION_DAYS:-0}" -gt 0 ]; then
+      link_slot "${daily_dir}" "$(date -u +%F).sql.gz"
+    fi
+
+    if [ "${RETENTION_WEEKS:-0}" -gt 0 ]; then
+      link_slot "${weekly_dir}" "$(date -u +%G-W%V).sql.gz"
+    fi
+
+    if [ "${RETENTION_MONTHS:-0}" -gt 0 ]; then
+      link_slot "${monthly_dir}" "$(date -u +%Y-%m).sql.gz"
+    fi
+
+    build_keep_file() {
+      bucket="$1"
+      count="$2"
+      keep_file="$3"
+      : > "${keep_file}"
+      i=0
+      while [ "${i}" -lt "${count}" ]; do
+        case "${bucket}" in
+          daily)
+            date -u -d "-${i} day" +%F
+            ;;
+          weekly)
+            date -u -d "-${i} week" +%G-W%V
+            ;;
+          monthly)
+            date -u -d "$(date -u +%Y-%m-01) -${i} month" +%Y-%m
+            ;;
+          *)
+            return 1
+            ;;
+        esac
+        i=$((i + 1))
+      done | sed 's/$/.sql.gz/' > "${keep_file}"
+    }
+
+    cleanup_slots() {
+      slot_dir="$1"
+      keep_file="$2"
+      [ -d "${slot_dir}" ] || return 0
+      find "${slot_dir}" -maxdepth 1 -type f | while IFS= read -r path; do
+        name="$(basename "${path}")"
+        if ! grep -Fxq "${name}" "${keep_file}"; then
+          rm -f "${path}"
+        fi
+      done
+    }
+
+    daily_keep="$(mktemp)"
+    weekly_keep="$(mktemp)"
+    monthly_keep="$(mktemp)"
+    trap 'rm -f "${daily_keep}" "${weekly_keep}" "${monthly_keep}"' EXIT
+
+    build_keep_file daily "${RETENTION_DAYS:-0}" "${daily_keep}"
+    build_keep_file weekly "${RETENTION_WEEKS:-0}" "${weekly_keep}"
+    build_keep_file monthly "${RETENTION_MONTHS:-0}" "${monthly_keep}"
+
+    cleanup_slots "${daily_dir}" "${daily_keep}"
+    cleanup_slots "${weekly_dir}" "${weekly_keep}"
+    cleanup_slots "${monthly_dir}" "${monthly_keep}"
+
+    find "${archive_dir}" -maxdepth 1 -type f -name "${BACKUP_ARCHIVE_PREFIX}-postgresql-*.sql.gz" -links 1 -delete
+    find "${tmp_dir}" -maxdepth 1 -type f -delete
+{{- end }}

@@ -22,11 +22,13 @@ helm install sparkyfitness ./chart
 
 This deploys Sparkyfitness with a bundled PostgreSQL 18.3 instance, auto-generated secrets, and sane defaults. Access via `kubectl port-forward svc/sparkyfitness-frontend 8080:8080`.
 
+For Kubernetes routing, the chart's Ingress and HTTPRoute send `/api` and `/uploads` directly to the server service and send `/` to the frontend service. The frontend nginx serves static assets and SPA routes only.
+
 ## Database
 
 ### Bundled PostgreSQL (default)
 
-Enabled by default. The chart now pulls PostgreSQL from the namespace-scoped `helmforge/postgresql` dependency, using the official `postgres` image rather than a Bitnami-based chart or image.
+Enabled by default. The chart now pulls PostgreSQL from the namespace-scoped `helmforge/postgresql` dependency and uses the official `postgres` image.
 
 ```yaml
 postgresql:
@@ -41,7 +43,14 @@ postgresql:
 
 ### Scheduled backups
 
-The bundled PostgreSQL dependency includes a built-in backup CronJob. Backup wiring is intentionally optional and remains disabled until backup settings are supplied:
+Two backup modes are available:
+
+1. `postgresql.backup` — the bundled dependency's built-in **S3-compatible** backup CronJob
+2. `databaseBackup` — this chart's **PVC-backed** `pg_dumpall` CronJob with retention
+
+Enable only one mode at a time.
+
+#### S3-compatible object storage
 
 ```yaml
 postgresql:
@@ -53,6 +62,31 @@ postgresql:
       endpoint: "https://minio.example.com"
       bucket: "sparkyfitness-db"
       existingSecret: "sparkyfitness-db-backup"
+```
+
+The built-in S3 path remains available unchanged.
+
+#### PVC-backed retention backups
+
+The chart-managed PVC backup job stores compressed `pg_dumpall` archives on a PersistentVolumeClaim and enforces retention in three buckets:
+
+- one backup per retained **day**
+- one backup per retained **week**
+- one backup per retained **month**
+
+For example, `days: 7`, `weeks: 5`, `months: 3` keeps one backup for each of the last 7 days, 5 weeks, and 3 months.
+
+```yaml
+databaseBackup:
+  enabled: true
+  schedule: "0 4 * * *"
+  persistence:
+    storageClass: ceph-rbd-capacity
+    size: 20Gi
+  retention:
+    days: 7
+    weeks: 5
+    months: 3
 ```
 
 ### External Database
@@ -204,6 +238,12 @@ ingress:
         - sparkyfitness.example.com
 ```
 
+When enabled, the chart routes:
+
+- `/api` → `server`
+- `/uploads` → `server`
+- `/` → `frontend`
+
 ### Gateway API (HTTPRoute)
 
 ```yaml
@@ -215,6 +255,8 @@ httpRoute:
     namespace: gateway-system
     sectionName: https
 ```
+
+The generated `HTTPRoute` uses the same split routing as the Ingress template: `/api` and `/uploads` go to the server service, and `/` goes to the frontend service.
 
 ### Network Policies
 
@@ -272,7 +314,7 @@ Each component runs with a security context matching its upstream image:
 | Component | UID:GID | Non-Root | Capabilities |
 |-----------|---------|----------|-------------|
 | Server | 1000:1000 | Yes | None (all dropped) |
-| Frontend | root | No | `CHOWN`, `NET_BIND_SERVICE`, `SETGID`, `SETUID` |
+| Frontend | 101:101 | Yes | None (all dropped) |
 | Garmin | 1:1 | Yes | None (all dropped) |
 | PostgreSQL | 999:999 | Yes | None (all dropped) |
 
