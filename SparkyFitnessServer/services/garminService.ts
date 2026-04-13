@@ -887,7 +887,6 @@ async function syncGarminData(
     // 5. Sync Activities and Workouts
     log('info', '[garminService] Fetching Activities and Workouts data...');
     const activitiesData =
-      // @ts-expect-error TS(2554): Expected 4 arguments, but got 3.
       await garminConnectService.fetchGarminActivitiesAndWorkouts(
         userId,
         startDate,

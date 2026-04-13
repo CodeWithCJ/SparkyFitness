@@ -84,6 +84,24 @@ services:
     depends_on:
       - sparkyfitness-server
 
+  # sparkyfitness-garmin:
+  #   build:
+  #     context: ..
+  #     dockerfile: docker/Dockerfile.garmin_microservice.dev
+  #   container_name: sparkyfitness-garmin
+  #   environment:
+  #     GARMIN_MICROSERVICE_URL: http://sparkyfitness-garmin:${GARMIN_SERVICE_PORT}
+  #     GARMIN_SERVICE_PORT: ${GARMIN_SERVICE_PORT}
+  #     GARMIN_SERVICE_IS_CN: ${GARMIN_SERVICE_IS_CN} # set to true for China region. Everything else should be false. Optional - defaults to false
+  #     PUID: 1000
+  #     GUID: 1000
+  #   networks:
+  #     - sparkyfitness-network
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - sparkyfitness-db
+  #     - sparkyfitness-server
+
 networks:
   sparkyfitness-network:
     driver: bridge

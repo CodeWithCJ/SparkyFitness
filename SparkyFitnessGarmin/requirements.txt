@@ -1,5 +1,6 @@
 fastapi==0.111.0
 uvicorn==0.30.1
-garminconnect==0.2.36
-garth==0.5.20
+garminconnect==0.3.2
+curl-cffi==0.15.0
+ua-generator==2.0.25
 python-dotenv==1.0.0
