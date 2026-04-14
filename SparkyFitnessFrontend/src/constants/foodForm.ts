@@ -42,6 +42,7 @@ export const UNIT_GROUPS = [
       'scoop',
       'bar',
       'stick',
+      'whole',
     ],
   },
 ];

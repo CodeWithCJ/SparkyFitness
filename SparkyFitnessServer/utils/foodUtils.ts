@@ -79,6 +79,7 @@ const SERVING_UNIT_ALIASES = {
   bars: 'bar',
   stick: 'stick',
   sticks: 'stick',
+  whole: 'whole',
 };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeServingUnit(unit: any) {
