@@ -5,7 +5,10 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { WorkoutPlanTemplate } from '@/types/workout';
+import type {
+  SortableExerciseItemData,
+  WorkoutPlanTemplate,
+} from '@/types/workout';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Plus, Clipboard } from 'lucide-react';
@@ -36,8 +39,8 @@ import AddExerciseDialog from './AddExerciseDialog';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { DAYS_OF_WEEK } from '@/constants/exercises';
-import { SortableAssignmentItem } from './SortableAssignmentItem';
 import { useWorkoutPlanAssignments } from '@/hooks/Exercises/useWorkoutPlanAssignments';
+import { SortableExerciseItem } from './SortableExerciseItem';
 
 interface AddWorkoutPlanDialogProps {
   isOpen: boolean;
@@ -64,8 +67,8 @@ const AddWorkoutPlanDialog = ({
 }: AddWorkoutPlanDialogProps) => {
   const {
     assignments,
-    copiedAssignment,
     workoutPresets,
+    copiedAssignment,
     isAddExerciseDialogOpen,
     setIsAddExerciseDialogOpen,
     setSelectedDayForAssignment,
@@ -307,21 +310,22 @@ const AddWorkoutPlanDialog = ({
                               (a) => a.id === assignment.id
                             );
                             return (
-                              <SortableAssignmentItem
+                              <SortableExerciseItem
                                 key={assignment.id}
-                                assignment={assignment}
-                                originalIndex={originalIndex}
-                                workoutPresets={workoutPresets}
-                                handleCopyAssignment={handleCopyAssignment}
-                                handleRemoveAssignment={handleRemoveAssignment}
-                                handleSetChangeInPlan={handleSetChangeInPlan}
-                                handleDuplicateSetInPlan={
-                                  handleDuplicateSetInPlan
-                                }
-                                handleRemoveSetInPlan={handleRemoveSetInPlan}
-                                handleAddSetInPlan={handleAddSetInPlan}
+                                ex={assignment}
+                                exerciseIndex={originalIndex}
                                 weightUnit={weightUnit}
-                                t={t}
+                                workoutPresets={workoutPresets}
+                                onRemoveExercise={handleRemoveAssignment}
+                                onSetChange={handleSetChangeInPlan}
+                                onDuplicateSet={handleDuplicateSetInPlan}
+                                onRemoveSet={handleRemoveSetInPlan}
+                                onAddSet={handleAddSetInPlan}
+                                onCopyExercise={
+                                  handleCopyAssignment as (
+                                    ex: SortableExerciseItemData
+                                  ) => void
+                                }
                               />
                             );
                           })}

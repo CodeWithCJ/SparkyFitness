@@ -1,4 +1,9 @@
-import { ExerciseEntrySetRequest } from '@workspace/shared';
+import {
+  ExerciseEntryResponse,
+  ExerciseEntrySetRequest,
+  ExerciseEntrySetResponse,
+  PresetSessionResponse,
+} from '@workspace/shared';
 import { Exercise } from './exercises';
 
 export type WorkoutPresetSet = ExerciseEntrySetRequest;
@@ -78,3 +83,21 @@ export interface ExerciseToLog extends Exercise {
   distance?: number; // New field
   avg_heart_rate?: number; // New field
 }
+
+// The combined type for an exercise block
+export type SortableExerciseItemData =
+  | WorkoutPresetExercise
+  | WorkoutPlanAssignment
+  | ExerciseEntryResponse;
+
+// The combined type for a single set
+export type SortableSetData =
+  | ExerciseEntrySetRequest
+  | ExerciseEntrySetResponse;
+
+// The combined type for presets list (used for labels)
+export type PresetMetadata = WorkoutPreset | PresetSessionResponse;
+
+export type SetFieldKey =
+  | keyof ExerciseEntrySetResponse
+  | keyof ExerciseEntrySetRequest;

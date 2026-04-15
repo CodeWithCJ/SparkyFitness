@@ -33,8 +33,8 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { useCreateExerciseEntryMutation } from '@/hooks/Exercises/useExerciseEntries';
-import { SortableSetItem } from './ExerciseSortableItems';
 import { ActivityDetailKeyValuePair } from '@/types/exercises';
+import { SortableSetItem } from '../Exercises/SortableWorkoutPresetSet';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
@@ -285,9 +285,12 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                     key={`set-${index}`}
                     set={set}
                     setIndex={index}
-                    handleSetChange={handleSetChange}
-                    handleDuplicateSet={handleDuplicateSet}
-                    handleRemoveSet={handleRemoveSet}
+                    exerciseIndex={0}
+                    onSetChange={(_, sIdx, field, value) =>
+                      handleSetChange(sIdx, field, value ?? undefined)
+                    }
+                    onDuplicateSet={(_, sIdx) => handleDuplicateSet(sIdx)}
+                    onRemoveSet={(_, sIdx) => handleRemoveSet(sIdx)}
                     weightUnit={weightUnit}
                   />
                 ))}
