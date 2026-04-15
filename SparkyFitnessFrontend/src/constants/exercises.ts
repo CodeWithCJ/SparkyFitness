@@ -155,3 +155,52 @@ export const CSV_DUMMY_DATA = [
     activity_value: 'Park Loop',
   },
 ];
+
+export const requiredHeaders = [
+  'name',
+  'category',
+  'calories_per_hour',
+  'description',
+  'force',
+  'level',
+  'mechanic',
+  'equipment',
+  'primary_muscles',
+  'secondary_muscles',
+  'instructions',
+  'images',
+  'is_custom',
+  'shared_with_public',
+];
+
+export const textFields = new Set(['name', 'category', 'description']);
+export const booleanFields = new Set(['is_custom', 'shared_with_public']);
+export const arrayFields = new Set([
+  'equipment',
+  'primary_muscles',
+  'secondary_muscles',
+  'instructions',
+  'images',
+]);
+
+// instead of using input for Level, Force & Mechanic, use dropdowns with predefined options for better data consistency
+export const dropdownFields = new Set(['force', 'level', 'mechanic']);
+export const dropdownOptions: Record<string, string[]> = {
+  level: ['beginner', 'intermediate', 'expert'],
+  force: ['pull', 'push', 'static'],
+  mechanic: ['isolation', 'compound'],
+};
+
+export const DROPDOWN_GUIDES = [
+  {
+    key: 'levelLabel',
+    label: 'Level:',
+    options: dropdownOptions['level'],
+  },
+  { key: 'forceLabel', label: 'Force:', options: dropdownOptions['force'] },
+  {
+    key: 'mechanicLabel',
+    label: 'Mechanic:',
+    options: dropdownOptions['mechanic'],
+  },
+];

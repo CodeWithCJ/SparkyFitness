@@ -1,4 +1,3 @@
-// hooks/Exercises/useExerciseHistoryImport.ts
 import { useState, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import Papa from 'papaparse';
