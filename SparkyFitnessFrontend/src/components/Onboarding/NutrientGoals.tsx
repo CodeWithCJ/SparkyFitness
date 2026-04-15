@@ -84,7 +84,7 @@ export const NutrientGoals = ({
                         prev ? { ...prev, carbs: Number(e.target.value) } : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">g</span>
                 </div>
@@ -119,7 +119,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">g</span>
                 </div>
@@ -152,7 +152,7 @@ export const NutrientGoals = ({
                         prev ? { ...prev, fat: Number(e.target.value) } : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">g</span>
                 </div>
@@ -175,7 +175,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">g</span>
                 </div>
@@ -209,7 +209,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">g</span>
                 </div>
@@ -232,7 +232,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">g</span>
                 </div>
@@ -258,7 +258,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">g</span>
                 </div>
@@ -284,7 +284,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">g</span>
                 </div>
@@ -318,7 +318,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">mg</span>
                 </div>
@@ -341,7 +341,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">mg</span>
                 </div>
@@ -364,7 +364,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">mg</span>
                 </div>
@@ -387,7 +387,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">mg</span>
                 </div>
@@ -408,7 +408,7 @@ export const NutrientGoals = ({
                         prev ? { ...prev, iron: Number(e.target.value) } : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">mg</span>
                 </div>
@@ -442,7 +442,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">g</span>
                 </div>
@@ -465,7 +465,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">µg</span>
                 </div>
@@ -488,7 +488,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">mg</span>
                 </div>
@@ -527,7 +527,7 @@ export const NutrientGoals = ({
                               : null
                           )
                         }
-                        className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                        className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                       />
                       <span className="text-sm">{cn.unit}</span>
                     </div>
@@ -608,7 +608,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">min</span>
                 </div>
@@ -635,7 +635,7 @@ export const NutrientGoals = ({
                           : null
                       )
                     }
-                    className="w-16 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
+                    className="w-20 text-right bg-transparent border-gray-700 text-white h-8 text-sm"
                   />
                   <span className="text-sm">kcal</span>
                 </div>
