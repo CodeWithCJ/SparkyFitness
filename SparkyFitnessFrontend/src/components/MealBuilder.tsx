@@ -36,6 +36,7 @@ import {
   useCreateFoodEntryMealMutation,
   useUpdateFoodEntryMealMutation,
 } from '@/hooks/Diary/useFoodEntries';
+import { Textarea } from '@/components/ui/textarea';
 
 interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
@@ -571,7 +572,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         <Label htmlFor="mealDescription">
           {t('mealBuilder.mealDescription', 'Description (Optional)')}
         </Label>
-        <Input
+        <Textarea
           id="mealDescription"
           value={mealDescription}
           onChange={(e) => setMealDescription(e.target.value)}

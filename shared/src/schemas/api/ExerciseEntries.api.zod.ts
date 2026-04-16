@@ -213,7 +213,7 @@ export const exerciseProgressResponseSchema = z.object({
   image_url: z.string().nullable(),
   distance: z.number().nullable(),
   avg_heart_rate: z.number().nullable(),
-  provider_name: z.string(),
+  provider_name: z.string().nullable(),
   sets: z.array(exerciseEntrySetRequestSchema),
 });
 
