@@ -36,7 +36,7 @@ import {
   useCreateFoodEntryMealMutation,
   useUpdateFoodEntryMealMutation,
 } from '@/hooks/Diary/useFoodEntries';
-import { Textarea } from './ui/textarea';
+import { Textarea } from '@/components/ui/textarea';
 
 interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
