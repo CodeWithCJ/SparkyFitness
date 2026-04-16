@@ -62,6 +62,7 @@ export const SERVING_UNIT_GROUP: StandardUnitGroup = {
     'scoop',
     'bar',
     'stick',
+    'whole',
   ],
 };
 
@@ -100,6 +101,7 @@ export const ALL_CONVERSION_UNITS: string[] = [
   'scoop',
   'bar',
   'stick',
+  'whole',
 ];
 
 /** Returns the measurement category for a unit, or null if not a standard unit */

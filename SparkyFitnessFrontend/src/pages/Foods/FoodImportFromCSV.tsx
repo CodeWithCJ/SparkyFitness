@@ -76,6 +76,7 @@ const servingUnitOptions = [
   'scoop',
   'bar',
   'stick',
+  'whole',
 ];
 
 const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {

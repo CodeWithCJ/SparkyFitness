@@ -39,7 +39,7 @@ export interface FoodFormProps {
 
 const SERVING_UNIT_OPTIONS = [
   'serving', 'g', 'oz', 'cup', 'piece', 'slice', 'scoop', 'tbsp', 'tsp',
-  'bowl', 'plate', 'handful', 'bar', 'stick', 'can', 'bottle', 'packet', 'bag',
+  'bowl', 'plate', 'handful', 'bar', 'stick', 'can', 'bottle', 'packet', 'bag', 'whole',
   'ml', 'l', 'kg', 'lb', 'mg',
 ].map((u) => ({ label: u, value: u }));
 
