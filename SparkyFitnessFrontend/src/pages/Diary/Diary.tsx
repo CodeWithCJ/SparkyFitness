@@ -469,6 +469,7 @@ const Diary = () => {
           entry={editingEntry}
           open={true}
           onOpenChange={(open) => !open && setEditingEntry(null)}
+          availableMealTypes={availableMealTypes ?? []}
         />
       )}
 

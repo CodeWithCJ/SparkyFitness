@@ -30,17 +30,20 @@ import { useUpdateFoodEntryMutation } from '@/hooks/Diary/useFoodEntries';
 import { calculateNutrition } from '@/utils/nutritionCalculations';
 import { NutrientGrid } from './NutrientsGrid';
 import { useUnitConversion } from '@/hooks/Foods/useUnitConversion';
+import { FoodEntryUpdateData, MealTypeDefinition } from '@/types/diary';
 
 interface EditFoodEntryDialogProps {
   entry: FoodEntry | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  availableMealTypes: MealTypeDefinition[];
 }
 
 const EditFoodEntryDialog = ({
   entry,
   open,
   onOpenChange,
+  availableMealTypes,
 }: EditFoodEntryDialogProps) => {
   const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
 
@@ -48,6 +51,7 @@ const EditFoodEntryDialog = ({
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     entry?.variant_id || null
   );
+  const [mealId, setMealId] = useState<string>(entry?.meal_type_id ?? '');
 
   const { data: customNutrients } = useCustomNutrients();
   const { data: foodData, isLoading: isLoadingFood } = useFoodView(
@@ -170,13 +174,15 @@ const EditFoodEntryDialog = ({
           ...convertedVariant,
           ...savedVariant,
         };
+        const data: FoodEntryUpdateData = {
+          quantity,
+          unit: variantWithId.serving_unit,
+          variant_id: variantWithId.id || null,
+          meal_type_id: mealId,
+        };
         await updateFoodEntry({
           id: entry.id,
-          data: {
-            quantity,
-            unit: variantWithId.serving_unit,
-            variant_id: variantWithId.id || null,
-          },
+          data,
         });
         info(
           loggingLevel,
@@ -200,6 +206,7 @@ const EditFoodEntryDialog = ({
       const updateData = {
         quantity,
         unit: selectedVariant.serving_unit,
+        meal_type_id: mealId,
         variant_id:
           selectedVariant.id === 'default-variant' ? null : selectedVariant.id,
       };
@@ -254,7 +261,7 @@ const EditFoodEntryDialog = ({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="quantity">Quantity</Label>
                   <Input
@@ -298,6 +305,21 @@ const EditFoodEntryDialog = ({
                       )}
                       <SelectSeparator />
                       <SelectItem value="__custom__">Custom unit...</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="meal">Meal</Label>
+                  <Select value={mealId} onValueChange={setMealId}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableMealTypes.map((mealType) => (
+                        <SelectItem key={mealType.id} value={mealType.id}>
+                          {mealType.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
