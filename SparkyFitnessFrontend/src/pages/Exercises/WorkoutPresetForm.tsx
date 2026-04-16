@@ -5,7 +5,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,6 @@ import { Plus } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext } from '@dnd-kit/sortable';
-
 import { SortableExerciseItem } from './SortableExerciseItem';
 import { useWorkoutPresetForm } from '@/hooks/Exercises/useWorkoutPresetForm';
 
@@ -66,71 +64,68 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
         requireConfirmation
-        className="sm:max-w-300 max-h-[90vh] overflow-y-auto"
+        className="max-w-[95vw] sm:max-w-[1200px] max-h-[90vh] overflow-y-auto"
       >
         <DialogHeader>
           <DialogTitle>
             {initialPreset
               ? t('workoutPresetForm.editTitle', 'Edit Workout Preset')
-              : t('workoutPresetForm.createTitle', 'Create New Workout Preset')}
+              : t('workoutPresetForm.createTitle', 'Create Workout Preset')}
           </DialogTitle>
-          <DialogDescription>
-            {initialPreset
-              ? t(
-                  'workoutPresetForm.editDescription',
-                  'Edit the details of your workout preset.'
-                )
-              : t(
-                  'workoutPresetForm.createDescription',
-                  'Create a new workout preset by providing a name, description, and exercises.'
-                )}
-          </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4 overflow-y-auto max-h-full">
-          <div className="space-y-2">
-            <Label htmlFor="name">
-              {t('workoutPresetForm.nameLabel', 'Name')}
-            </Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">
-              {t('workoutPresetForm.descriptionLabel', 'Description')}
-            </Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="isPublic"
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
-            />
-            <Label htmlFor="isPublic">
-              {t('workoutPresetForm.shareWithPublicLabel', 'Share with Public')}
-            </Label>
+
+        <div className="grid gap-6 py-2 px-2">
+          <div className="grid gap-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="name" className="text-xs font-semibold">
+                  {t('workoutPresetForm.nameLabel', 'Preset Name')}
+                </Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-0 md:pt-5">
+                <Switch
+                  id="isPublic"
+                  checked={isPublic}
+                  onCheckedChange={setIsPublic}
+                />
+                <Label htmlFor="isPublic" className="text-sm font-medium">
+                  {t('workoutPresetForm.shareWithPublicLabel', 'Public Preset')}
+                </Label>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="description" className="text-xs font-semibold">
+                {t('workoutPresetForm.descriptionLabel', 'Description')}
+              </Label>
+              <Textarea
+                id="description"
+                className="resize-none h-16"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
           </div>
 
-          <div className="col-span-4">
-            <h3 className="text-lg font-semibold mb-2">
-              {t('workoutPresetForm.exercisesLabel', 'Exercises')}
-            </h3>
-            <Button
-              type="button"
-              onClick={() => setIsAddExerciseDialogOpen(true)}
-              className="mb-4"
-            >
-              <Plus className="h-4 w-4 mr-2" />{' '}
-              {t('workoutPresetForm.addExerciseButton', 'Add Exercise')}
-            </Button>
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                {t('workoutPresetForm.exercisesLabel', 'Exercises')}
+              </h3>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsAddExerciseDialogOpen(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {t('workoutPresetForm.addExerciseButton', 'Add Exercise')}
+              </Button>
+            </div>
 
             <AddExerciseDialog
               open={isAddExerciseDialogOpen}
@@ -151,12 +146,12 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                       key={ex.id}
                       ex={ex}
                       exerciseIndex={exerciseIndex}
-                      handleRemoveExercise={handleRemoveExercise}
-                      handleSetChange={handleSetChange}
-                      handleDuplicateSet={handleDuplicateSet}
-                      handleRemoveSet={handleRemoveSet}
-                      handleAddSet={handleAddSet}
                       weightUnit={weightUnit}
+                      onRemoveExercise={handleRemoveExercise}
+                      onSetChange={handleSetChange}
+                      onDuplicateSet={handleDuplicateSet}
+                      onRemoveSet={handleRemoveSet}
+                      onAddSet={handleAddSet}
                     />
                   ))}
                 </div>
@@ -164,6 +159,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
             </DndContext>
           </div>
         </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel', 'Cancel')}

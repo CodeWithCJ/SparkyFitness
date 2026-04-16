@@ -37,8 +37,8 @@ import {
   useUpdateExerciseEntryMutation,
 } from '@/hooks/Exercises/useExerciseEntries';
 import { useQueryClient } from '@tanstack/react-query';
-import { SortableSetItem } from './ExerciseSortableItems';
 import { ActivityDetailKeyValuePair, ExerciseEntry } from '@/types/exercises';
+import { SortableSetItem } from '../Exercises/SortableWorkoutPresetSet';
 
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;
@@ -385,9 +385,12 @@ const EditExerciseEntryDialog = ({
                       key={`set-${setIndex}`}
                       set={set}
                       setIndex={setIndex}
-                      handleSetChange={handleSetChange}
-                      handleDuplicateSet={handleDuplicateSet}
-                      handleRemoveSet={handleRemoveSet}
+                      exerciseIndex={0}
+                      onSetChange={(_, sIdx, field, value) =>
+                        handleSetChange(sIdx, field, value ?? undefined)
+                      }
+                      onDuplicateSet={(_, sIdx) => handleDuplicateSet(sIdx)}
+                      onRemoveSet={(_, sIdx) => handleRemoveSet(sIdx)}
                       weightUnit={weightUnit}
                     />
                   ))}

@@ -1,9 +1,7 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { History, ChevronDown, ChevronUp } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useExerciseHistory } from '@/hooks/Exercises/useExerciseEntries';
 
@@ -14,7 +12,7 @@ interface ExerciseHistoryDisplayProps {
 
 const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
   exerciseId,
-  limit = 5,
+  limit = 3,
 }) => {
   const { t } = useTranslation();
   const { weightUnit, convertWeight } = usePreferences();
@@ -26,138 +24,79 @@ const ExerciseHistoryDisplay: React.FC<ExerciseHistoryDisplayProps> = ({
 
   if (loading) {
     return (
-      <p className="text-center text-muted-foreground">
-        {t(
-          'exercise.exerciseHistoryDisplay.loadingHistory',
-          'Loading history...'
-        )}
+      <p className="text-xs text-muted-foreground">
+        {t('exerciseHistoryDisplay.loadingHistory', 'Loading history...')}
       </p>
     );
   }
 
-  if (history?.length === 0) {
-    return (
-      <p className="text-center text-muted-foreground">
-        {t(
-          'exercise.exerciseHistoryDisplay.noPreviousEntries',
-          'No previous entries found for this exercise.'
-        )}
-      </p>
-    );
+  if (!history || history.length === 0) {
+    return null;
+  }
+
+  const now = new Date();
+  const validHistory = history.filter(
+    (entry) => entry.entry_date && new Date(entry.entry_date) <= now
+  );
+
+  if (validHistory.length === 0) {
+    return null;
   }
 
   return (
-    <Card className="mt-4">
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-md font-semibold">
-            {t(
-              'exercise.exerciseHistoryDisplay.lastEntries',
-              'Last {{limit}} Entries',
-              { limit }
-            )}
-          </CardTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMinimized(!isMinimized)}
-          >
-            {isMinimized ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <ChevronUp className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      </CardHeader>
-      {!isMinimized && history && (
-        <CardContent>
-          <div className="space-y-2">
-            {history
-              .filter(
-                (entry) =>
-                  entry.entry_date && new Date(entry.entry_date) <= new Date()
-              )
-              .map((entry, index) => (
-                <div
-                  key={entry.id || index}
-                  className="border-b pb-2 last:border-b-0"
-                >
-                  <p className="text-sm font-medium">
-                    {entry.entry_date
-                      ? new Date(entry.entry_date).toLocaleDateString()
-                      : ''}
-                  </p>
-                  <div className="text-xs text-muted-foreground">
-                    {entry.sets && (
-                      <div>
-                        <strong>
-                          {t(
-                            'exercise.exerciseHistoryDisplay.setsLabel',
-                            'Sets:'
-                          )}
-                        </strong>
-                        {entry.sets.map((set, i) => (
-                          <div key={i} className="pl-4">
-                            {`${set.reps}x${convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(1)}${weightUnit}`}
-                            {set.duration
-                              ? ` ${t('exercise.exerciseHistoryDisplay.durationLabel', 'for')} ${set.duration}min`
-                              : ''}
-                            {set.rest_time
-                              ? ` ${t('exercise.exerciseHistoryDisplay.restLabel', 'with')} ${set.rest_time}s rest`
-                              : ''}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {entry.duration_minutes && (
-                      <div>
-                        {' '}
-                        •{' '}
-                        {t(
-                          'exercise.exerciseHistoryDisplay.durationLabel',
-                          'Duration:'
-                        )}{' '}
-                        {entry.duration_minutes} min
-                      </div>
-                    )}
-                    {entry.calories_burned && (
-                      <div>
-                        {' '}
-                        •{' '}
-                        {t(
-                          'exercise.exerciseHistoryDisplay.caloriesLabel',
-                          'Calories:'
-                        )}{' '}
-                        {Math.round(entry.calories_burned)}
-                      </div>
-                    )}
-                  </div>
-                  {entry.notes && (
-                    <p className="text-xs text-muted-foreground italic">
-                      {t(
-                        'exercise.exerciseHistoryDisplay.notesLabel',
-                        'Notes:'
-                      )}{' '}
-                      {entry.notes}
-                    </p>
-                  )}
-                  {entry.image_url && (
-                    <img
-                      src={entry.image_url}
-                      alt={t(
-                        'exercise.exerciseHistoryDisplay.exerciseImageAlt',
-                        'Exercise'
+    <div className="mt-2 text-xs">
+      <div
+        className="flex items-center text-muted-foreground cursor-pointer"
+        onClick={() => setIsMinimized(!isMinimized)}
+      >
+        <History className="h-3 w-3 mr-1" />
+        <span className="font-medium">
+          {t('exercise.lastEntries', 'Last {{limit}} Entries', { limit })}
+        </span>
+        {isMinimized ? (
+          <ChevronDown className="h-3 w-3 ml-1" />
+        ) : (
+          <ChevronUp className="h-3 w-3 ml-1" />
+        )}
+      </div>
+
+      {!isMinimized && (
+        <div className="mt-2 space-y-2 bg-muted/30 p-2 rounded">
+          {validHistory.map((entry, index) => (
+            <div
+              key={entry.id || index}
+              className="flex flex-col border-b border-border/50 pb-1 last:border-0 last:pb-0"
+            >
+              <span className="font-medium text-[10px] text-muted-foreground mb-1">
+                {entry.entry_date
+                  ? new Date(entry.entry_date).toLocaleDateString()
+                  : ''}
+              </span>
+              <div className="flex flex-wrap gap-2 text-muted-foreground">
+                {entry.sets &&
+                  entry.sets.map((set, i) => (
+                    <span
+                      key={i}
+                      className="bg-background px-1.5 py-0.5 rounded border text-[11px]"
+                    >
+                      {set.reps}x
+                      {convertWeight(set.weight ?? 0, 'kg', weightUnit).toFixed(
+                        1
                       )}
-                      className="w-16 h-16 object-cover mt-1 rounded"
-                    />
-                  )}
-                </div>
-              ))}
-          </div>
-        </CardContent>
+                      {weightUnit}
+                    </span>
+                  ))}
+              </div>
+              {entry.notes && (
+                <span className="italic mt-1 text-[10px] text-muted-foreground opacity-80">
+                  {entry.notes}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
       )}
-    </Card>
+    </div>
   );
 };
 
