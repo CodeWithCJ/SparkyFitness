@@ -15,7 +15,6 @@ import {
   updateFoodEntryMeal,
   deleteFoodEntryMeal,
   type FoodEntryMealUpdateData,
-  FoodEntryUpdateData,
   loadDiaryGoals,
 } from '@/api/Diary/foodEntryService';
 
@@ -23,6 +22,7 @@ import { goalKeys } from '@/api/keys/goals';
 import { foodEntryKeys, foodEntryMealKeys } from '@/api/keys/diary';
 import i18n from '@/i18n';
 import { useFoodEntryInvalidation } from '../useInvalidateKeys';
+import { FoodEntryUpdateData } from '@/types/diary';
 
 export const useFoodEntries = (date: string) => {
   const { t } = useTranslation();

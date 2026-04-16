@@ -46,3 +46,10 @@ export interface MealTypeDefinition {
   is_visible?: boolean;
   show_in_quick_log?: boolean;
 }
+
+export interface FoodEntryUpdateData {
+  quantity?: number;
+  unit?: string;
+  variant_id?: string | null;
+  meal_type_id?: string;
+}
