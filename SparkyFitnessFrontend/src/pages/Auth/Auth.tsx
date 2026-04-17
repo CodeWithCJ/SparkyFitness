@@ -424,27 +424,33 @@ const Auth = () => {
               )}
               {loginSettings?.email.enabled ? (
                 <Tabs defaultValue="signin" className="w-full">
-                  <TabsList className="h-10 grid w-full grid-cols-2">
-                    <TabsTrigger
-                      value="signin"
-                      onClick={() => {
-                        setFormError(null);
-                        debug(loggingLevel, 'Auth: Switched to Sign In tab.');
-                      }}
-                    >
-                      Sign In
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="signup"
-                      onClick={() => {
-                        setFormError(null);
-                        debug(loggingLevel, 'Auth: Switched to Sign Up tab.');
-                      }}
-                    >
-                      Sign Up
-                    </TabsTrigger>
-                  </TabsList>
-
+                  {!loginSettings?.signup_disabled && (
+                    <TabsList className="h-10 grid w-full grid-cols-2">
+                      <TabsTrigger
+                        value="signin"
+                        onClick={() => {
+                          setFormError(null);
+                          debug(loggingLevel, 'Auth: Switched to Sign In tab.');
+                        }}
+                      >
+                        Sign In
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="signup"
+                        onClick={() => {
+                          setFormError(null);
+                          debug(loggingLevel, 'Auth: Switched to Sign Up tab.');
+                        }}
+                      >
+                        Sign Up
+                      </TabsTrigger>
+                    </TabsList>
+                  )}
+                  {loginSettings?.signup_disabled && (
+                    <p className="text-center text-xs text-muted-foreground">
+                      Registration is currently disabled.
+                    </p>
+                  )}
                   <TabsContent value="signin">
                     <form onSubmit={handleSignIn} className="space-y-4">
                       <div className="space-y-2">
@@ -559,81 +565,85 @@ const Auth = () => {
                     )}
                   </TabsContent>
 
-                  <TabsContent value="signup">
-                    <form onSubmit={handleSignUp} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-name">Full Name</Label>
-                        <Input
-                          id="signup-name"
-                          type="text"
-                          placeholder="Enter your full name"
-                          value={fullName}
-                          onChange={(e) => {
-                            debug(
-                              loggingLevel,
-                              'Auth: Sign Up full name input changed.'
-                            );
-                            setFullName(e.target.value);
-                          }}
-                          autoComplete="name"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-email">Email</Label>
-                        <Input
-                          id="signup-email"
-                          type="email"
-                          placeholder="Enter your email"
-                          value={email}
-                          onChange={(e) => {
-                            debug(
-                              loggingLevel,
-                              'Auth: Sign Up email input changed.'
-                            );
-                            setEmail(e.target.value);
-                          }}
-                          required
-                          autoComplete="username"
-                        />
-                      </div>
-                      <div className="space-y-2 relative">
-                        <Label htmlFor="signup-password">Password</Label>
-                        <Input
-                          id="signup-password"
-                          type={showPassword ? 'text' : 'password'}
-                          placeholder="Create a password"
-                          value={password}
-                          onChange={(e) => {
-                            debug(
-                              loggingLevel,
-                              'Auth: Sign Up password input changed.'
-                            );
-                            setPassword(e.target.value);
-                            setPasswordError(validatePassword(e.target.value));
-                          }}
-                          required
-                          autoComplete="new-password"
-                        />
-                        <PasswordToggle
-                          showPassword={showPassword}
-                          passwordToggleHandler={passwordToggleHandler}
-                        />
-                        {passwordError && (
-                          <p className="text-red-500 text-sm">
-                            {passwordError}
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full"
-                        disabled={loading || !!passwordError}
-                      >
-                        {loading ? 'Creating account...' : 'Sign Up'}
-                      </Button>
-                    </form>
-                  </TabsContent>
+                  {!loginSettings?.signup_disabled && (
+                    <TabsContent value="signup">
+                      <form onSubmit={handleSignUp} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="signup-name">Full Name</Label>
+                          <Input
+                            id="signup-name"
+                            type="text"
+                            placeholder="Enter your full name"
+                            value={fullName}
+                            onChange={(e) => {
+                              debug(
+                                loggingLevel,
+                                'Auth: Sign Up full name input changed.'
+                              );
+                              setFullName(e.target.value);
+                            }}
+                            autoComplete="name"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="signup-email">Email</Label>
+                          <Input
+                            id="signup-email"
+                            type="email"
+                            placeholder="Enter your email"
+                            value={email}
+                            onChange={(e) => {
+                              debug(
+                                loggingLevel,
+                                'Auth: Sign Up email input changed.'
+                              );
+                              setEmail(e.target.value);
+                            }}
+                            required
+                            autoComplete="username"
+                          />
+                        </div>
+                        <div className="space-y-2 relative">
+                          <Label htmlFor="signup-password">Password</Label>
+                          <Input
+                            id="signup-password"
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Create a password"
+                            value={password}
+                            onChange={(e) => {
+                              debug(
+                                loggingLevel,
+                                'Auth: Sign Up password input changed.'
+                              );
+                              setPassword(e.target.value);
+                              setPasswordError(
+                                validatePassword(e.target.value)
+                              );
+                            }}
+                            required
+                            autoComplete="new-password"
+                          />
+                          <PasswordToggle
+                            showPassword={showPassword}
+                            passwordToggleHandler={passwordToggleHandler}
+                          />
+                          {passwordError && (
+                            <p className="text-red-500 text-sm">
+                              {passwordError}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          type="submit"
+                          className="w-full"
+                          disabled={loading || !!passwordError}
+                        >
+                          {loading ? 'Creating account...' : 'Sign Up'}
+                        </Button>
+                      </form>
+                    </TabsContent>
+                  )}
                 </Tabs>
               ) : (
                 <div>

@@ -26,6 +26,7 @@ export interface LoginSettings {
     auto_redirect?: boolean;
   };
   warning?: string | null;
+  signup_disabled: boolean;
 }
 
 export interface AccessibleUser {

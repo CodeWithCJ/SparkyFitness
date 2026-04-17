@@ -78,6 +78,7 @@ router.get('/settings', async (req, res) => {
     // Environment overrides are now handled within globalSettingsRepository.getGlobalSettings()
     const oidcAutoRedirectEnv =
       process.env.SPARKY_FITNESS_OIDC_AUTO_REDIRECT === 'true';
+    const signupDisabled = process.env.SPARKY_FITNESS_DISABLE_SIGNUP === 'true';
     const emailEnabled = globalSettings.enable_email_password_login;
     const oidcEnabled = globalSettings.is_oidc_active;
     const activeProviders = providers
@@ -104,6 +105,7 @@ router.get('/settings', async (req, res) => {
         providers: activeProviders,
         auto_redirect: oidcAutoRedirectEnv,
       },
+      signup_disabled: signupDisabled,
     });
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.

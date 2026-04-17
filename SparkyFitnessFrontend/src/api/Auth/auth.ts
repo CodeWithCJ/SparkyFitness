@@ -169,6 +169,7 @@ export const getLoginSettings = async (): Promise<LoginSettings> => {
     return {
       email: { enabled: true },
       oidc: { enabled: false, providers: [] },
+      signup_disabled: false,
     };
   }
 };
