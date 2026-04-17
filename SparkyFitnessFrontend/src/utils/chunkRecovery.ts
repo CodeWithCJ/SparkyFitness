@@ -92,13 +92,13 @@ export const hasRecentChunkRecoveryReload = (
   }
 
   const guardKey = getGuardKey(urlKey);
-  const storedAttempt = storage.getItem(guardKey);
-
-  if (!storedAttempt) {
-    return false;
-  }
-
   try {
+    const storedAttempt = storage.getItem(guardKey);
+
+    if (!storedAttempt) {
+      return false;
+    }
+
     const parsedAttempt = JSON.parse(storedAttempt) as { timestamp?: number };
 
     if (typeof parsedAttempt.timestamp !== 'number') {

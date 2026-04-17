@@ -89,6 +89,31 @@ describe('ErrorComponents', () => {
     nowSpy.mockRestore();
   });
 
+  it('falls back to the manual recovery UI if storage blocks the reload guard', async () => {
+    const setItemSpy = jest
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new DOMException('QuotaExceededError', 'QuotaExceededError');
+      });
+
+    mockUseRouteError.mockReturnValue(
+      new TypeError('Failed to fetch dynamically imported module')
+    );
+
+    render(<RouteErrorBoundary />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Reload Page')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText('Updating SparkyFitness...')
+    ).not.toBeInTheDocument();
+    expect(mockReload).not.toHaveBeenCalled();
+
+    setItemSpy.mockRestore();
+  });
+
   it('keeps unrelated root errors on the normal fallback UI', () => {
     mockUseRouteError.mockReturnValue(new Error('Unexpected failure'));
 

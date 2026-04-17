@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   isRouteErrorResponse,
   useRouteError,
@@ -16,18 +16,25 @@ const UPDATE_TITLE = 'Updating SparkyFitness...';
 const UPDATE_MESSAGE = 'Loading the latest version.';
 
 const useChunkRecoveryReload = (routeError: unknown) => {
-  const shouldAttemptRecovery =
+  const canAttemptRecovery =
     isStaleChunkLoadError(routeError) && canAttemptChunkRecoveryReload();
+  const [isUpdatingApp, setIsUpdatingApp] = useState(canAttemptRecovery);
 
   useEffect(() => {
-    if (!shouldAttemptRecovery) {
+    setIsUpdatingApp(canAttemptRecovery);
+  }, [canAttemptRecovery]);
+
+  useEffect(() => {
+    if (!canAttemptRecovery) {
       return;
     }
 
-    triggerChunkRecoveryReload();
-  }, [shouldAttemptRecovery]);
+    if (!triggerChunkRecoveryReload()) {
+      setIsUpdatingApp(false);
+    }
+  }, [canAttemptRecovery]);
 
-  return shouldAttemptRecovery;
+  return isUpdatingApp;
 };
 
 export const RootErrorBoundary = () => {
