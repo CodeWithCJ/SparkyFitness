@@ -1,6 +1,6 @@
 import type React from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import {
   PreferencesProvider,
   usePreferences,
@@ -36,33 +36,48 @@ import {
 } from './pages/Errors/ErrorComponents';
 import { error as logError } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences.ts';
-const Auth = lazy(() => import('@/pages/Auth/Auth'));
-const ForgotPassword = lazy(() => import('@/pages/Auth/ForgotPassword'));
-const ResetPassword = lazy(() => import('@/pages/Auth/ResetPassword'));
-const Index = lazy(() => import('@/pages/Index'));
-const Diary = lazy(() => import('@/pages/Diary/Diary'));
-const CheckIn = lazy(() => import('./pages/CheckIn/CheckIn'));
-const FoodDatabaseManager = lazy(() => import('./pages/Foods/Foods'));
-const Reports = lazy(() => import('./pages/Reports/Reports'));
-const ExerciseDatabaseManager = lazy(
+import { lazyWithChunkRecovery } from '@/utils/chunkRecovery';
+const Auth = lazyWithChunkRecovery(() => import('@/pages/Auth/Auth'));
+const ForgotPassword = lazyWithChunkRecovery(
+  () => import('@/pages/Auth/ForgotPassword')
+);
+const ResetPassword = lazyWithChunkRecovery(
+  () => import('@/pages/Auth/ResetPassword')
+);
+const Index = lazyWithChunkRecovery(() => import('@/pages/Index'));
+const Diary = lazyWithChunkRecovery(() => import('@/pages/Diary/Diary'));
+const CheckIn = lazyWithChunkRecovery(() => import('./pages/CheckIn/CheckIn'));
+const FoodDatabaseManager = lazyWithChunkRecovery(
+  () => import('./pages/Foods/Foods')
+);
+const Reports = lazyWithChunkRecovery(() => import('./pages/Reports/Reports'));
+const ExerciseDatabaseManager = lazyWithChunkRecovery(
   () => import('./pages/Exercises/Exercises')
 );
-const GoalsSettings = lazy(() => import('./pages/Goals/Goals'));
-const Settings = lazy(() => import('./pages/Settings/SettingsPage'));
-const AdminPage = lazy(() => import('./pages/Admin/Admin'));
-const UserManagement = lazy(() => import('@/pages/Admin/UserManagement'));
-const AuthenticationSettings = lazy(
+const GoalsSettings = lazyWithChunkRecovery(
+  () => import('./pages/Goals/Goals')
+);
+const Settings = lazyWithChunkRecovery(
+  () => import('./pages/Settings/SettingsPage')
+);
+const AdminPage = lazyWithChunkRecovery(() => import('./pages/Admin/Admin'));
+const UserManagement = lazyWithChunkRecovery(
+  () => import('@/pages/Admin/UserManagement')
+);
+const AuthenticationSettings = lazyWithChunkRecovery(
   () => import('@/pages/Admin/AuthenticationSettings')
 );
-const NotFound = lazy(() => import('@/pages/Errors/NotFound'));
-const WithingsCallback = lazy(
+const NotFound = lazyWithChunkRecovery(() => import('@/pages/Errors/NotFound'));
+const WithingsCallback = lazyWithChunkRecovery(
   () => import('@/pages/Integrations/WithingsCallback')
 );
-const FitbitCallback = lazy(
+const FitbitCallback = lazyWithChunkRecovery(
   () => import('@/pages/Integrations/FitbitCallback')
 );
-const PolarCallback = lazy(() => import('@/pages/Integrations/PolarCallback'));
-const StravaCallback = lazy(
+const PolarCallback = lazyWithChunkRecovery(
+  () => import('@/pages/Integrations/PolarCallback')
+);
+const StravaCallback = lazyWithChunkRecovery(
   () => import('@/pages/Integrations/StravaCallback')
 );
 

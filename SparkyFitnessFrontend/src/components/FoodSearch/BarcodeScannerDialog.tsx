@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,8 +16,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { DataProvider } from '@/types/settings.ts';
 import { Database } from 'lucide-react';
+import { lazyWithChunkRecovery } from '@/utils/chunkRecovery';
 
-const BarcodeScanner = lazy(() => import('./BarcodeScanner.tsx'));
+const BarcodeScanner = lazyWithChunkRecovery(
+  () => import('./BarcodeScanner.tsx')
+);
 
 interface BarcodeScannerDialogProps {
   isOpen: boolean;
