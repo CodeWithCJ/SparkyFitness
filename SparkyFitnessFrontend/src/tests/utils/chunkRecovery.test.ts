@@ -53,4 +53,17 @@ describe('chunkRecovery', () => {
     expect(triggerChunkRecoveryReload()).toBe(true);
     expect(mockReload).toHaveBeenCalledTimes(2);
   });
+
+  it('does not reload if persisting the guard fails', () => {
+    const setItemSpy = jest
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new DOMException('QuotaExceededError', 'QuotaExceededError');
+      });
+
+    expect(triggerChunkRecoveryReload()).toBe(false);
+    expect(mockReload).not.toHaveBeenCalled();
+
+    setItemSpy.mockRestore();
+  });
 });
