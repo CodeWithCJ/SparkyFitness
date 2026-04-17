@@ -1,3 +1,4 @@
+import { exerciseSearchKeys } from '@/api/keys/exercises';
 import { externalProviderKeys } from '@/api/keys/settings';
 import {
   createExternalProvider,
@@ -95,6 +96,9 @@ export const useUpdateExternalProviderMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: externalProviderKeys.all,
+      });
+      queryClient.invalidateQueries({
+        queryKey: exerciseSearchKeys.providers,
       });
     },
     meta: {

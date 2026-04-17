@@ -61,6 +61,7 @@ export interface ExternalDataProvider {
   strava_last_sync_at?: string | null;
   strava_token_expires?: string | null;
   is_strictly_private?: boolean | null;
+  sort_order?: number;
 }
 
 const BARCODE_PROVIDER_TYPES = ['openfoodfacts', 'usda', 'fatsecret'];
