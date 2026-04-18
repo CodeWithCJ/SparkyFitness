@@ -118,7 +118,13 @@ jobs:
               errors.push('**[MANDATORY for Frontend changes]** You modified `en/translation.json`. Check the "Translations" checkbox.');
             }
             if (hasBackendChanges && !checked('[MANDATORY for Backend changes] Code Quality')) {
-              errors.push('**[MANDATORY for Backend changes]** Check the "Code Quality" checkbox.');
+              errors.push('**[MANDATORY for Backend changes]** Backend files were modified (`SparkyFitnessServer/`). Check the "Code Quality" checkbox.');
+            }
+            if (hasMobileChanges && !checked('[MANDATORY for Mobile changes] Tested on device or emulator')) {
+              errors.push('**[MANDATORY for Mobile changes]** Mobile files were modified (`SparkyFitnessMobile/`). Check the "Tested on device or emulator" checkbox.');
+            }
+            if (hasFrontendChanges && !checked('[MANDATORY for Frontend changes] Quality')) {
+              errors.push('**[MANDATORY for Frontend changes]** Frontend files were modified (`SparkyFitnessFrontend/`). Check the "Quality" checkbox (run `pnpm run validate`).');
             }
             if (hasMobileChanges && !checked('[MANDATORY for Mobile changes] Tested on device or emulator')) {
               errors.push('**[MANDATORY for Mobile changes]** Check the "Tested on device or emulator" checkbox.');
