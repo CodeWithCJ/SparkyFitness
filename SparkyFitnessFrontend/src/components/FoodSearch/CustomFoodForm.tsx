@@ -34,7 +34,7 @@ const CustomFoodForm = ({
     loading,
     showSyncConfirmation,
     setShowSyncConfirmation,
-    loadedVariants,
+    conversionBaseVariants,
     updateField,
     addVariant,
     duplicateVariant,
@@ -129,7 +129,7 @@ const CustomFoodForm = ({
                     convertEnergy={convertEnergy}
                     customNutrients={customNutrients}
                     baseServingUnit={
-                      loadedVariants[index]?.serving_unit ??
+                      conversionBaseVariants[index]?.serving_unit ??
                       variant.serving_unit
                     }
                     onUpdate={updateVariant}

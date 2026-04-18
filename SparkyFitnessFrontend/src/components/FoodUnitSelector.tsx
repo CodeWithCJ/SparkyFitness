@@ -26,8 +26,10 @@ import {
   foodVariantsOptions,
   useCreateFoodVariantMutation,
 } from '@/hooks/Foods/useFoodVariants';
-import { getConversionFactor } from '@/utils/servingSizeConversions';
-import { useUnitConversion } from '@/hooks/Foods/useUnitConversion';
+import {
+  canAutoConvertToUnit,
+  useUnitConversion,
+} from '@/hooks/Foods/useUnitConversion';
 
 interface FoodUnitSelectorProps {
   food: Food;
@@ -375,11 +377,11 @@ const FoodUnitSelector = ({
                         <>
                           <SelectSeparator />
                           {convertibleUnits.map((u) => {
-                            const compatible =
-                              getConversionFactor(
-                                selectedVariant?.serving_unit || '',
-                                u
-                              ) !== null;
+                            const compatible = canAutoConvertToUnit(
+                              variants,
+                              selectedVariant,
+                              u
+                            );
                             return (
                               <SelectItem key={u} value={u}>
                                 <span className="flex items-center gap-1.5">
@@ -427,7 +429,7 @@ const FoodUnitSelector = ({
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="e.g. 14.2"
+                        placeholder="e.g. 1"
                         value={conversionFactor}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -474,7 +476,7 @@ const FoodUnitSelector = ({
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="e.g. 14.2"
+                        placeholder="e.g. 1"
                         value={conversionFactor}
                         onChange={(e) => {
                           const val = e.target.value;
