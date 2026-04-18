@@ -196,4 +196,45 @@ describe('useCustomFoodForm', () => {
       4
     );
   });
+
+  it('scales custom nutrients during compatible automatic unit conversion', async () => {
+    const baseVariant = createVariant({
+      custom_nutrients: {
+        caffeine: 25,
+        taurine: 12.5,
+      },
+    });
+    const initialVariants = [baseVariant];
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        initialVariants,
+        onSave: jest.fn(),
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.variants[0]?.serving_unit).toBe('g');
+    });
+
+    act(() => {
+      result.current.updateVariant(0, 'serving_unit', 'oz');
+    });
+
+    const conversionFactor = getConversionFactor('g', 'oz') ?? 0;
+
+    expect(result.current.variants[0]?.serving_unit).toBe('oz');
+    expect(
+      Number(result.current.variants[0]?.custom_nutrients?.['caffeine'])
+    ).toBeCloseTo(
+      Number(baseVariant.custom_nutrients?.['caffeine']) * conversionFactor,
+      4
+    );
+    expect(
+      Number(result.current.variants[0]?.custom_nutrients?.['taurine'])
+    ).toBeCloseTo(
+      Number(baseVariant.custom_nutrients?.['taurine']) * conversionFactor,
+      4
+    );
+  });
 });
