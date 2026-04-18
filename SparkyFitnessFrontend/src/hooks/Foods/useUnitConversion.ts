@@ -34,6 +34,50 @@ export interface UseUnitConversionResult {
   resetConversionState: () => void;
 }
 
+interface ResolvedAutoConversion {
+  baseVariant: FoodVariant;
+  factor: number;
+}
+
+function getManualConversionBaseVariant(
+  variants: FoodVariant[],
+  selectedVariant: FoodVariant | null
+): FoodVariant | null {
+  return selectedVariant || variants[0] || null;
+}
+
+export function resolveAutoConversionSource(
+  variants: FoodVariant[],
+  selectedVariant: FoodVariant | null,
+  targetUnit: string
+): ResolvedAutoConversion | null {
+  const candidateVariants = selectedVariant
+    ? [selectedVariant, ...variants]
+    : variants;
+
+  for (const variant of candidateVariants) {
+    const factor = getConversionFactor(variant.serving_unit, targetUnit);
+    if (factor !== null) {
+      return {
+        baseVariant: variant,
+        factor,
+      };
+    }
+  }
+
+  return null;
+}
+
+export function canAutoConvertToUnit(
+  variants: FoodVariant[],
+  selectedVariant: FoodVariant | null,
+  targetUnit: string
+): boolean {
+  return (
+    resolveAutoConversionSource(variants, selectedVariant, targetUnit) !== null
+  );
+}
+
 export function useUnitConversion({
   variants,
   selectedVariant,
@@ -41,7 +85,7 @@ export function useUnitConversion({
 }: UseUnitConversionOptions): UseUnitConversionResult {
   const [pendingUnit, setPendingUnit] = useState('');
   const [pendingUnitIsCustom, setPendingUnitIsCustom] = useState(false);
-  const [conversionFactor, setConversionFactor] = useState<number | ''>(1);
+  const [conversionFactor, setConversionFactor] = useState<number | ''>('');
   const [autoConversionFactor, setAutoConversionFactor] = useState<
     number | null
   >(null);
@@ -70,9 +114,11 @@ export function useUnitConversion({
       autoConversionFactor !== null
         ? autoConversionFactor
         : typeof conversionFactor === 'number'
-          ? conversionFactor
-          : 0;
-    if (!base || effectiveFactor <= 0 || !pendingUnit.trim()) return null;
+          ? conversionFactor > 0
+            ? conversionFactor
+            : null
+          : null;
+    if (!base || effectiveFactor === null || !pendingUnit.trim()) return null;
     const ratio = effectiveFactor / base.serving_size;
     return {
       serving_size: 1,
@@ -115,7 +161,7 @@ export function useUnitConversion({
         setPendingUnitIsCustom(true);
         setPendingUnit('');
         setAutoConversionFactor(null);
-        setConversionFactor(1);
+        setConversionFactor('');
         setConversionError('');
         return;
       }
@@ -125,19 +171,29 @@ export function useUnitConversion({
         onVariantSelect(value, variant);
         setPendingUnit('');
         setPendingUnitIsCustom(false);
+        setConversionFactor('');
         setAutoConversionFactor(null);
         setConversionBaseVariant(null);
+        setConversionError('');
         return;
       }
 
       // Standard unit for conversion
-      const base = selectedVariant || variants[0] || null;
-      setConversionBaseVariant(base);
+      const manualBase = getManualConversionBaseVariant(
+        variants,
+        selectedVariant
+      );
+      const autoConversion = resolveAutoConversionSource(
+        variants,
+        selectedVariant,
+        value
+      );
+
       setPendingUnit(value);
       setPendingUnitIsCustom(false);
-      const auto = base ? getConversionFactor(base.serving_unit, value) : null;
-      setAutoConversionFactor(auto);
-      if (auto === null) setConversionFactor(1);
+      setConversionFactor('');
+      setConversionBaseVariant(autoConversion?.baseVariant || manualBase);
+      setAutoConversionFactor(autoConversion?.factor ?? null);
       setConversionError('');
     },
     [selectedVariant, variants, onVariantSelect]
@@ -146,14 +202,16 @@ export function useUnitConversion({
   const cancelConversion = useCallback(() => {
     setPendingUnit('');
     setPendingUnitIsCustom(false);
+    setConversionFactor('');
     setAutoConversionFactor(null);
+    setConversionBaseVariant(null);
     setConversionError('');
   }, []);
 
   const resetConversionState = useCallback(() => {
     setPendingUnit('');
     setPendingUnitIsCustom(false);
-    setConversionFactor(1);
+    setConversionFactor('');
     setAutoConversionFactor(null);
     setConversionBaseVariant(null);
     setConversionError('');
