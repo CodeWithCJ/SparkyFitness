@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, Alert } from 'react-native';
 import {
   createNavigationContainerRef,
@@ -162,21 +162,11 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
 
   const isWorkoutComplete = sessionId != null && activeSetId == null;
 
-  // The bar is a persistent workout HUD — visible for the entire active
-  // workout, not just while a rest timer is running.
-  if (sessionId == null) return null;
-  if (navInfo.suppressed) return null;
-  // The embedded variant lives inside the tab bar's layout and is always on
-  // the Tabs route when rendered. The floating variant is an overlay for
-  // stack screens, so it must hide itself while the tab bar (and embedded
-  // variant) is showing to avoid a double-bar.
-  if (variant === 'floating' && navInfo.isOnTabs) return null;
-
   // Active-set details (exercise name, set number, weight × reps) looked up
   // against the session snapshot since `steps` only holds name/restSec.
   // Split into discrete fields so the rendering can stack "status: name -
   // set N/M" on one row and the load ("135 lbs × 8") on a second row.
-  const activeSetLabel = (() => {
+  const activeSetLabel = useMemo(() => {
     if (activeSession == null || activeSetId == null) return null;
     for (const exercise of activeSession.exercises) {
       const set = exercise.sets.find((st) => String(st.id) === activeSetId);
@@ -196,7 +186,17 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       return { exerciseName, setNumber, loadText };
     }
     return null;
-  })();
+  }, [activeSession, activeSetId, weightUnit]);
+
+  // The bar is a persistent workout HUD — visible for the entire active
+  // workout, not just while a rest timer is running.
+  if (sessionId == null) return null;
+  if (navInfo.suppressed) return null;
+  // The embedded variant lives inside the tab bar's layout and is always on
+  // the Tabs route when rendered. The floating variant is an overlay for
+  // stack screens, so it must hide itself while the tab bar (and embedded
+  // variant) is showing to avoid a double-bar.
+  if (variant === 'floating' && navInfo.isOnTabs) return null;
 
   const remainingMs = (() => {
     if (restState === 'resting' && endsAt != null) {
