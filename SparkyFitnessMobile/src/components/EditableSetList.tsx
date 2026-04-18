@@ -45,7 +45,6 @@ function EditableSetList({
           </View>
           {sets.map((set, index) => {
             const setKey = `${exerciseClientId}:${set.clientId}`;
-            const isLastSet = index === sets.length - 1;
             const nextSet = sets[index + 1];
             return (
               <Animated.View
@@ -61,7 +60,7 @@ function EditableSetList({
                   reps={set.reps}
                   setNumber={index + 1}
                   isActive={activeSetKey === setKey}
-                  initialFocusField={activeSetKey === setKey ? activeSetField : undefined}
+                  activeField={activeSetKey === setKey ? activeSetField : undefined}
                   weightUnit={weightUnit}
                   nextSetKey={nextSet ? `${exerciseClientId}:${nextSet.clientId}` : null}
                   onActivateSet={onActivateSet}
@@ -69,7 +68,6 @@ function EditableSetList({
                   onUpdateSetField={onUpdateSetField}
                   onRemoveSet={onRemoveSet}
                   onAddSet={onAddSet}
-                  isLastSet={isLastSet}
                 />
               </Animated.View>
             );

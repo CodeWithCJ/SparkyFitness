@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, Image, ScrollView, Platform, Alert, ActivityIndicator, AppState } from 'react-native';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SyncFrequency from '../components/SyncFrequency';
 import SyncOnOpen from '../components/SyncOnOpen';
 import HealthDataSync from '../components/HealthDataSync';
@@ -69,6 +70,7 @@ const timeRangeOptions: TimeRangeOption[] = [
 
 const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
   const [healthMetricStates, setHealthMetricStates] = useState<HealthMetricStates>({});
   const [isBackgroundSyncEnabled, setIsBackgroundSyncEnabled] = useState<boolean>(false);
@@ -341,7 +343,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
         contentInsetAdjustmentBehavior="never"
       >
         {/* Header */}

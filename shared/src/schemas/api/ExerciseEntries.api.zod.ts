@@ -92,6 +92,7 @@ export const exerciseEntrySetRequestSchema = z
 
 export const presetSessionExerciseRequestSchema = z
   .object({
+    id: z.string().uuid().optional(),
     exercise_id: z.string().uuid(),
     sort_order: z.number().int().min(0).default(0),
     duration_minutes: z.number().min(0).default(0),

@@ -2,7 +2,7 @@
   "expo": {
     "name": "SparkyFitnessMobile",
     "slug": "sparkyfitnessmobile",
-    "version": "1.3.2",
+    "version": "1.3.3",
     "scheme": "sparkyfitnessmobile",
     "orientation": "portrait",
     "icon": "./assets/icons/appstore.png",
@@ -51,8 +51,10 @@
             "backgroundColor": "#232323",
             "image": "./assets/images/splash.png"
           }
-          
         }
+      ],
+      [
+        "expo-notifications"
       ]
     ],
     "experiments": {

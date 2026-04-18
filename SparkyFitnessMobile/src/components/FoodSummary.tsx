@@ -67,7 +67,7 @@ const MealSection: React.FC<MealSectionProps> = ({ mealType, entries, onAdjustSe
     <View className="bg-surface rounded-xl p-4 overflow-hidden shadow-sm">
       <View className="flex-row gap-2 mb-3 items-center">
         <Icon name={config.icon} size={18} color={accentPrimary} />
-        <Text className="text-base font-bold text-text-primary flex-1">{config.label}</Text>
+        <Text className="text-base font-bold text-text-secondary flex-1">{config.label}</Text>
         {totalCalories > 0 && (
           <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
             <Text className="text-xs text-accent-primary font-semibold">{totalCalories} Cal</Text>

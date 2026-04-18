@@ -6,6 +6,7 @@ import FadeView from '../components/FadeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
@@ -33,6 +34,7 @@ const scaledValue = (value: number | undefined, entry: FoodEntry): number => {
 const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, route }) => {
   const [entry, setEntry] = useState(route.params.entry);
   const insets = useSafeAreaInsets();
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { profile } = useProfile();
   const calendarRef = useRef<CalendarSheetRef>(null);
 
@@ -389,7 +391,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({ navigation, r
         )}
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 gap-4">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="px-4 py-4 gap-4"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding }}
+      >
         {/* Food name & brand */}
         <Animated.View layout={LinearTransition.duration(300)}>
           <Text className="text-text-primary text-3xl font-bold">

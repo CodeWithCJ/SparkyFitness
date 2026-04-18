@@ -8,10 +8,12 @@ import {
   Image,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import Clipboard from '@react-native-clipboard/clipboard';
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
   getLogs,
   clearLogs,
@@ -26,6 +28,8 @@ import type { RootStackScreenProps } from '../types/navigation';
 type LogScreenProps = RootStackScreenProps<'Logs'>;
 
 const LogScreen: React.FC<LogScreenProps> = () => {
+  const insets = useSafeAreaInsets();
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [offset, setOffset] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
@@ -276,7 +280,7 @@ const LogScreen: React.FC<LogScreenProps> = () => {
             )}
           </>
         )}
-        contentContainerStyle={{ padding: 16, paddingTop: 8, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: 16, paddingTop: 8, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
       />
     </View>
   );

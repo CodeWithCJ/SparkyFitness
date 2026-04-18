@@ -74,6 +74,7 @@ type WorkoutFormAction =
   | { type: 'ADD_SET'; exerciseClientId: string; setClientId: string }
   | { type: 'REMOVE_SET'; exerciseClientId: string; setClientId: string }
   | { type: 'UPDATE_SET_FIELD'; exerciseClientId: string; setClientId: string; field: 'weight' | 'reps'; value: string }
+  | { type: 'SET_EXERCISE_REST'; exerciseClientId: string; seconds: number }
   | { type: 'RESET' }
   | { type: 'POPULATE'; session: PresetSessionResponse; weightUnit: 'kg' | 'lbs' }
   | { type: 'POPULATE_FROM_PRESET'; preset: WorkoutPreset; weightUnit: 'kg' | 'lbs'; date?: string };
@@ -109,7 +110,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
             exerciseName: action.exercise.name,
             exerciseCategory: action.exercise.category,
             images: action.exercise.images ?? [],
-            sets: [{ clientId: action.setClientId, weight: '', reps: '' }],
+            sets: [{ clientId: action.setClientId, weight: '', reps: '', restTime: 90 }],
           },
         ],
       };
@@ -126,10 +127,12 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
         exercises: state.exercises.map(exercise => {
           if (exercise.clientId !== action.exerciseClientId) return exercise;
           const lastSet = exercise.sets[exercise.sets.length - 1];
+          const firstSet = exercise.sets[0];
           const newSet: WorkoutDraftSet = {
             clientId: action.setClientId,
             weight: lastSet?.weight ?? '',
             reps: lastSet?.reps ?? '',
+            restTime: firstSet?.restTime ?? 90,
           };
           return { ...exercise, sets: [...exercise.sets, newSet] };
         }),
@@ -165,6 +168,19 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
       };
     }
 
+    case 'SET_EXERCISE_REST': {
+      return {
+        ...state,
+        exercises: state.exercises.map(exercise => {
+          if (exercise.clientId !== action.exerciseClientId) return exercise;
+          return {
+            ...exercise,
+            sets: exercise.sets.map(set => ({ ...set, restTime: action.seconds })),
+          };
+        }),
+      };
+    }
+
     case 'RESET':
       return createEmptyDraft();
 
@@ -176,6 +192,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
         entryDate: action.session.entry_date ? normalizeDate(action.session.entry_date) : getTodayDate(),
         exercises: action.session.exercises.map(exercise => ({
           clientId: generateClientId(),
+          serverId: exercise.id,
           exerciseId: exercise.exercise_id,
           exerciseName: exercise.exercise_snapshot?.name ?? 'Unknown',
           exerciseCategory: exercise.exercise_snapshot?.category ?? null,
@@ -183,6 +200,8 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           snapshot: exercise.exercise_snapshot ?? null,
           sets: exercise.sets.map(set => ({
             clientId: generateClientId(),
+            serverId: set.id,
+            restTime: set.rest_time,
             weight: set.weight != null
               ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
               : '',
@@ -205,6 +224,7 @@ export function workoutFormReducer(state: WorkoutDraft, action: WorkoutFormActio
           images: exercise.image_url ? [exercise.image_url] : [],
           sets: exercise.sets.map(set => ({
             clientId: generateClientId(),
+            restTime: set.rest_time,
             weight: set.weight != null
               ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
               : '',
@@ -275,6 +295,11 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     [],
   );
 
+  const setExerciseRest = useCallback((exerciseClientId: string, seconds: number) => {
+    exercisesModifiedRef.current = true;
+    dispatch({ type: 'SET_EXERCISE_REST', exerciseClientId, seconds });
+  }, []);
+
   const setName = useCallback((name: string) => {
     dispatch({ type: 'SET_NAME', name });
   }, []);
@@ -313,6 +338,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     addSet,
     removeSet,
     updateSetField,
+    setExerciseRest,
     setName,
     setDate,
     reset,

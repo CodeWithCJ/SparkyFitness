@@ -1,6 +1,6 @@
 import './global.css'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StatusBar, Platform, Alert, AppState } from 'react-native';
+import { StatusBar, Platform, Alert, AppState, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   NavigationContainer,
@@ -61,6 +61,7 @@ import {
 import { initializeTheme } from './src/services/themeService';
 import { loadActiveDraft, clearDraft } from './src/services/workoutDraftService';
 import { initLogService } from './src/services/LogService';
+import { initNotifications } from './src/services/notifications';
 import { ensureTimezoneBootstrapped } from './src/services/api/preferencesApi';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -69,6 +70,7 @@ import type { RootStackParamList, TabParamList } from './src/types/navigation';
 import AddSheet, { type AddSheetRef } from './src/components/AddSheet';
 import { toastConfig } from './src/components/ui/toastConfig';
 import CustomTabBar from './src/components/CustomTabBar';
+import ActiveWorkoutBar, { navigationRef as rootNavigationRef } from './src/components/ActiveWorkoutBar';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 
 SplashScreen.preventAutoHideAsync();
@@ -339,6 +341,7 @@ function AppContent() {
     const initializeApp = async () => {
       // Remove the flag so the dashboard will auto-open on first SyncScreen visit
       await AsyncStorage.removeItem('@HealthConnect:hasAutoOpenedDashboard');
+      await initNotifications();
     };
 
     initializeApp();
@@ -502,7 +505,7 @@ function AppContent() {
   if (!initialRoute) return null;
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer ref={rootNavigationRef} theme={navigationTheme}>
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
         <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
@@ -518,7 +521,18 @@ function AppContent() {
                 screenOptions={{
                   headerShown: false,
                 }}
-                tabBar={(props) => <CustomTabBar {...props} />}
+                tabBar={(props) => (
+                  // Wrap the tab bar so the active workout HUD can sit
+                  // directly on top of it. Order matters: CustomTabBar is
+                  // a later sibling than ActiveWorkoutBar, so its Add button
+                  // (which uses -mt-5 to rise above the tab bar's top edge)
+                  // paints on top of the embedded bar — matching the mockup
+                  // where the + button visually bridges both bars.
+                  <View collapsable={false}>
+                    <ActiveWorkoutBar variant="embedded" />
+                    <CustomTabBar {...props} />
+                  </View>
+                )}
               >
                 <Tab.Screen name="Dashboard" component={SafeDashboard} />
                 <Tab.Screen name="Diary" component={SafeDiary} />
@@ -702,6 +716,7 @@ function AppContent() {
             }
           }}
         />
+        <ActiveWorkoutBar />
         <SafeAreaToast />
       </SafeAreaProvider>
     </NavigationContainer>

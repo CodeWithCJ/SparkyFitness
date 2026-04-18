@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, InputAccessoryView, Platform } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, InputAccessoryView, Platform } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
@@ -14,8 +14,9 @@ interface EditableSetRowProps {
   reps: string;
   setNumber: number;
   isActive: boolean;
-  /** Which field to auto-focus when entering active mode. Defaults to 'weight'. */
-  initialFocusField?: 'weight' | 'reps';
+  /** The currently-active field for this row. Controls which input is focused
+   *  and what the keyboard accessory's "Next" button does. */
+  activeField?: 'weight' | 'reps';
   weightUnit: string;
   nextSetKey?: string | null;
   onActivateSet: (setKey: string, field: 'weight' | 'reps') => void;
@@ -23,8 +24,6 @@ interface EditableSetRowProps {
   onUpdateSetField: (exerciseClientId: string, setClientId: string, field: 'weight' | 'reps', value: string) => void;
   onRemoveSet: (exerciseClientId: string, setClientId: string) => void;
   onAddSet: (exerciseClientId: string) => void;
-  /** Whether this is the last set in the exercise. Controls the accessory button label. */
-  isLastSet?: boolean;
 }
 
 function EditableSetRow({
@@ -34,6 +33,7 @@ function EditableSetRow({
   reps,
   setNumber,
   isActive,
+  activeField = 'weight',
   weightUnit,
   nextSetKey,
   onActivateSet,
@@ -41,7 +41,6 @@ function EditableSetRow({
   onUpdateSetField,
   onRemoveSet,
   onAddSet,
-  isLastSet,
 }: EditableSetRowProps) {
   const [dangerColor, accentPrimary, chromeBg, chromeBorder] = useCSSVariable([
     '--color-bg-danger',
@@ -51,6 +50,8 @@ function EditableSetRow({
   ]) as [string, string, string, string];
 
   const setKey = `${exerciseClientId}:${setClientId}`;
+  const weightInputRef = useRef<TextInput>(null);
+  const repsInputRef = useRef<TextInput>(null);
 
   const handleActivateWeight = useCallback(() => {
     onActivateSet(setKey, 'weight');
@@ -59,6 +60,15 @@ function EditableSetRow({
   const handleActivateReps = useCallback(() => {
     onActivateSet(setKey, 'reps');
   }, [onActivateSet, setKey]);
+
+  // Drive focus from parent-owned state so both initial activation (user taps
+  // the display) and within-row advance (Next button moves weight → reps)
+  // reliably move the keyboard to the right input.
+  useEffect(() => {
+    if (!isActive) return;
+    const ref = activeField === 'reps' ? repsInputRef : weightInputRef;
+    ref.current?.focus();
+  }, [isActive, activeField]);
 
   const handleUpdateWeight = useCallback((value: string) => {
     onUpdateSetField(exerciseClientId, setClientId, 'weight', value);
@@ -85,16 +95,39 @@ function EditableSetRow({
   }, [exerciseClientId, onRemoveSet, setClientId]);
 
   const handleAdvance = useCallback(() => {
+    // For within-row advance, move focus directly via ref so iOS keeps the
+    // keyboard + InputAccessoryView attached. Going through parent state
+    // would briefly leave no TextInput focused, which drops the accessory.
+    if (activeField === 'weight') {
+      repsInputRef.current?.focus();
+      return;
+    }
     if (nextSetKey) {
       onActivateSet(nextSetKey, 'weight');
       return;
     }
     onAddSet(exerciseClientId);
-  }, [exerciseClientId, nextSetKey, onActivateSet, onAddSet]);
+  }, [activeField, exerciseClientId, nextSetKey, onActivateSet, onAddSet]);
+
+  const advanceLabel = activeField === 'weight' ? 'Next' : 'Next Set';
+
+  const accessoryId = `set-${setClientId}`;
+  const weightInputProps = useMemo(
+    () => ({
+      onFocus: handleActivateWeight,
+      ...(Platform.OS === 'ios' && { inputAccessoryViewID: accessoryId }),
+    }),
+    [accessoryId, handleActivateWeight],
+  );
+  const repsInputProps = useMemo(
+    () => ({
+      onFocus: handleActivateReps,
+      ...(Platform.OS === 'ios' && { inputAccessoryViewID: accessoryId }),
+    }),
+    [accessoryId, handleActivateReps],
+  );
 
   if (isActive) {
-    const accessoryId = `set-${setClientId}`;
-
     return (
       <>
         <View className="flex-row items-center py-3">
@@ -107,9 +140,8 @@ function EditableSetRow({
               onIncrement={() => handleStepWeight(1)}
               onDecrement={() => handleStepWeight(-1)}
               keyboardType="decimal-pad"
-              inputProps={{
-                ...(Platform.OS === 'ios' && { inputAccessoryViewID: accessoryId }),
-              }}
+              inputRef={weightInputRef}
+              inputProps={weightInputProps}
             />
           </View>
           <View className="flex-1 items-center">
@@ -120,9 +152,8 @@ function EditableSetRow({
               onIncrement={() => handleStepReps(1)}
               onDecrement={() => handleStepReps(-1)}
               keyboardType="number-pad"
-              inputProps={{
-                ...(Platform.OS === 'ios' && { inputAccessoryViewID: accessoryId }),
-              }}
+              inputRef={repsInputRef}
+              inputProps={repsInputProps}
             />
           </View>
           <Button
@@ -155,7 +186,7 @@ function EditableSetRow({
               </TouchableOpacity>
               <TouchableOpacity onPress={handleAdvance} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={{ color: accentPrimary, fontWeight: '600', fontSize: 16 }}>
-                  {isLastSet ? 'Next Set' : 'Next'}
+                  {advanceLabel}
                 </Text>
               </TouchableOpacity>
             </View>
