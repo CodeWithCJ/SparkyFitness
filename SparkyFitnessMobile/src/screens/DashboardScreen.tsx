@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation, useMeasurementsRange } from '../hooks';
+import { useServerConnection, useDailySummary, usePreferences, useMeasurements, useWaterIntakeMutation, useMeasurementsRange, useWidgetSync } from '../hooks';
 import type { StepsRange } from '../hooks';
 import CalorieRingCard from '../components/CalorieRingCard';
 import MacroCard from '../components/MacroCard';
@@ -83,6 +83,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     range: stepsRange,
     enabled: isConnected,
   });
+
+  useWidgetSync(summary);
 
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
   const weightData = useMemo(() => {

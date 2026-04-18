@@ -4,6 +4,7 @@ import { StatusBar, Platform, Alert, AppState, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   NavigationContainer,
+  type LinkingOptions,
   type NavigationProp,
   type Theme,
 } from '@react-navigation/native';
@@ -114,12 +115,15 @@ function AppContent() {
   } = useAuth();
 
   const [initialRoute, setInitialRoute] = useState<'Tabs' | 'Onboarding' | null>(null);
+  const [linkingEnabled, setLinkingEnabled] = useState(false);
 
   useEffect(() => {
     const determine = async () => {
       try {
         const config = await getActiveServerConfig();
-        setInitialRoute(config ? 'Tabs' : 'Onboarding');
+        const route = config ? 'Tabs' : 'Onboarding';
+        setInitialRoute(route);
+        setLinkingEnabled(route === 'Tabs');
       } catch {
         setInitialRoute('Onboarding');
       } finally {
@@ -502,10 +506,40 @@ function AppContent() {
     return () => subscription.remove();
   }, [setForegroundAutoSyncWindowState]);
 
+  const linking = useMemo<LinkingOptions<RootStackParamList>>(() => ({
+    prefixes: ['sparkyfitnessmobile://'],
+    config: {
+      initialRouteName: 'Tabs',
+      screens: {
+        Tabs: {
+          screens: {
+            Dashboard: '',
+          },
+        },
+        FoodScan: 'scan',
+        FoodSearch: 'search',
+      },
+    },
+  }), []);
+
   if (!initialRoute) return null;
 
   return (
-    <NavigationContainer ref={rootNavigationRef} theme={navigationTheme}>
+    <NavigationContainer
+      ref={rootNavigationRef}
+      theme={navigationTheme}
+      linking={linkingEnabled ? linking : undefined}
+      onStateChange={(state) => {
+        // Enable deep-link handling once the user has left Onboarding.
+        // Without this, widget URLs are ignored for the rest of the session
+        // after first-run setup completes.
+        if (linkingEnabled) return;
+        const topRoute = state?.routes[state.index ?? 0]?.name;
+        if (topRoute === 'Tabs') {
+          setLinkingEnabled(true);
+        }
+      }}
+    >
       <SafeAreaProvider>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
         <Stack.Navigator screenOptions={{ headerShown: false, cardStyle: { backgroundColor: bgPrimary } }} initialRouteName={initialRoute}>
