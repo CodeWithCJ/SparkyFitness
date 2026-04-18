@@ -53,4 +53,5 @@ export { useDeleteExerciseEntry, useDeleteWorkout, useUpdateWorkout } from './us
 export { useWorkoutPresets } from './useWorkoutPresets';
 export { useWorkoutPresetSearch } from './useWorkoutPresetSearch';
 export { useExerciseSetEditing } from './useExerciseSetEditing';
+export { useWidgetSync } from './useWidgetSync';
 
