@@ -201,6 +201,7 @@ async function manageGoalTimeline(authenticatedUserId: any, goalData: any) {
       p_lunch_percentage,
       p_dinner_percentage,
       p_snacks_percentage,
+      custom_meal_percentages,
       custom_nutrients,
     } = goalData;
     log(
@@ -317,6 +318,7 @@ async function manageGoalTimeline(authenticatedUserId: any, goalData: any) {
       lunch_percentage: cleanNumber(p_lunch_percentage, true),
       dinner_percentage: cleanNumber(p_dinner_percentage, true),
       snacks_percentage: cleanNumber(p_snacks_percentage, true),
+      custom_meal_percentages: custom_meal_percentages || {},
       custom_nutrients: filteredCustomNutrients,
     };
     // If cascade is false, or if editing a past date, only update that specific date

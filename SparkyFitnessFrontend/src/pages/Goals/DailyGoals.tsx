@@ -15,6 +15,9 @@ import { useCallback, useMemo } from 'react';
 import { ExpandedGoals } from '@/types/goals';
 import { WaterAndExerciseFields } from './WaterAndExerciseFields';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
+import { buildGoalsPayload, getMealPercentage } from '@/utils/goals';
+
 interface DailyGoalsProps {
   goals: ExpandedGoals;
   setGoals: React.Dispatch<React.SetStateAction<ExpandedGoals>>;
@@ -32,52 +35,50 @@ export const DailyGoals = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: customNutrients } = useCustomNutrients();
+  const { data: mealTypes = [] } = useMealTypes();
 
-  const memoizedGoalsPercentages = useMemo(
-    () => ({
-      breakfast: goals.breakfast_percentage,
-      lunch: goals.lunch_percentage,
-      dinner: goals.dinner_percentage,
-      snacks: goals.snacks_percentage,
-    }),
-    [
-      goals.breakfast_percentage,
-      goals.lunch_percentage,
-      goals.dinner_percentage,
-      goals.snacks_percentage,
-    ]
+  const visibleMeals = useMemo(
+    () => mealTypes.filter((m) => m.is_visible),
+    [mealTypes]
   );
+
+  const memoizedGoalsPercentages = useMemo(() => {
+    const percentages: Record<string, number> = {};
+    visibleMeals.forEach((meal) => {
+      percentages[meal.name.toLowerCase()] = getMealPercentage(
+        meal.name,
+        goals
+      );
+    });
+    return percentages;
+  }, [goals, visibleMeals]);
+
   const { mutateAsync: saveGoalsService, isPending: saving } =
     useSaveGoalsMutation();
+
   const handleSaveGoals = async () => {
     if (!user) return;
-
     await saveGoalsService({ date: today, goals, cascade: true });
   };
 
   const handleGoalsPercentagesChange = useCallback(
-    (newPercentages: {
-      breakfast: number;
-      lunch: number;
-      dinner: number;
-      snacks: number;
-    }) => {
+    (newPercentages: Record<string, number>) => {
       setGoals((prevGoals) => ({
         ...prevGoals,
-        breakfast_percentage: newPercentages.breakfast,
-        lunch_percentage: newPercentages.lunch,
-        dinner_percentage: newPercentages.dinner,
-        snacks_percentage: newPercentages.snacks,
+        ...buildGoalsPayload(newPercentages, prevGoals),
       }));
     },
     [setGoals]
   );
-  const isTotalPercentageValid =
-    goals.breakfast_percentage +
-      goals.lunch_percentage +
-      goals.dinner_percentage +
-      goals.snacks_percentage ===
-    100;
+
+  const isTotalPercentageValid = useMemo(() => {
+    const total = visibleMeals.reduce(
+      (sum, meal) => sum + getMealPercentage(meal.name, goals),
+      0
+    );
+    return Math.round(total) === 100;
+  }, [goals, visibleMeals]);
+
   return (
     <>
       <Card>
@@ -97,7 +98,6 @@ export const DailyGoals = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Primary Macros */}
             {visibleNutrients.includes('calories') && (
               <div className="space-y-1.5">
                 <Label htmlFor="calories">
@@ -131,7 +131,6 @@ export const DailyGoals = ({
                 customNutrients={customNutrients}
               />
             ))}
-            {/* Custom Nutrients */}
             {customNutrients?.map((cn) => {
               return (
                 <NutrientInput

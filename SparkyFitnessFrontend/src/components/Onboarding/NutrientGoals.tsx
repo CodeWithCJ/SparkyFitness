@@ -1,6 +1,5 @@
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import MealPercentageManager from '@/components/MealPercentageManager';
 import {
   convertMlToSelectedUnit,
   convertSelectedUnitToMl,
@@ -8,6 +7,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { ExpandedGoals } from '@/types/goals';
+import { MealPercentages } from '@/types/meal';
+import MealPercentageManager from '../MealPercentageManager';
 
 export interface NutrientGoalsProps {
   convertEnergy: (
@@ -16,12 +17,7 @@ export interface NutrientGoalsProps {
     toUnit: 'kcal' | 'kJ'
   ) => number;
   editedPlan: ExpandedGoals | null;
-  handlePercentagesChange: (newPercentages: {
-    breakfast: number;
-    lunch: number;
-    dinner: number;
-    snacks: number;
-  }) => void;
+  handlePercentagesChange: (newPercentages: MealPercentages) => void;
   localEnergyUnit: 'kcal' | 'kJ';
   localWaterUnit: 'ml' | 'oz' | 'liter';
   memoizedInitialPercentages: {

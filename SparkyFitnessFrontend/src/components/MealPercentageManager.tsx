@@ -14,12 +14,7 @@ import {
 import { Lock, Unlock } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
-export interface MealPercentages {
-  breakfast: number;
-  lunch: number;
-  dinner: number;
-  snacks: number;
-}
+export type MealPercentages = Record<string, number>;
 
 interface MealPercentageManagerProps {
   initialPercentages: MealPercentages;
@@ -53,33 +48,22 @@ const MealPercentageManager = ({
 }: MealPercentageManagerProps) => {
   const { t } = useTranslation();
   const { energyUnit, convertEnergy } = usePreferences();
-  const [percentages, setPercentages] =
-    useState<MealPercentages>(initialPercentages);
-  const [locks, setLocks] = useState({
-    breakfast: false,
-    lunch: false,
-    dinner: false,
-    snacks: false,
-  });
+
+  const [locks, setLocks] = useState<Record<string, boolean>>({});
+
   const selectedTemplateName = useMemo(() => {
-    const matchingTemplate = distributionTemplates.find(
-      (t) => JSON.stringify(t.values) === JSON.stringify(percentages)
-    );
+    const matchingTemplate = distributionTemplates.find((tpl) => {
+      const tplKeys = Object.keys(tpl.values);
+      const curKeys = Object.keys(initialPercentages);
+      if (tplKeys.length !== curKeys.length) return false;
+      const keysMatch = tplKeys.every((k) => curKeys.includes(k));
+      return (
+        keysMatch &&
+        JSON.stringify(tpl.values) === JSON.stringify(initialPercentages)
+      );
+    });
     return matchingTemplate ? matchingTemplate.name : 'Custom';
-  }, [percentages]);
-
-  const [prevInitial, setPrevInitial] =
-    useState<MealPercentages>(initialPercentages);
-
-  if (
-    initialPercentages.breakfast !== prevInitial.breakfast ||
-    initialPercentages.lunch !== prevInitial.lunch ||
-    initialPercentages.dinner !== prevInitial.dinner ||
-    initialPercentages.snacks !== prevInitial.snacks
-  ) {
-    setPrevInitial(initialPercentages);
-    setPercentages(initialPercentages);
-  }
+  }, [initialPercentages]);
 
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal'
@@ -87,178 +71,81 @@ const MealPercentageManager = ({
       : t('common.kJUnit', 'kJ');
   };
 
-  // Calculate calories for a given percentage
   const calculateCalories = (percentage: number): number => {
-    // totalCalories is assumed to be in kcal
     const caloriesInKcal = (percentage / 100) * totalCalories;
-    return Math.round(convertEnergy(caloriesInKcal, 'kcal', energyUnit)); // Return converted value for display
+    return Math.round(convertEnergy(caloriesInKcal, 'kcal', energyUnit));
   };
 
   const handleTemplateChange = useCallback(
     (templateName: string) => {
       if (templateName === 'Custom') return;
       const template = distributionTemplates.find(
-        (t) => t.name === templateName
+        (tpl) => tpl.name === templateName
       );
       if (template) {
-        const newValues = template.values;
-        setPercentages(newValues);
-        setLocks({
-          breakfast: false,
-          lunch: false,
-          dinner: false,
-          snacks: false,
-        });
+        const newValues = { ...template.values };
+        setLocks({}); // Clear locks when applying a new template
         onPercentagesChange(newValues);
       }
     },
     [onPercentagesChange]
   );
 
-  const normalizePercentages = useCallback(
-    (
-      currentPercentages: MealPercentages,
-      changedMeal: keyof MealPercentages | undefined,
-      currentLocks: typeof locks
-    ): MealPercentages => {
-      const total = Object.values(currentPercentages).reduce(
-        (sum, p) => sum + p,
-        0
-      );
-      if (Math.round(total) !== 100) {
-        const diff = 100 - total;
-        const unlockedMeals = Object.keys(currentLocks).filter(
-          (key) =>
-            !currentLocks[key as keyof MealPercentages] && key !== changedMeal
-        ) as (keyof MealPercentages)[];
-        if (unlockedMeals.length > 0) {
-          const adjustment = diff / unlockedMeals.length;
-          unlockedMeals.forEach((m) => {
-            currentPercentages[m] += adjustment;
-          });
-        }
-      }
-      // Round to nearest integer and ensure sum is exactly 100
-      let roundedTotal = 0;
-      const finalPercentages = { ...currentPercentages };
-      (Object.keys(finalPercentages) as (keyof MealPercentages)[]).forEach(
-        (m) => {
-          finalPercentages[m] = Math.round(finalPercentages[m]);
-          roundedTotal += finalPercentages[m];
-        }
-      );
-
-      // Adjust for rounding errors
-      let roundingDiff = 100 - roundedTotal;
-      const unlockedMeals = Object.keys(currentLocks).filter(
-        (key) =>
-          !currentLocks[key as keyof MealPercentages] && key !== changedMeal
-      ) as (keyof MealPercentages)[];
-      if (unlockedMeals.length > 0) {
-        let i = 0;
-        while (roundingDiff !== 0) {
-          const mealToAdjust = unlockedMeals[i % unlockedMeals.length];
-          const adjustment = Math.sign(roundingDiff);
-          if (mealToAdjust) {
-            finalPercentages[mealToAdjust] += adjustment;
-          }
-          roundingDiff -= adjustment;
-          i++;
-        }
-      }
-
-      return finalPercentages;
-    },
-    []
-  );
-
-  const autoBalance = useCallback(
-    (
-      currentPercentages: MealPercentages,
-      changedMeal: keyof MealPercentages,
-      currentLocks: typeof locks,
-      currentTemplate: string
-    ): MealPercentages => {
-      if (currentTemplate === 'Custom') {
-        return currentPercentages;
-      }
-      const lockedTotal = Object.keys(currentLocks).reduce((acc, key) => {
-        return currentLocks[key as keyof MealPercentages] && key !== changedMeal
-          ? acc + currentPercentages[key as keyof MealPercentages]
-          : acc;
-      }, 0);
-
-      const unlockedMeals = Object.keys(currentLocks).filter(
-        (key) =>
-          !currentLocks[key as keyof MealPercentages] && key !== changedMeal
-      ) as (keyof MealPercentages)[];
-      const changedValue = currentPercentages[changedMeal];
-      const remainingToDistribute = 100 - lockedTotal - changedValue;
-
-      if (unlockedMeals.length > 0) {
-        const perMealShare = remainingToDistribute / unlockedMeals.length;
-        unlockedMeals.forEach((m) => {
-          currentPercentages[m] = perMealShare;
-        });
-      }
-
-      return normalizePercentages(
-        currentPercentages,
-        changedMeal,
-        currentLocks
-      );
-    },
-    [normalizePercentages]
-  );
-
   const handleSliderChange = useCallback(
-    (meal: keyof MealPercentages, value: number) => {
-      setPercentages((prev) => {
-        const newPercentages = { ...prev, [meal]: value };
-
-        onPercentagesChange(newPercentages);
-        return autoBalance(newPercentages, meal, locks, selectedTemplateName);
-      });
+    (meal: string, value: number) => {
+      // Create a new object with the updated value and send it straight to the parent
+      const newPercentages = { ...initialPercentages, [meal]: value };
+      onPercentagesChange(newPercentages);
     },
-    [locks, selectedTemplateName, autoBalance, onPercentagesChange]
+    [initialPercentages, onPercentagesChange]
   );
 
-  const handleLockToggle = useCallback((meal: keyof MealPercentages) => {
+  const handleLockToggle = useCallback((meal: string) => {
     setLocks((prevLocks) => ({ ...prevLocks, [meal]: !prevLocks[meal] }));
   }, []);
 
   const distributeRemaining = useCallback(() => {
     const lockedTotal = Object.keys(locks).reduce((acc, key) => {
-      return locks[key as keyof MealPercentages]
-        ? acc + percentages[key as keyof MealPercentages]
-        : acc;
+      return locks[key] ? acc + (initialPercentages[key] ?? 0) : acc;
     }, 0);
 
-    const unlockedMeals = Object.keys(locks).filter(
-      (key) => !locks[key as keyof MealPercentages]
-    ) as (keyof MealPercentages)[];
-    const remainingToDistribute = 100 - lockedTotal;
+    const unlockedMeals = Object.keys(initialPercentages).filter(
+      (key) => !locks[key]
+    );
+    let remainingToDistribute = 100 - lockedTotal;
 
     if (unlockedMeals.length > 0) {
-      const perMealShare = remainingToDistribute / unlockedMeals.length;
-      const newPercentages = { ...percentages };
-      unlockedMeals.forEach((m) => {
-        newPercentages[m] = perMealShare;
-      });
-      const finalPercentages = normalizePercentages(
-        newPercentages,
-        undefined,
-        locks
-      );
-      setPercentages(finalPercentages);
-      onPercentagesChange(finalPercentages);
-    }
-  }, [percentages, locks, onPercentagesChange, normalizePercentages]);
+      const newPercentages = { ...initialPercentages };
 
-  const totalPercentage = Object.values(percentages).reduce(
-    (sum, p) => sum + Number(p),
+      unlockedMeals.forEach((m, index) => {
+        if (index === unlockedMeals.length - 1) {
+          // Give the exact remainder to the last unlocked meal to prevent rounding drift
+          newPercentages[m] = Math.max(0, remainingToDistribute);
+        } else {
+          // Divide evenly and round
+          const share = Math.round((100 - lockedTotal) / unlockedMeals.length);
+          newPercentages[m] = Math.max(0, share);
+          remainingToDistribute -= share;
+        }
+      });
+
+      onPercentagesChange(newPercentages);
+    }
+  }, [initialPercentages, locks, onPercentagesChange]);
+
+  const totalPercentage = Object.values(initialPercentages).reduce(
+    (sum, p) => sum + Number(p ?? 0),
     0
   );
+
+  const hasCustomMeals = useMemo(() => {
+    const templateKeys = Object.keys(distributionTemplates[0]?.values ?? {});
+    const currentKeys = Object.keys(initialPercentages);
+    return (
+      currentKeys.length !== templateKeys.length ||
+      !currentKeys.every((k) => templateKeys.includes(k))
+    );
+  }, [initialPercentages]);
 
   return (
     <div className="space-y-6">
@@ -266,6 +153,7 @@ const MealPercentageManager = ({
         <Select
           onValueChange={handleTemplateChange}
           value={selectedTemplateName}
+          disabled={hasCustomMeals}
         >
           <SelectTrigger>
             <SelectValue
@@ -278,11 +166,12 @@ const MealPercentageManager = ({
                 {t('goals.mealDistribution.custom')}
               </SelectItem>
             )}
-            {distributionTemplates.map((template) => (
-              <SelectItem key={template.name} value={template.name}>
-                {template.name}
-              </SelectItem>
-            ))}
+            {!hasCustomMeals &&
+              distributionTemplates.map((template) => (
+                <SelectItem key={template.name} value={template.name}>
+                  {template.name}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
         <Button
@@ -294,11 +183,13 @@ const MealPercentageManager = ({
         </Button>
       </div>
 
-      {(Object.keys(percentages) as Array<keyof MealPercentages>).map(
-        (meal) => (
+      {Object.keys(initialPercentages).map((meal) => {
+        const mealPercentage = initialPercentages[meal] ?? 0;
+
+        return (
           <div key={meal} className="space-y-2">
             <Label htmlFor={meal} className="capitalize font-semibold">
-              {t(`common.${meal}`)} ({calculateCalories(percentages[meal])}{' '}
+              {t(`common.${meal}`, meal)} ({calculateCalories(mealPercentage)}{' '}
               {getEnergyUnitString(energyUnit)})
             </Label>
             <div className="flex items-center gap-4">
@@ -318,7 +209,7 @@ const MealPercentageManager = ({
                 min={0}
                 max={100}
                 step={1}
-                value={[percentages[meal]]}
+                value={[mealPercentage]}
                 onValueChange={([value]) =>
                   handleSliderChange(meal, value || 0)
                 }
@@ -327,7 +218,7 @@ const MealPercentageManager = ({
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
-                  value={percentages[meal]}
+                  value={mealPercentage}
                   onChange={(e) =>
                     handleSliderChange(meal, parseInt(e.target.value, 10) || 0)
                   }
@@ -338,11 +229,13 @@ const MealPercentageManager = ({
               </div>
             </div>
           </div>
-        )
-      )}
+        );
+      })}
 
       <div
-        className={`text-right font-semibold ${totalPercentage === 100 ? 'text-green-600' : 'text-red-600'}`}
+        className={`text-right font-semibold ${
+          totalPercentage === 100 ? 'text-green-600' : 'text-red-600'
+        }`}
       >
         {t('goals.mealDistribution.total')}: {totalPercentage}%
         {totalPercentage !== 100 && (

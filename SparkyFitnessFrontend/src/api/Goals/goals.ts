@@ -149,6 +149,7 @@ export const loadGoals = async (
       lunch_percentage: 25,
       dinner_percentage: 25,
       snacks_percentage: 25,
+      custom_meal_percentages: {},
     }
   );
 };
@@ -194,6 +195,7 @@ export const saveGoals = async (
       p_lunch_percentage: goals.lunch_percentage,
       p_dinner_percentage: goals.dinner_percentage,
       p_snacks_percentage: goals.snacks_percentage,
+      custom_meal_percentages: goals.custom_meal_percentages,
       custom_nutrients,
     },
   });

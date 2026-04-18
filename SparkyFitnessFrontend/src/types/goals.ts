@@ -26,6 +26,8 @@ export interface ExpandedGoals {
   lunch_percentage: number;
   dinner_percentage: number;
   snacks_percentage: number;
+  custom_meal_percentages?: Record<string, number>;
+  custom_nutrients?: Record<string, number>;
   [key: string]: number | string | Record<string, number> | null | undefined;
 }
 export interface GoalPreset {
@@ -59,6 +61,7 @@ export interface GoalPreset {
   lunch_percentage: number;
   dinner_percentage: number;
   snacks_percentage: number;
+  custom_meal_percentages?: Record<string, number>;
   custom_nutrients?: Record<string, number>;
   [key: string]: number | string | Record<string, number> | null | undefined;
 }
