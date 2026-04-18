@@ -62,6 +62,7 @@ const ExerciseSearch = ({
     disableTabs,
     initialSearchSource,
   });
+
   const renderExerciseList = (
     list: Exercise[],
     type: 'internal' | 'external',

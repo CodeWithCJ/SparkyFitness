@@ -7,11 +7,11 @@ async function getExternalDataProviders(userId: any) {
   try {
     const result = await client.query(
       `SELECT edp.id, edp.user_id, edp.provider_name, edp.provider_type, edp.is_active, edp.base_url, 
-              edp.shared_with_public, edp.encrypted_access_token, edp.sync_frequency,
+              edp.shared_with_public, edp.encrypted_access_token, edp.sync_frequency, edp.sort_order,
               ept.is_strictly_private
        FROM external_data_providers edp
        LEFT JOIN external_provider_types ept ON edp.provider_type = ept.id
-       ORDER BY edp.created_at DESC`,
+       ORDER BY edp.sort_order ASC NULLS LAST, edp.created_at DESC`,
       []
     );
     // log('debug', `getExternalDataProviders: Raw query results for user ${userId}:`, result.rows);
@@ -272,6 +272,7 @@ async function updateExternalDataProvider(
         token_expires_at = COALESCE($15, token_expires_at),
         external_user_id = COALESCE($16, external_user_id),
         sync_frequency = COALESCE($18, sync_frequency),
+        sort_order = COALESCE($21, sort_order),
         updated_at = now()
       WHERE id = $17
       RETURNING *`,
@@ -296,6 +297,7 @@ async function updateExternalDataProvider(
         updateData.sync_frequency,
         clearAppId,
         clearAppKey,
+        updateData.sort_order,
       ]
     );
     return result.rows[0];
