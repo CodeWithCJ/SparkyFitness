@@ -356,6 +356,14 @@ export function useCustomFoodForm({
             if (!isNaN(old))
               newVariant[nutrient] = Number((old * factor).toFixed(4));
           }
+          if (currentVariant.custom_nutrients) {
+            const scaled = { ...newVariant.custom_nutrients };
+            Object.keys(currentVariant.custom_nutrients).forEach((name) => {
+              const old = Number(currentVariant.custom_nutrients?.[name]);
+              if (!isNaN(old)) scaled[name] = Number((old * factor).toFixed(4));
+            });
+            newVariant.custom_nutrients = scaled;
+          }
           updatedManualUnitConversionPending[index] = false;
         } else if (factor === null && !bothServing) {
           newVariant = zeroOutVariantNutrition(newVariant);
