@@ -1,0 +1,28 @@
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - wontfix
+      - question
+      - "good first issue"
+      - "help wanted"
+      - eas-build
+      - skip-changelog
+      - refactor
+  categories:
+    - title: "Security"
+      labels:
+        - security
+    - title: "Features"
+      labels:
+        - enhancement
+    - title: "Fixes"
+      labels:
+        - bug
+    - title: "Documentation"
+      labels:
+        - documentation
+    - title: "Other Changes"
+      labels:
+        - "*"
