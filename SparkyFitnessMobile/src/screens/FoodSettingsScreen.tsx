@@ -8,6 +8,7 @@ import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExternalProviders } from '../hooks/useExternalProviders';
 import { BARCODE_PROVIDER_TYPES } from '../types/externalProviders';
@@ -20,6 +21,7 @@ type FoodSettingsScreenProps = RootStackScreenProps<'FoodSettings'>;
 
 const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
     '--color-accent-primary',
     '--color-form-enabled',
@@ -92,7 +94,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
         contentInsetAdjustmentBehavior="never"
       >
         {/* Header */}

@@ -5,6 +5,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus } from '../hooks';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -14,6 +15,7 @@ type PresetSearchScreenProps = RootStackScreenProps<'PresetSearch'>;
 const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
   const insets = useSafeAreaInsets();
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textMuted, textSecondary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -60,6 +62,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
         keyExtractor={(item) => item.id}
         renderItem={renderPresetRow}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding }}
       />
     );
   };
@@ -89,6 +92,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
         keyExtractor={(item) => item.id}
         renderItem={renderPresetRow}
         keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding }}
       />
     );
   };

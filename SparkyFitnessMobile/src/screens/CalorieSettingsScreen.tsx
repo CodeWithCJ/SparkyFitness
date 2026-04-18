@@ -10,6 +10,7 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { usePreferences } from '../hooks/usePreferences';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { preferencesQueryKey } from '../hooks/queryKeys';
@@ -46,6 +47,7 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
 
 const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
     '--color-accent-primary',
     '--color-form-enabled',
@@ -165,7 +167,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = ({ navigatio
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding }}
         contentInsetAdjustmentBehavior="never"
       >
         {/* Header */}

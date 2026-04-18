@@ -10,6 +10,7 @@ import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
 import {
   useDeleteExerciseEntry,
@@ -37,6 +38,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [session, setSession] = useState(route.params.session);
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { preferences } = usePreferences();
   const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const weightUnit = (preferences?.default_weight_unit as 'kg' | 'lbs') ?? 'kg';
@@ -492,7 +494,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         )}
       </View>
 
-      <KeyboardAwareScrollView contentContainerClassName="px-4 pb-8" bottomOffset={20} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView
+        contentContainerClassName="px-4"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 + activeWorkoutBarPadding }}
+        bottomOffset={20}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Title area */}
         <View className="flex-row items-start mb-4 mt-4">
           {firstImageSource && (
