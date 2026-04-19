@@ -37,6 +37,29 @@ interface UseCustomFoodFormProps {
   onSave: (foodData: Food) => void;
 }
 
+function buildManualConversionToast(baseUnit: string, targetUnit: string) {
+  return {
+    title: 'Manual conversion required',
+    description: `"${baseUnit}" and "${targetUnit}" are incompatible unit types. Please update the serving size and nutrition values manually.`,
+  } as const;
+}
+
+function zeroOutVariantNutrition(variant: FormFoodVariant): FormFoodVariant {
+  const zeroedVariant = { ...variant };
+
+  for (const nutrient of nutrientFields) {
+    zeroedVariant[nutrient] = 0;
+  }
+
+  if (variant.custom_nutrients) {
+    zeroedVariant.custom_nutrients = Object.fromEntries(
+      Object.keys(variant.custom_nutrients).map((name) => [name, 0])
+    );
+  }
+
+  return zeroedVariant;
+}
+
 export function useCustomFoodForm({
   food,
   initialVariants,
@@ -60,6 +83,8 @@ export function useCustomFoodForm({
     []
   );
   const [loadedVariants, setLoadedVariants] = useState<FormFoodVariant[]>([]);
+  const [manualUnitConversionPending, setManualUnitConversionPending] =
+    useState<boolean[]>([]);
   const [variantErrors, setVariantErrors] = useState<string[]>([]);
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [syncFoodId, setSyncFoodId] = useState<string | null>(null);
@@ -76,6 +101,7 @@ export function useCustomFoodForm({
     setVariants([defaultVariant]);
     setOriginalVariants(snapshot);
     setLoadedVariants(snapshot);
+    setManualUnitConversionPending([false]);
     setVariantErrors(['']);
   }, [customNutrients]);
 
@@ -115,6 +141,7 @@ export function useCustomFoodForm({
       setVariants(loaded);
       setOriginalVariants(snapshot);
       setLoadedVariants(snapshot);
+      setManualUnitConversionPending(new Array(loaded.length).fill(false));
     } catch (err) {
       console.error('Error loading variants:', err);
       const fallback = createDefaultFormVariant(customNutrients);
@@ -122,6 +149,7 @@ export function useCustomFoodForm({
       setVariants([fallback]);
       setOriginalVariants(snapshot);
       setLoadedVariants(snapshot);
+      setManualUnitConversionPending([false]);
     }
   }, [food?.default_variant, food?.id, queryClient, customNutrients]);
 
@@ -145,6 +173,7 @@ export function useCustomFoodForm({
         setVariants(mapped);
         setOriginalVariants(snapshot);
         setLoadedVariants(snapshot);
+        setManualUnitConversionPending(new Array(mapped.length).fill(false));
         setVariantErrors(new Array(food.variants.length).fill(null));
       } else {
         loadExistingVariants();
@@ -156,6 +185,7 @@ export function useCustomFoodForm({
       setVariants(mapped);
       setOriginalVariants(snapshot);
       setLoadedVariants(snapshot);
+      setManualUnitConversionPending(new Array(mapped.length).fill(false));
       setVariantErrors(new Array(initialVariants.length).fill(null));
     } else {
       resetForm();
@@ -178,11 +208,16 @@ export function useCustomFoodForm({
     setVariants((prev) => [...prev, newVariant]);
     setOriginalVariants((prev) => [...prev, clone]);
     setLoadedVariants((prev) => [...prev, clone]);
+    setManualUnitConversionPending((prev) => [...prev, false]);
     setVariantErrors((prev) => [...prev, '']);
   };
 
   const duplicateVariant = (index: number) => {
     const src = variants[index];
+    const sourceOriginalVariant = originalVariants[index];
+    const sourceLoadedVariant = loadedVariants[index];
+    const sourceRequiresManualConversion =
+      manualUnitConversionPending[index] ?? false;
     if (!src) {
       error(
         loggingLevel,
@@ -197,10 +232,21 @@ export function useCustomFoodForm({
       is_default: false,
       is_locked: false,
     };
-    const clone = deepClone(newVariant);
+    const originalClone = deepClone(
+      sourceRequiresManualConversion ? sourceOriginalVariant || src : newVariant
+    );
+    const loadedClone = deepClone(
+      sourceRequiresManualConversion
+        ? sourceLoadedVariant || sourceOriginalVariant || src
+        : newVariant
+    );
     setVariants((prev) => [...prev, newVariant]);
-    setOriginalVariants((prev) => [...prev, clone]);
-    setLoadedVariants((prev) => [...prev, clone]);
+    setOriginalVariants((prev) => [...prev, originalClone]);
+    setLoadedVariants((prev) => [...prev, loadedClone]);
+    setManualUnitConversionPending((prev) => [
+      ...prev,
+      sourceRequiresManualConversion,
+    ]);
     setVariantErrors((prev) => [...prev, '']);
   };
 
@@ -215,6 +261,11 @@ export function useCustomFoodForm({
       return;
     }
     setVariants((prev) => prev.filter((_, i) => i !== index));
+    setOriginalVariants((prev) => prev.filter((_, i) => i !== index));
+    setLoadedVariants((prev) => prev.filter((_, i) => i !== index));
+    setManualUnitConversionPending((prev) =>
+      prev.filter((_, i) => i !== index)
+    );
     setVariantErrors((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -225,6 +276,7 @@ export function useCustomFoodForm({
   ) => {
     const updatedVariants = [...variants];
     const updatedOriginalVariants = [...originalVariants];
+    const updatedManualUnitConversionPending = [...manualUnitConversionPending];
     const currentVariant = updatedVariants[index];
     if (!currentVariant) {
       error(loggingLevel, 'Could not find variant to update at index:', index);
@@ -277,26 +329,48 @@ export function useCustomFoodForm({
       const oldUnit = currentVariant.serving_unit;
       const newUnit = String(value);
       const loadedVariant = loadedVariants[index];
+      const trustedBaseUnit =
+        updatedOriginalVariants[index]?.serving_unit ??
+        loadedVariant?.serving_unit ??
+        oldUnit;
+      const manualConversionPendingForVariant =
+        updatedManualUnitConversionPending[index] ?? false;
 
       if (loadedVariant && newUnit === loadedVariant.serving_unit) {
-        for (const nutrient of nutrientFields)
+        for (const nutrient of nutrientFields) {
           newVariant[nutrient] = loadedVariant[nutrient];
+        }
+        newVariant.custom_nutrients = deepClone(loadedVariant.custom_nutrients);
+        updatedManualUnitConversionPending[index] = false;
       } else {
         const factor = getConversionFactor(oldUnit, newUnit);
         const bothServing =
           getUnitCategory(oldUnit) === null &&
           getUnitCategory(newUnit) === null;
-        if (factor !== null && factor !== 1) {
+        if (manualConversionPendingForVariant) {
+          toast(buildManualConversionToast(trustedBaseUnit, newUnit));
+          updatedManualUnitConversionPending[index] = true;
+        } else if (factor !== null && factor !== 1) {
           for (const nutrient of nutrientFields) {
             const old = Number(currentVariant[nutrient]);
             if (!isNaN(old))
               newVariant[nutrient] = Number((old * factor).toFixed(4));
           }
+          if (currentVariant.custom_nutrients) {
+            const scaled = { ...newVariant.custom_nutrients };
+            Object.keys(currentVariant.custom_nutrients).forEach((name) => {
+              const old = Number(currentVariant.custom_nutrients?.[name]);
+              if (!isNaN(old)) scaled[name] = Number((old * factor).toFixed(4));
+            });
+            newVariant.custom_nutrients = scaled;
+          }
+          updatedManualUnitConversionPending[index] = false;
         } else if (factor === null && !bothServing) {
-          toast({
-            title: 'Manual conversion required',
-            description: `"${oldUnit}" and "${newUnit}" are incompatible unit types. Please update the serving size and nutrition values manually.`,
-          });
+          newVariant = zeroOutVariantNutrition(newVariant);
+          toast(buildManualConversionToast(trustedBaseUnit, newUnit));
+          updatedManualUnitConversionPending[index] = true;
+        } else {
+          updatedManualUnitConversionPending[index] = false;
         }
       }
     }
@@ -309,7 +383,11 @@ export function useCustomFoodForm({
     }
 
     // Proportional scaling for locked variants
-    if (field === 'serving_size' && newVariant.is_locked) {
+    if (
+      field === 'serving_size' &&
+      newVariant.is_locked &&
+      !(updatedManualUnitConversionPending[index] ?? false)
+    ) {
       const originalVariant = updatedOriginalVariants[index];
       if (!originalVariant) {
         error(loggingLevel, 'Could not find original variant at index:', index);
@@ -333,12 +411,18 @@ export function useCustomFoodForm({
       }
     } else {
       // Update scaling baseline for any non-scaling change
-      updatedOriginalVariants[index] = deepClone(newVariant);
-      setOriginalVariants(updatedOriginalVariants);
+      if (
+        field !== 'serving_unit' ||
+        !(updatedManualUnitConversionPending[index] ?? false)
+      ) {
+        updatedOriginalVariants[index] = deepClone(newVariant);
+        setOriginalVariants(updatedOriginalVariants);
+      }
     }
 
     updatedVariants[index] = newVariant;
     setVariants(updatedVariants);
+    setManualUnitConversionPending(updatedManualUnitConversionPending);
   };
 
   const updateField = (field: string, value: string | boolean) => {
@@ -438,6 +522,7 @@ export function useCustomFoodForm({
     showSyncConfirmation,
     setShowSyncConfirmation,
     loadedVariants,
+    conversionBaseVariants: originalVariants,
     platform,
     // Handlers
     updateField,

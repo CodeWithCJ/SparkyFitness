@@ -31,7 +31,7 @@ interface VariantCardProps {
     to: 'kcal' | 'kJ'
   ) => number;
   customNutrients?: UserCustomNutrient[];
-  baseServingUnit: string; // loadedVariantsRef.current[index]?.serving_unit ?? variant.serving_unit
+  baseServingUnit: string; // trusted conversion base for compatibility checkmarks
   onUpdate: (
     index: number,
     field: string,

@@ -352,7 +352,7 @@ const EditFoodEntryDialog = ({
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="e.g. 14.2"
+                        placeholder="e.g. 1"
                         value={conversionFactor}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -399,7 +399,7 @@ const EditFoodEntryDialog = ({
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="e.g. 14.2"
+                        placeholder="e.g. 1"
                         value={conversionFactor}
                         onChange={(e) => {
                           const val = e.target.value;
