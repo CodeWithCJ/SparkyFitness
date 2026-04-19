@@ -35,6 +35,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
     const pendingPresentRef = useRef(false);
+    const presentFrameRef = useRef<number | null>(null);
     const [showExerciseMenu, setShowExerciseMenu] = useState(false);
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -48,25 +49,42 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         '--color-text-secondary',
       ]) as [string, string, string, string, string];
 
+    const schedulePresent = useCallback(() => {
+      if (presentFrameRef.current != null) {
+        cancelAnimationFrame(presentFrameRef.current);
+      }
+
+      presentFrameRef.current = requestAnimationFrame(() => {
+        presentFrameRef.current = null;
+        bottomSheetRef.current?.present();
+      });
+    }, []);
+
     useImperativeHandle(ref, () => ({
       present: () => {
+        pendingPresentRef.current = true;
         if (isDismissingRef.current) {
-          pendingPresentRef.current = true;
           return;
         }
-        pendingPresentRef.current = false;
-        bottomSheetRef.current?.present();
+        schedulePresent();
       },
       dismiss: () => {
         pendingPresentRef.current = false;
         isDismissingRef.current = true;
+        if (presentFrameRef.current != null) {
+          cancelAnimationFrame(presentFrameRef.current);
+          presentFrameRef.current = null;
+        }
         bottomSheetRef.current?.dismiss();
       },
-    }));
+    }), [schedulePresent]);
 
     useEffect(() => {
       const sheetRef = bottomSheetRef.current;
       return () => {
+        if (presentFrameRef.current != null) {
+          cancelAnimationFrame(presentFrameRef.current);
+        }
         sheetRef?.dismiss();
       };
     }, []);
@@ -92,10 +110,9 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       isDismissingRef.current = false;
       setShowExerciseMenu(false);
       if (pendingPresentRef.current) {
-        pendingPresentRef.current = false;
-        bottomSheetRef.current?.present();
+        schedulePresent();
       }
-    }, []);
+    }, [schedulePresent]);
 
     const handleAnimate = useCallback((fromIndex: number, toIndex: number) => {
       if (fromIndex >= 0 && toIndex === -1) {
@@ -105,6 +122,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
 
       if (toIndex >= 0) {
         isDismissingRef.current = false;
+        pendingPresentRef.current = false;
       }
     }, []);
 

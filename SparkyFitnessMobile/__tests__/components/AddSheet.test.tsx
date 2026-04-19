@@ -3,7 +3,14 @@ import { render } from '@testing-library/react-native';
 import AddSheet, { type AddSheetRef } from '../../src/components/AddSheet';
 
 const mockBottomSheetControls = {
-  present: jest.fn(),
+  openCount: 0,
+  isPresentBlocked: false,
+  present: jest.fn(() => {
+    if (mockBottomSheetControls.isPresentBlocked) {
+      return;
+    }
+    mockBottomSheetControls.openCount += 1;
+  }),
   dismiss: jest.fn(),
   onDismiss: undefined as (() => void) | undefined,
   onAnimate: undefined as ((fromIndex: number, toIndex: number) => void) | undefined,
@@ -33,13 +40,32 @@ jest.mock('@gorhom/bottom-sheet', () => {
 });
 
 describe('AddSheet', () => {
+  let requestAnimationFrameSpy: jest.SpyInstance<number, [FrameRequestCallback]>;
+  let cancelAnimationFrameSpy: jest.SpyInstance<void, [number]>;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockBottomSheetControls.openCount = 0;
+    mockBottomSheetControls.isPresentBlocked = false;
     mockBottomSheetControls.onDismiss = undefined;
     mockBottomSheetControls.onAnimate = undefined;
+    requestAnimationFrameSpy = jest
+      .spyOn(global, 'requestAnimationFrame')
+      .mockImplementation((callback: FrameRequestCallback) => {
+        callback(0);
+        return 1;
+      });
+    cancelAnimationFrameSpy = jest
+      .spyOn(global, 'cancelAnimationFrame')
+      .mockImplementation(() => {});
   });
 
-  it('re-presents after dismiss if present is requested during close animation', () => {
+  afterEach(() => {
+    requestAnimationFrameSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it('re-presents after dismiss if present is requested while a close is still winding down', () => {
     const ref = React.createRef<AddSheetRef>();
 
     render(
@@ -55,15 +81,16 @@ describe('AddSheet', () => {
     );
 
     ref.current?.present();
-    expect(mockBottomSheetControls.present).toHaveBeenCalledTimes(1);
+    expect(mockBottomSheetControls.openCount).toBe(1);
 
-    mockBottomSheetControls.onAnimate?.(0, -1);
+    mockBottomSheetControls.isPresentBlocked = true;
     ref.current?.present();
 
-    expect(mockBottomSheetControls.present).toHaveBeenCalledTimes(1);
+    expect(mockBottomSheetControls.openCount).toBe(1);
 
+    mockBottomSheetControls.isPresentBlocked = false;
     mockBottomSheetControls.onDismiss?.();
 
-    expect(mockBottomSheetControls.present).toHaveBeenCalledTimes(2);
+    expect(mockBottomSheetControls.openCount).toBe(2);
   });
 });
