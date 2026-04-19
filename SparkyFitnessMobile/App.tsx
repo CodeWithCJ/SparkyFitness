@@ -608,7 +608,6 @@ function AppContent() {
             options={{
               headerShown: false,
               presentation: 'modal',
-              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
