@@ -34,11 +34,11 @@ describe('haptics service', () => {
     expect(() => fireSelectionHaptic()).not.toThrow();
   });
 
-  it('fires sheet-open haptics with a rigid impact', () => {
+  it('fires sheet-open haptics with a light impact', () => {
     fireSheetOpenHaptic();
 
     expect(mockImpactAsync).toHaveBeenCalledTimes(1);
-    expect(mockImpactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Rigid);
+    expect(mockImpactAsync).toHaveBeenCalledWith(Haptics.ImpactFeedbackStyle.Light);
   });
 
   it('swallows sheet-open haptic rejections', () => {

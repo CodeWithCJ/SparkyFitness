@@ -33,6 +33,8 @@ interface ActionCard {
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
   ({ onAddFood, onAddWorkout, onAddActivity, onAddFromPreset, onSyncHealthData, onBarcodeScan }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
+    const isDismissingRef = useRef(false);
+    const pendingPresentRef = useRef(false);
     const [showExerciseMenu, setShowExerciseMenu] = useState(false);
     const { theme } = useUniwind();
     const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -47,8 +49,19 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       ]) as [string, string, string, string, string];
 
     useImperativeHandle(ref, () => ({
-      present: () => bottomSheetRef.current?.present(),
-      dismiss: () => bottomSheetRef.current?.dismiss(),
+      present: () => {
+        if (isDismissingRef.current) {
+          pendingPresentRef.current = true;
+          return;
+        }
+        pendingPresentRef.current = false;
+        bottomSheetRef.current?.present();
+      },
+      dismiss: () => {
+        pendingPresentRef.current = false;
+        isDismissingRef.current = true;
+        bottomSheetRef.current?.dismiss();
+      },
     }));
 
     useEffect(() => {
@@ -76,7 +89,23 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     }, []);
 
     const handleDismiss = useCallback(() => {
+      isDismissingRef.current = false;
       setShowExerciseMenu(false);
+      if (pendingPresentRef.current) {
+        pendingPresentRef.current = false;
+        bottomSheetRef.current?.present();
+      }
+    }, []);
+
+    const handleAnimate = useCallback((fromIndex: number, toIndex: number) => {
+      if (fromIndex >= 0 && toIndex === -1) {
+        isDismissingRef.current = true;
+        return;
+      }
+
+      if (toIndex >= 0) {
+        isDismissingRef.current = false;
+      }
     }, []);
 
     const cards: ActionCard[] = [
@@ -140,6 +169,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
+        onAnimate={handleAnimate}
         onDismiss={handleDismiss}
       >
         <BottomSheetView className="pb-5 px-2.5">
