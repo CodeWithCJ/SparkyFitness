@@ -17,7 +17,7 @@ import { useCustomFoodForm } from '@/hooks/Foods/useFoodForm';
 interface CustomFoodFormProps {
   onSave: (foodData: Food) => void;
   food?: Food;
-  initialVariants?: FoodVariant[]; // New prop for pre-populating variants
+  initialVariants?: FoodVariant[];
   visibleNutrients?: string[];
 }
 
@@ -68,7 +68,6 @@ const CustomFoodForm = ({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Info: grid-cols-1 on mobile, sm:grid-cols-2 on small screens and up */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">Food Name *</Label>
@@ -89,7 +88,6 @@ const CustomFoodForm = ({
               </div>
             </div>
 
-            {/* Quick Add Checkbox (already good, flex handles it) */}
             <div className="flex items-center space-x-2 pt-2">
               <Checkbox
                 id="is_quick_food"
@@ -103,7 +101,6 @@ const CustomFoodForm = ({
               </Label>
             </div>
 
-            {/* Unit Variants with Individual Nutrition */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Unit Variants</h3>
@@ -124,7 +121,7 @@ const CustomFoodForm = ({
                     index={index}
                     variant={variant}
                     variantError={variantErrors[index] ?? ''}
-                    visibleNutrients={visibleNutrients}
+                    visibleNutrients={visibleNutrients} // Passing the ordered array here
                     energyUnit={energyUnit}
                     convertEnergy={convertEnergy}
                     customNutrients={customNutrients}

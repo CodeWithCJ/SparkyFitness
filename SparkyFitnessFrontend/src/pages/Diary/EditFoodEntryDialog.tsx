@@ -31,6 +31,8 @@ import { calculateNutrition } from '@/utils/nutritionCalculations';
 import { NutrientGrid } from './NutrientsGrid';
 import { useUnitConversion } from '@/hooks/Foods/useUnitConversion';
 import { FoodEntryUpdateData, MealTypeDefinition } from '@/types/diary';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 
 interface EditFoodEntryDialogProps {
   entry: FoodEntry | null;
@@ -45,7 +47,14 @@ const EditFoodEntryDialog = ({
   onOpenChange,
   availableMealTypes,
 }: EditFoodEntryDialogProps) => {
-  const { loggingLevel, energyUnit, convertEnergy } = usePreferences();
+  const {
+    loggingLevel,
+    energyUnit,
+    convertEnergy,
+    nutrientDisplayPreferences,
+  } = usePreferences();
+  const isMobile = useIsMobile();
+  const platform = isMobile ? 'mobile' : 'desktop';
 
   const [quantity, setQuantity] = useState<number>(entry?.quantity || 1);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
@@ -150,6 +159,24 @@ const EditFoodEntryDialog = ({
       setSelectedVariantId(variantId);
     },
   });
+
+  const quickInfoPreferences =
+    nutrientDisplayPreferences.find(
+      (p) => p.view_group === 'food_database' && p.platform === platform
+    ) ||
+    nutrientDisplayPreferences.find(
+      (p) => p.view_group === 'food_database' && p.platform === 'desktop'
+    );
+
+  const visibleNutrients = useMemo(() => {
+    const base = quickInfoPreferences
+      ? quickInfoPreferences.visible_nutrients
+      : DEFAULT_NUTRIENTS;
+
+    const allKeys = [...base, ...(customNutrients?.map((cn) => cn.name) || [])];
+
+    return Array.from(new Set(allKeys));
+  }, [quickInfoPreferences, customNutrients]);
 
   if (!entry) return null;
 
@@ -432,6 +459,7 @@ const EditFoodEntryDialog = ({
                     customNutrients={customNutrients}
                     energyUnit={energyUnit}
                     convertEnergy={convertEnergy}
+                    visibleNutrients={visibleNutrients}
                   />
                 </div>
               )}

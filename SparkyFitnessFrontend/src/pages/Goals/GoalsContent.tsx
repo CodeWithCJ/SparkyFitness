@@ -121,18 +121,22 @@ export const GoalsContent = ({
       ? goalPreferences.visible_nutrients
       : Object.keys(DEFAULT_GOALS);
 
-    // In the goal editor, we should ensure the newly fixed fats are always visible
-    // if they are in DEFAULT_GOALS, even if the user hasn't toggled them yet.
     const mustInclude = [
       'saturated_fat',
       'polyunsaturated_fat',
       'monounsaturated_fat',
       'trans_fat',
     ];
-    const merged = Array.from(new Set([...base, ...mustInclude]));
 
-    // Also include custom nutrients in the visibility list so they aren't filtered out by NutrientInput
-    return [...merged, ...customNutrients.map((cn) => cn.name)];
+    // Combine arrays but use Set to deduplicate while preserving the FIRST occurrence.
+    // This means `base` order is kept perfectly intact. Missing required or custom nutrients get added to the end.
+    const allKeys = [
+      ...base,
+      ...mustInclude,
+      ...customNutrients.map((cn) => cn.name),
+    ];
+
+    return Array.from(new Set(allKeys));
   }, [goalPreferences, customNutrients]);
 
   return (

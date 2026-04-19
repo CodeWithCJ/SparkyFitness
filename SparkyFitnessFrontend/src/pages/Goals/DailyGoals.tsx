@@ -98,44 +98,46 @@ export const DailyGoals = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {visibleNutrients.includes('calories') && (
-              <div className="space-y-1.5">
-                <Label htmlFor="calories">
-                  {t(
-                    'nutrition.calories',
-                    `Calories (${getEnergyUnitString(energyUnit)})`
-                  )}
-                </Label>
-                <NumericInput
-                  id="calories"
-                  step={1}
-                  value={Math.round(
-                    convertEnergy(goals.calories, 'kcal', energyUnit)
-                  )}
-                  onValueChange={(val) =>
-                    setGoals({
-                      ...goals,
-                      calories: convertEnergy(val ?? 0, energyUnit, 'kcal'),
-                    })
-                  }
-                />
-              </div>
-            )}
-            {NUTRIENT_CONFIG.map((f) => (
-              <NutrientInput
-                key={f.id}
-                nutrientId={f.id}
-                state={goals}
-                setState={setGoals}
-                visibleNutrients={visibleNutrients}
-                customNutrients={customNutrients}
-              />
-            ))}
-            {customNutrients?.map((cn) => {
+            {/* Loop directly over the ordered array from settings */}
+            {visibleNutrients.map((key) => {
+              // 1. Handle Calories Explicitly
+              if (key === 'calories') {
+                return (
+                  <div key="calories" className="space-y-1.5">
+                    <Label htmlFor="calories">
+                      {t(
+                        'nutrition.calories',
+                        `Calories (${getEnergyUnitString(energyUnit)})`
+                      )}
+                    </Label>
+                    <NumericInput
+                      id="calories"
+                      step={1}
+                      value={Math.round(
+                        convertEnergy(goals.calories, 'kcal', energyUnit)
+                      )}
+                      onValueChange={(val) =>
+                        setGoals({
+                          ...goals,
+                          calories: convertEnergy(val ?? 0, energyUnit, 'kcal'),
+                        })
+                      }
+                    />
+                  </div>
+                );
+              }
+
+              // 2. Validate standard or custom nutrient
+              const isStandard = NUTRIENT_CONFIG.some((n) => n.id === key);
+              const isCustom = customNutrients?.some((cn) => cn.name === key);
+
+              if (!isStandard && !isCustom) return null;
+
+              // 3. Render nutrient input
               return (
                 <NutrientInput
-                  key={cn.id}
-                  nutrientId={cn.name}
+                  key={key}
+                  nutrientId={key}
                   state={goals}
                   setState={setGoals}
                   visibleNutrients={visibleNutrients}

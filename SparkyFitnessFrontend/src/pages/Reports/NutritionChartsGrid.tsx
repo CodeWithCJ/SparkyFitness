@@ -122,11 +122,16 @@ const NutritionChartsGrid = ({
     return charts;
   }, [t, energyUnit, customNutrients]);
 
-  const visibleCharts = reportChartPreferences
-    ? allNutritionCharts.filter((chart) =>
-        reportChartPreferences.visible_nutrients.includes(chart.key)
-      )
-    : allNutritionCharts;
+  const visibleCharts = useMemo(() => {
+    if (reportChartPreferences && reportChartPreferences.visible_nutrients) {
+      return reportChartPreferences.visible_nutrients
+        .map((key) => allNutritionCharts.find((chart) => chart.key === key))
+        .filter(
+          (chart): chart is NonNullable<typeof chart> => chart !== undefined
+        );
+    }
+    return allNutritionCharts;
+  }, [reportChartPreferences, allNutritionCharts]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">
