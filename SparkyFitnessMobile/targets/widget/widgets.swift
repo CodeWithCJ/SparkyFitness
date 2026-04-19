@@ -26,23 +26,6 @@ private struct CalorieSnapshotPayload: Decodable {
     let lastUpdated: Double?
 }
 
-private let snapshotDateFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.calendar = Calendar(identifier: .gregorian)
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.dateFormat = "yyyy-MM-dd"
-    return formatter
-}()
-
-private func todayDateString() -> String {
-    snapshotDateFormatter.string(from: Date())
-}
-
-private func isToday(_ dateString: String?) -> Bool {
-    guard let dateString else { return false }
-    return dateString == todayDateString()
-}
-
 private func loadCalorieSnapshot() -> CalorieSnapshot {
     guard
         let appGroup = appGroupIdentifier(),
@@ -107,34 +90,6 @@ private func snapshot(from dict: [String: Any]) -> CalorieSnapshot {
         progress: doubleValue(dict["progress"]) ?? fallbackProgress(goal: goal, remaining: remaining),
         lastUpdated: lastUpdated
     )
-}
-
-private func appGroupIdentifier() -> String? {
-    if let appGroup = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_IDENTIFIER") as? String {
-        return appGroup
-    }
-
-    guard let bundleIdentifier = Bundle.main.bundleIdentifier else {
-        return nil
-    }
-
-    if bundleIdentifier.hasSuffix(".widget") {
-        return "group.\(bundleIdentifier.dropLast(".widget".count))"
-    }
-    return "group.\(bundleIdentifier)"
-}
-
-private func doubleValue(_ value: Any?) -> Double? {
-    switch value {
-    case let number as Double:
-        return number
-    case let number as NSNumber:
-        return number.doubleValue
-    case let string as String:
-        return Double(string)
-    default:
-        return nil
-    }
 }
 
 struct SimpleEntry: TimelineEntry {
@@ -214,7 +169,7 @@ private struct RingWithLabel: View {
                         .font(.system(size: numberFontSize, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
-                    Text("remaining")
+                    Text("kcal left")
                         .font(.system(size: numberFontSize * 0.58))
                         .foregroundStyle(.secondary)
                 }
@@ -255,7 +210,7 @@ private struct StatBlock: View {
     }
 }
 
-private struct ActionButton: View {
+struct ActionButton: View {
     let icon: String
     let destination: URL
 
@@ -291,12 +246,18 @@ struct widgetEntryView: View {
     }
 
     private var smallBody: some View {
-        RingWithLabel(
-            snapshot: entry.snapshot,
-            ringSize: 130,
-            strokeWidth: 12,
-            numberFontSize: 28
-        )
+        VStack(spacing: 8) {
+            RingWithLabel(
+                snapshot: entry.snapshot,
+                ringSize: 80,
+                strokeWidth: 8,
+                numberFontSize: 18
+            )
+            VStack(spacing: 3) {
+                StatBlock(label: "Food", value: entry.snapshot.food)
+                StatBlock(label: "Burned", value: entry.snapshot.burned)
+            }
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
