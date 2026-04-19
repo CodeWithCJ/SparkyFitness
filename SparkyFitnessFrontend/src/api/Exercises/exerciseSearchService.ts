@@ -31,6 +31,7 @@ interface ExternalExerciseSearchParams {
   query: string;
   providerId: string;
   providerType: string;
+  language?: string;
   equipmentFilter?: string;
   muscleGroupFilter?: string;
   limit?: number;
@@ -39,6 +40,7 @@ export const searchExternalExercises = async (
   query: string,
   providerId: string,
   providerType: string,
+  language: string = 'en',
   equipmentFilter: string[] = [],
   muscleGroupFilter: string[] = [],
   limit?: number
@@ -47,6 +49,7 @@ export const searchExternalExercises = async (
     query: query,
     providerId: providerId,
     providerType: providerType,
+    language: language,
   };
 
   if (equipmentFilter.length > 0) {
@@ -67,11 +70,12 @@ export const searchExternalExercises = async (
 };
 
 export const addExternalExerciseToUserExercises = async (
-  wgerExerciseId: string
+  wgerExerciseId: string,
+  language?: string
 ): Promise<Exercise> => {
   return apiCall(`/exercises/add-external`, {
     method: 'POST',
-    body: JSON.stringify({ wgerExerciseId }),
+    body: JSON.stringify({ wgerExerciseId, language }),
   });
 };
 

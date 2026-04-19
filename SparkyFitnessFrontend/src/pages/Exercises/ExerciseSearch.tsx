@@ -94,11 +94,12 @@ const ExerciseSearch = ({
       <div className="mt-4 space-y-4">
         {searchSource === 'external' && (
           <Select
-            value={selectedProviderId || ''}
+            value={selectedProviderId ? String(selectedProviderId) : ''}
             onValueChange={(value) => {
               setSelectedProviderId(value);
               setSelectedProviderType(
-                providers.find((p) => p.id === value)?.provider_type || null
+                providers.find((p) => String(p.id) === value)?.provider_type ||
+                  null
               );
             }}
           >
@@ -107,7 +108,7 @@ const ExerciseSearch = ({
             </SelectTrigger>
             <SelectContent>
               {providers.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
+                <SelectItem key={p.id} value={String(p.id)}>
                   {p.provider_name}
                 </SelectItem>
               ))}

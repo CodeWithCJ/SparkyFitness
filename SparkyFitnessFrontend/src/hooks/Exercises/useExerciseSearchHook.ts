@@ -30,7 +30,7 @@ export function useExerciseSearchHook({
 }: ExerciseSearchProps) {
   const { user } = useAuth();
 
-  const { loggingLevel, itemDisplayLimit } = usePreferences();
+  const { loggingLevel, itemDisplayLimit, language } = usePreferences();
   const [searchTerm, setSearchTerm] = useState('');
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [recentExercises, setRecentExercises] = useState<Exercise[]>([]);
@@ -116,6 +116,7 @@ export function useExerciseSearchHook({
               selectedProviderType,
               equipmentFilter,
               muscleGroupFilter,
+              language,
               itemDisplayLimit
             )
           );
@@ -137,6 +138,7 @@ export function useExerciseSearchHook({
       selectedProviderId,
       user?.id,
       selectedProviderType,
+      language,
     ]
   );
 
@@ -146,7 +148,11 @@ export function useExerciseSearchHook({
     if (!selectedProviderType) return;
     setLoading(true);
     try {
-      return await addExercise({ exercise, type: selectedProviderType });
+      return await addExercise({
+        exercise,
+        type: selectedProviderType,
+        language,
+      });
     } catch (err) {
       return undefined;
     } finally {
