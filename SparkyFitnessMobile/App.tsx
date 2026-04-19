@@ -79,6 +79,8 @@ const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const EmptyScreen = () => null;
 const AUTO_SYNC_WATCHDOG_MS = 90_000;
+const androidModalAnimation =
+  Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
 
 // Tab screens — no Go Back (tab bar provides navigation)
 const SafeDashboard = withErrorBoundary(DashboardScreen, 'Dashboard');
@@ -559,6 +561,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -568,6 +571,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -577,6 +581,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -586,6 +591,7 @@ function AppContent() {
               presentation: 'modal',
               headerShown: false,
               gestureEnabled: true,
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
@@ -602,6 +608,7 @@ function AppContent() {
             options={{
               headerShown: false,
               presentation: 'modal',
+              ...androidModalAnimation,
             }}
           />
           <Stack.Screen
