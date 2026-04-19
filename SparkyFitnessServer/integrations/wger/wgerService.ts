@@ -6,237 +6,236 @@ import {
   forceMap,
   mechanicMap,
 } from './wgerNameMapping.js';
+import { WGER_LANGUAGE_MAP } from 'constants/wger.ts';
+import {
+  WgerExerciseTranslation,
+  WgerPaginatedResponse,
+  WgerExerciseInfo,
+  WgerMuscle,
+  WgerEquipment,
+} from 'types/wger.ts';
+
 const WGER_API_BASE_URL = 'https://wger.de/api/v2';
-const WGER_CACHE_DURATION_SECONDS = 3600; // Cache for 1 hour
+const WGER_CACHE_DURATION_SECONDS = 3600;
 const wgerCache = new NodeCache({ stdTTL: WGER_CACHE_DURATION_SECONDS });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function callWgerApi(endpoint: any, params = {}) {
-  // Create a stable query string for caching by sorting keys
-  const sortedKeys = Object.keys(params).sort();
-  const sortedParams = {};
-  for (const key of sortedKeys) {
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-    sortedParams[key] = params[key];
+
+async function callWgerApi<T>(
+  endpoint: string,
+  params: Record<string, string | number | number[] | string[]> = {}
+): Promise<T | null> {
+  const queryParts: string[] = [];
+
+  for (const [key, value] of Object.entries(params)) {
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        queryParts.push(`${encodeURIComponent(key)}=${encodeURIComponent(v)}`);
+      }
+    } else {
+      queryParts.push(
+        `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+      );
+    }
   }
-  const queryString = new URLSearchParams(sortedParams).toString();
-  const url = `${WGER_API_BASE_URL}${endpoint}/?${queryString}`;
-  const cacheKey = `${endpoint}?${queryString}`;
-  // Check cache first
-  const cachedData = wgerCache.get(cacheKey);
-  if (cachedData) {
-    log('info', `Returning cached data for Wger API: ${url}`);
-    return cachedData;
-  }
+
+  const queryString = queryParts.join('&');
+  const normalizedEndpoint = endpoint.endsWith('/') ? endpoint : `${endpoint}/`;
+  const url = `${WGER_API_BASE_URL}${normalizedEndpoint}${queryString ? `?${queryString}` : ''}`;
+
+  const cachedData = wgerCache.get<T>(url);
+  if (cachedData !== undefined) return cachedData;
+
   try {
-    log('info', `Calling Wger API: ${url}`);
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
+      headers: { Accept: 'application/json' },
     });
+
     if (!response.ok) {
-      // For 404, we can expect this if an exercise doesn't exist, so we don't want to throw an error.
-      if (response.status === 404) {
-        log(
-          'warn',
-          `Wger API returned 404 for ${endpoint}, resource not found.`
-        );
-        return null; // Indicate that the resource was not found
-      }
-      const errorText = await response.text();
-      log(
-        'error',
-        `Wger API error for ${endpoint}: ${response.status} - ${errorText}`
-      );
-      throw new Error(`Wger API error: ${response.status} - ${errorText}`);
+      if (response.status === 404) return null;
+      throw new Error(`Wger API error: ${response.status}`);
     }
-    const data = await response.json();
-    wgerCache.set(cacheKey, data); // Cache the response
+
+    const data = (await response.json()) as T;
+    wgerCache.set(url, data);
     return data;
   } catch (error) {
     log('error', `Error calling Wger API ${endpoint}:`, error);
     throw error;
   }
 }
-async function searchWgerExercises(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  query: any,
-  muscleIds = [],
-  equipmentIds = [],
-  language = 'en',
-  limit = 20,
-  offset = 0
-) {
-  const hasQuery = query && query.trim().length > 0;
-  const muscleIdList = Array.isArray(muscleIds)
-    ? muscleIds
-    : muscleIds
-      ? // @ts-expect-error TS(2339): Property 'split' does not exist on type 'never'.
-        muscleIds.split(',')
-      : [];
-  const equipmentIdList = Array.isArray(equipmentIds)
-    ? equipmentIds
-    : equipmentIds
-      ? // @ts-expect-error TS(2339): Property 'split' does not exist on type 'never'.
-        equipmentIds.split(',')
-      : [];
-  const hasFilters = muscleIdList.length > 0 || equipmentIdList.length > 0;
-  const exerciseSet = new Map();
-  if (hasQuery && !hasFilters) {
-    const params = { term: query, language: language };
-    const data = await callWgerApi('/exercise/search', params);
-    if (data && data.suggestions) {
-      for (const s of data.suggestions) {
-        exerciseSet.set(s.data.base_id, { id: s.data.base_id, name: s.value });
-      }
-    }
-  } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const filterPromises: any = [];
-    // Create API calls for each muscle and equipment ID
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    muscleIdList.forEach((id: any) => {
-      filterPromises.push(
-        callWgerApi('/exercise', { language, muscles: id, limit: 100 })
-      );
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    equipmentIdList.forEach((id: any) => {
-      filterPromises.push(
-        callWgerApi('/exercise', { language, equipment: id, limit: 100 })
-      );
-    });
-    const results = await Promise.all(filterPromises);
-    results.forEach((data) => {
-      if (data && data.results) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data.results.forEach((exercise: any) => {
-          exerciseSet.set(exercise.id, exercise);
-        });
-      }
-    });
-  }
-  const exercises = Array.from(exerciseSet.values());
-  const detailedExercises = await Promise.all(
-    exercises.map(async (exercise) => {
-      const details = await getWgerExerciseDetails(exercise.id);
-      if (!details) return null;
-      const englishTranslation = details.translations?.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (t: any) => t.language === 2
-      );
-      const anyTranslation = details.translations?.[0];
-      const exerciseName =
-        englishTranslation?.name || details.name || anyTranslation?.name;
-      const description =
-        englishTranslation?.description || anyTranslation?.description || '';
-      const images = details.images
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          details.images.map((img: any) => img.image)
-        : [];
-      return {
-        ...exercise,
-        ...details,
-        name: exerciseName || `Exercise ID: ${details.id}`,
-        force: details.force?.name
-          ? // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-            forceMap[details.force.name.toLowerCase()]
-          : null,
-        mechanic: details.mechanic?.name
-          ? // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-            mechanicMap[details.mechanic.name.toLowerCase()]
-          : null,
-        instructions: description,
-        images: images,
-      };
-    })
+
+function extractWgerText(
+  translations: WgerExerciseTranslation[],
+  targetLangCode: string = 'en'
+): { exerciseName: string; description: string } {
+  const targetLangId = WGER_LANGUAGE_MAP[targetLangCode] ?? 2;
+
+  const targetTranslation = translations.find(
+    (t) => t.language === targetLangId
   );
-  const validExercises = detailedExercises.filter((d) => d !== null);
+  const englishTranslation = translations.find((t) => t.language === 2);
+  const fallbackTranslation = translations[0];
+
+  const exerciseName =
+    targetTranslation?.name ??
+    englishTranslation?.name ??
+    fallbackTranslation?.name ??
+    'Unknown';
+
+  const description =
+    targetTranslation?.description ??
+    englishTranslation?.description ??
+    fallbackTranslation?.description ??
+    '';
+
+  return { exerciseName, description };
+}
+
+async function searchWgerExercises(
+  query: string,
+  muscleIds: number[] = [],
+  equipmentIds: number[] = [],
+  language: string = 'en',
+  limit: number = 20,
+  offset: number = 0
+) {
+  const params: Record<string, string | number | number[]> = {
+    language__code: language,
+    limit: 50,
+    offset: 0,
+  };
+
+  if (query.trim().length > 0) {
+    params.name__search = query.trim();
+  }
+
+  if (muscleIds.length > 0) {
+    params.muscles = muscleIds;
+  }
+
+  if (equipmentIds.length > 0) {
+    params.equipment = equipmentIds;
+  }
+
+  const data = await callWgerApi<WgerPaginatedResponse<WgerExerciseInfo>>(
+    '/exerciseinfo',
+    params
+  );
+  const results = data?.results ?? [];
+
+  const exercises = results.map((details) => {
+    const { exerciseName, description } = extractWgerText(
+      details.translations,
+      language
+    );
+
+    return {
+      ...details,
+      id: details.id.toString(),
+      name: exerciseName,
+      force: details.force?.name
+        ? (forceMap[
+            details.force.name.toLowerCase() as keyof typeof forceMap
+          ] ?? null)
+        : null,
+      mechanic: details.mechanic?.name
+        ? (mechanicMap[
+            details.mechanic.name.toLowerCase() as keyof typeof mechanicMap
+          ] ?? null)
+        : null,
+      instructions: description,
+      images: details.images.map((img) => img.image),
+    };
+  });
+
   return {
-    exercises: validExercises.slice(offset, offset + limit),
-    totalCount: validExercises.length,
+    exercises: exercises.slice(offset, offset + limit),
+    totalCount: exercises.length,
   };
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWgerExerciseDetails(exerciseId: any) {
-  // Use /exerciseinfo/ endpoint for detailed information
-  const data = await callWgerApi(`/exerciseinfo/${exerciseId}`);
-  // If data is null (which callWgerApi returns for a 404), we just return it.
-  return data;
+
+async function getWgerExerciseDetails(
+  exerciseId: number | string
+): Promise<WgerExerciseInfo | null> {
+  return callWgerApi<WgerExerciseInfo>(`/exerciseinfo/${exerciseId}`);
 }
-async function getWgerMuscleIdMap() {
+
+async function getWgerMuscleIdMap(): Promise<
+  Partial<Record<string, number[]>>
+> {
   const cacheKey = 'wger-muscle-id-map';
-  let idMap = wgerCache.get(cacheKey);
-  if (idMap) {
-    return idMap;
-  }
-  const wgerMusclesData = await callWgerApi('/muscle');
-  const wgerMuscles = wgerMusclesData.results;
-  idMap = {};
-  for (const ourName in muscleNameMap) {
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-    const wgerNames = Array.isArray(muscleNameMap[ourName])
-      ? // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        muscleNameMap[ourName]
-      : // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        [muscleNameMap[ourName]];
+  const cached = wgerCache.get<Partial<Record<string, number[]>>>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const data = await callWgerApi<WgerPaginatedResponse<WgerMuscle>>('/muscle');
+  const wgerMuscles = data?.results ?? [];
+
+  const idMap: Partial<Record<string, number[]>> = {};
+
+  for (const ourName of Object.keys(muscleNameMap)) {
+    const rawValue = muscleNameMap[ourName as keyof typeof muscleNameMap] as
+      | string
+      | string[];
+    const wgerNames = Array.isArray(rawValue) ? rawValue : [rawValue];
+
     const ids = wgerNames
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((wgerName: any) => {
-        const wgerMuscle = wgerMuscles.find(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (m: any) =>
-            m.name.toLowerCase() === wgerName.toLowerCase() ||
-            (m.name_en && m.name_en.toLowerCase() === wgerName.toLowerCase())
-        );
-        return wgerMuscle ? wgerMuscle.id : null;
-      })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((id: any) => id !== null);
+      .map(
+        (wgerName) =>
+          wgerMuscles.find(
+            (m) =>
+              m.name.toLowerCase() === wgerName.toLowerCase() ||
+              m.name_en.toLowerCase() === wgerName.toLowerCase()
+          )?.id ?? null
+      )
+      .filter((id): id is number => id !== null);
+
     if (ids.length > 0) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
       idMap[ourName] = ids;
     }
   }
+
   wgerCache.set(cacheKey, idMap);
   return idMap;
 }
-async function getWgerEquipmentIdMap() {
+
+async function getWgerEquipmentIdMap(): Promise<
+  Partial<Record<string, number[]>>
+> {
   const cacheKey = 'wger-equipment-id-map';
-  let idMap = wgerCache.get(cacheKey);
-  if (idMap) {
-    return idMap;
-  }
-  const wgerEquipmentData = await callWgerApi('/equipment');
-  const wgerEquipment = wgerEquipmentData.results;
-  idMap = {};
-  for (const ourName in equipmentNameMap) {
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-    const wgerNames = Array.isArray(equipmentNameMap[ourName])
-      ? // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        equipmentNameMap[ourName]
-      : // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        [equipmentNameMap[ourName]];
+  const cached = wgerCache.get<Partial<Record<string, number[]>>>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const data =
+    await callWgerApi<WgerPaginatedResponse<WgerEquipment>>('/equipment');
+  const wgerEquipment = data?.results ?? [];
+
+  const idMap: Partial<Record<string, number[]>> = {};
+
+  for (const ourName of Object.keys(equipmentNameMap)) {
+    const wgerNames = Array.isArray(
+      equipmentNameMap[ourName as keyof typeof equipmentNameMap]
+    )
+      ? (equipmentNameMap[ourName as keyof typeof equipmentNameMap] as string[])
+      : [equipmentNameMap[ourName as keyof typeof equipmentNameMap] as string];
+
     const ids = wgerNames
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((wgerName: any) => {
-        const wgerEquip = wgerEquipment.find(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (e: any) => e.name.toLowerCase() === wgerName.toLowerCase()
-        );
-        return wgerEquip ? wgerEquip.id : null;
-      })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((id: any) => id !== null);
+      .map(
+        (wgerName) =>
+          wgerEquipment.find(
+            (e) => e.name.toLowerCase() === wgerName.toLowerCase()
+          )?.id ?? null
+      )
+      .filter((id): id is number => id !== null);
+
     if (ids.length > 0) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
       idMap[ourName] = ids;
     }
   }
+
   wgerCache.set(cacheKey, idMap);
   return idMap;
 }
+
 export { searchWgerExercises };
 export { getWgerExerciseDetails };
 export { getWgerMuscleIdMap };
@@ -246,4 +245,5 @@ export default {
   getWgerExerciseDetails,
   getWgerMuscleIdMap,
   getWgerEquipmentIdMap,
+  extractWgerText,
 };

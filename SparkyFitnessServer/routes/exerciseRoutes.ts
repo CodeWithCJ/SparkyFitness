@@ -7,6 +7,7 @@ import wgerService from '../integrations/wger/wgerService.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { ExternalProviderType } from 'types/externalProvider.ts';
 const router = express.Router();
 // Setup Multer for file uploads
 const storage = multer.diskStorage({
@@ -432,38 +433,41 @@ router.get('/search', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
+function queryString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
 router.get('/search-external', authenticate, async (req, res, next) => {
-  const {
-    query,
-    providerId,
-    providerType,
-    equipmentFilter,
-    muscleGroupFilter,
-  } = req.query;
+  const query = queryString(req.query.query);
+  const providerId = queryString(req.query.providerId);
+  const providerType = queryString(req.query.providerType);
+  const equipmentFilter = queryString(req.query.equipmentFilter);
+  const muscleGroupFilter = queryString(req.query.muscleGroupFilter);
+  const languageParam = queryString(req.query.language) ?? 'en';
+
+  const page = Math.max(
+    1,
+    parseInt(queryString(req.query.page) ?? '', 10) || 1
+  );
+  const rawSize =
+    parseInt(queryString(req.query.pageSize) ?? '', 10) ||
+    parseInt(queryString(req.query.limit) ?? '', 10) ||
+    20;
+  const pageSize = Math.min(100, Math.max(1, rawSize));
   const paginated =
     req.query.page !== undefined || req.query.pageSize !== undefined;
-  // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const rawSize =
-    // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
-    parseInt(req.query.pageSize, 10) || parseInt(req.query.limit, 10) || 20;
-  const pageSize = Math.min(100, Math.max(1, rawSize));
-  const equipmentFilterArray =
-    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
-    equipmentFilter && equipmentFilter.length > 0
-      ? // @ts-expect-error TS(2339): Property 'split' does not exist on type 'string | ... Remove this comment to see the full error message
-        equipmentFilter.split(',')
-      : [];
-  const muscleGroupFilterArray =
-    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
-    muscleGroupFilter && muscleGroupFilter.length > 0
-      ? // @ts-expect-error TS(2339): Property 'split' does not exist on type 'string | ... Remove this comment to see the full error message
-        muscleGroupFilter.split(',')
-      : [];
-  // @ts-expect-error TS(2339): Property 'trim' does not exist on type 'string | P... Remove this comment to see the full error message
+
+  const equipmentFilterArray = equipmentFilter
+    ? equipmentFilter.split(',')
+    : [];
+  const muscleGroupFilterArray = muscleGroupFilter
+    ? muscleGroupFilter.split(',')
+    : [];
+
   const hasQuery = query && query.trim().length > 0;
   const hasFilters =
     equipmentFilterArray.length > 0 || muscleGroupFilterArray.length > 0;
+
   if (!hasQuery && !hasFilters) {
     return res
       .status(400)
@@ -474,14 +478,16 @@ router.get('/search-external', authenticate, async (req, res, next) => {
       error: 'Provider ID and Type are required for external search.',
     });
   }
+
   try {
     const result = await exerciseService.searchExternalExercises(
       req.userId,
-      query,
+      query ?? '',
       providerId,
-      providerType,
+      providerType as ExternalProviderType,
       equipmentFilterArray,
       muscleGroupFilterArray,
+      languageParam,
       page,
       pageSize
     );
@@ -584,11 +590,9 @@ router.get('/wger-filters', authenticate, async (req, res, next) => {
     const wgerEquipment = await wgerService.getWgerEquipmentIdMap();
     const ourMuscles = await exerciseService.getAvailableMuscleGroups();
     const ourEquipment = await exerciseService.getAvailableEquipment();
-    // @ts-expect-error TS(2769): No overload matches this call.
     const uniqueMuscles = Object.keys(wgerMuscles).filter(
       (m) => !ourMuscles.includes(m)
     );
-    // @ts-expect-error TS(2769): No overload matches this call.
     const uniqueEquipment = Object.keys(wgerEquipment).filter(
       (e) => !ourEquipment.includes(e)
     );
@@ -676,7 +680,7 @@ router.get('/names', authenticate, async (req, res, next) => {
  *         description: Server error.
  */
 router.post('/add-external', authenticate, async (req, res, next) => {
-  const { wgerExerciseId } = req.body;
+  const { wgerExerciseId, language } = req.body;
   if (!wgerExerciseId) {
     return res.status(400).json({ error: 'Wger exercise ID is required.' });
   }
@@ -684,7 +688,8 @@ router.post('/add-external', authenticate, async (req, res, next) => {
     const newExercise =
       await exerciseService.addExternalExerciseToUserExercises(
         req.userId,
-        wgerExerciseId
+        wgerExerciseId,
+        language || 'en'
       );
     res.status(201).json(newExercise);
   } catch (error) {

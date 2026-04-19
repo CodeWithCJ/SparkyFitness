@@ -36,6 +36,7 @@ export const externalSearchOptions = (
   pType: string | null,
   eq: string[],
   mus: string[],
+  language?: string,
   limit?: number
 ) => ({
   queryKey: exerciseSearchKeys.search.external(
@@ -46,7 +47,8 @@ export const externalSearchOptions = (
     mus,
     limit
   ),
-  queryFn: () => searchExternalExercises(query, pId!, pType!, eq, mus, limit),
+  queryFn: () =>
+    searchExternalExercises(query, pId!, pType!, language, eq, mus, limit),
   enabled:
     !!pId &&
     !!pType &&
@@ -96,12 +98,14 @@ export const useAddExerciseMutation = () => {
     mutationFn: async ({
       exercise,
       type,
+      language,
     }: {
       exercise: Exercise;
       type: string;
+      language?: string;
     }) => {
       if (type === 'wger')
-        return addExternalExerciseToUserExercises(exercise.id);
+        return addExternalExerciseToUserExercises(exercise.id, language);
       if (type === 'nutritionix') return addNutritionixExercise(exercise);
       if (type === 'free-exercise-db')
         return addFreeExerciseDBExercise(exercise.id);
