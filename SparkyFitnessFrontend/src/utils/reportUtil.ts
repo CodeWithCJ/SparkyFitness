@@ -15,7 +15,11 @@ import {
   getEnergyUnitString,
 } from './nutritionCalculations';
 import { UserCustomNutrient } from '@/types/customNutrient';
-import { DailyExerciseEntry, DailyFoodEntry } from '@/types/reports';
+import {
+  DailyExerciseEntry,
+  DailyFoodEntry,
+  NutritionData,
+} from '@/types/reports';
 import { FoodEntry } from '@/types/food';
 import {
   CheckInMeasurementsResponse,
@@ -1076,4 +1080,37 @@ export const parseStressMeasurement = (
   } catch (error) {
     return [];
   }
+};
+
+export const calculateAverage = (
+  data: NutritionData[],
+  key: string
+): number => {
+  if (!data || data.length === 0) return 0;
+
+  const result = data.reduce(
+    (acc, curr) => {
+      const val = curr[key as keyof NutritionData];
+
+      if (val === undefined || val === null) {
+        return acc;
+      }
+
+      if (typeof val === 'string' && val.trim() === '') {
+        return acc;
+      }
+
+      const num = Number(val);
+
+      if (!Number.isNaN(num)) {
+        acc.sum += num;
+        acc.count += 1;
+      }
+
+      return acc;
+    },
+    { sum: 0, count: 0 }
+  );
+
+  return result.count === 0 ? 0 : result.sum / result.count;
 };
