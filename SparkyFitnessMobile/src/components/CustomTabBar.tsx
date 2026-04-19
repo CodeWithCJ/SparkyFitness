@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import Icon, { type IconName } from './Icon';
+import { fireSelectionHaptic } from '../services/haptics';
 
 export const TAB_BAR_HEIGHT = 56;
 /**
@@ -70,13 +71,18 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
           });
         };
 
+        const handleAddPress = () => {
+          fireSelectionHaptic();
+          onPress();
+        };
+
         if (isAddButton) {
           return (
             <View key={route.key} className="flex-1 items-center justify-end pb-1">
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel={options.tabBarAccessibilityLabel ?? 'Add'}
-                onPress={onPress}
+                onPress={handleAddPress}
                 onLongPress={onLongPress}
                 activeOpacity={0.8}
                 className="w-14 h-14 rounded-full items-center justify-center -mt-5"

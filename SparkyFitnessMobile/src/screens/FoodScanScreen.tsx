@@ -11,6 +11,7 @@ import type { FoodInfoItem } from '../types/foodInfo';
 import { useCSSVariable } from 'uniwind';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
+import { fireSuccessHaptic } from '../services/haptics';
 import { toFormString } from '../types/foodInfo';
 
 type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
@@ -50,6 +51,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       if (!result.food) {
         setNotFoundBarcode(barcode);
       } else if (result.food.id) {
+        fireSuccessHaptic();
         const dv = result.food.default_variant;
         const item: FoodInfoItem = {
           id: result.food.id,
@@ -78,6 +80,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         };
         navigation.replace('FoodEntryAdd', { item, date: route.params?.date });
       } else {
+        fireSuccessHaptic();
         const dv = result.food.default_variant;
         navigation.replace('FoodForm', { mode: 'create-food',
           date: route.params?.date,

@@ -120,9 +120,26 @@ jest.mock('expo-notifications', () => {
 jest.mock('expo-haptics', () => ({
   notificationAsync: jest.fn().mockResolvedValue(undefined),
   NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+  selectionAsync: jest.fn().mockResolvedValue(undefined),
   impactAsync: jest.fn().mockResolvedValue(undefined),
   ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
 }));
+
+// Mock expo-camera
+jest.mock('expo-camera', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  return {
+    CameraView: React.forwardRef(({ children, ...props }, ref) => {
+      React.useImperativeHandle(ref, () => ({
+        takePictureAsync: jest.fn(),
+      }));
+      return React.createElement(View, { testID: 'camera-view', ...props }, children);
+    }),
+    useCameraPermissions: jest.fn(() => [{ granted: true }, jest.fn()]),
+  };
+});
 
 // Mock expo-secure-store
 jest.mock('expo-secure-store', () => {

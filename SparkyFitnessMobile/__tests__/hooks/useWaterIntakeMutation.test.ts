@@ -2,6 +2,7 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
 import { useWaterIntakeMutation } from '../../src/hooks/useWaterIntakeMutation';
 import { fetchWaterContainers, changeWaterIntake } from '../../src/services/api/measurementsApi';
+import { fireSelectionHaptic } from '../../src/services/haptics';
 import type { DailySummaryRawData } from '../../src/hooks/useDailySummary';
 import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
@@ -15,8 +16,14 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+jest.mock('../../src/services/haptics', () => ({
+  fireSelectionHaptic: jest.fn(),
+  fireSuccessHaptic: jest.fn(),
+}));
+
 const mockFetchWaterContainers = fetchWaterContainers as jest.MockedFunction<typeof fetchWaterContainers>;
 const mockChangeWaterIntake = changeWaterIntake as jest.MockedFunction<typeof changeWaterIntake>;
+const mockFireSelectionHaptic = fireSelectionHaptic as jest.MockedFunction<typeof fireSelectionHaptic>;
 
 const primaryContainer = {
   id: 1,
@@ -164,6 +171,7 @@ describe('useWaterIntakeMutation', () => {
       text2: 'Please configure a water container on the server to track hydration.',
       visibilityTime: 4000,
     });
+    expect(mockFireSelectionHaptic).not.toHaveBeenCalled();
     expect(mockChangeWaterIntake).not.toHaveBeenCalled();
   });
 
@@ -188,6 +196,7 @@ describe('useWaterIntakeMutation', () => {
       text2: 'Please configure a water container on the server to track hydration.',
       visibilityTime: 4000,
     });
+    expect(mockFireSelectionHaptic).not.toHaveBeenCalled();
     expect(mockChangeWaterIntake).not.toHaveBeenCalled();
   });
 
@@ -210,6 +219,8 @@ describe('useWaterIntakeMutation', () => {
       await act(async () => {
         result.current.increment();
       });
+
+      expect(mockFireSelectionHaptic).toHaveBeenCalledTimes(1);
 
       await waitFor(() => {
         expect(mockChangeWaterIntake).toHaveBeenCalledWith({
@@ -234,6 +245,8 @@ describe('useWaterIntakeMutation', () => {
       await act(async () => {
         result.current.decrement();
       });
+
+      expect(mockFireSelectionHaptic).toHaveBeenCalledTimes(1);
 
       await waitFor(() => {
         expect(mockChangeWaterIntake).toHaveBeenCalledWith({
