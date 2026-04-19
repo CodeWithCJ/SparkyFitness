@@ -14,7 +14,6 @@ import type { UserCustomNutrient } from '@/types/customNutrient';
 import EditGoalsForToday from '@/pages/Goals/EditGoalsForToday';
 import { useMemo } from 'react';
 import { DEFAULT_GOALS } from '@/constants/goals';
-import { Goals } from '@/types/diary';
 import { Button } from '@/components/ui/button';
 import { ClipboardCopy, History } from 'lucide-react';
 import {
@@ -23,6 +22,7 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import CopyFoodEntryDialog from './CopyFoodEntryDialog';
 import { useState } from 'react';
+import { ExpandedGoals } from '@/types/goals';
 
 export interface DayTotals {
   calories: number; // Stored internally as kcal
@@ -36,7 +36,7 @@ export interface DayTotals {
 interface DiaryTopControlsProps {
   selectedDate: string;
   dayTotals?: DayTotals;
-  goals: Goals;
+  goals: ExpandedGoals;
   energyUnit: 'kcal' | 'kJ';
   convertEnergy: (
     value: number,
@@ -145,7 +145,7 @@ const DiaryTopControls = ({
                   (dayTotals[nutrient as keyof DayTotals] as number) ??
                   dayTotals.custom_nutrients?.[nutrient] ??
                   0;
-                const rawGoal = goals[nutrient as keyof Goals];
+                const rawGoal = goals[nutrient as keyof ExpandedGoals];
                 const goal =
                   typeof rawGoal === 'number'
                     ? rawGoal

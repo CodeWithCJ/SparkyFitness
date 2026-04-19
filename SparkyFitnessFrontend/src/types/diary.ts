@@ -1,16 +1,5 @@
 import { WorkoutPresetSet } from './workout';
 
-export interface Goals {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  water_goal_ml: number;
-  dietary_fiber?: number;
-  custom_nutrients?: Record<string, number>;
-  meal_percentages?: Record<string, number>;
-}
-
 export interface ExerciseEntry {
   id: string;
   exercise_id: string;
