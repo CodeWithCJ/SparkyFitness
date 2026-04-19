@@ -3,10 +3,11 @@ import { log } from '../config/logging.js';
 // Convert water_goal_ml to the correct repository field name
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapWaterGoalMlToDb(presetData: any) {
-  const { water_goal_ml, ...rest } = presetData;
+  const { water_goal_ml, custom_meal_percentages, ...rest } = presetData;
   return {
     ...rest,
     water_goal: water_goal_ml,
+    custom_meal_percentages: custom_meal_percentages || {},
   };
 }
 // Convert water_goal repository field name to water_goal_ml

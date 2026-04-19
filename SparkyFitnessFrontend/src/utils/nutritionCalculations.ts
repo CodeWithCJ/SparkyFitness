@@ -1,10 +1,11 @@
 import { getDietTemplate } from '@/constants/dietTemplates';
 import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
 import i18n from '@/i18n';
-import { Goals } from '@/types/diary';
 import type { FoodEntry, FoodVariant } from '@/types/food';
 import { FoodEntryMeal, MealTotals } from '@/types/meal';
 import { CALORIE_CALCULATION_CONSTANTS } from '@workspace/shared';
+import { getMealPercentage } from './goals';
+import { ExpandedGoals } from '@/types/goals';
 
 // Utility functions for nutrition calculations
 
@@ -515,7 +516,7 @@ export const getMealData = (
   mealType: string,
   foodEntries: FoodEntry[],
   foodEntryMeals: FoodEntryMeal[],
-  goals: Goals
+  goals: ExpandedGoals
 ): {
   name: string;
   type: string;
@@ -526,7 +527,6 @@ export const getMealData = (
     return { name: '', type: '', targetCalories: 0, entries: [] };
   }
 
-  // Filter both standalone food entries and food entry meals
   const entries =
     foodEntries.length !== 0
       ? foodEntries.filter((entry) => entry.meal_type === mealType)
@@ -537,20 +537,11 @@ export const getMealData = (
       : [];
 
   const combinedEntries: (FoodEntry | FoodEntryMeal)[] = [...entries, ...meals];
-  const mealKey = mealType.toLowerCase();
-  const percentageKey = `${mealKey}_percentage` as keyof Goals;
 
-  const percentage = (goals?.[percentageKey] as number) ?? 0;
+  const percentage = getMealPercentage(mealType, goals);
 
-  let displayName = mealType;
-  if (mealType.toLowerCase() === 'breakfast')
-    displayName = i18n.t('common.breakfast', 'Breakfast');
-  else if (mealType.toLowerCase() === 'lunch')
-    displayName = i18n.t('common.lunch', 'Lunch');
-  else if (mealType.toLowerCase() === 'dinner')
-    displayName = i18n.t('common.dinner', 'Dinner');
-  else if (mealType.toLowerCase() === 'snacks')
-    displayName = i18n.t('common.snacks', 'Snacks');
+  const i18nKey = `common.${mealType.toLowerCase()}`;
+  const displayName = i18n.exists(i18nKey) ? i18n.t(i18nKey) : mealType;
 
   return {
     name: displayName,

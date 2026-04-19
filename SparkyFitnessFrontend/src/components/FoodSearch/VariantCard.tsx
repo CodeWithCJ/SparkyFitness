@@ -31,7 +31,7 @@ interface VariantCardProps {
     to: 'kcal' | 'kJ'
   ) => number;
   customNutrients?: UserCustomNutrient[];
-  baseServingUnit: string; // loadedVariantsRef.current[index]?.serving_unit ?? variant.serving_unit
+  baseServingUnit: string;
   onUpdate: (
     index: number,
     field: string,
@@ -56,9 +56,8 @@ export function VariantCard({
 }: VariantCardProps) {
   return (
     <Card key={index} className="p-4">
-      {/* ── Header row: serving size / unit / checkboxes / actions ── */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-wrap mb-4">
-        {/* Serving size + unit select */}
+        {/* Unit Select and Serving Size Inputs go here (omitted for brevity, same as your original) */}
         <div className="flex items-end gap-2">
           <div className="flex flex-col">
             <Label htmlFor={`serving-size-${index}`}>Serving Size</Label>
@@ -109,12 +108,11 @@ export function VariantCard({
           </div>
         </div>
 
-        {/* Validation error */}
         {variantError && (
           <p className="text-red-500 text-sm mt-1">{variantError}</p>
         )}
 
-        {/* Default / Auto-Scale checkboxes */}
+        {/* Default / Auto-Scale Checkboxes */}
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center space-x-2">
             <input
@@ -143,7 +141,7 @@ export function VariantCard({
           </div>
         </div>
 
-        {/* Duplicate / Remove actions */}
+        {/* Action Buttons */}
         <div className="flex items-center gap-2 ml-auto sm:ml-0">
           <Button
             type="button"
@@ -168,10 +166,11 @@ export function VariantCard({
         </div>
       </div>
 
-      {/* ── Nutrition section ── */}
       <h4 className="text-md font-medium mb-2">
         Nutrition per {variant.serving_size} {variant.serving_unit}
       </h4>
+
+      {/* Pass the array straight through */}
       <NutrientGrid
         variantIndex={index}
         variant={variant}

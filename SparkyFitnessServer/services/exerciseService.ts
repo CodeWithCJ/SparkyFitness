@@ -10,7 +10,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { log } from '../config/logging.js';
 import wgerService from '../integrations/wger/wgerService.js';
 import nutritionixService from '../integrations/nutritionix/nutritionixService.js';
-import measurementRepository from '../models/measurementRepository.js';
 import { downloadImage } from '../utils/imageDownloader.js';
 import calorieCalculationService from './CalorieCalculationService.js';
 import fs from 'fs';
@@ -23,13 +22,13 @@ import {
   getGroupedExerciseSessionByIdWithClient,
 } from './exerciseEntryHistoryService.js';
 import {
-  levelMap,
   forceMap,
   mechanicMap,
   createReverseMap,
   muscleNameMap,
   equipmentNameMap,
 } from '../integrations/wger/wgerNameMapping.js';
+import { ExternalProviderType } from 'types/externalProvider.ts';
 async function getExercisesWithPagination(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -766,19 +765,32 @@ async function upsertExerciseEntryData(
     throw error;
   }
 }
+
+interface FreeExerciseDBResult {
+  totalCount: number;
+  exercises: {
+    id: string;
+    name: string;
+    category: string;
+    description: string;
+    force: string | null;
+    level: string | null;
+    mechanic: string | null;
+    equipment: string | string[];
+    primaryMuscles: string | string[];
+    secondaryMuscles: string | string[];
+    instructions: string | string[];
+    images: string[];
+  }[];
+}
 async function searchExternalExercises(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  query: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerType: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  equipmentFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  muscleGroupFilter: any,
+  _authenticatedUserId: string,
+  query: string,
+  providerId: string,
+  providerType: ExternalProviderType,
+  equipmentFilter: string[],
+  muscleGroupFilter: string[],
+  language: string,
   page = 1,
   pageSize = 20
 ) {
@@ -789,139 +801,107 @@ async function searchExternalExercises(
     'info',
     `[exerciseService] searchExternalExercises called with: query='${query}', providerType='${providerType}', equipmentFilter='${equipmentFilter}', muscleGroupFilter='${muscleGroupFilter}', page=${page}, pageSize=${pageSize}`
   );
+
   const emptyResponse = {
     items: [],
     pagination: { page, pageSize, totalCount: 0, hasMore: false },
   };
+
   try {
-    let items = [];
+    let items: unknown[] = [];
     let totalCount = 0;
     const offset = (page - 1) * pageSize;
-    const latestMeasurement =
-      await measurementRepository.getLatestMeasurement(authenticatedUserId);
-    const userWeightKg =
-      latestMeasurement && latestMeasurement.weight
-        ? latestMeasurement.weight
-        : 70; // Default to 70kg
+
     const hasFilters =
       equipmentFilter.length > 0 || muscleGroupFilter.length > 0;
     const hasQuery = query.trim().length > 0;
-    // If there's no search query but filters are present, and the provider doesn't support filters,
-    // return an empty result to avoid returning a large, unfiltered list.
-    if (!hasQuery && hasFilters) {
-      if (providerType === 'nutritionix') {
-        log(
-          'warn',
-          `External search for provider ${providerType} received filters but no search query. Filters are not supported for this provider without a search query. Returning empty results.`
-        );
-        return emptyResponse;
-      }
+
+    if (!hasQuery && hasFilters && providerType === 'nutritionix') {
+      log(
+        'warn',
+        `External search for provider ${providerType} received filters but no search query. Returning empty results.`
+      );
+      return emptyResponse;
     }
+
     if (providerType === 'wger') {
       const muscleIdMap = await wgerService.getWgerMuscleIdMap();
       const equipmentIdMap = await wgerService.getWgerEquipmentIdMap();
-      const muscleIds = muscleGroupFilter
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .flatMap((name: any) => muscleIdMap[name] || [])
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .filter((id: any) => id);
-      const equipmentIds = equipmentFilter
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .flatMap((name: any) => equipmentIdMap[name] || [])
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .filter((id: any) => id);
+
+      const muscleIds = muscleGroupFilter.flatMap(
+        (name) => muscleIdMap[name] ?? []
+      );
+      const equipmentIds = equipmentFilter.flatMap(
+        (name) => equipmentIdMap[name] ?? []
+      );
+
       const wgerResult = await wgerService.searchWgerExercises(
         query,
         muscleIds,
         equipmentIds,
-        'en',
+        language ?? 'en',
         pageSize,
         offset
       );
+
       totalCount = wgerResult.totalCount;
-      items = wgerResult.exercises.map((exercise) => {
-        let caloriesPerHour = 0;
-        if (exercise.met && exercise.met > 0) {
-          caloriesPerHour = Math.round(
-            ((exercise.met * 3.5 * userWeightKg) / 200) * 60
-          );
-        }
-        return {
-          id: exercise.id.toString(),
-          name: exercise.name,
-          category: exercise.category
-            ? exercise.category.name
-            : 'Uncategorized',
-          calories_per_hour: caloriesPerHour,
-          source: 'wger',
-          description: exercise.description || exercise.name,
-          force: exercise.force,
-          mechanic: exercise.mechanic,
-          instructions: exercise.instructions,
-          images: exercise.images,
-        };
-      });
+      items = wgerResult.exercises.map((exercise) => ({
+        id: exercise.id.toString(),
+        name: exercise.name,
+        category: exercise.category?.name ?? 'Uncategorized',
+        calories_per_hour: 0,
+        source: 'wger',
+        description: exercise.instructions || exercise.name,
+        force: exercise.force,
+        mechanic: exercise.mechanic,
+        instructions: exercise.instructions,
+        images: exercise.images,
+      }));
     } else if (providerType === 'nutritionix') {
-      // For Nutritionix, we are not using user demographics for now, as per user feedback.
       const nutritionixSearchResults =
         await nutritionixService.searchNutritionixExercises(query, providerId);
       totalCount = nutritionixSearchResults.length;
       items = nutritionixSearchResults.slice(offset, offset + pageSize);
     } else if (providerType === 'free-exercise-db') {
-      const freeExerciseDBResult = await freeExerciseDBService.searchExercises(
+      const freeExerciseDBResult = (await freeExerciseDBService.searchExercises(
         query,
-        equipmentFilter,
-        muscleGroupFilter,
+        equipmentFilter as never[],
+        muscleGroupFilter as never[],
         pageSize,
         offset
-      );
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      )) as FreeExerciseDBResult;
       totalCount = freeExerciseDBResult.totalCount;
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      items = freeExerciseDBResult.exercises.map((exercise: any) => ({
+      items = freeExerciseDBResult.exercises.map((exercise) => ({
         id: exercise.id,
         name: exercise.name,
         category: exercise.category,
-
-        // Will be calculated when added to user's exercises
         calories_per_hour: 0,
-
         description: exercise.description,
         source: 'free-exercise-db',
         force: exercise.force,
         level: exercise.level,
         mechanic: exercise.mechanic,
-
         equipment: Array.isArray(exercise.equipment)
           ? exercise.equipment
           : exercise.equipment
             ? [exercise.equipment]
             : [],
-
         primary_muscles: Array.isArray(exercise.primaryMuscles)
           ? exercise.primaryMuscles
           : exercise.primaryMuscles
             ? [exercise.primaryMuscles]
             : [],
-
         secondary_muscles: Array.isArray(exercise.secondaryMuscles)
           ? exercise.secondaryMuscles
           : exercise.secondaryMuscles
             ? [exercise.secondaryMuscles]
             : [],
-
         instructions: Array.isArray(exercise.instructions)
           ? exercise.instructions
           : exercise.instructions
             ? [exercise.instructions]
             : [],
-
-        // Convert to full URLs for search results
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        images: exercise.images.map((img: any) =>
+        images: exercise.images.map((img: string) =>
           freeExerciseDBService.getExerciseImageUrl(img)
         ),
       }));
@@ -930,6 +910,7 @@ async function searchExternalExercises(
         `Unsupported external exercise provider: ${providerType}`
       );
     }
+
     return {
       items,
       pagination: {
@@ -948,11 +929,11 @@ async function searchExternalExercises(
     throw error;
   }
 }
+
 async function addExternalExerciseToUserExercises(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  wgerExerciseId: any
+  authenticatedUserId: string,
+  wgerExerciseId: string | number,
+  language: string = 'en'
 ) {
   try {
     const wgerExerciseDetails =
@@ -960,119 +941,92 @@ async function addExternalExerciseToUserExercises(
     if (!wgerExerciseDetails) {
       throw new Error('Wger exercise not found.');
     }
+
     log(
       'info',
       `Raw wger exercise data for exercise ID ${wgerExerciseId}: ${JSON.stringify(wgerExerciseDetails, null, 2)}`
     );
-    // Calculate calories_per_hour
-    let caloriesPerHour = 0; // Default value if MET is not available or calculation fails
-    if (wgerExerciseDetails.met && wgerExerciseDetails.met > 0) {
-      let userWeightKg = 70; // Default to 70kg if user weight not found
-      const latestMeasurement =
-        await measurementRepository.getLatestMeasurement(authenticatedUserId);
-      if (latestMeasurement && latestMeasurement.weight) {
-        userWeightKg = latestMeasurement.weight;
-      }
-      // Formula: METs * 3.5 * body weight in kg / 200 = calories burned per minute
-      // To get calories per hour: (METs * 3.5 * body weight in kg) / 200 * 60
-      caloriesPerHour =
-        ((wgerExerciseDetails.met * 3.5 * userWeightKg) / 200) * 60;
-      caloriesPerHour = Math.round(caloriesPerHour); // Round to nearest whole number
-    } else {
-      caloriesPerHour =
-        // @ts-expect-error TS(2554): Expected 3 arguments, but got 2.
-        await calorieCalculationService.estimateCaloriesBurnedPerHour(
-          wgerExerciseDetails,
-          authenticatedUserId
-        );
-    }
-    // Use the name from translations if available, otherwise fallback to description or ID
-    const exerciseName =
-      wgerExerciseDetails.translations &&
-      wgerExerciseDetails.translations.length > 0 &&
-      wgerExerciseDetails.translations[0].name
-        ? wgerExerciseDetails.translations[0].name
-        : wgerExerciseDetails.description || `Wger Exercise ${wgerExerciseId}`;
-    const wgerLevelName = wgerExerciseDetails.level?.name || 'Intermediate';
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-    const mappedLevel = levelMap[wgerLevelName] || 'intermediate';
+
+    let caloriesPerHour = 0;
+
+    // met and level are not in the wger /exerciseinfo schema, so we always fall back
+    caloriesPerHour =
+      await calorieCalculationService.estimateCaloriesBurnedPerHour(
+        wgerExerciseDetails,
+        authenticatedUserId,
+        [{ reps: 10, weight: 0 }]
+      );
+
+    const { exerciseName, description: rawDescription } =
+      wgerService.extractWgerText(wgerExerciseDetails.translations, language);
+
     const reverseMuscleMap = createReverseMap(muscleNameMap);
     const reverseEquipmentMap = createReverseMap(equipmentNameMap);
-    const wgerForceName = wgerExerciseDetails.force?.name || null;
-    const mappedForce = wgerForceName
-      ? // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        forceMap[wgerForceName.toLowerCase()]
+
+    const mappedForce = wgerExerciseDetails.force?.name
+      ? (forceMap[
+          wgerExerciseDetails.force.name.toLowerCase() as keyof typeof forceMap
+        ] ?? null)
       : null;
-    const wgerMechanicName = wgerExerciseDetails.mechanic?.name || null;
-    const mappedMechanic = wgerMechanicName
-      ? // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        mechanicMap[wgerMechanicName.toLowerCase()]
+
+    const mappedMechanic = wgerExerciseDetails.mechanic?.name
+      ? (mechanicMap[
+          wgerExerciseDetails.mechanic.name.toLowerCase() as keyof typeof mechanicMap
+        ] ?? null)
       : null;
-    const rawDescription =
-      (wgerExerciseDetails.translations &&
-        wgerExerciseDetails.translations.length > 0 &&
-        wgerExerciseDetails.translations[0].description) ||
-      '';
-    // Sanitize and split instructions
+
     const instructions = rawDescription
-      .replace(/<li>/g, '\n- ') // Add a marker for list items
-      .replace(/<[^>]*>/g, '') // Remove all other HTML tags
+      .replace(/<li>/g, '\n- ')
+      .replace(/<[^>]*>/g, '')
       .split('\n')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((s: any) => s.trim())
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((s: any) => s);
+      .map((s) => s.trim())
+      .filter(Boolean);
+
     const exerciseData = {
       name: exerciseName,
-      category: wgerExerciseDetails.category
-        ? wgerExerciseDetails.category.name
-        : 'general',
+      category: wgerExerciseDetails.category?.name ?? 'general',
       calories_per_hour: caloriesPerHour,
-      description: instructions[0] || exerciseName, // Use the first instruction as description
+      description: instructions[0] ?? exerciseName,
       user_id: authenticatedUserId,
-      is_custom: true, // Mark as custom as it's imported by the user
-      shared_with_public: false, // Imported exercises are private by default
-      source_external_id: wgerExerciseDetails.id.toString(), // Store wger ID
-      source: 'wger', // Explicitly set the source to 'wger'
-      level: mappedLevel,
+      is_custom: true,
+      shared_with_public: false,
+      source_external_id: wgerExerciseDetails.id.toString(),
+      source: 'wger',
+      level: 'intermediate',
       force: mappedForce,
       mechanic: mappedMechanic,
-      equipment:
-        wgerExerciseDetails.equipment?.map(
-          // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (e: any) => reverseEquipmentMap[e.name.toLowerCase()] || e.name
-        ) || [],
-      primary_muscles:
-        wgerExerciseDetails.muscles?.map(
-          // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (m: any) => reverseMuscleMap[m.name.toLowerCase()] || m.name
-        ) || [],
-      secondary_muscles:
-        wgerExerciseDetails.muscles_secondary?.map(
-          // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (m: any) => reverseMuscleMap[m.name.toLowerCase()] || m.name
-        ) || [],
-      instructions: instructions,
-      images: [], // Initialize as empty, will be populated after download
+      equipment: wgerExerciseDetails.equipment.map(
+        (e) =>
+          reverseEquipmentMap[
+            e.name.toLowerCase() as keyof typeof reverseEquipmentMap
+          ] ?? e.name
+      ),
+      primary_muscles: wgerExerciseDetails.muscles.map(
+        (m) =>
+          reverseMuscleMap[
+            m.name.toLowerCase() as keyof typeof reverseMuscleMap
+          ] ?? m.name
+      ),
+      secondary_muscles: wgerExerciseDetails.muscles_secondary.map(
+        (m) =>
+          reverseMuscleMap[
+            m.name.toLowerCase() as keyof typeof reverseMuscleMap
+          ] ?? m.name
+      ),
+      instructions,
+      images: [] as string[],
     };
-    // Download images and update paths
-    if (wgerExerciseDetails.images && wgerExerciseDetails.images.length > 0) {
+
+    if (wgerExerciseDetails.images.length > 0) {
       const exerciseFolderName = exerciseName.replace(/[^a-zA-Z0-9]/g, '_');
       const localImagePaths = await Promise.all(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        wgerExerciseDetails.images.map(async (img: any) => {
+        wgerExerciseDetails.images.map(async (img) => {
           try {
-            const imageUrl = img.image;
-            if (imageUrl) {
-              const fullPath = await downloadImage(
-                imageUrl,
+            if (img.image) {
+              const fullPath = (await downloadImage(
+                img.image,
                 exerciseFolderName
-              );
-              // The frontend expects a path relative to the 'uploads/exercises' directory
-              // @ts-expect-error TS(2571): Object is of type 'unknown'.
+              )) as string;
               return fullPath.replace('/uploads/exercises/', '');
             }
           } catch (imgError) {
@@ -1085,15 +1039,16 @@ async function addExternalExerciseToUserExercises(
           return null;
         })
       );
-      // @ts-expect-error TS(2322): Type 'any[]' is not assignable to type 'never[]'.
-      exerciseData.images = localImagePaths.filter((p) => p !== null);
+      exerciseData.images = localImagePaths.filter(
+        (p): p is string => p !== null
+      );
     }
+
     log(
       'info',
       `Mapped exercise data before insert: ${JSON.stringify(exerciseData, null, 2)}`
     );
-    const newExercise = await exerciseDb.createExercise(exerciseData);
-    return newExercise;
+    return await exerciseDb.createExercise(exerciseData);
   } catch (error) {
     log(
       'error',

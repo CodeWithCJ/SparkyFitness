@@ -27,6 +27,8 @@ import {
 import { useMemo, useState } from 'react';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { GoalPreset } from '@/types/goals';
+import { getMealPercentage, buildGoalsPayload } from '@/utils/goals';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 
 interface GoalPresetDialogProps {
   open: boolean;
@@ -54,6 +56,8 @@ export const GoalPresetDialog = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: customNutrients } = useCustomNutrients();
+  const { data: mealTypes = [] } = useMealTypes();
+
   const [formData, setFormData] = useState<GoalPreset | null>(() => {
     if (!preset) {
       return { ...DEFAULT_GOALS, preset_name: '', id: undefined } as GoalPreset;
@@ -75,15 +79,22 @@ export const GoalPresetDialog = ({
 
   const presetSaving = createSaving || updateSaving;
 
+  const visibleMeals = useMemo(
+    () => mealTypes.filter((m) => m.is_visible),
+    [mealTypes]
+  );
+
   const mealPercentages = useMemo(() => {
-    if (!formData) return { breakfast: 25, lunch: 25, dinner: 25, snacks: 25 };
-    return {
-      breakfast: formData.breakfast_percentage ?? 25,
-      lunch: formData.lunch_percentage ?? 25,
-      dinner: formData.dinner_percentage ?? 25,
-      snacks: formData.snacks_percentage ?? 25,
-    };
-  }, [formData]);
+    if (!formData) return {};
+    const percentages: Record<string, number> = {};
+    visibleMeals.forEach((meal) => {
+      percentages[meal.name.toLowerCase()] = getMealPercentage(
+        meal.name,
+        formData
+      );
+    });
+    return percentages;
+  }, [formData, visibleMeals]);
 
   const handleSave = async () => {
     if (!formData || !user) return;
@@ -112,6 +123,7 @@ export const GoalPresetDialog = ({
       console.error('Failed to save preset', error);
     }
   };
+
   const currentMacroTotal = useMemo(() => {
     if (!formData || macroInputType === 'grams') return 0;
     return (
@@ -121,13 +133,14 @@ export const GoalPresetDialog = ({
     );
   }, [formData, macroInputType]);
 
-  const isTotalPercentageValid = formData
-    ? formData.breakfast_percentage +
-        formData.lunch_percentage +
-        formData.dinner_percentage +
-        formData.snacks_percentage ===
-      100
-    : false;
+  const isTotalPercentageValid = useMemo(() => {
+    if (!formData) return false;
+    const total = visibleMeals.reduce(
+      (sum, meal) => sum + getMealPercentage(meal.name, formData),
+      0
+    );
+    return Math.round(total) === 100;
+  }, [formData, visibleMeals]);
 
   if (!formData) return null;
   return (
@@ -310,10 +323,7 @@ export const GoalPresetDialog = ({
                 onPercentagesChange={(p) =>
                   setFormData({
                     ...formData,
-                    breakfast_percentage: p.breakfast,
-                    lunch_percentage: p.lunch,
-                    dinner_percentage: p.dinner,
-                    snacks_percentage: p.snacks,
+                    ...buildGoalsPayload(p, formData),
                   })
                 }
               />

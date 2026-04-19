@@ -26,6 +26,7 @@ import { createInitialPlan } from '@/utils/onboarding';
 import { useUpdateProfileMutation } from '@/hooks/Settings/useProfile';
 import { useAuth } from '@/hooks/useAuth';
 import { OnboardingData } from '@/types/onboarding';
+import { MealPercentages } from '@/types/meal';
 
 interface PersonalPlanProps {
   formData: OnboardingData;
@@ -327,20 +328,15 @@ const PersonalPlan = ({
     ]
   );
 
-  const handlePercentagesChange = (newPercentages: {
-    breakfast: number;
-    lunch: number;
-    dinner: number;
-    snacks: number;
-  }) => {
+  const handlePercentagesChange = (newPercentages: MealPercentages) => {
     setEditedPlan((prev) =>
       prev
         ? {
             ...prev,
-            breakfast_percentage: newPercentages.breakfast,
-            lunch_percentage: newPercentages.lunch,
-            dinner_percentage: newPercentages.dinner,
-            snacks_percentage: newPercentages.snacks,
+            breakfast_percentage: newPercentages['breakfast'] ?? 0,
+            lunch_percentage: newPercentages['lunch'] ?? 0,
+            dinner_percentage: newPercentages['dinner'] ?? 0,
+            snacks_percentage: newPercentages['snacks'] ?? 0,
           }
         : null
     );

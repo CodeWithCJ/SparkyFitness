@@ -24,6 +24,7 @@ import type { UserCustomNutrient } from '@/types/customNutrient';
 import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
 import { formatNutrientValue } from '@/utils/nutrientUtils';
 import { NutritionData } from '@/types/reports';
+import { calculateAverage } from '@/utils/reportUtil';
 
 interface NutritionChartsGridProps {
   nutritionData: NutritionData[];
@@ -122,17 +123,36 @@ const NutritionChartsGrid = ({
     return charts;
   }, [t, energyUnit, customNutrients]);
 
-  const visibleCharts = reportChartPreferences
-    ? allNutritionCharts.filter((chart) =>
-        reportChartPreferences.visible_nutrients.includes(chart.key)
-      )
-    : allNutritionCharts;
+  const visibleCharts = useMemo(() => {
+    if (reportChartPreferences && reportChartPreferences.visible_nutrients) {
+      return reportChartPreferences.visible_nutrients
+        .map((key) => allNutritionCharts.find((chart) => chart.key === key))
+        .filter(
+          (chart): chart is NonNullable<typeof chart> => chart !== undefined
+        );
+    }
+    return allNutritionCharts;
+  }, [reportChartPreferences, allNutritionCharts]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">
       {visibleCharts.map((chart) => {
         const chartData = prepareChartData(nutritionData, chart.key);
         const yAxisDomain = getYAxisDomain(nutritionData, chart.key);
+        const average = calculateAverage(chartData, chart.key);
+
+        let formattedAverage = '';
+        if (chart.key === 'calories') {
+          formattedAverage = Math.round(
+            convertEnergy(average, 'kcal', energyUnit)
+          ).toString();
+        } else {
+          formattedAverage = formatNutrientValue(
+            chart.key,
+            average,
+            customNutrients
+          );
+        }
 
         return (
           <ZoomableChart
@@ -142,9 +162,15 @@ const NutritionChartsGrid = ({
             {(isMaximized, zoomLevel) => (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">
-                    {chart.label} ({chart.unit})
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">
+                      {chart.label} ({chart.unit})
+                    </CardTitle>
+                    <span className="text-xs text-muted-foreground font-normal">
+                      {t('reports.average', 'Avg')}: {formattedAverage}{' '}
+                      {chart.unit}
+                    </span>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div

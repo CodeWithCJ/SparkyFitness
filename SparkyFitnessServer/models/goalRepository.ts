@@ -11,7 +11,7 @@ async function getGoalByDate(userId: any, selectedDate: any) {
                target_exercise_calories_burned, target_exercise_duration_minutes,
                protein_percentage, carbs_percentage, fat_percentage,
                breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
-               custom_nutrients
+               custom_meal_percentages, custom_nutrients
         FROM user_goals
         WHERE user_id = $1 AND goal_date = $2
         ORDER BY updated_at DESC, created_at DESC -- Prioritize most recently updated/created
@@ -35,7 +35,7 @@ async function getMostRecentGoalBeforeDate(userId: any, selectedDate: any) {
                target_exercise_calories_burned, target_exercise_duration_minutes,
                protein_percentage, carbs_percentage, fat_percentage,
                breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
-               custom_nutrients
+               custom_meal_percentages, custom_nutrients
        FROM user_goals
        WHERE user_id = $1 AND (goal_date < $2 OR goal_date IS NULL)
        ORDER BY goal_date DESC NULLS LAST
@@ -60,9 +60,9 @@ async function upsertGoal(goalData: any) {
         target_exercise_calories_burned, target_exercise_duration_minutes,
         protein_percentage, carbs_percentage, fat_percentage,
         breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
-        custom_nutrients, created_at, updated_at
+        custom_meal_percentages, custom_nutrients, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
       ON CONFLICT (user_id, COALESCE(goal_date, '1900-01-01'::date))
       DO UPDATE SET
         calories = EXCLUDED.calories,
@@ -92,6 +92,7 @@ async function upsertGoal(goalData: any) {
         lunch_percentage = EXCLUDED.lunch_percentage,
         dinner_percentage = EXCLUDED.dinner_percentage,
         snacks_percentage = EXCLUDED.snacks_percentage,
+        custom_meal_percentages = EXCLUDED.custom_meal_percentages,
         custom_nutrients = EXCLUDED.custom_nutrients,
         updated_at = now()
       RETURNING *`,
@@ -125,6 +126,7 @@ async function upsertGoal(goalData: any) {
         goalData.lunch_percentage,
         goalData.dinner_percentage,
         goalData.snacks_percentage,
+        goalData.custom_meal_percentages || {},
         goalData.custom_nutrients || {},
         new Date(), // for created_at
         new Date(), // for updated_at

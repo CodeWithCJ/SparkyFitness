@@ -2,7 +2,8 @@ import { apiCall } from '../api';
 import type { MealFood } from '@/types/meal';
 import type { FoodEntryMeal } from '@/types/meal';
 import type { FoodEntry } from '@/types/food';
-import { DayData, FoodEntryUpdateData, Goals } from '@/types/diary';
+import { DayData, FoodEntryUpdateData } from '@/types/diary';
+import { ExpandedGoals } from '@/types/goals';
 
 export interface FoodEntryCreateData {
   user_id?: string;
@@ -69,7 +70,7 @@ export const loadFoodEntries = async (date: string): Promise<FoodEntry[]> => {
   return response;
 };
 
-export const loadDiaryGoals = async (date: string): Promise<Goals> => {
+export const loadDiaryGoals = async (date: string): Promise<ExpandedGoals> => {
   // Adjust return type as needed
   const response = await apiCall(`/goals/by-date/${date}`, {
     method: 'GET',

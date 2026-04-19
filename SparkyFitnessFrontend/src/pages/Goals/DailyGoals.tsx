@@ -15,6 +15,9 @@ import { useCallback, useMemo } from 'react';
 import { ExpandedGoals } from '@/types/goals';
 import { WaterAndExerciseFields } from './WaterAndExerciseFields';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
+import { buildGoalsPayload, getMealPercentage } from '@/utils/goals';
+
 interface DailyGoalsProps {
   goals: ExpandedGoals;
   setGoals: React.Dispatch<React.SetStateAction<ExpandedGoals>>;
@@ -32,52 +35,50 @@ export const DailyGoals = ({
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: customNutrients } = useCustomNutrients();
+  const { data: mealTypes = [] } = useMealTypes();
 
-  const memoizedGoalsPercentages = useMemo(
-    () => ({
-      breakfast: goals.breakfast_percentage,
-      lunch: goals.lunch_percentage,
-      dinner: goals.dinner_percentage,
-      snacks: goals.snacks_percentage,
-    }),
-    [
-      goals.breakfast_percentage,
-      goals.lunch_percentage,
-      goals.dinner_percentage,
-      goals.snacks_percentage,
-    ]
+  const visibleMeals = useMemo(
+    () => mealTypes.filter((m) => m.is_visible),
+    [mealTypes]
   );
+
+  const memoizedGoalsPercentages = useMemo(() => {
+    const percentages: Record<string, number> = {};
+    visibleMeals.forEach((meal) => {
+      percentages[meal.name.toLowerCase()] = getMealPercentage(
+        meal.name,
+        goals
+      );
+    });
+    return percentages;
+  }, [goals, visibleMeals]);
+
   const { mutateAsync: saveGoalsService, isPending: saving } =
     useSaveGoalsMutation();
+
   const handleSaveGoals = async () => {
     if (!user) return;
-
     await saveGoalsService({ date: today, goals, cascade: true });
   };
 
   const handleGoalsPercentagesChange = useCallback(
-    (newPercentages: {
-      breakfast: number;
-      lunch: number;
-      dinner: number;
-      snacks: number;
-    }) => {
+    (newPercentages: Record<string, number>) => {
       setGoals((prevGoals) => ({
         ...prevGoals,
-        breakfast_percentage: newPercentages.breakfast,
-        lunch_percentage: newPercentages.lunch,
-        dinner_percentage: newPercentages.dinner,
-        snacks_percentage: newPercentages.snacks,
+        ...buildGoalsPayload(newPercentages, prevGoals),
       }));
     },
     [setGoals]
   );
-  const isTotalPercentageValid =
-    goals.breakfast_percentage +
-      goals.lunch_percentage +
-      goals.dinner_percentage +
-      goals.snacks_percentage ===
-    100;
+
+  const isTotalPercentageValid = useMemo(() => {
+    const total = visibleMeals.reduce(
+      (sum, meal) => sum + getMealPercentage(meal.name, goals),
+      0
+    );
+    return Math.round(total) === 100;
+  }, [goals, visibleMeals]);
+
   return (
     <>
       <Card>
@@ -97,46 +98,46 @@ export const DailyGoals = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Primary Macros */}
-            {visibleNutrients.includes('calories') && (
-              <div className="space-y-1.5">
-                <Label htmlFor="calories">
-                  {t(
-                    'nutrition.calories',
-                    `Calories (${getEnergyUnitString(energyUnit)})`
-                  )}
-                </Label>
-                <NumericInput
-                  id="calories"
-                  step={1}
-                  value={Math.round(
-                    convertEnergy(goals.calories, 'kcal', energyUnit)
-                  )}
-                  onValueChange={(val) =>
-                    setGoals({
-                      ...goals,
-                      calories: convertEnergy(val ?? 0, energyUnit, 'kcal'),
-                    })
-                  }
-                />
-              </div>
-            )}
-            {NUTRIENT_CONFIG.map((f) => (
-              <NutrientInput
-                key={f.id}
-                nutrientId={f.id}
-                state={goals}
-                setState={setGoals}
-                visibleNutrients={visibleNutrients}
-                customNutrients={customNutrients}
-              />
-            ))}
-            {/* Custom Nutrients */}
-            {customNutrients?.map((cn) => {
+            {/* Loop directly over the ordered array from settings */}
+            {visibleNutrients.map((key) => {
+              // 1. Handle Calories Explicitly
+              if (key === 'calories') {
+                return (
+                  <div key="calories" className="space-y-1.5">
+                    <Label htmlFor="calories">
+                      {t(
+                        'nutrition.calories',
+                        `Calories (${getEnergyUnitString(energyUnit)})`
+                      )}
+                    </Label>
+                    <NumericInput
+                      id="calories"
+                      step={1}
+                      value={Math.round(
+                        convertEnergy(goals.calories, 'kcal', energyUnit)
+                      )}
+                      onValueChange={(val) =>
+                        setGoals({
+                          ...goals,
+                          calories: convertEnergy(val ?? 0, energyUnit, 'kcal'),
+                        })
+                      }
+                    />
+                  </div>
+                );
+              }
+
+              // 2. Validate standard or custom nutrient
+              const isStandard = NUTRIENT_CONFIG.some((n) => n.id === key);
+              const isCustom = customNutrients?.some((cn) => cn.name === key);
+
+              if (!isStandard && !isCustom) return null;
+
+              // 3. Render nutrient input
               return (
                 <NutrientInput
-                  key={cn.id}
-                  nutrientId={cn.name}
+                  key={key}
+                  nutrientId={key}
                   state={goals}
                   setState={setGoals}
                   visibleNutrients={visibleNutrients}

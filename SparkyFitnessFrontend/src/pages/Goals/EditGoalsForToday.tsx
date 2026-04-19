@@ -35,6 +35,8 @@ import { WaterAndExerciseFields } from '@/pages/Goals/WaterAndExerciseFields';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import type { UserCustomNutrient } from '@/types/customNutrient';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
+import { buildGoalsPayload, getMealPercentage } from '@/utils/goals';
 
 interface EditGoalsProps {
   selectedDate: string;
@@ -87,6 +89,7 @@ const EditGoalsForm = ({
   );
 
   const { data: goalPresets = [] } = useGoalPresets();
+  const { data: mealTypes = [] } = useMealTypes();
 
   const goalPreferences = nutrientDisplayPreferences.find(
     (p) => p.view_group === 'goal' && p.platform === platform
@@ -122,12 +125,29 @@ const EditGoalsForm = ({
 
   const isMacroValid = Math.round(currentMacroTotal) === 100;
 
-  const isTotalPercentageValid =
-    goals.breakfast_percentage +
-      goals.lunch_percentage +
-      goals.dinner_percentage +
-      goals.snacks_percentage ===
-    100;
+  const visibleMeals = useMemo(
+    () => mealTypes.filter((m) => m.is_visible),
+    [mealTypes]
+  );
+
+  const memoizedGoalsPercentages = useMemo(() => {
+    const percentages: Record<string, number> = {};
+    visibleMeals.forEach((meal) => {
+      percentages[meal.name.toLowerCase()] = getMealPercentage(
+        meal.name,
+        goals
+      );
+    });
+    return percentages;
+  }, [goals, visibleMeals]);
+
+  const isTotalPercentageValid = useMemo(() => {
+    const total = visibleMeals.reduce(
+      (sum, meal) => sum + getMealPercentage(meal.name, goals),
+      0
+    );
+    return Math.round(total) === 100;
+  }, [goals, visibleMeals]);
   const handleApplyPreset = (presetId: string) => {
     const preset = goalPresets.find((p) => p.id === presetId);
     if (preset) {
@@ -308,20 +328,12 @@ const EditGoalsForm = ({
       <div className="space-y-4">
         <h3 className="text-sm font-semibold">Meal Distribution</h3>
         <MealPercentageManager
-          initialPercentages={{
-            breakfast: goals.breakfast_percentage,
-            lunch: goals.lunch_percentage,
-            dinner: goals.dinner_percentage,
-            snacks: goals.snacks_percentage,
-          }}
+          initialPercentages={memoizedGoalsPercentages}
           totalCalories={goals.calories}
           onPercentagesChange={(p) =>
             setGoals((prev) => ({
               ...prev,
-              breakfast_percentage: p.breakfast,
-              lunch_percentage: p.lunch,
-              dinner_percentage: p.dinner,
-              snacks_percentage: p.snacks,
+              ...buildGoalsPayload(p, prev),
             }))
           }
         />

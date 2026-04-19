@@ -165,3 +165,4 @@ export interface MealTotals {
 }
 
 export type MealFilter = 'all' | 'mine' | 'family' | 'public' | 'needs-review';
+export type MealPercentages = Record<string, number>;
