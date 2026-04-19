@@ -3,7 +3,7 @@
 // can't load TypeScript/ESM.
 
 const IOS_APP_GROUP_DEV = 'group.org.SparkyApps.SparkyFitnessMobile.dev';
-const IOS_APP_GROUP_PROD = 'group.com.SparkyApps.SparkyFitnessMobile';
+const IOS_APP_GROUP_PROD = 'group.com.SparkyApps.SparkyFitnessMobile.shared';
 
 const isDevVariant = () => {
   const env = process.env.APP_VARIANT || 'dev';

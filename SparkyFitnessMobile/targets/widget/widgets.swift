@@ -2,7 +2,6 @@ import WidgetKit
 import SwiftUI
 
 struct CalorieSnapshot {
-    let consumed: Double
     let food: Double
     let burned: Double
     let goal: Double
@@ -10,14 +9,13 @@ struct CalorieSnapshot {
     let progress: Double
     let lastUpdated: Date?
 
-    static let empty = CalorieSnapshot(consumed: 0, food: 0, burned: 0, goal: 0, remaining: 0, progress: 0, lastUpdated: nil)
+    static let empty = CalorieSnapshot(food: 0, burned: 0, goal: 0, remaining: 0, progress: 0, lastUpdated: nil)
 
-    var hasData: Bool { goal > 0 || consumed > 0 || food > 0 || burned > 0 }
+    var hasData: Bool { goal > 0 || food > 0 || burned > 0 }
 }
 
 private struct CalorieSnapshotPayload: Decodable {
     let date: String?
-    let consumed: Double?
     let food: Double?
     let burned: Double?
     let goal: Double?
@@ -30,23 +28,14 @@ private func loadCalorieSnapshot() -> CalorieSnapshot {
     guard
         let appGroup = appGroupIdentifier(),
         !appGroup.isEmpty,
-        let defaults = UserDefaults(suiteName: appGroup)
+        let defaults = UserDefaults(suiteName: appGroup),
+        let data = defaults.data(forKey: "calorieSnapshot"),
+        let payload = try? JSONDecoder().decode(CalorieSnapshotPayload.self, from: data),
+        isToday(payload.date)
     else {
         return .empty
     }
-
-    if let data = defaults.data(forKey: "calorieSnapshot"),
-       let payload = try? JSONDecoder().decode(CalorieSnapshotPayload.self, from: data) {
-        guard isToday(payload.date) else { return .empty }
-        return snapshot(from: payload)
-    }
-
-    guard let dict = defaults.dictionary(forKey: "calorieSnapshot") else {
-        return .empty
-    }
-
-    guard isToday(dict["date"] as? String) else { return .empty }
-    return snapshot(from: dict)
+    return snapshot(from: payload)
 }
 
 private func fallbackProgress(goal: Double, remaining: Double) -> Double {
@@ -55,40 +44,15 @@ private func fallbackProgress(goal: Double, remaining: Double) -> Double {
 }
 
 private func snapshot(from payload: CalorieSnapshotPayload) -> CalorieSnapshot {
-    let consumed = payload.consumed ?? 0
     let goal = payload.goal ?? 0
     let remaining = payload.remaining ?? 0
-    let lastUpdated: Date? = payload.lastUpdated.map {
-        Date(timeIntervalSince1970: $0)
-    }
     return CalorieSnapshot(
-        consumed: consumed,
-        food: payload.food ?? consumed,
+        food: payload.food ?? 0,
         burned: payload.burned ?? 0,
         goal: goal,
         remaining: remaining,
         progress: payload.progress ?? fallbackProgress(goal: goal, remaining: remaining),
-        lastUpdated: lastUpdated
-    )
-}
-
-private func snapshot(from dict: [String: Any]) -> CalorieSnapshot {
-    let consumed = doubleValue(dict["consumed"]) ?? 0
-    let food = doubleValue(dict["food"]) ?? consumed
-    let burned = doubleValue(dict["burned"]) ?? 0
-    let goal = doubleValue(dict["goal"]) ?? 0
-    let remaining = doubleValue(dict["remaining"]) ?? 0
-    let lastUpdated: Date? = doubleValue(dict["lastUpdated"]).map {
-        Date(timeIntervalSince1970: $0)
-    }
-    return CalorieSnapshot(
-        consumed: consumed,
-        food: food,
-        burned: burned,
-        goal: goal,
-        remaining: remaining,
-        progress: doubleValue(dict["progress"]) ?? fallbackProgress(goal: goal, remaining: remaining),
-        lastUpdated: lastUpdated
+        lastUpdated: payload.lastUpdated.map { Date(timeIntervalSince1970: $0) }
     )
 }
 
@@ -326,7 +290,7 @@ struct widget: Widget {
     } timeline: {
         SimpleEntry(
             date: .now,
-            snapshot: CalorieSnapshot(consumed: 1540, food: 1540, burned: 255, goal: 3055, remaining: 1515, progress: 0.5, lastUpdated: .now)
+            snapshot: CalorieSnapshot(food: 1540, burned: 255, goal: 3055, remaining: 1515, progress: 0.5, lastUpdated: .now)
         )
         SimpleEntry(date: .now, snapshot: .empty)
     }
@@ -336,7 +300,7 @@ struct widget: Widget {
     } timeline: {
         SimpleEntry(
             date: .now,
-            snapshot: CalorieSnapshot(consumed: 1540, food: 1540, burned: 255, goal: 3055, remaining: 1515, progress: 0.5, lastUpdated: .now)
+            snapshot: CalorieSnapshot(food: 1540, burned: 255, goal: 3055, remaining: 1515, progress: 0.5, lastUpdated: .now)
         )
         SimpleEntry(date: .now, snapshot: .empty)
     }

@@ -31,16 +31,3 @@ func appGroupIdentifier() -> String? {
     }
     return "group.\(bundleIdentifier)"
 }
-
-func doubleValue(_ value: Any?) -> Double? {
-    switch value {
-    case let number as Double:
-        return number
-    case let number as NSNumber:
-        return number.doubleValue
-    case let string as String:
-        return Double(string)
-    default:
-        return nil
-    }
-}
