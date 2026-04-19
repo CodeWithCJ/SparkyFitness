@@ -122,7 +122,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
           <View className="flex-1 ml-2">
             <TextInput
               className="text-text-primary"
-              style={{ fontSize: 16, letterSpacing: 0 }}
+              style={{ fontSize: 16 }}
               placeholder="Search presets..."
               placeholderTextColor={textMuted}
               value={searchText}

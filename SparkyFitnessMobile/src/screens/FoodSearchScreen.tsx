@@ -181,7 +181,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <View className="flex-1 ml-2">
           <TextInput
             className="text-text-primary"
-            style={{ fontSize: 16, letterSpacing: 0 }}
+            style={{ fontSize: 16 }}
             placeholder={activeTab === 'meal' ? 'Search meals...' : 'Search foods...'}
             placeholderTextColor={textMuted}
             value={searchText}
