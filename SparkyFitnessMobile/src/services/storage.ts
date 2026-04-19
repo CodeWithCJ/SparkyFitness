@@ -33,6 +33,7 @@ const TIME_RANGE_KEY = 'timeRange';
 const LAST_SYNCED_TIME_KEY = 'lastSyncedTime';
 const BACKGROUND_SYNC_ENABLED_KEY = 'backgroundSyncEnabled';
 const SYNC_ON_OPEN_ENABLED_KEY = 'syncOnOpenEnabled';
+const PENDING_HEALTH_SYNC_CACHE_REFRESH_KEY = 'pendingHealthSyncCacheRefresh';
 
 const secureStoreKey = (configId: string) => `apiKey_${configId}`;
 const sessionTokenSecureStoreKey = (configId: string) => `sessionToken_${configId}`;
@@ -318,6 +319,29 @@ export const loadSyncOnOpenEnabled = async (): Promise<boolean> => {
     return JSON.parse(value) as boolean;
   } catch (error) {
     console.error('Failed to load sync on open preference.', error);
+    return false;
+  }
+};
+
+export const savePendingHealthSyncCacheRefresh = async (): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(PENDING_HEALTH_SYNC_CACHE_REFRESH_KEY, 'true');
+  } catch (error) {
+    console.error('Failed to save pending health sync cache refresh.', error);
+  }
+};
+
+export const consumePendingHealthSyncCacheRefresh = async (): Promise<boolean> => {
+  try {
+    const value = await AsyncStorage.getItem(PENDING_HEALTH_SYNC_CACHE_REFRESH_KEY);
+    if (value !== 'true') {
+      return false;
+    }
+
+    await AsyncStorage.removeItem(PENDING_HEALTH_SYNC_CACHE_REFRESH_KEY);
+    return true;
+  } catch (error) {
+    console.error('Failed to consume pending health sync cache refresh.', error);
     return false;
   }
 };

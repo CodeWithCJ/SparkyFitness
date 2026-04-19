@@ -4,6 +4,8 @@ import { useSyncHealthData } from '../../src/hooks/useSyncHealthData';
 import { syncHealthData as healthConnectSyncData } from '../../src/services/healthConnectService';
 import { saveLastSyncedTime } from '../../src/services/storage';
 import { addLog } from '../../src/services/LogService';
+import { refreshHealthSyncCache } from '../../src/hooks/refreshHealthSyncCache';
+import { serverConnectionQueryKey } from '../../src/hooks/queryKeys';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/healthConnectService', () => ({
@@ -18,6 +20,10 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/refreshHealthSyncCache', () => ({
+  refreshHealthSyncCache: jest.fn(),
+}));
+
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
 const mockHealthConnectSyncData = healthConnectSyncData as jest.MockedFunction<
@@ -27,6 +33,9 @@ const mockSaveLastSyncedTime = saveLastSyncedTime as jest.MockedFunction<
   typeof saveLastSyncedTime
 >;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
+const mockRefreshHealthSyncCache = refreshHealthSyncCache as jest.MockedFunction<
+  typeof refreshHealthSyncCache
+>;
 
 describe('useSyncHealthData', () => {
   let queryClient: QueryClient;
@@ -141,6 +150,28 @@ describe('useSyncHealthData', () => {
 
       await waitFor(() => {
         expect(onSuccess).toHaveBeenCalledWith('2024-01-15T10:00:00Z');
+      });
+    });
+
+    test('refreshes health caches and invalidates server connection on success', async () => {
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+      mockHealthConnectSyncData.mockResolvedValue({ success: true, syncErrors: [] });
+      mockSaveLastSyncedTime.mockResolvedValue('2024-01-15T10:00:00Z');
+
+      const { result } = renderHook(() => useSyncHealthData(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        result.current.mutate(testParams);
+      });
+
+      await waitFor(() => {
+        expect(mockRefreshHealthSyncCache).toHaveBeenCalledWith(queryClient);
+      });
+
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: serverConnectionQueryKey,
       });
     });
   });
@@ -282,6 +313,28 @@ describe('useSyncHealthData', () => {
           })
         );
       });
+    });
+
+    test('does not refresh health caches on failure', async () => {
+      mockHealthConnectSyncData.mockResolvedValue({
+        success: false,
+        error: 'Server unavailable',
+        syncErrors: [],
+      });
+
+      const { result } = renderHook(() => useSyncHealthData(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        result.current.mutate(testParams);
+      });
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true);
+      });
+
+      expect(mockRefreshHealthSyncCache).not.toHaveBeenCalled();
     });
   });
 
