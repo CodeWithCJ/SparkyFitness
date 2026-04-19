@@ -34,15 +34,12 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
 
       const lastUpdated = Math.floor(Date.now() / 1000);
       const storage = new ExtensionStorage(iosAppGroup);
-      let probeKey: string | null = null;
-      let wroteCalorie = false;
-
       const balance = summary.calorieBalance;
+
       if (balance) {
         const { eaten, burned, goal, remaining, progress } = balance;
         storage.set(CALORIE_SNAPSHOT_KEY, {
           date,
-          consumed: eaten,
           food: eaten,
           burned,
           goal,
@@ -50,8 +47,6 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
           progress: goal > 0 ? Math.max(0, Math.min(1, progress / 100)) : 0,
           lastUpdated,
         });
-        probeKey ??= CALORIE_SNAPSHOT_KEY;
-        wroteCalorie = true;
       }
 
       storage.set(MACRO_SNAPSHOT_KEY, {
@@ -62,14 +57,13 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
         calories: summary.caloriesConsumed,
         lastUpdated,
       });
-      probeKey ??= MACRO_SNAPSHOT_KEY;
 
-      if (probeKey && storage.get(probeKey) === null) {
+      if (storage.get(MACRO_SNAPSHOT_KEY) === null) {
         addLog('[useWidgetSync] ExtensionStorage unavailable; widget snapshots were not written', 'WARNING');
         return;
       }
 
-      if (wroteCalorie) {
+      if (balance) {
         ExtensionStorage.reloadWidget(WIDGET_KIND);
       }
       ExtensionStorage.reloadWidget(MACRO_WIDGET_KIND);

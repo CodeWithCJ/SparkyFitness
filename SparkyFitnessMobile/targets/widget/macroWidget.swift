@@ -33,48 +33,19 @@ private func loadMacroSnapshot() -> MacroSnapshot {
     guard
         let appGroup = appGroupIdentifier(),
         !appGroup.isEmpty,
-        let defaults = UserDefaults(suiteName: appGroup)
+        let defaults = UserDefaults(suiteName: appGroup),
+        let data = defaults.data(forKey: "macroSnapshot"),
+        let payload = try? JSONDecoder().decode(MacroSnapshotPayload.self, from: data),
+        isToday(payload.date)
     else {
         return .empty
-    }
-
-    if let data = defaults.data(forKey: "macroSnapshot"),
-       let payload = try? JSONDecoder().decode(MacroSnapshotPayload.self, from: data) {
-        guard isToday(payload.date) else { return .empty }
-        return snapshot(from: payload)
-    }
-
-    guard let dict = defaults.dictionary(forKey: "macroSnapshot") else {
-        return .empty
-    }
-
-    guard isToday(dict["date"] as? String) else { return .empty }
-    return snapshot(from: dict)
-}
-
-private func snapshot(from payload: MacroSnapshotPayload) -> MacroSnapshot {
-    let lastUpdated: Date? = payload.lastUpdated.map {
-        Date(timeIntervalSince1970: $0)
     }
     return MacroSnapshot(
         proteinGrams: payload.protein ?? 0,
         carbsGrams: payload.carbs ?? 0,
         fatGrams: payload.fat ?? 0,
         caloriesConsumed: payload.calories ?? 0,
-        lastUpdated: lastUpdated
-    )
-}
-
-private func snapshot(from dict: [String: Any]) -> MacroSnapshot {
-    let lastUpdated: Date? = doubleValue(dict["lastUpdated"]).map {
-        Date(timeIntervalSince1970: $0)
-    }
-    return MacroSnapshot(
-        proteinGrams: doubleValue(dict["protein"]) ?? 0,
-        carbsGrams: doubleValue(dict["carbs"]) ?? 0,
-        fatGrams: doubleValue(dict["fat"]) ?? 0,
-        caloriesConsumed: doubleValue(dict["calories"]) ?? 0,
-        lastUpdated: lastUpdated
+        lastUpdated: payload.lastUpdated.map { Date(timeIntervalSince1970: $0) }
     )
 }
 
